@@ -15,10 +15,13 @@ package org.openmetadata.service.secrets;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,6 +32,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -54,6 +58,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class SecretsManagerUpdateService {
+  /** After this many unreadable registrations, discovery stops rather than looping on them. */
+  static final int MAX_EXTENSION_LOAD_ERRORS = 10;
+
+  private static final String UNLOADABLE_EXTENSION = "an extension that could not be loaded";
   private final SecretsManager secretManager;
   private final SecretsManager oldSecretManager;
   private final UserRepository userRepository;
@@ -80,6 +88,49 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
+    updateWorkflows();
+    runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class).iterator());
+  }
+
+  /**
+   * Runs every extension, even after one fails or cannot be loaded, and then fails the update if
+   * any did, so the command reports the failure instead of finishing as if every credential was
+   * updated. ADR:2026-10-30-distributions-update-their-own-credentials-through-an-extension
+   */
+  static void runExtensions(Iterator<SecretsManagerUpdateExtension> extensions) {
+    List<String> failed = new ArrayList<>();
+    int loadErrors = 0;
+    boolean exhausted = false;
+    while (!exhausted && loadErrors < MAX_EXTENSION_LOAD_ERRORS) {
+      try {
+        exhausted = !extensions.hasNext();
+        if (!exhausted) {
+          runExtension(extensions.next(), failed);
+        }
+      } catch (ServiceConfigurationError e) {
+        loadErrors++;
+        LOG.error("Skipping a secrets update extension that could not be loaded", e);
+        failed.add(UNLOADABLE_EXTENSION);
+      }
+    }
+    requireNoFailures(failed);
+  }
+
+  private static void runExtension(SecretsManagerUpdateExtension extension, List<String> failed) {
+    try {
+      LOG.info("Updating the secrets of extension [{}]", extension.name());
+      extension.updateSecrets();
+    } catch (RuntimeException e) {
+      LOG.error("Failed to update the secrets of extension [{}]", extension.name(), e);
+      failed.add(extension.name());
+    }
+  }
+
+  private static void requireNoFailures(List<String> failed) {
+    if (!failed.isEmpty()) {
+      throw new SecretsManagerUpdateException(
+          String.format("Failed to update the secrets of extensions %s", failed));
+    }
   }
 
   private void updateServices() {
@@ -142,12 +193,36 @@ public class SecretsManagerUpdateService {
             });
   }
 
+  /**
+   * Workflows (e.g. Test Connection requests) hold a service connection too, so a converter fix
+   * must reach the ones already stored, like it reaches services.
+   */
+  private void updateWorkflows() {
+    LOG.info(
+        "Updating workflows in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
+    retrieveWorkflows()
+        .forEach(
+            workflow -> {
+              try {
+                updateWorkflow(workflow);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update workflow [{}] with id [{}]: {}",
+                    workflow.getName(),
+                    workflow.getId(),
+                    e.getMessage());
+                // Continue processing other workflows instead of failing the entire migration
+              }
+            });
+  }
+
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
     ServiceEntityRepository<?, ?> repository =
         connectionTypeRepositoriesMap.get(serviceEntityInterface.getConnection().getClass());
     try {
       ServiceEntityInterface service =
-          repository.getDao().findEntityById(serviceEntityInterface.getId());
+          repository.getDao().findEntityById(serviceEntityInterface.getId(), Include.ALL);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       service
           .getConnection()
@@ -188,8 +263,8 @@ public class SecretsManagerUpdateService {
           .listAfter(
               null,
               EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              serviceEntityRepository.getDao().listCount(new ListFilter()),
+              new ListFilter(Include.ALL),
+              serviceEntityRepository.getDao().listCount(new ListFilter(Include.ALL)),
               null)
           .getData()
           .stream()
@@ -224,7 +299,7 @@ public class SecretsManagerUpdateService {
 
   private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(String entityType) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entityType);
       if (ServiceEntityRepository.class.isAssignableFrom(repository.getClass())) {
         return Optional.of(((ServiceEntityRepository<?, ?>) repository));
@@ -360,8 +435,8 @@ public class SecretsManagerUpdateService {
           .listAfter(
               null,
               EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              workflowRepository.getDao().listCount(new ListFilter()),
+              new ListFilter(Include.ALL),
+              workflowRepository.getDao().listCount(new ListFilter(Include.ALL)),
               null)
           .getData();
     } catch (Exception e) {
@@ -388,11 +463,12 @@ public class SecretsManagerUpdateService {
 
   private void updateWorkflow(Workflow workflow) {
     try {
-      Workflow workflowObject = workflowRepository.getDao().findEntityById(workflow.getId());
+      Workflow workflowObject =
+          workflowRepository.getDao().findEntityById(workflow.getId(), Include.ALL);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
-      ingestionPipelineRepository.getDao().update(workflowObject);
+      workflowRepository.getDao().update(workflowObject);
     } catch (EntityNotFoundException e) {
       LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {

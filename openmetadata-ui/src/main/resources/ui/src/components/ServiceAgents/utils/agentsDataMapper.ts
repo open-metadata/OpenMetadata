@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DEFAULT_PIPELINE_TIMEZONE } from '../../../constants/Schedular.constants';
 import { AgentStatus } from '../../../enums/ServiceInsights.enum';
 import {
   IngestionPipeline,
@@ -52,6 +53,7 @@ const PIPELINE_TYPE_TO_AGENT_TYPE: Record<PipelineType, string> = {
   [PipelineType.DataInsight]: 'Metadata',
   [PipelineType.ElasticSearchReindex]: 'Metadata',
   [PipelineType.PolicyAgent]: 'Metadata',
+  [PipelineType.ReverseMetadata]: 'Metadata',
   [PipelineType.TestSuite]: 'Data Quality',
 };
 
@@ -72,6 +74,7 @@ const AGENT_STATUS_TO_UI_STATUS: Record<AgentStatus, UiAgentStatus> = {
   [AgentStatus.Running]: 'running',
   [AgentStatus.Successful]: 'success',
   [AgentStatus.Failed]: 'failed',
+  [AgentStatus.Stopped]: 'stopped',
   [AgentStatus.Pending]: 'queued',
 };
 
@@ -325,6 +328,8 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     errors,
     warnings,
     schedule: pipeline.airflowConfig?.scheduleInterval,
+    scheduleTimezone:
+      pipeline.airflowConfig?.pipelineTimezone ?? DEFAULT_PIPELINE_TIMEZONE,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     currentRunId: pipeline.pipelineStatuses?.[0]?.runId,
     lastRunAt: latestStatus?.timestamp,
@@ -405,18 +410,19 @@ export const mapStepSummaryToRunStep = (step: StepSummary): RunStep => {
 export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
   const steps = status.status ?? [];
   const startedAtMillis = status.startDate ?? status.timestamp;
-  const duration =
+  const durationMs =
     status.endDate && status.startDate
-      ? Math.round(((status.endDate - status.startDate) / 60000) * 10) / 10
-      : 0;
+      ? status.endDate - status.startDate
+      : undefined;
 
   return {
     id: status.runId ?? String(status.timestamp),
+    runId: status.runId,
     status: toRunStatus(status.pipelineState),
     startedAt: startedAtMillis
       ? customFormatDateTime(startedAtMillis, RUN_STARTED_AT_FORMAT)
       : '',
-    duration,
+    durationMs,
     totals: buildRunTotals(steps),
     steps: steps.map(mapStepSummaryToRunStep),
   };

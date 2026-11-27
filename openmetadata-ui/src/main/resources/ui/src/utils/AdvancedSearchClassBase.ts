@@ -20,7 +20,7 @@ import {
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { debounce, isEmpty, sortBy } from 'lodash';
+import { debounce, isEmpty, omit, sortBy } from 'lodash';
 import {
   SearchOutputType,
   type CustomPropertyEnumConfig,
@@ -42,12 +42,13 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import type { Config } from '../generated/api/data/createCustomProperty';
-import { EntityStatus } from '../generated/entity/data/searchIndex';
+import { ContractExecutionStatus } from '../generated/type/contractExecutionStatus';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
+import { lifecycleStatusAutocomplete } from './governance/lifecycle/LifecycleStatus.utils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
@@ -471,6 +472,79 @@ class AdvancedSearchClassBase {
     },
   };
 
+  // Common fields a search index never populates. A condition on one of them matches nothing in that index, so it is
+  // not offered while the index is selected — the same rule that keeps entity-specific fields to the common ones.
+  unsupportedCommonFields: Partial<Record<SearchIndex, string[]>> = {
+    // A contract has no tags, tier, domains, data products, certification or service of its own.
+    [SearchIndex.DATA_CONTRACT]: [
+      EntityFields.SERVICE,
+      EntityFields.SERVICE_TYPE,
+      EntityFields.DOMAINS,
+      EntityFields.DATA_PRODUCT,
+      EntityFields.TAG,
+      EntityFields.TAGS_LABEL_TYPE,
+      EntityFields.GLOSSARY_TERMS,
+      EntityFields.CERTIFICATION,
+      EntityFields.TIER,
+      EntityFields.TIER_LABEL_TYPE,
+    ],
+  };
+
+  // Fields specific to data contracts
+  dataContractQueryBuilderFields: Fields = {
+    [EntityFields.DATA_CONTRACT_ENTITY_TYPE]: {
+      label: t('label.asset-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DATA_CONTRACT,
+          entityField: EntityFields.DATA_CONTRACT_ENTITY_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.DATA_CONTRACT_ENTITY_FQN]: {
+      label: t('label.asset'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DATA_CONTRACT,
+          entityField: EntityFields.DATA_CONTRACT_ENTITY_FQN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS]: {
+      label: t('label.contract-execution-status'),
+      type: 'select',
+      operators: LIST_VALUE_OPERATORS,
+      mainWidgetProps: this.mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: Object.values(ContractExecutionStatus).map((status) => ({
+          value: status,
+          title: status,
+        })),
+        showSearch: true,
+        useAsyncSearch: false,
+      },
+    },
+    [EntityFields.REVIEWERS]: {
+      label: t('label.reviewer-plural'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
   // Fields specific to dashboard
   dashboardQueryBuilderFields: Fields = {
     [EntityFields.DATA_MODEL]: {
@@ -621,6 +695,18 @@ class AdvancedSearchClassBase {
       label: t('label.file-extension'),
       type: 'text',
       mainWidgetProps: this.mainWidgetProps,
+      // The text type's own list includes operators the Elasticsearch writer has no query for (`starts_with`,
+      // `ends_with`, `proximity`) or writes an invalid `exists` for (`is_empty`, `is_not_empty`).
+      operators: [
+        'equal',
+        'not_equal',
+        'like',
+        'not_like',
+        'is_null',
+        'is_not_null',
+        'match_phrase',
+        'not_match_phrase',
+      ],
     },
     [EntityFields.FILE_TYPE]: {
       label: t('label.file-type'),
@@ -1076,12 +1162,9 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: Object.values(EntityStatus).map((status) => ({
-            value: status,
-            title: status,
-          })),
+          asyncFetch: lifecycleStatusAutocomplete(entitySearchIndex),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
         },
       },
     };
@@ -1160,6 +1243,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.FILE]: this.fileSearchQueryBuilderFields,
       [SearchIndex.SPREADSHEET]: this.spreadsheetSearchQueryBuilderFields,
       [SearchIndex.WORKSHEET]: this.worksheetSearchQueryBuilderFields,
+      [SearchIndex.DATA_CONTRACT]: this.dataContractQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -1243,13 +1327,19 @@ class AdvancedSearchClassBase {
       },
     };
 
-    const fieldsConfig = {
-      ...this.getCommonConfig({ entitySearchIndex }),
-      ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
-      ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
-      ...this.getColumnConfig(entitySearchIndex),
-      ...this.getColumnTagConfig(entitySearchIndex),
-    };
+    const unsupportedFields = entitySearchIndex.flatMap(
+      (index) => this.unsupportedCommonFields[index] ?? []
+    );
+    const fieldsConfig = omit(
+      {
+        ...this.getCommonConfig({ entitySearchIndex }),
+        ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
+        ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
+        ...this.getColumnConfig(entitySearchIndex),
+        ...this.getColumnTagConfig(entitySearchIndex),
+      },
+      unsupportedFields
+    );
 
     // Sort the fields according to the label
     const sortedFieldsConfig = sortBy(Object.entries(fieldsConfig), '1.label');

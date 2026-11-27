@@ -1,0 +1,184 @@
+# Ontology releases seal canonical SQL members
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate); v12 2026-11-06 (50,000 members, batched capture, cached and unlocked reads); v13 2026-11-08 (account for parsed release cache heap)
+- **Deciders:** Harsha
+- **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `NativeOntologyCapacityPerfIT`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`, `OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`, `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`, `IndependentOntologyReleaseExportAssetsIT`, `IndependentOntologyReleaseExportGateIT`
+- **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md)
+
+## Context
+
+An approved ontology must survive working edits, deletion of individual definitions and ordinary
+entity-history cleanup. Reviewers must decide a complete, reproducible release. SQL remains the
+authoritative store; Fuseki serves the active release's asserted RDF.
+
+## Decision
+
+Use the existing `EntityDAO` JSON header and retained transactions. Store immutable member payloads
+in `ontology_release_member` as MySQL `LONGTEXT` or PostgreSQL `TEXT`, addressed by release ID, kind
+and entity UUID. Canonical text preserves exact decimal values and strings across both databases.
+Sort object keys, preserve array order, normalize insignificant decimal trailing zeros, reject NUL
+characters, and hash UTF-8 bytes with SHA-256. The member manifest binds source entity versions,
+payload digests and byte counts; it excludes the release UUID and has no per-definition review revision.
+
+Capture freezes one ontology root and its concepts, properties and axioms. Native cross-ontology
+imports, dependency tables and dependency resolution are deferred. Nonempty import requests fail
+explicitly. Existing glossary import tools do not supply native release content.
+
+Initially bound each member to 1 MiB, each release to 10,000 members and total payloads to 64 MiB.
+Capture locks `ontology_state`, checks `expectedWorkingRevision`, reads definitions in pages of 100,
+and checks a cooperative 30-second budget between operations. All authoring writes share that lock.
+Quota, authorization or validation failures roll back the header, members, revision and capture event.
+Sealing verifies the count; sealed content cannot be edited, resealed or appended to.
+
+`ontology_state` stores working, release-allocation and activation revisions plus the active release
+UUID. Capture records the current active release as `baseReleaseId`. The review UI passes this frozen
+baseline to the diff endpoint; a later activation does not change what the reviewer compares.
+
+The capture gate checks structure and the supported OWL 2 DL profile. OWLAPI is test-scoped and verifies
+projected models in tests. Runtime checks use the structure validator and release-scoped
+`OwlProfileGuard`. Logical consistency is explicitly `NOT_RUN` until the planned Jena-fork CHECK
+execution exists. Passing this gate does not prove consistency or source-data validity.
+
+The configured task workflow approves or rejects the whole sealed release. Working edits do not
+invalidate its review. A decided release cannot be reviewed again. Decision events bind the digest,
+review target, workflow and task IDs, voters and outcome, independently of Flowable history retention.
+Neither capture nor approval changes the active pointer.
+
+`PUT /v1/ontologies/{id}/activation` requires `EditAll` and accepts an approved, sealed release owned by
+that ontology with `expectedActivationRevision`. A stale revision returns 409. Activation rechecks
+structural/projectability gates, changes the pointer, appends its event and enqueues the existing RDF
+outbox write as the final transaction operation. Rollback activates an older approved release through
+the same endpoint. An archived ontology cannot be activated.
+
+Fuseki contains one graph per ontology, `https://open-metadata.org/graph/ontology/{id}`, holding only
+its active release. The outbox consumer rereads the active SQL pointer and replaces that graph using
+Graph Store PUT, so late or repeated events cannot restore an obsolete release. Archive removes the
+graph; restore and rebuild reproject the active pointer. The rebuilding RDF store journals these writes.
+SQL commits before asynchronous projection; consumers must not mistake outbox lag for current RDF.
+
+Member reads, export, diagnostics and comparisons verify the manifest and authorize the frozen
+snapshots under current policies. A missing working definition does not erase its release member.
+A denied member fails the operation; header visibility alone does not authorize the complete model.
+
+Export supports Turtle, RDF/XML, N-Triples and JSON-LD from SQL without a running RDF store. Projection
+preserves exact IRIs, OWL/SKOS concept kinds, property kinds and characteristics, ordered chains,
+recursive expressions and all six supported axiom kinds. Axiom annotations preserve member provenance.
+Typed enumerations use release-scoped datatype IRIs to preserve RDF-parser round trips. Units and
+identifier intent are annotations, not conversions, OWL keys or source uniqueness guarantees.
+Unsupported members fail export rather than disappearing.
+
+`GET /v1/ontologyReleases/{id}/diff?baseReleaseId=...` compares two authorized releases of the same
+ontology by member kind and UUID, excluding operational and derived fields from semantic comparison.
+It returns additions, changes and removals with before/after release IDs. An omitted base means empty
+content, suitable for the first release. Cursors bind the release pair and sorted position; both
+complete snapshots are authorized before a page is returned. This is an asserted-content comparison,
+not a proof of logical equivalence.
+
+An ontology retaining releases cannot be hard-deleted. Check retention with a current locking read
+under the same lock as capture, before cascading into working definitions. Soft deletion archives
+working definitions while preserving release content and audit events. It cancels pending review
+and removes the active RDF graph. Restore retains the active pointer and frozen release content.
+Automated release expiry and purge policy are deferred.
+
+## Consequences
+
+No new object store, cache, broker or approval engine is required. Releases consume full-snapshot
+space within explicit bounds. This is an unreleased storage contract: development databases created
+with the earlier per-definition/import manifests must be reset before validating this version; do
+not reinterpret an old sealed digest under the revised contract. Business glossaries are not converted.
+
+## Amendment
+
+v11, 2026-10-30: export also writes SKOS, SKOS-XL and the native CSV from SQL. With
+`includeInverses` on, the default, the four RDF serializations still carry the whole release, and
+they still fail on unsupported members. CSV writes the release through `NativeOntologyCsvCodec`, in
+the columns `docs/native-ontology-csv.md` lists.
+
+SKOS and SKOS-XL are concept projections, written as Turtle. Each concept becomes a `skos:Concept`
+in the release's concept scheme, named parents become `skos:broader`, and mappings keep their match
+predicates. Properties and axioms other than named subclass parents have no SKOS form, so these two
+formats leave them out by design and are not a full copy of the release. SKOS-XL also gives each
+concept label its own `skosxl:Label` resource.
+
+`GET /v1/ontologyReleases/{id}/export` takes the options in `ontologyReleaseExportOptions.json`.
+
+- `includeInverses`, on by default, writes the `owl:inverseOf` pairs the properties state. Off
+  leaves them out.
+- `includeBoundAssets`, off by default, writes one link per binding from a concept to its asset's
+  IRI in the RDF store. Links come from the caller's current authorized bindings, not from the
+  sealed release, so they are opt-in. A concept deleted since the capture or hidden from the caller
+  has no links, and the export does not fail on it. CSV does not offer links.
+- One export holds at most 100,000 links, and more is a 400. The reason for 100,000 was not written
+  down when it was chosen. It bounds the links one export holds in memory and writes into one
+  response, and it allows ten links for each of the 10,000 members a release may hold.
+  `OntologyBoundAssetLinksTest` checks the 400 with a smaller budget, and no test pins the value
+  100,000.
+- `shaclGate`, off by default, validates the release first. Unless the release validates, the
+  export returns 422 with the validation report and no file. The validation runs only when the gate
+  is on, so an ungated export costs nothing extra.
+
+`OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`,
+`OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`,
+`IndependentOntologyReleaseExportAssetsIT` and `IndependentOntologyReleaseExportGateIT` guard this
+amendment.
+
+## Amendment: direct publish and no-op activation (2026-11-02)
+
+A sealed Draft of an ontology with no reviewers becomes `APPROVED` with `approvalBasis`
+`NO_REVIEWERS_CONFIGURED` when an author activates it; see the review decision's 2026-11-02
+amendment. Activating the release that is already active returns the current state and appends no
+event, so the activation revision and history only move when the active pointer does.
+
+## Amendment: 50,000 members, batched capture, cached and unlocked reads (2026-11-06)
+
+A release holds at most 50,000 members and 256 MiB of payload; a member stays at 1 MiB. The
+upstream standards the library ships are the reason: the FHIR R5 vocabulary plans 16,407
+members and the FIBO production quickstart 10,115, so the 10,000 cap kept both out of one
+ontology. `NativeOntologyCapacityPerfIT` measured the whole-ontology paths on MySQL with a
+FHIR-shaped synthetic fixture (one named parent and four restrictions per class, one property per
+twelve members). The 10,000-member release holds 7.9 MB of payload, so 256 MiB is a safety net at
+about five times that density, not a target.
+
+Capture inserts members with a JDBI batch of 500 rows per round trip. Each row still goes through
+the `INSERT ... SELECT ... WHERE sealedAt IS NULL` guard, and a short count means another capture
+sealed the release first, so the whole capture fails with 412 as before. At 10,000 members capture
+took 10.3 s with one insert per member and 2.4 s with batches; at 35,000 it took
+11.9 s.
+
+Reads page 1,000 members per query instead of 100. A sealed release never changes, so
+`OntologyReleaseReader` keeps verified member lists in one process-wide Caffeine cache, keyed by
+release id and content digest, bounded to 128 MiB of payload bytes and 10 minutes idle. A cache hit
+still authorizes every member for the caller, and `OntologyReleaseCaptureTest` checks both the
+reuse and the denial. The release diff at 10,000 members went from 982 ms to
+118 ms warm, and the draft SPARQL endpoint from 1,105 ms to
+258 ms.
+
+Read-only callers of the working draft (working diff, working validation, import preview, draft
+export, draft SPARQL, and the install job's reconcile) use `OntologyWorkingSnapshot.readUnlocked`.
+It reads `ontology_state` without `FOR UPDATE`, pages the definitions, and re-reads the state at
+the end: a working or activation revision that moved means the pages may disagree, so the read
+starts over, and after three torn reads it fails with 412. The revisions are boxed longs and are
+compared by value; a reference compare passed the unit tests, whose revisions stayed inside the
+boxed cache, and reported every read torn in the integration tests. Under the row lock a concept create that takes 35 ms alone
+took 7,168 ms while a working diff ran at 10,000 members; without the lock it took
+17 ms. On MySQL the unlocked path must not run the `INSERT ... ON DUPLICATE
+KEY UPDATE` initializer for a row that exists, because that statement holds an exclusive lock on
+the duplicate row until the transaction ends. MySQL's REPEATABLE READ keeps the whole unlocked read
+on one snapshot, so the revision check fires only on PostgreSQL's READ COMMITTED; the capture test
+asserts each dialect's outcome.
+
+`docs/plans/2026-10-14-organizational-ontology-design.md` carries the same numbers.
+
+## Amendment: account for parsed release cache heap (2026-11-08)
+
+This replaces v12's cache sizing rule above. The cache is bounded to 128 MiB of estimated heap,
+weighed as six times the summed serialized payload bytes. The factor of six reserves headroom
+for parsed JSON nodes, strings and member objects; it is a sizing estimate, not a measured heap
+limit. The 10-minute idle expiry and authorization on every read stay unchanged.
+
+The cache therefore holds at most about 21.3 MiB of serialized payload in total. A release above
+that size is read and verified from SQL on every call. The v12 warm-read timings apply only to
+releases that fit this smaller payload budget; they do not describe larger uncached releases.
+`OntologyReleaseCaptureTest` verifies that a 23 MB release remains readable without staying
+cached on both MySQL and PostgreSQL, alongside cache reuse and authorization for smaller releases.

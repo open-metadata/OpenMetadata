@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Button,
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Popover } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';
@@ -26,13 +31,11 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            color="tertiary"
             data-testid={`callout-${key}`}
-            icon={
-              <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
-            }
+            iconLeading={CalloutIcon}
             key={key}
-            type="text"
-            onClick={() => onSelect(key)}>
+            onPress={() => onSelect(key)}>
             {startCase(key)}
           </Button>
         );
@@ -63,30 +66,24 @@ const CalloutComponent: FC<NodeViewProps> = ({
         className={`om-callout-node om-callout-node-${calloutType}`}
         data-testid="callout-node"
         data-type={extension.name}>
-        <Popover
-          align={{ targetOffset: [0, 16] }}
-          content={
+        <PopoverTrigger
+          isOpen={isPopupVisible}
+          onOpenChange={handlePopoverVisibleChange}>
+          <ButtonUtility
+            data-testid={`callout-${calloutType}-btn`}
+            icon={CallOutIcon}
+            size="lg"
+            tooltip={startCase(calloutType)}
+          />
+          <Popover containerClassName="tw:px-1 tw:py-3" placement="bottom end">
             <PopoverContent
               onSelect={(value) => {
                 updateAttributes({ calloutType: value });
                 setIsPopupVisible(false);
               }}
             />
-          }
-          destroyTooltipOnHide={{ keepParent: false }}
-          open={isPopupVisible}
-          overlayClassName="om-callout-node-popover"
-          placement="bottomRight"
-          showArrow={false}
-          trigger="click"
-          onOpenChange={handlePopoverVisibleChange}>
-          <Button
-            className="callout-type-btn"
-            data-testid={`callout-${calloutType}-btn`}
-            type="text">
-            <CallOutIcon width={28} />
-          </Button>
-        </Popover>
+          </Popover>
+        </PopoverTrigger>
         <NodeViewContent
           className="om-callout-node-content"
           data-testid="callout-content"

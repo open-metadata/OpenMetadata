@@ -72,6 +72,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
+    ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+      .ButtonUtility,
     GlossaryTag: ({ label, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, label),
     Select: Object.assign(
@@ -114,17 +116,6 @@ jest.mock('../../../common/WidgetCard/WidgetCard', () => ({
   ),
 }));
 
-jest.mock('../../../common/WidgetActionButton/WidgetActionButton', () => {
-  const React = require('react');
-
-  return {
-    WidgetEditButton: (props: Record<string, unknown>) =>
-      React.createElement('button', props),
-    WidgetPlusButton: (props: Record<string, unknown>) =>
-      React.createElement('button', props),
-  };
-});
-
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
   getGlossaryTermsByIds: jest.fn().mockResolvedValue([]),
@@ -160,6 +151,7 @@ describe('RelatedTerms', () => {
     jest.clearAllMocks();
     mockContext.data = MOCKED_GLOSSARY_TERMS[2];
     mockContext.permissions = MOCK_PERMISSIONS;
+    mockContext.isVersionView = false;
   });
 
   it('should render the component', async () => {
@@ -277,5 +269,30 @@ describe('RelatedTerms overflow', () => {
 
     expect(getByText('Related 6')).toBeInTheDocument();
     expect(queryByText('Synonym 6')).toBeNull();
+  });
+
+  it('should keep an unchanged relation in version view when another relation type to the same term is added', () => {
+    const [relatedTo] = buildRelatedTerms(1, 'relatedTo', 'Target');
+    const narrower = { ...relatedTo, relationType: 'narrower' };
+    mockContext.isVersionView = true;
+    mockContext.data = {
+      ...MOCKED_GLOSSARY_TERMS[2],
+      relatedTerms: [relatedTo, narrower],
+      changeDescription: {
+        fieldsAdded: [
+          { name: 'relatedTerms', newValue: JSON.stringify([narrower]) },
+        ],
+        fieldsDeleted: [],
+        fieldsUpdated: [],
+      },
+    };
+    const { getAllByTestId } = render(<RelatedTerms />);
+
+    const chips = getAllByTestId('Target 0');
+
+    expect(chips).toHaveLength(2);
+    expect(
+      chips.filter((c) => c.classList.contains('diff-added'))
+    ).toHaveLength(1);
   });
 });

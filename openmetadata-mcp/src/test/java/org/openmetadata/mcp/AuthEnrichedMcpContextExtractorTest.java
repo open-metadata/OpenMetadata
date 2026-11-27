@@ -14,7 +14,11 @@
 package org.openmetadata.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import io.modelcontextprotocol.common.McpTransportContext;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -95,5 +99,20 @@ class AuthEnrichedMcpContextExtractorTest {
     String userAgent = "MyTool\u0001\u0007/1.0";
 
     assertThat(AuthEnrichedMcpContextExtractor.resolveClientName(userAgent)).isEqualTo("MyTool");
+  }
+
+  /** The tool call resolves its caller from this context, so a header left out here is ignored. */
+  @Test
+  void carriesTheImpersonationHeaderToTheToolCall() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER))
+        .thenReturn("Bearer bot-token");
+    when(request.getHeader(AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER))
+        .thenReturn("viewer");
+
+    McpTransportContext context = new AuthEnrichedMcpContextExtractor().extract(request);
+
+    assertThat(context.get(AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER))
+        .isEqualTo("viewer");
   }
 }

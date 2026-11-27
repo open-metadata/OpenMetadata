@@ -35,6 +35,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class TaskFormSchemaResourceIT extends BaseEntityIT<TaskFormSchema, TaskFormSchema> {
 
   public TaskFormSchemaResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = false;

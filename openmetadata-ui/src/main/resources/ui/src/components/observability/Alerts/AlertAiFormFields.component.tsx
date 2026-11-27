@@ -12,21 +12,23 @@
  */
 
 import {
+  Alert,
   Box,
   Input,
-  Select,
   TextArea,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { ComponentType, useEffect, useMemo, useState } from 'react';
-import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import AlertSourcePicker from '../../../components/Alerts/AlertSourcePicker/AlertSourcePicker';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { getAlertSourceChanges } from '../../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase, {
   AlertAiTemplateSectionProps,
 } from '../../../utils/AlertsClassBase';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
+import AlertEnabledSwitch from '../../Alerts/AlertEnabledSwitch/AlertEnabledSwitch';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import {
   ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS,
@@ -37,11 +39,9 @@ import {
   getAlertAiResources,
   getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
-  getRuleEventTypes,
+  getAlertFieldAccess,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
-import { getAlertAiSourceItems } from './AlertAiFormFieldsSearchUtils';
-import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import { OBSERVABILITY_ALERT_FORM } from './alertFormDocs.constants';
@@ -65,19 +65,43 @@ const AlertAiTemplateField = ({
     </div>
   ) : null;
 
+/** Says why an editable form lists rules it cannot change. */
+const ReadOnlyRulesNotice = ({
+  alert,
+  hasActionsSection,
+  hasFiltersSection,
+  isViewOnly,
+}: Pick<AlertAiFormFieldsProps, 'alert' | 'isViewOnly'> & {
+  hasActionsSection: boolean;
+  hasFiltersSection: boolean;
+}) => {
+  const { t } = useTranslation();
+  const isShown =
+    !isViewOnly &&
+    alert?.hasRulesWithoutSelections &&
+    (hasFiltersSection || hasActionsSection);
+
+  return isShown ? (
+    <Alert
+      data-testid="alert-rules-read-only"
+      title={t('message.alert-rules-read-only')}
+      variant="brand"
+    />
+  ) : null;
+};
+
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
   alert,
-  containerEntities,
-  filterResources,
+  canEditEnabled = true,
+  isEditMode = false,
   isViewOnly,
   inlineAlert,
   onChange,
+  selection,
   showBasicFields = true,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
   templatesLoading,
@@ -108,28 +132,19 @@ function AlertAiFormFields({
     };
   }, []);
 
-  const [selectedSource] = getAlertAiResources(value, alert);
-  const sourceItems = useMemo(
-    () => getAlertAiSourceItems(filterResources, selectedSource),
-    [filterResources, selectedSource]
-  );
-  const selectedFilterResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedSource),
-    [filterResources, selectedSource]
-  );
+  const selectedSources = getAlertAiResources(value, alert);
+  const { capabilities, search, support } = selection;
   const {
     selectedFilters,
     selectedTriggers,
-    selectedSupportedFilters,
-    selectedSupportedTriggers,
     shouldDisplayFiltersSection,
     shouldDisplayActionsSection,
   } = getAlertAiSectionInputs({
     value,
-    selectedSource,
-    selectedFilterResource,
-    supportedFilters,
-    supportedTriggers,
+    isViewOnly,
+    selectedSources,
+    hasFilters: support.hasFilters,
+    hasTriggers: support.hasTriggers,
     shouldShowActionsSection,
     shouldShowFiltersSection,
   });
@@ -140,11 +155,14 @@ function AlertAiFormFields({
   } = getAlertAiSectionVisibility({
     isViewOnly,
     selectedFilters,
-    selectedSource,
+    selectedSources,
     selectedTriggers,
     shouldShowActionsSection: shouldDisplayActionsSection,
     shouldShowFiltersSection: shouldDisplayFiltersSection,
   });
+
+  const { isAlertEnabled, isFieldDisabled, areRulesReadOnly } =
+    getAlertFieldAccess({ alert, isEditMode, isViewOnly, value });
 
   // `rendered` gates registration on the section actually being on screen.
   // useFieldDoc registers on the doc alone, so without it a source with no
@@ -190,32 +208,32 @@ function AlertAiFormFields({
     name: 'alertNotificationTemplate',
   });
 
-  /** Resets dependent rule and destination state when the alert source changes. */
-  const handleSourceChange = (key: Key | null) => {
-    const nextSource = key ? String(key) : '';
-
-    if (!onChange) {
-      return;
-    }
-
-    onChange((prev) => ({
+  /** Applies the rule every alert form follows when its sources change. */
+  const handleSourceChange = (next: string[], previous: string[]) =>
+    onChange?.((prev) => ({
       ...prev,
-      input: {},
-      destinations: [],
-      resources: nextSource ? [nextSource] : [],
+      ...getAlertSourceChanges(
+        next,
+        previous,
+        alert?.hasRulesWithoutSelections
+      ),
     }));
-  };
 
   return (
     <Box className={ALERT_AI_FORM_CLASS_NAMES.formStack} direction="col">
       {showBasicFields && (
         <>
+          <AlertEnabledSwitch
+            canEdit={canEditEnabled}
+            isEnabled={isAlertEnabled}
+            onChange={(enabled) => onChange?.((prev) => ({ ...prev, enabled }))}
+          />
           <div {...nameDoc}>
             <Input
               isRequired
               data-testid="alert-name-input"
               hint={validationErrors?.displayName}
-              isDisabled={isViewOnly}
+              isDisabled={isFieldDisabled}
               isInvalid={Boolean(validationErrors?.displayName)}
               label={t('label.name')}
               placeholder={t('label.name')}
@@ -231,7 +249,7 @@ function AlertAiFormFields({
             <AlertAiSection title={t('label.description')}>
               <TextArea
                 data-testid="description"
-                isDisabled={isViewOnly}
+                isDisabled={isFieldDisabled}
                 placeholder={t('label.description')}
                 rows={ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS}
                 size="sm"
@@ -258,39 +276,35 @@ function AlertAiFormFields({
             description={t('message.alerts-source-description')}
             isRequired={!isViewOnly}
             title={t('label.source')}>
-            <Select
+            <AlertSourcePicker
               isRequired
-              data-testid="source-select"
-              fontSize="sm"
+              capabilities={capabilities}
               hint={validationErrors?.resources}
-              isDisabled={isViewOnly}
+              isDisabled={isFieldDisabled}
               isInvalid={Boolean(validationErrors?.resources)}
-              items={sourceItems}
-              placeholder={t('label.select-field', {
-                field: t('label.data-asset-plural'),
-              })}
-              selectedKey={selectedSource ?? null}
-              size="sm"
-              validationBehavior="aria"
-              onSelectionChange={handleSourceChange}>
-              {renderSelectItem}
-            </Select>
+              value={selectedSources}
+              onChange={handleSourceChange}
+            />
           </AlertAiSection>
         </div>
       )}
 
+      <ReadOnlyRulesNotice
+        alert={alert}
+        hasActionsSection={shouldRenderActionsSection}
+        hasFiltersSection={shouldRenderFiltersSection}
+        isViewOnly={isViewOnly}
+      />
+
       {shouldRenderFiltersSection && (
         <div {...filtersDoc}>
           <AlertAiRuleSection
-            containerEntities={containerEntities}
             field="filters"
-            isViewOnly={isViewOnly}
-            selectedSource={selectedSource}
-            supportedEventTypes={getRuleEventTypes(
-              value.alertType,
-              selectedFilterResource
-            )}
-            supportedRules={selectedSupportedFilters}
+            isViewOnly={areRulesReadOnly}
+            selectedSources={selectedSources}
+            sourceSearch={search}
+            supportedEventTypes={support.supportedEventTypes}
+            supportedRules={support.supportedFilters}
             title={t('label.filter-plural')}
             validationErrors={validationErrors}
             value={value}
@@ -302,11 +316,11 @@ function AlertAiFormFields({
       {shouldRenderActionsSection && (
         <div {...triggerDoc}>
           <AlertAiRuleSection
-            containerEntities={containerEntities}
             field="actions"
-            isViewOnly={isViewOnly}
-            selectedSource={selectedSource}
-            supportedRules={selectedSupportedTriggers}
+            isViewOnly={areRulesReadOnly}
+            selectedSources={selectedSources}
+            sourceSearch={search}
+            supportedRules={support.supportedTriggers}
             title={t('label.trigger')}
             validationErrors={validationErrors}
             value={value}
@@ -317,8 +331,9 @@ function AlertAiFormFields({
 
       <div {...destinationsDoc}>
         <AlertAiDestinationSection
-          isViewOnly={isViewOnly}
-          selectedSource={selectedSource}
+          isViewOnly={isFieldDisabled}
+          recipientCategories={support.recipientCategories}
+          selectedSources={selectedSources}
           validationErrors={validationErrors}
           value={value}
           onChange={onChange}
@@ -328,7 +343,7 @@ function AlertAiFormFields({
       <AlertAiTemplateField
         TemplateSection={TemplateSection}
         docProps={notificationTemplateDoc}
-        isViewOnly={isViewOnly}
+        isViewOnly={isFieldDisabled}
         loading={templatesLoading}
         templateResourcePermission={templateResourcePermission}
         templates={templates}

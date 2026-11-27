@@ -98,7 +98,9 @@ public final class AIContextMarkdown {
       appendKnowledgeSection(
           markdown, "Business Definitions", context.getGlossaryTerms(), headingPrefix, true);
     }
-    if (selected.contains(ContextSection.METRICS)) {
+    if (selected.contains(ContextSection.METRICS)
+        && (context.getAssetContext() == null
+            || context.getAssetContext().getConceptContext() == null)) {
       appendKnowledgeSection(markdown, "Metrics", context.getMetrics(), headingPrefix, true);
     }
     if (selected.contains(ContextSection.ARTICLES)) {
@@ -243,6 +245,7 @@ public final class AIContextMarkdown {
           .append(typeLabel(item))
           .append(")\n");
       appendYamlInline(markdown, item.getFullyQualifiedName());
+      appendHierarchy(markdown, item);
       appendKnowledgeContent(markdown, item, true);
     }
     if (!found.candidateAssets().isEmpty()) {
@@ -259,6 +262,16 @@ public final class AIContextMarkdown {
       }
     }
     return markdown.toString().strip() + "\n";
+  }
+
+  /** A metric's place in its hierarchy; a count of 0 is left out, as most metrics have none. */
+  private static void appendHierarchy(StringBuilder markdown, KnowledgeItem item) {
+    if (item.getParent() != null) {
+      appendYaml(markdown, "parent", item.getParent().getFullyQualifiedName());
+    }
+    if (orZero(item.getChildrenCount()) > 0) {
+      markdown.append("childrenCount: ").append(item.getChildrenCount()).append('\n');
+    }
   }
 
   private static String typeLabel(KnowledgeItem item) {
@@ -351,7 +364,14 @@ public final class AIContextMarkdown {
     if (assetContext != null && assetContext.getTable() != null) {
       appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
     }
-    if (assetContext != null && assetContext.getGeneric() != null) {
+    if (assetContext != null && assetContext.getConceptContext() != null) {
+      ConceptContextMarkdown.append(
+          markdown,
+          assetContext.getConceptContext(),
+          sections,
+          headingPrefix,
+          assetContext.getGeneric() == null ? null : assetContext.getGeneric().getDefinition());
+    } else if (assetContext != null && assetContext.getGeneric() != null) {
       appendGenericContext(markdown, assetContext.getGeneric(), sections, headingPrefix);
     }
   }
@@ -388,6 +408,16 @@ public final class AIContextMarkdown {
       appendSchemaTable(markdown, table.getColumns(), headingPrefix);
       appendDataModel(markdown, table.getDataModel(), headingPrefix);
       appendSampleData(markdown, table.getSampleData(), headingPrefix);
+    }
+    if (sections.contains(ContextSection.GLOSSARY_TERMS)) {
+      for (FieldContext column : listOrEmpty(table.getColumns())) {
+        appendKnowledgeSection(
+            markdown,
+            "Column " + column.getName(),
+            column.getGlossaryTerms(),
+            headingPrefix + "#",
+            true);
+      }
     }
     if (sections.contains(ContextSection.CONSTRAINTS)) {
       appendPrimaryKey(markdown, table);
@@ -426,8 +456,13 @@ public final class AIContextMarkdown {
     }
     appendHeading(markdown, headingPrefix, "Schema");
     markdown.append('\n');
-    markdown.append("| Column | Type | Constraint | Description |\n");
-    markdown.append("|--------|------|------------|-------------|\n");
+    boolean hasTerms = columns.stream().anyMatch(column -> !nullOrEmpty(column.getGlossaryTerms()));
+    markdown
+        .append("| Column | Type | Constraint | Description |")
+        .append(hasTerms ? " Glossary Terms |\n" : "\n");
+    markdown
+        .append("|--------|------|------------|-------------|")
+        .append(hasTerms ? "---------------|\n" : "\n");
     for (FieldContext column : columns) {
       markdown
           .append("| ")
@@ -438,7 +473,20 @@ public final class AIContextMarkdown {
           .append(constraintCell(column.getConstraint()))
           .append(" | ")
           .append(cell(PromptText.forPrompt(column.getDescription())))
-          .append(" |\n");
+          .append(" |");
+      if (hasTerms) {
+        markdown
+            .append(' ')
+            .append(
+                cell(
+                    String.join(
+                        ", ",
+                        listOrEmpty(column.getGlossaryTerms()).stream()
+                            .map(KnowledgeItem::getFullyQualifiedName)
+                            .toList())))
+            .append(" |");
+      }
+      markdown.append('\n');
     }
   }
 
@@ -485,7 +533,7 @@ public final class AIContextMarkdown {
    * breaks that delimit a markdown table. Values are flattened to one line and capped so a single
    * blob column cannot crowd the rest of the context out of the model's window.
    */
-  private static String sampleCell(Object value) {
+  static String sampleCell(Object value) {
     String text = value == null ? "" : cell(Objects.toString(value).replaceAll("\\R+", " "));
     return text.length() > MAX_SAMPLE_CELL_CHARS
         ? text.substring(0, MAX_SAMPLE_CELL_CHARS) + "…"
@@ -520,7 +568,7 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendSqlBlock(StringBuilder markdown, String sql) {
+  static void appendSqlBlock(StringBuilder markdown, String sql) {
     if (!nullOrEmpty(sql)) {
       markdown.append("\n```sql\n").append(sql.strip()).append("\n```\n");
     }
@@ -620,11 +668,11 @@ public final class AIContextMarkdown {
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
+          .append("\n_Excerpt — fetch the full content with get_entity_details(entityType=`")
           .append(item.getType() == null ? "" : item.getType().value())
           .append("`, fqn=`")
           .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
-          .append("`)._\n");
+          .append("`, include=[\"content\"])._\n");
     }
   }
 
@@ -782,11 +830,11 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendHeading(StringBuilder markdown, String headingPrefix, String heading) {
+  static void appendHeading(StringBuilder markdown, String headingPrefix, String heading) {
     markdown.append('\n').append(headingPrefix).append(' ').append(heading).append('\n');
   }
 
-  private static String cell(String value) {
+  static String cell(String value) {
     return nullOrEmpty(value) ? "" : value.replace("|", "\\|").replace("\n", " ").strip();
   }
 

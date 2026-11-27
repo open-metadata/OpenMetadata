@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page, Response } from '@playwright/test';
+import test, { APIResponse, expect, Page, Response } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
@@ -21,12 +21,17 @@ import {
   openApplicationDetails,
 } from '../../utils/applications';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
+import {
+  selectOnDemandSchedule,
+  selectScheduleTimezone,
+  selectScheduleType,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -47,7 +52,7 @@ interface AppRunRecordResponse {
  */
 const installSearchIndexApplication = async (page: Page) => {
   const getMarketPlaceResponse = page.waitForResponse(
-    '/api/v1/apps/marketplace?limit=15'
+    '/api/v1/apps/marketplace?limit=12'
   );
   await page.click('[data-testid="add-application"]');
 
@@ -145,7 +150,7 @@ const getLatestRunStartTime = async (page: Page) => {
   return run?.startTime;
 };
 
-const getAppRunRecord = async (response: Response) => {
+const getAppRunRecord = async (response: Response | APIResponse) => {
   if (!response.ok() || response.status() === 204) {
     return undefined;
   }
@@ -267,18 +272,40 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('View App Run Config', async () => {
       await page.getByTestId('app-historical-config').click();
-      await page.locator('[role="dialog"].ant-modal').waitFor();
+      const configDialog = page.getByTestId('edit-table-type-property-modal');
 
-      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+      await expect(configDialog).toBeVisible();
+      await expect(configDialog).toContainText('Search Indexing Configuration');
 
-      await expect(page.locator('.ant-modal-title')).toContainText(
-        'Search Indexing Configuration'
+      await page.getByTestId('app-run-config-close').click();
+
+      await expect(configDialog).not.toBeVisible();
+    });
+
+    await test.step('Schedule the application in a timezone', async () => {
+      await page.click('[data-testid="edit-button"]');
+      await selectScheduleType(page);
+      await selectScheduleTimezone(page, 'Asia/Tokyo');
+
+      const deployResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/apps') &&
+          !response.url().includes('/status') &&
+          response.request().method() !== 'GET'
       );
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
+      const savedApp = await (await deployResponse).json();
 
-      await page.click('[data-testid="app-run-config-close"]');
-      await page.locator('[role="dialog"].ant-modal').waitFor({
-        state: 'detached',
-      });
+      expect(savedApp.appSchedule.timezone).toBe('Asia/Tokyo');
+
+      await toastNotification(page, 'Schedule saved successfully');
+
+      await expect(page.getByTestId('schedule-timezone')).toHaveText(
+        'Asia/Tokyo'
+      );
     });
 
     await test.step('Edit application', async () => {
@@ -291,7 +318,10 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           !response.url().includes('/status') &&
           response.request().method() !== 'GET'
       );
-      await page.click('.ant-modal-body [data-testid="deploy-button"]');
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
       await deployResponse;
 
       await toastNotification(page, 'Schedule saved successfully');
@@ -310,53 +340,38 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.fill('#root\\/batchSize', '100');
 
-      await page.getByTestId('tree-select-widget').click();
+      // Entities is an enum multi-select with an "All" option. Picking a specific entity replaces
+      // "All", so the stored ["all"] becomes ["table"]. A retry may already have saved Table.
+      const entitiesField = page.getByTestId('enum-multi-select-root/entities');
+      const tableChip = entitiesField.getByText('Table', { exact: true });
 
-      // Bring table option to view in dropdown via searching for it
-      await page
-        .getByTestId('tree-select-widget')
-        .getByRole('combobox')
-        .fill('Table');
-
-      // Exact: the entity list is server-driven now, and rc-tree-select filters on the node value
-      // (treeNodeFilterProp defaults to 'value'), so typing "Table" also leaves `tableColumn` —
-      // rendered as "Table Column" — visible. A substring getByTitle would match both and break
-      // strict mode.
-      const tableTitle = page
-        .getByRole('tree')
-        .getByTitle('Table', { exact: true });
-
-      // Wait for the filtered tree result to render
-      await tableTitle.waitFor({ state: 'visible' });
-
-      // Uncheck Table only if it is currently checked
-      const isTableChecked = await tableTitle.evaluate((el) => {
-        let node = el.parentElement;
-        while (node) {
-          if (node.getAttribute('role') === 'treeitem') {
-            return node.getAttribute('aria-checked') === 'true';
-          }
-          node = node.parentElement;
-        }
-
-        return false;
-      });
-
-      if (isTableChecked) {
-        await tableTitle.click();
+      if (!(await tableChip.isVisible())) {
+        // Search first: the list is server-driven, and "Table Column" also matches "table".
+        await entitiesField.getByRole('combobox').fill('Table');
+        await page
+          .locator('[role="listbox"]:visible')
+          .getByRole('option', { name: 'Table', exact: true })
+          .click();
       }
+
+      await expect(tableChip).toBeVisible();
+      await expect(
+        entitiesField.getByText('All', { exact: true })
+      ).toBeHidden();
 
       // Need an outside click to close the dropdown
       await clickOutside(page);
-      await page.locator('[for="root/searchIndexMappingLanguage"]').click();
+      await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0);
 
-      await page
+      const languageTrigger = page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
-        .click();
+        .getByRole('button');
 
-      await expect(page.getByTestId('select-option-JP')).toBeVisible();
-
-      await page.getByTestId('select-option-JP').click();
+      await chooseSelectOption(
+        languageTrigger,
+        page.getByTestId('select-option-JP'),
+        languageTrigger.filter({ hasText: 'JP' })
+      );
 
       const responseAfterSubmit = page.waitForResponse(
         (response) =>

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "subClassOf",
+    "kind": "subClassOf",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf ?target .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "equivalentClass",
+    "kind": "equivalentClass",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept owl:equivalentClass ?target .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "disjointWith",
+    "kind": "disjointWith",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept owl:disjointWith ?target .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "objectAssertion",
+    "kind": "objectAssertion",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept <urn:visual:property> ?target .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "objectProperty",
+    "kind": "objectProperty",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  <urn:visual:property> rdfs:domain ?concept ; rdfs:range ?target .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "SOME",
+    "kind": "restriction",
+    "restriction": "SOME",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf [ a owl:Restriction ; owl:onProperty <urn:visual:property> ; owl:someValuesFrom ?target ] .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "ONLY",
+    "kind": "restriction",
+    "restriction": "ONLY",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf [ a owl:Restriction ; owl:onProperty <urn:visual:property> ; owl:allValuesFrom ?target ] .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "MIN",
+    "kind": "restriction",
+    "restriction": "MIN",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf [ a owl:Restriction ; owl:onProperty <urn:visual:property> ; owl:minQualifiedCardinality \"2\"^^xsd:nonNegativeInteger ; owl:onClass ?target ] .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "MAX",
+    "kind": "restriction",
+    "restriction": "MAX",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf [ a owl:Restriction ; owl:onProperty <urn:visual:property> ; owl:maxQualifiedCardinality \"2\"^^xsd:nonNegativeInteger ; owl:onClass ?target ] .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  },
+  {
+    "name": "EXACT",
+    "kind": "restriction",
+    "restriction": "EXACT",
+    "query": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX owl: <http://www.w3.org/2002/07/owl#>\nPREFIX skos: <http://www.w3.org/2004/02/skos/core#>\nPREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\nSELECT DISTINCT ?concept ?label WHERE {\n  VALUES ?target { <urn:visual:target> }\n  VALUES ?conceptType { owl:Class skos:Concept }\n  ?concept rdf:type ?conceptType .\n  ?concept rdfs:subClassOf [ a owl:Restriction ; owl:onProperty <urn:visual:property> ; owl:qualifiedCardinality \"2\"^^xsd:nonNegativeInteger ; owl:onClass ?target ] .\n  OPTIONAL { ?concept rdfs:label ?label . }\n}\nLIMIT 100"
+  }
+]

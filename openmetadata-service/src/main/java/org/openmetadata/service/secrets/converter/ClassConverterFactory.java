@@ -21,9 +21,11 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.AccessTokenAuth;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -36,8 +38,10 @@ import org.openmetadata.schema.services.connections.api.OpenAPISchemaS3;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
 import org.openmetadata.schema.services.connections.dashboard.SsrsConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
@@ -45,6 +49,10 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -53,13 +61,13 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.Db2Connection;
-import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.DorisConnection;
 import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.InformixConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MyDbConnection;
@@ -75,12 +83,13 @@ import org.openmetadata.schema.services.connections.database.StarRocksConnection
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
+import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.databricks.AzureADSetup;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -88,6 +97,9 @@ import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.AlationConnection;
 import org.openmetadata.schema.services.connections.metadata.AlationSinkConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -108,6 +120,7 @@ import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConn
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
@@ -129,6 +142,25 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          // GCPCredentials is typed, but its gcpConfig is a oneOf the credentials converter types.
+          Map.entry(
+              GcpCloudSqlConfig.class,
+              new NestedConfigClassConverter(
+                  GcpCloudSqlConfig.class, Map.of("gcpConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+              new NestedConfigClassConverter(
+                  org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+                  Map.of("securityConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              SupersetApiConnection.class,
+              new NestedConfigClassConverter(
+                  SupersetApiConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              SoftwareAuth.class,
+              new NestedConfigClassConverter(
+                  SoftwareAuth.class, Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               AlationConnection.class,
               new NestedConfigClassConverter(
@@ -199,6 +231,11 @@ public final class ClassConverterFactory {
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
           Map.entry(
+              MicroStrategyConnection.class,
+              new NestedConfigClassConverter(
+                  MicroStrategyConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
                   MongoDBConnection.class,
@@ -214,7 +251,11 @@ public final class ClassConverterFactory {
               NatsConnection.class,
               new NestedConfigClassConverter(
                   NatsConnection.class,
-                  Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class)))),
+                  Map.of(
+                      "authType",
+                      List.of(NatsBasicAuth.class, NatsTokenAuth.class, NatsNkeyAuth.class),
+                      "tlsConfig",
+                      List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               OmniConnection.class,
               new NestedConfigClassConverter(
@@ -236,6 +277,18 @@ public final class ClassConverterFactory {
                           org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig
                               .class,
                           S3Config.class)))),
+          Map.entry(
+              QlikCertificateValues.class,
+              new NestedConfigClassConverter(
+                  QlikCertificateValues.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              QlikSenseConnection.class,
+              new NestedConfigClassConverter(
+                  QlikSenseConnection.class,
+                  Map.of(
+                      "certificates",
+                      List.of(QlikCertificateValues.class, QlikCertificatePath.class)))),
           Map.entry(
               QuestDBConnection.class,
               new NestedConfigClassConverter(
@@ -265,7 +318,11 @@ public final class ClassConverterFactory {
               SapS4HanaConnection.class,
               new NestedConfigClassConverter(
                   SapS4HanaConnection.class,
-                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+                  Map.of(
+                      "authType",
+                      List.of(SapS4HanaBasicAuth.class, SapS4HanaOAuthCredentials.class),
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               SapSuccessFactorsConnection.class,
               new NestedConfigClassConverter(
@@ -286,12 +343,14 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   TableauPipelineConnection.class,
                   Map.of(
-                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
-                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                      "authType",
+                      TableauConnectionClassConverter.CONNECTION_CLASSES,
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))));
 
   static {
-    Map<Class<?>, ClassConverter> converters =
-        new HashMap<>(
+    converterMap =
+        mergeDisjoint(
             Map.ofEntries(
                 Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
                 Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
@@ -300,10 +359,14 @@ public final class ClassConverterFactory {
                 Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
                 Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
                 Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
-                Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+                Map.entry(
+                    StorageServiceMetadataPipeline.class,
+                    new StorageServiceMetadataPipelineClassConverter()),
+                Map.entry(
+                    StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),
@@ -321,7 +384,6 @@ public final class ClassConverterFactory {
                 Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
                 Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
                 Map.entry(StarRocksConnection.class, new StarRocksConnectionClassConverter()),
-                Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
                 Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
                 Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
                 Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
@@ -340,18 +402,42 @@ public final class ClassConverterFactory {
                 Map.entry(ClickzettaConnection.class, new ClickzettaConnectionClassConverter()),
                 Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
                 Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
+                Map.entry(NatsBrokerConfig.class, new NatsBrokerConfigClassConverter()),
                 Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
                 Map.entry(PrefectConnection.class, new PrefectConnectionClassConverter()),
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
                 Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
                 Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+                Map.entry(
+                    MicrosoftFabricConnection.class, new MicrosoftFabricConnectionClassConverter()),
                 Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
                 Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())));
-    converters.putAll(NESTED_CONFIG_CONVERTERS);
-    converterMap = Map.copyOf(converters);
+                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())),
+            NESTED_CONFIG_CONVERTERS);
+  }
+
+  /**
+   * The union of two converter registries, which must not both claim the same class.
+   *
+   * <p>Merging the nested registry over the dedicated one used to let a generic entry win in
+   * silence, dropping whatever the dedicated converter did beyond re-typing properties. That is how
+   * {@code NatsConnection} lost its {@code authType} conversion and persisted a token in the clear,
+   * so a class claimed twice fails here instead. The caller is a static initializer that every test
+   * touching this factory triggers, so the failure lands in CI rather than in a release.
+   */
+  static Map<Class<?>, ClassConverter> mergeDisjoint(
+      Map<Class<?>, ClassConverter> dedicated, Map<Class<?>, ClassConverter> nested) {
+    Map<Class<?>, ClassConverter> merged = new HashMap<>(dedicated);
+    nested.forEach(
+        (clazz, converter) -> {
+          if (merged.putIfAbsent(clazz, converter) != null) {
+            throw new IllegalStateException(
+                "Duplicate ClassConverter registration for " + clazz.getName());
+          }
+        });
+    return Map.copyOf(merged);
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Tabs } from '../../application/tabs/tabs';
 import { Button } from '../buttons/button';
 import { Tooltip } from './tooltip';
 
@@ -187,6 +188,26 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
+  // Pointer events are blocked only while a tooltip enters (see tooltip.tsx);
+  // a settled tooltip must take the pointer so links and "view more" buttons
+  // in it stay hoverable and clickable.
+  it('keeps a settled tooltip interactive', async () => {
+    const onPress = vi.fn();
+    render(
+      <Tooltip isOpen title={<Button onPress={onPress}>View more</Button>}>
+        <button>trigger</button>
+      </Tooltip>
+    );
+
+    expect(screen.getByRole('tooltip')).not.toHaveClass(
+      'tw:pointer-events-none'
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'View more' }));
+
+    expect(onPress).toHaveBeenCalled();
+  });
+
   it('does not show tooltip on interaction when trigger is disabled', async () => {
     const user = userEvent.setup();
     setupPointerModality();
@@ -256,6 +277,35 @@ describe('Tooltip — disabled trigger', () => {
     expect(wrapper).toHaveAttribute('tabindex', '0');
     expect(screen.getByTestId('d').closest('button')).toBe(
       screen.getByTestId('d')
+    );
+  });
+
+  // react-aria's `<Focusable>` runs a development-only focusability check that
+  // calls getComputedStyle; inside the Tabs collection the trigger is rendered
+  // into a window-less document, so that check threw and crashed the page.
+  it('renders a disabled child in the Tabs actions slot', () => {
+    render(
+      <Tabs>
+        <Tabs.List
+          actions={
+            <Tooltip title="No tasks">
+              <Button isDisabled data-testid="tasks">
+                Tasks
+              </Button>
+            </Tooltip>
+          }
+          aria-label="Sections"
+          type="underline"
+          variant="card">
+          <Tabs.Item id="one">One</Tabs.Item>
+        </Tabs.List>
+        <Tabs.Panel id="one">Panel</Tabs.Panel>
+      </Tabs>
+    );
+
+    expect(screen.getByTestId('tasks').parentElement).toHaveAttribute(
+      'tabindex',
+      '0'
     );
   });
 
@@ -329,5 +379,34 @@ describe('Tooltip — disabled trigger', () => {
     );
 
     expect(screen.getByTestId('e').parentElement?.tagName).not.toBe('SPAN');
+  });
+});
+
+describe('Tooltip — variant', () => {
+  it('draws the light variant on the floating surface with primary text', () => {
+    render(
+      <Tooltip isOpen description="Details" title="Light title" variant="light">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Light title').parentElement).toHaveClass(
+      'tw:bg-floating'
+    );
+    expect(screen.getByText('Light title')).toHaveClass('tw:text-primary');
+    expect(screen.getByText('Details')).toHaveClass('tw:text-tertiary');
+  });
+
+  it('keeps the dark tooltip by default', () => {
+    render(
+      <Tooltip isOpen title="Dark title">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Dark title').parentElement).toHaveClass(
+      'tw:bg-primary-solid'
+    );
+    expect(screen.getByText('Dark title')).toHaveClass('tw:text-white');
   });
 });

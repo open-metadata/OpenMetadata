@@ -40,28 +40,6 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
 
-export const getTrimmedContent = (content: string, limit: number) => {
-  const lines = content.split('\n');
-  // Selecting the content in three lines
-  const contentInThreeLines = lines.slice(0, 3).join('\n');
-
-  const slicedContent = contentInThreeLines.slice(0, limit);
-
-  // Logic for eliminating any broken words at the end
-  // To avoid any URL being cut
-  const words = slicedContent.split(' ');
-  const wordsCount = words.length;
-
-  if (wordsCount === 1) {
-    return slicedContent;
-  }
-
-  // Eliminate word at the end to avoid using broken words
-  const refinedContent = words.slice(0, wordsCount - 1);
-
-  return refinedContent.join(' ');
-};
-
 export const removeOuterEscapes = (input: string) => {
   const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
 
@@ -489,11 +467,3 @@ export function removeAttachmentsWithoutUrl(htmlString: string): string {
 
   return doc.body.innerHTML;
 }
-
-// Kept for downstream (Collate) imports. Code in this repo should import these
-// from RichTextStringUtils so the shell does not load dompurify / html parsing.
-export {
-  decodeHtmlEntities,
-  stringToHTML,
-  stripMarkdown,
-} from './RichTextStringUtils';

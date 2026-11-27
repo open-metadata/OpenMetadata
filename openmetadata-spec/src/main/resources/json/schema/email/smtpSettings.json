@@ -39,7 +39,8 @@
     },
     "password": {
       "description": "Smtp Server Password",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "transportationStrategy": {
       "type": "string",

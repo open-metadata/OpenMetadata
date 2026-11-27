@@ -37,6 +37,7 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.Metadata]: 'metadata',
   [PipelineType.PolicyAgent]: 'policy-agent',
   [PipelineType.Profiler]: 'profiler',
+  [PipelineType.ReverseMetadata]: 'reverse-metadata',
   [PipelineType.TestSuite]: 'test-suite',
   [PipelineType.Usage]: 'usage',
   [PipelineType.Application]: 'application',

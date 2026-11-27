@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
@@ -134,10 +135,243 @@ class RelationshipTypeValidatorTest {
         BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
   }
 
+  // -------------------------------------------------------------------------
+  // validateInverse with client-supplied FQN references (id == null)
+  //
+  // The public REST API builds inverse/replacedBy references via
+  // RelationshipTypeMapper, which only populates type + fullyQualifiedName,
+  // leaving id == null. RelationshipTypeRepository.hydrateReferences resolves
+  // FQN→id before validation, but the validator must also handle a null-id
+  // reference directly (defense in depth, mirroring the bug report's
+  // recommended fix).
+  // -------------------------------------------------------------------------
+
+  @Test
+  void symmetricTypeWithClientSuppliedSelfInverseFqnIsAccepted() {
+    // Exactly what RelationshipTypeMapper produces: inverse has fqn = own name, id == null.
+    // Before the fix this was falsely rejected ("A symmetric relationship must be its own
+    // inverse") because validateInverse compared by getId() only.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fqnReference("symmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithClientSuppliedDifferentInverseFqnIsRejected() {
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fqnReference("asymmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithNullInverseIsRejected() {
+    final RelationshipType relationshipType =
+        namedRelationshipType(UUID.randomUUID(), "symmetricRel")
+            .withInverse(null)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithFullSelfReferenceIsAccepted() {
+    // References that carry both id and fqn (as LegacyRelationshipTypeMapper produces) —
+    // both signals agree and must be accepted.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fullReference(id, "symmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  // -------------------------------------------------------------------------
+  // validateInverse: ASYMMETRIC self-inverse (inverse-induced contradiction)
+  //
+  // owl:inverseOf R R entails that R is symmetric. Combined with
+  // AsymmetricProperty(R) this forces R's extension to be empty — the same
+  // policy contradiction validateCharacteristics rejects for the
+  // SYMMETRIC + ASYMMETRIC characteristic pair, reached here via the inverse
+  // axis. The dual SYMMETRIC ⇒ inverse == self guard is already in place
+  // (see tests above); these lock in the missing ASYMMETRIC ⇒ inverse != self
+  // invariant across all three reference shapes the validator must handle.
+  // -------------------------------------------------------------------------
+
+  @Test
+  void rejectsAsymmetricWithSelfInverseById() {
+    // Hydrated reference (id populated) — the shape applyDefaults/hydrateReferences
+    // produces when a client supplies inverse == own FQN.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "asymSelfInverse")
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE))
+            .withInverse(idReference(id));
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+    assertTrue(ex.getMessage().contains("asymmetric") && ex.getMessage().contains("inverse"));
+  }
+
+  @Test
+  void rejectsAsymmetricWithSelfInverseByFqn() {
+    // Client-supplied FQN reference (id == null) — exactly what
+    // RelationshipTypeMapper produces from the REST API before hydration.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "asymSelfInverseFqn")
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE))
+            .withInverse(fqnReference("asymSelfInverseFqn"));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void rejectsAsymmetricWithFullSelfReference() {
+    // Fully-populated reference (id + fqn) — e.g. LegacyRelationshipTypeMapper shape,
+    // where both identity signals agree on self.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "asymSelfInverseFull")
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE))
+            .withInverse(fullReference(id, "asymSelfInverseFull"));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsAsymmetricWithDistinctInverse() {
+    // Cross-property inverse (A inverseOf B, B != A) is NOT contradictory: it simply
+    // propagates asymmetry to B. The new guard must reject only the self-inverse case.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "asymSource")
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE))
+            .withInverse(fqnReference("asymTarget"));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsAsymmetricWithNullInverse() {
+    // No client-supplied inverse and not SYMMETRIC: applyDefaults leaves inverse null
+    // and addInverse is a no-op in the exporter. This is the normal asymmetric shape
+    // (e.g. every asymmetric seed type) and must keep being accepted.
+    final RelationshipType relationshipType =
+        namedRelationshipType(UUID.randomUUID(), "asymNoInverse")
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE))
+            .withInverse(null);
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsTransitiveSelfInverse() {
+    // TRANSITIVE (neither symmetric nor asymmetric) with a self-inverse must not be
+    // rejected by the new guard — only the SYMMETRIC and ASYMMETRIC axes are constrained.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "transitiveSelf")
+            .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE))
+            .withInverse(idReference(id));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  // -------------------------------------------------------------------------
+  // validateReplacement with client-supplied FQN references (id == null)
+  // -------------------------------------------------------------------------
+
+  @Test
+  void clientSuppliedSelfReplacementFqnIsRejected() {
+    // Before the fix the self-replacement guard never fired because it compared by
+    // getId() and the client-supplied reference had id == null.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "replacesItself").withReplacedBy(fqnReference("replacesItself"));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void clientSuppliedDifferentReplacementFqnIsAccepted() {
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "oldType").withReplacedBy(fqnReference("newType"));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void hydratedSelfReplacementIsRejected() {
+    // Id path guard: validateReplacement was rewritten to share isSelfReference; the id-based
+    // self-replacement rejection (which always worked) must keep working after the change.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "replacesItself").withReplacedBy(idReference(id));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
   private static RelationshipType relationshipType(UUID id) {
     return new RelationshipType()
         .withId(id)
         .withRdfPredicate(URI.create("https://example.org/relationships/relatedTo"))
         .withCharacteristics(Set.of());
+  }
+
+  private static RelationshipType namedRelationshipType(UUID id, String name) {
+    return new RelationshipType()
+        .withId(id)
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withRdfPredicate(URI.create("https://example.org/relationships/" + name))
+        .withCharacteristics(Set.of());
+  }
+
+  private static final String RELATIONSHIP_TYPE = "relationshipType";
+
+  /** Mimics what {@code EntityUtil.getEntityReference(type, fqn)} and the mapper produce. */
+  private static EntityReference fqnReference(String fqn) {
+    return new EntityReference().withType(RELATIONSHIP_TYPE).withFullyQualifiedName(fqn);
+  }
+
+  /** Mimics a hydrated reference (id populated, no fqn — e.g. applyDefaults path). */
+  private static EntityReference idReference(UUID id) {
+    return new EntityReference().withId(id).withType(RELATIONSHIP_TYPE);
+  }
+
+  /** Mimics a fully-populated reference (id + fqn — e.g. LegacyRelationshipTypeMapper). */
+  private static EntityReference fullReference(UUID id, String fqn) {
+    return new EntityReference().withId(id).withType(RELATIONSHIP_TYPE).withFullyQualifiedName(fqn);
   }
 }

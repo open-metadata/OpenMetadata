@@ -22,6 +22,8 @@ import {
   getEmptyJsonTreeForQueryBuilder,
   getEmptyQueryBuilderTree,
   loadQueryBuilderTree,
+  PERSISTENT_EMPTY_TREE_SETTINGS,
+  sanitizeQueryBuilderTree,
 } from './tree';
 
 // setupTests.js globally stubs `getQbConfigs` to `{}`; these cases build a real
@@ -384,6 +386,39 @@ describe('loadQueryBuilderTree – fallbacks', () => {
     expect(rootType(loaded)).toBe('group');
   });
 
+  // The backend stores `queryFilter` as a free-form JSON object and embeds the
+  // DSL `query` node verbatim — it never requires `bool.must`. Before the fix,
+  // `loadQueryBuilderTree` fell back to a blank seed for every non-`must`
+  // shape, so rules created via the REST API showed an empty builder.
+  it.each([
+    [
+      'bool.should',
+      { query: { bool: { should: [{ term: { deleted: false } }] } } },
+    ],
+    [
+      'bool.filter',
+      { query: { bool: { filter: [{ term: { deleted: false } }] } } },
+    ],
+    [
+      'bool.must_not',
+      { query: { bool: { must_not: [{ term: { deleted: true } }] } } },
+    ],
+    ['bare query.term', { query: { term: { fullyQualifiedName: 'x' } } }],
+    ['bare term', { term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+    [
+      'single must clause',
+      { query: { bool: { must: [{ term: { name: 'x' } }] } } },
+    ],
+  ])('should rebuild the tree from a %s filter', (_label, filter) => {
+    const loaded = loadQueryBuilderTree({
+      config: esConfig,
+      value: JSON.stringify(filter),
+      outputType: SearchOutputType.ElasticSearch,
+    });
+
+    expect(rootType(loaded)).toBe('group');
+  });
+
   it('should keep a JSONLogic tree that RAQB could load', () => {
     const seeded = QbUtils.loadTree(getEmptyFlatJsonTree('owners'));
     const spy = jest
@@ -421,5 +456,60 @@ describe('loadQueryBuilderTree – fallbacks', () => {
     });
 
     expect(rootType(loaded)).toBe('group');
+  });
+});
+
+describe('sanitizeQueryBuilderTree', () => {
+  const baseConfig = jest.requireActual('./config').buildQueryBuilderConfig({
+    outputType: SearchOutputType.ElasticSearch,
+    searchIndex: 'table',
+    groupMode: 'nested',
+  });
+  const persistentConfig = {
+    ...baseConfig,
+    settings: { ...baseConfig.settings, ...PERSISTENT_EMPTY_TREE_SETTINGS },
+  };
+
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // The seed holds a rule with no value yet, which validation reports.
+  it.each([
+    ['the default on-load settings', baseConfig],
+    ['settings that keep empty rules', persistentConfig],
+  ])('should fix the tree exactly as checkTree does with %s', (_, config) => {
+    const seed = getEmptyJsonTree();
+
+    const expected = QbUtils.getTree(
+      QbUtils.checkTree(QbUtils.loadTree(seed), config)
+    );
+    const actual = QbUtils.getTree(
+      sanitizeQueryBuilderTree(QbUtils.loadTree(seed), config)
+    );
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('should not log the validation errors checkTree warns about', () => {
+    const tree = QbUtils.loadTree(getEmptyJsonTree());
+
+    QbUtils.checkTree(tree, persistentConfig);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Tree check errors: ',
+      expect.any(Array)
+    );
+
+    warnSpy.mockClear();
+    sanitizeQueryBuilderTree(tree, persistentConfig);
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

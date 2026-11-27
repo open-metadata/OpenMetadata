@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
@@ -33,17 +34,17 @@ const SummaryTagsDescription = ({
 
   return (
     <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="tags-header">
             {t('label.tag-plural')}
           </Typography>
-        </Col>
-        <Col className="d-flex flex-wrap gap-2" span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column d-flex flex-wrap gap-2" span={24}>
           {tags.length > 0 ? (
             <TagsViewer
               displayType={DisplayType.READ_MORE}
@@ -55,20 +56,20 @@ const SummaryTagsDescription = ({
               {t('label.no-tags-added')}
             </Typography>
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="description-header">
             {t('label.description')}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <div>
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewerV1
@@ -81,8 +82,8 @@ const SummaryTagsDescription = ({
               </Typography>
             )}
           </div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </>
   );
 };

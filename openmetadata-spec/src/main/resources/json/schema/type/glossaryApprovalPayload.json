@@ -22,8 +22,17 @@
     "proposedState": {
       "description": "Proposed state of the term after changes.",
       "type": "string"
+    },
+    "proposal": {
+      "description": "Set on the request that decides a term an automation proposed; absent on every other review of the term.",
+      "$ref": "automationProposal.json"
+    },
+    "proposedChanges": {
+      "description": "The term's changes awaiting review, by field name, each with the values it adds and removes. Set by the approval workflow.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, Object>",
+      "additionalProperties": true
     }
   },
-  "required": ["glossaryTerm", "action"],
   "additionalProperties": false
 }

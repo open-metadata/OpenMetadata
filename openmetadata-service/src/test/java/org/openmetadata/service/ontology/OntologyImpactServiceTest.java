@@ -31,6 +31,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -141,6 +142,25 @@ class OntologyImpactServiceTest {
     verify(repository).validateMoveOperation(eq(CHILD_ID), any());
     verify(repository).moveGlossaryTerm(eq(CHILD_ID), any(), eq(PRINCIPAL));
     verify(repository).delete(PRINCIPAL, TERM_ID, false, false);
+  }
+
+  @Test
+  void movedChildrenRequireEditAllAndExactlyTheChildrenAreAuthorized() {
+    stubSnapshot(List.of(child), 1);
+    final String token = service.previewDelete(TERM_ID, PRINCIPAL).getImpactToken();
+    stubTokenVerification();
+    final EntityReference target = reference(Entity.GLOSSARY, UUID.randomUUID(), "Risk");
+    when(repository.delete(PRINCIPAL, TERM_ID, false, false))
+        .thenReturn(new DeleteResponse<>(term, null));
+    final List<MetadataOperation> requested = new ArrayList<>();
+
+    service.delete(
+        TERM_ID,
+        request(token).withReassignChildrenTo(target),
+        PRINCIPAL,
+        (ids, operation) -> requested.add(operation));
+
+    assertEquals(List.of(MetadataOperation.EDIT_ALL), requested);
   }
 
   @Test

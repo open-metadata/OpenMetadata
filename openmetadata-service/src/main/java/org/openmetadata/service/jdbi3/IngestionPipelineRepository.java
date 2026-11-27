@@ -20,25 +20,35 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -55,9 +65,12 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -81,17 +94,23 @@ import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
+import org.openmetadata.service.secrets.DBSecretsManager;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 @Repository(name = "IngestionPipelineRepository")
@@ -109,8 +128,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  public static final Set<PipelineStatusType> FINISHED_RUN_STATES =
+      Set.of(
+          PipelineStatusType.SUCCESS,
+          PipelineStatusType.FAILED,
+          PipelineStatusType.PARTIAL_SUCCESS,
+          PipelineStatusType.STOPPED);
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
+  private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]+");
+  private static final Pattern NON_ALPHANUMERIC_ANY_CASE = Pattern.compile("[^A-Za-z0-9]+");
+  private static final String RUNNER_NAME_SEPARATOR = "-";
+  private static final String RUNNER_NAME_TAKEN =
+      "Ingestion pipeline '%s' cannot be sent to the ingestion runner: the runner knows it by the"
+          + " same name as the deployed pipeline '%s'. Recreate one of the two under another name.";
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -338,6 +369,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @VisibleForTesting
   record DisplayNameCursor(String displayName, String id) {}
 
+  /** A display-name ordered listing pages on that key, so a cursor built from a row carries it. */
+  @Override
+  public String getCursorValue(IngestionPipeline pipeline, ListFilter filter) {
+    return filter == null || nullOrEmpty(filter.getSortField())
+        ? super.getCursorValue(pipeline, filter)
+        : displayNameCursorValue(pipeline);
+  }
+
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline.getService() == null) {
@@ -378,7 +417,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return;
     }
     try {
-      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      EntityInterface<?> parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
       inheritOwners(ingestionPipeline, fields, parent);
       inheritDomains(ingestionPipeline, fields, parent);
     } catch (EntityNotFoundException e) {
@@ -500,7 +539,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
           Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
+              record.getFromEntity(), UUID.fromString(record.getFromId()), ALL);
       serviceMap.put(pipelineId, serviceRef);
     }
 
@@ -517,6 +556,42 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    if (ingestionPipeline.getAirflowConfig() != null
+        && ingestionPipeline.getAirflowConfig().getPipelineTimezone() != null) {
+      String timezone =
+          TimezoneUtil.normalize(ingestionPipeline.getAirflowConfig().getPipelineTimezone());
+      ingestionPipeline
+          .getAirflowConfig()
+          .setPipelineTimezone(timezone == null ? TimezoneUtil.UTC : timezone);
+    }
+  }
+
+  static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface<?> parent) {
+    if (!PipelineType.TEST_SUITE.equals(pipeline.getPipelineType())) {
+      return;
+    }
+    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
+    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
+    if (!(parent instanceof TestSuite suite)
+        || !PipelineType.TEST_SUITE.value().equals(configType)) {
+      throw new BadRequestException(
+          "TestSuite pipeline requires a test suite and TestSuite config");
+    }
+    validateTestSuiteTable(suite, config.get("entityFullyQualifiedName"));
+  }
+
+  private static void validateTestSuiteTable(TestSuite suite, Object tableFqn) {
+    if (Boolean.TRUE.equals(suite.getBasic())) {
+      final EntityReference table = suite.getBasicEntityReference();
+      final String expected = table == null ? null : table.getFullyQualifiedName();
+      if (nullOrEmpty(expected) || (tableFqn != null && !expected.equals(tableFqn))) {
+        throw new BadRequestException("TestSuite pipeline table must match its test suite");
+      }
+    } else if (tableFqn != null) {
+      throw new BadRequestException(
+          "Logical test suite pipelines must omit entityFullyQualifiedName");
+    }
   }
 
   static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
@@ -547,6 +622,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     Object type = configMap.get(SOURCE_CONFIG_TYPE);
     return type instanceof String typeValue && !typeValue.isBlank()
         || !(config instanceof Map<?, ?>) && type instanceof Enum<?>;
+  }
+
+  @Override
+  protected void validatePatch(
+      IngestionPipeline original, IngestionPipeline updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    updated.setService(original.getService());
   }
 
   @Override
@@ -597,7 +679,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         updated.getAirflowConfig() != null
             ? updated.getAirflowConfig().getScheduleInterval()
             : null;
-    return !Objects.equals(originalSchedule, updatedSchedule);
+    String originalTimezone =
+        original.getAirflowConfig() != null
+            ? original.getAirflowConfig().getPipelineTimezone()
+            : null;
+    String updatedTimezone =
+        updated.getAirflowConfig() != null
+            ? updated.getAirflowConfig().getPipelineTimezone()
+            : null;
+    return !Objects.equals(originalSchedule, updatedSchedule)
+        || !Objects.equals(originalTimezone, updatedTimezone);
   }
 
   boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
@@ -650,6 +741,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       throw new PipelineServiceClientException(
           String.format("Deployment failed: %s. Changes not saved.", errorContext));
     }
+
+    // The deploy hook ran on the decrypted copy. Carry its result back so the stored pipeline reads
+    // its logs from where the deployed one writes them.
+    ingestionPipeline.setEnableStreamableLogs(decrypted.getEnableStreamableLogs());
 
     LOG.info(
         "Pipeline '{}' deployed successfully to {} with response: {}",
@@ -704,31 +799,149 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
     }
+    return ingestionPipeline;
+  }
+
+  @Override
+  protected IngestionPipeline prepareForVersionHistory(IngestionPipeline ingestionPipeline) {
+    final IngestionPipeline snapshot =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (secretsManager != null) {
+      // Recording history must not overwrite credentials in an external vault.
+      DBSecretsManager.getInstance(SecretsManagerProvider.DB, secretsManager.getSecretsConfig())
+          .encryptIngestionPipeline(snapshot);
+    }
+    return snapshot;
+  }
+
+  @Override
+  protected void store(IngestionPipeline pipeline, boolean update, Double expectedVersion) {
+    writeWithSecretOwnership(
+        List.of(pipeline),
+        update,
+        () -> {
+          super.store(pipeline, update, expectedVersion);
+        });
+  }
+
+  @Override
+  protected void storeMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        false,
+        () -> {
+          super.storeMany(pipelines);
+        });
+  }
+
+  @Override
+  protected void updateMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        true,
+        () -> {
+          super.updateMany(pipelines);
+        });
+  }
+
+  private SecretInventory secretInventory(SecretsManager manager, IngestionPipeline entity) {
+    return manager.secretInventory(entity);
+  }
+
+  private void writeWithSecretOwnership(
+      List<IngestionPipeline> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+      return;
+    }
+    List<SecretInventory> inputs =
+        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          List<SecretInventory> originals =
+              entities.stream()
+                  .map(
+                      entity ->
+                          update
+                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
+                              : null)
+                  .toList();
+          SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
+          write.run();
+          for (int i = 0; i < entities.size(); i++) {
+            IngestionPipeline entity = entities.get(i);
+            ownership.recordWrite(
+                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+            String root = inputs.get(i).root();
+            PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
+          }
+          return null;
+        });
+  }
+
+  private IngestionPipeline lockStoredForSecretWrite(IngestionPipeline entity) {
+    String stored = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    if (stored == null) {
+      throw EntityNotFoundException.byId(entity.getId().toString());
+    }
+    return JsonUtils.readValue(stored, IngestionPipeline.class);
+  }
+
+  private void cleanOwnedSecrets(SecretsManager manager, String root) {
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          ownership.clean(root);
+          return null;
+        });
+  }
+
+  private void scheduleSecretDeletion(IngestionPipeline entity) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return;
+    }
+    SecretInventory deleted = secretInventory(manager, entity);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          executeInTransaction(
+              () -> {
+                SecretMapOwnership ownership =
+                    new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+                ownership.lock();
+                ownership.removeOwner(entity.getId(), deleted);
+                return null;
+              });
+          cleanOwnedSecrets(manager, deleted.root());
+        });
+  }
+
+  @Override
+  public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
     store(ingestionPipeline, update);
   }
 
   @Override
   public void storeEntities(List<IngestionPipeline> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-
-    for (IngestionPipeline ingestionPipeline : entities) {
-      if (secretsManager != null) {
-        secretsManager.encryptIngestionPipeline(ingestionPipeline);
-      }
-
-      fqns.add(ingestionPipeline.getFullyQualifiedName());
-      jsons.add(serializeForStorage(ingestionPipeline));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   @Override
@@ -807,6 +1020,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
+    if (hardDelete) {
+      scheduleSecretDeletion(entity);
+    }
     super.postDelete(entity, hardDelete);
     boolean wasRunnerCleanupSkipped = false;
     if (hardDelete) {
@@ -846,7 +1062,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     //     runner happens to be unreachable. The proper fix is a compensating
     //     cleanup at deploy-readiness-timeout time, tracked separately.
     boolean wasRunnerCleanupSkipped = false;
-    if (pipelineServiceClient != null) {
+    Optional<EntityReference> deployedNamesake = findDeployedNamesake(entity);
+    if (deployedNamesake.isPresent()) {
+      LOG.warn(
+          "Not deleting '{}' from the ingestion runner: it is known there by the same name as the deployed pipeline '{}'",
+          entity.getFullyQualifiedName(),
+          deployedNamesake.get().getFullyQualifiedName());
+      redeployNamesakeOf(entity, deployedNamesake.get());
+    } else if (pipelineServiceClient != null) {
       try {
         pipelineServiceClient.deletePipeline(entity);
       } catch (IngestionRunnerUnavailableException exception) {
@@ -864,6 +1087,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           entity.getFullyQualifiedName());
     }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Two pipelines deployed under one runner name before the namesake guard overwrote each other's
+   * runner object, so it may still hold the deleted pipeline's config. Redeploying the survivor gives
+   * it back its own; a failure leaves it as it was, since the delete itself has already happened.
+   */
+  private void redeployNamesakeOf(IngestionPipeline deleted, EntityReference namesake) {
+    IngestionPipeline survivor =
+        Boolean.TRUE.equals(deleted.getDeployed())
+            ? findByNameOrNull(namesake.getFullyQualifiedName(), Include.NON_DELETED)
+            : null;
+    if (survivor != null) {
+      try {
+        deployPipelineBeforeUpdate(survivor);
+      } catch (PipelineServiceClientException | BadRequestException | IllegalStateException e) {
+        LOG.warn(
+            "Could not redeploy '{}' after deleting its namesake '{}'; redeploy it by hand: {}",
+            survivor.getFullyQualifiedName(),
+            deleted.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
   }
 
   private void deletePipelineStatuses(IngestionPipeline entity) {
@@ -897,7 +1143,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      IngestionPipeline entity, Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
+  }
+
+  @Override
+  public EntityInterface<?> getParentEntity(IngestionPipeline entity, String fields) {
     if (entity.getService() == null) {
       // Try to load the service if it's not set
       LOG.warn(
@@ -920,7 +1178,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   protected ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)
@@ -1269,6 +1527,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
+    @Override
+    protected IngestionPipeline getPreviousVersion(IngestionPipeline original) {
+      final IngestionPipeline previous = super.getPreviousVersion(original);
+      return previous == null ? null : buildIngestionPipelineDecrypted(previous);
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -1285,13 +1549,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       compareAndUpdate(
           "raiseOnError",
           () -> updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError()));
+
+      // Before the flag is compared, because a deploy can change it
+      // (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+      deployIfRequired(original, updated);
+
       compareAndUpdate(
           "enableStreamableLogs",
           () ->
               updateEnableStreamableLogs(
                   original.getEnableStreamableLogs(), updated.getEnableStreamableLogs()));
-
-      deployIfRequired(original, updated);
     }
 
     private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
@@ -1326,6 +1593,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
             updated.getName(),
             e);
+        throw e;
+      } catch (BadRequestException e) {
         throw e;
       } catch (Exception e) {
         LOG.error(
@@ -1466,6 +1735,85 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         && logStorageConfiguration.getType() == LogStorageConfiguration.Type.S_3
         && logStorageConfiguration.getBucketName() != null
         && !logStorageConfiguration.getBucketName().isEmpty();
+  }
+
+  /**
+   * Whether a run's logs are read from S3 log storage rather than from the runner. What the run did
+   * decides, not the pipeline's flag, which can differ from the configuration the run was deployed
+   * with: a run whose logs are stored is read from storage, and a run still going is read from
+   * where its pipeline ships them (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+   */
+  public boolean readsRunLogsFromStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        && isStorageRunKey(runId)
+        && ((runGoing && shipsLogsToStorage(pipeline))
+            || runLogsStored(pipeline.getFullyQualifiedName(), UUID.fromString(runId)));
+  }
+
+  /**
+   * Whether a run's logs are read through the log storage rather than straight from the runner.
+   * Without S3, the default log storage asks the runner by run id, and a pipeline that ships its
+   * logs keeps reading through it.
+   */
+  public boolean readsRunLogsThroughLogStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        ? readsRunLogsFromStorage(pipeline, runId, runGoing)
+        : shipsLogsToStorage(pipeline);
+  }
+
+  public boolean shipsLogsToStorage(IngestionPipeline pipeline) {
+    return Boolean.TRUE.equals(pipeline.getEnableStreamableLogs())
+        || (pipeline.getIngestionRunner() != null
+            && isIngestionRunnerStreamableLogsEnabled(pipeline.getIngestionRunner()));
+  }
+
+  public static boolean isRunGoing(PipelineStatus run) {
+    return run != null && !FINISHED_RUN_STATES.contains(run.getPipelineState());
+  }
+
+  /**
+   * Whether a run is still going. Runs of one pipeline can overlap, so the latest status row speaks
+   * only for the latest run, and any other run is judged by its own row. A run with no row yet has
+   * just been triggered, so it counts as going.
+   */
+  public boolean isRunGoing(String pipelineFQN, String runId, PipelineStatus latestStatus) {
+    boolean latestRun = latestStatus != null && Objects.equals(runId, latestStatus.getRunId());
+    PipelineStatus run = latestRun ? latestStatus : ownRunStatus(pipelineFQN, runId);
+    return run == null || isRunGoing(run);
+  }
+
+  private PipelineStatus ownRunStatus(String pipelineFQN, String runId) {
+    return runId == null ? null : getPipelineStatus(pipelineFQN, runId);
+  }
+
+  /** Storage keys a run's logs by the run's UUID, so a run named any other way is not there. */
+  private static boolean isStorageRunKey(String runId) {
+    boolean keyed = false;
+    if (runId != null) {
+      try {
+        UUID.fromString(runId);
+        keyed = true;
+      } catch (IllegalArgumentException notAUuid) {
+        LOG.debug("Run '{}' is not keyed for log storage", runId);
+      }
+    }
+    return keyed;
+  }
+
+  private boolean runLogsStored(String pipelineFQN, UUID runId) {
+    boolean stored = false;
+    try {
+      stored = logStorage.logsExist(pipelineFQN, runId);
+    } catch (IOException e) {
+      LOG.warn(
+          "Could not check the stored logs of {}/{}, reading them from the runner: {}",
+          pipelineFQN,
+          runId,
+          e.getMessage());
+    }
+    return stored;
   }
 
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
@@ -1626,8 +1974,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
-    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
+  public void streamServiceProgress(
+      String serviceFqn,
+      SseEventSink eventSink,
+      Sse sse,
+      Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> subscriber) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker, subscriber);
   }
 
   private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
@@ -1658,27 +2010,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
     }
 
-    progressTracker.updateProgress(
-        fqn, runId, progressUpdate, discoveredPipeline(fqn, progressUpdate));
+    progressTracker.updateProgress(fqn, runId, progressUpdate, progressPipeline(fqn));
     return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
   }
 
   /**
-   * The pipeline entity to attach to the run's opening event, so the UI can discover a newly
-   * created agent from the stream itself. Loaded only for the DISCOVERY update (once per run) and
-   * never fails the progress update — a lookup error just omits the entity.
+   * Bind every service event to the pipeline instance so a reused name cannot expose an older run.
+   * A lookup failure must not fail progress reporting; subscribers omit events with no identity.
    */
-  private IngestionPipeline discoveredPipeline(String fqn, ProgressUpdate update) {
-    IngestionPipeline result = null;
-    if (update.getUpdateType() == ProgressUpdateType.DISCOVERY) {
-      try {
-        result = getByName(null, fqn, getFields(""));
-      } catch (Exception e) {
-        LOG.debug(
-            "Could not load ingestion pipeline {} for progress discovery: {}", fqn, e.getMessage());
-      }
+  private IngestionPipeline progressPipeline(String fqn) {
+    try {
+      return getByName(null, fqn, getFields(""));
+    } catch (Exception e) {
+      LOG.debug("Could not load pipeline {} for progress: {}", fqn, e.getClass().getSimpleName());
+      return null;
     }
-    return result;
   }
 
   public RestUtil.PutResponse<?> addOperationMetrics(
@@ -1695,8 +2041,74 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    assertOwnsRunnerName(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse toggleIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    assertOwnsRunnerName(ingestionPipeline);
+    return pipelineServiceClient.toggleIngestion(ingestionPipeline);
+  }
+
+  /**
+   * Some runners know a pipeline by its name alone (the Airflow dag_id, the Kubernetes object
+   * names), but a name is unique only within its service. A runner call for a pipeline whose name
+   * maps onto a deployed pipeline of another service would act on that pipeline instead, so it is
+   * refused (ADR:2026-11-05-a-runner-name-belongs-to-the-deployed-pipeline).
+   */
+  public void assertOwnsRunnerName(IngestionPipeline ingestionPipeline) {
+    findDeployedNamesake(ingestionPipeline)
+        .ifPresent(
+            namesake -> {
+              throw new BadRequestException(
+                  String.format(
+                      RUNNER_NAME_TAKEN,
+                      ingestionPipeline.getFullyQualifiedName(),
+                      namesake.getFullyQualifiedName()));
+            });
+  }
+
+  protected Optional<EntityReference> findDeployedNamesake(IngestionPipeline ingestionPipeline) {
+    boolean isAddressedByName =
+        pipelineServiceClient != null && pipelineServiceClient.addressesPipelinesByName();
+    return isAddressedByName ? findAmongDeployed(ingestionPipeline) : Optional.empty();
+  }
+
+  private Optional<EntityReference> findAmongDeployed(IngestionPipeline ingestionPipeline) {
+    Set<String> runnerNames = runnerNames(ingestionPipeline.getName());
+    return listOtherDeployedPipelines(ingestionPipeline).stream()
+        .filter(other -> !Collections.disjoint(runnerNames, runnerNames(other.getName())))
+        .findFirst();
+  }
+
+  /** Soft-deleted pipelines count: soft delete leaves their runner objects in place. */
+  protected List<EntityReference> listOtherDeployedPipelines(IngestionPipeline ingestionPipeline) {
+    return daoCollection
+        .ingestionPipelineDAO()
+        .listOtherDeployed(String.valueOf(ingestionPipeline.getId()));
+  }
+
+  /**
+   * Coarser than any runner on purpose: case, separators and edge punctuation are ignored, so two
+   * names a runner could confuse always compare equal. Airflow replaces non-ASCII letters,
+   * Kubernetes lower-cases them first, and some (İ, the Kelvin sign) lower-case to ASCII.
+   */
+  static Set<String> runnerNames(String name) {
+    String replacedFirst =
+        NON_ALPHANUMERIC_ANY_CASE
+            .matcher(name)
+            .replaceAll(RUNNER_NAME_SEPARATOR)
+            .toLowerCase(Locale.ROOT);
+    String lowerCasedFirst =
+        NON_ALPHANUMERIC.matcher(name.toLowerCase(Locale.ROOT)).replaceAll(RUNNER_NAME_SEPARATOR);
+    return Stream.of(replacedFirst, lowerCasedFirst)
+        .map(runnerName -> StringUtils.strip(runnerName, RUNNER_NAME_SEPARATOR))
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   public PipelineServiceClientResponse runIngestionPipeline(
@@ -1721,11 +2133,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       RunOptions options) {
+    validateTestSuiteConfig(ingestionPipeline, service);
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
+    assertOwnsRunnerName(ingestionPipeline);
     PipelineServiceClientResponse response =
         pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
     recordQueuedPipelineStatus(
@@ -1734,9 +2148,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
-  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
-  // runner (service / test-suite / application) and derive the flag from it.
-  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
+  // Default turns the flag on when the server stores logs in S3, and otherwise keeps the pipeline's
+  // own value; overrides resolve the pipeline's owning ingestion runner (service / test-suite /
+  // application) and derive the flag from it.
+  // ADR:2026-11-10-s3-log-storage-drives-streamable-logs
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {
+    if (isS3LogStorageEnabled()) {
+      ingestionPipeline.setEnableStreamableLogs(true);
+    }
+  }
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation

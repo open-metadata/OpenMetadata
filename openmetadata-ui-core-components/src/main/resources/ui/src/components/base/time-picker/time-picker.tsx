@@ -1,7 +1,9 @@
 import { Time } from '@internationalized/date';
 import { Clock } from '../../../icons';
 import type { Ref } from 'react';
+import { forwardRef, useEffect } from 'react';
 import type {
+  DateFieldRenderProps,
   TimeFieldProps as AriaTimeFieldProps,
   TimeValue,
 } from 'react-aria-components';
@@ -48,20 +50,58 @@ export interface TimePickerProps
   size?: 'sm' | 'md';
   /** Class name for the field wrapper. */
   wrapperClassName?: string;
+  /**
+   * Called when the typed segments stop or start forming a time. `onChange`
+   * reports `null` for both a cleared and a half-typed field; this tells them apart.
+   */
+  onIncompleteChange?: (isIncomplete: boolean) => void;
   ref?: Ref<HTMLDivElement>;
 }
 
-export const TimePicker = ({
-  value,
-  onChange,
-  label,
-  hint,
-  size = 'sm',
-  className,
-  wrapperClassName,
-  hourCycle = 12,
-  ...props
-}: TimePickerProps) => {
+// Some segments hold a value and others are empty: half-typed, partly cleared,
+// or an out-of-range paste (a pasted "093015" lands whole in the hour segment).
+// `state.value` cannot tell: a controlled field keeps the last committed time.
+const isIncompleteTime = (state: DateFieldRenderProps['state']) => {
+  const editable = state.segments.filter((segment) => segment.isEditable);
+
+  return (
+    editable.some((segment) => segment.isPlaceholder) &&
+    editable.some((segment) => !segment.isPlaceholder)
+  );
+};
+
+const IncompleteReporter = ({
+  isIncomplete,
+  onIncompleteChange,
+}: {
+  isIncomplete: boolean;
+  onIncompleteChange?: (isIncomplete: boolean) => void;
+}) => {
+  useEffect(() => {
+    onIncompleteChange?.(isIncomplete);
+  }, [isIncomplete, onIncompleteChange]);
+
+  return null;
+};
+
+export const TimePicker = forwardRef<
+  HTMLDivElement,
+  Omit<TimePickerProps, 'ref'>
+>(function TimePicker(
+  {
+    value,
+    onChange,
+    label,
+    hint,
+    size = 'sm',
+    className,
+    wrapperClassName,
+    hourCycle = 12,
+    onIncompleteChange,
+    ...props
+  },
+  ref
+) {
   const ariaValue = value
     ? new Time(value.hour, value.minute, value.second)
     : null;
@@ -89,11 +129,16 @@ export const TimePicker = ({
           typeof className === 'function' ? className(state) : className
         )
       }
+      ref={ref}
       value={ariaValue}
       onChange={handleChange}>
-      {({ isInvalid, isDisabled }) => (
+      {({ isInvalid, isDisabled, state }) => (
         <>
           {label && <Label>{label}</Label>}
+          <IncompleteReporter
+            isIncomplete={isIncompleteTime(state)}
+            onIncompleteChange={onIncompleteChange}
+          />
 
           <AriaGroup
             className={cx(
@@ -137,6 +182,6 @@ export const TimePicker = ({
       )}
     </AriaTimeField>
   );
-};
+});
 
 TimePicker.displayName = 'TimePicker';

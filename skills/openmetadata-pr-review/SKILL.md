@@ -127,12 +127,13 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 
 | PR touches | Read |
 |---|---|
+| anything | `REVIEW.md`: the review bar, with the recurring logic defects, test gaps and flaky-test shapes, plus what not to report |
 | `**/*.java` | `.claude/rules/java.md` |
 | UI `*.{ts,tsx}` | `.claude/rules/frontend-react.md`, `component-library.md`, `frontend-styling.md`, `frontend-a11y.md`, `frontend-performance.md`, `i18n.md` |
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |
 | `ingestion/src/**/*.py` | `.claude/rules/python-ingestion.md` (+ the `connector-standards` skill for connector PRs) |
 | `openmetadata-spec/**` or any `generated/**` | `.claude/rules/schema-first.md` |
-| `bootstrap/sql/**` | `.claude/rules/migrations.md` |
+| `bootstrap/sql/**` or `.../service/migration/**` | `.claude/rules/migrations.md` |
 
 The high-signal checks, distilled — use these to decide *which* rule to open, not as a replacement for it:
 
@@ -164,6 +165,10 @@ The high-signal checks, distilled — use these to decide *which* rule to open, 
 - No committed secrets, `.orig` merge artifacts, `package-lock.json` in a yarn repo, CRLF conversions, or vendored dependency trees.
 - **`.github/workflows/**` changes are a supply-chain surface.** Any workflow edit in a contributor PR gets read line by line — new `pull_request_target` triggers, third-party actions pinned by tag instead of SHA, and secrets exposed to fork-run jobs are blockers.
 - **License headers are per-module and only the UI is enforced.** `ingestion/` and `openmetadata-airflow-apis/` Python files carry the Collate Community License header, UI TS/TSX carries Apache-2.0, Java mostly carries none. A wrong Python or Java header ships silently — check it by eye against a sibling file in the same directory.
+
+**Decision records** (`docs/decisions/`, rules in its `README.md`) — two different findings
+- **Contradiction.** A change that undoes an Accepted record — read the records the touched code cites as `ADR:<date>-<slug>` — is NEEDS_WORK unless the PR adds the record that supersedes it.
+- **Omission.** A PR that makes a durable decision and records none goes in BLOCKERS: a contract another component or repo must agree with (schema field, REST path, payload or derived format), a new default or limit whose value was a judgment call, an ordering that must hold and is visible from no single file, or a rule its description states that exists nowhere in the tree — the squash-merge drops the description. Name the sentence the record would state; "needs an ADR" is not actionable. Not a trigger: a self-evident bug fix, a behavior-neutral refactor, a dependency bump, a test-only change, or compliance with an existing record.
 
 ### Step 4 — Assess the test (integration if possible, and meaningful)
 
@@ -198,7 +203,7 @@ You don't need to check out the branch — reason about whether each assertion w
 **Telling an integration test from a mocked one in this repo:**
 - Java integration test → lives in `openmetadata-integration-tests/`, class ends `*IT`, extends `BaseEntityIT`, uses `SdkClients`/`TestNamespace`, or extends `OpenMetadataApplicationTest`. A `*Test` in `openmetadata-service/` full of `Mockito.mock(...)` + `thenCallRealMethod()` is a unit test, often mock-wiring.
 - Python integration test → lives in `ingestion/tests/integration/`, uses `testcontainers` (a real DB/engine spun up), real `OpenMetadata` client calls. A test in `ingestion/tests/unit/` built from `MagicMock`/`patch` with the source object faked is a unit test — fine for pure parsing logic, insufficient for topology/lineage/connection behavior.
-- UI → a Jest test that mocks the component's whole data layer proves rendering, not behavior. User-facing changes want a Playwright spec under `openmetadata-ui/src/main/resources/ui/playwright/`; note that some libraries (RAQB, for one) are fully mocked in Jest, so their logic is *only* testable in Playwright.
+- UI → a Jest test that mocks the component's whole data layer proves rendering, not behavior. A page or feature with its real children wants a Vitest browser test (`*.browser.test.tsx`) — even RAQB (fully mocked in Jest) renders there; journeys across features against a real server want a Playwright spec under `openmetadata-ui/src/main/resources/ui/playwright/` — see `.claude/rules/frontend-browser-tests.md` for the split.
 
 Common failing patterns seen in the wild: `unittest.TestCase` + `MagicMock` source object with the real method rebound onto it; a `test_x` that builds hand-crafted mock rows and asserts the parser's own branching rather than feeding real SQL through `LineageParser`; a connector test asserting the connector's own (wrong) return types so it stays green while the real topology path is broken; `assertEqual(null, ...)` instead of `assertNull`.
 
@@ -213,7 +218,7 @@ gh pr checks <n> -R "$REPO" | awk -F'\t' '$2!="pass" && $2!="skipping"'   # curr
 gh api "repos/$REPO/actions/jobs/<job-id>/logs"                          # the one failing job
 ```
 
-**Use `gh pr checks`, not `--json statusCheckRollup`, to decide what is red.** Any label event (`safe to test`, a team label) fires a second `pull_request_target` batch, so the rollup lists the *same* check name twice — once FAILURE from the old run, once SUCCESS from the new one — and reading it naively inverts the answer. `gh pr checks` reports the current state per check. Related tell: skipped matrix jobs publish their check name with the expression unexpanded (`Integration Test Lane (${{ matrix.lane.name }})`), which is the "required context stuck on Expected" case, not a failure.
+**Use `gh pr checks`, not `--json statusCheckRollup`, to decide what is red.** A re-run or a second event on the same head SHA leaves the *same* check name twice in the rollup — once FAILURE from the old run, once SUCCESS from the new one — and reading it naively inverts the answer. `gh pr checks` reports the current state per check. Related tell: skipped matrix jobs publish their check name with the expression unexpanded (`Integration Test Lane (${{ matrix.lane.name }})`), which is the "required context stuck on Expected" case, not a failure.
 
 Cascade jobs (`py-tests-status`, `Verify Expected Jobs`, `*-summary`) only restate an upstream result — walk to the job that actually failed before quoting anything.
 
@@ -228,12 +233,12 @@ Repo-specific gates worth knowing:
 | Check | What it actually gates |
 |---|---|
 | `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run. Skipped entirely when the PR has the `skip-pr-checks` label (test fixes, which need no issue) |
-| `python / Unit Tests & Static Checks (<ver>)` | ruff **and** basedpyright. Existing violations are grandfathered in `ingestion/.basedpyright/baseline.json`; **any new violation in any file fails**, so a new connector must land type-clean, not baseline-clean |
-| `py-checkstyle` | ruff format only — passes even when static-checks is red |
+| `py-tests-status` | Required aggregate check for the selected Python workloads, including on fork PRs. Open the `python` job in `ci-pr` to identify the failing step. |
+| `py-checkstyle` | Separate static-check report for same-repository PRs. Covers Ruff lint and formatting, plus basedpyright when the `python` path filter matches. `ingestion/.basedpyright/baseline.json` grandfathers existing type errors. New type errors in checked files fail the run. |
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |
 | `Java checkstyle` | spotless |
 | `generate-types` | schema ↔ generated model drift |
-| `maven-collate-ci` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
+| `Collate CI` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
 | `harness-integrity` | warnings only — never a blocker |
 
 ## Duplicate detection

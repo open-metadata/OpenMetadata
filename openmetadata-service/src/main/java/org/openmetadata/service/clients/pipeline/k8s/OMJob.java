@@ -37,7 +37,6 @@ public class OMJob {
   private String kind;
   private OMJobMetadata metadata;
   private OMJobSpec spec;
-  private OMJobStatus status;
 
   @Data
   @Builder
@@ -71,25 +70,6 @@ public class OMJob {
     private V1PodSecurityContext securityContext;
     private Map<String, String> labels;
     private Map<String, String> annotations;
-  }
-
-  @Data
-  @Builder
-  public static class OMJobStatus {
-    private String phase; // Pending, Running, ExitHandlerRunning, Succeeded, Failed
-    private String mainPodName;
-    private String exitHandlerPodName;
-    private String startTime;
-    private String completionTime;
-    private String message;
-    private Integer mainPodExitCode;
-  }
-
-  /**
-   * Create a default OMJob instance
-   */
-  public static OMJob createDefault() {
-    return OMJob.builder().apiVersion("pipelines.openmetadata.org/v1").kind("OMJob").build();
   }
 
   /**

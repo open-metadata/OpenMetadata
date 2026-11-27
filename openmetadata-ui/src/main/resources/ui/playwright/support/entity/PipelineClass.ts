@@ -16,6 +16,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -208,6 +209,17 @@ export class PipelineClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    // The ingestion pipeline is a child of the service, not of the pipeline,
+    // so the recursive pipeline delete below never reaches it — and in the
+    // shared service it would outlive the test and collide with the next one.
+    if (this.ingestionPipelineResponseData.id) {
+      await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/services/ingestionPipelines/${this.ingestionPipelineResponseData.id}?hardDelete=true`
+      );
+      this.ingestionPipelineResponseData = {} as ResponseDataType;
+    }
+
     await this.deleteOwnedOrLeaf(
       apiContext,
       `/api/v1/pipelines/${this.entityResponseData?.id}`

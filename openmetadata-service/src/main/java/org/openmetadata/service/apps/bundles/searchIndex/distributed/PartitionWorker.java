@@ -38,6 +38,10 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -132,29 +136,27 @@ public class PartitionWorker {
 
   private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
     String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
-    long rangeStart = partition.getRangeStart();
-    long rangeEnd = partition.getRangeEnd();
 
     LOG.info(
         "Starting partition {} for entity type {} (range: {} - {})",
         partition.getId(),
         entityType,
-        rangeStart,
-        rangeEnd);
+        partition.getRangeStart(),
+        partition.getRangeEnd());
 
+    PartitionResult result;
     if (stopped.get() || Thread.currentThread().isInterrupted()) {
       LOG.info("Skipping partition {} because worker is already stopped", partition.getId());
-      return new PartitionResult(0, 0, true);
+      result = new PartitionResult(0, 0, true);
+    } else {
+      result = processStartedPartition(partition, entityType);
     }
+    return result;
+  }
 
-    AtomicLong successCount = new AtomicLong(0);
-    AtomicLong failedCount = new AtomicLong(0);
-    AtomicLong readerFailedCount = new AtomicLong(0);
-    AtomicLong warningsCount = new AtomicLong(0);
-    AtomicLong processedCount = new AtomicLong(0);
-    long currentOffset = rangeStart;
-
-    // Create stats tracker for this partition
+  private PartitionResult processStartedPartition(
+      SearchIndexPartition partition, String entityType) {
+    PartitionCounts counts = new PartitionCounts();
     StageStatsTracker statsTracker =
         new StageStatsTracker(
             partition.getJobId().toString(),
@@ -162,232 +164,258 @@ public class PartitionWorker {
             entityType,
             coordinator.getCollectionDAO().searchIndexServerStatsDAO());
 
+    PartitionResult result;
     try {
-      // Mark partition as started
       SearchIndexPartition processing =
           partition.toBuilder()
               .status(PartitionStatus.PROCESSING)
               .startedAt(System.currentTimeMillis())
               .build();
       coordinator.updatePartitionProgress(processing);
-
-      // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
-      long cursorInitStart = System.currentTimeMillis();
-      String keysetCursor = initializeKeysetCursor(partition, rangeStart);
-      LOG.debug(
-          "initializeKeysetCursor for {} offset={} took {}ms",
-          entityType,
-          rangeStart,
-          System.currentTimeMillis() - cursorInitStart);
-
-      // Process in batches
-      while (currentOffset < rangeEnd
-          && !stopped.get()
-          && !Thread.currentThread().isInterrupted()) {
-        // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
-        // and
-        // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
-        // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
-        // the
-        // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
-        HeapBackpressure.awaitHeadroom();
-        int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
-
-        try {
-          BatchResult batchResult =
-              processBatch(entityType, keysetCursor, currentBatchSize, statsTracker);
-          // Check for stop/interrupt after DB read completes
-          if (stopped.get() || Thread.currentThread().isInterrupted()) {
-            break;
-          }
-          successCount.addAndGet(batchResult.successCount());
-          failedCount.addAndGet(batchResult.failedCount());
-          warningsCount.addAndGet(batchResult.warningsCount());
-          processedCount.addAndGet(
-              batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
-
-          currentOffset += currentBatchSize;
-          keysetCursor = batchResult.nextCursor();
-
-          // Update progress periodically
-          if (processedCount.get() % PROGRESS_UPDATE_INTERVAL < batchSize) {
-            updateProgress(
-                partition,
-                currentOffset,
-                processedCount.get(),
-                successCount.get(),
-                failedCount.get());
-          }
-
-          // If keyset cursor exhausted, recompute or stop
-          if (keysetCursor == null && currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(partition, currentOffset);
-            if (keysetCursor == null) {
-              LOG.debug(
-                  "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
-                      + "missing {} records. processedCount={}",
-                  entityType,
-                  partition.getId(),
-                  currentOffset,
-                  rangeEnd,
-                  rangeEnd - currentOffset,
-                  processedCount.get());
-              break;
-            }
-          }
-
-        } catch (SearchIndexException e) {
-          LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
-
-          boolean isReaderFailure =
-              e.getIndexingError() != null
-                  && e.getIndexingError().getErrorSource()
-                      == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
-
-          int batchFailedCount =
-              e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
-                  ? e.getIndexingError().getFailedCount()
-                  : currentBatchSize;
-
-          if (isReaderFailure) {
-            if (statsTracker != null) {
-              statsTracker.recordReaderBatch(0, batchFailedCount, 0);
-            }
-            if (failureRecorder != null) {
-              failureRecorder.recordReaderFailure(
-                  entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
-            }
-            readerFailedCount.addAndGet(batchFailedCount);
-          } else {
-            if (statsTracker != null) {
-              statsTracker.recordSinkBatch(0, batchFailedCount);
-            }
-            if (failureRecorder != null) {
-              failureRecorder.recordSinkFailure(
-                  entityType,
-                  "BATCH",
-                  "batch_at_offset_" + currentOffset,
-                  e.getMessage(),
-                  ExceptionUtils.getStackTrace(e));
-            }
-          }
-
-          failedCount.addAndGet(batchFailedCount);
-          processedCount.addAndGet(batchFailedCount);
-          currentOffset += currentBatchSize;
-
-          // Recompute keyset cursor after failure
-          if (currentOffset < rangeEnd) {
-            keysetCursor = initializeKeysetCursor(partition, currentOffset);
-            if (keysetCursor == null) {
-              break;
-            }
-          }
-
-          updateProgress(
-              partition,
-              currentOffset,
-              processedCount.get(),
-              successCount.get(),
-              failedCount.get());
-        }
-      }
+      readPartition(partition, entityType, counts, statsTracker);
 
       if (stopped.get()) {
         LOG.info("Partition {} stopped by request", partition.getId());
         // Wait briefly for async sink operations to complete and update tracker
         waitForSinkOperations(statsTracker);
-        return new PartitionResult(
-            successCount.get(),
-            failedCount.get(),
-            true,
-            readerFailedCount.get(),
-            warningsCount.get());
+        result = counts.result(true);
+      } else {
+        finishPartition(partition, entityType, counts, statsTracker);
+        result = counts.result(false);
       }
-
-      // Wait for async sink operations to complete and flush stats to DB
-      // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
-      // the coordinator may aggregate stats before they're written to the database
-      long waitStart = System.currentTimeMillis();
-      waitForSinkOperations(statsTracker);
-      LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
-
-      // Adjust partition counts to include stage-level failures and warnings.
-      // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
-      // Process and sink results happen async and are tracked by StageStatsTracker.
-      long processFailed =
-          statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
-      long sinkFailed =
-          statsTracker != null ? statsTracker.getSink().getCumulativeFailed().get() : 0;
-      long stageFailed = processFailed + sinkFailed;
-      if (stageFailed > 0) {
-        long adjustment = Math.min(stageFailed, successCount.get());
-        if (adjustment > 0) {
-          successCount.addAndGet(-adjustment);
-          failedCount.addAndGet(adjustment);
-        }
-      }
-      long processWarnings =
-          statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
-      long sinkWarnings =
-          statsTracker != null ? statsTracker.getSink().getCumulativeWarnings().get() : 0;
-      long stageWarnings = processWarnings + sinkWarnings;
-      if (stageWarnings > 0) {
-        long adjustment = Math.min(stageWarnings, successCount.get());
-        if (adjustment > 0) {
-          successCount.addAndGet(-adjustment);
-          warningsCount.addAndGet(adjustment);
-        }
-      }
-
-      // Mark partition as completed (stats are now in the database)
-      coordinator.completePartition(
-          partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
-
-      long expectedRecords = rangeEnd - rangeStart;
-      long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
-      LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, sinkFailed: {}, processWarnings: {}, sinkWarnings: {}, warnings: {})",
-          partition.getId(),
-          entityType,
-          successCount.get(),
-          failedCount.get(),
-          readerFailedCount.get(),
-          processFailed,
-          sinkFailed,
-          processWarnings,
-          sinkWarnings,
-          warningsCount.get());
-      if (actualProcessed < expectedRecords) {
-        LOG.debug(
-            "{} partition {} processed fewer records than expected: "
-                + "actual={}, expected={}, gap={}, range=[{},{})",
-            entityType,
-            partition.getId(),
-            actualProcessed,
-            expectedRecords,
-            expectedRecords - actualProcessed,
-            rangeStart,
-            rangeEnd);
-      }
-
-      return new PartitionResult(
-          successCount.get(),
-          failedCount.get(),
-          false,
-          readerFailedCount.get(),
-          warningsCount.get());
-
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
-      coordinator.failPartition(partition.getId(), e.getMessage());
+      failPartition(partition, e);
       waitForSinkOperations(statsTracker);
+      result = counts.result(false);
+    }
+    return result;
+  }
+
+  private void readPartition(
+      SearchIndexPartition partition,
+      String entityType,
+      PartitionCounts counts,
+      StageStatsTracker statsTracker) {
+    long rangeStart = partition.getRangeStart();
+    long rangeEnd = partition.getRangeEnd();
+    long currentOffset = rangeStart;
+
+    // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
+    long cursorInitStart = System.currentTimeMillis();
+    String keysetCursor = initializeKeysetCursor(partition, rangeStart);
+    LOG.debug(
+        "initializeKeysetCursor for {} offset={} took {}ms",
+        entityType,
+        rangeStart,
+        System.currentTimeMillis() - cursorInitStart);
+
+    // Process in batches
+    while (currentOffset < rangeEnd && !stopped.get() && !Thread.currentThread().isInterrupted()) {
+      // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
+      // and
+      // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
+      // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
+      // the
+      // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
+      HeapBackpressure.awaitHeadroom();
+      int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
+
+      try {
+        BatchResult batchResult =
+            processBatch(entityType, keysetCursor, currentBatchSize, statsTracker);
+        // Check for stop/interrupt after DB read completes
+        if (stopped.get() || Thread.currentThread().isInterrupted()) {
+          break;
+        }
+        counts.success().addAndGet(batchResult.successCount());
+        counts.failed().addAndGet(batchResult.failedCount());
+        counts.warnings().addAndGet(batchResult.warningsCount());
+        counts
+            .processed()
+            .addAndGet(
+                batchResult.successCount()
+                    + batchResult.failedCount()
+                    + batchResult.warningsCount());
+
+        currentOffset += currentBatchSize;
+        keysetCursor = batchResult.nextCursor();
+
+        // Update progress periodically
+        if (counts.processed().get() % PROGRESS_UPDATE_INTERVAL < batchSize) {
+          updateProgress(
+              partition,
+              currentOffset,
+              counts.processed().get(),
+              counts.success().get(),
+              counts.failed().get());
+        }
+
+        // If keyset cursor exhausted, recompute or stop
+        if (keysetCursor == null && currentOffset < rangeEnd) {
+          keysetCursor = initializeKeysetCursor(partition, currentOffset);
+          if (keysetCursor == null) {
+            LOG.debug(
+                "{} partition {} data exhausted at offset {} (rangeEnd: {}), "
+                    + "missing {} records. counts.processed()={}",
+                entityType,
+                partition.getId(),
+                currentOffset,
+                rangeEnd,
+                rangeEnd - currentOffset,
+                counts.processed().get());
+            break;
+          }
+        }
+
+      } catch (SearchIndexException e) {
+        LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
+
+        boolean isReaderFailure =
+            e.getIndexingError() != null
+                && e.getIndexingError().getErrorSource()
+                    == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+
+        int batchFailedCount =
+            e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
+                ? e.getIndexingError().getFailedCount()
+                : currentBatchSize;
+
+        if (isReaderFailure) {
+          if (statsTracker != null) {
+            statsTracker.recordReaderBatch(0, batchFailedCount, 0);
+          }
+          if (failureRecorder != null) {
+            failureRecorder.recordReaderFailure(
+                entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
+          }
+          counts.readerFailed().addAndGet(batchFailedCount);
+        } else {
+          if (statsTracker != null) {
+            statsTracker.recordSinkBatch(0, batchFailedCount);
+          }
+          if (failureRecorder != null) {
+            failureRecorder.recordSinkFailure(
+                entityType,
+                "BATCH",
+                "batch_at_offset_" + currentOffset,
+                e.getMessage(),
+                ExceptionUtils.getStackTrace(e));
+          }
+        }
+
+        counts.failed().addAndGet(batchFailedCount);
+        counts.processed().addAndGet(batchFailedCount);
+        currentOffset += currentBatchSize;
+
+        // Recompute keyset cursor after failure
+        if (currentOffset < rangeEnd) {
+          keysetCursor = initializeKeysetCursor(partition, currentOffset);
+          if (keysetCursor == null) {
+            break;
+          }
+        }
+
+        updateProgress(
+            partition,
+            currentOffset,
+            counts.processed().get(),
+            counts.success().get(),
+            counts.failed().get());
+      }
+    }
+  }
+
+  private void finishPartition(
+      SearchIndexPartition partition,
+      String entityType,
+      PartitionCounts counts,
+      StageStatsTracker statsTracker) {
+    long rangeStart = partition.getRangeStart();
+    long rangeEnd = partition.getRangeEnd();
+    // Wait for async sink operations to complete and flush stats to DB
+    // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
+    // the coordinator may aggregate stats before they're written to the database
+    long waitStart = System.currentTimeMillis();
+    waitForSinkOperations(statsTracker);
+    LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
+    searchIndexSink.retryMissedChunks(statsTracker);
+
+    // Adjust partition counts to include stage-level failures and warnings.
+    // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
+    // Process and sink results happen async and are tracked by StageStatsTracker.
+    long processFailed =
+        statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
+    long sinkFailed = statsTracker != null ? statsTracker.getSink().getCumulativeFailed().get() : 0;
+    long stageFailed = processFailed + sinkFailed;
+    if (stageFailed > 0) {
+      long adjustment = Math.min(stageFailed, counts.success().get());
+      if (adjustment > 0) {
+        counts.success().addAndGet(-adjustment);
+        counts.failed().addAndGet(adjustment);
+      }
+    }
+    long processWarnings =
+        statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
+    long sinkWarnings =
+        statsTracker != null ? statsTracker.getSink().getCumulativeWarnings().get() : 0;
+    long stageWarnings = processWarnings + sinkWarnings;
+    if (stageWarnings > 0) {
+      long adjustment = Math.min(stageWarnings, counts.success().get());
+      if (adjustment > 0) {
+        counts.success().addAndGet(-adjustment);
+        counts.warnings().addAndGet(adjustment);
+      }
+    }
+
+    requireStagedChunkFailuresRecorded(entityType);
+    // Mark partition as completed (stats are now in the database)
+    coordinator.completePartition(
+        partition.getId(), counts.success().get(), counts.failed().get(), counts.warnings().get());
+
+    long expectedRecords = rangeEnd - rangeStart;
+    long actualProcessed = counts.success().get() + counts.failed().get() + counts.warnings().get();
+    LOG.info(
+        "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, sinkFailed: {}, processWarnings: {}, sinkWarnings: {}, warnings: {})",
+        partition.getId(),
+        entityType,
+        counts.success().get(),
+        counts.failed().get(),
+        counts.readerFailed().get(),
+        processFailed,
+        sinkFailed,
+        processWarnings,
+        sinkWarnings,
+        counts.warnings().get());
+    if (actualProcessed < expectedRecords) {
+      LOG.debug(
+          "{} partition {} processed fewer records than expected: "
+              + "actual={}, expected={}, gap={}, range=[{},{})",
+          entityType,
+          partition.getId(),
+          actualProcessed,
+          expectedRecords,
+          expectedRecords - actualProcessed,
+          rangeStart,
+          rangeEnd);
+    }
+  }
+
+  /** Running counts of one partition, read into its {@link PartitionResult}. */
+  private record PartitionCounts(
+      AtomicLong success,
+      AtomicLong failed,
+      AtomicLong readerFailed,
+      AtomicLong warnings,
+      AtomicLong processed) {
+    PartitionCounts() {
+      this(
+          new AtomicLong(), new AtomicLong(), new AtomicLong(), new AtomicLong(), new AtomicLong());
+    }
+
+    PartitionResult result(boolean wasStopped) {
       return new PartitionResult(
-          successCount.get(),
-          failedCount.get(),
-          false,
-          readerFailedCount.get(),
-          warningsCount.get());
+          success.get(), failed.get(), wasStopped, readerFailed.get(), warnings.get());
     }
   }
 
@@ -572,8 +600,8 @@ public class PartitionWorker {
     for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
       Object rawEntity = entityError.getEntity();
       String entityId = null;
-      if (rawEntity instanceof EntityInterface) {
-        UUID id = ((EntityInterface) rawEntity).getId();
+      if (rawEntity instanceof EntityInterface<?>) {
+        UUID id = ((EntityInterface<?>) rawEntity).getId();
         if (id != null) {
           entityId = id.toString();
         }
@@ -610,7 +638,7 @@ public class PartitionWorker {
       Object rawEntity = warning.getEntity();
       String entityId = null;
       String entityFqn = null;
-      if (rawEntity instanceof EntityInterface entity) {
+      if (rawEntity instanceof EntityInterface<?> entity) {
         UUID id = entity.getId();
         entityId = id != null ? id.toString() : null;
         entityFqn = entity.getFullyQualifiedName();
@@ -717,7 +745,7 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-      List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      List<EntityInterface<?>> entities = (List<EntityInterface<?>>) resultList.getData();
       ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
@@ -799,6 +827,29 @@ public class PartitionWorker {
 
   public record BatchResult(
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
+
+  // A retry on any node cannot repair a missed staged chunk delete, and the partition's FAILED row
+  // is what keeps the chunk generation from going live, so that failure is final at once.
+  private void failPartition(SearchIndexPartition partition, Exception failure) {
+    if (failure instanceof UnrecordedStagedChunkDeleteException) {
+      coordinator.failPartitionWithoutRetry(partition.getId(), failure.getMessage());
+    } else {
+      coordinator.failPartition(partition.getId(), failure.getMessage());
+    }
+  }
+
+  /**
+   * A delete this node missed from the run's staged chunk generation, with no flag saved to block
+   * its promotion, fails the partition for good instead; the coordinator then keeps the old chunks.
+   */
+  private static void requireStagedChunkFailuresRecorded(String entityType) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    VectorIndexService vectorService =
+        searchRepository == null ? null : searchRepository.getVectorIndexService();
+    if (vectorService != null && EmbeddedEntityTypes.isEmbedded(entityType)) {
+      vectorService.requireStagedChunkFailuresRecorded();
+    }
+  }
 
   public record PartitionResult(
       long successCount,

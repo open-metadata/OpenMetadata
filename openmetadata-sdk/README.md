@@ -211,6 +211,32 @@ String lineage = Lineage.builder()
 
 ## Bulk Operations
 
+For test cases and glossary terms, the fluent API returns a typed `BulkCreateResult`:
+
+```java
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
+import org.openmetadata.sdk.fluent.GlossaryTerms;
+import org.openmetadata.sdk.fluent.TestCases;
+
+BulkCreateResult tests = TestCases.createMany(testCaseRequests).execute();
+BulkCreateResult terms = GlossaryTerms.createMany(glossaryTermRequests)
+    .onConflict(BulkCreateConflictPolicy.FAIL)
+    .execute();
+
+terms.getResults().forEach(item ->
+    System.out.printf("%d: %s (%s) %s%n",
+        item.getIndex(), item.getStatus(), item.getReason(), item.getMessage()));
+```
+
+Both builders default to `SKIP` and explicitly request detailed outcomes. `FAIL`
+marks conflicting inputs as failed while other valid inputs continue. The result
+has created, skipped, and failed counts, plus one ordered outcome per input with
+reasons/messages for skips and failures and IDs for created entities. Request-level
+errors still throw `OpenMetadataException`. These methods require a server that
+supports `onConflict`; the existing `client.testCases().createMany(requests)`
+service overload still returns the legacy created-entity list.
+
 ```java
 // Bulk create entities
 List<Object> entities = Arrays.asList(entity1, entity2, entity3);

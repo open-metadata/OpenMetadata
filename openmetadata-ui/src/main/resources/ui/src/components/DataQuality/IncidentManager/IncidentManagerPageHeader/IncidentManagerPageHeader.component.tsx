@@ -17,11 +17,11 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Link03 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -43,9 +43,11 @@ const HeaderField = ({
   children: React.ReactNode;
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-1.5">
+    {/* min-h-6 matches the label row of fields that carry an edit button
+        (status, severity), so every value starts on the same line. */}
     <Typography
       as="span"
-      className="tw:whitespace-nowrap tw:text-secondary"
+      className="tw:flex tw:min-h-6 tw:items-center tw:whitespace-nowrap tw:text-secondary"
       size="text-sm"
       weight="medium">
       {label}
@@ -129,7 +131,7 @@ const IncidentManagerPageHeader = ({
                 data-testid="incident-task-link"
                 to={taskLinkInfo.path}>
                 {taskLinkInfo.label}
-                <InternalLinkIcon className="text-grey-muted" width="14px" />
+                <Link03 className="text-grey-muted" size={14} />
               </Link>
             </HeaderField>
           </>
@@ -145,6 +147,7 @@ const IncidentManagerPageHeader = ({
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
           <Owner
+            showDashPlaceholder
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
             owners={details?.assignee ? [details.assignee] : []}
@@ -245,7 +248,7 @@ const IncidentManagerPageHeader = ({
                 ProfilerTabPath.DATA_QUALITY
               )}>
               {getNameFromFQN(tableFqn)}
-              <InternalLinkIcon className="text-grey-muted" width="14px" />
+              <Link03 className="text-grey-muted" size={14} />
             </Link>
           </HeaderField>
         </>

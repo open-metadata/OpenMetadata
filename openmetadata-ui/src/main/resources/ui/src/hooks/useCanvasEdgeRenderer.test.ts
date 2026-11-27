@@ -709,4 +709,69 @@ describe('useCanvasEdgeRenderer', () => {
     expect(result.current.visibleEdgesRef.current).toEqual([]);
     expect(result.current.getEdgeAtPoint(50, 50, rect)).toBeNull();
   });
+
+  it('skips only the edges of a node that is being dragged', () => {
+    const { isEdgeInViewport } = require('../utils/CanvasUtils');
+    isEdgeInViewport.mockReturnValue(true);
+    const draggedEdge = createMockEdge();
+    const siblingEdge = createMockEdge({
+      id: 'edge-2',
+      source: 'node-3',
+      target: 'node-4',
+    });
+    mockGetNode.mockImplementation((id: string) =>
+      id === 'node-1'
+        ? { ...createMockNode(id), dragging: true }
+        : createMockNode(id)
+    );
+
+    const { result } = renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [draggedEdge, siblingEdge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+        theme: 'light',
+      })
+    );
+
+    expect(result.current.visibleEdgesRef.current).toEqual([siblingEdge]);
+    expect(mockCtx.stroke).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a scheduled draw when dependencies change before its frame', () => {
+    const frames: FrameRequestCallback[] = [];
+    global.requestAnimationFrame = jest.fn((cb) => frames.push(cb));
+    const edge = createMockEdge();
+    mockGetNode.mockImplementation((id: string) => createMockNode(id));
+    const props: Parameters<typeof useCanvasEdgeRenderer>[0] = {
+      canvasRef,
+      edges: [edge],
+      dqHighlightedEdges: new Set<string>(),
+      colors: createMockColors(),
+      containerWidth: 800,
+      containerHeight: 600,
+      theme: 'light',
+    };
+    const { rerender } = renderHook(useCanvasEdgeRenderer, {
+      initialProps: props,
+    });
+
+    // React Flow's auto-pan moves the viewport before the queued frame runs.
+    for (const x of [10, 20, 30]) {
+      mockUseViewport.mockReturnValue({ x, y: 0, zoom: 1 });
+      rerender(props);
+    }
+
+    expect(global.cancelAnimationFrame).not.toHaveBeenCalled();
+    expect(frames).toHaveLength(1);
+
+    frames[0](0);
+
+    expect(mockCtx.translate).toHaveBeenLastCalledWith(30, 0);
+
+    mockUseViewport.mockReturnValue({ x: 0, y: 0, zoom: 1 });
+  });
 });

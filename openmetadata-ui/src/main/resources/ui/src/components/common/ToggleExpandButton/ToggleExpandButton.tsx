@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import {
+  ChevronCollapseVertical,
+  ChevronSelectorVertical,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
 function ToggleExpandButton({
@@ -33,28 +34,18 @@ function ToggleExpandButton({
 
   return (
     <Button
-      className="text-primary rounded-4"
+      color="tertiary"
       data-testid="toggle-expand-button"
-      size="small"
-      type="text"
-      onClick={toggleExpandAll}>
-      <Space align="center" size={4}>
-        {showCollapseAllText ? (
-          <DownUpArrowIcon
-            color={DE_ACTIVE_COLOR}
-            data-testid="collapse-icon"
-            height="14px"
-          />
+      iconLeading={
+        showCollapseAllText ? (
+          <ChevronCollapseVertical data-icon data-testid="collapse-icon" />
         ) : (
-          <UpDownArrowIcon
-            color={DE_ACTIVE_COLOR}
-            data-testid="expand-icon"
-            height="14px"
-          />
-        )}
-
-        {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
-      </Space>
+          <ChevronSelectorVertical data-icon data-testid="expand-icon" />
+        )
+      }
+      size="xs"
+      onClick={toggleExpandAll}>
+      {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
     </Button>
   );
 }

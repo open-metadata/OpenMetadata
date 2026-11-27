@@ -85,9 +85,7 @@ vendor-agnostic.
 **Decorator** — wrap an object to add behavior while keeping the same interface. *Narrow here — one
 genuine case.*
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/socket/HeaderRequestWrapper.java`
-  (a servlet-request wrapper). Note: the `formatter/decorators/` package is *named* "decorator" but is
-  structurally **Strategy** (one impl per channel, nothing wraps another) — do not treat it as a
-  Decorator.
+  (a servlet-request wrapper).
 
 ### Behavioral
 
@@ -109,14 +107,14 @@ abstract hooks the subclass fills. **The backbone of the backend.**
 - *Use it when* something should happen on entity change or per request: add a handler/subscription,
   don't wire the caller directly to the reaction.
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/events/EventHandler.java`,
-  the change-event publisher family (`openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/changeEvent/AlertPublisher.java`),
+  the change-event publisher family (`openmetadata-service/src/main/java/org/openmetadata/service/alerting/AlertPublisher.java`),
   `openmetadata-service/src/main/java/org/openmetadata/service/socket/WebSocketManager.java`.
 
 **Chain of Responsibility** — an ordered series of handlers, each doing its part and passing control on.
 - *Use it when* adding a request filter or a migration phase: insert into the existing ordered chain.
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/security/DelegatingContainerRequestFilter.java`
   (JAX-RS filter chain), `openmetadata-service/src/main/java/org/openmetadata/service/migration/api/MigrationWorkflow.java`
-  (Flyway → native → extension).
+  (one version-sorted pass across Flyway, native and extension, native before extension on ties).
 
 **Command** — encapsulate an action as an object that can be scheduled/queued/run later.
 - *Use it when* adding a background job or a migration step: implement the job/step interface.
@@ -223,8 +221,8 @@ plugin/override point — 40 such modules.
 
 ## Cautions
 
-- **Naming ≠ structure.** `formatter/decorators/` is Strategy, not Decorator. Verify a candidate's
-  structure, not its class name, before matching it to a pattern.
+- **Naming ≠ structure.** A package or class name may echo a pattern name without matching its
+  structure. Verify a candidate's structure, not its class name, before matching it to a pattern.
 - **Don't force GoF onto React.** Hooks, context, and composition cover most of what Strategy/Observer
   would in an OO codebase; a `*ClassBase` singleton or a factory function is usually the only GoF shape
   worth naming on the UI.

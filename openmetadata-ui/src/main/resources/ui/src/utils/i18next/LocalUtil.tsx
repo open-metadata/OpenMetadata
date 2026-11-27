@@ -15,7 +15,7 @@ import i18next, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
 import { initReactI18next, Trans } from 'react-i18next';
-import { getInitOptions } from './i18nextUtil';
+import { applyDocumentLanguage, getInitOptions } from './i18nextUtil';
 import localUtilClassBase from './LocalUtilClassBase';
 
 i18next
@@ -23,6 +23,7 @@ i18next
   .use(initReactI18next)
   .init(getInitOptions())
   .then(async () => {
+    applyDocumentLanguage(i18next.language);
     if (i18next.language !== i18next.resolvedLanguage) {
       await i18next.changeLanguage(i18next.language);
     }
@@ -37,6 +38,7 @@ i18next
 // import surface prevents that.
 
 i18next.on('languageChanged', async (lng) => {
+  applyDocumentLanguage(lng);
   await localUtilClassBase.loadLocales(lng);
 });
 

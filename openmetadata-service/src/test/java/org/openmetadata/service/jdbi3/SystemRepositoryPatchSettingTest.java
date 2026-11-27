@@ -15,12 +15,14 @@ import jakarta.json.Json;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.client.OidcClientConfig;
@@ -45,6 +47,13 @@ class SystemRepositoryPatchSettingTest {
   private static final String SMTP_PASSWORD = "smtp-secret";
   private static final String ORIGINAL_SENDER = "before@example.com";
   private static final String UPDATED_SENDER = "after@example.com";
+  private static final String RULES_SETTING_NAME = SettingsType.ENTITY_RULES_SETTINGS.value();
+  private static final String RULES_JSON =
+      """
+      {"entitySemantics": [
+        {"name": "First", "description": "d", "rule": "{}", "enabled": false},
+        {"name": "Second", "description": "d", "rule": "{}", "enabled": false}
+      ]}""";
 
   private MockedStatic<Entity> entityMock;
   private MockedStatic<MigrationValidationClient> migrationMock;
@@ -74,6 +83,17 @@ class SystemRepositoryPatchSettingTest {
     settingsCacheMock.close();
     migrationMock.close();
     entityMock.close();
+  }
+
+  @Test
+  void invalidGlossaryPreferenceIsRejectedAsBadRequest() {
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+            .withConfigValue(Map.of("enableTagPropagation", "invalid"));
+
+    assertThrows(BadRequestException.class, () -> systemRepository.updateSetting(settings));
+    verify(systemDAO, never()).insertSettings(anyString(), anyString());
   }
 
   @Test
@@ -134,6 +154,45 @@ class SystemRepositoryPatchSettingTest {
     assertEquals(
         Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
     settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
+  void patchSettingItemWritesTheNamedItemAgainstTheRowItRead() {
+    when(systemDAO.getConfigJsonWithKey(RULES_SETTING_NAME)).thenReturn(RULES_JSON);
+    when(systemDAO.updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), anyString()))
+        .thenReturn(1);
+
+    systemRepository.patchSettingItem(
+        SettingsType.ENTITY_RULES_SETTINGS, "/entitySemantics", "Second", enableRulePatch());
+
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO)
+        .updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), updatedJson.capture());
+    EntityRulesSettings updated =
+        JsonUtils.readValue(updatedJson.getValue(), EntityRulesSettings.class);
+    assertEquals(false, updated.getEntitySemantics().getFirst().getEnabled());
+    assertEquals(true, updated.getEntitySemantics().getLast().getEnabled());
+  }
+
+  @Test
+  void patchSettingItemRejectsAConcurrentChangeWith412() {
+    when(systemDAO.getConfigJsonWithKey(RULES_SETTING_NAME)).thenReturn(RULES_JSON);
+    when(systemDAO.updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), anyString()))
+        .thenReturn(0);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () ->
+            systemRepository.patchSettingItem(
+                SettingsType.ENTITY_RULES_SETTINGS,
+                "/entitySemantics",
+                "Second",
+                enableRulePatch()));
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  private static JsonPatch enableRulePatch() {
+    return Json.createPatchBuilder().replace("/enabled", true).build();
   }
 
   @Test
@@ -243,7 +302,7 @@ class SystemRepositoryPatchSettingTest {
             PreconditionFailedException.class,
             () -> systemRepository.patchSetting(settingName, Json.createPatchBuilder().build()));
 
-    assertTrue(failure.getMessage().contains("Setting changed"));
+    assertTrue(failure.getMessage().contains("changed since it was read"));
     assertEquals(
         Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
     settingsCacheMock.verifyNoInteractions();

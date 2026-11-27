@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,45 +11,32 @@
  *  limitations under the License.
  */
 import * as React from 'react';
-import type { FC, SVGProps } from 'react';
-
+import type { SVGProps, FC } from 'react';
 interface Props extends SVGProps<SVGSVGElement> {
   color?: string;
   size?: number;
 }
 
 export const Edit01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
+    strokeLinecap="round"
+    strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M11.7619 3.4107C12.3579 2.76481 12.6559 2.44186 12.9725 2.25349C13.7366 1.79895 14.6774 1.78482 15.4543 2.2162C15.7762 2.39498 16.0833 2.70884 16.6976 3.33655C17.3119 3.96426 17.6191 4.27812 17.794 4.60709C18.2163 5.40084 18.2024 6.36218 17.7576 7.1429C17.5732 7.46647 17.2571 7.77097 16.6251 8.37994L9.1041 15.6258C7.90624 16.7799 7.30729 17.3569 6.55874 17.6493C5.81019 17.9418 4.98727 17.9203 3.34143 17.8772L3.11751 17.8714C2.61646 17.8583 2.36594 17.8517 2.22031 17.6863C2.07468 17.5211 2.09456 17.2658 2.13433 16.7553L2.15592 16.4781C2.26783 15.0411 2.32379 14.3227 2.60431 13.6769C2.88482 13.0311 3.36869 12.5067 4.33642 11.4579L11.7619 3.4107Z"
-      stroke={color}
-      strokeLinejoin="round"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M11.3125 3.99219L16.2106 8.90542"
-      stroke={color}
-      strokeLinejoin="round"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M11.707 17.9023H18.1053"
-      stroke={color}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      d="M11.45 4.32c.52-.565.781-.848 1.058-1.013a2.17 2.17 0 0 1 2.172-.032c.282.156.55.43 1.088.98.537.55.806.824.96 1.112a2.3 2.3 0 0 1-.033 2.218c-.161.284-.438.55-.99 1.083l-6.581 6.34c-1.048 1.01-1.573 1.515-2.227 1.77-.655.257-1.375.238-2.816.2l-.195-.005c-.439-.012-.658-.017-.786-.162-.127-.145-.11-.368-.075-.815l.02-.242c.097-1.258.146-1.886.391-2.451s.67-1.024 1.516-1.942zm-.395.512 4.285 4.3M11.402 17h5.599"
+      stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-
 Edit01.displayName = 'Edit01';

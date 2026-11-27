@@ -14,6 +14,7 @@
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
@@ -68,6 +69,20 @@ class OntologyMetricsTest {
     assertEquals(1, registry.get("ontology.lock.contention").counter().count());
     assertResultCount("ontology.pack.import", "completed", 1);
     assertResultCount("ontology.ai.request", "disabled", 1);
+  }
+
+  @Test
+  void timesCompactionsByResultAndKeepsTheLastSuccess() {
+    OntologyMetrics.recordCompaction(false, Duration.ofSeconds(3));
+    assertEquals(0, registry.get("ontology.rdf.compaction.last.success").gauge().value());
+
+    OntologyMetrics.recordCompaction(true, Duration.ofSeconds(20));
+
+    assertEquals(
+        1, registry.get("ontology.rdf.compaction").tag("result", "completed").timer().count());
+    assertEquals(
+        1, registry.get("ontology.rdf.compaction").tag("result", "failed").timer().count());
+    assertTrue(registry.get("ontology.rdf.compaction.last.success").gauge().value() > 0);
   }
 
   private void assertResultCount(

@@ -45,7 +45,7 @@ final class ColumnLineageScope {
    * all - a container's columns live under {@code dataModel}, which a plain read leaves out - cannot
    * disprove the column, so only the FQN-prefix check applies there.
    */
-  static String requireColumnExists(EntityInterface entity, String columnFqn) {
+  static String requireColumnExists(EntityInterface<?> entity, String columnFqn) {
     List<String> fqns = JsonUtils.valueToTree(entity).findValuesAsText(FQN_FIELD);
     boolean readCarriesChildren =
         fqns.stream()

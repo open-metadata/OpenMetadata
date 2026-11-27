@@ -103,17 +103,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest.fn().mockImplementation(({ type, permissionValue, children }) => (
-      <div data-testid="error-placeholder" data-type={type}>
-        {permissionValue}
-        {children}
-      </div>
-    ))
-);
-
 jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
   __esModule: true,
   default: jest
@@ -187,16 +176,22 @@ describe('MetricDetailsPage', () => {
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
   });
 
-  it('shows the permission placeholder when the user lacks view access', async () => {
-    setMockPermissions({ ViewAll: false, ViewBasic: false });
+  it.each([
+    { ViewAll: false, ViewBasic: false },
+    { ViewAll: true, ViewBasic: false },
+  ])(
+    'shows the permission placeholder when the user lacks view access (%o)',
+    async (permissions) => {
+      setMockPermissions(permissions);
 
-    renderPage();
+      renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
-
-    expect(placeholder).toHaveAttribute('data-type', 'PERMISSION');
-    expect(mockGetMetricByFqn).not.toHaveBeenCalled();
-  });
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(mockGetMetricByFqn).not.toHaveBeenCalled();
+    }
+  );
 
   it('fetches and renders the metric once view permission resolves', async () => {
     setMockPermissions({ ViewBasic: true, EditAll: true });
@@ -250,7 +245,9 @@ describe('MetricDetailsPage', () => {
 
     renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
+    const placeholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(placeholder).not.toHaveAttribute('data-type', 'PERMISSION');
     expect(screen.queryByTestId('metric-details')).not.toBeInTheDocument();

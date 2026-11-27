@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
@@ -19,8 +28,13 @@ import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
 const [mockGlossaryTerm1, mockGlossaryTerm2] = MOCKED_GLOSSARY_TERMS;
 
-const mockContext = {
-  data: mockGlossaryTerm1,
+const mockContext: {
+  data: GlossaryTerm;
+  onUpdate: jest.Mock;
+  isVersionView: boolean;
+  permissions: OperationPermission;
+} = {
+  data: mockGlossaryTerm1 as GlossaryTerm,
   onUpdate: jest.fn(),
   isVersionView: false,
   permissions: MOCK_PERMISSIONS,
@@ -82,5 +96,138 @@ describe('GlossaryTermSynonyms', () => {
 
     expect(synonymsContainer).toBeInTheDocument();
     expect(editBtn).toBeNull();
+  });
+
+  describe('editing', () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const startEditing = async () => {
+      mockContext.data = mockGlossaryTerm2;
+      mockContext.permissions = MOCK_PERMISSIONS;
+      mockContext.onUpdate.mockClear();
+      render(<GlossaryTermSynonyms />);
+      await user.click(screen.getByTestId('edit-button'));
+
+      return within(screen.getByTestId('synonyms-select')).getByRole(
+        'combobox'
+      );
+    };
+
+    it('adds synonyms on Enter and saves them', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'test{Enter}revenue{Enter}');
+
+      expect(screen.getByText('message.unsaved-changes')).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          synonyms: ['accessory', 'test', 'revenue'],
+        })
+      );
+    });
+
+    it('saves text typed without pressing Enter', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'turnover');
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ synonyms: ['accessory', 'turnover'] })
+      );
+    });
+
+    it('ignores Enter while an IME composition is active', async () => {
+      const input = await startEditing();
+
+      fireEvent.change(input, { target: { value: 'とうきょ' } });
+      fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+      expect(input).toHaveValue('とうきょ');
+      expect(screen.getAllByTestId(/^remove-synonym-/)).toHaveLength(1);
+    });
+
+    it('shows the full synonym in a tooltip on the editor chip', async () => {
+      await startEditing();
+      fireEvent.mouseMove(document);
+
+      await user.hover(screen.getByText('accessory'));
+      jest.advanceTimersByTime(500);
+
+      await waitFor(() =>
+        expect(screen.getByRole('tooltip')).toHaveTextContent('accessory')
+      );
+    });
+
+    it('flags a case-insensitive duplicate while typing', async () => {
+      const input = await startEditing();
+
+      await user.type(input, ' Accessory ');
+
+      expect(
+        screen.getByText('message.entity-already-exists')
+      ).toBeInTheDocument();
+    });
+
+    it('does not add a case-insensitive duplicate on Enter', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'Accessory{Enter}');
+
+      expect(screen.getAllByTestId(/^remove-synonym-/)).toHaveLength(1);
+      expect(
+        screen.getByText('message.entity-already-exists')
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('removes the last synonym with Backspace (focus, then remove)', async () => {
+      const input = await startEditing();
+
+      await user.type(input, '{Backspace}{Backspace}');
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ synonyms: [] })
+      );
+    });
+
+    it('restores saved synonyms on cancel', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'test{Enter}');
+      await user.click(screen.getByTestId('cancel-synonym-btn'));
+
+      expect(mockContext.onUpdate).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('test')).not.toBeInTheDocument();
+      expect(screen.getByTestId('accessory')).toBeInTheDocument();
+    });
+  });
+
+  it('collapses synonyms beyond six behind a show more toggle', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const synonyms = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
+    mockContext.data = { ...mockGlossaryTerm2, synonyms };
+    mockContext.permissions = MOCK_PERMISSIONS;
+    render(<GlossaryTermSynonyms />);
+
+    expect(screen.queryByTestId('s7')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('synonyms-show-more-btn'));
+
+    expect(screen.getByTestId('s8')).toBeInTheDocument();
+    expect(screen.getByTestId('synonyms-show-more-btn')).toHaveTextContent(
+      'label.show-less'
+    );
+
+    await user.click(screen.getByTestId('synonyms-show-more-btn'));
+
+    expect(screen.queryByTestId('s7')).not.toBeInTheDocument();
   });
 });

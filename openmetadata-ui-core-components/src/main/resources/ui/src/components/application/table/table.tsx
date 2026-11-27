@@ -6,7 +6,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
-import { createContext, isValidElement, useContext } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
@@ -34,12 +34,14 @@ import {
   TableHeader as AriaTableHeader,
   useTableOptions,
 } from 'react-aria-components';
+import { ScrollShadow } from '@/components/application/scroll-shadow/scroll-shadow';
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export const TableRowActionsDropdown = () => {
   const { t } = useCoreTranslation();
@@ -68,7 +70,7 @@ export const TableRowActionsDropdown = () => {
 /**
  * `compact` matches the density of the AntD tables this component replaces —
  * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
- * them below the fold. See docs/antd-migration/table.md.
+ * them below the fold.
  */
 type TableSize = 'compact' | 'sm' | 'md';
 
@@ -145,18 +147,56 @@ const TableContext = createContext<{
   stickyHeader: boolean;
 } | null>(null);
 
+export type TableCardVariant = 'default' | 'muted';
+
+/**
+ * Row surface of a muted table, shared by every muted table container so a fix
+ * lands once (ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step). Only
+ * the outermost table is repainted; tables nested in an expanded row keep theirs.
+ * The default `bg-secondary` hover is the muted row's own step, hence the
+ * translucent one, painted on the cells only so it never stacks with a row
+ * tint. Clamped markdown fades into `--markdown-clamp-fade-color`,
+ * which the unlayered tbody LESS default pins to bg-surface (hence the `!`).
+ */
+export const MUTED_TABLE_SURFACE_CLASSES = [
+  'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+  'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
+  'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
+  'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
+].join(' ');
+
+// An 8%-white muted edge lands on the modal's own colour, so the frame (header
+// top included) takes the header divider's solid border-primary in dark.
+const TABLE_CARD_VARIANTS: Record<TableCardVariant, string> = sortCx({
+  default: 'tw:bg-surface tw:after:outline-subtle',
+  muted: cx(
+    'tw:bg-primary_alt tw:after:outline-secondary tw:dark:after:outline-primary',
+    MUTED_TABLE_SURFACE_CLASSES
+  ),
+});
+
 const TableCardRoot = ({
   children,
   className,
   size = 'md',
+  variant = 'default',
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: TableSize }) => {
+}: HTMLAttributes<HTMLDivElement> & {
+  size?: TableSize;
+  variant?: TableCardVariant;
+}) => {
   return (
     <TableContext.Provider value={{ size, stickyHeader: false }}>
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
+          // The edge is an overlay above the content: an inset outline on the
+          // card itself is painted over by a `stickyHeader` thead (sticky,
+          // z-10, opaque), so the frame vanished along the header. `isolate`
+          // keeps the overlay's z-index inside the card.
+          'tw:relative tw:isolate tw:overflow-hidden tw:rounded-xl tw:shadow-card tw:after:z-20',
+          TABLE_CARD_VARIANTS[variant],
+          borderAfter,
           className
         )}>
         {children}
@@ -229,6 +269,17 @@ interface TableRootProps
   stickyHeader?: boolean;
   containerStyle?: React.CSSProperties;
   containerClassName?: string;
+  /**
+   * `muted` frames the table's own container on the muted step, for a table
+   * that cannot sit in a `TableCard` (whose overflow-hidden stops a
+   * `stickyHeader` sticking).
+   */
+  variant?: TableCardVariant;
+  /**
+   * Shadows whichever edge hides columns while the table scrolls horizontally —
+   * the only scroll cue where the scrollbar is an overlay (macOS). @default false
+   */
+  scrollShadows?: boolean;
 }
 
 const TableRoot = ({
@@ -237,27 +288,46 @@ const TableRoot = ({
   stickyHeader = false,
   containerStyle,
   containerClassName,
+  variant = 'default',
+  scrollShadows = false,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
   // An explicit prop wins; otherwise inherit an enclosing TableCard's size.
   const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
+  const scrollerClassName = cx(
+    'tw:overflow-x-auto',
+    variant === 'muted' &&
+      cx(
+        'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+        MUTED_TABLE_SURFACE_CLASSES
+      ),
+    containerClassName
+  );
+  const table = (
+    <AriaTable
+      className={(state) =>
+        cx(
+          'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
+          typeof className === 'function' ? className(state) : className
+        )
+      }
+      {...props}
+    />
+  );
+
   return (
     <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
-      <div
-        className={cx('tw:overflow-x-auto', containerClassName)}
-        style={containerStyle}>
-        <AriaTable
-          className={(state) =>
-            cx(
-              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
-              typeof className === 'function' ? className(state) : className
-            )
-          }
-          {...props}
-        />
-      </div>
+      {scrollShadows ? (
+        <ScrollShadow className={scrollerClassName} style={containerStyle}>
+          {table}
+        </ScrollShadow>
+      ) : (
+        <div className={scrollerClassName} style={containerStyle}>
+          {table}
+        </div>
+      )}
     </TableContext.Provider>
   );
 };
@@ -297,6 +367,9 @@ const TableHeader = <T extends object>({
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
             'tw:[&>tr>th]:after:pointer-events-none tw:[&>tr>th]:after:absolute tw:[&>tr>th]:after:inset-x-0 tw:[&>tr>th]:after:bottom-0 tw:[&>tr>th]:after:h-px tw:[&>tr>th]:after:bg-border-secondary tw:[&>tr>th]:focus-visible:after:bg-transparent',
+          // Dark: the 8% white divider resolves to the body-row surface under the darker
+          // header band, so the edge vanishes; border-primary keeps it visible.
+          bordered && 'tw:dark:[&>tr>th]:after:bg-border-primary',
 
           typeof className === 'function' ? className(state) : className
         )
@@ -325,16 +398,31 @@ interface TableHeadProps
   extends AriaColumnProps,
     Omit<
       ThHTMLAttributes<HTMLTableCellElement>,
-      'children' | 'className' | 'style' | 'id'
+      'children' | 'className' | 'style' | 'id' | 'align'
     > {
   label?: string;
   tooltip?: string;
+  /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
+  align?: 'start' | 'center' | 'end';
+  /**
+   * Wraps a long `label` instead of keeping it on one line, for a column whose
+   * width is capped (it would otherwise spill into the next header). @default false
+   */
+  wrapLabel?: boolean;
 }
+
+const HEAD_ALIGN_CLASS = {
+  start: '',
+  center: 'tw:justify-center',
+  end: 'tw:justify-end',
+};
 
 const TableHead = ({
   className,
   tooltip,
   label,
+  align = 'start',
+  wrapLabel = false,
   children,
   ...props
 }: TableHeadProps) => {
@@ -361,10 +449,25 @@ const TableHead = ({
         // Layout only — a real Group (role="group") here makes Chromium
         // compute an EMPTY accessible name for the columnheader, breaking
         // every getByRole('columnheader', { name }) locator.
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <div className="tw:flex tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:items-center tw:gap-1',
+            wrapLabel && 'tw:min-w-0',
+            HEAD_ALIGN_CLASS[align]
+          )}>
+          <div
+            className={cx(
+              'tw:flex tw:items-center tw:gap-1',
+              wrapLabel && 'tw:min-w-0'
+            )}>
             {label && (
-              <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
+              <span
+                className={cx(
+                  'tw:text-xs tw:font-semibold tw:text-quaternary',
+                  wrapLabel
+                    ? 'tw:text-start tw:whitespace-normal tw:wrap-anywhere'
+                    : 'tw:whitespace-nowrap'
+                )}>
                 {label}
               </span>
             )}
@@ -392,7 +495,6 @@ const TableHead = ({
               <ChevronSelectorVertical
                 className="tw:text-fg-quaternary"
                 size={12}
-                strokeWidth={3}
               />
             ))}
         </div>
@@ -442,8 +544,9 @@ const TableRow = <T extends object>({
           // an anonymous table cell — a phantom column that Chrome 151's
           // fixed-layout algorithm counts when splitting leftover width, so
           // every table came up one column-share short of its own right edge.
-          'tw:relative tw:outline-focus-ring tw:transition-colors tw:hover:bg-secondary tw:dark:hover:bg-primary_hover tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
+          props.onAction && 'tw:cursor-pointer',
           highlightSelectedRow &&
             'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
 
@@ -518,27 +621,30 @@ interface TableCellProps
   ref?: Ref<HTMLTableCellElement>;
 }
 
-const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
-  const { selectionBehavior } = useTableOptions();
+const TableCell = forwardRef<HTMLTableCellElement, Omit<TableCellProps, 'ref'>>(
+  function TableCell({ className, children, ...props }, ref) {
+    const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+    const { selectionBehavior } = useTableOptions();
 
-  return (
-    <AriaCell
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          TABLE_SIZES[size].cellPadding,
+    return (
+      <AriaCell
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+            TABLE_SIZES[size].cellPadding,
 
-          selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
+            selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {children}
-    </AriaCell>
-  );
-};
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {children}
+      </AriaCell>
+    );
+  }
+);
 TableCell.displayName = 'TableCell';
 
 const TableCard = {

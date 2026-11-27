@@ -14,10 +14,15 @@ Ssrs integration tests using a mock HTTP server
 
 import pytest
 
+from _openmetadata_testutils.ometa import OM_JWT
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (
     SsrsConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
+from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.mark.integration
@@ -73,3 +78,74 @@ class TestSsrsMetadata:
         assert len(parsed.data_sets) == 1
         assert parsed.data_sets[0].command_text == "SELECT OrderId FROM dbo.Orders"
         assert parsed.data_sources[0].database == "SalesDB"
+
+
+@pytest.mark.integration
+class TestSsrsDashboardChartLineage:
+    """The Dashboard -> Chart edge comes from the shared dashboard topology, so SSRS
+    draws it with no connector code. Each report is a dashboard holding one chart of
+    the same name. Requires a server at http://localhost:8585."""
+
+    SERVICE = "ssrs_dashboard_it"
+
+    @pytest.fixture(scope="class")
+    def ingested(self, metadata, run_workflow, ssrs_service):
+        self._delete_service(metadata)
+        config = {
+            "source": {
+                "type": "ssrs",
+                "serviceName": self.SERVICE,
+                "serviceConnection": {
+                    "config": {
+                        "type": "Ssrs",
+                        "hostPort": ssrs_service,
+                        "username": "test_user",
+                        "password": "test_pass",
+                    }
+                },
+                "sourceConfig": {
+                    "config": {
+                        "type": "DashboardMetadata",
+                        "chartFilterPattern": {"excludes": ["^Report 3$"]},
+                        "includeDataModels": False,
+                    }
+                },
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": OM_JWT},
+                }
+            },
+        }
+        try:
+            yield run_workflow(MetadataWorkflow, config)
+        finally:
+            self._delete_service(metadata)
+
+    def _delete_service(self, metadata) -> None:
+        service = metadata.get_by_name(entity=DashboardService, fqn=self.SERVICE)
+        if service:
+            metadata.delete(entity=DashboardService, entity_id=service.id, recursive=True, hard_delete=True)
+
+    def _chart_edges(self, metadata, report_id: str) -> list[tuple[str, str]]:
+        dashboard = metadata.get_by_name(entity=Dashboard, fqn=f"{self.SERVICE}.{report_id}")
+        assert dashboard is not None, f"{report_id} was not ingested"
+        lineage = metadata.get_lineage_by_id(entity=Dashboard, entity_id=dashboard.id.root, up_depth=0, down_depth=1)
+        nodes = {node["id"]: node for node in lineage.get("nodes", [])}
+        return sorted(
+            (nodes[edge["toEntity"]]["fullyQualifiedName"], edge["lineageDetails"]["source"])
+            for edge in lineage.get("downstreamEdges", [])
+            if edge["fromEntity"] == str(dashboard.id.root)
+        )
+
+    def test_each_report_links_its_own_chart(self, metadata, ingested):
+        for report_id in ("report-1", "report-2"):
+            assert self._chart_edges(metadata, report_id) == [(f"{self.SERVICE}.{report_id}_chart", "DashboardLineage")]
+
+    def test_a_filtered_chart_gets_no_entity_and_no_edge(self, metadata, ingested):
+        assert {"Report 3": "Chart Pattern not allowed"} in ingested.source.status.filtered
+        assert metadata.get_by_name(entity=Chart, fqn=f"{self.SERVICE}.report-3_chart") is None
+        assert self._chart_edges(metadata, "report-3") == []

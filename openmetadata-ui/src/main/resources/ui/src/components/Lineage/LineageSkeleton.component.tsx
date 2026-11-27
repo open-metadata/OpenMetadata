@@ -28,7 +28,7 @@ export const LineageSkeleton = () => {
       <Box className="tw:w-full" gap={6} justify="center" wrap="wrap">
         {Array.from({ length: LINEAGE_SKELETON_NODE_COUNT }, (_, index) => (
           <Box
-            className="tw:min-w-44 tw:bg-primary tw:rounded-lg tw:border tw:border-secondary tw:p-4"
+            className="tw:min-w-44 tw:bg-surface tw:rounded-lg tw:border tw:border-secondary tw:p-4"
             data-testid="lineage-skeleton-node"
             direction="col"
             gap={3}

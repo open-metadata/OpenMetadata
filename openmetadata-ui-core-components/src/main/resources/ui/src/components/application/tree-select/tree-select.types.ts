@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, ReactNode } from 'react';
+import type { FC, FocusEventHandler, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 
 export interface TreeSelectNode<T = unknown> {
   id: string;
@@ -83,6 +84,8 @@ export interface TreeSelectTriggerRenderProps {
 }
 
 export interface TreeSelectProps<T = unknown> {
+  id?: string;
+  'aria-label'?: string;
   /** Label text rendered above the field. */
   label?: string;
   /** Placeholder shown in the trigger when nothing is selected. */
@@ -92,6 +95,7 @@ export interface TreeSelectProps<T = unknown> {
   tooltip?: string;
   required?: boolean;
   disabled?: boolean;
+  isLoading?: boolean;
   isInvalid?: boolean;
   size?: 'sm' | 'md';
   autoFocus?: boolean;
@@ -158,6 +162,11 @@ export interface TreeSelectProps<T = unknown> {
    * cannot disagree.
    */
   renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  maxVisibleItems?: number;
+  /** Condense selected descendants under a selected parent in the trigger only. */
+  selectedDisplayStrategy?: 'all' | 'parent';
+  onFocus?: FocusEventHandler<HTMLDivElement>;
+  onBlur?: FocusEventHandler<HTMLDivElement>;
   /**
    * Handle a failed `fetchData` yourself. Without this the raw error message
    * is toasted, which for an HTTP transport is an untranslated string like
@@ -179,6 +188,11 @@ export interface TreeSelectProps<T = unknown> {
   commitMode?: TreeSelectCommitMode;
   /** Gap between trigger and dropdown, in px. @default 8 */
   offset?: number;
+  /**
+   * Fixed dropdown placement, e.g. `right top` beside a menu row. Omit to keep
+   * the default: below the trigger, mirrored right when there is no room.
+   */
+  placement?: Placement;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;

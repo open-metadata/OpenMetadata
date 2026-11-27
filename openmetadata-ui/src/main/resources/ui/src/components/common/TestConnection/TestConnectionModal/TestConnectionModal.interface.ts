@@ -10,8 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
+
+/**
+ * Renders an extra action (e.g. a plugin's "diagnose" button) in the result of
+ * a test that did not fully pass. Receives the raw log and a callback that
+ * closes the dialog.
+ */
+export type RenderTestConnectionFailureAction = (
+  failure: string,
+  onClose: () => void
+) => ReactNode;
 
 export interface TestConnectionModalProps {
   isOpen: boolean;
@@ -32,6 +43,7 @@ export interface TestConnectionModalProps {
   hostIp?: string;
   connectionType?: string;
   connectionDisplayName?: string;
+  renderFailureAction?: RenderTestConnectionFailureAction;
 }
 
 export type ConnectionStepState =

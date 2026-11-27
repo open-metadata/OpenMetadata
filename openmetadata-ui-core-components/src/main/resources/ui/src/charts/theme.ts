@@ -14,8 +14,7 @@
 import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from './palette';
 import type { ChartTheme } from './types';
 
-// Values moved unchanged from chart-core's LIGHT/DARK_THEME_COLORS so the
-// headless email renderer keeps producing the same images.
+// Explicit colours also support the headless email renderer, which has no CSS tokens.
 export const LIGHT_CHART_THEME: ChartTheme = {
   isDark: false,
   axisText: '#6b7280',
@@ -33,16 +32,17 @@ export const LIGHT_CHART_THEME: ChartTheme = {
 
 export const DARK_CHART_THEME: ChartTheme = {
   isDark: true,
-  axisText: '#94979c',
-  axisTick: '#94979c',
+  axisText: '#a8aeb9',
+  axisTick: '#a8aeb9',
   axisTitle: '#cecfd2',
   xAxisTitle: '#cecfd2',
   grid: '#373a41',
   // Not the dark surface colour, or empty pie tracks and map regions vanish.
   emptyFill: '#373a41',
-  segmentBorder: '#0c0e12',
+  // Blend segment outlines into the card surface rather than the page behind it.
+  segmentBorder: '#22262f',
   tooltipBg: '#22262f',
-  tooltipText: '#f7f7f7',
+  tooltipText: '#eef0f4',
   tooltipBorder: '#373a41',
   palette: DARK_CHART_PALETTE,
 };

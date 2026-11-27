@@ -189,3 +189,33 @@ export const filterTasksByStatus = (
     return bucket !== undefined && chosen.has(bucket);
   });
 };
+
+// Nothing more is coming: matching rows may still sit in pages being scanned.
+export const isListSettled = ({
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  canLoadMore,
+  tasks,
+}: {
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  canLoadMore: (loaded: Task[]) => boolean;
+  tasks: Task[];
+}) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
+
+// A failed load also leaves nothing to show; it must not read as an empty queue.
+export const hasNothingToShow = (
+  error: unknown,
+  visibleTasks: Task[],
+  list: Parameters<typeof isListSettled>[0]
+) => Boolean(error) || (visibleTasks.length === 0 && isListSettled(list));
+
+// The error takes the whole tab only when nothing loaded and nothing is
+// narrowed; otherwise the toolbar stays so the user can change the query.
+export const isWholeTabLoadFailed = (
+  error: unknown,
+  tasks: Task[],
+  isNarrowed: boolean
+) => Boolean(error) && tasks.length === 0 && !isNarrowed;

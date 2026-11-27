@@ -62,7 +62,9 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [Systematic Debugging](systematic-debugging/SKILL.md) | `/systematic-debugging` | 4-phase root cause analysis |
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |
+| [Java Affected Tests](java-affected-tests/SKILL.md) | `/java-affected-tests` | Select, run and record the Java unit tests and integration tests a diff impacts — PR CI runs no ITs, the merge queue does |
 | [PR Checklist](pr-checklist/SKILL.md) | `/pr-checklist` | Walk the PR template (issue link, design, tests + coverage, UI recording, manual tests) and draft the PR body |
+| [UI PR Recording](ui-pr-recording/SKILL.md) | `/ui-pr-recording` | During PR creation for a UI feature or feature task: run the PR build in Docker with sample data, record the feature, and upload the video into the description |
 | [OpenMetadata PR Review](openmetadata-pr-review/SKILL.md) | `/openmetadata-pr-review` | Maintainer-grade review of a real GitHub PR — live diff, linked issue, CI, meaningful-test rubric, merge verdict |
 
 ### Connector Skills
@@ -116,7 +118,7 @@ The `/test-enforcement` skill enforces these targets:
 | Java service (`openmetadata-service`) | 90% line coverage | JaCoCo |
 | API endpoints | 100% of changed endpoints have integration tests | `openmetadata-integration-tests` |
 | React components | 90% line coverage | Jest |
-| UI features | Playwright E2E for all user-facing changes | Playwright |
+| UI features | Browser tests for page behaviour; Playwright E2E for cross-feature journeys | Vitest browser mode + Playwright |
 | Python ingestion | 90% line coverage | pytest --cov |
 
 ## Standards

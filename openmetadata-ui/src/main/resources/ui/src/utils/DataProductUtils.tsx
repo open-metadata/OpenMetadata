@@ -10,16 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
-import { Space } from 'antd';
-import { noop } from 'lodash';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
+
+import { DataProduct as DataProductIcon } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
-import {
-  ReactComponent as DataProductIcon,
-  ReactComponent as DefaultDataProductIcon,
-} from '../assets/svg/entity/data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -72,6 +68,12 @@ const ActivityFeedProvider = withSuspenseFallback(
   )
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -133,6 +135,8 @@ export interface DataProductDetailPageTabProps {
   handleAssetSave: () => void;
   feedCount: FeedCounts;
   getEntityFeedCount: () => void;
+  // Reloads the data product after a task on it is decided, so its status and fields are current.
+  onUpdateEntityDetails?: () => void;
   labelMap?: Record<EntityTabs, string>;
 }
 
@@ -145,7 +149,10 @@ export interface DataProductDetailPageTabProps {
 export const getDataProductIconByUrl = (iconURL?: string) => (
   <ImageIcon
     fallback={
-      <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
+      <DataProductIcon
+        className="tw:text-quaternary data-product-default-icon"
+        size={24}
+      />
     }
     iconValue={iconURL}
     imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
@@ -179,6 +186,7 @@ type DataProductNonVersionTabsProps = Pick<
   | 'handleAssetClick'
   | 'handleAssetSave'
   | 'labelMap'
+  | 'onUpdateEntityDetails'
   | 'previewAsset'
   | 'setAssetModalVisible'
   | 'setPreviewAsset'
@@ -196,8 +204,7 @@ const getDataProductPreviewSecondPanel = (
       key={previewAsset.details.id ?? previewAsset.details.fullyQualifiedName}
     />
   ),
-  minWidth: 400,
-  flex: 0.33,
+  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
   className:
     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
 });
@@ -213,6 +220,7 @@ const getDataProductNonVersionTabs = ({
   handleAssetClick,
   handleAssetSave,
   labelMap,
+  onUpdateEntityDetails,
   previewAsset,
   setAssetModalVisible,
   setPreviewAsset,
@@ -220,8 +228,9 @@ const getDataProductNonVersionTabs = ({
 }: DataProductNonVersionTabsProps) => [
   {
     label: (
-      <TabsLabel
+      <ActivityFeedTabLabel
         count={feedCount.totalCount}
+        entityType={EntityType.DATA_PRODUCT}
         id={EntityTabs.ACTIVITY_FEED}
         isActive={activeTab === EntityTabs.ACTIVITY_FEED}
         name={
@@ -241,7 +250,7 @@ const getDataProductNonVersionTabs = ({
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={dataProduct.owners}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={noop}
+          onUpdateEntityDetails={onUpdateEntityDetails}
         />
       </ActivityFeedProvider>
     ),
@@ -383,6 +392,7 @@ export const getDataProductDetailTabs = ({
   feedCount,
   getEntityFeedCount,
   labelMap,
+  onUpdateEntityDetails,
 }: DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
 
@@ -397,7 +407,7 @@ export const getDataProductDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.DataProduct} variant="flat" />,
+      children: <GenericTab type={PageType.DataProduct} />,
     },
     ...(isVersionsView
       ? []
@@ -412,6 +422,7 @@ export const getDataProductDetailTabs = ({
           handleAssetClick,
           handleAssetSave,
           labelMap,
+          onUpdateEntityDetails,
           previewAsset,
           setAssetModalVisible,
           setPreviewAsset,
@@ -450,11 +461,22 @@ export const getDataProductDetailTabs = ({
 
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
-    <Space direction="vertical" size={0}>
-      <Space>
-        <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
+    <Box
+      inline
+      align="stretch"
+      className="layout-space"
+      direction="col"
+      gap={0}
+      itemClassName="layout-space-item">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
+        <DataProductIcon className="tw:shrink-0" size={16} />
         <Typography>{getEntityName(props)}</Typography>
-      </Space>
+      </Box>
       {props.description && (
         <Typography
           as="div"
@@ -466,6 +488,6 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
           <RichTextEditorPreviewerV1 markdown={props.description} />
         </Typography>
       )}
-    </Space>
+    </Box>
   );
 };

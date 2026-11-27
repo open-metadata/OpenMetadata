@@ -13,19 +13,30 @@
 
 package org.openmetadata.service.exception;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.sdk.PipelineServiceClientInterface.DEPLOYMENT_ERROR;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.OntologyProfileViolation;
+import org.openmetadata.schema.type.OntologyProfileViolationCode;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyReleaseStructureIssue;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.ImpersonationDeniedException;
 
@@ -34,6 +45,29 @@ import org.openmetadata.service.security.ImpersonationDeniedException;
  * failures raised by request filters; every other path keeps the existing error shape.
  */
 class CatalogGenericExceptionMapperTest {
+  @Test
+  void ontologyValidationRetainsTypedMemberDetailsInTheHttpResponse() {
+    final UUID member = UUID.randomUUID();
+    final var issue =
+        new OntologyReleaseStructureIssue()
+            .withMemberId(member)
+            .withMemberKind(MemberKind.AXIOM)
+            .withViolation(
+                new OntologyProfileViolation()
+                    .withCode(OntologyProfileViolationCode.UNDECLARED_CLASS)
+                    .withPath("/subjectIri")
+                    .withMessage("Declare the subject class"));
+    final var response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(new OntologyValidationException(1, List.of(issue)));
+    final var json = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(400, response.getStatus());
+    assertEquals(400, json.path("code").asInt());
+    assertEquals(1, json.path("violationCount").asInt());
+    assertEquals(member.toString(), json.at("/violations/0/memberId").asText());
+    assertEquals("/subjectIri", json.at("/violations/0/violation/path").asText());
+  }
+
   @Test
   void agentPathDelegatesToTheStableEnvelope() {
     CatalogGenericExceptionMapper mapper = mapperForAgentPath();
@@ -66,6 +100,96 @@ class CatalogGenericExceptionMapperTest {
     assertEquals(400, response.getStatus());
     assertTrue(
         response.getEntity() instanceof ErrorMessage, "Neighboring endpoints keep ErrorMessage");
+  }
+
+  /** Clients branch on the error type of a typed rejection, not on its wording. */
+  @Test
+  void aTypedRejectionKeepsItsErrorTypeInTheBody() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new SettingsManagedByEnvironmentException(
+                    SettingsType.EMAIL_CONFIGURATION,
+                    "EMAIL_CONFIG_SOURCE",
+                    List.of("/senderMail")));
+
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(409, response.getStatus());
+    assertEquals(409, body.path("code").asInt());
+    assertEquals("SETTINGS_MANAGED_BY_ENVIRONMENT", body.path("errorType").asText());
+    assertTrue(body.path("message").asText().contains("EMAIL_CONFIG_SOURCE=ENV"));
+  }
+
+  /**
+   * A {@link CustomExceptionMessage} raised with a non-enum HTTP status (424, what the basic-auth
+   * email-failure paths throw with {@code FAILED_SEND_EMAIL}) used to crash the mapper: the SDK
+   * {@code WebServiceException} stored a null {@link Response.Status} and {@code getResponse()}
+   * threw {@link IllegalArgumentException} from inside the mapper, surfacing as a generic 500. It
+   * must now render the intended 424 with the typed {@code FAILED_SEND_EMAIL} body (regression
+   * introduced by bb1395fc72 / PR #23239).
+   */
+  @Test
+  void aNonEnumStatusCodeIsRenderedWithItsTypedErrorBody() {
+    Response response =
+        assertDoesNotThrow(
+            () ->
+                new CatalogGenericExceptionMapper()
+                    .toResponse(
+                        new CustomExceptionMessage(
+                            424, "FAILED_SEND_EMAIL", "Email sending issue")));
+
+    assertEquals(424, response.getStatus());
+    assertEquals(Response.Status.Family.CLIENT_ERROR, response.getStatusInfo().getFamily());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(424, body.path("code").asInt(), "body.code");
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText(), "body.errorType");
+    assertEquals("Email sending issue", body.path("message").asText(), "body.message");
+  }
+
+  /** What {@code BasicAuthenticator.sendEmailVerification}/{@code sendPasswordResetLink}/ {@code
+   * resetUserPasswordWithToken} throw on a {@code TemplateException} — the exact constants the
+   * client contract expects. */
+  @Test
+  void basicAuthEmailFailureConstantsRenderAs424FailedSendEmail() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new CustomExceptionMessage(424, "FAILED_SEND_EMAIL", "Email sending issue"));
+
+    assertEquals(424, response.getStatus());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText());
+    assertEquals("Email sending issue", body.path("message").asText());
+  }
+
+  @Test
+  void aFailedRunIsSentWithTheStatusItWasRaisedWith() {
+    // Airflow unreachable, Airflow answering 500, and the cluster rejecting the job.
+    assertSentAs(503, triggerFailed(Response.Status.SERVICE_UNAVAILABLE));
+    assertSentAs(500, triggerFailed(Response.Status.INTERNAL_SERVER_ERROR));
+    assertSentAs(400, triggerFailed(Response.Status.BAD_REQUEST));
+  }
+
+  @Test
+  void aFailedDeployIsStillABadRequest() {
+    assertSentAs(
+        400,
+        IngestionPipelineDeploymentException.byMessage(
+            "orders_metadata", DEPLOYMENT_ERROR, "Connection refused"));
+  }
+
+  private static IngestionPipelineDeploymentException triggerFailed(Response.Status status) {
+    return IngestionPipelineDeploymentException.triggerFailed(
+        "orders_metadata", "Connection refused", status);
+  }
+
+  private static void assertSentAs(int status, RuntimeException exception) {
+    Response response = new CatalogGenericExceptionMapper().toResponse(exception);
+
+    assertEquals(status, response.getStatus());
+    JsonNode error = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(status, error.path("code").asInt());
+    assertEquals(exception.getMessage(), error.path("message").asText());
   }
 
   private static CatalogGenericExceptionMapper mapperForAgentPath() {

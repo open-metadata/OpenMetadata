@@ -43,6 +43,37 @@ describe('Badge theme roles', () => {
   });
 });
 
+describe('Badge solid variant', () => {
+  it('replaces the translucent tint and outline with an opaque fill', () => {
+    render(
+      <Badge color="error" data-testid="badge" variant="solid">
+        10
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('badge');
+
+    expect(badge).toHaveClass('tw:bg-error-solid', 'tw:text-primary_on-brand');
+    expect(badge).not.toHaveClass('tw:bg-utility-error-50', 'tw:outline-1');
+  });
+
+  it('uses the theme-aware utility step for a color without a semantic solid role', () => {
+    render(
+      <Badge color="indigo" data-testid="badge" variant="solid">
+        10
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('badge');
+
+    expect(badge).toHaveClass(
+      'tw:bg-utility-indigo-600',
+      'tw:text-primary_on-brand'
+    );
+    expect(badge).not.toHaveClass('tw:bg-utility-indigo-50');
+  });
+});
+
 describe('Badge tooltip', () => {
   it('does not render a tooltip trigger when no tooltip is passed', () => {
     render(<Badge data-testid="badge">Active</Badge>);
@@ -50,15 +81,20 @@ describe('Badge tooltip', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('renders a tooltip trigger when tooltip is passed', () => {
+  it('wraps the badge in a non-focusable, shrinkable trigger when tooltip is passed', () => {
     render(
       <Badge data-testid="badge" tooltip="Contains PII data">
         Active
       </Badge>
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
+    const trigger = screen.getByTestId('badge').parentElement;
+
+    // No button, so a badge inside a clickable parent never nests one.
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(trigger?.tagName).toBe('SPAN');
+    expect(trigger).not.toHaveAttribute('tabindex');
+    expect(trigger).toHaveClass('tw:min-w-0', 'tw:max-w-full');
   });
 });
 
@@ -107,5 +143,19 @@ describe('BadgeWithButton tooltip', () => {
     );
 
     expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('keeps its own text color when rendered as a link', () => {
+    render(
+      <Badge color="error" data-testid="linked-badge" href="/somewhere">
+        Failed
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('linked-badge');
+
+    expect(badge.tagName).toBe('A');
+    expect(badge).toHaveClass('tw:text-utility-error-700', 'tw:no-underline');
+    expect(badge).not.toHaveClass('tw:text-inherit');
   });
 });

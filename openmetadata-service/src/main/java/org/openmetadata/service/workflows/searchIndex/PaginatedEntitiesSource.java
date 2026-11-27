@@ -39,12 +39,11 @@ import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
 @Getter
-public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
+public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface<?>>> {
   private String name = "PaginatedEntitiesSource";
   private final int batchSize;
   private final String entityType;
   private final List<String> fields;
-  private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private final ListFilter filter;
   private final int cachedTotalCount;
@@ -56,7 +55,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         Entity.getEntityRepository(entityType);
     this.filter = entityRepository.getReindexFilter();
     this.cachedTotalCount = entityRepository.getDao().listCount(this.filter);
@@ -115,9 +114,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   }
 
   @Override
-  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData)
+  public ResultList<? extends EntityInterface<?>> readNext(Map<String, Object> contextData)
       throws SearchIndexException {
-    ResultList<? extends EntityInterface> data = null;
+    ResultList<? extends EntityInterface<?>> data = null;
     if (Boolean.FALSE.equals(isDone.get())) {
       data = read(cursor.get());
       cursor.set(data.getPaging().getAfter());
@@ -128,10 +127,10 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return data;
   }
 
-  private ResultList<? extends EntityInterface> read(String cursor) throws SearchIndexException {
+  private ResultList<? extends EntityInterface<?>> read(String cursor) throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result;
+    ResultList<? extends EntityInterface<?>> result;
     try {
       EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
@@ -228,11 +227,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return result;
   }
 
-  public ResultList<? extends EntityInterface> readWithCursor(String currentCursor)
+  public ResultList<? extends EntityInterface<?>> readWithCursor(String currentCursor)
       throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result;
+    ResultList<? extends EntityInterface<?>> result;
     try {
       EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
@@ -279,7 +278,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read batch for entityType: %s. Error: %s",
@@ -291,11 +292,11 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return result;
   }
 
-  public ResultList<? extends EntityInterface> readNextKeyset(String keysetCursor)
+  public ResultList<? extends EntityInterface<?>> readNextKeyset(String keysetCursor)
       throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching keyset batch of size: {}", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result;
+    ResultList<? extends EntityInterface<?>> result;
     try {
       result =
           entityRepository.listAfterKeyset(
@@ -340,7 +341,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read keyset batch for entityType: %s. Error: %s",
@@ -366,12 +369,6 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       }
     }
     return cursors;
-  }
-
-  @Override
-  public void reset() {
-    cursor.set(null);
-    isDone.set(Boolean.FALSE);
   }
 
   @Override

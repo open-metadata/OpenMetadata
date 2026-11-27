@@ -16,7 +16,6 @@ import type { Edge, Node } from 'reactflow';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getNodeHeight } from '../../CanvasUtils';
-import { getEntityChildrenAndLabel } from '../../EntityLineageNodeUtils';
 
 /**
  * Lazy boundary for the ELK engine.
@@ -35,14 +34,11 @@ export const getELKLayoutedElements = async (
   edges: Edge[],
   columnsHavingLineage: Map<string, Set<string>> = new Map()
 ) => {
-  const { nodeFilterState, isColumnLevelLineage, isEditMode } =
-    useLineageStore.getState();
+  const { nodeFilterState, isColumnLevelLineage } = useLineageStore.getState();
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const isColumnOnlyFilterActive =
       (isColumnLevelLineage || nodeFilterState.get(node.id)) ?? false;
-    const columns = isEditMode
-      ? getEntityChildrenAndLabel(node.data.node).children.length
-      : columnsHavingLineage.get(node.id)?.size ?? 0;
+    const columns = columnsHavingLineage.get(node.id)?.size ?? 0;
 
     const nodeHeight = getNodeHeight(node, isColumnOnlyFilterActive, columns);
 

@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/configSourceConfiguration.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ConfigSourceConfiguration",
+  "description": "Where settings that exist both in the server configuration (YAML and environment variables) and in the database take their values from.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.ConfigSourceConfiguration",
+  "definitions": {
+    "configSourceMode": {
+      "javaType": "org.openmetadata.schema.configuration.ConfigSourceMode",
+      "description": "AUTO applies a value changed in the deployment configuration on the next start unless the same value was changed through the API since. ENV makes the deployment configuration authoritative: every field it defines is overwritten on start and cannot be changed through the API. DB keeps the stored values and only fills fields that the stored configuration does not have.",
+      "type": "string",
+      "enum": ["AUTO", "ENV", "DB"]
+    }
+  },
+  "properties": {
+    "security": {
+      "description": "Source of authenticationConfiguration and authorizerConfiguration. Defaults to AUTO.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "email": {
+      "description": "Source of the email (SMTP) settings. Defaults to AUTO.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "serverUrl": {
+      "description": "Source of the OpenMetadata base URL. Defaults to AUTO.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "scim": {
+      "description": "Source of the SCIM configuration. Defaults to AUTO.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "mcp": {
+      "description": "Source of the MCP configuration. Defaults to AUTO.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "app": {
+      "description": "Source of the application configuration. Defaults to DB.",
+      "$ref": "#/definitions/configSourceMode"
+    },
+    "confirmProviderChange": {
+      "description": "Allow the first start in ENV mode to replace the identity provider stored in the database with a different one from the deployment configuration.",
+      "type": "boolean",
+      "default": false
+    },
+    "watchIntervalSeconds": {
+      "description": "How often each server checks the database for settings changed by another server, the CLI or an administration API.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 10
+    }
+  },
+  "additionalProperties": false
+}

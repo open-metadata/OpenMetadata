@@ -36,13 +36,19 @@ const mockListConversations = jest.fn();
 const mockUseRequiredParams = jest.fn();
 const mockFetchEntityActivity = jest.fn();
 const mockFetchUserActivity = jest.fn();
+const mockSetActiveThread = jest.fn();
+const mockSetActiveTask = jest.fn();
+const mockSetActiveActivity = jest.fn();
+const mockRefreshActivityFeed = jest.fn();
 let mockActivityEvents: { id: string; timestamp: number }[] = [];
 let mockConversationCount = 0;
 let mockActivityCount = 0;
 let mockLoading = false;
+let mockListError: { response?: { status: number } } | undefined;
 let mockTasks: { id: string }[] = [];
 let mockEntityPaging: { after?: string } = {};
 let mockIsInView = false;
+let mockIsAiMode = false;
 let mockLocation: { pathname: string; key: string; state: unknown } = {
   pathname: '/',
   key: 'initial',
@@ -71,8 +77,19 @@ jest.mock('../../../hooks/useDomainStore', () => ({
     selector({ activeDomain: 'All Domains' }),
 }));
 
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
+jest.mock('../../activity-feed/ActivityFeed/ActivityFeedEntityTab', () => ({
+  __esModule: true,
+  default: ({ entityLink }: { entityLink: string }) => (
+    <div data-link={entityLink} data-testid="entity-activity-feed" />
+  ),
+}));
+
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: () => ({ fqn: 'test.db.table' }),
+  useFqn: () => ({ fqn: 'test.db.table', entityFqn: 'test.db.table' }),
 }));
 
 jest.mock('../../../utils/useRequiredParams', () => ({
@@ -86,22 +103,24 @@ jest.mock('../../../hooks/useElementInView', () => ({
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
     selectedThread: null,
-    setActiveThread: jest.fn(),
+    setActiveThread: mockSetActiveThread,
     entityThread: [],
     getFeedData: mockGetFeedData,
     getTaskData: mockGetTaskData,
     loading: mockLoading,
+    listError: mockListError,
     entityPaging: mockEntityPaging,
     tasks: mockTasks,
     selectedTask: null,
-    setActiveTask: jest.fn(),
+    setActiveTask: mockSetActiveTask,
     activityEvents: mockActivityEvents,
     isActivityLoading: false,
     fetchEntityActivity: mockFetchEntityActivity,
     fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
-    setActiveActivity: jest.fn(),
+    setActiveActivity: mockSetActiveActivity,
+    refreshActivityFeed: mockRefreshActivityFeed,
   }),
 }));
 
@@ -131,7 +150,11 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
-  default: { getActivityFeedTabs: jest.fn().mockReturnValue([]) },
+  __esModule: true,
+  default: {
+    getActivityFeedTabs: jest.fn().mockReturnValue([]),
+    getEntityLink: jest.fn().mockReturnValue('/entity'),
+  },
 }));
 
 jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>
@@ -164,10 +187,6 @@ jest.mock('../ActivityFeedPanel/FeedPanelBodyV1New', () =>
 jest.mock('../../Entity/Task/TaskTab/TaskTabNew.component', () => ({
   TaskTabNew: jest.fn().mockReturnValue(<div data-testid="task-tab-new" />),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () =>
-  jest.fn().mockReturnValue(<div data-testid="error-placeholder" />)
-);
 
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader" />)
@@ -213,9 +232,11 @@ describe('ActivityFeedTab', () => {
     mockConversationCount = 0;
     mockActivityCount = 0;
     mockLoading = false;
+    mockListError = undefined;
     mockTasks = [];
     mockEntityPaging = {};
     mockIsInView = false;
+    mockIsAiMode = false;
     mockLocation = { pathname: '/', key: 'initial', state: null };
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
@@ -263,6 +284,35 @@ describe('ActivityFeedTab', () => {
     });
   });
 
+  describe('Sub-tab change clears the previous selection', () => {
+    it.each([
+      [ActivityFeedTabs.ALL, 'activity-feed-left-panel-tasks'],
+      [ActivityFeedTabs.TASKS, 'mentions-toggle'],
+      [ActivityFeedTabs.MENTIONS, 'my-tasks-toggle'],
+    ])('leaving %s via %s', async (subTab, testId) => {
+      renderComponent(subTab);
+
+      fireEvent.click(await screen.findByTestId(testId));
+
+      expect(mockRefreshActivityFeed).toHaveBeenCalledWith([]);
+      expect(mockSetActiveThread).toHaveBeenCalledWith();
+      expect(mockSetActiveTask).toHaveBeenCalledWith();
+      expect(mockSetActiveActivity).toHaveBeenCalledWith(undefined);
+    });
+
+    it('keeps the list when the current sub-tab is clicked again', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      fireEvent.click(
+        await screen.findByTestId('activity-feed-left-panel-all')
+      );
+
+      expect(mockRefreshActivityFeed).not.toHaveBeenCalled();
+      expect(mockSetActiveThread).not.toHaveBeenCalled();
+      expect(mockSetActiveActivity).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Activity fetch is gated by tab', () => {
     it('does NOT fetch entity activity on the Tasks tab', async () => {
       renderComponent(ActivityFeedTabs.TASKS);
@@ -302,6 +352,16 @@ describe('ActivityFeedTab', () => {
         // NOT 3 + activityEvents.length (1).
         expect(counts).toContain('5');
       });
+    });
+
+    it('counts the conversations on the entity fields too', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() =>
+        expect(mockListConversations).toHaveBeenCalledWith(
+          expect.objectContaining({ includeFields: true, limit: 1 })
+        )
+      );
     });
   });
 
@@ -505,6 +565,66 @@ describe('ActivityFeedTab', () => {
     });
   });
 
+  // A failed list fetch leaves the list empty; it must not read as "no tasks".
+  describe('a failed list fetch is not an empty list', () => {
+    it('shows an error with a retry instead of the no-open-tasks message', async () => {
+      mockListError = { response: { status: 500 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText('message.something-went-wrong')
+        ).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByText('message.no-open-tasks-title')
+      ).not.toBeInTheDocument();
+      // The error takes the whole card: no list and no right-hand panel.
+      expect(screen.queryByTestId('task-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+
+      mockGetTaskData.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+      // A table's feed has no feed filter; the retry re-reads the first page.
+      expect(mockGetTaskData).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        EntityType.TABLE,
+        'test.db.table',
+        'open'
+      );
+    });
+
+    it('keeps the loaded rows when a later page fails', async () => {
+      mockTasks = [{ id: 'loaded-task' }];
+      mockListError = { response: { status: 500 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      expect(await screen.findByTestId('task-list')).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.something-went-wrong')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows a permission message without a retry for a 403', async () => {
+      mockListError = { response: { status: 403 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(screen.getByText('label.access-denied')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByText('message.no-open-tasks-title')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.reload' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Bug 3/4 — badge and placeholder reflect taskFilter state', () => {
     it('left-panel badge shows openTaskCount in Open filter', async () => {
       mockGetTaskCounts.mockResolvedValue({
@@ -601,6 +721,34 @@ describe('ActivityFeedTab', () => {
           )
         ).toHaveLength(1)
       );
+    });
+  });
+
+  // AI mode, where the new Inbox lives, shows the Inbox's feed for the entity.
+  describe('AI mode', () => {
+    beforeEach(() => {
+      mockIsAiMode = true;
+    });
+
+    it("shows the Inbox's feed for the entity the route names", async () => {
+      renderComponent();
+
+      expect(await screen.findByTestId('entity-activity-feed')).toHaveAttribute(
+        'data-link',
+        '<#E::table::test.db.table>'
+      );
+      expect(mockGetTaskCounts).not.toHaveBeenCalled();
+    });
+
+    // A profile's tab is the user's own feed, not one about them.
+    it("keeps the existing tab on a user's profile", async () => {
+      renderUserComponent();
+
+      await waitFor(() => expect(mockGetTaskCounts).toHaveBeenCalled());
+
+      expect(
+        screen.queryByTestId('entity-activity-feed')
+      ).not.toBeInTheDocument();
     });
   });
 });

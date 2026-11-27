@@ -1,0 +1,215 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.alerting.channel.webhook;
+
+import static org.openmetadata.service.alerting.channel.webhook.WebhookRequests.deliverTestWebhookMessage;
+import static org.openmetadata.service.alerting.channel.webhook.WebhookRequests.getTarget;
+import static org.openmetadata.service.alerting.channel.webhook.WebhookRequests.postWebhookMessage;
+
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
+import java.net.UnknownHostException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.IsolatedSends;
+import org.openmetadata.service.events.consumer.AlertingSettings;
+import org.openmetadata.service.events.consumer.EventPublisherException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.util.OAuth2TokenManager;
+import org.openmetadata.service.util.branding.MessageBrandingResolver;
+
+@Slf4j
+public class GenericPublisher implements Destination<ChangeEvent> {
+  private final Client client;
+  private final Webhook webhook;
+
+  private static String buildTestMessageJson() {
+    return "{\"message\": \"This is a test message from "
+        + MessageBrandingResolver.get().getProductName()
+        + " to confirm your webhook destination is configured correctly.\"}";
+  }
+
+  @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
+
+  public GenericPublisher(
+      EventSubscription eventSubscription,
+      SubscriptionDestination subscriptionDestination,
+      Webhook webhook) {
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.webhook = webhook;
+
+    // Validate webhook URL to prevent SSRF
+    if (this.webhook != null && this.webhook.getEndpoint() != null) {
+      org.openmetadata.service.util.URLValidator.validateURL(this.webhook.getEndpoint().toString());
+    }
+
+    this.client =
+        HttpWebhookTransport.shared()
+            .clientFor(
+                subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
+  }
+
+  @Override
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
+    try {
+      String eventJson = payloadOf(event);
+
+      List<WebhookRecipient> webhookRecipients =
+          recipients.stream()
+              .filter(WebhookRecipient.class::isInstance)
+              .map(WebhookRecipient.class::cast)
+              .toList();
+
+      IsolatedSends.sendToEach(webhookRecipients, this, recipient -> sendTo(recipient, eventJson));
+    } catch (Exception ex) {
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, ex.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  private String payloadOf(ChangeEvent event) {
+    return JsonUtils.pojoToJson(event);
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event) {
+    return payloadOf(event);
+  }
+
+  @Override
+  public void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    if (recipient instanceof WebhookRecipient webhookRecipient) {
+      sendTo(webhookRecipient, (String) prepared);
+    }
+  }
+
+  private void sendTo(WebhookRecipient recipient, String eventJson) throws EventPublisherException {
+    Invocation.Builder target =
+        WebhookRequests.getTarget(client, recipient.getWebhook(), eventJson);
+    if (target != null) {
+      postOrMarkUnknownHost(recipient, target, eventJson);
+    }
+  }
+
+  // Deliveries have always been a POST whatever the destination configures. The setting makes
+  // them follow the configuration, as test sends already do.
+  private Webhook.HttpMethod methodOfADelivery() {
+    boolean configured =
+        AlertingSettings.current().sending().honourWebhookMethod()
+            && webhook != null
+            && webhook.getHttpMethod() != null;
+    return configured ? webhook.getHttpMethod() : Webhook.HttpMethod.POST;
+  }
+
+  private void postOrMarkUnknownHost(
+      WebhookRecipient recipient, Invocation.Builder target, String eventJson)
+      throws EventPublisherException {
+    try {
+      postRefreshingTokenOnce(recipient, target, eventJson);
+    } catch (ProcessingException ex) {
+      if (ex.getCause() instanceof UnknownHostException) {
+        LOG.warn(
+            "Unknown Host Exception for Generic Publisher : {} , WebhookEndpoint : {}",
+            subscriptionDestination.getId(),
+            webhook.getEndpoint());
+        setErrorStatus(System.currentTimeMillis(), 400, "UnknownHostException");
+      }
+      throw ex;
+    }
+  }
+
+  private void postRefreshingTokenOnce(
+      WebhookRecipient recipient, Invocation.Builder target, String eventJson)
+      throws EventPublisherException {
+    try {
+      postWebhookMessage(this, target, eventJson, methodOfADelivery());
+    } catch (EventPublisherException ex) {
+      if (!isOAuth2Configured() || !ex.getMessage().contains("HTTP 401")) {
+        throw ex;
+      }
+      LOG.debug("OAuth2 token rejected (401), invalidating and retrying");
+      invalidateOAuth2Token();
+      postWebhookMessage(
+          this,
+          WebhookRequests.getTarget(client, recipient.getWebhook(), eventJson),
+          eventJson,
+          methodOfADelivery());
+    }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      String testJson = buildTestMessageJson();
+      Invocation.Builder target = getTarget(client, webhook, testJson);
+      deliverTestWebhookMessage(this, target, testJson, webhook.getHttpMethod());
+    } catch (Exception ex) {
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
+  }
+
+  @Override
+  public boolean getEnabled() {
+    return subscriptionDestination.getEnabled();
+  }
+
+  private boolean isOAuth2Configured() {
+    return webhook != null
+        && webhook.getAuthType() instanceof Map<?, ?> authMap
+        && WebhookOAuth2Config.Type.OAUTH_2.value().equals(authMap.get("type"));
+  }
+
+  private void invalidateOAuth2Token() {
+    WebhookOAuth2Config oauth2Config =
+        JsonUtils.convertValue(webhook.getAuthType(), WebhookOAuth2Config.class);
+    if (oauth2Config != null) {
+      OAuth2TokenManager.getInstance().invalidateToken(oauth2Config);
+    }
+  }
+
+  // The client belongs to the transport, which closes it when the server shuts down.
+  public void close() {}
+}

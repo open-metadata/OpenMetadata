@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -68,6 +68,7 @@ export type ExploreTabItem = {
 };
 
 export interface ExploreProps {
+  additionalSearchResults?: ReactNode;
   aggregations?: Aggregations;
   activeTabKey: SearchIndex;
   tabItems: ExploreTabItem[];
@@ -84,10 +85,8 @@ export interface ExploreProps {
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
 
   sortValue: string;
-  onChangeSortValue: (sortValue: string) => void;
-
   sortOrder: string;
-  onChangeSortOder: (sortOder: SORT_ORDER) => void;
+  onChangeSort: (sortValue: string, sortOrder: SORT_ORDER) => void;
 
   showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;

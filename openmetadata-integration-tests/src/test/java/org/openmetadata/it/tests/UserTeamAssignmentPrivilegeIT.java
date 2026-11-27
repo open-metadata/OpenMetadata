@@ -91,6 +91,32 @@ public class UserTeamAssignmentPrivilegeIT {
   }
 
   @Test
+  void test_selfUpdate_namingOwnRolesWithoutTeams_keepsClosedTeam(TestNamespace ns)
+      throws Exception {
+    // A PUT that omits teams keeps the stored ones, so it leaves no closed team and grants nothing.
+    Team closedTeam = createTeam(ns, "keep", false, null);
+    String roleId = dataStewardRoleId();
+    String userName = "keepjoin" + ns.shortPrefix();
+    String email = userName + "@test.com";
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withTeams(List.of(closedTeam.getId()))
+                    .withRoles(List.of(UUID.fromString(roleId))));
+    Joiner joiner = new Joiner(user, SdkClients.createClient(userName, email, new String[] {}));
+
+    joiner.putRoles(List.of(roleId));
+
+    assertTrue(
+        teamIds(fetchMembership(joiner.user())).contains(closedTeam.getId()),
+        "Omitting teams must keep the closed team");
+  }
+
+  @Test
   void test_createUser_cannotPlaceUserInClosedTeam(TestNamespace ns) {
     // A principal that authenticates but has no user row yet takes the self sign-up path, where the
     // teams in the payload are decided before the entity exists.

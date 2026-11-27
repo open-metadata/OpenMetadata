@@ -14,6 +14,7 @@
 import { ErrorSchema } from '@rjsf/utils';
 import { ClientType } from '../generated/configuration/securityConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
+import authenticationSchema from '../jsons/configuration/authenticationConfiguration.json';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -80,27 +81,9 @@ jest.mock('../constants/SSO.constant', () => ({
       callback: 'http://localhost:8585/callback',
     },
   },
-  PROVIDER_FIELD_MAPPINGS: {
-    ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-    saml: [
-      'ldapConfiguration',
-      'oidcConfiguration',
-      'tokenValidationAlgorithm',
-      'enableSelfSignup',
-    ],
-    google: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-    azure: [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-      'enableSelfSignup',
-    ],
-  },
+  // The real mapping, so the cleanup tests fail if it ever drops a field the admin set again.
+  PROVIDER_FIELD_MAPPINGS: jest.requireActual('../constants/SSO.constant')
+    .PROVIDER_FIELD_MAPPINGS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS: ['google', 'auth0', 'basic', 'aws-cognito'],
 }));
 
@@ -694,6 +677,250 @@ describe('SSOUtils', () => {
       expect(spConfig?.spPrivateKey).toBe('PRIVATE\nKEY');
     });
 
+    it('should preserve edited SAML SP values through cleanup and reload', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      expect(sp).toBeDefined();
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      sp.entityId = 'urn:collate:custom-sp';
+      const customAcs = 'https://public.example.com/callback';
+      sp.acs = customAcs;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+      if (!result) {
+        throw new Error('Missing cleaned configuration');
+      }
+      const authConfig = result.authenticationConfiguration;
+
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(
+        'urn:collate:custom-sp'
+      );
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.callback).toBe(customAcs);
+      expect(authConfig.callbackUrl).toBe(customAcs);
+
+      populateSamlSpCallback(authConfig);
+
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(sp.entityId);
+    });
+
+    it.each([
+      [
+        'https://ui.example.com/callback',
+        '',
+        'https://ui.example.com/callback',
+      ],
+      [
+        '',
+        'https://ui.example.com/callback',
+        'https://ui.example.com/callback',
+      ],
+      ['', '', 'https://saml.example.com/callback'],
+    ])(
+      'keeps the browser callback separate from a legacy ACS (%s, %s)',
+      (rootCallback, spCallback, expectedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = rootCallback;
+        sp.callback = spCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(expectedCallback);
+        expect(cleaned?.callbackUrl).toBe(expectedCallback);
+      }
+    );
+
+    it.each([
+      'https://saml.example.com/api/v1/saml/acs',
+      'https://proxy.example.com/api/v1/saml/acs',
+    ])(
+      'replaces a browser callback an earlier save set to the ACS URL (%s)',
+      (savedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = savedCallback;
+        sp.callback = savedCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+          'https://saml.example.com/callback'
+        );
+        expect(cleaned?.callbackUrl).toBe('https://saml.example.com/callback');
+      }
+    );
+
+    // The base path keeps no trailing slash at runtime, whichever form it was
+    // configured in (ADR:2026-11-17-base-path-has-one-trailing-slash-in-html-and-none-at-runtime).
+    it.each([
+      ['https://saml.example.com/om/api/v1/saml/acs', 'acs-saved'],
+      ['https://saml.example.com/om/api/v1/saml/acs', ''],
+      ['https://saml.example.com/om//api/v1/saml/acs', 'acs-saved'],
+      ['https://saml.example.com/om//api/v1/saml/acs', ''],
+      ['https://saml.example.com/om/api/v1/saml/acs/', 'acs-saved'],
+      ['https://saml.example.com/om/api/v1/saml/acs/', ''],
+    ])(
+      'keeps the base path of the ACS %s in the fallback callback (%s)',
+      (acs, savedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        const callback = savedCallback ? acs : '';
+        auth.callbackUrl = callback;
+        sp.callback = callback;
+        sp.acs = acs;
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+          'https://saml.example.com/om/callback'
+        );
+        expect(cleaned?.callbackUrl).toBe(
+          'https://saml.example.com/om/callback'
+        );
+      }
+    );
+
+    it('keeps a usable SP callback when only the root callback was saved as the ACS URL', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const auth = data.authenticationConfiguration;
+      const sp = auth.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      auth.callbackUrl = 'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://ui.example.com/callback';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+      const cleaned = cleanupProviderSpecificFields(
+        data,
+        AuthProvider.Saml
+      )?.authenticationConfiguration;
+
+      expect(cleaned?.callbackUrl).toBe('https://ui.example.com/callback');
+      expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+        'https://ui.example.com/callback'
+      );
+    });
+
+    it('keeps a configured browser callback under a base path', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const auth = data.authenticationConfiguration;
+      const sp = auth.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      auth.callbackUrl = 'https://ui.example.com/om/callback';
+      sp.callback = '';
+      sp.acs = 'https://saml.example.com/om/api/v1/saml/acs';
+
+      const cleaned = cleanupProviderSpecificFields(
+        data,
+        AuthProvider.Saml
+      )?.authenticationConfiguration;
+
+      expect(cleaned?.callbackUrl).toBe('https://ui.example.com/om/callback');
+      expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+        'https://ui.example.com/om/callback'
+      );
+    });
+
+    it('keeps a custom authorizer and fills the defaults only when missing', () => {
+      const custom = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      custom.authorizerConfiguration.className = 'com.example.CustomAuthorizer';
+      custom.authorizerConfiguration.containerRequestFilter =
+        'com.example.CustomJwtFilter';
+      const missing = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .className;
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .containerRequestFilter;
+
+      const kept = cleanupProviderSpecificFields(
+        custom,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+      const filled = cleanupProviderSpecificFields(
+        missing,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+
+      expect(kept?.className).toBe('com.example.CustomAuthorizer');
+      expect(kept?.containerRequestFilter).toBe('com.example.CustomJwtFilter');
+      expect(filled?.className).toBe(
+        'org.openmetadata.service.security.DefaultAuthorizer'
+      );
+      expect(filled?.containerRequestFilter).toBe(
+        'org.openmetadata.service.security.JwtFilter'
+      );
+    });
+
+    it('leaves the data it cleans unchanged', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      data.authenticationConfiguration.callbackUrl =
+        'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://saml.example.com/api/v1/saml/acs';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+      const before = JSON.stringify(data);
+
+      const cleaned = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+
+      expect(JSON.stringify(data)).toBe(before);
+      expect(cleaned?.authenticationConfiguration.callbackUrl).toBe(
+        'https://saml.example.com/callback'
+      );
+    });
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
@@ -746,7 +973,61 @@ describe('SSOUtils', () => {
       expect(trustStoreConfig?.trustAllConfig).toBeUndefined();
     });
 
-    it('should set default boolean values for enableSelfSignup', () => {
+    it.each([
+      [AuthProvider.Google, ClientType.Confidential],
+      [AuthProvider.Google, ClientType.Public],
+      [AuthProvider.Azure, ClientType.Confidential],
+      [AuthProvider.Okta, ClientType.Confidential],
+      [AuthProvider.Auth0, ClientType.Public],
+      [AuthProvider.AwsCognito, ClientType.Confidential],
+      [AuthProvider.CustomOidc, ClientType.Confidential],
+      [AuthProvider.Saml, ClientType.Public],
+      [AuthProvider.LDAP, ClientType.Public],
+    ])(
+      'should keep enableSelfSignup turned off for %s (%s client)',
+      (provider, clientType) => {
+        const data = getDefaultsForProvider(provider, clientType);
+        data.authenticationConfiguration.enableSelfSignup = false;
+
+        const result = cleanupProviderSpecificFields(data, provider);
+
+        expect(result?.authenticationConfiguration.enableSelfSignup).toBe(
+          false
+        );
+      }
+    );
+
+    it('should keep enableSelfSignup turned on when the admin chose it', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Confidential
+      );
+      data.authenticationConfiguration.enableSelfSignup = true;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Okta);
+
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
+    });
+
+    it('should not add enableSelfSignup when the configuration has none', () => {
+      const data = getDefaultsForProvider(
+        AuthProvider.Google,
+        ClientType.Confidential
+      );
+      delete (
+        data.authenticationConfiguration as Partial<
+          FormData['authenticationConfiguration']
+        >
+      ).enableSelfSignup;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Google);
+
+      expect(result?.authenticationConfiguration).not.toHaveProperty(
+        'enableSelfSignup'
+      );
+    });
+
+    it('should keep enableSelfSignup and default the authorizer booleans', () => {
       const data: FormData = {
         authenticationConfiguration: {
           provider: 'google',
@@ -773,9 +1054,7 @@ describe('SSOUtils', () => {
 
       const result = cleanupProviderSpecificFields(data, 'google');
 
-      expect(
-        result?.authenticationConfiguration.enableSelfSignup
-      ).toBeDefined();
+      expect(result?.authenticationConfiguration.enableSelfSignup).toBe(true);
       expect(
         result?.authorizerConfiguration.enforcePrincipalDomain
       ).toBeDefined();
@@ -2830,20 +3109,6 @@ describe('SSOUtils', () => {
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.stopPropagation).toHaveBeenCalled();
       });
-
-      it('should prevent default when Enter is pressed in Ant Design input field', () => {
-        const div = document.createElement('div');
-        div.className = 'ant-input';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
     });
 
     describe('should NOT prevent default for special cases', () => {
@@ -2860,11 +3125,25 @@ describe('SSOUtils', () => {
         expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
       });
 
-      it('should NOT prevent default when Enter is pressed in Select tags component', () => {
+      it('should NOT prevent default when Enter is pressed inside a combobox wrapper', () => {
         const input = document.createElement('input');
         const selector = document.createElement('div');
-        selector.className = 'ant-select-selector';
+        selector.setAttribute('role', 'combobox');
         selector.appendChild(input);
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
+      it('should NOT prevent default when Enter is pressed in a combobox', () => {
+        const input = document.createElement('input');
+        input.setAttribute('role', 'combobox');
         Object.defineProperty(mockEvent, 'target', {
           value: input,
           writable: true,
@@ -2940,36 +3219,6 @@ describe('SSOUtils', () => {
         expect(() => handler(mockEvent as KeyboardEvent)).not.toThrow();
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       });
-
-      it('should prevent default for nested input inside ant-input div', () => {
-        const input = document.createElement('input');
-        const antInputDiv = document.createElement('div');
-        antInputDiv.className = 'ant-input';
-        antInputDiv.appendChild(input);
-        Object.defineProperty(mockEvent, 'target', {
-          value: antInputDiv,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
-
-      it('should prevent default for input with multiple classes including ant-input', () => {
-        const div = document.createElement('div');
-        div.className = 'custom-class ant-input another-class';
-        Object.defineProperty(mockEvent, 'target', {
-          value: div,
-          writable: true,
-        });
-
-        handler(mockEvent as KeyboardEvent);
-
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
-        expect(mockEvent.stopPropagation).toHaveBeenCalled();
-      });
     });
   });
 });
@@ -3018,6 +3267,22 @@ describe('parseSamlMetadataXml', () => {
     <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://dev-xyz12345.us.auth0.com/samlp/abcdefgh12345"/>
   </IDPSSODescriptor>
 </EntityDescriptor>`;
+
+  it('imports all IdP signing certificates and excludes certificates from other roles', () => {
+    const metadata = `<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example">
+      <RoleDescriptor><KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>WRONG_ROLE</X509Certificate></X509Data></KeyInfo></KeyDescriptor></RoleDescriptor>
+      <IDPSSODescriptor>
+        <KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>OLD</X509Certificate><X509Certificate>NEW</X509Certificate><X509Certificate>NEW</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <KeyDescriptor><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>DUAL_USE</X509Certificate><X509Certificate>NEW</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <KeyDescriptor use="encryption"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>ENCRYPTION_ONLY</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example/sso"/>
+      </IDPSSODescriptor>
+    </EntityDescriptor>`;
+
+    expect(parseSamlMetadataXml(metadata).idpX509Certificate).toBe(
+      '-----BEGIN CERTIFICATE-----\nOLD\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nNEW\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nDUAL_USE\n-----END CERTIFICATE-----'
+    );
+  });
 
   it('should parse Azure AD metadata correctly', () => {
     const result = parseSamlMetadataXml(AZURE_AD_METADATA);
@@ -3381,4 +3646,24 @@ BBBBBBBBBBBBBBBBBBBBBBBBBBBB</X509Certificate>
       'no SingleSignOnService'
     );
   });
+});
+
+describe('principal claim mapping schema', () => {
+  const pattern = new RegExp(
+    authenticationSchema.properties.jwtPrincipalClaimsMapping.items.pattern
+  );
+
+  it.each([
+    'email:email',
+    'username:preferred_username',
+    'email:urn:oid:0.9.2342.19200300.100.1.3',
+    'email:http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+  ])('accepts supported claim mapping %s', (mapping) =>
+    expect(pattern.test(mapping)).toBe(true)
+  );
+
+  it.each(['email:', 'role:email', 'email:has space'])(
+    'rejects invalid mapping %s',
+    (mapping) => expect(pattern.test(mapping)).toBe(false)
+  );
 });

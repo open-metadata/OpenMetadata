@@ -21,6 +21,7 @@ import { chartColor } from '../palette';
 import type {
   CartesianBuildInput,
   ChartOption,
+  ChartPointStyle,
   ChartSeries,
   ChartSeriesType,
   ChartTheme,
@@ -146,23 +147,56 @@ const barSeries = <T extends object>(
 
 const POINT_SIZE = 8;
 const POINT_RING_WIDTH = 2;
-const POINT_HALO_BLUR = 8;
+// ECharts' own line symbol size, set explicitly so a re-render that drops the
+// hover symbols restores it (series merge by id).
+const DEFAULT_SYMBOL_SIZE = 6;
+// Hit target of the hidden symbols on a dot-less line/area with hover callbacks.
+const HOVER_SYMBOL_SIZE = 10;
+// ECharts grows a 6px symbol 1.1x on emphasis; shrink the hit target to that
+// dot, so a highlighted point looks as it does without hover callbacks.
+const HOVER_EMPHASIS_SCALE = (DEFAULT_SYMBOL_SIZE * 1.1) / HOVER_SYMBOL_SIZE;
+
+// A dot-less line draws no symbols, so ECharts emits no per-point
+// mouseover/mouseout. With hover callbacks it draws hidden ones to hit-test.
+// `pointStyle` and `showDots` already draw symbols; a lone point shows its own.
+const usesHoverSymbols = <T extends object>(
+  input: CartesianBuildInput<T>,
+  series: ChartSeries
+) =>
+  Boolean(input.hasHover) &&
+  !series.pointStyle &&
+  !series.showDots &&
+  input.data.length !== 1;
+
+// A selected point's ring: 4px out from the dot, 2px wide, at 30% of the
+// dot's colour.
+const SELECTION_RING_GAP = 4;
+const SELECTION_RING = {
+  silent: true,
+  animation: false,
+  symbol: 'circle',
+  label: { show: false },
+  itemStyle: { color: 'transparent', borderWidth: 2, opacity: 0.3 },
+} as const;
+
+const pointColorOf = <T extends object>(
+  ctx: SeriesContext<T>,
+  style: ChartPointStyle,
+  color: string
+) => (style.status ? ctx.theme.palette.status[style.status] : color);
 
 const pointItem = <T extends object>(
   ctx: SeriesContext<T>,
   series: ChartSeries,
   color: string,
   datum: T,
-  index: number
+  style: ChartPointStyle | undefined
 ) => {
   const value = pointValue(ctx, datum, series);
-  const style = series.pointStyle?.(datum as Datum, index);
   if (!style) {
     return { value, symbol: 'none' };
   }
-  const pointColor = style.status
-    ? ctx.theme.palette.status[style.status]
-    : color;
+  const pointColor = pointColorOf(ctx, style, color);
 
   return {
     value,
@@ -172,11 +206,48 @@ const pointItem = <T extends object>(
       color: style.hollow ? 'transparent' : pointColor,
       borderColor: style.hollow ? pointColor : ctx.theme.segmentBorder,
       borderWidth: style.hollow ? POINT_RING_WIDTH : 1,
-      ...(style.selected
-        ? { shadowBlur: POINT_HALO_BLUR, shadowColor: pointColor }
-        : {}),
     },
   };
+};
+
+const ringCoord = <T extends object>(
+  ctx: SeriesContext<T>,
+  value: unknown,
+  index: number
+) => {
+  if (ctx.isTime) {
+    return value;
+  }
+
+  return ctx.horizontal ? [value, index] : [index, value];
+};
+
+const selectionRings = <T extends object>(
+  ctx: SeriesContext<T>,
+  series: ChartSeries,
+  color: string,
+  styles: Array<ChartPointStyle | undefined>
+): LineSeriesOption['markPoint'] => {
+  const data = ctx.input.data.flatMap((datum, index) => {
+    const style = styles[index];
+    const value = pointValue(ctx, datum, series);
+    const measured = Array.isArray(value) ? value[1] : value;
+    if (!style?.selected || measured === null) {
+      return [];
+    }
+
+    return [
+      {
+        coord: ringCoord(ctx, value, index),
+        symbolSize: POINT_SIZE + 2 * SELECTION_RING_GAP,
+        itemStyle: { borderColor: pointColorOf(ctx, style, color) },
+      },
+    ];
+  });
+
+  return data.length > 0
+    ? ({ ...SELECTION_RING, data } as LineSeriesOption['markPoint'])
+    : undefined;
 };
 
 const lineSeries = <T extends object>(
@@ -184,25 +255,41 @@ const lineSeries = <T extends object>(
   series: ChartSeries,
   color: string,
   filled: boolean
-): LineSeriesOption => ({
-  type: 'line',
-  smooth: series.smooth ?? true,
-  // A lone point has no segment to draw, so it needs its symbol to be visible.
-  showSymbol:
-    series.pointStyle || ctx.input.data.length === 1
-      ? true
-      : series.showDots ?? false,
-  lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
-  itemStyle: { color },
-  // Always set, so a re-render that drops the fill clears the old one.
-  areaStyle: filled ? { color: areaGradient(color) } : undefined,
-  ...(ctx.composed ? { z: Z_LINE } : {}),
-  data: ctx.input.data.map((datum, index) =>
-    series.pointStyle
-      ? pointItem(ctx, series, color, datum, index)
-      : pointValue(ctx, datum, series)
-  ) as LineSeriesOption['data'],
-});
+): LineSeriesOption => {
+  const styles = ctx.input.data.map((datum, index) =>
+    series.pointStyle?.(datum as Datum, index)
+  );
+  const hoverSymbols = usesHoverSymbols(ctx.input, series);
+
+  return {
+    type: 'line',
+    smooth: series.smooth ?? true,
+    // A lone point has no segment to draw, so it needs its symbol to be visible.
+    showSymbol:
+      series.pointStyle || ctx.input.data.length === 1
+        ? true
+        : hoverSymbols || (series.showDots ?? false),
+    lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
+    // Hidden by opacity, not a transparent colour: the colour also feeds the
+    // tooltip marker and the legend icon. Emphasis shows the highlighted one.
+    itemStyle: { color, opacity: hoverSymbols ? 0 : 1 },
+    symbolSize: hoverSymbols ? HOVER_SYMBOL_SIZE : DEFAULT_SYMBOL_SIZE,
+    emphasis: {
+      scale: hoverSymbols ? HOVER_EMPHASIS_SCALE : true,
+      itemStyle: { opacity: 1 },
+    },
+    // Always set, so a re-render that drops the fill or the selection clears
+    // the old one.
+    areaStyle: filled ? { color: areaGradient(color) } : undefined,
+    markPoint: selectionRings(ctx, series, color, styles),
+    ...(ctx.composed ? { z: Z_LINE } : {}),
+    data: ctx.input.data.map((datum, index) =>
+      series.pointStyle
+        ? pointItem(ctx, series, color, datum, styles[index])
+        : pointValue(ctx, datum, series)
+    ) as LineSeriesOption['data'],
+  };
+};
 
 export const BAND_SERIES_SUFFIXES = ['__band-base', '__band'] as const;
 const BAND_OPACITY = 0.12;
@@ -339,7 +426,7 @@ const valueAxes = <T extends object>(
     const built = valueAxis(
       theme,
       axis,
-      horizontal ? 'bottom' : index ? 'right' : 'left'
+      horizontal ? (index ? 'top' : 'bottom') : index ? 'right' : 'left'
     );
 
     return isCategoryValueAxis(input, index)
@@ -401,13 +488,10 @@ export const buildCartesianOption = <T extends object>(
   const isBand = (s: ChartSeries) => composed && s.type === 'band';
   const bands = input.series.filter(isBand);
   const plain = input.series.filter((s) => !isBand(s));
+  const typeOf = (s: ChartSeries) =>
+    composed ? (s.type as ChartSeriesType) ?? defaultType : defaultType;
   const built = plain.map((series, index) =>
-    buildSeries(
-      ctx,
-      series,
-      index,
-      composed ? (series.type as ChartSeriesType) ?? defaultType : defaultType
-    )
+    buildSeries(ctx, series, index, typeOf(series))
   );
   const bandOptions = bands.flatMap((band) =>
     bandSeries(
@@ -422,7 +506,13 @@ export const buildCartesianOption = <T extends object>(
     ...referenceSeries(input, theme),
   ];
   const names = plain.map((s) => s.name);
-  const legend = legendConfig(names, theme, input.legend);
+  // The legend icon inherits the series opacity, which hides hover symbols.
+  const legendItems = plain.map((s) =>
+    typeOf(s) !== 'bar' && usesHoverSymbols(input, s)
+      ? { name: s.name, itemStyle: { opacity: 1 } }
+      : s.name
+  );
+  const legend = legendConfig(legendItems, theme, input.legend);
   const visiblePoints = input.zoomVisiblePoints ?? DATAZOOM_THRESHOLD;
   const hasZoom =
     input.zoom === true ||

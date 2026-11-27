@@ -72,6 +72,8 @@ export interface ExtensionOptions {
 }
 
 export interface BlockEditorProps {
+  ariaLabel?: string;
+  variant?: 'document' | 'comment';
   content?: string;
   editable?: boolean;
   onFocus?: () => void;
@@ -94,6 +96,7 @@ export interface BlockEditorAttachmentProps {
 }
 
 export interface EditorSlotsProps {
+  editable?: boolean;
   editor: Editor | null;
   menuType: MenuType;
 }

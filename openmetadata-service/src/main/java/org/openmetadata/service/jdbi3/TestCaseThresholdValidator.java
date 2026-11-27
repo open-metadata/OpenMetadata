@@ -59,6 +59,15 @@ final class TestCaseThresholdValidator {
           "columnValuesToBeAtExpectedLocation");
 
   /**
+   * Validator classes that run a rule-library `sqlExpression`. Ingestion picks the validator by this
+   * class alone and always reads their percentage as a share of the table's rows, so they are capped
+   * whatever `supportsRowLevelPassedFailed` says — and the create API does not even accept that
+   * flag for a user-authored definition.
+   */
+  private static final Set<String> ROW_TOLERANCE_VALIDATOR_CLASSES =
+      Set.of("ColumnRuleLibrarySqlExpressionValidator", "TableRuleLibrarySqlExpressionValidator");
+
+  /**
    * Definitions whose percentage is a deviation from a statistic, mapped to the parameters the
    * percentage is actually measured against — the bounds of a range test, the expected value of an
    * exact-value one. Only those parameters can make a percentage tolerance degenerate; the other
@@ -140,14 +149,16 @@ final class TestCaseThresholdValidator {
   /**
    * Whether this definition spends its percentage on rows.
    *
-   * <p>The two named sets cover every system definition that supports failure thresholds. A custom
-   * definition is classified by its own `supportsRowLevelPassedFailed` declaration, which is the
-   * only signal available for it — and unlike for the system definitions, it is the author's
-   * deliberate statement that the test counts rows.
+   * <p>The two named sets cover every system definition that supports failure thresholds. A
+   * rule-library definition is classified by its validator class, which is what decides how
+   * ingestion evaluates it. Any other custom definition is classified by its own
+   * `supportsRowLevelPassedFailed` declaration, the only signal left for it.
    */
   private static boolean isRowTolerance(TestDefinition testDefinition) {
     String name = testDefinition.getName();
-    if (ROW_TOLERANCE_DEFINITIONS.contains(name)) {
+    String validatorClass = testDefinition.getValidatorClass();
+    if (ROW_TOLERANCE_DEFINITIONS.contains(name)
+        || (validatorClass != null && ROW_TOLERANCE_VALIDATOR_CLASSES.contains(validatorClass))) {
       return true;
     }
     return !DEVIATION_REFERENCES.containsKey(name)

@@ -34,8 +34,8 @@ KWARGS_TRUNCATION_CHARS = 2000
 OP_STACK_DEPTH_CAP = 20
 SLOW_OPS_CAP = 50
 
-# Structural/wrapper ops whose span is a whole phase, not a unit of work — excluded
-# from slow_ops so they don't crowd out the actual slow I/O calls (db/http/sink).
+# Structural ops are excluded from slow_ops so they don't crowd out the
+# actual slow I/O calls (db/http/sink).
 _NON_LEAF_OPS = frozenset({"workflow.execute", "source.iter", "stage.run", "processor.run", "bulksink.run"})
 
 

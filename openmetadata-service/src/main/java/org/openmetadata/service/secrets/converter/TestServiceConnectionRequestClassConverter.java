@@ -14,6 +14,8 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -28,6 +30,7 @@ import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.util.ReflectionUtil;
 
 /** Converter class to get an `TestServiceConnectionRequest` object. */
+@Slf4j
 public class TestServiceConnectionRequestClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
@@ -48,31 +51,46 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
   public Object convert(Object object) {
     TestServiceConnectionRequest testServiceConnectionRequest =
         (TestServiceConnectionRequest) JsonUtils.convertValue(object, this.clazz);
-
     try {
-      Class<?> clazz =
-          ReflectionUtil.createConnectionConfigClass(
-              testServiceConnectionRequest.getConnectionType(),
-              testServiceConnectionRequest.getServiceType());
-
-      tryToConvertOrFail(testServiceConnectionRequest.getConnection(), CONNECTION_CLASSES)
-          .ifPresent(testServiceConnectionRequest::setConnection);
-
-      Object newConnectionConfig =
-          ClassConverterFactory.getConverter(clazz)
-              .convert(
-                  ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection())
-                      .getConfig());
-      ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection())
-          .setConfig(newConnectionConfig);
-    } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(
-          testServiceConnectionRequest.getConnectionType(),
-          String.format(
-              "Failed to convert class instance of %s",
-              testServiceConnectionRequest.getConnectionType()));
+      convertConnection(testServiceConnectionRequest);
+    } catch (ClassNotFoundException | RuntimeException e) {
+      throw invalidConnection(testServiceConnectionRequest, e);
     }
-
     return testServiceConnectionRequest;
+  }
+
+  private void convertConnection(TestServiceConnectionRequest request)
+      throws ClassNotFoundException {
+    Class<?> configClass =
+        ReflectionUtil.createConnectionConfigClass(
+            request.getConnectionType(), request.getServiceType());
+    tryToConvertOrFail(request.getConnection(), CONNECTION_CLASSES)
+        .ifPresent(request::setConnection);
+    ServiceConnectionEntityInterface connection =
+        (ServiceConnectionEntityInterface) request.getConnection();
+    connection.setConfig(
+        ClassConverterFactory.getConverter(configClass).convert(connection.getConfig()));
+  }
+
+  /**
+   * The connection is user input, and any value in it may be a credential, including a URI's
+   * user-info or signed query string. The message therefore names only the offending field and the
+   * constraint it broke. The cause stays on the exception but is not logged, because its messages
+   * quote the rejected value.
+   */
+  private static InvalidServiceConnectionException invalidConnection(
+      TestServiceConnectionRequest request, Exception cause) {
+    String message =
+        String.format(
+            "Invalid %s connection: %s",
+            request.getConnectionType(),
+            JsonUtils.describeBindingFailure(cause)
+                .orElse("the connection could not be converted"));
+    LOG.warn(
+        "Rejected test connection for service [{}]: {}; cause: {}",
+        request.getServiceName(),
+        message,
+        ExceptionUtils.getRootCause(cause).getClass().getName());
+    return new InvalidServiceConnectionException(message, cause);
   }
 }

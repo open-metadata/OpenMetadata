@@ -47,33 +47,36 @@ const useToastOnError = (error: Error | null) => {
   }, [error]);
 };
 
-/** Loads the glossary term intake form; skipped in edit mode since it only governs creation. */
-export const useGlossaryTermIntakeForm = (
-  editMode: boolean
+/**
+ * Loads the intake form and custom properties for `entityType` while `enabled`.
+ * Queries are keyed by entity type, so each create form reads only its own form.
+ */
+const useIntakeForm = (
+  entityType: TargetEntityType,
+  enabled: boolean
 ): GlossaryTermIntakeFormState => {
   // Cached across opens but refetched each time, so an edited intake form still applies.
   const intakeFormQuery = useQuery({
-    queryKey: ['glossary-term-form', 'intake-form'],
+    queryKey: ['intake', entityType, 'form'],
     // A missing intake form resolves to null, so any rejection is a real failure.
-    queryFn: () => getIntakeFormByEntityType(TargetEntityType.GlossaryTerm),
-    enabled: !editMode,
+    queryFn: () => getIntakeFormByEntityType(entityType),
+    enabled,
   });
   const customPropertiesQuery = useQuery({
-    queryKey: ['glossary-term-form', 'custom-properties'],
-    queryFn: () =>
-      getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm),
-    enabled: !editMode,
+    queryKey: ['intake', entityType, 'custom-properties'],
+    queryFn: () => getCustomPropertiesByEntityType(entityType),
+    enabled,
   });
 
   useToastOnError(intakeFormQuery.error);
   useToastOnError(customPropertiesQuery.error);
 
-  const intakeForm = editMode ? null : intakeFormQuery.data ?? null;
-  const customProperties = editMode
-    ? NO_CUSTOM_PROPERTIES
-    : customPropertiesQuery.data ?? NO_CUSTOM_PROPERTIES;
+  const intakeForm = enabled ? intakeFormQuery.data ?? null : null;
+  const customProperties = enabled
+    ? customPropertiesQuery.data ?? NO_CUSTOM_PROPERTIES
+    : NO_CUSTOM_PROPERTIES;
   const isLoaded =
-    editMode ||
+    !enabled ||
     (!intakeFormQuery.isPending && !customPropertiesQuery.isPending);
 
   return useMemo(() => {
@@ -94,3 +97,15 @@ export const useGlossaryTermIntakeForm = (
     };
   }, [customProperties, intakeForm, isLoaded]);
 };
+
+/** Loads the glossary term intake form; skipped in edit mode since it only governs creation. */
+export const useGlossaryTermIntakeForm = (
+  editMode: boolean
+): GlossaryTermIntakeFormState =>
+  useIntakeForm(TargetEntityType.GlossaryTerm, !editMode);
+
+/** Loads the glossary intake form once the create drawer has been opened. */
+export const useGlossaryIntakeForm = (
+  enabled: boolean
+): GlossaryTermIntakeFormState =>
+  useIntakeForm(TargetEntityType.Glossary, enabled);

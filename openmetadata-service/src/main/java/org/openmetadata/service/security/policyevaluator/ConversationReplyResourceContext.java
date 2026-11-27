@@ -43,7 +43,7 @@ public record ConversationReplyResourceContext(Conversation conversation, Conver
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return null;
   }
 

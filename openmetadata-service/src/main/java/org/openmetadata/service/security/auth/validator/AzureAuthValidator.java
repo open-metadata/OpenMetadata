@@ -4,6 +4,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
@@ -19,6 +23,9 @@ public class AzureAuthValidator {
   private static final String AZURE_LOGIN_BASE = "https://login.microsoftonline.com";
   private static final String TOKEN_ENDPOINT_V2 = "/oauth2/v2.0/token";
   private static final String OPENID_CONFIG_PATH = "/.well-known/openid-configuration";
+  private static final String JWKS_PATH_V2 = "/discovery/v2.0/keys";
+  private static final String COMMON_TENANT = "common";
+  private static final List<String> JWKS_PATHS = List.of(JWKS_PATH_V2, "/discovery/keys");
 
   public FieldError validateAzureConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
@@ -80,6 +87,8 @@ public class AzureAuthValidator {
             ValidationErrorBuilder.FieldPaths.OIDC_TENANT,
             "Tenant ID is required for Azure confidential clients");
       }
+      // Azure tenant IDs (GUIDs and the common/organizations/consumers names) are case-insensitive.
+      tenantId = tenantId.toLowerCase(Locale.ROOT);
 
       // Validate tenant ID format
       if (!isValidGuid(tenantId)
@@ -101,8 +110,8 @@ public class AzureAuthValidator {
             AZURE_LOGIN_BASE + "/" + tenantId + "/v2.0" + OPENID_CONFIG_PATH;
 
         // Check if the provided URI matches either v1 or v2 format
-        if (!discoveryUri.equals(expectedDiscoveryUri)
-            && !discoveryUri.equals(expectedV2DiscoveryUri)) {
+        if (!discoveryUri.equalsIgnoreCase(expectedDiscoveryUri)
+            && !discoveryUri.equalsIgnoreCase(expectedV2DiscoveryUri)) {
           // Check if it's a malformed URI (common error: missing slash)
           if (discoveryUri.contains(".well-knownopenid-configuration")) {
             return ValidationErrorBuilder.createFieldError(
@@ -274,7 +283,8 @@ public class AzureAuthValidator {
       throw new IllegalArgumentException(
           "Invalid Azure authority format. Expected: https://login.microsoftonline.com/{tenant-id}");
     }
-    String tenantId = parts[parts.length - 1];
+    // Azure tenant IDs (GUIDs and the common/organizations/consumers names) are case-insensitive.
+    String tenantId = parts[parts.length - 1].toLowerCase(Locale.ROOT);
 
     // Validate tenant ID format
     if (!isValidGuid(tenantId)
@@ -358,21 +368,17 @@ public class AzureAuthValidator {
         return null;
       }
 
-      String expectedJwksUrl = AZURE_LOGIN_BASE + "/" + tenantId + "/discovery/v2.0/keys";
-      boolean hasCorrectAzureJwksUrl = false;
-
-      // Check if at least one URL matches the expected Azure JWKS format
-      for (String urlStr : publicKeyUrls) {
-        if (urlStr.equals(expectedJwksUrl)) {
-          hasCorrectAzureJwksUrl = true;
-          break;
-        }
-      }
-
-      if (!hasCorrectAzureJwksUrl) {
+      Set<String> azureJwksUrls = azureJwksUrls(tenantId);
+      if (publicKeyUrls.stream()
+          .map(url -> url.toLowerCase(Locale.ROOT))
+          .noneMatch(azureJwksUrls::contains)) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
-            "At least one public key URL must be the Azure JWKS endpoint: " + expectedJwksUrl);
+            "At least one public key URL must be an Azure JWKS endpoint, such as "
+                + AZURE_LOGIN_BASE
+                + "/"
+                + tenantId
+                + JWKS_PATH_V2);
       }
 
       // Validate all provided URLs
@@ -416,6 +422,16 @@ public class AzureAuthValidator {
           ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
           "Public key URL validation failed");
     }
+  }
+
+  /**
+   * Azure serves its signing keys from the tenant's endpoint and from the multi-tenant {@code
+   * common} one, in v1 and v2.0 form. The deployment docs configure {@code common/discovery/keys}.
+   */
+  private static Set<String> azureJwksUrls(String tenantId) {
+    return Stream.of(tenantId, COMMON_TENANT)
+        .flatMap(tenant -> JWKS_PATHS.stream().map(path -> AZURE_LOGIN_BASE + "/" + tenant + path))
+        .collect(Collectors.toSet());
   }
 
   private FieldError validateOfflineAccessScope(String discoveryUri, OidcClientConfig oidcConfig) {

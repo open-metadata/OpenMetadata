@@ -12,12 +12,9 @@
  */
 
 import { BadgeWithIcon, Typography } from '@openmetadata/ui-core-components';
-import {
-  Cube01,
-  Database01,
-  Users01,
-} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
+import { DOMAIN_TYPE_DISPLAY } from '../../../constants/Domain.constants';
+import { DomainType } from '../../../generated/entity/domains/domain';
 
 const EMPTY_VALUE_INDICATOR = '-';
 
@@ -27,43 +24,19 @@ interface DomainTypeChipProps {
 
 export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
   const { t } = useTranslation();
+  const display = DOMAIN_TYPE_DISPLAY[domainType as DomainType];
 
-  switch (domainType) {
-    case 'Consumer-aligned':
-      return (
-        <BadgeWithIcon
-          color="brand"
-          iconLeading={Users01}
-          size="sm"
-          type="color">
-          {t('label.consumer-aligned')}
-        </BadgeWithIcon>
-      );
-    case 'Source-aligned':
-      return (
-        <BadgeWithIcon
-          color="brand"
-          iconLeading={Cube01}
-          size="sm"
-          type="color">
-          {t('label.source-aligned')}
-        </BadgeWithIcon>
-      );
-    case 'Aggregate':
-      return (
-        <BadgeWithIcon
-          color="brand"
-          iconLeading={Database01}
-          size="sm"
-          type="color">
-          {t('label.aggregate')}
-        </BadgeWithIcon>
-      );
-    default:
-      return (
-        <Typography className="tw:text-secondary" size="text-xs">
-          {EMPTY_VALUE_INDICATOR}
-        </Typography>
-      );
-  }
+  return display ? (
+    <BadgeWithIcon
+      color="brand"
+      iconLeading={display.icon}
+      size="sm"
+      type="color">
+      {t(display.labelKey)}
+    </BadgeWithIcon>
+  ) : (
+    <Typography className="tw:text-secondary" size="text-xs">
+      {EMPTY_VALUE_INDICATOR}
+    </Typography>
+  );
 };

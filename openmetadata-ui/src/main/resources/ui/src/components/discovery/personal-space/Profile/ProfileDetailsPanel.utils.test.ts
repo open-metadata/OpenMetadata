@@ -15,12 +15,11 @@ import { AuthProvider } from '../../../../generated/settings/settings';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 describe('canUserChangePassword', () => {
-  it.each([AuthProvider.Basic])(
-    'should allow the signed-in user on the %s provider',
-    (provider) => {
-      expect(canUserChangePassword({ provider, isSelf: true })).toBe(true);
-    }
-  );
+  it('should allow the signed-in user on the Basic provider', () => {
+    expect(
+      canUserChangePassword({ provider: AuthProvider.Basic, isSelf: true })
+    ).toBe(true);
+  });
 
   // Derived from the enum rather than hand-listed, so a provider added to
   // AuthProvider later is asserted against instead of silently untested.
@@ -36,9 +35,30 @@ describe('canUserChangePassword', () => {
     expect(canUserChangePassword({ isSelf: true })).toBe(false);
   });
 
-  it('should not allow another user’s profile', () => {
+  it('should not allow a non-admin on another user’s profile', () => {
     expect(
       canUserChangePassword({ provider: AuthProvider.Basic, isSelf: false })
+    ).toBe(false);
+  });
+
+  it('should allow an admin on another user’s profile', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.Basic,
+        isSelf: false,
+        isAdmin: true,
+      })
+    ).toBe(true);
+  });
+
+  it('should not allow an admin on a deleted user', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.Basic,
+        isSelf: false,
+        isAdmin: true,
+        isDeleted: true,
+      })
     ).toBe(false);
   });
 
@@ -48,6 +68,17 @@ describe('canUserChangePassword', () => {
         provider: AuthProvider.Basic,
         isSelf: true,
         isDeleted: true,
+      })
+    ).toBe(false);
+  });
+
+  it('should not allow a bot, which signs in with a JWT', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.Basic,
+        isSelf: false,
+        isAdmin: true,
+        isBot: true,
       })
     ).toBe(false);
   });

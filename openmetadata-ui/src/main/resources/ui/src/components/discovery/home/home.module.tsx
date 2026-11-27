@@ -11,24 +11,26 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as HomeActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/home-active.svg';
-import { ReactComponent as HomeIcon } from '../../../assets/svg/ask-collate-nav-bar/home.svg';
+import { Home, HomeFilled } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
  * Home module — the AI sidebar's landing entry. Owns no routes of its
- * own: the My Data page is served by the shell's page-table fallback
- * (`applicationRoutesClass.getRouteElements()`); this module exists purely to
- * surface the sidebar icon and point it at `/my-data`.
+ * own: the home landing page at `/` is served by the shell's page-table
+ * fallback (`applicationRoutesClass.getRouteElements()`); this module exists
+ * purely to surface the sidebar icon and point it at `/`. As in classic mode,
+ * the same landing page also renders at `/my-data`, so Home owns that path too.
+ * A `/` prefix matches `/` alone; other pages never activate Home.
  */
 export const homeModule: AppModule = {
   id: 'home',
   navOrder: 0,
   labelKey: 'label.home',
-  icon: HomeIcon,
-  activeIcon: HomeActiveIcon,
-  prefix: ROUTES.MY_DATA,
-  defaultPath: ROUTES.MY_DATA,
+  icon: Home,
+  activeIcon: HomeFilled,
+  prefix: ROUTES.HOME,
+  additionalPrefixes: [ROUTES.MY_DATA],
+  defaultPath: ROUTES.HOME,
   routes: [],
 };

@@ -15,16 +15,25 @@ import type { EntityReference } from '../generated/entity/type';
 import APIClient from './axiosClient';
 import {
   addAssetsToMetric,
+  deleteMetricAsync,
   getMetricAssets,
   getMetricHierarchy,
   getMetricHierarchyContext,
   getMetricObservability,
+  getMetricParentIds,
+  getMetricSearchPaths,
   removeAssetsFromMetric,
 } from './metricsAPI';
+import { searchQuery } from './searchAPI';
+
+jest.mock('./searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
 
 jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   put: jest.fn(),
+  delete: jest.fn(),
 }));
 
 const assets: EntityReference[] = [
@@ -35,6 +44,13 @@ const assets: EntityReference[] = [
     type: 'table',
   },
 ];
+
+const searchHits = (docs: object[]) => ({
+  hits: {
+    hits: docs.map((doc) => ({ _source: doc })),
+    total: { value: docs.length },
+  },
+});
 
 describe('Metric hierarchy, assets, and observability API contracts', () => {
   beforeEach(() => {
@@ -153,5 +169,76 @@ describe('Metric hierarchy, assets, and observability API contracts', () => {
     await expect(
       getMetricAssets('metric-id', { limit: 20, offset: 0 })
     ).rejects.toBe(error);
+  });
+
+  it('sends recursive on async delete so variants are deleted with their parent', async () => {
+    (APIClient.delete as jest.Mock).mockResolvedValue({
+      data: { jobId: 'job-1', message: 'accepted' },
+    });
+
+    await expect(deleteMetricAsync('metric-id', true)).resolves.toEqual({
+      jobId: 'job-1',
+      message: 'accepted',
+    });
+    expect(APIClient.delete).toHaveBeenCalledWith('/metrics/async/metric-id', {
+      params: { recursive: true },
+    });
+  });
+
+  it('collects search matches and walks their parents up to the root', async () => {
+    (searchQuery as jest.Mock)
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'canada', parent: { id: 'na' } }])
+      )
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'na', parent: { id: 'total' } }])
+      )
+      .mockResolvedValueOnce(searchHits([{ id: 'total' }]));
+
+    const { matchIds, ancestorIds, complete } = await getMetricSearchPaths(
+      'canada'
+    );
+
+    expect([...matchIds]).toEqual(['canada']);
+    expect([...ancestorIds]).toEqual(['na', 'total']);
+    expect(complete).toBe(true);
+    expect(searchQuery).toHaveBeenCalledTimes(3);
+    expect(
+      JSON.stringify((searchQuery as jest.Mock).mock.calls[1][0].queryFilter)
+    ).toContain('"id.keyword":"na"');
+  });
+
+  it('reports an incomplete path set when hits exceed one page or nothing matched', async () => {
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: {
+        hits: [{ _source: { id: 'match' } }],
+        total: { value: 500 },
+      },
+    });
+
+    await expect(getMetricSearchPaths('rev')).resolves.toMatchObject({
+      complete: false,
+    });
+
+    (searchQuery as jest.Mock).mockResolvedValueOnce({
+      hits: { hits: [], total: { value: 0 } },
+    });
+
+    await expect(getMetricSearchPaths('zzz')).resolves.toMatchObject({
+      complete: false,
+    });
+  });
+
+  it('walks parent links up for metrics that are not loaded, one search per level', async () => {
+    (searchQuery as jest.Mock)
+      .mockResolvedValueOnce(
+        searchHits([{ id: 'na', parent: { id: 'total' } }])
+      )
+      .mockResolvedValueOnce(searchHits([{ id: 'total' }]));
+
+    const parentIds = await getMetricParentIds(['na']);
+
+    expect([...parentIds]).toEqual([['na', 'total']]);
+    expect(searchQuery).toHaveBeenCalledTimes(2);
   });
 });

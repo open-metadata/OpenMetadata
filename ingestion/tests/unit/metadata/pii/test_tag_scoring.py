@@ -12,10 +12,12 @@
 Unit tests for PII classifiers
 """
 
-from unittest.mock import Mock
+from collections import Counter
+from unittest.mock import Mock, patch
 
 import pytest
 from dirty_equals import HasAttributes, IsFloat, IsInstance, IsNumeric
+from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
@@ -39,8 +41,9 @@ from metadata.generated.schema.type.classificationLanguages import (
 from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
-from metadata.pii.algorithms.tag_scoring import TagScorer
+from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService, TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
@@ -214,6 +217,58 @@ class TestTagScorer:
             score=IsNumeric(gt=0.5),
         )
 
+    @pytest.mark.parametrize(
+        "patterns, language",
+        [
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")],
+                ClassificationLanguage.en,
+                id="invalid-regex",
+            ),
+            pytest.param([], ClassificationLanguage.en, id="no-patterns"),
+            # Too deeply nested to compile; the recognizer is not even for the language analyzed.
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.de,
+                id="too-deeply-nested-other-language",
+            ),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.en,
+                id="too-deeply-nested",
+            ),
+        ],
+    )
+    def test_broken_recognizer_does_not_drop_other_tags(
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns, language
+    ):
+        broken_tag = TagFactory.create(
+            tag_name="BadgeTag",
+            tag_classification=general_classification,
+            autoClassificationEnabled=True,
+            recognizers=[
+                RecognizerFactory.create(
+                    name="BadgeRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=patterns,
+                        context=[],
+                        supportedLanguage=language,
+                    ),
+                    target=Target.content,
+                )
+            ],
+        )
+        classifier = TagScorer(
+            tag_analyzers=[
+                TagAnalyzer(tag=email_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+                TagAnalyzer(tag=broken_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+            ],
+        )
+
+        scores = classifier.predict_scores(["john.doe@example.com", "jane.smith@test.org"])
+
+        assert [scored_tag.tag.fullyQualifiedName for scored_tag in scores] == ["PII.EmailTag"]
+
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
         scores = classifier.predict_scores([])
@@ -269,6 +324,50 @@ class TestTagScorer:
             tag=IsInstance(Tag) & HasAttributes(name=EntityName(root="EmailTag")),
             score=IsNumeric(gt=0.5),
         )
+
+    @pytest.mark.parametrize("language", [ClassificationLanguage.en, ClassificationLanguage.any])
+    def test_sample_values_are_parsed_once_across_tags(self, email_tag, phone_tag, column_to_analyze, language):
+        nlp_engine = load_nlp_engine()
+        engine_class = type(nlp_engine)
+        sample_data = ["john@example.com", "555-123-4567", "john@example.com", "plain text"]
+
+        # Patched on the class: the "any" path loads its per-language engines itself.
+        with patch.object(
+            engine_class, "process_text", autospec=True, side_effect=engine_class.process_text
+        ) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine, language=language)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[1] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({*sample_data, column_to_analyze.name.root})
+
+    def test_list_valued_samples_are_parsed_once_per_element(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [["john@example.com", "555-123-4567"], ["john@example.com"], None]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[0] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({"john@example.com", "555-123-4567", column_to_analyze.name.root})
+
+    def test_values_beyond_the_memo_cap_are_parsed_per_tag(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [f"user{i}@example.com" for i in range(3)]
+
+        with (
+            patch("metadata.pii.tag_analyzer.NLP_ARTIFACTS_MEMO_MAX_SIZE", 2),
+            patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text,
+        ):
+            ScoreTagsForColumnService(nlp_engine=nlp_engine)(column_to_analyze, sample_data, [email_tag, phone_tag])
+
+        parse_counts = Counter(call.args[0] for call in process_text.call_args_list)
+        assert [parse_counts[value] for value in sample_data] == [1, 1, 2]
 
 
 class TestTagAnalyzer:
@@ -458,6 +557,40 @@ class TestTagAnalyzer:
 
         assert analysis.score == 1.0
 
+    def test_analyze_content_detects_upper_cased_names(self, person_tag_analyzer: TagAnalyzer):
+        names = ["SERGE DUPONT", "GENEVIÈVE DURAND", "CÉLINE FOURNIER", "NATHALIE MERCIER"]
+
+        analysis = person_tag_analyzer.analyze(str_values=names)
+
+        assert analysis.score >= 0.8
+        assert {result.entity_type for result in analysis.recognizer_results} == {PIIEntity.PERSON.value}
+
+    def test_analyze_content_does_not_tag_upper_cased_status_values(self, person_tag_analyzer: TagAnalyzer):
+        statuses = ["ACTIVE", "PENDING", "CLOSED", "ARCHIVED", "CANCELLED", "APPROVED", "REJECTED"]
+
+        analysis = person_tag_analyzer.analyze(str_values=statuses)
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_skips_name_pass_without_spacy_recognizers(self, tag_analyzer: TagAnalyzer, nlp_engine):
+        statuses = ["ACTIVE", "PENDING", "CLOSED"]
+
+        tag_analyzer.analyze(str_values=statuses)
+
+        assert [call.args[0] for call in nlp_engine.process_text.call_args_list] == statuses
+
+    def test_analyze_content_reanalyzes_only_upper_cased_values(self, person_tag: Tag, column: Column):
+        nlp_engine = load_nlp_engine()
+        analyzer = TagAnalyzer(tag=person_tag, column=column, nlp_engine=nlp_engine)
+        names = ["SERGE DUPONT", "GENEVIÈVE DURAND", "Céline Fournier", "Nathalie Mercier"]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            analysis = analyzer.analyze(str_values=names)
+
+        assert [call.args[0] for call in process_text.call_args_list] == names + ["Serge Dupont", "Geneviève Durand"]
+        assert {result.entity_type for result in analysis.recognizer_results} == {PIIEntity.PERSON.value}
+
     def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
         spacy_recognizer = RecognizerFactory.create(
             name="SpacyRecognizer",
@@ -618,3 +751,287 @@ class TestTagAnalyzer:
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True
+
+    def test_exception_list_filtering_column_name_with_a_dot(self, email_tag, nlp_engine):
+        """A column whose name contains a dot is quoted in its FQN and in its exception's link"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch.users::columns::"user.email">', reason="Test exception"
+            )
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
+
+    def test_exception_list_filtering_dotted_name_and_nested_path(self, email_tag, nlp_engine):
+        """An unquoted dotted path names the nested column, not a column whose own name has that dot"""
+        literal = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        nested = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.user.email",
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink="<#E::table::svc.db.sch.users::columns::user.email>", reason="Test exception"
+            )
+        ]
+
+        assert TagAnalyzer(tag=email_tag, column=nested, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
+        assert not TagAnalyzer(tag=email_tag, column=literal, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
+
+    def test_exception_list_filtering_other_column_with_a_dot(self, email_tag, nlp_engine):
+        """An exception for one column does not apply to another column of the table"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::email>", reason="Test exception"),
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::user>", reason="Test exception"),
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is False
+
+    def test_exception_list_filtering_nested_column(self, email_tag, nlp_engine):
+        """A nested column is named by its dotted path under the table, as in a test case link"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.contact.email",
+        )
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+
+        own = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact.email>", reason="Test exception"
+        )
+        parent = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact>", reason="Test exception"
+        )
+        assert analyzer.should_skip_recognizer([own]) is True
+        assert analyzer.should_skip_recognizer([parent]) is False
+
+    def test_exception_list_filtering_table_name_with_a_dot(self, email_tag, nlp_engine):
+        """A quoted table name keeps its quotes in the entity link, as in the table's FQN"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch."users.v2".email',
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch."users.v2"::columns::email>',
+                reason="Test exception",
+            )
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
+
+
+class TestBuildRecognizerMetadata:
+    """Tests for TagScorer._build_recognizer_metadata recognizer attribution logic."""
+
+    def _make_result(self, name: str, score: float, pattern: str | None = None) -> RecognizerResult:
+        return RecognizerResult(
+            entity_type="TEST",
+            start=0,
+            end=1,
+            score=score,
+            analysis_explanation=AnalysisExplanation(
+                recognizer=name, original_score=score, pattern_name=pattern, pattern=pattern
+            )
+            if pattern
+            else None,
+            recognition_metadata={
+                presidio_constants.RECOGNIZER_METADATA_NAME: name,
+                presidio_constants.RECOGNIZER_METADATA_IDENTIFIER: name,
+            },
+        )
+
+    def _scorer(self) -> TagScorer:
+        return TagScorer(tag_analyzers=[], score_cutoff=0.0)
+
+    # ── helpers ─────────────────────────────────────────────────────────────
+
+    def _pattern_tag(self, recognizer_names: list[str]) -> "Tag":
+        """Build a Tag whose recognizers use PatternRecognizer configs."""
+        recognizers = []
+        for rname in recognizer_names:
+            pat = PatternFactory.create(name="p", regex=".*", score=0.9)
+            pat_rec = PatternRecognizerFactory.create(
+                patterns=[pat], context=[], supportedLanguage=ClassificationLanguage.en
+            )
+            recognizers.append(
+                RecognizerFactory.create(
+                    name=rname,
+                    recognizerConfig=pat_rec,
+                    target=Target.content,
+                )
+            )
+        return TagFactory.create(
+            tag_name="TestTag",
+            autoClassificationEnabled=True,
+            recognizers=recognizers,
+        )
+
+    def _predefined_tag(self, predefined_name: Name) -> "Tag":
+        """Build a Tag with a single PredefinedRecognizer config."""
+        pred_rec = RecognizerFactory.create(
+            name=predefined_name.value,
+            recognizerConfig=PredefinedRecognizerFactory.create(name=predefined_name),
+            target=Target.content,
+        )
+        return TagFactory.create(
+            tag_name="PredefinedTag",
+            autoClassificationEnabled=True,
+            recognizers=[pred_rec],
+        )
+
+    # ── tests ────────────────────────────────────────────────────────────────
+
+    def test_single_recognizer_control(self):
+        """Baseline: a single result maps to the configured recognizer."""
+        tag = self._pattern_tag(["AlphaRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[self._make_result("AlphaRecognizer", 0.9)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "AlphaRecognizer"
+        assert meta.score == 0.9
+
+    def test_competing_scores_uses_max_result(self):
+        """Bug 1: when multiple results compete, metadata must reflect the winner
+        (highest score), not the first result in the list."""
+        tag = self._pattern_tag(["SpacyRecognizer", "PhoneRecognizer"])
+        # SpacyRecognizer comes first but scores lower
+        analysis = TagAnalysis(
+            tag=tag,
+            score=1.0,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("SpacyRecognizer", 0.85),
+                self._make_result("PhoneRecognizer", 1.0),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "PhoneRecognizer"
+        assert meta.score == 1.0
+
+    def test_patterns_only_from_attributed_recognizer(self):
+        """Patterns in the metadata must come from the recognizer the label is
+        attributed to, not from every recognizer that produced a result."""
+        tag = self._pattern_tag(["SpacyRecognizer", "PhoneRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=1.0,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("SpacyRecognizer", 0.85, pattern="spacy-pattern"),
+                self._make_result("PhoneRecognizer", 1.0, pattern="phone-pattern"),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "PhoneRecognizer"
+        assert [p.regex for p in meta.patterns] == ["phone-pattern"]
+
+    def test_score_tie_resolves_to_a_configured_recognizer(self):
+        """When two results tie, any one of the tied recognizers is acceptable;
+        the important invariant is that the returned name is a configured one."""
+        tag = self._pattern_tag(["ARecognizer", "BRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("ARecognizer", 0.9),
+                self._make_result("BRecognizer", 0.9),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName in {"ARecognizer", "BRecognizer"}
+        assert meta.score == 0.9
+
+    @pytest.mark.parametrize(
+        "predefined_name, value",
+        [
+            pytest.param(Name.DateRecognizer, "1980-04-03", id="ValidatedDateRecognizer"),
+            pytest.param(Name.CreditCardRecognizer, "4111 1111 1111 1111", id="SanitizedCreditCardRecognizer"),
+        ],
+    )
+    def test_predefined_runtime_subclass_resolves_to_configured_recognizer(self, predefined_name: Name, value: str):
+        """Bug 2: a predefined recognizer is built as a subclass at runtime
+        (e.g. DateRecognizer -> ValidatedDateRecognizer). Its results must still be
+        attributed to the configured recognizer."""
+        tag = self._predefined_tag(predefined_name)
+        column = Column(
+            name=ColumnName(root="analyze_column"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.analyze_column",
+        )
+        analysis = TagAnalyzer(tag=tag, column=column, nlp_engine=load_nlp_engine()).analyze(str_values=[value])
+
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerId == tag.recognizers[0].id
+        assert meta.recognizerName == predefined_name.value
+
+    def test_custom_recognizer_not_attributed_to_similarly_named_predefined(self):
+        """A custom recognizer named 'CustomEmailRecognizer' must not be attributed
+        to a predefined 'EmailRecognizer' listed before it on the same tag."""
+        # Build a tag with a predefined EmailRecognizer first, then a custom one
+        pred_rec = RecognizerFactory.create(
+            name=Name.EmailRecognizer.value,
+            recognizerConfig=PredefinedRecognizerFactory.create(name=Name.EmailRecognizer),
+            target=Target.content,
+        )
+        pat = PatternFactory.create(name="p", regex=".*", score=0.9)
+        pat_rec = PatternRecognizerFactory.create(
+            patterns=[pat], context=[], supportedLanguage=ClassificationLanguage.en
+        )
+        custom_rec = RecognizerFactory.create(
+            name="CustomEmailRecognizer",
+            recognizerConfig=pat_rec,
+            target=Target.content,
+        )
+        tag = TagFactory.create(
+            tag_name="TestTag",
+            autoClassificationEnabled=True,
+            recognizers=[pred_rec, custom_rec],
+        )
+        custom_id = custom_rec.id
+
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[self._make_result("CustomEmailRecognizer", 0.9)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        # Must be attributed to the custom recognizer, not the predefined one
+        assert meta.recognizerId == custom_id
+        assert meta.recognizerName == "CustomEmailRecognizer"

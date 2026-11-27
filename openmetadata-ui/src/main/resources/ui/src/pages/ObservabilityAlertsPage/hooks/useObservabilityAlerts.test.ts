@@ -17,6 +17,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useObservabilityAlerts } from './useObservabilityAlerts';
 
 const mockGetAllAlerts = jest.fn();
@@ -204,5 +205,40 @@ describe('useObservabilityAlerts', () => {
     await waitFor(() => expect(result.current.alerts).toEqual([userAlert]));
 
     expect(mockGetAlertsFromName).not.toHaveBeenCalled();
+  });
+
+  it('exposes the list failure so an error is not shown as an empty list, and clears it on retry', async () => {
+    const serverError = { response: { status: 500 } };
+    mockGetAllAlerts.mockRejectedValueOnce(serverError);
+
+    const { result } = renderHook(() => useObservabilityAlerts());
+
+    await waitFor(() => expect(result.current.alertsError).toBe(serverError));
+
+    expect(result.current.alerts).toEqual([]);
+    expect(showErrorToast).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.fetchAlerts();
+    });
+
+    expect(result.current.alertsError).toBeUndefined();
+    expect(result.current.alerts).toEqual([userAlert]);
+  });
+
+  it('drops the rows already on screen when a refetch fails', async () => {
+    const serverError = { response: { status: 500 } };
+    const { result } = renderHook(() => useObservabilityAlerts());
+
+    await waitFor(() => expect(result.current.alerts).toEqual([userAlert]));
+
+    mockGetAllAlerts.mockRejectedValueOnce(serverError);
+
+    await act(async () => {
+      await result.current.fetchAlerts();
+    });
+
+    expect(result.current.alertsError).toBe(serverError);
+    expect(result.current.alerts).toEqual([]);
   });
 });

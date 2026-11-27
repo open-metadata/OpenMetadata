@@ -42,7 +42,7 @@ public final class TierStep implements EnrichmentStep {
 
   @Override
   public void apply(EnrichmentTarget target) {
-    EntityInterface entity = target.entity();
+    EntityInterface<?> entity = target.entity();
     String tier = null;
     if (!NON_TIER_ENTITIES.contains(Entity.getEntityTypeFromObject(entity))) {
       tier = "NoTier";

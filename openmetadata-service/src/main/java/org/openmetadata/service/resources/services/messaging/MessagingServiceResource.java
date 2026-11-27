@@ -447,7 +447,7 @@ public class MessagingServiceResource
       @Valid CreateMessagingService update) {
     MessagingService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
   }

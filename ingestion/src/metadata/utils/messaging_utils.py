@@ -15,6 +15,7 @@ Helpers module for messaging sources
 
 import re
 import traceback
+from collections.abc import Collection
 
 from metadata.utils.logger import utils_logger
 
@@ -40,3 +41,21 @@ def merge_and_clean_protobuf_schema(schema_text: str | None) -> str | None:
         logger.debug(traceback.format_exc())
         logger.warning(f"Failed to merge and clean protobuf schema: {exc}")
     return None
+
+
+def clean_protobuf_schema(schema_text: str, imports: Collection[str]) -> str:
+    """
+    Drop the lines of one Protobuf file that protoc cannot resolve on its own: option lines, and
+    imports that are neither in `imports` nor well-known types.
+    """
+    lines = []
+    for line in schema_text.splitlines():
+        imported = re.match(r'\s*import\s+(?:public\s+|weak\s+)?"(.*)";', line)
+        is_unresolved_import = (
+            imported is not None
+            and imported.group(1) not in imports
+            and not imported.group(1).startswith("google/protobuf/")
+        )
+        if not is_unresolved_import and not re.match(r"\s*option\s.*;", line):
+            lines.append(line)
+    return "\n".join(lines)

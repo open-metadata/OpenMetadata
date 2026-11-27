@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  getDataProductInputPorts,
+  getDataProductOutputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { InputOutputPortsTab } from './InputOutputPortsTab.component';
 import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
@@ -26,6 +31,8 @@ import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
 jest.mock('../../../rest/dataProductAPI', () => ({
   getDataProductPortsView: jest.fn(),
+  getDataProductInputPorts: jest.fn(),
+  getDataProductOutputPorts: jest.fn(),
 }));
 
 jest.mock('./PortsLineageView/PortsLineageView.component', () => ({
@@ -38,8 +45,14 @@ jest.mock('./PortsListView/PortsListView.component', () => ({
   default: () => <div data-testid="ports-list-view" />,
 }));
 
+const mockAssetSelectionDrawer = jest.fn();
+
 jest.mock('../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer', () => ({
-  AssetSelectionDrawer: () => null,
+  AssetSelectionDrawer: (props: unknown) => {
+    mockAssetSelectionDrawer(props);
+
+    return null;
+  },
 }));
 
 const mockDataProduct: DataProduct = {
@@ -157,5 +170,110 @@ describe('InputOutputPortsTab — permissions', () => {
     expect(
       screen.queryByTestId('add-output-port-button')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('InputOutputPortsTab — port pickers', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('hides the input ports from the output port picker', async () => {
+    setPortCounts(1, 0);
+    (getDataProductInputPorts as jest.Mock).mockResolvedValue({
+      data: [{ id: 'input-port-id' }],
+      paging: { total: 1 },
+    });
+    render(
+      <InputOutputPortsTab
+        {...defaultProps}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('add-output-port-button'));
+
+    await waitFor(() => {
+      expect(mockAssetSelectionDrawer).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          type: AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+          open: true,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    term: {
+                      'dataProducts.fullyQualifiedName': 'test.dataproduct',
+                    },
+                  },
+                ],
+                must_not: [{ ids: { values: ['input-port-id'] } }],
+              },
+            },
+          },
+        })
+      );
+    });
+  });
+
+  it('keeps each picker on its own exclusions when the other picker is opened mid-fetch', async () => {
+    setPortCounts(0, 0);
+    let releaseInputPorts: (value: unknown) => void = jest.fn();
+    (getDataProductInputPorts as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        releaseInputPorts = resolve;
+      })
+    );
+    (getDataProductOutputPorts as jest.Mock).mockResolvedValue({
+      data: [{ id: 'output-port-id' }],
+      paging: { total: 1 },
+    });
+    render(
+      <InputOutputPortsTab
+        {...defaultProps}
+        permissions={
+          { ...basePermissions, EditAll: true } as OperationPermission
+        }
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('add-output-port-button'));
+    fireEvent.click(screen.getByTestId('add-input-port-button'));
+    await waitFor(() => expect(getDataProductOutputPorts).toHaveBeenCalled());
+    releaseInputPorts({
+      data: [{ id: 'input-port-id' }],
+      paging: { total: 1 },
+    });
+
+    const lastPropsOf = (type: AssetsOfEntity) =>
+      mockAssetSelectionDrawer.mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.type === type)
+        .pop();
+
+    await waitFor(() => {
+      expect(
+        lastPropsOf(AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT)
+      ).toMatchObject({
+        open: true,
+        queryFilter: {
+          query: {
+            bool: { must_not: [{ ids: { values: ['input-port-id'] } }] },
+          },
+        },
+      });
+    });
+
+    expect(lastPropsOf(AssetsOfEntity.DATA_PRODUCT_INPUT_PORT)).toMatchObject({
+      open: true,
+      queryFilter: {
+        query: {
+          bool: { must_not: [{ ids: { values: ['output-port-id'] } }] },
+        },
+      },
+    });
   });
 });

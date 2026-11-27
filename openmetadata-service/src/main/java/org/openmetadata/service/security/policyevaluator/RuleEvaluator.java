@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -148,7 +149,7 @@ public class RuleEvaluator {
   private Task currentTask() {
     Task task = null;
     if (!expressionValidation && subjectContext != null && resourceContext != null) {
-      EntityInterface entity = resourceContext.getEntity();
+      EntityInterface<?> entity = resourceContext.getEntity();
       if (entity instanceof Task t) {
         task = t;
       }
@@ -162,7 +163,8 @@ public class RuleEvaluator {
       description =
           "Returns true if the logged in user has domain access to the entity being accessed. "
               + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
-              + "For entities without domains, users without domains can access them.",
+              + "For entities without domains, users without domains can access them. "
+              + "Creating an entity needs a domain of its container and every domain the request names.",
       examples = {"hasDomain()", "!hasDomain()"})
   public boolean hasDomain() {
     if (expressionValidation) {
@@ -170,6 +172,10 @@ public class RuleEvaluator {
     }
     if (subjectContext == null || resourceContext == null || subjectContext.user() == null) {
       return false;
+    }
+
+    if (resourceContext instanceof CreateResourceContext<?> createResourceContext) {
+      return hasDomainForCreate(createResourceContext);
     }
 
     if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
@@ -230,6 +236,23 @@ public class RuleEvaluator {
     return false;
   }
 
+  /**
+   * Creating needs a domain of the container the entity goes into and every domain the request
+   * names, so a domain the caller supplies cannot stand in for the container's
+   * (ADR:2026-11-03-a-create-is-authorized-against-its-stored-container).
+   */
+  private boolean hasDomainForCreate(CreateResourceContext<?> createResourceContext) {
+    if (!subjectContext.hasDomains(createResourceContext.getContainerDomains())) {
+      return false;
+    }
+    for (EntityReference requested : createResourceContext.getRequestedDomains()) {
+      if (!subjectContext.hasDomains(List.of(requested))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @Function(
       name = "noDomain",
       input = "none",
@@ -245,6 +268,42 @@ public class RuleEvaluator {
     }
     // Returns true only if entity has no domains
     return nullOrEmpty(resourceContext.getDomains());
+  }
+
+  @Function(
+      name = "matchAnyDomain",
+      input = "List of comma separated Domain fully qualified names",
+      description =
+          "Returns true if the entity being accessed belongs to at least one of the domains given "
+              + "as input. Matches the exact domain FQN; sub-domains are not included.",
+      examples = {"matchAnyDomain('Finance')", "matchAnyDomain('Finance', 'Finance.Payments')"})
+  @SuppressWarnings("unused")
+  public boolean matchAnyDomain(String... domainFQNs) {
+    if (expressionValidation) {
+      for (String domainFQN : domainFQNs) {
+        validateEntityReference(Entity.DOMAIN, domainFQN);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<EntityReference> domains = resourceContext.getDomains();
+    if (nullOrEmpty(domains)) {
+      LOG.debug("No Domains found for resource");
+      return false;
+    }
+    LOG.debug(
+        "matchAnyDomain {} resourceDomains {}",
+        Arrays.toString(domainFQNs),
+        Arrays.toString(domains.toArray()));
+    for (String domainFQN : domainFQNs) {
+      boolean found = domains.stream().anyMatch(d -> domainFQN.equals(d.getFullyQualifiedName()));
+      if (found) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Function(
@@ -467,7 +526,7 @@ public class RuleEvaluator {
       return false;
     }
 
-    EntityInterface entity = resourceContext.getEntity();
+    EntityInterface<?> entity = resourceContext.getEntity();
     if (entity == null) {
       return false;
     }
@@ -633,12 +692,13 @@ public class RuleEvaluator {
     }
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     return impersonatedBy != null
-        && Arrays.stream(botNames).anyMatch(impersonatedBy::equalsIgnoreCase);
+        && Arrays.stream(botNames).anyMatch(botName -> sameIdentifier(impersonatedBy, botName));
   }
 
   /**
-   * Bot attribution carries a Bot entity name on the MCP path and the bot's user name on the
-   * X-Impersonate-User path, and for an application bot the two differ, so accept either.
+   * Bot attribution carries a Bot entity name on an MCP call without X-Impersonate-User and the
+   * bot's user name on any X-Impersonate-User call, REST or MCP, and for an application bot the two
+   * differ, so accept either.
    */
   private void validateBotName(String botName) {
     try {

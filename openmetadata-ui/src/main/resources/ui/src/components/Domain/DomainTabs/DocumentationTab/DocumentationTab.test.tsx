@@ -32,7 +32,9 @@ const mockDescription = jest
   .mockImplementation(() => <div>Description</div>);
 jest.mock(
   '../../../common/EntityDescription/Description',
-  () => mockDescription
+  () =>
+    (...args: unknown[]) =>
+      mockDescription(...args)
 );
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
@@ -43,7 +45,7 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual(
     '../../../Customization/GenericProvider/GenericContext'
   ),
-  useGenericContext: jest.fn().mockReturnValue({
+  useGenericContext: jest.fn().mockImplementation(() => ({
     data: MOCK_DOMAIN,
     onUpdate: mockOnUpdate,
     permissions: {
@@ -55,7 +57,7 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
     },
-  }),
+  })),
 }));
 
 jest.mock('../../../../utils/EntityNameUtils', () => ({

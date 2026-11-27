@@ -39,6 +39,7 @@ const createMockResource = (
     url,
     embedConfig: embedContent ? { content: embedContent } : undefined,
   },
+  categories: [],
   contexts: [{ pageId: 'glossary' }],
 });
 

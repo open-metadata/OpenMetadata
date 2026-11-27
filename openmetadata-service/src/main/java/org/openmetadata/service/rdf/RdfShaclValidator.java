@@ -31,23 +31,45 @@ import org.apache.jena.shacl.ValidationReport;
 public final class RdfShaclValidator {
 
   private static final String SHAPES_RESOURCE = "/rdf/shapes/openmetadata-shapes.ttl";
+  private static final String NATIVE_SHAPES_RESOURCE = "/rdf/shapes/native-ontology-shapes.ttl";
+
+  public enum ShapeSet {
+    CATALOG,
+    NATIVE_ONTOLOGY
+  }
 
   private RdfShaclValidator() {}
 
-  private static final class Holder {
+  private static final class CatalogHolder {
     private static final Shapes SHAPES = loadShapes(SHAPES_RESOURCE);
   }
 
+  private static final class NativeHolder {
+    private static final Shapes NATIVE_SHAPES = loadShapes(NATIVE_SHAPES_RESOURCE);
+  }
+
   public static ValidationReport validate(Graph data) {
-    return org.apache.jena.shacl.ShaclValidator.get().validate(Holder.SHAPES, data);
+    return validate(data, ShapeSet.CATALOG);
+  }
+
+  public static ValidationReport validate(Graph data, ShapeSet shapeSet) {
+    return org.apache.jena.shacl.ShaclValidator.get().validate(shapes(shapeSet), data);
   }
 
   public static ValidationReport validate(Model data) {
     return validate(data.getGraph());
   }
 
+  public static ValidationReport validate(Model data, ShapeSet shapeSet) {
+    return validate(data.getGraph(), shapeSet);
+  }
+
   public static Shapes shapes() {
-    return Holder.SHAPES;
+    return CatalogHolder.SHAPES;
+  }
+
+  public static Shapes shapes(ShapeSet shapeSet) {
+    return shapeSet == ShapeSet.CATALOG ? CatalogHolder.SHAPES : NativeHolder.NATIVE_SHAPES;
   }
 
   static Shapes loadShapes(String resourcePath) {

@@ -244,7 +244,7 @@ class EntityRepositoryHistoryPageTest {
         .withVersion(0.1);
   }
 
-  private void stubVersionRows(long startTs, List<? extends EntityInterface> rows) {
+  private void stubVersionRows(long startTs, List<? extends EntityInterface<?>> rows) {
     List<String> jsons = rows.stream().map(JsonUtils::pojoToJson).toList();
     when(extensionDAO.getEntityHistoryByTimestampRange(
             anyString(),

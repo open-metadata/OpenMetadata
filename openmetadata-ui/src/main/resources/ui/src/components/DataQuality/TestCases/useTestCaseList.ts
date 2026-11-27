@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
 import { AxiosError } from 'axios';
-import { castArray, isEmpty, uniq } from 'lodash';
+import { castArray, isEmpty, omit, uniq } from 'lodash';
 import {
   Dispatch,
   SetStateAction,
@@ -22,31 +21,35 @@ import {
   useRef,
   useState,
 } from 'react';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGING_URL_PARAMS,
+} from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DataQualityPageTabs } from '../../../enums/DataQuality.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
+import { getTestCaseListFilterParams } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { TestCaseFilterForm } from './useTestCaseFilters';
 
 export interface UseTestCaseListProps {
   params: TestCaseSearchParams;
   selectedFilter: string[];
   setSelectedFilter: Dispatch<SetStateAction<string[]>>;
   searchValue: string;
-  form: FormInstance;
+  form?: TestCaseFilterForm;
   getInitialOptions: (key: string, isLengthCheck?: boolean) => void;
   tab: DataQualityPageTabs;
   testCasePermission: OperationPermission;
@@ -63,8 +66,8 @@ export interface UseTestCaseListProps {
  * Owns the DATA concern: the test-case rows, their loading flag, the sort
  * options and the fetch pipeline. The driving fetch effect stays co-located
  * with {@link fetchTestCases} and the paging handler so the fetch is issued
- * from a single place (no double-fetch). Filter state, the form and the paging
- * bag are injected.
+ * from a single place (no double-fetch). Filter state, the optional classic form
+ * and the paging bag are injected.
  */
 export const useTestCaseList = ({
   params,
@@ -93,6 +96,8 @@ export const useTestCaseList = ({
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const latestRequestId = useRef(0);
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
 
   const fetchTestCases = useCallback(
     async (
@@ -103,9 +108,10 @@ export const useTestCaseList = ({
       // Visibility, filters, and sorting can overlap requests; only the newest
       // response may update the rows or clear the shared loading state.
       const requestId = ++latestRequestId.current;
-      const updatedParams = getTestCaseFiltersValue(
+      const filterParams = getTestCaseListFilterParams(
         params,
-        activeFilters ?? selectedFilter
+        activeFilters ?? selectedFilter,
+        searchValue
       );
 
       setIsLoading(true);
@@ -115,11 +121,8 @@ export const useTestCaseList = ({
           paging: pagingResponse,
           entityPermissions: listPermissions,
         } = await getListTestCaseBySearch({
-          ...updatedParams,
+          ...filterParams,
           ...sortOptions,
-          testCaseStatus: isEmpty(params?.testCaseStatus)
-            ? undefined
-            : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
           includePermissions: true,
@@ -129,7 +132,6 @@ export const useTestCaseList = ({
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue || undefined,
           offset: (page - 1) * pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...apiParams,
@@ -186,8 +188,14 @@ export const useTestCaseList = ({
 
   const handlePagingClick = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
-      handlePageChange(page);
-      fetchTestCases(page);
+      // Another page reaches the fetch effect through `currentPage`. The same page changes
+      // nothing the effect watches, so that refresh is fetched here. A pending restore
+      // may retain an older callback, so compare against the live page.
+      if (page === currentPageRef.current) {
+        fetchTestCases(page);
+      } else {
+        handlePageChange(page);
+      }
     },
     [handlePageChange, fetchTestCases]
   );
@@ -214,7 +222,7 @@ export const useTestCaseList = ({
       fetchTestCases(currentPage, updatedValue);
       // AntD multi-select requires an array even when the URL contains the
       // legacy single-value status format.
-      form.setFieldsValue({
+      form?.setFieldsValue({
         ...params,
         testCaseStatus: params.testCaseStatus
           ? castArray(params.testCaseStatus)
@@ -225,16 +233,28 @@ export const useTestCaseList = ({
     }
   };
 
+  // Filter-option and form callbacks can change without changing the query. Keep
+  // their latest values without turning those renders into extra list requests.
+  const getTestCasesRef = useRef(getTestCases);
+  useEffect(() => {
+    getTestCasesRef.current = getTestCases;
+  });
+
+  const filterParamsKey = useMemo(
+    () => JSON.stringify(omit(params, PAGING_URL_PARAMS)),
+    [params]
+  );
+
   useEffect(() => {
     if (
       getDerivedPermissionFlags(testCasePermission).canViewBasic &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
-      getTestCases();
+      getTestCasesRef.current();
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params, currentPage]);
+  }, [tab, testCasePermission, pageSize, filterParamsKey, currentPage]);
 
   const pagingData = useMemo(
     () => ({

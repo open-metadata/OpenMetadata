@@ -10,15 +10,143 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  clickIgnoringToasts,
+  redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
+import {
+  waitForAriaOverlayToSettle,
+  waitForResponseWithStatus,
+} from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
+import {
+  disableAiAppMode,
+  stubUserPreferencesAppMode,
+} from '../../Utils/appMode';
+
+const dateRangeTrigger = (page: Page) =>
+  page
+    .getByRole('group', { name: 'Date Range', exact: true })
+    .getByRole('button');
+
+const waitForIncidentList = (
+  page: Page,
+  matchesParams: (params: URLSearchParams) => boolean = () => true
+) =>
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname ===
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list' &&
+        matchesParams(url.searchParams)
+      );
+    },
+    200
+  );
+
+const expectEmptyDateRange = async (page: Page) => {
+  await expect(dateRangeTrigger(page)).toHaveText('Select dates');
+  await expect(page).toHaveURL(
+    (url) => !url.searchParams.has('startTs') && !url.searchParams.has('endTs')
+  );
+  await expect(page.getByTestId('incident-clear-filters')).not.toBeVisible();
+};
+
+const applyTodayRange = async (page: Page) => {
+  const trigger = dateRangeTrigger(page);
+  await expect(trigger).toHaveText('Select dates');
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await waitForAriaOverlayToSettle(page);
+
+  const range = await page.evaluate(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    return {
+      startTs: String(start.getTime()),
+      endTs: String(end.getTime() - 1),
+    };
+  });
+  await dialog.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(trigger).not.toHaveText('Select dates');
+  await expect(page).toHaveURL(
+    (url) => !url.searchParams.has('startTs') && !url.searchParams.has('endTs')
+  );
+
+  const responsePromise = waitForIncidentList(
+    page,
+    (params) =>
+      params.get('startTs') === range.startTs &&
+      params.get('endTs') === range.endTs
+  );
+  await clickIgnoringToasts(
+    dialog.getByRole('button', { name: 'Apply', exact: true })
+  );
+  await responsePromise;
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).not.toHaveText('Select dates');
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get('startTs') === range.startTs &&
+      url.searchParams.get('endTs') === range.endTs
+  );
+  return range;
+};
+
+const clearDateRange = async (page: Page) => {
+  const clearButton = page.getByTestId('incident-clear-filters');
+  await expect(clearButton).toBeVisible();
+  const responsePromise = waitForIncidentList(
+    page,
+    (params) => !params.has('startTs') && !params.has('endTs')
+  );
+  await clearButton.click();
+  await responsePromise;
+  await expectEmptyDateRange(page);
+};
+
+const selectDateField = async (
+  page: Page,
+  field: 'updatedAt' | 'timestamp'
+) => {
+  const responsePromise = waitForIncidentList(
+    page,
+    (params) => params.get('dateField') === field
+  );
+  await selectOptionWithRetry(
+    page.getByTestId('sort-field-dropdown-trigger'),
+    page.getByTestId('drop-down-menu').getByTestId(field)
+  );
+  await responsePromise;
+  await expect(page.getByTestId('sort-field-dropdown-trigger')).toContainText(
+    field === 'updatedAt' ? 'Updated at' : 'Created at'
+  );
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get('dateField') === field
+  );
+};
+
+test.beforeEach(async ({ page }) => {
+  await disableAiAppMode(page);
+  await stubUserPreferencesAppMode(page, 'classic');
+});
 
 test.describe(
   'Incident Manager Date Filter',
@@ -27,13 +155,9 @@ test.describe(
     let table: TableClass;
 
     test.beforeAll(async ({ browser }) => {
-      test.slow();
       const { apiContext, afterAction } = await performAdminLogin(browser);
       table = new TableClass();
-
       await table.create(apiContext);
-
-      // Create table and test cases
       await table.createTestCase(apiContext, {
         parameterValues: [
           { name: 'minColValue', value: 12 },
@@ -43,24 +167,18 @@ test.describe(
       });
 
       const testCase = table.testCasesResponseData[0];
-
-      // Create a failed result to generate an incident
       await table.addTestCaseResult(apiContext, testCase.fullyQualifiedName, {
         testCaseStatus: 'Failed',
         result: 'Column count was 10, expected between 12 and 24',
         timestamp: Date.now(),
         testResultValue: [{ name: 'columnCount', value: '10' }],
       });
-
-      // Add another failure from 5 days ago for range testing
-      const fiveDaysAgo = Date.now() - 5 * 24 * 60 * 60 * 1000;
       await table.addTestCaseResult(apiContext, testCase.fullyQualifiedName, {
         testCaseStatus: 'Failed',
         result: 'Column count was 10, expected between 12 and 24',
-        timestamp: fiveDaysAgo,
+        timestamp: Date.now() - 5 * 24 * 60 * 60 * 1000,
         testResultValue: [{ name: 'columnCount', value: '10' }],
       });
-
       await afterAction();
     });
 
@@ -74,367 +192,120 @@ test.describe(
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
       await page.getByTestId('profiler').click();
-      const incidentListResponse = page.waitForResponse((response) =>
-        response
-          .url()
-          .includes(
-            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-          )
-      );
+      const responsePromise = waitForIncidentList(page);
       await page.getByRole('tab', { name: 'Incidents' }).click();
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
+      await responsePromise;
     });
 
     test('Date picker shows placeholder when no date is selected', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('date-picker-menu');
-      await expect(datePicker).toBeVisible();
-      await expect(datePicker).toContainText('Select Date');
-
-      // Verify URL does not have date params
-      const url = new URL(page.url());
-      expect(url.searchParams.has('startTs')).toBeFalsy();
-      expect(url.searchParams.has('endTs')).toBeFalsy();
+      await expectEmptyDateRange(page);
     });
 
     test('Select preset date range', async ({ page }) => {
-      const datePicker = page.getByTestId('date-picker-menu');
-      await datePicker.click();
-
-      const last7DaysOption = page.getByRole('menuitem', {
-        name: 'Last 7 days',
-      });
-
-      // Wait for API call that happens on selection change.
-      // We strictly wait for a request that has searchParams to avoid catching the initial load or others.
-      const incidentListResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('startTs')
-      );
-
-      await last7DaysOption.click();
-
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
-      const url = new URL(response.url());
-
-      // Validate API params
-      expect(url.searchParams.has('startTs')).toBeTruthy();
-      expect(url.searchParams.has('endTs')).toBeTruthy();
-
-      const startTs = parseInt(url.searchParams.get('startTs') || '0');
-      const endTs = parseInt(url.searchParams.get('endTs') || '0');
-
-      expect(startTs).toBeLessThan(endTs);
-
-      // Verify button text
-      await expect(datePicker).toContainText('Last 7 days');
-
-      // Verify URL params
-      const pageUrl = new URL(page.url());
-      expect(pageUrl.searchParams.get('key')).toBe('last7days');
+      await applyTodayRange(page);
     });
 
     test('Clear selected date range', async ({ page }) => {
-      // First select a range to ensure we can clear it
-      const datePicker = page.getByTestId('date-picker-menu');
-      await datePicker.click();
-
-      // Wait for request with startTs to ensure selection is applied
-      const selectionResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('startTs')
-      );
-      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
-      const afterSelectResponse = await selectionResponse;
-      expect(afterSelectResponse.status()).toBe(200);
-
-      await expect(datePicker).toContainText('Last 7 days');
-
-      // Now clear it
-      const clearButton = page.getByTestId('clear-date-picker');
-      await expect(clearButton).toBeVisible();
-
-      // Intercept response to verify params are GONE
-      const incidentListResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && !response.url().includes('startTs')
-      );
-
-      await clearButton.click();
-
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
-      const url = new URL(response.url());
-
-      // Validate API params do NOT exist
-      expect(url.searchParams.has('startTs')).toBeFalsy();
-      expect(url.searchParams.has('endTs')).toBeFalsy();
-
-      // Verify UI reset
-      await expect(datePicker).toContainText('Select Date');
-      await expect(clearButton).not.toBeVisible();
-
-      // Verify Page URL params removed
-      const pageUrl = new URL(page.url());
-      expect(pageUrl.searchParams.has('startTs')).toBeFalsy();
-      expect(pageUrl.searchParams.has('endTs')).toBeFalsy();
-      expect(pageUrl.searchParams.has('key')).toBeFalsy();
+      await applyTodayRange(page);
+      await clearDateRange(page);
     });
 
     test('Date filter persists on page reload', async ({ page }) => {
-      const datePicker = page.getByTestId('date-picker-menu');
-      await datePicker.click();
-      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
-      await expect(datePicker).toContainText('Last 7 days');
-
-      const incidentListResponse = page.waitForResponse((response) =>
-        response
-          .url()
-          .includes(
-            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-          )
+      const range = await applyTodayRange(page);
+      const label = await dateRangeTrigger(page).innerText();
+      const responsePromise = waitForIncidentList(
+        page,
+        (params) =>
+          params.get('startTs') === range.startTs &&
+          params.get('endTs') === range.endTs
       );
-
-      // Verify URL has the key BEFORE reloading
-      await expect(page).toHaveURL(/key=last7days/);
-
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('domcontentloaded');
+      await responsePromise;
       await waitForAllLoadersToDisappear(page);
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
-
-      const datePickerReloaded = page.getByTestId('date-picker-menu');
-      await expect(datePickerReloaded).toBeVisible({ timeout: 15000 });
-      await expect(datePickerReloaded).toContainText('Last 7 days');
-
-      const url = new URL(page.url());
-      expect(url.searchParams.get('key')).toBe('last7days');
+      await expect(dateRangeTrigger(page)).toHaveText(label);
+      await expect(page).toHaveURL(
+        (url) =>
+          url.searchParams.get('startTs') === range.startTs &&
+          url.searchParams.get('endTs') === range.endTs
+      );
     });
   }
 );
 
-/**
- * Incident Manager Date Field Sort Dropdown
- * @description Tests the date field sort dropdown (Created At / Updated At) on the Incidents tab.
- */
 test.describe(
   'Incident Manager - Date Field Sort Dropdown',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Incident_Manager` },
   () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-      const incidentListResponse = page.waitForResponse((response) =>
-        response
-          .url()
-          .includes(
-            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-          )
-      );
+      const responsePromise = waitForIncidentList(page);
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
+      await responsePromise;
     });
 
     test('should show "Created At" as the default sort field label', async ({
       page,
     }) => {
-      // The trigger button should show the default label
-      const sortTrigger = page.locator('.sorting-dropdown');
-      await expect(sortTrigger).toBeVisible();
-      await expect(sortTrigger).toContainText('Created at');
+      await expect(
+        page.getByTestId('sort-field-dropdown-trigger')
+      ).toContainText('Created at');
     });
 
     test('should open sort field dropdown on click', async ({ page }) => {
-      const sortTrigger = page.locator('.sorting-dropdown');
-      await sortTrigger.click();
-
-      // Dropdown menu should appear with both options
-      await expect(
-        page.getByRole('menuitemradio', { name: 'Created at' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitemradio', { name: 'Updated at' })
-      ).toBeVisible();
+      const trigger = page.getByTestId('sort-field-dropdown-trigger');
+      await scrollIntoViewAndSettle(trigger);
+      await trigger.click();
+      const menu = page.getByTestId('drop-down-menu');
+      await expect(menu.getByTestId('timestamp')).toHaveText('Created at');
+      await expect(menu.getByTestId('updatedAt')).toHaveText('Updated at');
     });
 
     test('should switch to "Updated At" and call API with dateField=updatedAt', async ({
       page,
     }) => {
-      const sortTrigger = page.locator('.sorting-dropdown');
-      await sortTrigger.click();
-
-      // Intercept the API call triggered by the selection change
-      // Select Updated at
-      const apiResponsePromise = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('dateField=updatedAt')
-      );
-      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
-
-      const apiResponse = await apiResponsePromise;
-      expect(apiResponse.status()).toBe(200);
-
-      // Trigger should now show Updated at
-      await expect(sortTrigger).toContainText('Updated at');
-
-      // URL should contain dateField=updatedAt
-      await expect(page).toHaveURL(/dateField=updatedAt/);
+      await selectDateField(page, 'updatedAt');
     });
 
     test('should switch back to "Created at" and call API with dateField=timestamp', async ({
       page,
     }) => {
-      // First switch to Updated at
-      const sortTrigger = page.locator('.sorting-dropdown');
-      await sortTrigger.click();
-      const updatedAtRes = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('dateField=updatedAt')
-      );
-      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
-      await updatedAtRes;
-
-      // Now switch back to Created at
-      await sortTrigger.click();
-      const createdAtRes = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('dateField=timestamp')
-      );
-      await page.getByRole('menuitemradio', { name: 'Created at' }).click();
-      await createdAtRes;
-
-      await expect(sortTrigger).toContainText('Created at');
-      await expect(page).toHaveURL(/dateField=timestamp/);
+      await selectDateField(page, 'updatedAt');
+      await selectDateField(page, 'timestamp');
     });
 
     test('should close sort dropdown after selecting an option', async ({
       page,
     }) => {
-      const sortTrigger = page.locator('.sorting-dropdown');
-      await sortTrigger.click();
-
-      // Menu should be visible
-      await expect(
-        page.getByRole('menuitemradio', { name: 'Updated at' })
-      ).toBeVisible();
-
-      // Select an option
-      await page.getByRole('menuitemradio', { name: 'Updated at' }).click();
-
-      // Menu should close
-      await expect(
-        page.getByRole('menuitemradio', { name: 'Updated at' })
-      ).not.toBeVisible();
+      await selectDateField(page, 'updatedAt');
+      await expect(page.getByTestId('drop-down-menu')).not.toBeVisible();
     });
   }
 );
 
-/**
- * Incident Manager Date Filter - Sidebar Navigation
- * @description Tests the date filter functionality when accessing Incident Manager from the sidebar.
- */
 test.describe(
   'Incident Manager Date Filter - Sidebar',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Incident_Manager` },
   () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-      const incidentListResponse = page.waitForResponse((response) =>
-        response
-          .url()
-          .includes(
-            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-          )
-      );
+      const responsePromise = waitForIncidentList(page);
       await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-      const response = await incidentListResponse;
-      expect(response.status()).toBe(200);
+      await responsePromise;
     });
 
     test('Date picker shows placeholder by default on Incident Manager page', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('date-picker-menu');
-      await expect(datePicker).toBeVisible();
-      await expect(datePicker).toContainText('Select Date');
-
-      // Clear button should not be visible when no date is selected
-      await expect(page.getByTestId('clear-date-picker')).not.toBeVisible();
+      await expectEmptyDateRange(page);
     });
 
     test('Select and clear date range on Incident Manager page', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('date-picker-menu');
-      await datePicker.click();
-
-      // Select Last 7 days
-      const dateFilterRes = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && response.url().includes('startTs')
-      );
-      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
-      await dateFilterRes;
-
-      await expect(datePicker).toContainText('Last 7 days');
-      await expect(page).toHaveURL(/key=last7days/);
-
-      // Clear button should be visible
-      const clearButton = page.getByTestId('clear-date-picker');
-      await expect(clearButton).toBeVisible();
-
-      // Clear the selection
-      const clearRes = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-            ) && !response.url().includes('startTs')
-      );
-      await clearButton.click();
-      await clearRes;
-
-      // Verify reset to placeholder
-      await expect(datePicker).toContainText('Select Date');
-      await expect(clearButton).not.toBeVisible();
-
-      // Verify URL params removed
-      const pageUrl = new URL(page.url());
-      expect(pageUrl.searchParams.has('startTs')).toBeFalsy();
-      expect(pageUrl.searchParams.has('key')).toBeFalsy();
+      await applyTodayRange(page);
+      await clearDateRange(page);
     });
   }
 );

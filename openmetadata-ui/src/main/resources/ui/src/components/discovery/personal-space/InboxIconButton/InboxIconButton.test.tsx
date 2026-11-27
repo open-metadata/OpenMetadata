@@ -27,21 +27,11 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { id: 'user-1' } }),
 }));
 
-jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
-  usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
-    selector({ inboxDateRange: undefined }),
-}));
-
-jest.mock('../InboxPage/inbox.utils', () => ({
-  getDefaultInboxDateRange: () => ({ startTs: 10, endTs: 20 }),
-}));
-
 jest.mock('../personalSpace.constants', () => ({
   PERSONAL_SPACE_ROUTES: {
     INBOX: '/inbox',
     INBOX_ACTIVITY: '/inbox/activity',
     INBOX_TASKS: '/inbox/tasks',
-    MY_DATA: '/my-data',
   },
 }));
 
@@ -75,7 +65,7 @@ describe('InboxIconButton', () => {
     jest.clearAllMocks();
   });
 
-  it('counts only the Open task group for the current window', async () => {
+  it('counts every Open task, undated, so it agrees with the Triage badge', async () => {
     mockListVisibleTasks.mockResolvedValue({ paging: { total: 9 } });
 
     renderButton();
@@ -86,8 +76,6 @@ describe('InboxIconButton', () => {
 
     expect(mockListVisibleTasks).toHaveBeenCalledWith({
       limit: 1,
-      startTs: 10,
-      endTs: 20,
       statusGroup: 'open',
     });
   });

@@ -12,7 +12,7 @@
  */
 
 import { FieldProps, IdSchema, Registry } from '@rjsf/utils';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE } from '../../../../../mocks/Templates.mock';
 import WorkflowArrayFieldTemplate from './WorkflowArrayFieldTemplate';
 
@@ -79,11 +79,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    fireEvent.focus(
-      screen.getByTestId(
-        'workflow-array-field-root/workflow-array-field-template'
-      )
-    );
+    act(() => screen.getByRole('combobox').focus());
 
     expect(mockOnFocus).toHaveBeenCalledWith(
       'root/workflow-array-field-template'
@@ -98,11 +94,8 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    fireEvent.blur(
-      screen.getByTestId(
-        'workflow-array-field-root/workflow-array-field-template'
-      )
-    );
+    act(() => screen.getByRole('combobox').focus());
+    act(() => screen.getByRole('combobox').blur());
 
     expect(mockOnBlur).toHaveBeenCalledWith(
       'root/workflow-array-field-template',
@@ -118,11 +111,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    const selectElement = screen.getByTestId(
-      'workflow-array-field-root/workflow-array-field-template'
-    );
-
-    expect(selectElement).toHaveClass('ant-select-disabled');
+    expect(screen.getByRole('combobox')).toBeDisabled();
   });
 
   it('Should set the filter pattern placeholder only for relevant fields', () => {
@@ -134,11 +123,10 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    const placeholderText = screen.getByText(
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'placeholder',
       'message.filter-pattern-placeholder'
     );
-
-    expect(placeholderText).toBeInTheDocument();
   });
 
   it('Should not set filter pattern placeholder for other fields', () => {
@@ -150,11 +138,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
       />
     );
 
-    const placeholderText = screen
-      .getByTestId('workflow-array-field-root/spaceTypes')
-      .querySelector('span.ant-select-selection-placeholder');
-
-    expect(placeholderText).toHaveTextContent('');
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', '');
   });
 
   it('Should call onChange with correct value when comma seperated values are entered', async () => {

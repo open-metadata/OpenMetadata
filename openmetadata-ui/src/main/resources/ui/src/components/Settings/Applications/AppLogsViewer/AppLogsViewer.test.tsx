@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
   ErrorSource,
   ScheduleTimeline,
@@ -47,14 +47,9 @@ jest.mock('../../../../utils/StringUtils', () => ({
   formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
-jest.mock('../../../common/CopyToClipboardButton/CopyToClipboardButton', () =>
-  jest.fn().mockReturnValue(<>CopyToClipboardButton</>)
+jest.mock('../../../common/CopyButton/CopyButton', () =>
+  jest.fn().mockReturnValue(<>CopyButton</>)
 );
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Badge: jest.fn().mockReturnValue(<div>Badge</div>),
-}));
 
 jest.mock('../../../../utils/ApplicationUtils', () => ({
   // Use the real formatters so the wall-clock regression test asserts
@@ -84,7 +79,7 @@ jest.mock('../../../../constants/constants', () => ({
     height: 14,
   },
   STATUS_ICON: {
-    success: IconSuccessBadge,
+    success: CheckCircle02,
   },
 }));
 
@@ -299,7 +294,14 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('label.status:')).toBeInTheDocument();
     expect(screen.getByText('Success')).toBeInTheDocument();
     expect(screen.getByText('label.index-states:')).toBeInTheDocument();
-    expect(screen.getAllByText('Badge')).toHaveLength(3);
+
+    const overall = screen.getByTestId(
+      'stats-component-label.overall-stat-plural'
+    );
+
+    // total, success, failed counts
+    expect(within(overall).getAllByText('274')).toHaveLength(2);
+    expect(within(overall).getByText('0')).toBeInTheDocument();
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();
     expect(screen.getByText('formatDateTimeWithTimezone')).toBeInTheDocument();
 

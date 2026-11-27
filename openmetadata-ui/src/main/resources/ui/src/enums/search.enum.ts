@@ -28,6 +28,7 @@ export enum SearchIndex {
   TAG = 'tag',
   CONTAINER = 'container',
   QUERY = 'query',
+  DATA_CONTRACT = 'dataContract',
   TEST_CASE = 'testCase',
   TEST_SUITE = 'testSuite',
   DATABASE_SCHEMA = 'databaseSchema',

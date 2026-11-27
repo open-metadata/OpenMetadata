@@ -35,7 +35,7 @@ import { Memories, AddAlert, Domain } from '@openmetadata/ui-core-components/ico
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `size` | `number` | `24` | Width and height in px |
-| `color` | `string` | `'currentColor'` | SVG stroke color |
+| `color` | `string` | `'currentColor'` | Icon color (strokes and fills). A `tw:text-*` class overrides it |
 | `className` | `string` | — | Additional CSS classes |
 | `...props` | `SVGProps<SVGSVGElement>` | — | Any other SVG attribute |
 

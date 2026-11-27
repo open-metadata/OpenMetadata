@@ -23,6 +23,7 @@ jest.mock('../../../../rest/axiosClient', () => ({
   },
 }));
 
+import { TFunction } from 'i18next';
 import {
   Task,
   TaskAvailableTransition,
@@ -35,6 +36,7 @@ import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils'
 import {
   applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskActionInput,
   getTaskResolveActions,
   LEGACY_APPROVE_ACTION_ID,
@@ -109,6 +111,20 @@ describe('applyActionLabels', () => {
 });
 
 describe('getTaskResolveActions', () => {
+  it('waits for workflow transitions for a release review', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          type: TaskType.RequestApproval,
+          category: TaskCategory.Approval,
+          about: { id: 'release-id', type: 'ontologyRelease' },
+          availableTransitions: [],
+        }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
   // /close and the expiry timer leave the workflow transitions on the task; a
   // task closed that way must not keep offering them.
   it.each([
@@ -225,6 +241,25 @@ describe('getTaskResolveActions', () => {
     }
   );
 
+  it('offers nothing on a Revise and resubmit task, which the next edit completes', () => {
+    const missing = makeTask({
+      category: TaskCategory.MetadataUpdate,
+      type: TaskType.MetadataCompletion,
+      payload: { missingFields: [] },
+    });
+
+    expect(
+      getTaskResolveActions(
+        {
+          ...missing,
+          payload: { missingFields: [], revision: { requestedBy: 'karan' } },
+        },
+        LABELS
+      )
+    ).toEqual([]);
+    expect(getTaskResolveActions(missing, LABELS)).not.toEqual([]);
+  });
+
   it('offers no legacy approve/reject for an incident, which resolves through its own transition', () => {
     expect(
       getTaskResolveActions(
@@ -288,6 +323,27 @@ describe('buildResolveBody', () => {
   const firstAction = (task: Task, schema?: TaskFormSchema) =>
     getTaskResolveActions(task, LABELS, schema);
 
+  it('sends an ontology review decision without an editable entity payload', () => {
+    const task = makeTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'concept-id', type: 'ontologyRelease' },
+      availableTransitions: [DAR_REJECT],
+      payload: { proposedChanges: { description: 'captured definition' } },
+    });
+
+    expect(
+      buildResolveBody(firstAction(task)[0], task, {
+        comment: 'The definition needs a narrower scope',
+        payload: { proposedChanges: { description: 'edited during review' } },
+      })
+    ).toStrictEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      comment: 'The definition needs a narrower scope',
+    });
+  });
+
   it('names the transition of a workflow action and omits a resolutionType the transition does not declare', () => {
     const task = makeTask({
       availableTransitions: [DAR_APPROVE],
@@ -319,6 +375,137 @@ describe('buildResolveBody', () => {
       comment: 'not allowed',
       payload: { testCaseFailureReason: 'FalsePositive' },
     });
+  });
+
+  // The fix: a workflow transition whose form the inbox collected carries the
+  // form data as `payload` and derives `newValue` from it + the transition's
+  // uiSchema — mirroring `TaskTabNew.runWorkflowTransition` — so a field-mode
+  // resolution reaches the entity instead of being warn-logged as missing.
+  it('derives newValue from the form payload and transition uiSchema of a workflow action', () => {
+    const task = makeTask({
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          formRef: 'approve',
+          resolutionType:
+            'Approved' as TaskAvailableTransition['resolutionType'],
+          targetStageId: 'approved',
+          targetTaskStatus: TaskStatus.Approved,
+        },
+      ],
+      type: TaskType.CustomTask,
+      payload: { targetField: 'description' },
+    });
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: {
+            'ui:resolution': { mode: 'field', valueField: 'proposedText' },
+          },
+        },
+      },
+    };
+
+    const body = buildResolveBody(
+      firstAction(task)[0],
+      task,
+      { payload: { targetField: 'description', proposedText: 'new desc' } },
+      schema
+    );
+
+    expect(body).toEqual({
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+      payload: { targetField: 'description', proposedText: 'new desc' },
+      newValue: 'new desc',
+    });
+  });
+
+  // A payload-mode transition (`ui:resolution.mode: 'payload'`, like the
+  // shipped custom-form workflow's `approve`) yields no `newValue`; the form
+  // data lives entirely in `payload`, matching the entity-page tab.
+  it('omits newValue for a payload-mode transition even when a payload is sent', () => {
+    const task = makeTask({
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          formRef: 'approve',
+          resolutionType:
+            'Approved' as TaskAvailableTransition['resolutionType'],
+          targetStageId: 'approved',
+          targetTaskStatus: TaskStatus.Approved,
+        },
+      ],
+      type: TaskType.CustomTask,
+    });
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+
+    const body = buildResolveBody(
+      firstAction(task)[0],
+      task,
+      { payload: { targetField: 'description', proposedText: 'new desc' } },
+      schema
+    );
+
+    expect(body).toEqual({
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+      payload: { targetField: 'description', proposedText: 'new desc' },
+    });
+    expect(body).not.toHaveProperty('newValue');
+  });
+
+  // No schema (bulk resolve, or a transition resolved before the schema
+  // resolved) keeps the original behaviour: the payload is forwarded but no
+  // `newValue` is derived, so the body never carries a stale/form-less value.
+  it('forwards the payload without deriving newValue when no schema is provided', () => {
+    const task = makeTask({
+      availableTransitions: [DAR_REJECT],
+      type: TaskType.DataAccessRequest,
+    });
+
+    const body = buildResolveBody(firstAction(task)[0], task, {
+      payload: { testCaseFailureReason: 'FalsePositive' },
+    });
+
+    expect(body).toEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      payload: { testCaseFailureReason: 'FalsePositive' },
+    });
+    expect(body).not.toHaveProperty('newValue');
   });
 
   it('resolves a legacy approval task with the approved sentinel and no transitionId', () => {
@@ -451,6 +638,7 @@ describe('getTaskActionInput', () => {
       requiresComment: false,
       requiresAssignee: false,
       requiresRootCause: false,
+      requiresForm: false,
     });
     expect(needsTaskActionInput(task, action)).toBe(false);
   });
@@ -498,6 +686,145 @@ describe('getTaskActionInput', () => {
       requiresComment: true,
       requiresAssignee: false,
       requiresRootCause: true,
+      requiresForm: false,
+    });
+  });
+
+  // The seeded TestCaseResolution `resolve` transition declares
+  // `testCaseFailureReason` as required, but the comment modal already
+  // collects it as the Root Cause; `requiresComment` takes precedence, so
+  // `requiresForm` is reported but the comment modal still handles the input.
+  it('reports requiresForm for an incident resolve whose schema declares required fields', () => {
+    const task = workflowTask(
+      {
+        id: 'resolve',
+        label: 'Resolve',
+        requiresComment: true,
+        targetStageId: 'resolved',
+        targetTaskStatus: TaskStatus.Completed,
+      },
+      { category: TaskCategory.Incident, type: TaskType.TestCaseResolution }
+    );
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'TestCaseResolution',
+      taskType: TaskType.TestCaseResolution,
+      taskCategory: TaskCategory.Incident,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        resolve: {
+          formSchema: {
+            type: 'object',
+            required: ['testCaseFailureReason'],
+            properties: {
+              testCaseFailureReason: {
+                type: 'string',
+                enum: ['FalsePositive'],
+              },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toMatchObject({
+      requiresComment: true,
+      requiresForm: true,
+    });
+  });
+
+  // The bug: a custom task `approve` transition declares `requiresComment:
+  // false` but binds (`formRef`) a form whose schema marks
+  // `targetField`/`proposedText` required. The inbox must open the form modal
+  // — mirroring `TaskTabNew` — rather than fire immediately with no payload.
+  it('requires a form for a no-comment transition whose form schema declares required fields', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toEqual({
+      requiresComment: false,
+      requiresAssignee: false,
+      requiresRootCause: false,
+      requiresForm: true,
+    });
+    expect(needsTaskActionInput(task, action, schema)).toBe(true);
+  });
+
+  // A transition whose form carries only optional fields (the seeded DAR
+  // `approve` schema has an optional `comment`) keeps firing straight through,
+  // so the inbox does not gain a modal for every optional form.
+  it('does not require a form when the transition schema has no required fields', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'DataAccessRequest',
+      taskType: TaskType.DataAccessRequest,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            properties: { comment: { type: 'string' } },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toEqual({
+      requiresComment: false,
+      requiresAssignee: false,
+      requiresRootCause: false,
+      requiresForm: false,
+    });
+    expect(needsTaskActionInput(task, action, schema)).toBe(false);
+  });
+
+  // Without a resolved schema the guard cannot see `transitionForms`, so it
+  // conservatively reports no form need; bulk resolve (which does not fetch a
+  // per-task schema) relies on this not to block on a missing schema.
+  it('reports requiresForm false without a schema even for a formRef transition', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+
+    expect(getTaskActionInput(task, action)).toMatchObject({
+      requiresForm: false,
     });
   });
 });
@@ -554,11 +881,108 @@ describe('splitTaskActions', () => {
     expect(layout.overflow).toEqual([]);
   });
 
+  describe('an incident stage', () => {
+    const NEW = 'new:new';
+    const ACK = 'ack:ack';
+    const ASSIGN = 'assign:assigned';
+    const REASSIGN = 'reassign:assigned';
+    const RESOLVE = 'resolve:resolved';
+
+    const incidentActions = (specs: string[]): TaskResolveAction[] =>
+      getTaskResolveActions(
+        makeTask({
+          availableTransitions: specs.map((spec) => {
+            const [id, targetStageId] = spec.split(':');
+
+            return {
+              id,
+              label: id,
+              targetStageId,
+              targetTaskStatus: TaskStatus.InProgress,
+            };
+          }),
+        }),
+        LABELS
+      );
+
+    it.each([
+      ['new', [ACK, ASSIGN, RESOLVE], 'ack', 'assign', ['resolve']],
+      ['ack', [NEW, ASSIGN, RESOLVE], 'assign', 'resolve', ['new']],
+      [
+        'assigned',
+        [NEW, ACK, REASSIGN, RESOLVE],
+        'resolve',
+        'reassign',
+        ['new', 'ack'],
+      ],
+      [
+        'assigned',
+        [REASSIGN, RESOLVE, NEW, ACK],
+        'resolve',
+        'reassign',
+        ['new', 'ack'],
+      ],
+    ])(
+      'in %s, leads with the next step and folds steps back (%j)',
+      (stageId, specs, primary, secondary, overflow) => {
+        const layout = splitTaskActions(incidentActions(specs), stageId);
+
+        expect(layout.primary?.id).toBe(primary);
+        expect(layout.secondary?.id).toBe(secondary);
+        expect(layout.overflow.map((a) => a.id)).toEqual(overflow);
+      }
+    );
+
+    it('keeps the workflow order when a transition leaves the incident stages', () => {
+      const layout = splitTaskActions(
+        incidentActions([NEW, 'escalate:triage', RESOLVE]),
+        'ack'
+      );
+
+      expect(layout.primary?.id).toBe('new');
+      expect(layout.secondary?.id).toBe('escalate');
+    });
+  });
+
   it('offers nothing for a task with no actions', () => {
     expect(splitTaskActions([])).toEqual({
       primary: undefined,
       secondary: undefined,
       overflow: [],
     });
+  });
+});
+
+describe('getReassignBlocker', () => {
+  const t = ((key: string, options?: { name?: string }) =>
+    options?.name ? `${key}:${options.name}` : key) as unknown as TFunction;
+  const aisha = {
+    id: 'u1',
+    type: 'user',
+    name: 'aisha.khan',
+    displayName: 'Aisha Khan',
+  };
+  const bob = { id: 'u2', type: 'user', name: 'bob', displayName: 'Bob' };
+
+  it.each([
+    ['picks the same assignee again', [aisha], [aisha]],
+    ['clears the current assignee', [aisha], []],
+  ])(
+    'names who is already assigned when the reassign %s',
+    (_, current, next) => {
+      expect(getReassignBlocker(current, next, t)).toBe(
+        'message.already-assigned-to-task:Aisha Khan'
+      );
+    }
+  );
+
+  it('lets a reassign to someone else through', () => {
+    expect(getReassignBlocker([aisha], [bob], t)).toBeUndefined();
+  });
+
+  it('asks for an assignee when a task with none gets an empty pick', () => {
+    expect(getReassignBlocker([], [], t)).toBe(
+      'message.field-text-is-required'
+    );
   });
 });

@@ -184,6 +184,59 @@ class ODCSQualityRuleMapperTest {
     assertEquals("[\"N/A\",\"\"]", parameter(test, "missingValueMatch"));
   }
 
+  @Test
+  void missingValuesWithPercentUnitAndNonzeroMustBeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            library(
+                    "Five percent missing",
+                    ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES,
+                    "status")
+                .withMustBe(5.0)
+                .withUnit("percent"));
+
+    assertTrue(outcome.reason().contains("percentage"));
+    assertTrue(outcome.reason().contains("mustBe 5"));
+  }
+
+  @Test
+  void missingValuesWithPercentUnitAndZeroMustBeIsAnAbsoluteZeroCount() {
+    CreateTestCase test =
+        mapToTestCase(
+            library("No missing", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBe(0.0)
+                .withUnit("percent"));
+
+    assertEquals("columnValuesMissingCount", test.getTestDefinition());
+    assertEquals("0", parameter(test, "missingCountValue"));
+    assertNull(parameter(test, "threshold"));
+    assertNull(parameter(test, "thresholdUnit"));
+  }
+
+  @Test
+  void missingValuesWithAbsoluteCountAndNoUnitBecomesMissingCountTest() {
+    CreateTestCase test =
+        mapToTestCase(
+            library("Exactly five", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBe(5.0));
+
+    assertEquals("columnValuesMissingCount", test.getTestDefinition());
+    assertEquals("5", parameter(test, "missingCountValue"));
+    assertNull(parameter(test, "threshold"));
+    assertNull(parameter(test, "thresholdUnit"));
+  }
+
+  @Test
+  void missingValuesWithInequalityIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            library("Few missing", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBeLessOrEqualTo(5.0)
+                .withUnit("percent"));
+
+    assertTrue(outcome.reason().contains("mustBeLessOrEqualTo"));
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"regex", "pattern"})
   void patternRuleWithoutAPatternIsNotRun(String ruleName) {
@@ -307,6 +360,85 @@ class ODCSQualityRuleMapperTest {
     assertEquals("columnValuesToBeBetween", test.getTestDefinition());
     assertEquals("0", parameter(test, "minValue"));
     assertEquals("0.5", parameter(test, "maxValue"));
+  }
+
+  @Test
+  void subsumedStrictLowerBoundBelowInclusiveLowerIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Positive ids", "valuesBetween", "id")
+                .withMustBeGreaterOrEqualTo(5.0)
+                .withMustBeGreaterThan(0.0));
+
+    assertEquals("columnValuesToBeBetween", test.getTestDefinition());
+    assertEquals("5", parameter(test, "minValue"));
+    assertNull(parameter(test, "maxValue"));
+  }
+
+  @Test
+  void subsumedStrictUpperBoundAboveInclusiveUpperIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Bounded region", "valuesBetween", "status")
+                .withMustBeLessOrEqualTo(10.0)
+                .withMustBeLessThan(100.0));
+
+    assertEquals("columnValuesToBeBetween", test.getTestDefinition());
+    assertNull(parameter(test, "minValue"));
+    assertEquals("10", parameter(test, "maxValue"));
+  }
+
+  @Test
+  void strictLowerBoundEqualToInclusiveLowerIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Equal lower bound", "valuesBetween", "id")
+                .withMustBeGreaterOrEqualTo(5.0)
+                .withMustBeGreaterThan(5.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictUpperBoundEqualToInclusiveUpperIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Equal upper bound", "valuesBetween", "id")
+                .withMustBeLessOrEqualTo(10.0)
+                .withMustBeLessThan(10.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictLowerBoundAloneOnContinuousRangeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Strict lower alone", "valuesBetween", "id").withMustBeGreaterThan(5.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictUpperBoundAloneOnContinuousRangeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Strict upper alone", "valuesBetween", "id").withMustBeLessThan(100.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictBoundOnWholeNumberLengthMeasureIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Short status with guard", "textLength", "status")
+                .withMustBeBetween(List.of(5.0, 10.0))
+                .withMustBeGreaterThan(0.0));
+
+    assertEquals("columnValueLengthsToBeBetween", test.getTestDefinition());
+    assertEquals("5", parameter(test, "minLength"));
+    assertEquals("10", parameter(test, "maxLength"));
   }
 
   @Test

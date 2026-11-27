@@ -16,17 +16,67 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemorySourceDisclosure;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 public class ContextMemoryIndex implements TaggableIndex {
+
+  public static final String FIELD_STATUS = "entityStatus";
+  public static final String FIELD_ANCHOR_ID = "anchorId";
+  public static final String FIELD_MEMORY_SCOPE = "memoryScope";
+  public static final String FIELD_MEMORY_TYPE = "memoryType";
+  public static final String FIELD_PINNED = "pinned";
+  public static final String FIELD_OUTCOMES = "outcomes";
+  public static final String UNANCHORED = "unanchored";
+
+  /** What a similar-memory lookup ranks on, and the share of the text's terms a hit must hold. */
+  public static final List<String> SIMILARITY_FIELDS =
+      List.of("question", "answer", "title", "summary");
+
+  public static final String SIMILARITY_MINIMUM_SHOULD_MATCH = "30%";
+
+  /** A hit names its memory by id, or a chunk by the memory it belongs to. */
+  public static final String FIELD_ID = "id";
+
+  public static final String FIELD_PARENT_ID = "parentId";
+
+  /** All a similar-memory lookup reads of a hit, so an embedding a document carries stays behind. */
+  public static final List<String> SIMILARITY_RESULT_FIELDS = List.of(FIELD_ID, FIELD_PARENT_ID);
+
+  /** The file a memory shows as its source; an article source is not indexed. */
+  public static final String FIELD_SOURCE_FILE_ID = "sourceFile.id";
+
+  public static final Set<String> VECTOR_FIELDS =
+      Set.of(
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "parentId",
+          "chunkIndex",
+          "chunkCount");
+
+  private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
+      Set.of(
+          ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
+          ContextMemoryRepository.FIELD_RELATED_ENTITIES,
+          ContextMemoryRepository.FIELD_SOURCE_ENTITY,
+          ContextMemoryRepository.FIELD_SOURCE_FILE);
+
   final ContextMemory memory;
 
   public ContextMemoryIndex(ContextMemory memory) {
@@ -44,16 +94,21 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.addAll(REINDEX_RELATIONSHIP_FIELDS);
+    return Set.copyOf(fields);
+  }
+
+  @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("title", memory.getTitle());
     doc.put("summary", memory.getSummary());
     doc.put("question", memory.getQuestion());
     doc.put("answer", memory.getAnswer());
-    doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
-    doc.put(
-        "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
-    doc.put("status", memory.getStatus() != null ? memory.getStatus().value() : null);
-    doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
+    doc.put(FIELD_MEMORY_TYPE, memoryTypeValue(memory));
+    doc.put(FIELD_MEMORY_SCOPE, memoryScopeValue(memory));
+    doc.put(FIELD_PINNED, Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
         "sourceConversation",
@@ -68,10 +123,33 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     doc.put("usageCount", memory.getUsageCount() != null ? memory.getUsageCount() : 0);
     doc.put("lastUsedAt", memory.getLastUsedAt());
+    applyOutcomes(doc);
 
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  /**
+   * Only a counted memory indexes outcomes: a list read from search then shows an uncounted one's
+   * usage, not zero citations, and a sort on a count puts it last.
+   */
+  private void applyOutcomes(Map<String, Object> doc) {
+    if (memory.getOutcomes() != null) {
+      doc.put(FIELD_OUTCOMES, JsonUtils.getMap(memory.getOutcomes()));
+    }
+  }
+
+  public static String memoryTypeValue(ContextMemory memory) {
+    return memory.getMemoryType() == null ? null : memory.getMemoryType().value();
+  }
+
+  public static String memoryScopeValue(ContextMemory memory) {
+    return memory.getMemoryScope() == null ? null : memory.getMemoryScope().value();
+  }
+
+  public static String statusValue(ContextMemory memory) {
+    return memory.getEntityStatus() == null ? null : memory.getEntityStatus().value();
   }
 
   private void applyShareConfig(Map<String, Object> doc) {
@@ -87,7 +165,9 @@ public class ContextMemoryIndex implements TaggableIndex {
    * any divergence between them is a privacy bug rather than a cosmetic inconsistency.
    */
   public static Map<String, Object> shareConfigFields(ContextMemory memory) {
-    return shareConfigFields(memory.getShareConfig());
+    Map<String, Object> fields = shareConfigFields(memory.getShareConfig());
+    fields.put(FIELD_ANCHOR_ID, anchorId(memory));
+    return fields;
   }
 
   /**
@@ -101,6 +181,14 @@ public class ContextMemoryIndex implements TaggableIndex {
     fields.put("visibility", visibility == null ? null : visibility.value());
     fields.put("sharedWithIds", sharedWithIds(shareConfig));
     return fields;
+  }
+
+  public static String anchorId(ContextMemory memory) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    // Context files and pages remain anchors: search cannot evaluate their read rules per hit.
+    return anchor == null
+        ? UNANCHORED
+        : anchor.getId() == null ? "anchored" : anchor.getId().toString();
   }
 
   private static List<String> sharedWithIds(MemoryShareConfig shareConfig) {
@@ -118,12 +206,36 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   private void applyEntityReferences(Map<String, Object> doc) {
-    doc.put("primaryEntity", getEntityWithDisplayName(memory.getPrimaryEntity()));
-    List<EntityReference> related = getEntitiesWithDisplayName(memory.getRelatedEntities());
-    doc.put("relatedEntities", related);
+    Map<UUID, Boolean> publicFiles = new HashMap<>();
+    doc.put("primaryEntity", indexReference(memory.getPrimaryEntity(), publicFiles));
+    doc.put(
+        "relatedEntities",
+        listOrEmpty(memory.getRelatedEntities()).stream()
+            .map(reference -> indexReference(reference, publicFiles))
+            .toList());
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
-    doc.put("sourceFile", getEntityWithDisplayName(memory.getSourceFile()));
+    doc.put("sourceEntity", indexReference(memory.getSourceEntity(), publicFiles));
+    doc.put("sourceFile", indexReference(sourceFileOf(memory), publicFiles));
+  }
+
+  /** A memory's search audience can include people who cannot read its source file. */
+  private EntityReference indexReference(
+      EntityReference reference, Map<UUID, Boolean> publicFiles) {
+    if (reference != null
+        && Entity.CONTEXT_FILE.equals(reference.getType())
+        && !publicFiles.computeIfAbsent(
+            reference.getId(), id -> MemorySourceDisclosure.everyoneMayRead(reference))) {
+      return new EntityReference().withId(reference.getId()).withType(reference.getType());
+    }
+    return getEntityWithDisplayName(reference);
+  }
+
+  /** A write carries the memory's source as its source entity; a reindex reads the file view. */
+  private static EntityReference sourceFileOf(ContextMemory memory) {
+    EntityReference source =
+        memory.getSourceFile() != null ? memory.getSourceFile() : memory.getSourceEntity();
+    return source != null && Entity.CONTEXT_FILE.equals(source.getType()) ? source : null;
   }
 
   public static Map<String, Float> getFields() {

@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import startCase from 'lodash/startCase';
+import { TestCase } from '../../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../../generated/tests/testDefinition';
+import EntityLink from '../../../../../utils/EntityLink';
 import { getColumnNameFromEntityLink } from '../../../../../utils/EntityPureUtils';
+import { getNameFromFQN } from '../../../../../utils/FqnUtils';
+import {
+  getTestCaseParams,
+  getThresholdPreviewData,
+} from '../../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { formatThresholdSentence } from '../../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { TestCaseConfigurationCardProps } from './TestCaseConfigurationCard.types';
 
 export interface ConfigurationShapes {
@@ -81,6 +90,36 @@ export const getCategoryTranslation = (
   return column
     ? { key: 'label.column-test-with-column', options: { column } }
     : { key: 'label.table-test' };
+};
+
+/**
+ * What the test fails on, in the words the form's preview uses, so the saved
+ * configuration reads the same as it did when it was set — without opening
+ * the edit drawer. Built from the parameters, never from a run's message.
+ * `undefined` when the test has no threshold to describe, a statistical one
+ * has no bound yet, or a dynamic assertion learns its bounds.
+ */
+export const getConfiguredThresholdSentence = (
+  testCase: TestCase | undefined,
+  testDefinition: TestDefinition | undefined,
+  t: TFunction
+): string | undefined => {
+  // A dynamic assertion learns its bounds, so any left in the parameters are
+  // not what the test checks — the run card says nothing about them either.
+  if (!testCase || !testDefinition || testCase.useDynamicAssertion) {
+    return undefined;
+  }
+
+  const { entityLink } = testCase;
+  const data = getThresholdPreviewData({
+    definition: testDefinition,
+    params: getTestCaseParams(testCase),
+    target:
+      getColumnNameFromEntityLink(entityLink) ??
+      getNameFromFQN(EntityLink.getEntityFqn(entityLink)),
+  });
+
+  return data && formatThresholdSentence(data, t);
 };
 
 /**

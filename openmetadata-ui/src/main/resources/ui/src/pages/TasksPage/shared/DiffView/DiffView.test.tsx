@@ -12,39 +12,50 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { Change } from 'diff';
 import DiffView from './DiffView';
 
-const mockDiff = [
+const mockDiff: Change[] = [
   {
     count: 10,
+    added: false,
+    removed: false,
     value: 'This is a raw product ',
   },
   {
     count: 1,
+    added: false,
     removed: true,
     value: 'catalog',
   },
   {
     count: 1,
+    removed: false,
     added: true,
     value: 'catalogue',
   },
   {
     count: 3,
+    added: false,
+    removed: false,
     value: ' table ',
   },
   {
     count: 1,
+    added: false,
     removed: true,
     value: 'contains',
   },
   {
     count: 1,
+    removed: false,
     added: true,
     value: 'containing',
   },
   {
     count: 26,
+    added: false,
+    removed: false,
     value:
       ' the product listing, price, seller etc.. represented in our online DB.',
   },

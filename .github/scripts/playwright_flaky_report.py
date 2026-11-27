@@ -51,6 +51,13 @@ REPORT_ARTIFACT = "playwright-flaky-report"
 TEST_RE = re.compile(r"^(?P<file>.+?):(?P<line>\d+) › (?P<title>.+)$")
 ANSI = re.compile(r"[\x1b\ufffd]\[[0-9;]*m")
 TOP = 10
+# The UI team's Slack user group, pinged when there are flakes so owners pick
+# theirs up, as the nightly AUT results thread does.
+UI_TEAM = "<!subteam^S03GD0A6ZV2>"
+CC_UI_TEAM = (
+    f"cc {UI_TEAM} please check the flaky specs above that you own — "
+    "react :eyes: on this message when you pick one up."
+)
 MAX_ERRORS_SHOWN = 3
 # A passing run costs one GraphQL query; a failed run adds an artifact listing and
 # one download per failed shard. The cap keeps a run far inside GITHUB_TOKEN's
@@ -836,6 +843,7 @@ def slack_text(report: dict, title: str) -> str:
     lines.append(
         "Every run of every test is in the attached HTML report; open it in a browser."
     )
+    lines.append(CC_UI_TEAM)
     return "\n".join(lines)
 
 
@@ -863,6 +871,8 @@ def fallback_text(report: dict, title: str, run_url: str) -> str:
         f":warning: The HTML report could not be attached. Download `{REPORT_ARTIFACT}` "
         f"from <{run_url}|the workflow run> for every run of every test."
     )
+    if report["flaky"] and report["unreadable"] != report["runs"]:
+        lines.append(CC_UI_TEAM)
     return "\n".join(lines)
 
 

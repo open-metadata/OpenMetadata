@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -23,7 +22,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,8 +29,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppTriggerRetry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -43,6 +41,19 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Slf4j
 public class RunAppImpl {
   private static final String DATA_INSIGHTS_APPLICATION = "DataInsightsApplication";
+
+  /** Pause between status reads while waiting for a run; each read is a database query. */
+  static final long POLL_INTERVAL_MILLIS = 5_000;
+
+  private final long pollIntervalMillis;
+
+  public RunAppImpl() {
+    this(POLL_INTERVAL_MILLIS);
+  }
+
+  RunAppImpl(long pollIntervalMillis) {
+    this.pollIntervalMillis = pollIntervalMillis;
+  }
 
   public boolean execute(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -131,7 +142,6 @@ public class RunAppImpl {
   }
 
   // Internal App Logic
-  @SneakyThrows
   private boolean runApp(
       AppRepository repository,
       App app,
@@ -139,72 +149,58 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    int maxRetries = 5;
-    int attempt = 0;
-    long initialBackoffMillis = 10000; // 10 second
-    long maxBackoffMillis = 60000; // 60 seconds
-
-    while (attempt < maxRetries) {
-      try {
-        ApplicationHandler.getInstance()
-            .triggerApplicationOnDemand(
-                app,
-                Entity.getCollectionDAO(),
-                Entity.getSearchRepository(),
-                config,
-                WorkflowEventConsumer.GOVERNANCE_BOT);
-        break;
-      } catch (JsonParsingException | UnhandledServerException e) {
-        if (e.getMessage().contains("Job is already running")) {
-          attempt++;
-          if (attempt >= maxRetries) {
-            LOG.error("Failed to run app after {} retries: {}", maxRetries, e.getMessage());
-            return false;
-          }
-
-          long backoffMillis =
-              Math.min(initialBackoffMillis * (long) Math.pow(2, attempt - 1), maxBackoffMillis);
-          LOG.warn(
-              "App is already running. Retrying in {} ms (attempt {}/{})",
-              backoffMillis,
-              attempt,
-              maxRetries);
-
-          try {
-            Thread.sleep(backoffMillis);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", ie);
-          }
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    if (waitForCompletion) {
-      return waitForCompletion(repository, app, startTime, timeoutMillis);
-    } else {
-      return true;
-    }
+    boolean triggered =
+        AppTriggerRetry.trigger(
+            app.getName(),
+            () ->
+                ApplicationHandler.getInstance()
+                    .triggerApplicationOnDemand(
+                        app,
+                        Entity.getCollectionDAO(),
+                        Entity.getSearchRepository(),
+                        config,
+                        WorkflowEventConsumer.GOVERNANCE_BOT));
+    return triggered
+        && (!waitForCompletion || waitForCompletion(repository, app, startTime, timeoutMillis));
   }
 
-  private boolean waitForCompletion(
-      AppRepository repository, App app, long startTime, long timeoutMillis) {
+  boolean waitForCompletion(AppRepository repository, App app, long startTime, long timeoutMillis) {
+    AppRunRecord appRunRecord = readLatestAppRun(repository, app, startTime);
+    while (!isRunCompleted(appRunRecord) && pauseBeforeNextPoll(startTime, timeoutMillis)) {
+      appRunRecord = readLatestAppRun(repository, app, startTime);
+    }
+    return isRunCompleted(appRunRecord)
+        && (appRunRecord.getStatus() == AppRunRecord.Status.SUCCESS
+            || appRunRecord.getStatus() == AppRunRecord.Status.COMPLETED);
+  }
+
+  // A read that fails is retried at the next poll, as a run that has not recorded a status yet.
+  private AppRunRecord readLatestAppRun(AppRepository repository, App app, long startTime) {
     AppRunRecord appRunRecord = null;
+    try {
+      appRunRecord = repository.getLatestAppRunsAfterStartTime(app, startTime);
+    } catch (RuntimeException e) {
+      LOG.debug("Could not read the latest run of app '{}': {}", app.getName(), e.getMessage());
+    }
+    return appRunRecord;
+  }
 
-    do {
+  /**
+   * Sleeps until the next status read. Returns false once the timeout has passed or the thread is
+   * interrupted, so the caller stops waiting.
+   */
+  private boolean pauseBeforeNextPoll(long startTime, long timeoutMillis) {
+    long remainingMillis = startTime + timeoutMillis - System.currentTimeMillis();
+    boolean keepPolling = remainingMillis > 0;
+    if (keepPolling) {
       try {
-        if (System.currentTimeMillis() - startTime > timeoutMillis) {
-          return false;
-        }
-        appRunRecord = repository.getLatestAppRunsAfterStartTime(app, startTime);
-      } catch (Exception ignore) {
+        Thread.sleep(Math.min(pollIntervalMillis, remainingMillis));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        keepPolling = false;
       }
-    } while (!isRunCompleted(appRunRecord));
-
-    return appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
-        || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED);
+    }
+    return keepPolling;
   }
 
   private boolean isRunCompleted(AppRunRecord appRunRecord) {
@@ -279,34 +275,35 @@ public class RunAppImpl {
         pipelineServiceClient, ingestionPipeline, waitForCompletion, startTime, timeoutMillis);
   }
 
-  private boolean waitForCompletion(
+  boolean waitForCompletion(
       IngestionPipelineRepository repository,
       IngestionPipeline ingestionPipeline,
       long startTime,
       long timeoutMillis) {
-    while (true) {
-      if (System.currentTimeMillis() - startTime > timeoutMillis) {
-        return false;
-      }
-
-      List<PipelineStatus> statuses =
-          repository
-              .listPipelineStatus(
-                  ingestionPipeline.getFullyQualifiedName(), startTime, startTime + timeoutMillis)
-              .getData();
-
-      if (statuses.isEmpty()) {
-        continue;
-      }
-
-      PipelineStatus status = statuses.get(statuses.size() - 1);
-
-      if (status.getPipelineState().equals(PipelineStatusType.FAILED)) {
-        return false;
-      } else if (status.getPipelineState().equals(PipelineStatusType.SUCCESS)
-          || status.getPipelineState().equals(PipelineStatusType.PARTIAL_SUCCESS)) {
-        return true;
-      }
+    PipelineStatusType state =
+        readLatestPipelineState(repository, ingestionPipeline, startTime, timeoutMillis);
+    while (!isPipelineRunFinished(state) && pauseBeforeNextPoll(startTime, timeoutMillis)) {
+      state = readLatestPipelineState(repository, ingestionPipeline, startTime, timeoutMillis);
     }
+    return state == PipelineStatusType.SUCCESS || state == PipelineStatusType.PARTIAL_SUCCESS;
+  }
+
+  private PipelineStatusType readLatestPipelineState(
+      IngestionPipelineRepository repository,
+      IngestionPipeline ingestionPipeline,
+      long startTime,
+      long timeoutMillis) {
+    List<PipelineStatus> statuses =
+        repository
+            .listPipelineStatus(
+                ingestionPipeline.getFullyQualifiedName(), startTime, startTime + timeoutMillis)
+            .getData();
+    return statuses.isEmpty() ? null : statuses.get(statuses.size() - 1).getPipelineState();
+  }
+
+  private static boolean isPipelineRunFinished(PipelineStatusType state) {
+    return state == PipelineStatusType.FAILED
+        || state == PipelineStatusType.SUCCESS
+        || state == PipelineStatusType.PARTIAL_SUCCESS;
   }
 }

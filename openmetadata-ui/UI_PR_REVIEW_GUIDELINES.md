@@ -169,7 +169,7 @@ yarn lint              # Check for linting errors
 yarn lint:fix          # Auto-fix linting issues
 yarn test              # Run unit tests
 yarn build             # Verify build succeeds
-yarn playwright:run    # Run E2E tests (if applicable)
+make playwright_affected_run ARGS="--update-pr"   # Run impact-mapped E2E specs and fill the local-playwright-results block in the PR body (run from repo root)
 ```
 
 ## Common Issues to Flag

@@ -19,7 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
@@ -31,7 +31,7 @@ import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
@@ -65,7 +65,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ChevronDown: () => <span>ChevronDown</span>,
+  Plus: () => <span>Plus</span>,
+  SortAscending: () => <span>SortAscending</span>,
+  SortDescending: () => <span>SortDescending</span>,
+  XCircle: () => <span>XCircle</span>,
 }));
 
 const mockTableQueriesProp: TableQueriesProp = {
@@ -147,6 +152,10 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
+const LocationDisplay = () => (
+  <div data-testid="location">{useLocation().pathname}</div>
+);
+
 describe('Test TableQueries Component', () => {
   it('Check if TableQueries component has all child elements', async () => {
     render(<TableQueries {...mockTableQueriesProp} />, {
@@ -185,9 +194,12 @@ describe('Test TableQueries Component', () => {
         hits: { total: { value: 0 }, hits: [] },
       })
     );
-    render(<TableQueries {...mockTableQueriesProp} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <MemoryRouter>
+        <TableQueries {...mockTableQueriesProp} />
+        <LocationDisplay />
+      </MemoryRouter>
+    );
     const queryCards = screen.queryAllByText('QueryCard');
     const noDataPlaceholder = await screen.findByTestId(
       'create-error-placeholder-label.query-lowercase-plural'
@@ -195,6 +207,15 @@ describe('Test TableQueries Component', () => {
 
     expect(queryCards).toHaveLength(0);
     expect(noDataPlaceholder).toBeInTheDocument();
+    expect(
+      screen.getByText(/message.adding-new-entity-is-easy-just-give-it-a-spin/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-query-btn'));
+
+    expect(await screen.findByTestId('location')).toHaveTextContent(
+      /\/add-query$/
+    );
   });
 
   it('If paging count is more than 15, pagination should be visible', async () => {

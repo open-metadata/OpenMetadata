@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -67,6 +68,34 @@ class AttachedKnowledgeBatchTest {
   void truncated_toleratesNullContent() {
     KnowledgeItem item = new KnowledgeItem().withType(KnowledgeItem.Type.GLOSSARY_TERM);
     assertSame(item, AttachedKnowledgeBatch.truncated(item));
+  }
+
+  @Test
+  void addItem_skipsRejectedItemsWithoutTakingASlot() {
+    List<KnowledgeItem> items = new ArrayList<>();
+    for (int i = 0; i < AttachedKnowledgeBatch.MAX_ITEMS_PER_ASSET; i++) {
+      AttachedKnowledgeBatch.addItem(items, page("Hidden_" + i), item -> false);
+    }
+    AttachedKnowledgeBatch.addItem(items, page("Visible"), item -> true);
+
+    assertEquals(1, items.size(), "hidden items are dropped and do not count against the cap");
+    assertEquals("Visible", items.get(0).getFullyQualifiedName());
+  }
+
+  @Test
+  void addItem_stopsAtTheCapForVisibleItems() {
+    List<KnowledgeItem> items = new ArrayList<>();
+    for (int i = 0; i <= AttachedKnowledgeBatch.MAX_ITEMS_PER_ASSET; i++) {
+      AttachedKnowledgeBatch.addItem(items, page("Article_" + i), item -> true);
+    }
+    assertEquals(AttachedKnowledgeBatch.MAX_ITEMS_PER_ASSET, items.size());
+  }
+
+  private static KnowledgeItem page(String fqn) {
+    return new KnowledgeItem()
+        .withType(KnowledgeItem.Type.PAGE)
+        .withName(fqn)
+        .withFullyQualifiedName(fqn);
   }
 
   @Test

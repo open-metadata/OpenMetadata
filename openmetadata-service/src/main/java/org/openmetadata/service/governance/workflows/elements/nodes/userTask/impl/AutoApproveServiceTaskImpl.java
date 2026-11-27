@@ -2,11 +2,15 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.workflows.AutomaticApprovalReason;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -37,7 +41,16 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
           execution.getProcessInstanceId());
     }
 
-    if (inputNamespaceMapExpr != null) {
+    Optional<ChangeRequestRun> changeRequest = ChangeRequestRun.from(varHandler);
+    // A change request that no one but its requester can review is approved by the workflow; the
+    // decision is recorded so Commit publishes it. Its run never created a task to close, and
+    // closing by entity would close other requesters' review tasks on the same asset.
+    if (changeRequest.isPresent() && !Boolean.TRUE.equals(submitterIsReviewer)) {
+      ApprovalDecisionService.recordAutomaticApproval(
+          changeRequest.get().changeRequestId(), changeRequest.get().revisionNumber());
+    }
+
+    if (inputNamespaceMapExpr != null && changeRequest.isEmpty()) {
       try {
         InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
         String entityInfo =
@@ -60,6 +73,12 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
 
     varHandler.setNodeVariable("result", resolvePositiveResult(execution));
     varHandler.setNodeVariable("autoApprovalReason", autoApprovalReason);
+    ApprovalOutcomeRecorder.recordAutomatic(
+        execution.getProcessInstanceBusinessKey(),
+        varHandler.getNodeNamespace(),
+        Boolean.TRUE.equals(submitterIsReviewer)
+            ? AutomaticApprovalReason.SUBMITTER_IS_REVIEWER
+            : AutomaticApprovalReason.NO_ASSIGNEES);
   }
 
   /**

@@ -78,7 +78,6 @@ class ReindexingMetricsTest {
       assertNotNull(meterRegistry.find("reindexing.bulk.duration").tag("success", "false").timer());
       assertNotNull(meterRegistry.find("reindexing.bulk.payload.size").summary());
       assertNotNull(meterRegistry.find("reindexing.sink.pending").gauge());
-      assertNotNull(meterRegistry.find("reindexing.backpressure.events").counter());
     }
   }
 
@@ -336,22 +335,6 @@ class ReindexingMetricsTest {
 
       metrics.decrementPendingBulkRequests();
       assertEquals(1.0, getGaugeValue("reindexing.sink.pending"));
-    }
-  }
-
-  @Nested
-  @DisplayName("Backpressure")
-  class BackpressureTests {
-
-    @Test
-    @DisplayName("recordBackpressureEvent increments counter")
-    void testRecordBackpressureEvent() {
-      ReindexingMetrics metrics = ReindexingMetrics.getInstance();
-      metrics.recordBackpressureEvent();
-      metrics.recordBackpressureEvent();
-      metrics.recordBackpressureEvent();
-
-      assertEquals(3, getCounterValue("reindexing.backpressure.events"));
     }
   }
 

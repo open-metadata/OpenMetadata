@@ -10,20 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  FilterSelect,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DOMAIN_TYPE_DISPLAY } from '../../../constants/Domain.constants';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
 export const DomainTypeWidget = () => {
   const {
@@ -48,49 +49,67 @@ export const DomainTypeWidget = () => {
     [permissions]
   );
 
-  const handleDomainTypeUpdate = async (domainType: string) => {
-    let updatedDomain = cloneDeep(domain);
-    updatedDomain = {
-      ...updatedDomain,
-      domainType: domainType as DomainType,
-    };
-    await onUpdate(updatedDomain);
-    setEditDomainType(false);
+  const domainTypeOptions = useMemo(
+    () =>
+      Object.values(DomainType).map((type) => ({
+        value: type,
+        label: t(DOMAIN_TYPE_DISPLAY[type].labelKey),
+        icon: DOMAIN_TYPE_DISPLAY[type].icon,
+      })),
+    [t]
+  );
+
+  const handleDomainTypeUpdate = async ([domainType]: string[]) => {
+    try {
+      await onUpdate({
+        ...cloneDeep(domain),
+        domainType: domainType as DomainType,
+      });
+    } catch {
+      // The page-level updater already toasts before rethrowing, and the
+      // picker has closed itself.
+    }
   };
 
   const domainTypeActionButton = domain.domainType ? (
-    <WidgetEditButton
+    <ButtonUtility
       data-testid="edit-domainType-button"
-      title={t('label.edit-entity', { entity: t('label.domain-type') })}
-      onClick={() => setEditDomainType(true)}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.domain-type') })}
     />
   ) : (
-    <WidgetPlusButton
+    <ButtonUtility
       data-testid="add-domainType-button"
-      title={t('label.add-entity', { entity: t('label.domain-type') })}
-      onClick={() => setEditDomainType(true)}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.domain-type') })}
     />
   );
 
   const headerExtra =
-    !isVersionView && editAllPermission ? domainTypeActionButton : null;
+    !isVersionView && editAllPermission ? (
+      <FilterSelect
+        hideCounts
+        searchable
+        showRadio
+        emptyState={t('label.no-entity-available', {
+          entity: t('label.domain-type'),
+        })}
+        isClearable={false}
+        isOpen={editDomainType}
+        label={t('label.domain-type')}
+        options={domainTypeOptions}
+        selectedValues={domain.domainType ? [domain.domainType] : []}
+        selectionMode="single"
+        trigger={domainTypeActionButton}
+        onChange={handleDomainTypeUpdate}
+        onOpenChange={setEditDomainType}
+      />
+    ) : null;
 
   const content = (
-    <>
-      {!editDomainType && (
-        <Box data-testid="domain-type-label" gap={2} wrap="wrap">
-          {domain?.domainType}
-        </Box>
-      )}
-
-      {editDomainType && (
-        <DomainTypeSelectForm
-          defaultValue={domain.domainType}
-          onCancel={() => setEditDomainType(false)}
-          onSubmit={handleDomainTypeUpdate}
-        />
-      )}
-    </>
+    <Box data-testid="domain-type-label" gap={2} wrap="wrap">
+      {domain?.domainType}
+    </Box>
   );
 
   return (

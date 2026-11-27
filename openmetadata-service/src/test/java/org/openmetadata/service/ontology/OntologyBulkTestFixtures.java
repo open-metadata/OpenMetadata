@@ -30,8 +30,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.OntologyConfiguration;
-import org.openmetadata.schema.type.OntologyLayer;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
 
@@ -55,12 +53,7 @@ final class OntologyBulkTestFixtures {
         .withName("BusinessOntology")
         .withFullyQualifiedName("BusinessOntology")
         .withDescription("Business ontology")
-        .withVersion(0.4D)
-        .withOntologyConfiguration(configuration(false));
-  }
-
-  static Glossary readOnlyGlossary() {
-    return glossary().withOntologyConfiguration(configuration(true));
+        .withVersion(0.4D);
   }
 
   static GlossaryTerm customer() {
@@ -87,7 +80,6 @@ final class OntologyBulkTestFixtures {
         .withIri(URI.create("https://example.org/business/" + id))
         .withVersion(0.3D)
         .withEntityStatus(EntityStatus.DRAFT)
-        .withAttributes(List.of())
         .withConceptMappings(List.of())
         .withRelatedTerms(List.of());
   }
@@ -157,16 +149,5 @@ final class OntologyBulkTestFixtures {
         .withChangeSetName("bulkAuthoring")
         .withChangeSetDisplayName("Bulk authoring")
         .withChangeSetDescription("Review typed bulk ontology changes");
-  }
-
-  private static OntologyConfiguration configuration(final boolean readOnly) {
-    return new OntologyConfiguration()
-        .withBaseIri(URI.create("https://example.org/business/"))
-        .withLayer(OntologyLayer.L_2)
-        .withImports(List.of())
-        .withPrefixes(List.of())
-        .withIriMintingPattern("concept/{term}/{uuid}")
-        .withReadOnly(readOnly)
-        .withInstalledPacks(List.of());
   }
 }

@@ -36,7 +36,7 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-httpclient-okhttp</artifactId>
-            <version>6.12.0</version>
+            <version>${fabric8.version}</version>
         </dependency>
         
         <!-- Jackson for JSON processing -->
@@ -94,7 +94,7 @@
         <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
-            <version>8.0.1.Final</version>
+            <version>8.0.6.Final</version>
         </dependency>
         
         <!-- Testing -->
@@ -108,29 +108,53 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.7.0</version>
+            <version>5.24.0</version>
             <scope>test</scope>
         </dependency>
         
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>5.7.0</version>
+            <version>5.24.0</version>
             <scope>test</scope>
         </dependency>
         
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>1.20.3</version>
+            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>k3s</artifactId>
-            <version>1.20.3</version>
+            <version>1.21.4</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- In-memory Kubernetes API (CRUD mode evaluates label selectors), so pod lookup
+             and cleanup are tested against real label matching instead of mocked clients -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-server-mock</artifactId>
+            <version>${fabric8.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- kubernetes-server-mock brings an older mockwebserver. Declared here without a version,
+             the root okhttp-bom holds it on the same okhttp line as okhttp-jvm: a pinned 4.x
+             mockwebserver needs okhttp3.internal.Util, which okhttp 5 no longer ships. -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     
@@ -140,7 +164,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <source>21</source>
                     <target>21</target>
@@ -184,7 +208,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.6.1</version>
                 <configuration>
                     <includes>
                         <include>**/*Test.java</include>
@@ -196,7 +220,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.6.1</version>
             </plugin>
         </plugins>
     </build>

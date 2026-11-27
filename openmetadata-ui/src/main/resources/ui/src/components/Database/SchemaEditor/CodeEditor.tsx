@@ -13,15 +13,13 @@
 
 import { Card } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCodeMirrorEditor } from '../../../hooks/useCodeMirrorEditor';
 import { CodeMirrorOptions } from '../../../interface/codemirror.interface';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import './schema-editor.less';
 import { SchemaEditorProps } from './SchemaEditor.interface';
 
@@ -72,13 +70,11 @@ const CodeEditor = ({
     extensions,
     onChange,
   });
-  const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   return (
-    // Light values reproduce the antd Card this replaced.
     <Card
       className={classNames(
-        'tw:overflow-visible tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle',
+        'tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
         className,
         'code-editor-new-style'
       )}
@@ -87,30 +83,22 @@ const CodeEditor = ({
         <div
           className={classNames(
             'tw:-mb-px tw:flex tw:min-h-7 tw:items-center tw:rounded-t-xl',
-            'tw:border-b tw:border-black/6 tw:bg-secondary tw:px-6 tw:text-base',
-            'tw:leading-[1.5715] tw:font-medium tw:text-black/85',
-            'tw:dark:border-secondary tw:dark:text-primary'
+            'tw:border-b tw:border-subtle tw:bg-secondary tw:px-6 tw:text-base',
+            'tw:leading-[1.5715] tw:font-medium tw:text-primary'
           )}>
-          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:[&_.ant-form-item-label]:p-0!">
+          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
             {title}
           </div>
           {showCopyButton && (
             <div
-              className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
+              className="tw:ml-auto tw:py-1 tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
-              <Tooltip
-                title={
-                  hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-                }>
-                <Button
-                  className="flex-center"
-                  data-testid="query-copy-button"
-                  icon={<CopyIcon height={16} width={16} />}
-                  size="small"
-                  type="text"
-                  onClick={() => onCopyToClipBoard(internalValue)}
-                />
-              </Tooltip>
+              <CopyButton
+                size="sm"
+                testId="query-copy-button"
+                tooltip={t('message.copy-to-clipboard')}
+                value={internalValue}
+              />
             </div>
           )}
         </div>

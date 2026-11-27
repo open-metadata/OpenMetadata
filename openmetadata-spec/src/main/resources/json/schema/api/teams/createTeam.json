@@ -96,6 +96,10 @@
         "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "teamType"],

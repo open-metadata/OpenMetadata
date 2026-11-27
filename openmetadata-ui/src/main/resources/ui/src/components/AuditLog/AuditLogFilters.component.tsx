@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
@@ -340,11 +341,14 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
   );
 
   return (
-    <Space
-      wrap
-      className="explore-quick-filters-container"
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal explore-quick-filters-container"
       data-testid="audit-log-filters"
-      size={[8, 0]}>
+      itemClassName="layout-space-item"
+      style={{ columnGap: 'var(--om-space-8)', rowGap: 'var(--om-space-0)' }}
+      wrap="wrap">
       <DatePickerMenu
         showSelectedCustomRange
         defaultDateRange={timeDefaultDateRange}
@@ -388,7 +392,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-    </Space>
+    </Box>
   );
 };
 

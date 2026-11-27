@@ -12,6 +12,7 @@
  */
 
 import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import { GovernanceView } from './Governance.types';
 
 const PATH_GLOSSARY = 'glossary-relations';
@@ -35,7 +36,10 @@ export function hashSubPathToView(subPath: string): GovernanceView {
       return { type: 'glossary-add' };
     }
 
-    return { type: 'glossary-edit', name: parts.slice(1).join('/') };
+    return {
+      type: 'glossary-edit',
+      name: safeDecodeURIComponent(parts.slice(1).join('/')),
+    };
   }
 
   if (parts[0] === PATH_INTAKE) {
@@ -50,7 +54,10 @@ export function hashSubPathToView(subPath: string): GovernanceView {
         : INTAKE_LIST_VIEW;
     }
 
-    return { type: 'intake-edit', id: parts.slice(1).join('/') };
+    return {
+      type: 'intake-edit',
+      id: safeDecodeURIComponent(parts.slice(1).join('/')),
+    };
   }
 
   return { type: 'landing' };
@@ -65,13 +72,13 @@ export function viewToSubPath(view: GovernanceView): string | undefined {
     case 'glossary-add':
       return `${PATH_GLOSSARY}/add`;
     case 'glossary-edit':
-      return `${PATH_GLOSSARY}/${view.name}`;
+      return `${PATH_GLOSSARY}/${encodeURIComponent(view.name)}`;
     case 'intake-list':
       return PATH_INTAKE;
     case 'intake-add':
       return `${PATH_INTAKE}/add/${view.entityType}`;
     case 'intake-edit':
-      return `${PATH_INTAKE}/${view.id}`;
+      return `${PATH_INTAKE}/${encodeURIComponent(view.id)}`;
     default:
       return undefined;
   }

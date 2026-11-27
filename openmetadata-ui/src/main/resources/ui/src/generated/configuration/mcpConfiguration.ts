@@ -20,6 +20,21 @@ export interface MCPConfiguration {
      */
     allowedOrigins?: string[];
     /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
+    /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
      * external-facing URL.
@@ -31,17 +46,46 @@ export interface MCPConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
+    /**
      * Enable or disable the MCP server
      */
     enabled?: boolean;
     /**
-     * Name of the MCP server
+     * Distribution-specific MCP settings ignored by OpenMetadata.
+     */
+    extensions?: { [key: string]: any };
+    /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
+    /**
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
+    /**
+     * Allowlist of MCP tool names this server offers. An empty list offers every registered
+     * tool. Disabled tools and read-only mode still apply. Distributions may define additional
+     * values.
+     */
+    offeredTools?: string[];
     /**
      * Expected origin header URI for validation
      */
@@ -54,6 +98,13 @@ export interface MCPConfiguration {
      * Base path for MCP endpoints
      */
     path?: string;
+    /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
+     */
+    readOnly?: boolean;
     /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)

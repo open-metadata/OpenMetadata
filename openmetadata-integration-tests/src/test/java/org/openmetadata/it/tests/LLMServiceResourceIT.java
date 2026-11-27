@@ -27,6 +27,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMService> {
 
   {
+    supportsEntityStatus = false;
     supportsListHistoryByTimestamp = true;
   }
 

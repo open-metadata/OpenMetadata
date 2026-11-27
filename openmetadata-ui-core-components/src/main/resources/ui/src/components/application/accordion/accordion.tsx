@@ -36,7 +36,15 @@ export interface AccordionProps extends AriaDisclosureGroupProps {
   className?: string;
 }
 
-export type AccordionItemProps = AriaDisclosureProps;
+export type AccordionItemVariant = 'default' | 'muted';
+
+export type AccordionItemProps = AriaDisclosureProps & {
+  /**
+   * `muted` sits the item on the muted step, like a muted Card.
+   * ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
+   */
+  variant?: AccordionItemVariant;
+};
 
 export interface AccordionHeaderProps extends AriaButtonProps {
   /**
@@ -94,7 +102,7 @@ export const Accordion = ({
     <AriaDisclosureGroup
       {...props}
       className={cx(
-        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:outline-1 tw:outline-border-secondary tw:overflow-hidden',
+        'tw:w-full tw:divide-y tw:divide-border-secondary tw:rounded-xl tw:outline-1 tw:-outline-offset-1 tw:outline-border-secondary tw:overflow-hidden',
         className
       )}>
       {children}
@@ -109,6 +117,7 @@ export const Accordion = ({
 export const AccordionItem = ({
   children,
   className,
+  variant = 'default',
   ...props
 }: AccordionItemProps) => {
   return (
@@ -116,7 +125,8 @@ export const AccordionItem = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/item tw:w-full tw:bg-surface',
+          'tw:group/item tw:w-full',
+          variant === 'muted' ? 'tw:bg-primary_alt' : 'tw:bg-surface',
           state.isDisabled && 'tw:cursor-not-allowed tw:opacity-50',
           typeof className === 'function' ? className(state) : className
         )

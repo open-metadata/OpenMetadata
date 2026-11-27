@@ -225,7 +225,17 @@ describe('CustomizePageUtils', () => {
       const result = getDefaultTabs(PageType.Glossary);
 
       expect(result).toBeDefined();
-      expect(result).toHaveLength(3); // Terms, Relations Graph, Activity Feed tabs
+      expect(result).toHaveLength(4); // Terms, Review, Relations Graph, Activity Feed tabs
+    });
+
+    it('lists Review right after Terms in glossary default tabs, so a persona can move or hide it', () => {
+      const result = getDefaultTabs(PageType.Glossary);
+
+      expect(result.map((tab) => tab.id).slice(0, 2)).toEqual([
+        EntityTabs.TERMS,
+        EntityTabs.REVIEW,
+      ]);
+      expect(result[1].editable).toBe(false);
     });
 
     it('should include RELATIONS_GRAPH in glossary default tabs', () => {
@@ -328,6 +338,20 @@ describe('CustomizePageUtils', () => {
       );
 
       expect(result).toEqual(widgets);
+    });
+
+    it('should return the same reference when the height is unchanged', () => {
+      const widgets = [
+        { i: 'widget-1', h: 50 },
+        { i: 'widget-2', h: 75, children: [{ i: 'child-1', h: 30 }] },
+      ] as WidgetConfig[];
+
+      expect(updateWidgetHeightRecursively('widget-1', 50, widgets)).toBe(
+        widgets
+      );
+      expect(updateWidgetHeightRecursively('child-1', 30, widgets)).toBe(
+        widgets
+      );
     });
   });
 

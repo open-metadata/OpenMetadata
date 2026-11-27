@@ -1,5 +1,7 @@
 package org.openmetadata.mcp;
 
+import static org.openmetadata.mcp.server.transport.HttpServletStatelessServerTransport.pathInContext;
+
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -8,6 +10,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 
@@ -18,6 +21,16 @@ import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportPr
  */
 @Slf4j
 public class OAuthWellKnownFilter implements Filter {
+
+  static final Set<String> AUTHORIZATION_SERVER_PATHS =
+      Set.of(
+          "/.well-known/oauth-authorization-server",
+          "/.well-known/oauth-authorization-server/mcp",
+          "/.well-known/openid-configuration",
+          "/.well-known/openid-configuration/mcp");
+
+  static final Set<String> PROTECTED_RESOURCE_PATHS =
+      Set.of("/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp");
 
   private final OAuthHttpStatelessServerTransportProvider transport;
 
@@ -32,24 +45,29 @@ public class OAuthWellKnownFilter implements Filter {
 
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
-    if (path.equals("/.well-known/oauth-authorization-server")
-        || path.equals("/.well-known/oauth-authorization-server/mcp")
-        || path.equals("/.well-known/openid-configuration")
-        || path.equals("/.well-known/openid-configuration/mcp")) {
+    if (isDiscoveryPath(path) && !McpAvailabilityFilter.isMcpAvailable()) {
+      McpAvailabilityFilter.refuse(response);
+      return;
+    }
+
+    if (AUTHORIZATION_SERVER_PATHS.contains(path)) {
       LOG.debug("Serving OAuth authorization server metadata for: {}", path);
       transport.handleMetadata(request, response);
       return;
     }
 
-    if (path.equals("/.well-known/oauth-protected-resource")
-        || path.equals("/.well-known/oauth-protected-resource/mcp")) {
+    if (PROTECTED_RESOURCE_PATHS.contains(path)) {
       LOG.debug("Serving OAuth protected resource metadata for: {}", path);
       transport.handleProtectedResourceMetadata(request, response);
       return;
     }
 
     filterChain.doFilter(servletRequest, servletResponse);
+  }
+
+  private static boolean isDiscoveryPath(String path) {
+    return AUTHORIZATION_SERVER_PATHS.contains(path) || PROTECTED_RESOURCE_PATHS.contains(path);
   }
 }

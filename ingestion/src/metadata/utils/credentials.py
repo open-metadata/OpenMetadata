@@ -42,6 +42,11 @@ logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
 
+# google-auth defaults to this domain when a service account has no `universe_domain`.
+# Sovereign / partner clouds (e.g. S3NS PREMI3NS with `s3nsapis.fr`) override it via
+# `GcpCredentialsValues.universeDomain`.
+DEFAULT_GOOGLE_UNIVERSE_DOMAIN = "googleapis.com"
+
 GOOGLE_CLOUD_SCOPES = [
     "https://www.googleapis.com/auth/cloud-platform",
     "https://www.googleapis.com/auth/drive",
@@ -129,7 +134,7 @@ def create_credential_tmp_file(credentials: dict) -> str:
 def build_google_credentials_dict(
     gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> dict[str, str]:
+) -> dict[str, str | list[str] | dict[str, str] | None]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
@@ -162,6 +167,7 @@ def build_google_credentials_dict(
             "token_uri": str(gcp_values.tokenUri),
             "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
             "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
+            "universe_domain": gcp_values.universeDomain or DEFAULT_GOOGLE_UNIVERSE_DOMAIN,
         }
     if isinstance(gcp_values, GcpExternalAccount):
         return {
@@ -256,6 +262,21 @@ def get_gcp_impersonate_credentials(
         target_scopes=scopes,
         lifetime=lifetime,
     )
+
+
+def get_gcp_impersonate_credentials_or_none(
+    gcp_credentials: GCPCredentials | None,
+) -> impersonated_credentials.Credentials | None:
+    """Impersonated credentials when a target service account is configured, else None
+    so the client keeps resolving the base identity from ADC / the key file as before.
+    A blank target email is treated as not configured."""
+    impersonate = gcp_credentials.gcpImpersonateServiceAccount if gcp_credentials else None
+    if not impersonate:
+        return None
+    target = (impersonate.impersonateServiceAccount or "").strip()
+    if not target:
+        return None
+    return get_gcp_impersonate_credentials(impersonate_service_account=target, lifetime=impersonate.lifetime or 3600)
 
 
 def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:

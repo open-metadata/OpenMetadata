@@ -233,9 +233,230 @@ const noNonAdaptivePalette = {
   },
 };
 
+/**
+ * Rule: no-nested-ellipsis-tooltip-trigger
+ * Core Typography's `ellipsis={{ tooltip }}` renders its tooltip trigger as a
+ * <button>. Inside a link, button or other pressable that nests a button in an
+ * interactive element: invalid HTML and a second tab stop for one target.
+ * Flag it unless the ellipsis opts into `excludeTriggerFromTabOrder: true`,
+ * which renders the trigger as a plain span.
+ *
+ * Only JSX ancestors in the same file are visible to the rule, so a Typography
+ * rendered by a child component that a caller wraps in a link is not caught.
+ */
+const INTERACTIVE_ANCESTORS = new Set([
+  'a',
+  'button',
+  'Link',
+  'NavLink',
+  'Button',
+  'ButtonUtility',
+  'Pressable',
+  'AriaButton',
+]);
+const INTERACTIVE_ROLES = new Set(['button', 'link', 'menuitem', 'tab']);
+
+const jsxName = (nameNode) =>
+  nameNode?.type === 'JSXIdentifier' ? nameNode.name : null;
+
+const staticRole = (opening) => {
+  const role = opening.attributes.find(
+    (attr) => attr.type === 'JSXAttribute' && attr.name?.name === 'role'
+  );
+
+  return role?.value?.type === 'Literal' ? role.value.value : null;
+};
+
+const isInteractiveElement = (opening) =>
+  INTERACTIVE_ANCESTORS.has(jsxName(opening.name)) ||
+  INTERACTIVE_ROLES.has(staticRole(opening));
+
+const noNestedEllipsisTooltipTrigger = {
+  meta: {
+    messages: {
+      nestedTrigger:
+        'Typography ellipsis tooltip inside <{{ancestor}}> renders a nested <button>. Add `excludeTriggerFromTabOrder: true` to the ellipsis config.',
+    },
+    schema: [],
+    type: 'problem',
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        if (
+          node.name.name !== 'ellipsis' ||
+          node.value?.type !== 'JSXExpressionContainer' ||
+          node.value.expression.type !== 'ObjectExpression'
+        ) {
+          return;
+        }
+        const keys = new Map(
+          node.value.expression.properties
+            .filter((prop) => prop.type === 'Property')
+            .map((prop) => [prop.key.name ?? prop.key.value, prop.value])
+        );
+        const excluded = keys.get('excludeTriggerFromTabOrder');
+        const isExcluded =
+          excluded &&
+          !(excluded.type === 'Literal' && excluded.value === false);
+        if (!keys.has('tooltip') || isExcluded) {
+          return;
+        }
+        // node.parent is the Typography opening element; its parent is the
+        // JSXElement, whose ancestors are what can make the trigger nested.
+        let current = node.parent.parent?.parent;
+        while (current) {
+          if (
+            current.type === 'JSXElement' &&
+            isInteractiveElement(current.openingElement)
+          ) {
+            context.report({
+              node,
+              messageId: 'nestedTrigger',
+              data: {
+                ancestor:
+                  jsxName(current.openingElement.name) ?? 'interactive element',
+              },
+            });
+
+            return;
+          }
+          current = current.parent;
+        }
+      },
+    };
+  },
+};
+
+// No autofix: the semantic replacement depends on the styled property and theme.
+const omTokenUsage = {
+  meta: {
+    messages: {
+      deprecatedOmToken:
+        'Legacy token "{{token}}" is deprecated. Use tw: utilities or --tw-* theme variables. Migrate existing references when editing them; do not add new references.',
+    },
+    schema: [],
+    type: 'suggestion',
+  },
+  create(context) {
+    const checkString = (node, value) => {
+      if (typeof value !== 'string') {
+        return;
+      }
+      // Match the prefix too: computed names must not bypass the migration gate.
+      for (const [token] of value.matchAll(/--om-[\w-]*/g)) {
+        context.report({
+          node,
+          messageId: 'deprecatedOmToken',
+          data: { token },
+        });
+      }
+    };
+
+    return {
+      Literal: (node) => checkString(node, node.value),
+      TemplateElement: (node) =>
+        checkString(node, node.value.cooked ?? node.value.raw),
+    };
+  },
+};
+
+/**
+ * Rule: no-undefined-controlled-prop
+ * A React Aria component is controlled while a prop like `selectedKey` holds a value and uncontrolled while it is
+ * `undefined`. Falling back to `undefined` to mean "nothing selected" flips it to uncontrolled mid-life, and its
+ * internal state then fights the parent's until React throws "Maximum update depth exceeded" (#37771). The empty
+ * controlled value is `null` (or `[]` / `''` / `false` for the props below).
+ * ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined
+ *
+ * Flags a JSX prop in CONTROLLED_PROPS on a component (capitalised or member-expression name) whose expression ends
+ * in a literal `undefined` / `void 0`: a ternary branch, or the right side of `??` / `||`. A variable typed
+ * `T | undefined` needs type information and is out of reach; the record says to review those by hand.
+ */
+const CONTROLLED_PROPS = new Set([
+  'selectedKey',
+  'selectedKeys',
+  'inputValue',
+  'isOpen',
+  'isSelected',
+  'expandedKeys',
+]);
+
+const isUndefinedLiteral = (node) =>
+  (node?.type === 'Identifier' && node.name === 'undefined') ||
+  (node?.type === 'UnaryExpression' && node.operator === 'void');
+
+const fallsBackToUndefined = (node) => {
+  if (node?.type === 'ConditionalExpression') {
+    return (
+      isUndefinedLiteral(node.consequent) ||
+      isUndefinedLiteral(node.alternate) ||
+      fallsBackToUndefined(node.consequent) ||
+      fallsBackToUndefined(node.alternate)
+    );
+  }
+  if (
+    node?.type === 'LogicalExpression' &&
+    ['??', '||'].includes(node.operator)
+  ) {
+    return isUndefinedLiteral(node.right);
+  }
+
+  return false;
+};
+
+const noUndefinedControlledProp = {
+  meta: {
+    messages: {
+      undefinedControlledProp:
+        '"{{prop}}" falls back to undefined, which makes the component uncontrolled. Clear it with null instead ' +
+        '(ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined).',
+    },
+    schema: [],
+    type: 'problem',
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        const prop = node.name?.name;
+        const opening = node.parent;
+        const isComponent =
+          opening?.type === 'JSXOpeningElement' &&
+          (opening.name.type === 'JSXMemberExpression' ||
+            (opening.name.type === 'JSXIdentifier' &&
+              /^[A-Z]/.test(opening.name.name)));
+        const expression =
+          node.value?.type === 'JSXExpressionContainer'
+            ? node.value.expression
+            : null;
+
+        if (
+          isComponent &&
+          CONTROLLED_PROPS.has(prop) &&
+          fallsBackToUndefined(expression)
+        ) {
+          context.report({
+            data: { prop },
+            messageId: 'undefinedControlledProp',
+            node,
+          });
+        }
+      },
+    };
+  },
+};
+
+// The palette vocabulary is also consumed by scripts/tw-deprecation-guard.js
+// (the added-lines style gate), so the two can never drift.
+export { PALETTE_FAMILIES, COLOR_PROP, SHADE };
+
 export default {
   rules: {
+    'deprecated-om-tokens': omTokenUsage,
+    'no-new-om-tokens': omTokenUsage,
     'no-raw-title-attribute': noRawTitleAttribute,
     'no-non-adaptive-palette': noNonAdaptivePalette,
+    'no-nested-ellipsis-tooltip-trigger': noNestedEllipsisTooltipTrigger,
+    'no-undefined-controlled-prop': noUndefinedControlledProp,
   },
 };

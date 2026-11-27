@@ -8,7 +8,8 @@ from typing import (
 )
 
 if TYPE_CHECKING:
-    from presidio_analyzer.nlp_engine import NlpEngine
+    from presidio_analyzer import RecognizerResult
+    from presidio_analyzer.nlp_engine import NlpArtifacts, NlpEngine
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -88,17 +89,10 @@ class TagScorer:
 
         return results
 
-    def _build_recognizer_metadata(
-        self,
-        analysis: TagAnalysis,
-    ) -> TagLabelRecognizerMetadata | None:
-        if not analysis.recognizer_results:
-            return None
-
-        first_result = analysis.recognizer_results[0]
-        recognition_metadata = cast(dict[str, str], first_result.recognition_metadata)  # noqa: TC006
-
-        recognizer_name = recognition_metadata.get(
+    @staticmethod
+    def _recognizer_name(result: "RecognizerResult") -> str:
+        recognition_metadata = cast(dict[str, str], result.recognition_metadata)  # noqa: TC006
+        return recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
             recognition_metadata.get(
                 presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
@@ -106,8 +100,23 @@ class TagScorer:
             ),
         )
 
+    def _build_recognizer_metadata(
+        self,
+        analysis: TagAnalysis,
+    ) -> TagLabelRecognizerMetadata | None:
+        if not analysis.recognizer_results:
+            return None
+
+        # Use the result with the highest score — that is the result responsible for
+        # analysis.score (which is the max), not necessarily the first in the list.
+        best_result = max(analysis.recognizer_results, key=lambda r: r.score)
+        recognizer_name = self._recognizer_name(best_result)
+
+        # Only report the patterns of the recognizer the metadata is attributed to.
         patterns_matched: set[tuple[str, str, float]] = set()
         for result in analysis.recognizer_results:
+            if self._recognizer_name(result) != recognizer_name:
+                continue
             if result.analysis_explanation and result.analysis_explanation.pattern:
                 patterns_matched.add(
                     (
@@ -160,13 +169,14 @@ class ScoreTagsForColumnService:
         self._language = language
 
     def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
-        # Create analyzers for remaining candidate tags
+        nlp_artifacts_memo: dict[tuple[str, str], NlpArtifacts] = {}
         tag_analyzers = (
             TagAnalyzer(
                 tag=tag,
                 column=column,
                 nlp_engine=self._nlp_engine,
                 language=self._language,
+                nlp_artifacts_memo=nlp_artifacts_memo,
             )
             for tag in tags_to_analyze
         )

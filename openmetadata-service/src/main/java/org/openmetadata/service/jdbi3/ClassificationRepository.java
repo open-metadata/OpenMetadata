@@ -23,7 +23,6 @@ import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import java.io.IOException;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +71,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityFieldUtils;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -93,10 +94,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   protected void postDelete(Classification entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeByPrefixFromCondition(
-                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    // A soft delete cascades to the child tags without removing their labels from assets, so a
+    // condition naming them still matches; rewriting it to false would switch off Deny rules that
+    // still apply. A hard delete removes the labels, after which false is exactly what it matches.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    }
   }
 
   @Override
@@ -106,6 +112,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       Operation operation,
       ChangeSource changeSource) {
     return new ClassificationUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
   }
 
   @Override
@@ -171,6 +182,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   private Map<String, Integer> batchFetchTermCounts(List<Classification> classifications) {
     Map<String, Integer> termCountMap = new HashMap<>();
     if (classifications == null || classifications.isEmpty()) {
+      return termCountMap;
+    }
+    // The bulk count cannot take the navbar filter; under a pick each count uses the list's filter,
+    // resolved once so the batch shares one domain lookup.
+    ListFilter navbar = navbarTagFilter();
+    if (navbar.getQueryParam("domainId") != null) {
+      for (Classification classification : classifications) {
+        ListFilter filter =
+            new ListFilter(Include.NON_DELETED)
+                .addQueryParam("parent", classification.getFullyQualifiedName());
+        navbar.getQueryParams().forEach(filter::addQueryParam);
+        termCountMap.put(
+            classification.getFullyQualifiedName(), daoCollection.tagDAO().listCount(filter));
+      }
       return termCountMap;
     }
 
@@ -259,7 +284,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     ListFilter filter =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", classification.getFullyQualifiedName());
+    // The count labels the tag list, which follows the navbar pick, so it is filtered the same way.
+    EntityUtil.addNavbarDomainFilter(filter, Entity.TAG, () -> null);
     return daoCollection.tagDAO().listCount(filter);
+  }
+
+  private static ListFilter navbarTagFilter() {
+    ListFilter navbar = new ListFilter();
+    EntityUtil.addNavbarDomainFilter(navbar, Entity.TAG, () -> null);
+    return navbar;
   }
 
   private Integer getUsageCount(Classification classification) {
@@ -281,7 +314,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
     validateNotSystemClassification(classification);
     return new ClassificationCsv(classification, user)
-        .exportCsv(listTagsForCsv(classification), callback);
+        .exportCsv(listTagsForCsv(classification, user), callback);
   }
 
   /** Import tags into a classification from CSV */
@@ -311,13 +344,14 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
-  private List<Tag> listTagsForCsv(Classification classification) {
+  private List<Tag> listTagsForCsv(Classification classification, String user) {
     TagRepository repository = (TagRepository) Entity.getEntityRepository(TAG);
     List<Tag> tags =
         repository.listAllForCSV(
             repository.getFields("owners,reviewers,parent,domains"),
-            classification.getFullyQualifiedName());
-    tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+            classification.getFullyQualifiedName(),
+            user);
+    tags.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return tags;
   }
 
@@ -492,9 +526,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     searchRepository
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
-    searchRepository
-        .getSearchClient()
-        .updateByFqnPrefix(TAG_SEARCH_INDEX, oldFqn, newFqn, "fullyQualifiedName");
   }
 
   private List<Tag> getAllTagsByClassification(Classification classification) {
@@ -594,6 +625,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
       invalidateClassification(updated.getId());
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+      reindexRenamedDescendants(Entity.TAG, renamedTags, newFqn);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {

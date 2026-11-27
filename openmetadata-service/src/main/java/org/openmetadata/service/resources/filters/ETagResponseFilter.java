@@ -65,20 +65,22 @@ public class ETagResponseFilter implements ContainerResponseFilter {
 
   /**
    * Emit an ETag on successful entity reads (GET 200) and on successful mutations (PUT/POST/PATCH
-   * 200/201). Emitting it on mutation responses lets a client chain a follow-up conditional write
-   * ({@code If-Match}) without an intervening GET.
+   * 200/201/202). Emitting it on mutation responses lets a client chain a follow-up conditional
+   * write ({@code If-Match}) without an intervening GET. A 202 carries the unchanged entity of an
+   * edit held for approval, so its ETag still describes the published version.
    */
   private static boolean shouldEmitETag(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     boolean result = false;
-    if (responseContext.getEntity() instanceof EntityInterface) {
+    if (responseContext.getEntity() instanceof EntityInterface<?>) {
       String method = requestContext.getMethod();
       int status = responseContext.getStatus();
       boolean successfulRead = GET.equals(method) && status == Response.Status.OK.getStatusCode();
       boolean successfulMutation =
           MUTATION_METHODS.contains(method)
               && (status == Response.Status.OK.getStatusCode()
-                  || status == Response.Status.CREATED.getStatusCode());
+                  || status == Response.Status.CREATED.getStatusCode()
+                  || status == Response.Status.ACCEPTED.getStatusCode());
       result = successfulRead || successfulMutation;
     }
     return result;
@@ -86,7 +88,7 @@ public class ETagResponseFilter implements ContainerResponseFilter {
 
   private static void applyETag(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    String etag = EntityETag.generateETag((EntityInterface) responseContext.getEntity());
+    String etag = EntityETag.generateETag((EntityInterface<?>) responseContext.getEntity());
     if (etag != null) {
       responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
       responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);

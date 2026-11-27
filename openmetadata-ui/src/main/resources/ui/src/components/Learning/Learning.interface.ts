@@ -30,7 +30,7 @@ export const CATEGORY_BADGE_COLORS: Record<ResourceCategory, BadgeColors> = {
   AI: 'purple',
 };
 
-export type ResourceType = 'Storylane' | 'Video' | 'Article';
+export type ResourceType = 'Storylane' | 'Video' | 'Article' | 'Link' | 'PDF';
 
 export type ResourceDifficulty = 'Intro' | 'Intermediate' | 'Advanced';
 

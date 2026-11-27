@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Toggle } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreBooleanField from './CoreBooleanField';
@@ -57,10 +58,43 @@ describe('CoreBooleanField', () => {
     jest.clearAllMocks();
   });
 
+  it('names a map entry toggle by its key instead of repeating it as a label', () => {
+    const { Toggle: RealToggle } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    (Toggle as jest.Mock).mockImplementationOnce(RealToggle);
+
+    render(
+      <CoreBooleanField
+        {...baseProps}
+        name="verifyCerts"
+        schema={{ type: 'boolean', __additional_property: true }}
+      />
+    );
+
+    expect(
+      screen.getByRole('switch', { name: 'verifyCerts' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Verify Certs')).not.toBeInTheDocument();
+  });
+
   it('renders with schema title as label', () => {
     render(<CoreBooleanField {...baseProps} />);
 
     expect(screen.getByText('Enable Debug Log')).toBeInTheDocument();
+  });
+
+  it('puts the RJSF field id on the switch input', () => {
+    const { Toggle: RealToggle } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    (Toggle as jest.Mock).mockImplementationOnce(RealToggle);
+
+    render(<CoreBooleanField {...baseProps} />);
+
+    expect(document.getElementById('root/enableDebugLog')).toBe(
+      screen.getByRole('switch', { name: 'Enable Debug Log' })
+    );
   });
 
   it('uses startCase of name when schema has no title', () => {

@@ -13,6 +13,7 @@
 
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
 import type { Bucket } from 'Models';
 import Qs from 'qs';
@@ -33,6 +34,7 @@ import {
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
+import { isUnprocessedStatus } from '../../utils/EntityStatusUtils';
 import {
   getCombinedQueryFilterObject,
   getQuickFilterWithDeletedFlag,
@@ -121,6 +123,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   helperText,
   untitledDropdown = false,
   bordered = false,
+  searchText: searchTextOverride,
+  ignoreHostSearchState = false,
+  singleLine = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -135,7 +140,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const isLatestOptionsRequest = (requestId: number) =>
     requestId === optionsRequestIdRef.current;
   const { queryFilter } = useAdvanceSearch();
-  const { isNLPActive } = useSearchStore();
+  const { isNLPActive: isPageNLPActive } = useSearchStore();
+  const isNLPActive = !ignoreHostSearchState && isPageNLPActive;
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -149,10 +155,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     );
 
     return {
-      showDeleted: parsed.showDeleted === 'true',
-      searchText: (parsed.search as string) ?? '',
+      showDeleted: !ignoreHostSearchState && parsed.showDeleted === 'true',
+      searchText: searchTextOverride ?? (parsed.search as string) ?? '',
     };
-  }, [location.search]);
+  }, [location.search, searchTextOverride, ignoreHostSearchState]);
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),
@@ -437,20 +443,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return;
       }
 
-      publishOptions(
-        key,
-        addOptionIcons(
-          key,
-          uniqWith(
-            getOptionsFromAggregationBucket(
-              buckets,
-              getOptionLabelFormatter(key, untitledDropdown),
-              sourceFields
-            ),
-            isEqual
-          )
-        )
-      );
+      publishOptions(key, buildBucketOptions(buckets, key, sourceFields));
     } catch (error) {
       if (isLatestOptionsRequest(requestId)) {
         showErrorToast(error as AxiosError);
@@ -461,6 +454,62 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       }
     }
   };
+
+  // The Status filter only earns its place once some entity has left
+  // Unprocessed; until then it could only ever select everything.
+  const hasStatusField = fields.some(
+    (field) => field.key === EntityFields.ENTITY_STATUS
+  );
+  const [hasReviewedStatus, setHasReviewedStatus] = useState(false);
+  // Stringified so a caller rebuilding an equal filter each render does not
+  // refetch.
+  const statusFacetQuery = JSON.stringify(
+    getCombinedQueryFilterObject(
+      undefined,
+      undefined,
+      defaultQueryFilter as unknown as QueryFilterInterface
+    )
+  );
+  useEffect(() => {
+    if (!hasStatusField) {
+      return;
+    }
+    let isCurrent = true;
+    getAggregationOptions(
+      index,
+      EntityFields.ENTITY_STATUS,
+      '',
+      statusFacetQuery,
+      independent,
+      showDeleted
+    )
+      .then((res) => {
+        const buckets: Bucket[] =
+          res.data.aggregations[`sterms#${EntityFields.ENTITY_STATUS}`]
+            ?.buckets ?? [];
+        isCurrent &&
+          setHasReviewedStatus(
+            buckets.some((bucket) => !isUnprocessedStatus(bucket.key))
+          );
+      })
+      // Fail open: a filter the user cannot use beats one that vanished.
+      .catch(() => isCurrent && setHasReviewedStatus(true));
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [hasStatusField, index, statusFacetQuery, independent, showDeleted]);
+
+  const visibleFields = useMemo(
+    () =>
+      fields.filter(
+        (field) =>
+          field.key !== EntityFields.ENTITY_STATUS ||
+          hasReviewedStatus ||
+          !isEmpty(field.value)
+      ),
+    [fields, hasReviewedStatus]
+  );
 
   // The legacy dropdowns debounced their own search input; FilterSelect
   // reports every keystroke, so debounce here before hitting aggregations.
@@ -494,8 +543,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
   return (
-    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:mt-1">
-      {fields.map((field) => {
+    <div
+      className={classNames(
+        'explore-quick-filters-container tw:flex tw:items-center tw:gap-2 tw:mt-1',
+        singleLine ? 'tw:flex-nowrap' : 'tw:flex-wrap'
+      )}>
+      {visibleFields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
@@ -544,6 +597,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return (
           <FilterSelect
             bordered={bordered}
+            className={singleLine ? 'tw:shrink-0' : undefined}
             commitMode={immediateApply ? 'immediate' : 'staged'}
             data-testid={`search-dropdown-${field.key}`}
             // Keep the legacy empty-state copy: specs and users know this

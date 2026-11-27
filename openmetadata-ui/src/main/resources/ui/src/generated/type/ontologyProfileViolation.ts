@@ -14,20 +14,32 @@
  * A typed OWL 2 DL profile guardrail finding.
  */
 export interface OntologyProfileViolation {
-    code:     Code;
-    message:  string;
-    path:     string;
-    severity: Severity;
+    code: Code;
+    /**
+     * Declared concepts a rule clash involves, the clashing class first, so a client can link
+     * to each.
+     */
+    conceptIds?: string[];
+    message:     string;
+    path:        string;
+    severity:    Severity;
 }
 
 export enum Code {
+    DisjointClash = "DISJOINT_CLASH",
     IllegalPunning = "ILLEGAL_PUNNING",
     InvalidAxiomShape = "INVALID_AXIOM_SHAPE",
+    InvalidClassKind = "INVALID_CLASS_KIND",
     InvalidExpressionShape = "INVALID_EXPRESSION_SHAPE",
     NonSimpleCardinality = "NON_SIMPLE_CARDINALITY",
+    NonSimpleProperty = "NON_SIMPLE_PROPERTY",
     PropertyChainRegularity = "PROPERTY_CHAIN_REGULARITY",
     ReservedSubjectIRI = "RESERVED_SUBJECT_IRI",
+    SubclassCycle = "SUBCLASS_CYCLE",
+    SubpropertyCycle = "SUBPROPERTY_CYCLE",
     TransitiveCardinality = "TRANSITIVE_CARDINALITY",
+    UndeclaredClass = "UNDECLARED_CLASS",
+    UndeclaredProperty = "UNDECLARED_PROPERTY",
 }
 
 export enum Severity {

@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -33,6 +34,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,6 +52,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
@@ -61,6 +65,7 @@ import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 class DistributedSearchIndexExecutorTest {
 
@@ -277,6 +282,135 @@ class DistributedSearchIndexExecutorTest {
     verify(partitionDAO).cancelPendingPartitions(jobId.toString());
   }
 
+  /**
+   * Regression for #38016: building partitions walks every entity table and can outlast both the
+   * lock TTL and the orphan sweep's staleness threshold. The lock used to stay under a placeholder
+   * id until it finished, with nothing renewing it, so the sweep failed the live job as "abandoned
+   * due to server crash or shutdown". The job's own lock, and its updatedAt, must be renewed the
+   * whole time.
+   */
+  @Test
+  void createJobRenewsTheJobsOwnLockWhileItsPartitionsAreBuilt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob created =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
+    ReindexLockRow lock = emulateReindexLock();
+    CountDownLatch renewals = new CountDownLatch(2);
+    AtomicBoolean renewedWhileBuilding = new AtomicBoolean();
+    setField("lockRefreshIntervalMs", 10L);
+
+    when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
+    when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(created));
+    when(coordinator.refreshReindexLock(jobId))
+        .thenAnswer(
+            invocation -> {
+              boolean renewed = lock.renew(jobId);
+              if (renewed) {
+                renewals.countDown();
+              }
+              return renewed;
+            });
+    when(coordinator.initializePartitions(eq(jobId), any()))
+        .thenAnswer(
+            invocation -> {
+              renewedWhileBuilding.set(renewals.await(5, TimeUnit.SECONDS));
+              return created.withStatus(IndexJobStatus.READY);
+            });
+
+    SearchIndexJob result =
+        executor.createJob(
+            Set.of("table"),
+            new EventPublisherJob().withEntities(Set.of("table")),
+            "admin",
+            ReindexingConfiguration.builder().build());
+
+    assertEquals(IndexJobStatus.READY, result.getStatus());
+    assertTrue(
+        renewedWhileBuilding.get(),
+        "the job's own lock was not renewed while its partitions were being built");
+    verify(jobDAO, atLeastOnce()).touchJob(eq(jobId.toString()), anyLong());
+    assertEquals(jobId, lock.holder(), "execute() takes over the lock the job already holds");
+  }
+
+  /**
+   * The lock renewal kept the job's updatedAt fresh, so a job left INITIALIZING would look alive and
+   * block every new run for ten minutes before the orphan sweep failed it as "abandoned".
+   */
+  @Test
+  void createJobFailsTheJobAndFreesItsLockWhenBuildingPartitionsFails() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob created =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
+    ReindexLockRow lock = emulateReindexLock();
+
+    when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
+    when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(created));
+    when(coordinator.initializePartitions(eq(jobId), any()))
+        .thenThrow(new IllegalStateException("partition calculation failed"));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            executor.createJob(
+                Set.of("table"),
+                new EventPublisherJob().withEntities(Set.of("table")),
+                "admin",
+                ReindexingConfiguration.builder().build()));
+
+    assertNull(lock.holder(), "a run whose partitions could not be built must free the lock");
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.FAILED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            isNull(),
+            isNull(),
+            anyLong(),
+            anyLong(),
+            eq("Failed to build partitions: partition calculation failed"));
+  }
+
+  @Test
+  void createJobKeepsTheOutcomeOfAJobEndedWhileItsPartitionsWereBuilt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob created =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
+    emulateReindexLock();
+
+    when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
+    when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
+    when(coordinator.getJob(jobId))
+        .thenReturn(Optional.of(created.withStatus(IndexJobStatus.FAILED)));
+    when(coordinator.initializePartitions(eq(jobId), any()))
+        .thenThrow(new IllegalStateException("not marking it READY"));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            executor.createJob(
+                Set.of("table"),
+                new EventPublisherJob().withEntities(Set.of("table")),
+                "admin",
+                ReindexingConfiguration.builder().build()));
+
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
   @Test
   void performStartupRecoveryDelegatesToRecoveryManager() {
     JobRecoveryManager.RecoveryResult recovery =
@@ -318,6 +452,64 @@ class DistributedSearchIndexExecutorTest {
     assertTrue(executor.isStopped());
     verify(worker, times(1)).stop();
     verify(coordinator, times(1)).requestStop(job.getId());
+  }
+
+  /**
+   * Regression: a stop that lands while {@code createJob()} is still building partitions finds no
+   * job to stop. {@code execute()} then started the job anyway, leaving it RUNNING with none of our
+   * workers on it, so peer servers adopted it as an orphan, reindexed what the user had stopped,
+   * and the app run stayed "running" for good.
+   */
+  @Test
+  void executeEndsJobStoppedBeforeItStartedInsteadOfStartingIt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob readyJob =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.READY).build();
+    ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
+    executor.addListener(listener);
+    executor.stop();
+    setField("currentJob", readyJob);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(readyJob));
+    when(coordinator.getJobWithAggregatedStats(jobId))
+        .thenReturn(readyJob.withStatus(IndexJobStatus.STOPPED));
+
+    DistributedSearchIndexExecutor.ExecutionResult result =
+        executor.execute(
+            mock(BulkSink.class),
+            stagedContext("table"),
+            ReindexingConfiguration.builder().entities(Set.of("table")).build());
+
+    assertEquals(IndexJobStatus.STOPPED, result.status());
+    verify(coordinator, never()).startJob(jobId);
+    verify(coordinator).requestStop(jobId);
+    verify(coordinator).releaseReindexLock(jobId);
+    verify(listener, never()).onJobStarted(any());
+  }
+
+  @Test
+  void executorCreatedForAnAlreadyStoppedRunIsStopped() {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    stopSignal.requestStop();
+
+    DistributedSearchIndexExecutor lateExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+
+    assertTrue(lateExecutor.isStopped());
+  }
+
+  @Test
+  void stoppingTheRunStopsTheExecutorAndItsJob() throws Exception {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    executor = new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+    setField("coordinator", coordinator);
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+
+    stopSignal.requestStop();
+
+    assertTrue(executor.isStopped());
+    verify(coordinator).requestStop(job.getId());
   }
 
   /**
@@ -468,6 +660,43 @@ class DistributedSearchIndexExecutorTest {
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "topic", true);
     verifyNoMoreInteractions(genericHandler);
+  }
+
+  @Test
+  void aTypeWithAPartitionThatCouldNotRecordAStagedChunkDeleteKeepsTheLiveChunks()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    ReindexContext stagedIndexContext = mock(ReindexContext.class);
+    DefaultRecreateHandler defaultHandler = mock(DefaultRecreateHandler.class);
+    when(stagedIndexContext.getStagedIndex("table")).thenReturn(Optional.of("staged_table"));
+    when(coordinator.getPartitions(jobId, PartitionStatus.FAILED))
+        .thenReturn(
+            List.of(
+                SearchIndexPartition.builder()
+                    .entityType("table")
+                    .lastError(VectorIndexService.UNRECORDED_STAGED_DELETE + ": staged g1")
+                    .build(),
+                SearchIndexPartition.builder()
+                    .entityType("topic")
+                    .lastError("read timeout")
+                    .build()));
+    setField("currentJob", SearchIndexJob.builder().id(jobId).build());
+    setField("stagedIndexContext", stagedIndexContext);
+    setField("indexPromotionHandler", defaultHandler);
+
+    invokePrivate(
+        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", false);
+    // The lost delete is read even when the type's run counts as a success, which it does when a
+    // retry of another partition succeeded after an earlier failure.
+    invokePrivate(
+        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
+
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(false));
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
+    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(true));
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
   }
 
   @Test
@@ -1476,5 +1705,59 @@ class DistributedSearchIndexExecutorTest {
     Field field = DistributedSearchIndexExecutor.class.getDeclaredField("COORDINATED_JOBS");
     field.setAccessible(true);
     ((Set<UUID>) field.get(null)).clear();
+  }
+
+  private ReindexLockRow emulateReindexLock() {
+    ReindexLockRow lock = new ReindexLockRow();
+    when(coordinator.tryAcquireReindexLock(any()))
+        .thenAnswer(invocation -> lock.acquire(invocation.getArgument(0)));
+    when(coordinator.transferReindexLock(any(), any()))
+        .thenAnswer(
+            invocation -> lock.transfer(invocation.getArgument(0), invocation.getArgument(1)));
+    when(coordinator.refreshReindexLock(any()))
+        .thenAnswer(invocation -> lock.renew(invocation.getArgument(0)));
+    doAnswer(
+            invocation -> {
+              lock.release(invocation.getArgument(0));
+              return null;
+            })
+        .when(coordinator)
+        .releaseReindexLock(any());
+    return lock;
+  }
+
+  /** In-memory stand-in for the search_reindex_lock row: which id holds the lock, if any. */
+  private static final class ReindexLockRow {
+    private UUID holder;
+
+    synchronized boolean acquire(UUID id) {
+      boolean acquired = holder == null;
+      if (acquired) {
+        holder = id;
+      }
+      return acquired;
+    }
+
+    synchronized boolean transfer(UUID from, UUID to) {
+      boolean transferred = from.equals(holder);
+      if (transferred) {
+        holder = to;
+      }
+      return transferred;
+    }
+
+    synchronized boolean renew(UUID id) {
+      return id.equals(holder);
+    }
+
+    synchronized void release(UUID id) {
+      if (id.equals(holder)) {
+        holder = null;
+      }
+    }
+
+    synchronized UUID holder() {
+      return holder;
+    }
   }
 }

@@ -661,3 +661,60 @@ describe('QueryBuilderCanvas – component contracts', () => {
     expect(screen.getByText('Field')).toBeInTheDocument();
   });
 });
+
+describe('QueryBuilderCanvas – negation', () => {
+  // The tag value widget looks its options up, and reads `hits.hits`.
+  beforeEach(() => {
+    searchQuery.mockResolvedValue({ hits: { total: { value: 0 }, hits: [] } });
+  });
+
+  const tagIs = (fqn: string) => ({
+    some: [{ var: 'tags' }, { '==': [{ var: 'tagFQN' }, fqn] }],
+  });
+
+  const renderRule = (rule: unknown, groupMode = 'flat') =>
+    renderCanvas({
+      entityType: EntityType.GLOSSARY_TERM,
+      groupMode,
+      outputType: SearchOutputType.JSONLogic,
+      readonly: true,
+      value: JSON.stringify(rule),
+    });
+
+  it('should show a NOT the saved rule carries, even though the canvas cannot set one', () => {
+    renderRule({ '!': { and: [tagIs('A'), tagIs('B')] } });
+
+    expect(
+      screen.getByTestId('query-builder-negated-group')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.at-least-one-condition-must-not-match')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.all-conditions-must-match')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show a negated root whose groups render as peers', () => {
+    renderRule(
+      { '!': { or: [{ and: [tagIs('A')] }, { and: [tagIs('B')] }] } },
+      'nested'
+    );
+
+    expect(
+      screen.getByTestId('query-builder-negated-group')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-condition-can-match')
+    ).toBeInTheDocument();
+  });
+
+  it('should read a negated single tag rule as a plain "Is Not" row', () => {
+    renderRule({ '!': { and: [tagIs('Scraping.AutoProvisioned')] } });
+
+    expect(
+      screen.queryByTestId('query-builder-negated-group')
+    ).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('label.is-not')).toBeInTheDocument();
+  });
+});

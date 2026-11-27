@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -49,17 +50,6 @@ const buildValidConfig = () => ({
     adminPrincipals: ['admin'],
   },
 });
-
-const buildBrokenConfig = () => {
-  const cfg = buildValidConfig();
-  // Missing `providerName` — validateAuthFields checks for this before any
-  // client is instantiated, so the scenario 8 test can catch the specific
-  // "required field missing" branch cleanly.
-  delete (cfg.authenticationConfiguration as Record<string, unknown>)
-    .providerName;
-
-  return cfg;
-};
 
 /**
  * Basic (email+password) fixture. No external IdP — auth is fully handled
@@ -109,7 +99,7 @@ export const basicProviderFixture: SsoProviderFixture = {
     // Authenticated app renders the sidebar's home nav; wait for it before
     // returning so downstream assertions can rely on isAuthenticated=true.
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   },
 

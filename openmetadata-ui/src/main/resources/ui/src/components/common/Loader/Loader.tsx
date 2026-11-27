@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { CSSProperties, FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
 import './Loader.less';
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
   className?: string;
   fullScreen?: boolean;
   style?: CSSProperties;
+  dataTestId?: string;
 };
 
 const Loader: FunctionComponent<Props> = ({
@@ -29,7 +31,9 @@ const Loader: FunctionComponent<Props> = ({
   className = '',
   fullScreen = false,
   style,
+  dataTestId = 'loader',
 }: Props): JSX.Element => {
+  const { t } = useTranslation();
   let classes = 'loader';
   switch (size) {
     case 'small':
@@ -66,8 +70,10 @@ const Loader: FunctionComponent<Props> = ({
     return (
       <div className="h-min-100 flex-center" data-testid="full-screen-loader">
         <div
+          aria-label={t('label.loading')}
           className={classNames(classes, className)}
-          data-testid="loader"
+          data-testid={dataTestId}
+          role="status"
           style={style}
         />
       </div>
@@ -75,9 +81,12 @@ const Loader: FunctionComponent<Props> = ({
   }
 
   return (
+    // A spinner has no text, so it names itself for assistive tech.
     <div
+      aria-label={t('label.loading')}
       className={classNames(classes, className)}
-      data-testid="loader"
+      data-testid={dataTestId}
+      role="status"
       style={style}
     />
   );
@@ -86,7 +95,7 @@ const Loader: FunctionComponent<Props> = ({
 // Use for blocking page-level loads only, so route and initial entity loaders
 // stay in the same position instead of jumping between bare spinner layouts.
 export const PageLoader = () => (
-  <div className="ant-layout-content flex-center">
+  <div className="loader-content flex-center">
     <Loader />
   </div>
 );

@@ -15,6 +15,20 @@
  */
 export interface CreateTestCaseResult {
     /**
+     * Failure threshold the run was judged by, as configured when it executed.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`.
+     */
+    configuredMinBound?: number;
+    /**
      * List of dimensional test results. Only populated when the test case has dimensionColumns
      * specified.
      */
@@ -27,6 +41,10 @@ export interface CreateTestCaseResult {
      * Structured error details when the run was aborted by an error.
      */
     errorDetails?: TestCaseErrorDetails;
+    /**
+     * Which rows the run was measured on.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
     /**
      * Number of rows that failed.
      */
@@ -80,10 +98,59 @@ export interface CreateTestCaseResult {
 }
 
 /**
+ * Failure threshold the run was judged by, as configured when it executed.
+ *
+ * The failure threshold a test case run was judged by, as the evaluator read it while the
+ * run executed. Recorded by the agent that ran the test and never re-read from the test
+ * case afterwards: an edit between the run and the result being stored would otherwise be
+ * attributed to the run.
+ *
+ * Failure threshold the parent run was judged by, as configured when it executed. Every
+ * dimension of a run shares it.
+ */
+export interface TestCaseAppliedThreshold {
+    /**
+     * Whether this run used a failure tolerance. False when the execution mode did not apply
+     * one, such as columnValuesToBeInSet with matchEnum disabled. When false, value and unit do
+     * not explain the verdict. An absent snapshot means applicability is unknown.
+     */
+    applied?: boolean;
+    unit?:    ThresholdUnit;
+    /**
+     * Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.
+     */
+    value?: number;
+}
+
+/**
+ * How a failure threshold reads: `ABSOLUTE` for a raw deviation, `PERCENTAGE` for a share
+ * of what it applies to.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
+}
+
+/**
  * Test case result for dimensional analysis - supports both single and multi-dimensional
  * groupings
  */
 export interface TestCaseDimensionResult {
+    /**
+     * Failure threshold the parent run was judged by, as configured when it executed. Every
+     * dimension of a run shares it.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`.
+     */
+    configuredMinBound?: number;
     /**
      * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
      */
@@ -93,6 +160,16 @@ export interface TestCaseDimensionResult {
      * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
      */
     dimensionValues: DimensionValue[];
+    /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
     /**
      * Number of rows that failed for this dimension combination
      */
@@ -111,6 +188,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -157,6 +244,62 @@ export interface DimensionValue {
      * Value for this dimension (e.g., 'address', 'US', 'gold')
      */
     value: string;
+}
+
+/**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on.
+ */
+export interface TestCaseEvaluationScope {
+    executionSource?: TableExecutionSource;
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
 }
 
 /**

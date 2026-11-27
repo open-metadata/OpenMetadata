@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,9 +33,13 @@ import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.quartz.CronTrigger;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -88,6 +93,38 @@ class AppSchedulerTest {
 
     assertNotNull(testRunRecord.getEndTime());
     assertEquals(endTime, testRunRecord.getEndTime());
+  }
+
+  @Test
+  void getCronScheduleAppliesTimezone() {
+    AppSchedule schedule =
+        new AppSchedule()
+            .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+            .withCronExpression("0 2 * * *")
+            .withTimezone("Europe/Tallinn");
+
+    CronTrigger trigger = (CronTrigger) AppScheduler.getCronSchedule(schedule).build();
+
+    assertEquals(TimeZone.getTimeZone("Europe/Tallinn"), trigger.getTimeZone());
+  }
+
+  @Test
+  void getCronScheduleWithoutTimezoneKeepsSchedulerDefault() {
+    AppSchedule schedule = new AppSchedule().withScheduleTimeline(ScheduleTimeline.DAILY);
+
+    CronTrigger trigger = (CronTrigger) AppScheduler.getCronSchedule(schedule).build();
+
+    assertEquals(TimeZone.getDefault(), trigger.getTimeZone());
+  }
+
+  @Test
+  void getCronScheduleRejectsUnknownTimezone() {
+    AppSchedule schedule =
+        new AppSchedule()
+            .withScheduleTimeline(ScheduleTimeline.HOURLY)
+            .withTimezone("Mars/Olympus");
+
+    assertThrows(BadRequestException.class, () -> AppScheduler.getCronSchedule(schedule));
   }
 
   /**
@@ -309,7 +346,7 @@ class AppSchedulerTest {
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(mockExecContext));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(nonConcurrentApp, new HashMap<>()));
 
     verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
@@ -398,7 +435,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(activeRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -424,7 +461,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(erroredRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -451,7 +488,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("running"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
 
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
@@ -541,7 +578,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("duplicate job key"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
   }
 

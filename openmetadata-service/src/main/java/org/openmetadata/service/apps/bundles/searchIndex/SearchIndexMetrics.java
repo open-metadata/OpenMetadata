@@ -16,6 +16,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +109,8 @@ public class SearchIndexMetrics {
       int rebuildIndices = cleaner.countRebuildIndices(indexStats);
       int orphanedIndices = cleaner.countOrphanedIndices(indexStats);
 
-      Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
+      Map<String, IndexMapping> indexMap = new HashMap<>(searchRepository.getEntityIndexMap());
+      indexMap.keySet().removeIf(searchRepository::isIndexDisabled);
       int expectedIndices = indexMap.size();
       int missingIndices = countMissingIndices(indexMap, indexStats);
 

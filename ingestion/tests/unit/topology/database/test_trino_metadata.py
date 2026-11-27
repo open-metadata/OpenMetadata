@@ -12,13 +12,23 @@
 """Test Trino Metadata"""
 
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+import pytest
+from sqlalchemy import text
+from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.trino.metadata import (
+    MAX_COMMENT_TABLE_NAMES,
     TrinoSource,
     _get_columns,
+    get_table_comment,
     get_view_definition,
 )
 
@@ -30,6 +40,9 @@ class TestTrinoMetadata(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_connection = Mock()
         self.mock_self = Mock()
+        # The real preparer, not a Mock: get_view_definition quotes through it, and a
+        # Mock would make the assertions below pass against any quoting at all.
+        self.mock_self.identifier_preparer = TrinoDialect().identifier_preparer
         self.mock_self._get_default_catalog_name.return_value = "test_catalog"
         self.mock_self._get_default_schema_name.return_value = "test_schema"
 
@@ -208,7 +221,7 @@ class TestTrinoMetadata(unittest.TestCase):
             )
 
 
-class TestTrinoIcebergDetection(unittest.TestCase):
+class TestTrinoIcebergDetection:
     def _make_mock_source(self, connector_name, table_names):
         mock_self = Mock()
         mock_self.context.get.return_value.database = "test_catalog"
@@ -230,6 +243,25 @@ class TestTrinoIcebergDetection(unittest.TestCase):
         mock_self = self._make_mock_source("hive", ["orders"])
         result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
         assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+
+    def test_delta_lake_catalog_returns_delta_lake_type(self):
+        mock_self = self._make_mock_source("delta_lake", ["delta_sales", "delta_events"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            TableNameAndType(name="delta_events", type_=TableType.DeltaLake),
+        ]
+
+    def test_hive_catalog_does_not_return_delta_lake_type(self):
+        mock_self = self._make_mock_source("hive", ["hive_orders"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="hive_orders", type_=TableType.Regular)]
+
+    def test_delta_substring_connector_is_not_delta_lake(self):
+        """`delta` is Presto's connector name, not Trino's; Trino must not match it."""
+        mock_self = self._make_mock_source("delta", ["t1"])
+        result = TrinoSource.query_table_names_and_types(mock_self, "test_schema")
+        assert result == [TableNameAndType(name="t1", type_=TableType.Regular)]
 
     def test_connection_error_falls_back_to_regular(self):
         mock_self = Mock()
@@ -274,6 +306,138 @@ class TestTrinoColumnComments:
     def test_null_comment_is_none(self):
         columns = self._columns_for([self._record("age", None)])
         assert columns[0]["comment"] is None
+
+
+class TestTrinoTableCommentsFilter:
+    """The schema-wide table_comments scan is restricted to the tables the source kept"""
+
+    @staticmethod
+    def _dialect(comment_table_names):
+        dialect = Mock()
+        dialect._get_default_catalog_name.return_value = "test_catalog"
+        dialect._get_default_schema_name.return_value = None
+        dialect.processed_schema = set()
+        dialect.comment_table_names = comment_table_names
+        dialect.queries = []
+
+        def record_query(connection, query):
+            dialect.queries.append(query)
+            dialect.all_table_comments = {("orders", "test_schema"): "Orders"}
+            dialect.current_db = connection.engine.url.database
+
+        dialect.get_all_table_comments.side_effect = record_query
+        return dialect
+
+    def test_query_restricted_to_recorded_tables(self):
+        dialect = self._dialect({"test_schema": {"orders", "o'neil", "my :tbl"}})
+
+        comment = get_table_comment(dialect, Mock(), "orders", "test_schema")
+
+        assert comment == {"text": "Orders"}
+        assert len(dialect.queries) == 1
+        # get_all_table_comments runs the query through text(), where an unescaped ":tbl" is a bind parameter
+        compiled = text(dialect.queries[0]).compile(dialect=TrinoDialect())
+        assert compiled.binds == {}
+        assert "\"schema_name\" = 'test_schema'" in str(compiled)
+        assert "and \"table_name\" IN ('my :tbl', 'o''neil', 'orders')" in str(compiled)
+
+    def test_query_unrestricted_without_recorded_tables(self):
+        dialect = self._dialect({})
+
+        get_table_comment(dialect, Mock(), "orders", "test_schema")
+
+        assert len(dialect.queries) == 1
+        assert '"table_name" IN' not in dialect.queries[0]
+
+    @staticmethod
+    def _source(table_filter):
+        source = TrinoSource.__new__(TrinoSource)
+        source.context = Mock()
+        source.context.get.return_value.database_schema = "test_schema"
+        source.source_config = Mock(tableFilterPattern=table_filter)
+        source.engine = Mock()
+        source.engine.dialect = Mock(spec=[])
+        return source
+
+    def test_get_tables_name_and_type_records_filtered_tables(self):
+        source = self._source(FilterPattern(includes=["orders", "customers_v"]))
+        # Another schema worker's entry on the shared dialect must survive this one.
+        source.engine.dialect.comment_table_names = {"other_schema": {"x"}}
+        kept = [("orders", TableType.Iceberg), ("customers_v", TableType.View)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            first = next(tables)
+            # Recorded while the schema's tables are being processed...
+            assert source.engine.dialect.comment_table_names == {
+                "other_schema": {"x"},
+                "test_schema": {"orders", "customers_v"},
+            }
+            rest = list(tables)
+
+        assert [first, *rest] == kept
+        # ...and dropped once the schema is done.
+        assert source.engine.dialect.comment_table_names == {"other_schema": {"x"}}
+
+    def test_get_tables_name_and_type_cleans_up_on_early_close(self):
+        source = self._source(FilterPattern(includes=["orders"]))
+        kept = [("orders", TableType.Iceberg), ("customers", TableType.Iceberg)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            next(tables)
+            tables.close()
+
+        assert source.engine.dialect.comment_table_names == {}
+
+    @pytest.mark.parametrize("table_filter", [None, FilterPattern(), FilterPattern(includes=[], excludes=[])])
+    def test_get_tables_name_and_type_records_nothing_without_filter(self, table_filter):
+        source = self._source(table_filter)
+        kept = [("orders", TableType.Iceberg)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            assert next(tables) == kept[0]
+            assert not hasattr(source.engine.dialect, "comment_table_names")
+            assert list(tables) == []
+
+    def test_get_tables_name_and_type_records_exactly_the_cap(self):
+        source = self._source(FilterPattern(excludes=["^tmp_"]))
+        kept = [(f"t{i}", TableType.Iceberg) for i in range(MAX_COMMENT_TABLE_NAMES)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            next(tables)
+            assert len(source.engine.dialect.comment_table_names["test_schema"]) == MAX_COMMENT_TABLE_NAMES
+
+    def test_get_tables_name_and_type_records_nothing_above_cap(self):
+        source = self._source(FilterPattern(excludes=["^tmp_"]))
+        kept = [(f"t{i}", TableType.Iceberg) for i in range(MAX_COMMENT_TABLE_NAMES + 1)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            next(tables)
+            assert source.engine.dialect.comment_table_names == {}
+            assert len(list(tables)) == MAX_COMMENT_TABLE_NAMES
+
+    def test_get_tables_name_and_type_reads_at_most_one_past_the_cap_ahead(self):
+        source = self._source(FilterPattern(excludes=["^tmp_"]))
+        total = MAX_COMMENT_TABLE_NAMES * 3
+        pulled = []
+
+        def listing():
+            for i in range(total):
+                pulled.append(i)
+                yield (f"t{i}", TableType.Iceberg)
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=listing()):
+            tables = source.get_tables_name_and_type()
+            next(tables)
+            # Only the read-ahead window is buffered before the first table is processed...
+            assert len(pulled) == MAX_COMMENT_TABLE_NAMES + 1
+            # ...and the rest is streamed, nothing dropped.
+            assert len(list(tables)) == total - 1
+        assert len(pulled) == total
 
 
 if __name__ == "__main__":

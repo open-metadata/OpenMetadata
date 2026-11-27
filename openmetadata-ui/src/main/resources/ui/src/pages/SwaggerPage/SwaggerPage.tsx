@@ -15,10 +15,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
-import {
-  GRAPH_BACKGROUND_COLOR,
-  TEXT_BODY_COLOR,
-} from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getOidcToken } from '../../utils/SwTokenStorageUtils';
 import RapiDocReact from './RapiDocReact';
@@ -56,16 +52,13 @@ const SwaggerPage = () => {
             api-key-name="Authorization"
             api-key-value={apiKeyValue}
             font-size="large"
-            nav-bg-color={GRAPH_BACKGROUND_COLOR}
+            load-fonts={false}
             nav-item-spacing="compact"
-            nav-text-color={TEXT_BODY_COLOR}
             primary-color={theme.primaryColor}
-            regular-font="Open Sans"
             render-style="focused"
             show-header={false}
             show-method-in-nav-bar="as-colored-block"
             spec-url="./swagger.json"
-            text-color={TEXT_BODY_COLOR}
             theme="light"
           />
         </div>

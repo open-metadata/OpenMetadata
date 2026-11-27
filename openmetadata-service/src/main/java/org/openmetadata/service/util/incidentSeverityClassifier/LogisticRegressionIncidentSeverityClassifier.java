@@ -27,7 +27,7 @@ public class LogisticRegressionIncidentSeverityClassifier
   };
 
   @Override
-  public Severity classifyIncidentSeverity(EntityInterface entity) {
+  public Severity classifyIncidentSeverity(EntityInterface<?> entity) {
     double[] vectorX = getVectorX(entity);
     if (vectorX.length == 0) {
       return null;
@@ -92,7 +92,7 @@ public class LogisticRegressionIncidentSeverityClassifier
     return maxIndex;
   }
 
-  private double[] getVectorX(EntityInterface entity) {
+  private double[] getVectorX(EntityInterface<?> entity) {
     // get the input vector for the logistic regression model
     double hasOwner = !nullOrEmpty(entity.getOwners()) ? 1 : 0;
     double followers = entity.getFollowers() != null ? entity.getFollowers().size() : 0;

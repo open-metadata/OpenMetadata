@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -27,7 +28,7 @@ public class DomainAccessTest {
   private SubjectContext subjectContext;
   private ResourceContextInterface resourceContext;
   private User user;
-  private EntityInterface entity;
+  private EntityInterface<?> entity;
 
   @BeforeEach
   void setUp() {
@@ -41,7 +42,7 @@ public class DomainAccessTest {
     // Set up entity with ID (to indicate it's not a list operation)
     when(entity.getId()).thenReturn(UUID.randomUUID());
     when(entity.getFullyQualifiedName()).thenReturn("test.entity");
-    when(resourceContext.getEntity()).thenReturn(entity);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entity);
 
     // Create RuleEvaluator with mocked contexts
     ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
@@ -197,9 +198,9 @@ public class DomainAccessTest {
 
     assertTrue(hasAccess, "List operations should return true for post-filtering");
 
-    EntityInterface entityWithoutId = mock(EntityInterface.class);
+    EntityInterface<?> entityWithoutId = mock(EntityInterface.class);
     when(entityWithoutId.getId()).thenReturn(null);
-    when(resourceContext.getEntity()).thenReturn(entityWithoutId);
+    Mockito.<EntityInterface<?>>when(resourceContext.getEntity()).thenReturn(entityWithoutId);
 
     hasAccess = ruleEvaluator.hasDomain();
 

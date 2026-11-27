@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.IntakeFormResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.IntakeFormUtil;
@@ -73,11 +74,6 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     // No cross-entity relationships for IntakeForm
   }
 
-  @Override
-  protected boolean shouldCleanupFqnDependents() {
-    return false;
-  }
-
   /**
    * Returns the enabled IntakeForm for a given entityType, or null if none is configured or the
    * configured form is disabled. Storage / deserialization errors propagate to the caller —
@@ -109,7 +105,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
       IntakeFormUtil.synchronizeFields(original);
       IntakeForm updated = JsonUtils.deepCopy(original, IntakeForm.class);
       if (IntakeFormUtil.removeCustomPropertyField(updated, propertyName)) {
-        updated.setUpdatedBy(updatedBy);
+        EntityUtil.recordWriter(updated, updatedBy);
         getUpdater(original, updated, Operation.PATCH, null).update();
         // Change events are normally emitted by ChangeEventHandler, a REST
         // response filter. This cascade runs inside the Type update request, so

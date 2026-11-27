@@ -42,7 +42,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
-import org.openmetadata.schema.type.OntologyConfiguration;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.service.exception.OntologyAiProviderException;
@@ -63,7 +62,7 @@ class OntologyAiServiceTest {
 
   @BeforeEach
   void setUp() {
-    glossary = glossary(GLOSSARY_FQN, false);
+    glossary = glossary(GLOSSARY_FQN);
     source = term("provider", glossary, 1.2D);
     target = term("facility", glossary, 2.1D);
     relationshipType = relationshipType();
@@ -219,9 +218,14 @@ class OntologyAiServiceTest {
             "test-model",
             List.of(
                 new OntologyAiCompletionGateway.DomainConceptCandidate(
-                    "clinical", "Clinical", "Clinical concepts", null),
+                    "clinical", "Clinical", "Clinical concepts", null, 0.9D, "Top-level area"),
                 new OntologyAiCompletionGateway.DomainConceptCandidate(
-                    "diagnosis", "Diagnosis", "Diagnosis concept", "clinical")));
+                    "diagnosis",
+                    "Diagnosis",
+                    "Diagnosis concept",
+                    "clinical",
+                    0.7D,
+                    "Core clinical finding")));
 
     final var result = service.generateDomainDraft(domainRequest());
     final var operations = result.getDraft().getOperations();
@@ -236,6 +240,79 @@ class OntologyAiServiceTest {
     assertEquals(parent.getId(), child.getParent().getId());
     assertEquals("healthcare.clinical.diagnosis", child.getFullyQualifiedName());
     assertEquals(EntityStatus.DRAFT, child.getEntityStatus());
+    assertEquals(0.7D, operations.getLast().getConfidence());
+    assertEquals("Core clinical finding", operations.getLast().getRationale());
+  }
+
+  @Test
+  void fitsALongDomainConceptRationaleWithinAChangeOperation() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, 0.9D, "x".repeat(2001)));
+
+    final var operation = service.generateDomainDraft(domainRequest()).getDraft().getOperations();
+
+    assertEquals(2000, operation.getFirst().getRationale().length());
+  }
+
+  @Test
+  void keepsAnEmojiWholeWhenTruncatingADomainConceptRationale() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical",
+                "Clinical",
+                "Clinical concepts",
+                null,
+                0.9D,
+                "x".repeat(1999) + "\uD83E\uDDEA"));
+
+    final var rationale =
+        service
+            .generateDomainDraft(domainRequest())
+            .getDraft()
+            .getOperations()
+            .getFirst()
+            .getRationale();
+
+    assertEquals("x".repeat(1999), rationale);
+  }
+
+  @Test
+  void rejectsDomainConceptWithoutConfidence() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, null, "Top-level area"));
+
+    assertThrows(
+        OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));
+  }
+
+  @Test
+  void rejectsRelationshipWithoutConfidence() {
+    gateway.relationshipCompletion =
+        new OntologyAiCompletionGateway.Completion<>(
+            "test-model",
+            List.of(
+                new OntologyAiCompletionGateway.RelationshipCandidate(
+                    source.getId(), target.getId(), relationshipType.getId(), null, "No score")));
+
+    assertThrows(
+        OntologyAiProviderException.class,
+        () -> service.suggestRelationships(relationshipRequest()));
+  }
+
+  @Test
+  void rejectsDomainConceptWithoutRationale() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, 0.9D, " "));
+
+    assertThrows(
+        OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));
   }
 
   @Test
@@ -243,15 +320,15 @@ class OntologyAiServiceTest {
     gateway.domainCompletion =
         completion(
             new OntologyAiCompletionGateway.DomainConceptCandidate(
-                "child", "Child", "Child concept", "missing"));
+                "child", "Child", "Child concept", "missing", 0.5D, "Child of a missing parent"));
 
     assertThrows(
         OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));
   }
 
   @Test
-  void rejectsCrossGlossaryTermsAndReadOnlyOntologiesBeforeCompletion() {
-    final Glossary otherGlossary = glossary("other", false);
+  void rejectsCrossGlossaryTermsBeforeCompletion() {
+    final Glossary otherGlossary = glossary("other");
     final GlossaryTerm otherTerm = term("otherTerm", otherGlossary, 0.1D);
     service =
         service(
@@ -260,9 +337,6 @@ class OntologyAiServiceTest {
         relationshipRequest().withCandidateTermIds(Set.of(otherTerm.getId()));
     assertThrows(IllegalArgumentException.class, () -> service.suggestRelationships(request));
 
-    final Glossary readOnly = glossary(GLOSSARY_FQN, true);
-    service = service(true, new TestCatalog(readOnly, List.of(source, target), relationshipType));
-    assertThrows(IllegalArgumentException.class, () -> service.suggestMappings(mappingRequest()));
     assertEquals(0, gateway.invocationCount);
   }
 
@@ -329,13 +403,12 @@ class OntologyAiServiceTest {
         OntologyAiProviderException.class, () -> service.generateSparql(naturalLanguageRequest()));
   }
 
-  private static Glossary glossary(final String name, final boolean readOnly) {
+  private static Glossary glossary(final String name) {
     return new Glossary()
         .withId(UUID.randomUUID())
         .withName(name)
         .withFullyQualifiedName(name)
-        .withDescription("Test glossary")
-        .withOntologyConfiguration(new OntologyConfiguration().withReadOnly(readOnly));
+        .withDescription("Test glossary");
   }
 
   private static GlossaryTerm term(
@@ -423,11 +496,6 @@ class OntologyAiServiceTest {
       invocationCount++;
       assertEquals(GLOSSARY_FQN, prompt.glossary());
       return domainCompletion;
-    }
-
-    @Override
-    public Completion<MemoryTermCandidate> deriveTermsFromMemories(final MemoryTermPrompt prompt) {
-      throw new UnsupportedOperationException("Memory derivation is tested separately");
     }
   }
 }

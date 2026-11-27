@@ -77,7 +77,6 @@ class TestGetConnectionClass:
         "AzureSQL",
         "BigQuery",
         "BigTable",
-        "DeltaLake",
         "DomoDatabase",
         "DynamoDB",
         "MariaDB",

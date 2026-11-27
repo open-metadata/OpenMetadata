@@ -27,25 +27,30 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextAccess;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
-import org.openmetadata.service.aicontext.PersonaContextCache;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns one deterministic, line-bounded part of a persona's shared AI context document. */
 public class GetPersonaContextTool implements McpTool {
-  private static final int PART_RESPONSE_BUDGET = McpResponseTrim.MAX_RESPONSE_CHARS - 10_000;
+  private static final int PART_RESPONSE_HEADROOM_CHARS = 10_000;
   private static final String INSTRUCTIONS_KEY = "instructions";
+
+  private static int partResponseBudget() {
+    return McpResponseTrim.maxResponseChars() - PART_RESPONSE_HEADROOM_CHARS;
+  }
 
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    Persona persona = resolvePersona(securityContext, stringParam(params, "personaName"));
-    PersonaContextAccess.authorize(securityContext, persona);
-    PersonaContextBuilder.MaterializedPersonaContext materialized =
-        PersonaContextCache.getInstance().get(persona, false).value();
-    return page(materialized, stringParam(params, "format"), intParam(params.get("part"), 1));
+    String personaName = stringParam(params, "personaName");
+    var cached =
+        personaName == null || personaName.isBlank()
+            ? PersonaContextAccess.materializeActive(authorizer, securityContext, false)
+            : PersonaContextAccess.materialize(
+                authorizer, securityContext, resolveNamedPersona(personaName), false);
+    return page(cached.value(), stringParam(params, "format"), intParam(params.get("part"), 1));
   }
 
   /**
@@ -98,12 +103,9 @@ public class GetPersonaContextTool implements McpTool {
         "GetPersonaContextTool does not require limit validation.");
   }
 
-  private static Persona resolvePersona(
-      CatalogSecurityContext securityContext, String personaName) {
-    return personaName == null || personaName.isBlank()
-        ? PersonaContextAccess.activePersona(securityContext)
-        : Entity.getEntityByName(
-            Entity.PERSONA, personaName, "contextDefinition,users", Include.NON_DELETED);
+  private static Persona resolveNamedPersona(String personaName) {
+    return Entity.getEntityByName(
+        Entity.PERSONA, personaName, "contextDefinition,users", Include.NON_DELETED);
   }
 
   static List<String> split(String content) {
@@ -118,7 +120,7 @@ public class GetPersonaContextTool implements McpTool {
     }
     int start = 0;
     while (start < content.length()) {
-      int budget = PART_RESPONSE_BUDGET - (parts.isEmpty() ? firstPartReserve : 0);
+      int budget = partResponseBudget() - (parts.isEmpty() ? firstPartReserve : 0);
       int candidateEnd = largestSerializableEnd(content, start, budget);
       int end = candidateEnd;
       if (candidateEnd < content.length()) {

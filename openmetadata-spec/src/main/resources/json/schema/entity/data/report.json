@@ -5,7 +5,7 @@
   "description": "This schema defines the Report entity. `Reports` are static information computed from data periodically that includes data in text, table, and visual form.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Report",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this report.",

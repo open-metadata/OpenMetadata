@@ -34,7 +34,7 @@ public interface RunnablePipelineResolver {
   String entityFields();
 
   /** The pipelines of {@code pipelineType} that own {@code target}, whether runnable or not. */
-  List<IngestionPipeline> pipelinesOwning(EntityInterface target, PipelineType pipelineType);
+  List<IngestionPipeline> pipelinesOwning(EntityInterface<?> target, PipelineType pipelineType);
 
   static List<IngestionPipeline> pipelinesOfType(
       List<EntityReference> pipelines, PipelineType pipelineType) {

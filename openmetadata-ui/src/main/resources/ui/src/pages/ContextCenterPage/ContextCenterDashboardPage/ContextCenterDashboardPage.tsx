@@ -15,15 +15,19 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Article,
   ChevronDown,
+  Documents,
   FlipBackward,
+  Memories,
   Plus,
+  QuickLink as QuickLinkIcon,
   Stars01,
+  UploadCloud01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,12 +35,8 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
-import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -49,6 +49,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import {
+  DEFAULT_MEMORY_STATUSES,
   MOST_CITED_MEMORIES_LIMIT,
   RECENT_DASHBOARD_ARTICLES_LIMIT,
   RECENT_DASHBOARD_DOCUMENTS_LIMIT,
@@ -63,6 +64,7 @@ import { Folder } from '../../../generated/entity/data/folder';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -78,7 +80,10 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  createArticleKnowledgePage,
+  getMemoryCitations,
+} from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
@@ -91,6 +96,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -235,6 +241,7 @@ const ContextCenterDashboardPage: FC = () => {
         limit: RECENT_DASHBOARD_MEMORIES_LIMIT,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
+        statuses: DEFAULT_MEMORY_STATUSES.join(','),
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
       setMemories(response.data);
@@ -250,7 +257,7 @@ const ContextCenterDashboardPage: FC = () => {
     try {
       const response = await getListContextMemories({
         limit: MOST_CITED_MEMORIES_LIMIT,
-        sortBy: 'usageCount',
+        sortBy: 'appliedCount',
         sortOrder: 'desc',
       });
       setMostCitedMemories(response.data);
@@ -318,11 +325,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   const handleOpenDocument = useCallback(
     (documentId: string) => {
-      navigate(
-        `${contextCenterClassBase.getDocumentsListPath()}?document=${encodeURIComponent(
-          documentId
-        )}`
-      );
+      navigate(contextCenterClassBase.getDocumentPath(documentId));
     },
     [navigate]
   );
@@ -346,9 +349,12 @@ const ContextCenterDashboardPage: FC = () => {
         const metaParts = [owner, time].filter(Boolean);
         const icon =
           article.pageType === PageType.QUICK_LINK ? (
-            <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+            <QuickLinkIcon
+              className="tw:text-quaternary tw:shrink-0"
+              size={16}
+            />
           ) : (
-            <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+            <Article className="tw:text-quaternary tw:shrink-0" size={16} />
           );
 
         return {
@@ -395,10 +401,14 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       memories.map((memory) => ({
         title: memory.title ?? getEntityName(memory),
-        meta: [`cited ${memory.usageCount}×`],
+        meta: [
+          t('label.cited-n-times', {
+            count: getMemoryCitations(memory).count ?? 0,
+          }),
+        ],
         onClick: () => handleOpenMemory(memory.name),
       })),
-    [memories, handleOpenMemory]
+    [memories, handleOpenMemory, t]
   );
 
   const mostCitedItems = useMemo(
@@ -406,7 +416,7 @@ const ContextCenterDashboardPage: FC = () => {
       mostCitedMemories.map((memory) => ({
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
-        citedCount: memory.usageCount ?? 0,
+        citedCount: getMemoryCitations(memory).count ?? 0,
         onClick: () => handleOpenMemory(memory.name),
       })),
     [mostCitedMemories, handleOpenMemory]
@@ -414,7 +424,9 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout
@@ -426,7 +438,7 @@ const ContextCenterDashboardPage: FC = () => {
               <Box align="center" className="tw:shrink-0" gap={3}>
                 <Button
                   color="secondary"
-                  iconLeading={UploadIcon}
+                  iconLeading={UploadCloud01}
                   size="sm"
                   onClick={() => setIsUploadModalOpen(true)}>
                   {t('label.upload-file')}
@@ -477,7 +489,7 @@ const ContextCenterDashboardPage: FC = () => {
           data-testid="dashboard-detail-card">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={
                   hasCreatePermission
                     ? [
@@ -490,7 +502,7 @@ const ContextCenterDashboardPage: FC = () => {
                         },
                         {
                           color: 'secondary',
-                          iconLeading: UploadIcon,
+                          iconLeading: UploadCloud01,
                           key: 'upload-file',
                           label: t('label.upload-file'),
                           onClick: () => setIsUploadModalOpen(true),
@@ -504,7 +516,7 @@ const ContextCenterDashboardPage: FC = () => {
                 features={[
                   {
                     key: 'add-knowledge',
-                    icon: <FileIcon className="tw:text-fg-brand-primary" />,
+                    icon: <Article className="tw:text-fg-brand-primary" />,
                     title: t('label.add-knowledge'),
                     description: t(
                       'message.context-center-dashboard-empty-feature-add-knowledge'
@@ -530,7 +542,6 @@ const ContextCenterDashboardPage: FC = () => {
                   },
                 ]}
                 title={t('label.give-your-ai-something-to-know')}
-                variant="features"
               />
             </div>
           ) : (
@@ -541,7 +552,7 @@ const ContextCenterDashboardPage: FC = () => {
                     entity: t('label.article-plural'),
                   })}
                   dataTestId="article-detail-card"
-                  icon={FileIcon}
+                  icon={Article}
                   isLoading={isArticlesLoading}
                   recent={articlesRecentItems}
                   stat={String(articlesCount)}
@@ -557,7 +568,7 @@ const ContextCenterDashboardPage: FC = () => {
                     entity: t('label.document-plural'),
                   })}
                   dataTestId="document-detail-card"
-                  icon={FolderIcon}
+                  icon={Documents}
                   isLoading={isDocumentsLoading}
                   recent={documentsRecentItems}
                   stat={String(documentsCount)}
@@ -576,7 +587,7 @@ const ContextCenterDashboardPage: FC = () => {
                     entity: t('label.memory-plural'),
                   })}
                   dataTestId="memory-detail-card"
-                  icon={MemoryIcon}
+                  icon={Memories}
                   isLoading={isMemoriesLoading}
                   recent={memoriesRecentItems}
                   stat={String(memoriesCount)}
@@ -593,14 +604,14 @@ const ContextCenterDashboardPage: FC = () => {
                 <ContextSimplePillarCard
                   dataTestId="recently-viewed-card"
                   emptyMessage={t('message.recently-viewed-empty-description')}
-                  icon={FileIcon}
+                  icon={Article}
                   isEmpty={recentlyViewedItems.length === 0}
                   title={t('label.recently-viewed')}>
                   <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
                     {recentlyViewedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -613,9 +624,15 @@ const ContextCenterDashboardPage: FC = () => {
                           }
                         }}>
                         {item.pageType === PageType.QUICK_LINK ? (
-                          <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                          <QuickLinkIcon
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={16}
+                          />
                         ) : (
-                          <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                          <Article
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={16}
+                          />
                         )}
 
                         <Box
@@ -623,7 +640,7 @@ const ContextCenterDashboardPage: FC = () => {
                           className="tw:min-w-0 tw:flex-1"
                           gap={4}
                           justify="between">
-                          <div className="tw:min-w-0">
+                          <div className="tw:flex tw:min-w-0">
                             <Typography
                               ellipsis
                               className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -633,7 +650,7 @@ const ContextCenterDashboardPage: FC = () => {
                             </Typography>
                           </div>
 
-                          <div className="tw:max-w-20">
+                          <div className="tw:flex tw:max-w-20">
                             <Typography
                               ellipsis
                               className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
@@ -661,7 +678,7 @@ const ContextCenterDashboardPage: FC = () => {
                 <ContextSimplePillarCard
                   dataTestId="most-cited-memories-card"
                   emptyMessage={t('message.most-cited-empty-description')}
-                  icon={MemoryIcon}
+                  icon={Memories}
                   isEmpty={mostCitedItems.length === 0}
                   isLoading={isMostCitedLoading}
                   title={t('label.most-cited')}>
@@ -669,7 +686,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {mostCitedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -681,14 +698,17 @@ const ContextCenterDashboardPage: FC = () => {
                             item.onClick();
                           }
                         }}>
-                        <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                        <Memories
+                          className="tw:text-quaternary tw:shrink-0"
+                          size={16}
+                        />
                         <Box
                           align="center"
                           className="tw:min-w-0 tw:flex-1"
                           gap={4}
                           justify="between">
                           <div
-                            className="tw:min-w-0"
+                            className="tw:flex tw:min-w-0"
                             data-testid="most-cited-memory">
                             <Typography
                               ellipsis
@@ -698,7 +718,9 @@ const ContextCenterDashboardPage: FC = () => {
                               {item.title}
                             </Typography>
                           </div>
-                          <div data-testid="most-cited-count">
+                          <div
+                            className="tw:flex"
+                            data-testid="most-cited-count">
                             <Typography
                               ellipsis
                               className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"

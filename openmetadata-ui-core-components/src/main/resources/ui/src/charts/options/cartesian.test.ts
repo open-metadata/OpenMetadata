@@ -294,6 +294,144 @@ describe('buildLineOption', () => {
     expect([second.smooth, second.showSymbol]).toEqual([false, true]);
   });
 
+  it('draws invisible symbols for hover on a dot-less line series', () => {
+    const option = buildLineOption(
+      { ...base, hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    // Hidden by opacity: the colour still feeds the tooltip and legend.
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
+    });
+    expect(first.symbolSize).toBe(10);
+    // The highlighted point shows ECharts' default 6px dot grown 1.1x.
+    expect(first.emphasis).toEqual({
+      scale: 0.66,
+      itemStyle: { opacity: 1 },
+    });
+  });
+
+  it('keeps the default dot-less look without hover callbacks', () => {
+    const option = buildLineOption(base, LIGHT_CHART_THEME);
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(false);
+    expect(first.symbolSize).toBe(6);
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
+    expect(first.emphasis).toEqual({ scale: true, itemStyle: { opacity: 1 } });
+  });
+
+  it('keeps visible dots with showDots even when hover is on', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          { key: 'passed', name: 'Passed', showDots: true },
+          { key: 'failed', name: 'Failed' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [dotted, plain] = seriesOf(option);
+    const dottedStyle = dotted.itemStyle as Record<string, unknown>;
+    const plainStyle = plain.itemStyle as Record<string, unknown>;
+
+    expect([dotted.showSymbol, dotted.symbolSize]).toEqual([true, 6]);
+    expect(dottedStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
+    // The dot-less series still gets invisible hover symbols.
+    expect(plain.showSymbol).toBe(true);
+    expect(plainStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[1],
+      opacity: 0,
+    });
+  });
+
+  it('keeps pointStyle styling even when hover is on', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            pointStyle: (datum) =>
+              datum.day === 'Mon' ? { status: 'failed' } : undefined,
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const [mon, tue] = first.data as Array<{
+      value: unknown;
+      symbol: string;
+      itemStyle?: Record<string, unknown>;
+    }>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(first.symbolSize).toBe(6);
+    expect(mon.symbol).toBe('circle');
+    expect(mon.itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.status.failed,
+      borderColor: LIGHT_CHART_THEME.segmentBorder,
+      borderWidth: 1,
+    });
+    // A point whose pointStyle returns undefined still gets no symbol.
+    expect(tue).toEqual({ value: 5, symbol: 'none' });
+  });
+
+  // The legend icon inherits the series opacity, which hides hover symbols.
+  it('keeps legend icons opaque only for series with hidden hover symbols', () => {
+    const series = [
+      { key: 'passed', name: 'Passed', showDots: true },
+      { key: 'failed', name: 'Failed' },
+    ];
+    const hovered = buildLineOption(
+      { ...base, hasHover: true, series },
+      LIGHT_CHART_THEME
+    );
+    const plain = buildLineOption({ ...base, series }, LIGHT_CHART_THEME);
+
+    expect((hovered.legend as LegendComponentOption).data).toEqual([
+      'Passed',
+      { name: 'Failed', itemStyle: { opacity: 1 } },
+    ]);
+    expect((plain.legend as LegendComponentOption).data).toEqual([
+      'Passed',
+      'Failed',
+    ]);
+  });
+
+  it('keeps a lone point visible with hover on', () => {
+    const option = buildLineOption(
+      { ...base, data: [rows[0]], hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
+    expect(first.symbolSize).toBe(6);
+  });
+
   it('styles each point from pointStyle', () => {
     const option = buildLineOption(
       {
@@ -339,7 +477,7 @@ describe('buildLineOption', () => {
     expect(wed).toEqual({ value: 4, symbol: 'none' });
   });
 
-  it('gives a selected point a halo in its own colour', () => {
+  it('rings a selected point in its own colour, 4px out from its dot', () => {
     const option = buildLineOption(
       {
         ...base,
@@ -348,23 +486,91 @@ describe('buildLineOption', () => {
             key: 'passed',
             name: 'Passed',
             status: 'info',
-            pointStyle: () => ({ selected: true }),
+            pointStyle: (row) => ({
+              selected: (row as unknown as Row).day === 'Tue',
+            }),
           },
         ],
       },
       LIGHT_CHART_THEME
     );
-    const [first] = seriesOf(option)[0].data as Array<{
-      itemStyle: Record<string, unknown>;
-    }>;
+    const [line] = seriesOf(option);
 
-    expect(first.itemStyle).toEqual(
-      expect.objectContaining({
-        color: LIGHT_CHART_PALETTE.status.info,
-        shadowBlur: 8,
-        shadowColor: LIGHT_CHART_PALETTE.status.info,
-      })
+    expect(line.markPoint).toEqual({
+      silent: true,
+      animation: false,
+      symbol: 'circle',
+      label: { show: false },
+      itemStyle: { color: 'transparent', borderWidth: 2, opacity: 0.3 },
+      data: [
+        {
+          coord: [1, 5],
+          symbolSize: 16,
+          itemStyle: { borderColor: LIGHT_CHART_PALETTE.status.info },
+        },
+      ],
+    });
+    expect(
+      (line.data as Array<{ itemStyle: object }>)[1].itemStyle
+    ).not.toHaveProperty('shadowBlur');
+  });
+
+  it('rings a selected point on a time axis at its time and value', () => {
+    const option = buildLineOption(
+      {
+        data: [
+          { ts: 1000, value: 1 },
+          { ts: 2000, value: 3 },
+        ],
+        xKey: 'ts',
+        ariaLabel: 'Runtime',
+        series: [
+          {
+            key: 'value',
+            name: 'Value',
+            pointStyle: (row) => ({ selected: row.ts === 2000 }),
+          },
+        ],
+        xAxis: { type: 'time' },
+      },
+      LIGHT_CHART_THEME
     );
+    const { data } = seriesOf(option)[0].markPoint as {
+      data: Array<{ coord: unknown; symbolSize: number }>;
+    };
+
+    expect(data).toEqual([
+      expect.objectContaining({ coord: [2000, 3], symbolSize: 16 }),
+    ]);
+  });
+
+  it('rings no point that has no value, and keeps the key when none is', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'failed',
+            name: 'Failed',
+            pointStyle: () => ({ selected: true }),
+          },
+          { key: 'passed', name: 'Passed', pointStyle: () => ({}) },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [failed, passed] = seriesOf(option);
+
+    expect(
+      (failed.markPoint as { data: Array<{ coord: unknown }> }).data.map(
+        (ring) => ring.coord
+      )
+    ).toEqual([
+      [0, 1],
+      [2, 2],
+    ]);
+    // Set though empty, so a re-render that drops the selection clears it.
+    expect(passed).toHaveProperty('markPoint', undefined);
   });
 
   it('shows the legend only when there is more than one series', () => {
@@ -531,6 +737,34 @@ describe('buildLineOption', () => {
     expect(right.splitLine).toMatchObject({ show: false });
   });
 
+  it('puts a horizontal second value axis on top without grid lines', () => {
+    const option = buildBarOption(
+      {
+        ...base,
+        layout: 'horizontal',
+        series: [
+          { key: 'passed', name: 'Passed' },
+          { key: 'failed', name: 'Failed', yAxisIndex: 1 },
+        ],
+        yAxis: [{ label: 'Passed' }, { label: 'Failed' }],
+      },
+      LIGHT_CHART_THEME
+    );
+    const xAxes = option.xAxis as XAXisComponentOption[];
+
+    expect(
+      xAxes.map((a) => [
+        a.position,
+        a.name,
+        (a.splitLine as { show: boolean }).show,
+      ])
+    ).toEqual([
+      ['bottom', 'Passed', true],
+      ['top', 'Failed', false],
+    ]);
+    expect(seriesOf(option)[1].xAxisIndex).toBe(1);
+  });
+
   it('draws reference lines on their own hidden series, not a data series', () => {
     const option = buildLineOption(
       {
@@ -571,6 +805,62 @@ describe('buildLineOption', () => {
       'Passed',
       'Failed',
     ]);
+  });
+
+  it('labels a reference line at its end unless asked for the start', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        referenceLines: [
+          { axis: 'y', value: 80, label: 'Target' },
+          { axis: 'y', value: 60, label: 'Floor', labelPosition: 'start' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const all = seriesOf(option);
+    const { data } = all[all.length - 1].markLine as {
+      data: Array<{ label: { position: string } }>;
+    };
+
+    expect(data.map(({ label }) => label.position)).toEqual([
+      'insideEndTop',
+      'insideStartTop',
+    ]);
+  });
+
+  it('draws a reference line solid, when asked', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        referenceLines: [
+          { axis: 'y', value: 80, label: 'Target' },
+          { axis: 'y', value: 60, label: 'Expected', lineType: 'solid' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const all = seriesOf(option);
+    const {
+      data: [plain, styled],
+    } = all[all.length - 1].markLine as {
+      data: Array<{
+        label: Record<string, unknown>;
+        lineStyle: Record<string, unknown>;
+      }>;
+    };
+
+    // Unchanged without the options.
+    expect(plain.lineStyle).toEqual({
+      color: LIGHT_CHART_THEME.axisText,
+      type: 'dashed',
+      width: 1,
+    });
+    expect(styled.lineStyle).toEqual({
+      color: LIGHT_CHART_THEME.axisText,
+      type: 'solid',
+      width: 1,
+    });
   });
 
   it('measures reference lines against the first value axis in a composed chart', () => {
@@ -780,6 +1070,30 @@ describe('buildAreaOption', () => {
 
     expect(seriesOf(option).map((s) => s.stack)).toEqual(['total', 'total']);
   });
+
+  it('draws invisible symbols for hover on a dot-less area series', () => {
+    const option = buildAreaOption(
+      { ...base, hasHover: true },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option);
+    const itemStyle = first.itemStyle as Record<string, unknown>;
+
+    expect(first.showSymbol).toBe(true);
+    // Hidden by opacity: the colour still feeds the tooltip and legend.
+    expect(itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
+    });
+    expect(first.symbolSize).toBe(10);
+    // The highlighted point shows ECharts' default 6px dot grown 1.1x.
+    expect(first.emphasis).toEqual({
+      scale: 0.66,
+      itemStyle: { opacity: 1 },
+    });
+    // The area fill is still drawn.
+    expect(first.areaStyle).toBeDefined();
+  });
 });
 
 describe('buildBarOption', () => {
@@ -950,7 +1264,42 @@ describe('buildComposedOption', () => {
       opacity: 0.12,
     });
     expect(line.id).toBe('value');
-    expect(line.itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect(line.itemStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 1,
+    });
     expect((option.legend as LegendComponentOption).data).toEqual(['Value']);
+  });
+
+  it('draws invisible hover symbols on the line but not the bar', () => {
+    const option = buildComposedOption(
+      {
+        ...base,
+        hasHover: true,
+        series: [
+          { key: 'failed', name: 'Failed', type: 'line' },
+          { key: 'passed', name: 'Passed', type: 'bar' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [bar, line] = seriesOf(option);
+    const lineStyle = line.itemStyle as Record<string, unknown>;
+
+    // The bar series is unaffected: no symbol, no symbolSize.
+    expect(bar.type).toBe('bar');
+    expect(bar.showSymbol).toBeUndefined();
+    // The line series gets invisible hover symbols.
+    expect(line.showSymbol).toBe(true);
+    expect(line.symbolSize).toBe(10);
+    expect(lineStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.series[0],
+      opacity: 0,
+    });
+    // Only the line's legend icon needs restoring.
+    expect((option.legend as LegendComponentOption).data).toEqual([
+      { name: 'Failed', itemStyle: { opacity: 1 } },
+      'Passed',
+    ]);
   });
 });

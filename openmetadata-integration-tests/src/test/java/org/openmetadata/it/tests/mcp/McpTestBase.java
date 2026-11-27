@@ -32,7 +32,13 @@ public abstract class McpTestBase {
   protected static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final long TOKEN_TTL_SECONDS = 3600;
   protected static String authToken;
+
+  protected static String tokenFor(String userName) {
+    String email = userName + "@test.openmetadata.org";
+    return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
+  }
 
   protected static void initAuth() throws Exception {
     authToken =

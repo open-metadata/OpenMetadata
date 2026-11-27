@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -42,6 +42,8 @@ jest.mock('./AccessControlRuleForm', () => () => (
 
 // Mock core-ui components with native HTML to avoid react-aria provider requirements
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
   Box: ({
     children,
     ...props
@@ -104,8 +106,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
+import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 const mockOnNavigate = jest.fn();
 
 const renderComponent = () =>
@@ -141,6 +146,25 @@ describe('AccessControlAddPolicyForm', () => {
     screen.getByTestId('cancel-btn').click();
 
     expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'policies' });
+  });
+
+  it('opens the new policy detail after creating it', async () => {
+    (addPolicy as jest.Mock).mockResolvedValue({
+      name: 'ReadOnly',
+      fullyQualifiedName: 'ReadOnly',
+      displayName: 'Read Only',
+    });
+    renderComponent();
+
+    screen.getByTestId('submit-btn').click();
+
+    await waitFor(() =>
+      expect(mockOnNavigate).toHaveBeenCalledWith({
+        type: 'policies-detail',
+        fqn: 'ReadOnly',
+        name: 'Read Only',
+      })
+    );
   });
 
   it('has a description rich text editor', () => {

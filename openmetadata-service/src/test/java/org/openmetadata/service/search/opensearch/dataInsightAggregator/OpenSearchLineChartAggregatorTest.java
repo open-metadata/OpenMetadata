@@ -131,24 +131,54 @@ class OpenSearchLineChartAggregatorTest {
   }
 
   @Test
-  void aFilteredChartNeverNarrowsItsRequest() throws Exception {
-    // Narrowing the request with the metric filter aligns selection with counting, but a terms
-    // aggregation carries min_doc_count 1: every category the filter emptied loses its bucket, and
-    // the chart can no longer say that a service holds none. Ranking the axis achieves the same
-    // alignment while leaving those categories in the response.
-    assertTrue(
+  void aFilteredCategoricalChartQueriesOnlyTheDocumentsItCounts() throws Exception {
+    // A category no metric counts is not part of the chart, so the axis must not draw it from the
+    // documents outside every filter. Both metrics share one filter, which is queried once.
+    JsonNode live =
         OBJECT_MAPPER
             .readTree(serializeToJson(prepare(filteredChart(TABLE_FILTER, TABLE_FILTER))))
-            .path("query")
-            .isMissingNode(),
-        "the live request must stay wide");
+            .path("query");
+    assertEquals(TABLE_QUERY, unwrap(live), "the live request queries the metric filter");
 
     JsonNode historical =
         OBJECT_MAPPER
             .readTree(serializeToJson(prepareHistorical(filteredChart(TABLE_FILTER, TABLE_FILTER))))
-            .path("query");
+            .path("query")
+            .path("bool")
+            .path("filter");
+    assertEquals(2, historical.size(), "the range and the metric filter: " + historical);
+    assertTrue(historical.path(0).has("range"), "the snapshot day still bounds it: " + historical);
+    assertEquals(TABLE_QUERY, unwrap(historical.path(1)));
+  }
+
+  @Test
+  void metricsThatDisagreeQueryTheDocumentsEitherCounts() throws Exception {
+    // Each metric still counts its own filter inside the bucket; the request only keeps the
+    // categories some metric counts, so a dashboard-only service still reads 0 tables here.
+    JsonNode bool =
+        OBJECT_MAPPER
+            .readTree(serializeToJson(prepare(filteredChart(TABLE_FILTER, DASHBOARD_FILTER))))
+            .path("query")
+            .path("bool");
+
+    assertEquals("1", bool.path("minimum_should_match").asText(), "either filter: " + bool);
+    assertEquals(2, bool.path("should").size(), "one clause per distinct filter: " + bool);
+  }
+
+  @Test
+  void aMetricWithoutAFilterKeepsTheRequestWide() throws Exception {
+    // That metric counts every document, so every category belongs to the chart.
+    DataInsightCustomChart chart = filteredChart(TABLE_FILTER, null);
+
     assertTrue(
-        historical.has("range"), "the historical request carries the bare range: " + historical);
+        OBJECT_MAPPER.readTree(serializeToJson(prepare(chart))).path("query").isMissingNode(),
+        "the live request must stay wide");
+    assertTrue(
+        OBJECT_MAPPER
+            .readTree(serializeToJson(prepareHistorical(chart)))
+            .path("query")
+            .has("range"),
+        "the historical request carries the bare range");
   }
 
   @Test
@@ -188,6 +218,13 @@ class OpenSearchLineChartAggregatorTest {
       assertEquals("filter0", orderKey(terms), metricName);
       assertTrue(terms.path("aggregations").has("filter0"), metricName);
     }
+  }
+
+  @Test
+  void aGroupedCategoricalChartDrawsItsGroupsFromTheSamePopulation() throws Exception {
+    JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(groupedFilteredChart())));
+
+    assertEquals(TABLE_QUERY, unwrap(root.path("query")), "groups come from the same population");
   }
 
   @Test
@@ -258,13 +295,10 @@ class OpenSearchLineChartAggregatorTest {
   }
 
   @Test
-  void aFunctionMetricRanksTheAxisAndKeepsTheEmptyCategories() throws Exception {
+  void aFunctionMetricRanksTheAxisOverTheDocumentsItCounts() throws Exception {
     JsonNode root = OBJECT_MAPPER.readTree(serializeToJson(prepare(functionChart(Function.COUNT))));
 
-    assertTrue(
-        root.path("query").isMissingNode(),
-        "a ranked axis must not also narrow the request, or the empty categories vanish: "
-            + root.path("query"));
+    assertEquals(TABLE_QUERY, unwrap(root.path("query")), "the request queries the metric filter");
 
     JsonNode terms = findAggregationWithTermsField(root.path("aggregations"), X_AXIS_FIELD);
     String path = terms.path("terms").path("order").path(0).fieldNames().next();

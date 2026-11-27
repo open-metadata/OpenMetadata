@@ -13,21 +13,29 @@
 
 import {
   Box,
-  Tooltip,
-  TooltipTrigger,
+  ButtonUtility,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Minus, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Maximize02,
+  Minus,
+  Plus,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FitScreenIcon } from '../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as RefreshIcon } from '../../../assets/svg/reload.svg';
 import { KnowledgeGraphViewControlsProps } from './KnowledgeGraph.interface';
 
+/** The ButtonUtility `icon` prop accepts a component; align the SVG asset to that shape. */
+type IconComponent = FC<{ className?: string }>;
+
 /**
- * The floating viewport controls in the corner of the canvas — zoom, fit,
- * fullscreen and refresh. Separate from the toolbar above the graph, which
- * changes *what* is shown rather than how it is framed.
+ * The floating viewport controls in the corner of the canvas — zoom, fit and
+ * refresh. Mirrors the Lineage canvas controls (#34551) so the two canvas
+ * surfaces read as the same control: a `Card variant="elevated"` with
+ * `ButtonUtility` kids and the current zoom level shown as a
+ * `Typography` between the `−` / `+` pair.
  */
 const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
   zoom = 1,
@@ -39,54 +47,56 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div
-      className="knowledge-graph-action-buttons"
-      data-testid="graph-view-controls">
-      <Tooltip title={t('label.zoom-out')}>
-        <TooltipTrigger
-          aria-label={t('label.zoom-out')}
-          className="kg-control-btn"
-          data-testid="zoom-out"
-          onPress={onZoomOut}>
-          <Minus aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
-      <Box
-        align="center"
-        className="tw:min-w-11 tw:px-1 tw:text-tertiary"
-        justify="center">
-        <Typography size="text-xs" weight="semibold">
-          {Math.round(zoom * 100)}%
-        </Typography>
-      </Box>
-      <Tooltip title={t('label.zoom-in')}>
-        <TooltipTrigger
-          aria-label={t('label.zoom-in')}
-          className="kg-control-btn"
-          data-testid="zoom-in"
-          onPress={onZoomIn}>
-          <Plus aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
-      <Tooltip title={t('label.fit-to-screen')}>
-        <TooltipTrigger
-          aria-label={t('label.fit-to-screen')}
-          className="kg-control-btn"
-          data-testid="fit-screen"
-          onPress={onFit}>
-          <FitScreenIcon aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
-      <Tooltip title={t('label.refresh')}>
-        <TooltipTrigger
-          aria-label={t('label.refresh')}
-          className="kg-control-btn"
-          data-testid="refresh"
-          onPress={onRefresh}>
-          <RefreshIcon aria-hidden="true" />
-        </TooltipTrigger>
-      </Tooltip>
-    </div>
+    <Card
+      className="tw:absolute tw:right-4 tw:bottom-4"
+      data-testid="graph-view-controls"
+      size="sm"
+      variant="elevated">
+      <Card.Content>
+        <Box align="center" gap={4}>
+          <ButtonUtility
+            aria-label={t('label.zoom-out')}
+            data-testid="zoom-out"
+            icon={Minus as IconComponent}
+            size="lg"
+            tooltip={t('label.zoom-out')}
+            onPress={onZoomOut}
+          />
+          <Typography
+            as="span"
+            className="tw:min-w-10 tw:text-center tw:tabular-nums tw:text-secondary"
+            data-testid="zoom-level"
+            size="text-sm"
+            weight="semibold">
+            {Math.round(zoom * 100) + '%'}
+          </Typography>
+          <ButtonUtility
+            aria-label={t('label.zoom-in')}
+            data-testid="zoom-in"
+            icon={Plus as IconComponent}
+            size="lg"
+            tooltip={t('label.zoom-in')}
+            onPress={onZoomIn}
+          />
+          <ButtonUtility
+            aria-label={t('label.fit-to-screen')}
+            data-testid="fit-screen"
+            icon={Maximize02 as IconComponent}
+            size="lg"
+            tooltip={t('label.fit-to-screen')}
+            onPress={onFit}
+          />
+          <ButtonUtility
+            aria-label={t('label.refresh')}
+            data-testid="refresh"
+            icon={RefreshCw01 as IconComponent}
+            size="lg"
+            tooltip={t('label.refresh')}
+            onPress={onRefresh}
+          />
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 

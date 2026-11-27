@@ -20,5 +20,4 @@ export interface AlertConfigDetailsProps {
 
 export interface AlertConfigLoadingState {
   templates: boolean;
-  functions: boolean;
 }

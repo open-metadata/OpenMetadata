@@ -40,13 +40,6 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel }) => firstPanel.children)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="error-placeholder" />),
-}));
-
 jest.mock('../../../ExploreV1/ExploreSearchCard/ExploreSearchCard', () =>
   jest
     .fn()
@@ -205,7 +198,9 @@ describe('DataProductsTab', () => {
       />
     );
 
-    expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
+    expect(await screen.findByTestId('empty-placeholder')).toHaveTextContent(
+      'label.no-data-products-yet'
+    );
     expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
   });
 

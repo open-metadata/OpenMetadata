@@ -18,6 +18,7 @@ import {
   attachEtagInterceptor,
   DISABLE_ETAG_CONDITIONAL_READS_KEY,
 } from './etagInterceptor';
+import { attachPendingChangeInterceptor } from './pendingChangeInterceptor';
 
 const axiosClient = axios.create({
   baseURL: getApiBaseUrl(),
@@ -35,5 +36,8 @@ if (
 ) {
   attachEtagInterceptor(axiosClient);
 }
+
+// Edits held for approval return 200 with the unchanged entity plus a pending-change header.
+attachPendingChangeInterceptor(axiosClient);
 
 export default axiosClient;

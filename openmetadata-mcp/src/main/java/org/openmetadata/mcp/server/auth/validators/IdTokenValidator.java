@@ -15,28 +15,26 @@ package org.openmetadata.mcp.server.auth.validators;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkException;
-import com.auth0.jwk.JwkProvider;
-import com.auth0.jwk.SigningKeyNotFoundException;
-import com.auth0.jwk.UrlJwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler.McpTokenVerification;
+import org.openmetadata.service.security.IdentityProviderKeys;
+import org.openmetadata.service.security.ProviderTokenValidator;
 
 /**
  * Validates ID tokens from OIDC providers using JWKS-based signature verification.
@@ -72,13 +70,15 @@ import org.jetbrains.annotations.NotNull;
  * }
  * }</pre>
  *
- * @see MultiUrlJwkProvider
+ * @see IdentityProviderKeys
  * @see com.auth0.jwt.JWT
  */
 @Slf4j
 public class IdTokenValidator {
+  private static final Duration KEY_LIFETIME = Duration.ofHours(6);
 
-  private final JwkProvider jwkProvider;
+  private final IdentityProviderKeys jwkProvider;
+  private final AuthProvider provider;
   private final String expectedIssuer;
   private final String expectedAudience; // Client ID
   private final String tokenValidationAlgorithm;
@@ -108,13 +108,44 @@ public class IdTokenValidator {
       String expectedIssuer,
       String expectedAudience,
       String tokenValidationAlgorithm) {
-    if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-      throw new IllegalArgumentException("publicKeyUrls cannot be null or empty");
-    }
+    this(
+        providerKeys(publicKeyUrls, false),
+        expectedIssuer,
+        expectedAudience,
+        tokenValidationAlgorithm,
+        null);
+  }
+
+  public IdTokenValidator(McpTokenVerification settings) {
+    this(
+        providerKeys(settings.keySetUrls(), settings.publicClient()),
+        settings.issuer(),
+        settings.audience(),
+        "RS256",
+        settings.provider());
+  }
+
+  private IdTokenValidator(
+      IdentityProviderKeys jwkProvider,
+      String expectedIssuer,
+      String expectedAudience,
+      String tokenValidationAlgorithm,
+      AuthProvider provider) {
     if (expectedIssuer == null || expectedIssuer.trim().isEmpty()) {
       throw new IllegalArgumentException("expectedIssuer cannot be null or empty");
     }
+    this.jwkProvider = jwkProvider;
+    this.expectedIssuer = expectedIssuer;
+    this.expectedAudience = expectedAudience;
+    this.tokenValidationAlgorithm = tokenValidationAlgorithm;
+    this.provider = provider;
+  }
 
+  private static IdentityProviderKeys providerKeys(
+      List<String> publicKeyUrls, boolean publicMcpClient) {
+    if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
+      throw new IllegalArgumentException("publicKeyUrls cannot be null or empty");
+    }
     // Convert URLs and initialize multi-URL JWKS provider with caching
     List<URL> urls =
         publicKeyUrls.stream()
@@ -129,16 +160,9 @@ public class IdTokenValidator {
                 })
             .collect(Collectors.toList());
 
-    this.jwkProvider = new CachingMultiUrlJwkProvider(urls);
-    this.expectedIssuer = expectedIssuer;
-    this.expectedAudience = expectedAudience;
-    this.tokenValidationAlgorithm = tokenValidationAlgorithm;
-
-    LOG.info(
-        "Initialized IdTokenValidator with issuer: {}, audience: {}, algorithm: {}",
-        expectedIssuer,
-        expectedAudience != null ? expectedAudience : "not validated",
-        tokenValidationAlgorithm);
+    return publicMcpClient
+        ? IdentityProviderKeys.forPublicMcp(urls, KEY_LIFETIME)
+        : IdentityProviderKeys.forUrls(urls, KEY_LIFETIME);
   }
 
   /**
@@ -193,7 +217,7 @@ public class IdTokenValidator {
       throw new IdTokenValidationException("ID token is missing required 'iss' (issuer) claim");
     }
 
-    if (!expectedIssuer.equals(issuer)) {
+    if (!ProviderTokenValidator.isIssuedBy(expectedIssuer, jwt)) {
       LOG.warn(
           "ID token issuer mismatch. Expected: {}, Got: {}. This may indicate a token from a different OIDC provider.",
           expectedIssuer,
@@ -232,7 +256,12 @@ public class IdTokenValidator {
 
     try {
       // Fetch public key from JWKS endpoint (with caching)
-      Jwk jwk = jwkProvider.get(keyId);
+      final var publishedKey = jwkProvider.getWithSource(keyId);
+      final Jwk jwk = publishedKey.key();
+      if (!ProviderTokenValidator.signingKeyAllowsIssuer(
+          provider, expectedIssuer, publishedKey, jwt)) {
+        throw new IdTokenValidationException("Signing key issuer does not match the token issuer");
+      }
       RSAPublicKey publicKey = (RSAPublicKey) jwk.getPublicKey();
 
       // Create algorithm for verification
@@ -308,65 +337,13 @@ public class IdTokenValidator {
    *   <li>JWKS endpoint unreachable
    * </ul>
    */
-  public static class IdTokenValidationException extends Exception {
+  public static class IdTokenValidationException extends GeneralSecurityException {
     public IdTokenValidationException(String message) {
       super(message);
     }
 
     public IdTokenValidationException(String message, Throwable cause) {
       super(message, cause);
-    }
-  }
-
-  /**
-   * Multi-URL JWKS provider with caching for ID token signature verification.
-   *
-   * <p>Tries multiple JWKS endpoints to fetch public keys and caches them for 24 hours. This
-   * handles key rotation and multiple SSO providers gracefully.
-   */
-  private static class CachingMultiUrlJwkProvider implements JwkProvider {
-    private final List<JwkProvider> jwkProviders;
-    private final LoadingCache<String, Jwk> cache;
-
-    public CachingMultiUrlJwkProvider(List<URL> publicKeyUrls) {
-      this.jwkProviders =
-          publicKeyUrls.stream().map(UrlJwkProvider::new).collect(Collectors.toList());
-
-      this.cache =
-          CacheBuilder.newBuilder()
-              .maximumSize(10)
-              .expireAfterWrite(6, TimeUnit.HOURS)
-              .build(
-                  new CacheLoader<>() {
-                    @Override
-                    public @NotNull Jwk load(@NotNull String keyId) throws Exception {
-                      JwkException lastException =
-                          new SigningKeyNotFoundException(
-                              "Key ID '" + keyId + "' not found in any configured JWKS endpoint",
-                              null);
-
-                      for (JwkProvider provider : jwkProviders) {
-                        try {
-                          return provider.get(keyId);
-                        } catch (JwkException e) {
-                          lastException.addSuppressed(e);
-                        }
-                      }
-                      throw lastException;
-                    }
-                  });
-    }
-
-    @Override
-    public Jwk get(String keyId) throws JwkException {
-      try {
-        return cache.get(keyId);
-      } catch (Exception e) {
-        if (e.getCause() instanceof JwkException) {
-          throw (JwkException) e.getCause();
-        }
-        throw new JwkException("Failed to fetch JWK for key ID: " + keyId, e);
-      }
     }
   }
 }

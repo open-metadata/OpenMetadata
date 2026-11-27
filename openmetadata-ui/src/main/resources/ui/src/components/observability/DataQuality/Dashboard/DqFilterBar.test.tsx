@@ -115,7 +115,7 @@ jest.mock(
   })
 );
 
-jest.mock('./DqDateRangeFilter', () => ({
+jest.mock('../../../common/DateRangeFilter/DateRangeFilter', () => ({
   __esModule: true,
   default: ({ onApply }: { onApply: (...args: unknown[]) => void }) => (
     <div data-testid="dq-date-range-filter">

@@ -18,6 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -27,12 +32,14 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -152,8 +159,8 @@ public class GetEntityTool implements McpTool {
               authorizer,
               securityContext,
               params,
-              (String) params.get("entityType"),
-              (String) params.get("fqn"));
+              CommonUtils.requireNonBlank(params.get("entityType"), "entityType"),
+              CommonUtils.requireNonBlank(params.get("fqn"), "fqn"));
     } else {
       result = readMany(authorizer, securityContext, params, batch);
     }
@@ -263,8 +270,18 @@ public class GetEntityTool implements McpTool {
     int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
     // Kept as the entity, not just its map: the content section needs the object, and reading it
     // a second time for that would be the same fetch twice in one request.
-    EntityInterface entity =
-        CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext);
+    EntityInterface<?> entity =
+        CommonUtils.withVisibleEvidence(
+            CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext),
+            authorizer,
+            securityContext);
+    if (entity instanceof User user) {
+      // The email is hidden from callers without PII access, as UserResource does. The user is
+      // the copy maskSecrets made, so this does not touch the repository's entity.
+      PIIMasker.maskUser(authorizer, securityContext, user);
+    } else if (entity instanceof TestCase testCase) {
+      PIIMasker.getTestCase(testCase, authorizer, securityContext);
+    }
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
@@ -272,6 +289,10 @@ public class GetEntityTool implements McpTool {
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
     resolveCertification(cleaned);
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
+    if (entity instanceof Metric metric) {
+      MetricVariants.addExpressions(
+          windowed, metric, MetricVariants.viewableBy(authorizer, securityContext));
+    }
     addIncludes(
         windowed,
         new IncludeContext(authorizer, securityContext, entityType, fqn, entity, options(params)),
@@ -288,7 +309,7 @@ public class GetEntityTool implements McpTool {
     IncludeContext authorizationContext =
         new IncludeContext(authorizer, securityContext, entityType, fqn, null, options(params));
     authorizeKnowledge(authorizationContext);
-    EntityInterface entity =
+    EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     IncludeContext contentContext =
         new IncludeContext(
@@ -317,7 +338,7 @@ public class GetEntityTool implements McpTool {
       CatalogSecurityContext securityContext,
       String entityType,
       String fqn,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ContentOptions options) {}
 
   /** How the knowledge sections render, shared by {@code context} and {@code content}. */
@@ -368,6 +389,9 @@ public class GetEntityTool implements McpTool {
             ctx.securityContext(),
             new OperationContext(ctx.entityType(), VIEW_ALL),
             new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     AIContext context =
         new AIContextBuilder(ctx.entityType(), ctx.fqn())
             .withQuery(ctx.options().query())
@@ -399,24 +423,67 @@ public class GetEntityTool implements McpTool {
   }
 
   private static Object knowledgeContent(IncludeContext ctx) {
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     String query = ctx.options().query();
+    List<String> found =
+        query != null && !query.isBlank() && vectorSearchEnabled()
+            ? passages(ctx, query)
+            : List.of();
     Object rendered;
-    if (query != null && !query.isBlank() && vectorSearchEnabled()) {
-      rendered = passages(ctx, query);
+    if (found.isEmpty()) {
+      rendered = renderText(ctx, fullKnowledgeText(ctx.entity()));
     } else {
-      String body = AIContextBuilder.fullContentOf(ctx.entity());
-      rendered = renderText(ctx, body == null ? "" : body);
+      rendered =
+          ctx.options().asJson()
+              ? Map.of("passages", found)
+              : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
   }
 
-  private static Object passages(IncludeContext ctx, String query) {
+  private static String fullKnowledgeText(EntityInterface<?> entity) {
+    String body =
+        entity instanceof Page page && isArticle(page)
+            ? PromptText.forArticleRead(page.getDescription())
+            : AIContextBuilder.fullContentOf(entity);
+    return body == null ? "" : body;
+  }
+
+  private static boolean masksTestCaseContent(IncludeContext ctx) {
+    return ctx.entity() instanceof TestCase testCase
+        && PIIMasker.shouldMaskTestCase(testCase, ctx.authorizer(), ctx.securityContext());
+  }
+
+  /**
+   * The entity read is already authorized, so its chunks are searched as the caller. Search can
+   * still withhold every chunk (an anchored or retired memory, or a body not chunked yet); the
+   * caller then gets the full body rather than nothing.
+   */
+  private static List<String> passages(IncludeContext ctx, String query) {
     List<String> found =
-        OpenSearchVectorService.getInstance()
-            .searchChunksByParent(ctx.entity().getId().toString(), query, ctx.options().passages());
-    return ctx.options().asJson()
-        ? Map.of("passages", found)
-        : renderText(ctx, String.join("\n\n---\n\n", found));
+        Entity.getSearchRepository()
+            .getVectorIndexService()
+            .searchChunksByParent(
+                ctx.entity().getId().toString(),
+                query,
+                ctx.options().passages(),
+                getSubjectContext(ctx.securityContext()));
+    return ctx.entity() instanceof Page page ? readablePassages(page, found) : found;
+  }
+
+  private static List<String> readablePassages(Page page, List<String> passages) {
+    return isArticle(page)
+        ? PageBodyTextContributor.readableArticlePassages(page, passages)
+        : passages.stream()
+            .map(PromptText::forContentRead)
+            .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+            .toList();
+  }
+
+  private static boolean isArticle(Page page) {
+    return page.getPageType() != PageType.QUICK_LINK;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {
@@ -427,7 +494,7 @@ public class GetEntityTool implements McpTool {
 
   private static boolean vectorSearchEnabled() {
     return Entity.getSearchRepository().isVectorEmbeddingEnabled()
-        && OpenSearchVectorService.getInstance() != null;
+        && Entity.getSearchRepository().getVectorIndexService() != null;
   }
 
   /** Runs one include section, converting a failure into a note instead of losing the whole read. */
@@ -688,7 +755,7 @@ public class GetEntityTool implements McpTool {
    * durable fix for genuinely un-representable columns is index-backed sub-column paging.
    */
   private static boolean columnExceedsBudget(int overhead, Object column) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     return McpResponseTrim.serializedLength(column) + 1 > available;
   }
 
@@ -709,7 +776,7 @@ public class GetEntityTool implements McpTool {
    * advances by at least one column instead of re-requesting the same offset forever.
    */
   private static int fitToBudget(int overhead, List<?> columns, int start, int end) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     long used = 0;
     int fitEnd = start;
     for (int i = start; i < end && used <= available; i++) {

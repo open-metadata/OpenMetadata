@@ -30,12 +30,15 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
 } from './EntityLineageEdgeUtils';
 import {
   centerNodePosition,
+  getExportViewportForNodes,
   getNodesBoundsReactFlow,
   getViewportForBoundsReactFlow,
+  getViewportForLineageExport,
 } from './EntityLineageLayoutUtils';
 import {
   getConnectedNodesEdges,
@@ -44,8 +47,11 @@ import {
 } from './EntityLineageNodeUtils';
 import {
   addLineageHandler,
+  applyTempTableVisibility,
+  dropUnreachableNodes,
   getColumnFunctionValue,
   parseLineageData,
+  pruneTempLineage,
 } from './EntityLineagePureUtils';
 import { getLineageTableConfig } from './EntityLineageUtils';
 jest.mock('../rest/miscAPI', () => ({
@@ -123,6 +129,30 @@ describe('Test EntityLineageUtils utility', () => {
       pipeline: undefined,
       source: undefined,
     });
+  });
+
+  it("keeps an edge's temp tables in the details saved for it", () => {
+    const tempLineageTables = [
+      { fromEntity: 'svc.db.s.a', toEntity: 'tmp_staging' },
+      { fromEntity: 'tmp_staging', toEntity: 'svc.db.s.b' },
+    ];
+    const edge = {
+      data: {
+        edge: {
+          fromEntity: { id: 'id-a', type: 'table' },
+          toEntity: { id: 'id-b', type: 'table' },
+          tempLineageTables,
+        },
+      },
+    } as Edge;
+
+    expect(getLineageDetailsObject(edge).tempLineageTables).toEqual(
+      tempLineageTables
+    );
+    expect(
+      getNewLineageConnectionDetails(edge, undefined).newEdge.edge
+        .lineageDetails?.tempLineageTables
+    ).toEqual(tempLineageTables);
   });
 
   it('should return the correct lineage edge with valid source and target nodes', () => {
@@ -657,6 +687,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: '',
         childrenHeading: '',
         childrenCount: 0,
       });
@@ -672,6 +703,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: '',
         childrenHeading: '',
         childrenCount: 0,
       });
@@ -693,6 +725,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -709,6 +742,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 0,
       });
@@ -728,6 +762,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: flattenChildren,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 1,
       });
@@ -748,6 +783,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: charts,
+        childHeading: 'label.chart',
         childrenHeading: 'label.chart-plural',
         childrenCount: 2,
       });
@@ -764,6 +800,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.chart',
         childrenHeading: 'label.chart-plural',
         childrenCount: 0,
       });
@@ -784,6 +821,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: mlFeatures,
+        childHeading: 'label.feature',
         childrenHeading: 'label.feature-plural',
         childrenCount: 2,
       });
@@ -800,6 +838,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.feature',
         childrenHeading: 'label.feature-plural',
         childrenCount: 0,
       });
@@ -821,6 +860,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -843,6 +883,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -858,6 +899,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 0,
       });
@@ -880,6 +922,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -895,6 +938,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -917,6 +961,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -939,6 +984,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -962,6 +1008,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: responseFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 1,
       });
@@ -977,6 +1024,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -997,6 +1045,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: fields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -1013,6 +1062,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -1032,6 +1082,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [node],
+        childHeading: 'label.metric',
         childrenHeading: 'label.metric',
         childrenCount: 0,
       });
@@ -1374,6 +1425,57 @@ describe('Test EntityLineageUtils utility', () => {
       });
     });
   });
+
+  const exportNodes = [
+    { id: 'a', position: { x: 0, y: 0 }, width: 400, height: 100 },
+    { id: 'b', position: { x: 5600, y: 9000 }, width: 400, height: 100 },
+    { id: 'c', position: { x: 2800, y: 4500 }, width: 400, height: 100 },
+  ] as Node[];
+
+  describe('getViewportForLineageExport', () => {
+    it('fits the nodes to the size of the element it measures', () => {
+      const element = document.createElement('div');
+      element.id = 'lineage-export-target';
+      Object.defineProperties(element, {
+        scrollWidth: { value: 6000 },
+        scrollHeight: { value: 9100 },
+      });
+      document.body.appendChild(element);
+
+      expect(
+        getViewportForLineageExport(exportNodes, '#lineage-export-target')
+      ).toEqual(getExportViewportForNodes(exportNodes, 6000, 9100));
+
+      element.remove();
+    });
+  });
+
+  describe('getExportViewportForNodes', () => {
+    it('fits every node inside the image it is given', () => {
+      const imageWidth = 6000;
+      const imageHeight = 9100;
+
+      const { x, y, zoom } = getExportViewportForNodes(
+        exportNodes,
+        imageWidth,
+        imageHeight
+      );
+
+      exportNodes.forEach(({ position, width, height }) => {
+        const left = x + position.x * zoom;
+        const top = y + position.y * zoom;
+
+        expect(left).toBeGreaterThanOrEqual(0);
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(left + (width ?? 0) * zoom).toBeLessThanOrEqual(imageWidth);
+        expect(top + (height ?? 0) * zoom).toBeLessThanOrEqual(imageHeight);
+      });
+
+      // The image is about the size of the graph, so the graph fills it
+      // rather than sitting shrunk in a corner.
+      expect(zoom).toBeGreaterThan(0.8);
+    });
+  });
 });
 
 describe('parseLineageData', () => {
@@ -1460,7 +1562,7 @@ describe('parseLineageData', () => {
     jest.clearAllMocks();
 
     // Setup default mock implementations
-    mockUniqWith.mockImplementation((array) => array ?? []);
+    mockUniqWith.mockImplementation((array) => Array.from(array ?? []));
     mockIsEqual.mockImplementation((a, b) => a === b);
     mockGet.mockImplementation((obj, path, defaultValue?) => {
       if (!obj || !path) {
@@ -1816,60 +1918,6 @@ describe('parseLineageData', () => {
       expect(result.nodes[0].fullyQualifiedName).toBeUndefined();
     });
   });
-
-  describe('Unique filtering', () => {
-    it('should call uniqWith to remove duplicate nodes', () => {
-      // Set up the mocks to expect calls
-      mockUniqWith.mockReturnValue([]);
-      mockIsEqual.mockReturnValue(false);
-
-      parseLineageData(mockLineageData, mockEntityFqn, mockRootFqn);
-
-      expect(mockUniqWith).toHaveBeenCalled();
-    });
-
-    it('should handle duplicate nodes in input data', () => {
-      const duplicateNodeData = {
-        ...mockNodeData,
-        node1_duplicate: mockNodeData.node1,
-      };
-
-      const dataWithDuplicates = {
-        ...mockLineageData,
-        nodes: duplicateNodeData,
-      };
-
-      // Mock uniqWith to actually remove duplicates
-      mockUniqWith.mockImplementation((array, compareFn?) => {
-        if (!array) {
-          return [];
-        }
-        const unique: unknown[] = [];
-        for (const item of array) {
-          if (
-            !unique.some((existing) =>
-              compareFn ? compareFn(existing, item) : existing === item
-            )
-          ) {
-            unique.push(item);
-          }
-        }
-
-        return unique as ReturnType<typeof uniqWith>;
-      });
-
-      mockIsEqual.mockImplementation((a, b) => {
-        const aObj = a as { fullyQualifiedName?: string };
-        const bObj = b as { fullyQualifiedName?: string };
-
-        return aObj.fullyQualifiedName === bObj.fullyQualifiedName;
-      });
-
-      parseLineageData(dataWithDuplicates, mockEntityFqn, mockRootFqn);
-
-      expect(mockUniqWith).toHaveBeenCalled();
-    });
-  });
 });
 
 describe('getLineageTableConfig', () => {
@@ -2152,15 +2200,16 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     });
 
     const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const hops = edges.filter((e) => e.tempHopOf);
 
-    expect(edges).toHaveLength(2);
-    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
-    expect(edges[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
-    expect(edges[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
-    expect(edges[1].toEntity.fullyQualifiedName).toBe('db.tableB');
+    expect(hops).toHaveLength(2);
+    expect(hops[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(hops[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(hops[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(hops[1].toEntity.fullyQualifiedName).toBe('db.tableB');
   });
 
-  it('removes the original edge when it is expanded into temp hop edges', () => {
+  it('keeps the original edge so the temp hops can be hidden again', () => {
     const data = makeLineageData({
       e1: {
         fromEntity: {
@@ -2178,8 +2227,211 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     });
 
     const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const original = edges.filter((e) => e.tempLineageTables?.length);
 
-    expect(edges.some((e) => e.tempLineageTables?.length)).toBe(false);
+    expect(original).toHaveLength(1);
+    expect(original[0].tempHopOf).toBeUndefined();
+    expect(edges.filter((e) => e.tempHopOf).map((e) => e.tempHopOf)).toEqual([
+      'id-a-id-b',
+    ]);
+  });
+
+  describe('applyTempTableVisibility', () => {
+    const throughTemp = () =>
+      parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+    const edgeKeys = (edges: EdgeDetails[]) =>
+      edges.map(
+        (e) =>
+          `${e.fromEntity.fullyQualifiedName}->${e.toEntity.fullyQualifiedName}`
+      );
+
+    it('draws the temp tables between the two tables when shown', () => {
+      const shown = applyTempTableVisibility(throughTemp(), true);
+
+      expect(edgeKeys(shown.edges ?? [])).toEqual([
+        'db.tableA->tmp_staging',
+        'tmp_staging->db.tableB',
+      ]);
+      expect(
+        (shown.nodes ?? []).filter((n) => n.isTempTable).map((n) => n.id)
+      ).toEqual(['temp_tmp_staging']);
+    });
+
+    it('draws the direct edge and no temp tables when hidden', () => {
+      const hidden = applyTempTableVisibility(throughTemp(), false);
+
+      expect(edgeKeys(hidden.edges ?? [])).toEqual(['db.tableA->db.tableB']);
+      expect((hidden.nodes ?? []).some((n) => n.isTempTable)).toBe(false);
+    });
+
+    it('draws a temp table shared by two edges once per hop', () => {
+      const lineage = parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+          e2: {
+            fromEntity: {
+              id: 'id-c',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableC',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableC', toEntity: 'tmp_staging' },
+              { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, true).edges ?? []).sort()
+      ).toEqual([
+        'db.tableA->tmp_staging',
+        'db.tableC->tmp_staging',
+        'tmp_staging->db.tableB',
+      ]);
+    });
+
+    it('does not duplicate the direct edge when a hop joins two real tables', () => {
+      const lineage = parseLineageData(
+        makeLineageData({
+          e1: {
+            fromEntity: {
+              id: 'id-a',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableA',
+            },
+            toEntity: {
+              id: 'id-b',
+              type: EntityType.TABLE,
+              fullyQualifiedName: 'db.tableB',
+            },
+            tempLineageTables: [
+              { fromEntity: 'db.tableA', toEntity: 'db.tableB' },
+            ],
+          },
+        }),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, false).edges ?? [])
+      ).toEqual(['db.tableA->db.tableB']);
+      expect(
+        edgeKeys(applyTempTableVisibility(lineage, true).edges ?? [])
+      ).toEqual(['db.tableA->db.tableB']);
+    });
+
+    describe('pruneTempLineage', () => {
+      const withoutEdge = (
+        lineage: ReturnType<typeof throughTemp>,
+        from: string,
+        to: string
+      ) => ({
+        ...lineage,
+        edges: lineage.edges.filter(
+          (e) =>
+            !(
+              e.fromEntity.fullyQualifiedName === from &&
+              e.toEntity.fullyQualifiedName === to
+            )
+        ),
+      });
+
+      it('drops the hops and temp tables of a deleted direct edge', () => {
+        const pruned = pruneTempLineage(
+          withoutEdge(throughTemp(), 'db.tableA', 'db.tableB')
+        );
+
+        expect(pruned.edges).toEqual([]);
+        expect((pruned.nodes ?? []).some((n) => n.isTempTable)).toBe(false);
+      });
+
+      it('drops the direct edge and hops when an end node is removed', () => {
+        const lineage = throughTemp();
+        const pruned = pruneTempLineage({
+          ...lineage,
+          nodes: lineage.nodes.filter(
+            (n) => n.fullyQualifiedName !== 'db.tableB'
+          ),
+        });
+
+        expect(pruned.edges).toEqual([]);
+        expect((pruned.nodes ?? []).map((n) => n.fullyQualifiedName)).toEqual([
+          'db.tableA',
+        ]);
+      });
+
+      it('drops a table reached only through a deleted direct edge', () => {
+        const lineage = dropUnreachableNodes(
+          withoutEdge(throughTemp(), 'db.tableA', 'db.tableB'),
+          'db.tableA'
+        );
+
+        expect((lineage.nodes ?? []).map((n) => n.id)).not.toContain('id-b');
+        expect(lineage.edges).toEqual([]);
+      });
+
+      it('returns the same object when everything is consistent', () => {
+        const lineage = throughTemp();
+
+        expect(pruneTempLineage(lineage)).toBe(lineage);
+      });
+    });
+
+    it('returns the same object when there is nothing to project', () => {
+      const lineage = parseLineageData(
+        makeLineageData({}),
+        'db.tableA',
+        'db.tableA'
+      );
+
+      expect(applyTempTableVisibility(lineage, true)).toBe(lineage);
+      expect(applyTempTableVisibility(lineage, false)).toBe(lineage);
+    });
   });
 
   it('preserves regular edges that have no tempLineageTables', () => {

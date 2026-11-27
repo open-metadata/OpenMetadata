@@ -125,9 +125,9 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../Database/TableTags/TableTags.component', () =>
-  jest.fn(({ hasTagEditAccess, type }) => (
+  jest.fn(({ hasTagEditAccess, isReadOnly, type }) => (
     <p data-testid={`table-tags-${type.toLowerCase()}`}>
-      {hasTagEditAccess ? 'editable' : 'readonly'}
+      {hasTagEditAccess && !isReadOnly ? 'editable' : 'readonly'}
     </p>
   ))
 );
@@ -199,17 +199,18 @@ describe('Test MlModel feature list', () => {
     expect(personaFeatureCard).toBeInTheDocument();
   });
 
-  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 10): an
-  // explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins, Task 6
-  // Finding 1) — the old raw `EditX || EditAll` OR let EditAll grant unconditionally.
-  // Note: `hasTagEditAccess` on the Glossary-source TableTags is wired from `canEditTags`
-  // (EditTags), and on the Classification-source TableTags from `canEditGlossaryTerms`
-  // (EditGlossaryTerms) — preserved byte-for-byte from the pre-existing wiring, not fixed
-  // here (out of scope for this permission-mechanism refactor).
-  it('denies glossary-source tag edit when EditTags is explicitly false, even with EditAll true', async () => {
+  // Regression coverage for the getDerivedPermissionFlags conversion: an explicit
+  // per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw `EditX || EditAll` OR let EditAll grant unconditionally.
+  // The Glossary-source TableTags is gated by `canEditGlossaryTerms` (EditGlossaryTerms)
+  // and the Classification-source TableTags by `canEditTags` (EditTags), matching the
+  // backend's `JsonPatchUtils.mapTagToOperation` (Classification→EDIT_TAGS,
+  // Glossary→EDIT_GLOSSARY_TERMS) and all other dual-row TableTags call sites.
+
+  it('denies glossary-source tag edit when EditGlossaryTerms is explicitly false, even with EditAll true', async () => {
     mockUseGenericContextResult.permissions = {
       ...ENTITY_PERMISSIONS,
-      EditTags: false,
+      EditGlossaryTerms: false,
     } as OperationPermission;
 
     render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
@@ -219,7 +220,7 @@ describe('Test MlModel feature list', () => {
     expect(glossaryTags[0]).toHaveTextContent('readonly');
   });
 
-  it('grants glossary-source tag edit via EditAll when EditTags is not present', async () => {
+  it('grants glossary-source tag edit via EditAll when EditGlossaryTerms is not present', async () => {
     mockUseGenericContextResult.permissions = {
       EditAll: true,
     } as OperationPermission;
@@ -231,7 +232,53 @@ describe('Test MlModel feature list', () => {
     expect(glossaryTags[0]).toHaveTextContent('editable');
   });
 
-  it('denies classification-source tag edit when EditGlossaryTerms is explicitly false, even with EditAll true', async () => {
+  it('denies classification-source tag edit when EditTags is explicitly false, even with EditAll true', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditTags: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(classificationTags[0]).toHaveTextContent('readonly');
+  });
+
+  it('grants classification-source tag edit via EditAll when EditTags is not present', async () => {
+    mockUseGenericContextResult.permissions = {
+      EditAll: true,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(classificationTags[0]).toHaveTextContent('editable');
+  });
+
+  // Cross-wiring regression: proves the two rows are gated by the operation that matches
+  // their tag source (not the swapped one). These fail on the pre-fix wiring, where the
+  // Glossary row was gated by EditTags and the Classification row by EditGlossaryTerms.
+
+  it('does not deny glossary-source tag edit when only EditTags is false (glossary is gated by EditGlossaryTerms, not EditTags)', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditTags: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+
+    expect(glossaryTags[0]).toHaveTextContent('editable');
+  });
+
+  it('does not deny classification-source tag edit when only EditGlossaryTerms is false (classification is gated by EditTags, not EditGlossaryTerms)', async () => {
     mockUseGenericContextResult.permissions = {
       ...ENTITY_PERMISSIONS,
       EditGlossaryTerms: false,
@@ -243,6 +290,24 @@ describe('Test MlModel feature list', () => {
       'table-tags-classification'
     );
 
+    expect(classificationTags[0]).toHaveTextContent('editable');
+  });
+
+  it('denies both glossary and classification tag edit when the entity is soft-deleted (isReadOnly)', async () => {
+    mockUseGenericContextResult.data = { ...mockData, deleted: true };
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditGlossaryTerms: true,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(glossaryTags[0]).toHaveTextContent('readonly');
     expect(classificationTags[0]).toHaveTextContent('readonly');
   });
 

@@ -14,10 +14,12 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { useMemo } from 'react';
+import classNames from 'classnames';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -27,19 +29,77 @@ import { getRunButtonLabelKey } from '../../../observability/TestCaseDetail/RunT
 import { useRunTestCase } from '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase';
 import { parseTraceback, TracebackLineKind } from './RunExecutionError.utils';
 
+// The -700 steps and tertiary grey hold AA on the trace's tinted panel.
 const TRACEBACK_LINE_CLASS: Record<TracebackLineKind, string> = {
-  header: 'tw:text-error-primary',
-  location: 'tw:text-quaternary',
-  truncated: 'tw:text-quaternary tw:italic',
+  header: 'tw:text-utility-error-700',
+  location: 'tw:text-tertiary',
+  truncated: 'tw:text-tertiary tw:italic',
   code: 'tw:text-secondary',
-  exception: 'tw:text-warning-primary',
+  exception: 'tw:text-utility-warning-700',
 };
 
+// A border rather than an outline: once focusable, the outline is the focus ring.
 const TRACEBACK_CLASS_NAME = [
-  'tw:m-0 tw:max-h-80 tw:max-w-full tw:overflow-auto tw:rounded-lg tw:p-3',
-  'tw:bg-secondary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
-  'tw:font-mono tw:text-xs tw:leading-relaxed',
+  'tw:max-h-80 tw:max-w-full tw:overflow-auto tw:rounded-lg tw:p-3',
+  'tw:border tw:border-secondary tw:bg-secondary tw:focus-visible:outline-focus-ring',
+  // Geist Mono's ligatures draw `!=` as `≠` and run `<>` into the character before it.
+  'tw:[font-variant-ligatures:none]',
 ].join(' ');
+
+/**
+ * The message, clamped to three lines: the trace below it is capped at 320px,
+ * and a 2,000-character message otherwise made the card 1,014px tall.
+ */
+const RunErrorMessage = ({ message }: { message: string }) => {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const messageRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const element = messageRef.current;
+
+    if (!element || isExpanded) {
+      return;
+    }
+
+    const measure = () =>
+      setIsClamped(element.scrollHeight > element.clientHeight);
+    const observer = globalThis.ResizeObserver
+      ? new ResizeObserver(measure)
+      : undefined;
+
+    measure();
+    observer?.observe(element);
+
+    return () => observer?.disconnect();
+  }, [message, isExpanded]);
+
+  return (
+    <Box align="start" direction="col" gap={1}>
+      <Typography
+        className={classNames('tw:break-words', {
+          'tw:line-clamp-3': !isExpanded,
+        })}
+        color="secondary"
+        data-testid="run-execution-error-message"
+        ref={messageRef}
+        size="text-sm">
+        {message}
+      </Typography>
+      {(isClamped || isExpanded) && (
+        <Button
+          aria-expanded={isExpanded}
+          className="tw:h-auto tw:p-0"
+          color="link-color"
+          size="sm"
+          onPress={() => setIsExpanded((expanded) => !expanded)}>
+          {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 interface RunExecutionErrorProps {
   errorDetails?: TestCaseErrorDetails;
@@ -77,8 +137,7 @@ const RunExecutionError = ({
       gap={2}>
       <Box align="center" gap={2}>
         <Typography
-          className="tw:uppercase tw:tracking-wide"
-          color="warning"
+          className="tw:uppercase tw:tracking-wide tw:text-utility-warning-700"
           size="text-xs"
           weight="bold">
           {t('label.execution-error')}
@@ -94,30 +153,30 @@ const RunExecutionError = ({
           </Badge>
         )}
       </Box>
-      {message && (
-        <Typography
-          className="tw:break-words"
-          color="secondary"
-          data-testid="run-execution-error-message"
-          size="text-sm">
-          {message}
-        </Typography>
-      )}
+      {message && <RunErrorMessage message={message} />}
       {tracebackLines.length > 0 && (
-        <pre
+        <Card
+          aria-label={t('label.traceback')}
           className={TRACEBACK_CLASS_NAME}
-          data-testid="run-execution-error-traceback">
-          {tracebackLines.map(({ kind, text }, index) => (
-            <Typography
-              className={`tw:block ${TRACEBACK_LINE_CLASS[kind]}`}
-              data-kind={kind}
-              // A traceback is rendered once and never reordered.
-              // eslint-disable-next-line react/no-array-index-key
-              key={index}>
-              {text}
-            </Typography>
-          ))}
-        </pre>
+          data-testid="run-execution-error-traceback"
+          role="region"
+          // Safari does not make a scroll container keyboard-focusable, so the
+          // trace past the cap would be out of keyboard reach.
+          tabIndex={0}
+          variant="ghost">
+          <pre className="tw:m-0 tw:font-mono tw:text-xs tw:leading-relaxed">
+            {tracebackLines.map(({ kind, text }, index) => (
+              <Typography
+                className={`tw:block ${TRACEBACK_LINE_CLASS[kind]}`}
+                data-kind={kind}
+                // A traceback is rendered once and never reordered.
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}>
+                {text}
+              </Typography>
+            ))}
+          </pre>
+        </Card>
       )}
       {canRun && !disabledReasonKey && (
         <Button

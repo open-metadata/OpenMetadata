@@ -126,6 +126,34 @@
       },
       "additionalProperties": false
     },
+    "thresholdUnit": {
+      "description": "How a failure threshold reads: `ABSOLUTE` for a raw deviation, `PERCENTAGE` for a share of what it applies to.",
+      "javaType": "org.openmetadata.schema.tests.type.ThresholdUnit",
+      "type": "string",
+      "enum": ["ABSOLUTE", "PERCENTAGE"],
+      "default": "ABSOLUTE"
+    },
+    "testCaseAppliedThreshold": {
+      "description": "The failure threshold a test case run was judged by, as the evaluator read it while the run executed. Recorded by the agent that ran the test and never re-read from the test case afterwards: an edit between the run and the result being stored would otherwise be attributed to the run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseAppliedThreshold",
+      "type": "object",
+      "properties": {
+        "applied": {
+          "description": "Whether this run used a failure tolerance. False when the execution mode did not apply one, such as columnValuesToBeInSet with matchEnum disabled. When false, value and unit do not explain the verdict. An absent snapshot means applicability is unknown.",
+          "type": "boolean",
+          "default": true
+        },
+        "value": {
+          "description": "Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.",
+          "type": "number",
+          "default": 0
+        },
+        "unit": {
+          "$ref": "#/definitions/thresholdUnit"
+        }
+      },
+      "additionalProperties": false
+    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
@@ -192,6 +220,18 @@
           "description": "Lower bound limit for the test case result as defined in the test definition.",
           "type": "number"
         },
+        "configuredMaxBound": {
+          "description": "Upper bound the test case asked for when the run executed, before the failure threshold widened it into `maxBound`. Absent for a run that recorded no threshold snapshot.",
+          "type": "number"
+        },
+        "configuredMinBound": {
+          "description": "Lower bound the test case asked for when the run executed, before the failure threshold widened it into `minBound`. Absent for a run that recorded no threshold snapshot.",
+          "type": "number"
+        },
+        "appliedThreshold": {
+          "description": "Failure threshold the run was judged by, as configured when it executed. Absent for a run recorded before the snapshot existed, whose threshold cannot be recovered.",
+          "$ref": "#/definitions/testCaseAppliedThreshold"
+        },
         "testCase": {
           "description": "Test case that this result is for.",
           "$ref": "../type/entityReference.json"
@@ -214,9 +254,46 @@
         "errorDetails": {
           "description": "Structured error details when the run was aborted by an error.",
           "$ref": "#/definitions/testCaseErrorDetails"
+        },
+        "evaluationScope": {
+          "description": "Which rows the run was measured on. Absent for a run that recorded no scope.",
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
       "required": ["timestamp"]
+    },
+    "testCaseEvaluationScope": {
+      "description": "Which rows a test case run was measured on. The verdict is the subset's: nothing extrapolates it back to the table.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseEvaluationScope",
+      "type": "object",
+      "properties": {
+        "executionSource": {
+          "$ref": "../type/tableExecutionSource.json"
+        },
+        "sampled": {
+          "description": "Whether the run read a sample of the table. False when the test runs its own SQL, which ignores the configured sample.",
+          "type": "boolean",
+          "default": false
+        },
+        "profileSample": {
+          "description": "Size of the sample read, in the unit `profileSampleType` names.",
+          "type": "number"
+        },
+        "profileSampleType": {
+          "description": "Whether `profileSample` is a percentage of the table or a number of rows. Read only when `sampled` is true.",
+          "$ref": "../type/basic.json#/definitions/profileSampleType"
+        },
+        "partitioned": {
+          "description": "Whether the rows read were restricted to a partition. False when the test runs its own SQL, which ignores the configured partition.",
+          "type": "boolean",
+          "default": false
+        },
+        "partitionColumnName": {
+          "description": "Column the partition filter was applied on.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
@@ -316,11 +393,39 @@
           "description": "Percentage of rows that failed for this dimension combination",
           "type": "number"
         },
+        "minBound": {
+          "description": "Lower bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
+          "type": "number"
+        },
+        "maxBound": {
+          "description": "Upper bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
+          "type": "number"
+        },
+        "configuredMinBound": {
+          "description": "Lower bound the test case asked for when the run executed, before the failure threshold widened it into `minBound`.",
+          "type": "number"
+        },
+        "configuredMaxBound": {
+          "description": "Upper bound the test case asked for when the run executed, before the failure threshold widened it into `maxBound`.",
+          "type": "number"
+        },
+        "appliedThreshold": {
+          "description": "Failure threshold the parent run was judged by, as configured when it executed. Every dimension of a run shares it.",
+          "$ref": "#/definitions/testCaseAppliedThreshold"
+        },
+        "excludedFromRollUp": {
+          "description": "Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its status is still reported, but it does not fail the test case under the `ANY_DIMENSION` policy.",
+          "type": "boolean"
+        },
         "impactScore": {
           "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more significant quality issues considering both failure rate and data volume.",
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "evaluationScope": {
+          "description": "Which rows the parent run was measured on. Every dimension of a run shares it.",
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
       "required": ["id", "testCaseResultId", "timestamp", "dimensionValues", "dimensionKey", "testCaseStatus"],

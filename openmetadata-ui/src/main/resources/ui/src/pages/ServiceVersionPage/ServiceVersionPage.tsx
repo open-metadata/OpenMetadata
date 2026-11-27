@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -62,7 +63,6 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getServiceDetailsPath,
@@ -334,7 +334,8 @@ function ServiceVersionPage() {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
+    async (cursor?: PagingWithoutTotal) => {
+      const paging = { ...cursor, limit: pageSize };
       try {
         setIsOtherDataLoading(true);
         switch (serviceCategory) {
@@ -394,6 +395,7 @@ function ServiceVersionPage() {
     },
     [
       serviceCategory,
+      pageSize,
       fetchDatabases,
       fetchTopics,
       fetchDashboards,
@@ -450,9 +452,6 @@ function ServiceVersionPage() {
   const pagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
         handlePageChange(
           currentPage,
           {
@@ -463,7 +462,7 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, getOtherDetails, handlePageChange]
+    [paging, pageSize, handlePageChange]
   );
 
   const tabs: DetailsTabItem[] = useMemo(() => {
@@ -482,6 +481,7 @@ function ServiceVersionPage() {
                   data={data}
                   entityType={entityType}
                   isServiceLoading={isOtherDataLoading}
+                  pageSize={pageSize}
                   paging={paging}
                   pagingHandler={pagingHandler}
                   serviceDetails={currentVersionData}
@@ -500,6 +500,7 @@ function ServiceVersionPage() {
     currentVersionData,
     serviceCategory,
     paging,
+    pageSize,
     data,
     isOtherDataLoading,
     getOtherDetails,
@@ -521,21 +522,15 @@ function ServiceVersionPage() {
     if (!viewVersionPermission) {
       return (
         <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-          <EmptyPlaceholder
-            description={
-              <Transi18next
-                i18nKey="message.no-access-placeholder"
-                renderElement={<b />}
-                values={{
-                  entity: t('label.view-entity', {
-                    entity: `${getEntityName(currentVersionData)} ${t(
-                      'label.service'
-                    )}`,
-                  }),
-                }}
-              />
-            }
-            icon={<Lock01 className="tw:text-secondary" />}
+          <PermissionPlaceholder
+            description={t('message.no-access-placeholder', {
+              entity: t('label.view-entity', {
+                entity: `${getEntityName(currentVersionData)} ${t(
+                  'label.service'
+                )}`,
+              }),
+            })}
+            icon={<Lock01 />}
             title={t('label.access-denied')}
           />
         </div>

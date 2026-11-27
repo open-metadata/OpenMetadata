@@ -315,7 +315,8 @@ class DottedServiceFqnMigrationTest {
     assertEquals("dash.service.sales", dashboard.getFullyQualifiedName());
   }
 
-  private static <T extends EntityInterface> void stubService(EntityDAO<T> dao, UUID id, T entity) {
+  private static <T extends EntityInterface<?>> void stubService(
+      EntityDAO<T> dao, UUID id, T entity) {
     // The migration loads services with Include.ALL so soft-deleted services are covered too.
     when(dao.findEntityById(eq(id), eq(Include.ALL))).thenReturn(entity);
   }

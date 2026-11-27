@@ -310,6 +310,34 @@ describe('DataQualityProvider', () => {
     );
   });
 
+  it('should expose the exact table count from fetchTotalEntityCount as totalEntityCount', async () => {
+    (fetchTotalEntityCount as jest.Mock).mockResolvedValueOnce({
+      data: [{ fullyQualifiedName: '10233' }],
+    });
+
+    const TotalEntityCountComponent = () => {
+      const { testCaseSummary } = useDataQualityProvider();
+
+      return (
+        <div data-testid="total-entity-count">
+          {testCaseSummary.totalEntityCount}
+        </div>
+      );
+    };
+
+    render(
+      <DataQualityProvider>
+        <TotalEntityCountComponent />
+      </DataQualityProvider>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('total-entity-count')).toHaveTextContent(
+        '10233'
+      )
+    );
+  });
+
   it('should handle different tab values correctly', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
 
@@ -333,7 +361,6 @@ describe('DataQualityProvider', () => {
   it('should handle dashboard tab correctly', async () => {
     mockUseParam.tab = DataQualityPageTabs.DASHBOARD;
 
-    // eslint-disable-next-line sonarjs/no-identical-functions -- test harness component
     const MockTabComponent = () => {
       const { activeTab } = useDataQualityProvider();
 

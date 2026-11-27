@@ -13,6 +13,8 @@ import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class AuthorizationHandler {
@@ -67,10 +69,9 @@ public class AuthorizationHandler {
                     createErrorResponse("invalid_request", "Client ID not found", state, null));
               }
 
-              // Validate redirect URI against client's registered redirect URIs.
-              // Open redirect is mitigated at registration: HTTP URIs are restricted to
-              // loopback addresses per RFC 8252, and the redirect URI must match a
-              // registered URI for this client.
+              // The redirect URI must match one this client registered. Registration needs no
+              // credentials and accepts any https URI, so matching alone does not make it trusted:
+              // createErrorResponse only redirects errors to loopback and app-scheme callbacks.
               URI redirectUri;
               try {
                 URI tempUri = redirectUriStr != null ? URI.create(redirectUriStr) : null;
@@ -169,12 +170,20 @@ public class AuthorizationHandler {
         new AuthorizationErrorResponse(error, errorDescription, state);
 
     if (redirectUri != null) {
-      // Redirect with error parameters. RFC 9207 requires "iss" on error responses too.
+      try {
+        new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+            .validateRedirect(redirectUri);
+      } catch (IllegalArgumentException e) {
+        return new AuthorizationResponse(null, false, errorResponse);
+      }
+      // Redirect with error parameters. RFC 9207 requires "iss" on error responses too. A remote
+      // web callback gets the same URL as a link to click, not a redirect.
       String redirectUrl =
           UriUtils.constructAuthorizationResponseUri(
               redirectUri.toString(), errorResponse.toQueryParams(), provider.getIssuer());
 
-      return new AuthorizationResponse(redirectUrl, true, errorResponse);
+      return new AuthorizationResponse(
+          redirectUrl, !UriUtils.isRemoteWebUri(redirectUri), errorResponse);
     } else {
       // Direct error response
       return new AuthorizationResponse(null, false, errorResponse);

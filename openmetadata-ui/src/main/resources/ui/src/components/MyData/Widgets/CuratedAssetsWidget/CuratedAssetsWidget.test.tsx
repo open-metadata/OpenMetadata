@@ -94,15 +94,6 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ children, icon, type, className }) => (
-    <div className={className} data-testid="error-placeholder" data-type={type}>
-      {icon}
-      {children}
-    </div>
-  ))
-);
-
 jest.mock(
   '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () =>
@@ -432,6 +423,31 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
+  it('lays out entities in two columns when the widget is full size', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+
+    const item = await screen.findByTestId('Curated Assets-Test Entity');
+
+    expect(item.closest('a')?.parentElement).toHaveStyle({
+      gridColumn: 'span 12',
+    });
+  });
+
+  it('lists entities in a single column when the widget is half size', async () => {
+    render(
+      <CuratedAssetsWidget
+        {...defaultProps}
+        currentLayout={[{ ...defaultProps.currentLayout[0], w: 1 }]}
+      />
+    );
+
+    const item = await screen.findByTestId('Curated Assets-Test Entity');
+
+    expect(item.closest('a')?.parentElement).not.toHaveStyle({
+      gridColumn: 'span 12',
+    });
+  });
+
   it('renders entity description when available', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
@@ -454,6 +470,22 @@ describe('CuratedAssetsWidget', () => {
         fetchSource: true,
         queryFilter: {},
       });
+    });
+  });
+
+  it('sorts A to Z by the visible title', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+
+    fireEvent.click(await screen.findByTestId('widget-sort-by-dropdown'));
+    fireEvent.click(await screen.findByText('A to Z'));
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        })
+      );
     });
   });
 

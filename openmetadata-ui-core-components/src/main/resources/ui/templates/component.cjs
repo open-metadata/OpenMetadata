@@ -16,11 +16,11 @@
  * Mirrors the template used by @untitledui/icons.
  *
  * Custom icons never reference the color binding in JSX (they preserve
- * authored brand colors instead of a themeable stroke), so they destructure
+ * authored brand colors instead of a themeable color), so they destructure
  * it renamed to `_color` (`color: _color`) to satisfy eslint's
  * no-unused-vars ignore pattern while keeping `Props.color` as the one
  * declared property for both pipelines. Regular icons use the binding
- * directly (`stroke={color}`), so theirs stays a plain `color`.
+ * directly (`color={color}`), so theirs stays a plain `color`.
  */
 function createComponentTemplate(isCustom) {
   const colorParam = isCustom ? "color: _color = 'currentColor'" : "color = 'currentColor'";
@@ -49,7 +49,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const ${name}: FC<Props> = ({ size = 24, ${colorParam}, ...props }) => (
+export const ${name}: FC<Props> = ({ size = 20, ${colorParam}, ...props }) => (
   ${jsx}
 );
 ${name}.displayName = '${name}';

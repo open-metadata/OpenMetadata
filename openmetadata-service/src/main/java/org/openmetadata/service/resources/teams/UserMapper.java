@@ -24,6 +24,7 @@ public class UserMapper implements EntityMapper<User, CreateUser> {
         .withPersonas(create.getPersonas())
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
+        .withExtension(create.getExtension())
         .withUpdatedBy(user.toLowerCase())
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.validateToEntityReferences(create.getTeams(), Entity.TEAM))

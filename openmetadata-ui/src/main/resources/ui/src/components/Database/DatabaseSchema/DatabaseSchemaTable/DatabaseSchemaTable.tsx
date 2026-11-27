@@ -10,23 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EmptyPlaceholder,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
@@ -272,6 +271,8 @@ export const DatabaseSchemaTable = ({
             displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
+            entityDisplayName={record.displayName}
+            entityName={record.name}
             hasEditPermission={allowEditDisplayNamePermission}
             id={record.id ?? ''}
             key={record.id}
@@ -305,7 +306,9 @@ export const DatabaseSchemaTable = ({
               key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
               width: 120,
               render: (text: UsageDetails) =>
-                getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+                isNil(text?.weeklyStats?.percentileRank)
+                  ? NO_DATA_PLACEHOLDER
+                  : getUsagePercentile(text.weeklyStats.percentileRank),
             },
           ]
         : []),
@@ -409,19 +412,17 @@ export const DatabaseSchemaTable = ({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.schema-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

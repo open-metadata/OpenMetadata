@@ -4,6 +4,7 @@
   "title": "openMetadataJWTClientConfig",
   "description": "openMetadataJWTClientConfig security configs.",
   "type": "object",
+  "mask": true,
   "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
   "properties": {
     "jwtToken": {

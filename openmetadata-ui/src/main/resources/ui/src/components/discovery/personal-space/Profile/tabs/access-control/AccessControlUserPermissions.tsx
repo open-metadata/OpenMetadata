@@ -103,7 +103,7 @@ const renderPolicy = (policy: PolicyInfo, index: number, t: TFunction) => {
   const policyColor = policy.effect === 'ALLOW' ? 'success' : nonAllowColor;
 
   return (
-    <AccordionItem id={`policy-${index}`} key={index}>
+    <AccordionItem id={`policy-${index}`} key={index} variant="muted">
       <AccordionHeader showChevron>
         <Box align="center" direction="row" gap={2} wrap="wrap">
           <Link

@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -21,7 +22,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.context.ContextMemoryDocumentAccess;
+import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -31,23 +36,51 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 public class CommonUtils {
 
   /**
+   * Types REST refuses to write for any impersonated request. Users and team patches never reach
+   * MCP, and a new team's roles and policies are refused in {@link CreateEntityTool}.
+   */
+  private static final Set<String> IMPERSONATION_REFUSED_WRITES =
+      Set.of(Entity.POLICY, Entity.ROLE, Entity.BOT);
+
+  /**
    * Reads an entity for a caller and applies that entity's own visibility rule before handing it
    * back. Rules like a context memory's {@code shareConfig} sit outside the policy model, so the
    * {@code authorizer.authorize(...)} a tool makes cannot see them - binding the check to the fetch
    * is what stops a read path from holding an entity it is not allowed to answer with. The rule is
-   * a no-op for entity types that have none, so callers need no per-type knowledge.
+   * a no-op for entity types that have none, so callers need no per-type knowledge. Secrets the
+   * REST resource masks come back masked here too ({@link McpResponseUtils#maskSecrets}). A tool
+   * that answers with the entity also passes it through {@link #withVisibleEvidence}.
    */
-  public static EntityInterface readEntityForCaller(
+  public static EntityInterface<?> readEntityForCaller(
       String entityType,
       String fqn,
       String fields,
       Include include,
       SecurityContext securityContext) {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
-    return entity;
+    AnnouncementVisibility.enforceVisibility(entity, securityContext);
+    return McpResponseUtils.maskSecrets(entity);
+  }
+
+  /**
+   * Returns {@code entity} as the caller may read it: a context memory's references to Queries the
+   * caller cannot view keep only their id and type, as in every REST memory response ({@link
+   * ContextMemoryEvidenceAccess}); a metric's or metric group's relations keep only the entities
+   * the caller may view ({@link MetricRelationVisibility}); every other entity type is returned as
+   * is. Applied where a tool answers with the entity, not on reads it only checks.
+   */
+  public static EntityInterface<?> withVisibleEvidence(
+      EntityInterface<?> entity, Authorizer authorizer, SecurityContext securityContext) {
+    if (entity instanceof ContextMemory memory) {
+      ContextMemory copy =
+          ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
+      ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
+      return copy;
+    }
+    return MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
   }
 
   /**
@@ -57,7 +90,8 @@ public class CommonUtils {
    */
   public static void enforceEntityVisibility(
       String entityType, String fqn, SecurityContext securityContext) {
-    if (ContextMemoryVisibility.hasVisibilityRules(entityType)) {
+    if (ContextMemoryVisibility.hasVisibilityRules(entityType)
+        || Entity.ANNOUNCEMENT.equals(entityType)) {
       readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     }
   }
@@ -244,18 +278,31 @@ public class CommonUtils {
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
-      EntityInterface entity) {
+      EntityInterface<?> entity) {
     String fqn = entity.getFullyQualifiedName();
     // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at
     // this name is still updated in place, so it still needs the EDIT_ALL check.
     boolean overwritesExisting = fqn != null && entityExistsByName(entityType, fqn, Include.ALL);
     if (overwritesExisting) {
       OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      ResourceContext<EntityInterface> existing =
+      ResourceContext<EntityInterface<?>> existing =
           new ResourceContext<>(entityType, null, fqn, Include.ALL);
       authorizer.authorize(securityContext, editContext, existing);
     }
     return overwritesExisting;
+  }
+
+  /**
+   * Refuses an impersonated write to an entity type that grants privileges or a credential, as
+   * REST refuses it through {@code @IdentityEndpoint}: the grant would outlive the request.
+   * ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
+   */
+  public static void refuseImpersonatedGrantWrite(
+      CatalogSecurityContext securityContext, String entityType) {
+    if (securityContext.impersonatedUser() != null
+        && IMPERSONATION_REFUSED_WRITES.contains(entityType)) {
+      throw new AuthorizationException("Impersonated requests cannot write a " + entityType);
+    }
   }
 
   /**

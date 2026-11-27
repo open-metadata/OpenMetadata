@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
+import static org.openmetadata.service.monitoring.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.monitoring.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;

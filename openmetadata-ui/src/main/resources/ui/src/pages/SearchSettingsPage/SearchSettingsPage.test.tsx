@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -18,6 +18,7 @@ import {
   getSettingsByType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import SearchSettingsPage from './SearchSettingsPage';
 
 const mockSearchSettings: SearchSettings = {
@@ -54,6 +55,11 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsByType: jest.fn(),
   updateSettingsConfig: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../utils/GlobalSettingsUtils', () => ({
@@ -133,5 +139,112 @@ describe('Test SearchSettingsPage', () => {
         },
       },
     });
+  });
+
+  const renderPage = async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <SearchSettingsPage />
+        </MemoryRouter>
+      );
+    });
+
+    return within(
+      screen.getByTestId('enable-column-indexing-switch')
+    ).getByRole('switch');
+  };
+
+  const mockSavedColumnIndexing = (enableColumnIndexing: boolean) =>
+    (updateSettingsConfig as jest.Mock).mockResolvedValue({
+      data: {
+        config_type: 'searchSettings',
+        config_value: {
+          globalSettings: {
+            ...mockSearchSettings.globalSettings,
+            enableColumnIndexing,
+          },
+        },
+      },
+    });
+
+  it('Shows column indexing on for settings saved before the flag existed', async () => {
+    const columnIndexingSwitch = await renderPage();
+
+    expect(columnIndexingSwitch).toBeChecked();
+  });
+
+  it('Turns column indexing off only after the confirmation', async () => {
+    mockSavedColumnIndexing(false);
+    const columnIndexingSwitch = await renderPage();
+
+    await act(async () => {
+      fireEvent.click(columnIndexingSwitch);
+    });
+
+    expect(updateSettingsConfig).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('message.disable-column-indexing-confirmation')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'searchSettings',
+      config_value: {
+        globalSettings: {
+          ...mockSearchSettings.globalSettings,
+          enableColumnIndexing: false,
+        },
+      },
+    });
+    expect(columnIndexingSwitch).not.toBeChecked();
+  });
+
+  it('Keeps column indexing on when the confirmation is cancelled', async () => {
+    const columnIndexingSwitch = await renderPage();
+
+    await act(async () => {
+      fireEvent.click(columnIndexingSwitch);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('cancel'));
+    });
+
+    expect(updateSettingsConfig).not.toHaveBeenCalled();
+    expect(columnIndexingSwitch).toBeChecked();
+  });
+
+  it('Turns column indexing on and says tables need a reindex', async () => {
+    (getSettingsByType as jest.Mock).mockResolvedValue({
+      globalSettings: {
+        ...mockSearchSettings.globalSettings,
+        enableColumnIndexing: false,
+      },
+    });
+    mockSavedColumnIndexing(true);
+    const columnIndexingSwitch = await renderPage();
+
+    expect(columnIndexingSwitch).not.toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(columnIndexingSwitch);
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'searchSettings',
+      config_value: {
+        globalSettings: {
+          ...mockSearchSettings.globalSettings,
+          enableColumnIndexing: true,
+        },
+      },
+    });
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.column-indexing-enabled-reindex'
+    );
+    expect(columnIndexingSwitch).toBeChecked();
   });
 });

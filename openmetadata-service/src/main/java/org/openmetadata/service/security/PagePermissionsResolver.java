@@ -1,7 +1,6 @@
 package org.openmetadata.service.security;
 
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -34,7 +32,7 @@ public final class PagePermissionsResolver {
 
   private PagePermissionsResolver() {}
 
-  public static <T extends EntityInterface> Map<String, ResourcePermission> resolve(
+  public static <T extends EntityInterface<?>> Map<String, ResourcePermission> resolve(
       Authorizer authorizer,
       SecurityContext securityContext,
       String entityType,
@@ -56,18 +54,22 @@ public final class PagePermissionsResolver {
     return permissions;
   }
 
-  private static <T extends EntityInterface> List<UUID> idsOf(List<T> page) {
+  private static <T extends EntityInterface<?>> List<UUID> idsOf(List<T> page) {
     if (page == null) {
       return List.of();
     }
-    return page.stream().map(EntityInterface::getId).filter(Objects::nonNull).distinct().toList();
+    return page.stream()
+        .map(EntityInterface<?>::getId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
   }
 
   /**
    * Include.ALL: a soft-deleted row still needs its policy evaluated rather than resolving to
    * nothing and leaving every conditional rule reading an absent attribute.
    */
-  private static <T extends EntityInterface> Map<UUID, T> loadForAuthorization(
+  private static <T extends EntityInterface<?>> Map<UUID, T> loadForAuthorization(
       EntityRepository<T> repository, List<UUID> ids) {
     List<T> entities =
         repository.get(null, ids, ResourceContext.authorizationFields(repository), Include.ALL);
@@ -76,16 +78,16 @@ public final class PagePermissionsResolver {
     }
     return entities.stream()
         .collect(
-            Collectors.toMap(EntityInterface::getId, entity -> entity, (first, second) -> first));
+            Collectors.toMap(
+                EntityInterface<?>::getId, entity -> entity, (first, second) -> first));
   }
 
-  private static <T extends EntityInterface> BulkFieldHydrator tagHydrator(
+  private static <T extends EntityInterface<?>> BulkFieldHydrator tagHydrator(
       EntityRepository<T> repository, Collection<T> entities) {
-    return new BulkFieldHydrator(
-        Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    return BulkFieldHydrator.forTags(repository, entities);
   }
 
-  private static <T extends EntityInterface> ResourceContext<T> contextFor(
+  private static <T extends EntityInterface<?>> ResourceContext<T> contextFor(
       String entityType,
       EntityRepository<T> repository,
       T resolved,

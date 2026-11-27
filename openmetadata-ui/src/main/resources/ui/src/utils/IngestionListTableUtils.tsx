@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Check, DateTimeType } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
-import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
-import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { DEFAULT_PIPELINE_TIMEZONE } from '../constants/Schedular.constants';
 import {
   IngestionPipeline,
   PipelineType,
@@ -61,7 +59,7 @@ export const renderTypeField =
   };
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => {
-  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+  const StatusIcon = record.enabled ? Check : PausedIcon;
 
   return (
     <Badge
@@ -73,7 +71,7 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
       data-testid="pipeline-active-status"
       size="sm"
       type="color">
-      <Icon component={statusIcon} />
+      <StatusIcon fill="currentColor" height="1em" width="1em" />
       {record.enabled ? t('label.active') : t('label.paused')}
     </Badge>
   );
@@ -81,39 +79,33 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
 
 const ScheduleFieldCell = ({
   scheduleInterval,
+  timezone,
 }: {
   scheduleInterval: string;
+  timezone: string;
 }) => {
   const { descriptionFirstPart, descriptionSecondPart } =
-    useScheduleDescriptionTexts(scheduleInterval);
+    useScheduleDescriptionTexts(scheduleInterval, timezone);
 
   return (
-    <Row gutter={[8, 8]} wrap={false}>
-      <Col flex="none">
-        <TimeDateIcon className="m-t-xss" height={20} width={20} />
-      </Col>
-      <Col className="tw:min-w-0" flex="auto">
-        <Row className="line-height-16">
-          <Col span={24}>
-            <Typography
-              className="font-medium"
-              data-testid="schedule-primary-details"
-              ellipsis={{ tooltip: descriptionFirstPart }}>
-              {descriptionFirstPart}
-            </Typography>
-          </Col>
-          <Col span={24}>
-            <Typography
-              className="text-xs"
-              color="secondary"
-              data-testid="schedule-secondary-details"
-              ellipsis={{ tooltip: descriptionSecondPart }}>
-              {descriptionSecondPart}
-            </Typography>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <Box align="start" gap={2} wrap="nowrap">
+      <DateTimeType className="m-t-xss tw:shrink-0" size={20} />
+      <Box className="tw:min-w-0 tw:flex-auto line-height-16" direction="col">
+        <Typography
+          className="font-medium"
+          data-testid="schedule-primary-details"
+          ellipsis={{ tooltip: descriptionFirstPart }}>
+          {descriptionFirstPart}
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
+          data-testid="schedule-secondary-details"
+          ellipsis={{ tooltip: descriptionSecondPart }}>
+          {descriptionSecondPart}
+        </Typography>
+      </Box>
+    </Box>
   );
 };
 
@@ -129,6 +121,9 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   return (
     <ScheduleFieldCell
       scheduleInterval={record.airflowConfig.scheduleInterval}
+      timezone={
+        record.airflowConfig.pipelineTimezone ?? DEFAULT_PIPELINE_TIMEZONE
+      }
     />
   );
 };

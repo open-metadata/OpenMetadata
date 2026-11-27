@@ -1,0 +1,10 @@
+{
+  "name": "PlatformHealth",
+  "displayName": "Platform Health",
+  "description": "Ingestion health across every connected service, showing how many are failing, healthy, or have not run yet, with the worst offenders listed first.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.PlatformHealth",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

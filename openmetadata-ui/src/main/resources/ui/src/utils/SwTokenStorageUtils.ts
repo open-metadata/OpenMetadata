@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import jwtDecode from 'jwt-decode';
+import { ServiceTokenEnum } from '../generated/auth/serviceTokenEnum';
 import { swTokenStorage } from './SwTokenStorage';
 
 // Internal keys for the AppState JSON - obscured for security
@@ -185,11 +187,64 @@ const clearAppState = async (): Promise<void> => {
   }
 };
 
+/**
+ * Bot tokens (including bot impersonation tokens) and personal access tokens
+ * are meant for API clients; only tokens from a user login flow may drive the UI.
+ * ADR:2026-10-27-ui-runs-only-on-user-login-tokens
+ */
+export const isApiOnlyToken = (token: string) => {
+  try {
+    const { isBot, tokenType } = jwtDecode<{
+      isBot?: boolean;
+      tokenType?: ServiceTokenEnum;
+    }>(token);
+
+    return (
+      isBot === true ||
+      tokenType === ServiceTokenEnum.Bot ||
+      tokenType === ServiceTokenEnum.PersonalAccess
+    );
+  } catch {
+    return false;
+  }
+};
+
+// AuthProvider registers here to sign the user out when a token is rejected;
+// kept as a callback so this boot-path module stays free of UI imports.
+let apiOnlyTokenListener: (() => void) | undefined;
+
+export const setApiOnlyTokenListener = (listener?: () => void) => {
+  apiOnlyTokenListener = listener;
+};
+
+// Concurrent reads of the same rejected token share one clear and one sign-out.
+let apiOnlyTokenRejection: Promise<void> | null = null;
+
+const rejectApiOnlyToken = () => {
+  if (!apiOnlyTokenRejection) {
+    apiOnlyTokenRejection = clearAppState().finally(() => {
+      apiOnlyTokenRejection = null;
+    });
+    apiOnlyTokenListener?.();
+  }
+
+  return apiOnlyTokenRejection;
+};
+
+// Every consumer (axios interceptor, AuthCoordinator, streams) reads the token
+// here, so the check covers both a cold load and an active session.
 export const getOidcToken = async (): Promise<string> => {
   try {
     const state = await getAppState();
+    const token = state[OIDC_TOKEN_KEY] || '';
 
-    return state[OIDC_TOKEN_KEY] || '';
+    if (token && isApiOnlyToken(token)) {
+      await rejectApiOnlyToken();
+
+      return '';
+    }
+
+    return token;
   } catch {
     return '';
   }

@@ -24,6 +24,8 @@ export interface SummaryDonutProps {
 }
 
 const LEGEND_HIDDEN = { show: false };
+// ECharts expands hovered slices by 5px; leave another pixel for the stroke.
+const HOVER_PADDING = 6;
 
 /**
  * Donut ring (grey track + coloured data) with a centred percentage. Shared by
@@ -36,27 +38,31 @@ export const SummaryDonut = ({
   percentage,
   paddingAngle = 0,
   size = 120,
-}: SummaryDonutProps) => (
-  <div style={{ width: size }}>
-    <PieChart
-      track
-      ariaLabel={ariaLabel}
-      centerLabel={
-        <Typography
-          className="tw:text-primary"
-          style={{ fontSize: Math.round(size * 0.135) }}
-          weight="semibold">
-          {percentage}
-        </Typography>
-      }
-      data={chartData}
-      height={size}
-      innerRadius="75%"
-      legend={LEGEND_HIDDEN}
-      outerRadius="100%"
-      padAngle={paddingAngle}
-    />
-  </div>
-);
+}: SummaryDonutProps) => {
+  const outerRadius = size / 2 - HOVER_PADDING;
+
+  return (
+    <div style={{ width: size }}>
+      <PieChart
+        track
+        ariaLabel={ariaLabel}
+        centerLabel={
+          <Typography
+            className="tw:text-primary"
+            style={{ fontSize: Math.round(size * 0.135) }}
+            weight="semibold">
+            {percentage}
+          </Typography>
+        }
+        data={chartData}
+        height={size}
+        innerRadius={outerRadius * 0.75}
+        legend={LEGEND_HIDDEN}
+        outerRadius={outerRadius}
+        padAngle={paddingAngle}
+      />
+    </div>
+  );
+};
 
 export default SummaryDonut;

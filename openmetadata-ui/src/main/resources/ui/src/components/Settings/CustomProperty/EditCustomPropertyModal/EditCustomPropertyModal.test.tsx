@@ -70,7 +70,10 @@ describe('EditCustomPropertyModal', () => {
     });
 
     expect(onSave).toHaveBeenCalledWith({
-      displayName: 'Large Enum',
+      // displayName is left unchanged, so getCustomPropertyChanges treats it
+      // as a no-op (undefined) — the patch omits it rather than re-writing the
+      // same value (which would otherwise re-add an empty displayName).
+      displayName: undefined,
       description: 'Large enum',
       customPropertyConfig: {
         config: { multiSelect: true, values: enumValues },

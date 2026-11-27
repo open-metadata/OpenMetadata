@@ -42,7 +42,7 @@ public class TestCasePipelineResolver implements RunnablePipelineResolver {
 
   @Override
   public List<IngestionPipeline> pipelinesOwning(
-      EntityInterface testCase, PipelineType pipelineType) {
+      EntityInterface<?> testCase, PipelineType pipelineType) {
     TestSuite testSuite =
         Entity.getEntity(((TestCase) testCase).getTestSuite(), "pipelines", Include.NON_DELETED);
     return RunnablePipelineResolver.pipelinesOfType(testSuite.getPipelines(), pipelineType);

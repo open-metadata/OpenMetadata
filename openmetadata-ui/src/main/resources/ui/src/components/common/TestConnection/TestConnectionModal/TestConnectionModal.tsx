@@ -12,25 +12,28 @@
  */
 import {
   Button,
+  ButtonUtility,
   Dialog,
   Divider,
   Modal,
   ModalOverlay,
   ProgressBarBase,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  RunProfiler,
+  TimeoutButton,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
-import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import {
   Status,
   TestConnectionStepResult,
 } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
-import { useClipboard } from '../../../../hooks/useClipBoard';
+import { formatDuration } from '../../../../utils/date-time/DateTimeUtils';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import {
   ConnectionCapabilitySection,
@@ -125,6 +128,52 @@ const resolveShowGateCard = (
   isFailed: boolean
 ): boolean => Boolean(gateStep) && !isFailed;
 
+// A test that times out or errors before any step runs has no step log, so the
+// failure action gets the text the dialog shows instead.
+const resolveFailureDetails = (
+  rawLog: string,
+  errorMessage: TestConnectionModalProps['errorMessage'],
+  timeoutMessage: string | undefined
+): string =>
+  rawLog ||
+  [errorMessage?.description, errorMessage?.subDescription, timeoutMessage]
+    .filter(Boolean)
+    .join('\n');
+
+// The action shows for any finished test that did not fully pass.
+const resolveFailureAction = ({
+  isTestingConnection,
+  isSuccessful,
+  isConnectionTimeout,
+  rawLog,
+  errorMessage,
+  timeoutMessage,
+  renderFailureAction,
+  onClose,
+}: {
+  isTestingConnection: boolean;
+  isSuccessful: boolean;
+  isConnectionTimeout: boolean;
+  rawLog: string;
+  errorMessage: TestConnectionModalProps['errorMessage'];
+  timeoutMessage: string;
+  renderFailureAction: TestConnectionModalProps['renderFailureAction'];
+  onClose: () => void;
+}): ReactNode => {
+  if (isTestingConnection || isSuccessful || !renderFailureAction) {
+    return undefined;
+  }
+
+  return renderFailureAction(
+    resolveFailureDetails(
+      rawLog,
+      errorMessage,
+      isConnectionTimeout ? timeoutMessage : undefined
+    ),
+    onClose
+  );
+};
+
 const resolveShowRemediationCard = (
   isComplete: boolean,
   isFailed: boolean
@@ -152,6 +201,7 @@ const TestConnectionModal = ({
   hostIp,
   connectionType,
   connectionDisplayName,
+  renderFailureAction,
 }: Readonly<TestConnectionModalProps>) => {
   const { t } = useTranslation();
 
@@ -240,7 +290,7 @@ const TestConnectionModal = ({
           const summary = result.resultSummary || result.message;
           if (summary) {
             const timing = result.durationMs
-              ? ` (${result.durationMs} ms)`
+              ? ` (${formatDuration(result.durationMs)})`
               : '';
             parts.push(`  ${summary}${timing}`);
           }
@@ -267,7 +317,6 @@ const TestConnectionModal = ({
     [testConnectionStepResult]
   );
 
-  const { onCopyToClipBoard } = useClipboard(rawLog);
   const rawLogLineCount = getRawLogLineCount(rawLog);
 
   const serviceLogo = useMemo(
@@ -287,6 +336,16 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
+  const failureAction = resolveFailureAction({
+    isTestingConnection,
+    isSuccessful,
+    isConnectionTimeout,
+    rawLog,
+    errorMessage,
+    timeoutMessage: message,
+    renderFailureAction,
+    onClose: onConfirm,
+  });
   const gateDescription = resolveGateDescription(t, gateStep, gateResult);
   const showGateCard = resolveShowGateCard(gateStep, isFailed);
   const showRemediationCard = resolveShowRemediationCard(isComplete, isFailed);
@@ -324,12 +383,11 @@ const TestConnectionModal = ({
                 {connectionDisplayName}
               </div>
             </div>
-            <Button
-              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-fg-quaternary"
-              color="tertiary"
+            <ButtonUtility
               data-testid="test-connection-close"
-              iconLeading={<XClose size={20} />}
-              size="xs"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.close')}
               onClick={handleModalClose}
             />
           </div>
@@ -349,27 +407,31 @@ const TestConnectionModal = ({
               <div
                 className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:bg-primary tw:p-5 tw:text-center"
                 data-testid="test-connection-timeout-widget">
-                <IconTimeOut height={100} width={100} />
+                <RunProfiler className="tw:text-utility-gray-500" size={100} />
                 <div className="tw:text-base tw:font-medium tw:leading-6 tw:text-primary">
                   {t('label.connection-timeout')}
                 </div>
                 <div className="tw:max-w-[520px] tw:text-sm tw:leading-5 tw:text-quaternary">
                   {message}
                 </div>
-                <Button
-                  className="tw:flex tw:items-center tw:gap-1.5"
-                  color="primary"
-                  data-testid="try-again-button"
-                  iconLeading={<IconTimeOutButton height={14} width={14} />}
-                  size="sm"
-                  onClick={onTestConnection}>
-                  {t('label.try-again')}
-                </Button>
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <Button
+                    className="tw:flex tw:items-center tw:gap-1.5"
+                    color="primary"
+                    data-testid="try-again-button"
+                    iconLeading={TimeoutButton}
+                    size="sm"
+                    onClick={onTestConnection}>
+                    {t('label.try-again')}
+                  </Button>
+                  {failureAction}
+                </div>
               </div>
             ) : (
               <>
                 <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
                   <ConnectionStatusBanner
+                    action={failureAction}
                     gateResult={gateResult}
                     isFailed={isFailed}
                     isSuccessful={isSuccessful}
@@ -445,7 +507,6 @@ const TestConnectionModal = ({
               t={t}
               onCancel={onCancel}
               onConfirm={onConfirm}
-              onCopyToClipBoard={() => onCopyToClipBoard()}
               onTestConnection={onTestConnection}
             />
           </div>

@@ -20,6 +20,8 @@ from datetime import datetime
 from functools import partial
 from itertools import product
 
+from metadata.domain.tags import TagDefinition
+from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -61,10 +63,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_table_fqn_from_query_name
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -72,13 +74,13 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauLineageDatabase,
     TableauLineageTable,
-    TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPipelineKind,
     TableauPublishedDatasource,
@@ -90,7 +92,6 @@ from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -130,6 +131,48 @@ TableNameParts = tuple[str | None, str | None, str]
 AssetResolver = Callable[[], list[EntityReference]]
 
 _NOT_FETCHED = object()
+
+# Tableau's connection types for files, cloud storage and SharePoint lists, which
+# are never database tables; a file in cloud storage can also be
+# `cloudfile:<service>-<type>`.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_connections.html
+FILE_CONNECTION_TYPES = frozenset(
+    {
+        "box",
+        "csv",
+        "dataengine",
+        "dropbox",
+        "excel",
+        "excel-direct",
+        "excel-reader",
+        "google-sheets",
+        "googledrive",
+        "hyper",
+        "ogr",
+        "ogrdirect",
+        "onedrive",
+        "pdf",
+        "pdf-reader",
+        "semistructpassivestore",
+        "semistructpassivestore-direct",
+        "sharepoint",
+        "stat",
+        "stat-direct",
+        "textclean",
+        "textscan",
+        "textscan-reader",
+    }
+)
+
+
+def _is_file(table: TableauLineageTable) -> bool:
+    """Tableau reports an uploaded file with its file as an excel-direct or
+    textscan database, or with no database and no schema at all; by name alone
+    it would resolve to a database table of the same name."""
+    if table.database is None:
+        return not table.schema_
+    connection_type = table.database.connection_type or ""
+    return connection_type in FILE_CONNECTION_TYPES or connection_type.startswith("cloudfile:")
 
 
 class TableaupipelineSource(PipelineServiceSource):
@@ -187,6 +230,9 @@ class TableaupipelineSource(PipelineServiceSource):
         return self._current_flow_lineage  # pyright: ignore[reportReturnType]
 
     def _log_metadata_api_failure(self, exc: Exception) -> None:
+        if isinstance(exc, TableauFlowRecordError):
+            logger.warning("%s", exc)
+            return
         if self._metadata_api_failed:
             logger.debug("%s", exc)
             return
@@ -197,6 +243,14 @@ class TableaupipelineSource(PipelineServiceSource):
             exc,
         )
         self._metadata_api_failed = True
+
+    def _iter(self) -> Iterable[Either]:
+        """Fail a run whose flow or extract refresh listing stopped part way,
+        whatever the success threshold. Raised once the topology is done because
+        the runner only records a producer's exception, then reconciles anyway."""
+        yield from super()._iter()
+        if not (self.connection.flow_listing_complete and self.connection.extract_refresh_listing_complete):
+            raise WorkflowFatalError("Some Tableau flows or extract refreshes could not be listed, so this run failed.")
 
     def get_pipeline_name(self, pipeline_details: TableauPipelineDetails) -> str:
         return pipeline_details.display_name or pipeline_details.name
@@ -245,8 +299,11 @@ class TableaupipelineSource(PipelineServiceSource):
             )
 
     def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """A partial extract refresh listing would make every pipeline it missed
-        look deleted in Tableau, so nothing is marked deleted that run."""
+        """A partial flow or extract refresh listing would make every pipeline it
+        missed look deleted in Tableau, so nothing is marked deleted that run."""
+        if not self.connection.flow_listing_complete:
+            logger.warning("Some Tableau flows could not be listed, so no pipeline is marked as deleted this run.")
+            return
         if self.service_connection.includeExtractRefreshes and not self.connection.extract_refresh_listing_complete:
             logger.warning(
                 "Some Tableau extract refreshes could not be listed, so no pipeline is marked as deleted this run."
@@ -259,13 +316,16 @@ class TableaupipelineSource(PipelineServiceSource):
         the `includeTags` source config."""
         if not self.source_config.includeTags or not pipeline_details.tags:
             return
-        yield from get_ometa_tag_and_classification(
-            tags=list(pipeline_details.tags),
-            classification_name=TABLEAU_TAG_CLASSIFICATION,
-            tag_description="Tableau Tag",
-            classification_description="Tags associated with Tableau Prep flows",
-            include_tags=True,
-        )
+        for tag_name in pipeline_details.tags:
+            yield from self.register_tag(
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                definition=TagDefinition(
+                    classification_name=TABLEAU_TAG_CLASSIFICATION,
+                    tag_name=tag_name,
+                    tag_description="Tableau Tag",
+                    classification_description="Tags associated with Tableau Prep flows",
+                ),
+            )
 
     def get_owners(self, pipeline_details: TableauPipelineDetails) -> EntityReferenceList | None:
         """Resolve the Tableau owner of the flow, data source or workbook to an
@@ -285,15 +345,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def _tag_labels_for_pipeline(self, pipeline_details: TableauPipelineDetails) -> list[TagLabel]:
         if not self.source_config.includeTags or not pipeline_details.tags:
             return []
-        return (
-            get_tag_labels(
-                metadata=self.metadata,
-                tags=list(pipeline_details.tags),
-                classification_name=TABLEAU_TAG_CLASSIFICATION,
-                include_tags=True,
-            )
-            or []
-        )
+        return self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)) or []
 
     def _get_tasks(self, pipeline_details: TableauPipelineDetails) -> list[Task]:
         """See _build_tasks — cached so yield_pipeline_status annotates the same
@@ -353,6 +405,11 @@ class TableaupipelineSource(PipelineServiceSource):
         for base, display_name, input_description in inputs:
             task_name = self._task_name(INPUT_TASK_PREFIX, base, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping input %s of flow %s: Tableau returned it with no id or name.",
+                    display_name,
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             input_tasks.append(
                 Task(
@@ -369,6 +426,10 @@ class TableaupipelineSource(PipelineServiceSource):
         for output in flow_lineage.output_steps:
             task_name = self._task_name(OUTPUT_TASK_PREFIX, output.id or output.name, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping an output step of flow %s that Tableau returned with no id or name.",
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             output_tasks.append(
                 Task(
@@ -460,9 +521,16 @@ class TableaupipelineSource(PipelineServiceSource):
 
         yield from self._flow_asset_edges(flow_lineage, pairs, pipeline_ref)
         for flow in flow_lineage.next_downstream_flows:
+            if not flow.luid:
+                logger.warning(
+                    "Skipping lineage from flow %s to downstream flow %s: Tableau returned it with no luid.",
+                    self.get_pipeline_name(pipeline_details),
+                    flow.name or "with no name",
+                )
+                continue
             yield from self._edges_or_error(
                 f"downstream flow {flow.name or flow.luid}",
-                partial(self._downstream_flow_edges, flow, pipeline_ref),
+                partial(self._downstream_flow_edges, flow.luid, pipeline_ref),
             )
 
     def _flow_asset_pairs(
@@ -475,6 +543,7 @@ class TableaupipelineSource(PipelineServiceSource):
         pairs come from the lineage of the fields its output steps write; when
         Tableau cannot say, no pair is drawn rather than every input being tied
         to every output."""
+        self._report_assets_without_id(pipeline_details, flow_lineage)
         inputs = self._asset_ids([*flow_lineage.upstream_tables, *flow_lineage.upstream_datasources])
         outputs = self._asset_ids([*flow_lineage.downstream_tables, *flow_lineage.downstream_datasources])
         if not inputs or not outputs:
@@ -492,6 +561,23 @@ class TableaupipelineSource(PipelineServiceSource):
                 self.get_pipeline_name(pipeline_details),
             )
         return pairs
+
+    def _report_assets_without_id(
+        self, pipeline_details: TableauPipelineDetails, flow_lineage: TableauFlowLineage
+    ) -> None:
+        """Lineage pairs are Metadata API ids, so an asset without one gets no edge."""
+        for direction, assets in (
+            ("input", [*flow_lineage.upstream_tables, *flow_lineage.upstream_datasources]),
+            ("output", [*flow_lineage.downstream_tables, *flow_lineage.downstream_datasources]),
+        ):
+            for asset in assets:
+                if not asset.id:
+                    logger.warning(
+                        "Skipping %s %s of flow %s in lineage: Tableau returned it with no id.",
+                        direction,
+                        asset.name or "with no name",
+                        self.get_pipeline_name(pipeline_details),
+                    )
 
     @staticmethod
     def _asset_ids(assets: Iterable[TableauLineageTable | TableauPublishedDatasource]) -> list[str]:
@@ -587,6 +673,8 @@ class TableaupipelineSource(PipelineServiceSource):
         ]
 
     def _downstream_table_refs(self, table: TableauLineageTable) -> list[EntityReference]:
+        if _is_file(table):
+            return []
         entity = self._resolve_table_entity(table)
         return [EntityReference(id=entity.id, type=ENTITY_TYPE_TABLE)] if entity is not None else []
 
@@ -644,14 +732,12 @@ class TableaupipelineSource(PipelineServiceSource):
             )
         )
 
-    def _downstream_flow_edges(self, flow: TableauLinkedFlow, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
+    def _downstream_flow_edges(self, flow_luid: str, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
         """Pipeline -> pipeline edge to a flow of the same service, deferred to
         the bulk lineage step when that flow has not been ingested yet."""
-        if not flow.luid:
-            return []
-        edges = self._resolved_flow_edges(pipeline_ref, flow.luid)
+        edges = self._resolved_flow_edges(pipeline_ref, flow_luid)
         if not edges:
-            self._pending_flow_edges.append((pipeline_ref, flow.luid))
+            self._pending_flow_edges.append((pipeline_ref, flow_luid))
         return edges
 
     def _resolved_flow_edges(self, pipeline_ref: EntityReference, flow_luid: str) -> list[AddLineageRequest]:
@@ -736,6 +822,8 @@ class TableaupipelineSource(PipelineServiceSource):
         connector.
         """
         if upstream.name:
+            if _is_file(upstream):
+                return []
             direct = self._resolve_table_entity(upstream)
             return [direct] if direct is not None else []
 
@@ -936,6 +1024,11 @@ class TableaupipelineSource(PipelineServiceSource):
                 # run twice, leaving its Pending row behind once it finishes.
                 run_key = start_time or end_time
                 if run_key is None:
+                    logger.warning(
+                        "Skipping run %s of %s: Tableau returned it with no start or end time.",
+                        run.id,
+                        self.get_pipeline_name(pipeline_details),
+                    )
                     continue
 
                 task_statuses = [

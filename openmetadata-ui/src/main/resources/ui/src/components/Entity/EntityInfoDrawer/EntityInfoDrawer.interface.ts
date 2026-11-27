@@ -28,6 +28,8 @@ export interface EdgeInfoDrawerInfo {
   hasEditAccess: boolean;
   onClose: () => void;
   onEdgeDetailsUpdate?: (updatedEdgeDetails: AddLineage) => Promise<void>;
+  onEditPipeline?: () => void;
+  onDelete?: () => void;
 }
 type InfoType = {
   key: string;

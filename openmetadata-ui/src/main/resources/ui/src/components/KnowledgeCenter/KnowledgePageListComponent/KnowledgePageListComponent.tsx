@@ -10,17 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
-  EmptyPlaceholder,
+  Box,
+  Button as CoreButton,
+  Dropdown,
+  Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
-  Lock01 as Lock,
+  File06,
+  Lock01,
+  NoSearch,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -37,7 +46,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -98,34 +106,52 @@ interface KnowledgePageListComponentProps {
 
 /** The listing's loading placeholder — four skeleton knowledge cards. */
 const KnowledgePageListSkeleton = () => (
-  <Row data-testid="knowledge-page-skeleton" gutter={[0, 56]}>
+  <Grid
+    className="layout-row layout-grid"
+    data-testid="knowledge-page-skeleton"
+    style={{ ...getLayoutGutter(0, 56) }}>
     {Array.from({ length: 4 }).map(() => (
-      <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space>
+      <Grid.Item
+        className="layout-column knowledge-card-col"
+        key={uniqueId()}
+        span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <div className="tw:flex tw:items-center tw:gap-4">
                 <Skeleton animation={false} variant="circular" width={40} />
                 <Skeleton animation={false} height={16} width={100} />
               </div>
               <Skeleton animation={false} height={16} width={150} />
-            </Space>
-          </Col>
-          <Col span={24}>
+            </Box>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <SkeletonParagraph className="m-b-sm" rows={1} title={false} />
             <SkeletonParagraph rows={2} title={false} />
-          </Col>
-          <Col span={24}>
-            <Space>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
     ))}
-  </Row>
+  </Grid>
 );
 
 const KnowledgePageAccessDenied = () => {
@@ -133,19 +159,13 @@ const KnowledgePageAccessDenied = () => {
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
-      <EmptyPlaceholder
-        description={
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<b />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.article-plural'),
-              }),
-            }}
-          />
-        }
-        icon={<Lock className="tw:text-secondary" />}
+      <PermissionPlaceholder
+        description={t('message.no-access-placeholder', {
+          entity: t('label.view-entity', {
+            entity: t('label.article-plural'),
+          }),
+        })}
+        icon={<Lock01 />}
         title={t('label.access-denied')}
       />
     </div>
@@ -157,20 +177,35 @@ const KnowledgePageNoSearchResults = () => {
 
   return (
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearch />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );
 };
 
+const KnowledgePageListErrorState = ({
+  onReload,
+}: {
+  onReload: () => void;
+}) => (
+  <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
+    <SomethingWentWrongPlaceholder onReload={onReload} />
+  </div>
+);
+
+interface KnowledgePageAddItem {
+  key: string;
+  label: string;
+  onClick: () => void;
+}
+
 interface KnowledgePageEmptyStateProps {
   addQuickLinkModalElement: ReactNode;
   hideAddButton: boolean;
-  items: MenuProps['items'];
+  items: KnowledgePageAddItem[];
   /** Derived Create flag rather than the raw OperationPermission object. */
   canCreate: boolean;
   theme: { primaryColor: string };
@@ -187,7 +222,7 @@ const KnowledgePageEmptyState = ({
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={
           <Transi18next
             i18nKey="message.refer-to-our-doc"
@@ -206,23 +241,37 @@ const KnowledgePageEmptyState = ({
         footer={
           <>
             {canCreate && !hideAddButton && (
-              <LimitWrapper resource="knowledgeCenter">
-                <Dropdown menu={{ items }} trigger={['click']}>
-                  <Button
-                    ghost
-                    className="p-x-lg"
+              <Dropdown.Root>
+                <LimitWrapper resource="knowledgeCenter">
+                  <CoreButton
+                    className="tw:text-brand-secondary tw:after:outline-brand"
+                    color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    type="primary">
-                    <PlusOutlined />
+                    iconLeading={Plus}
+                    size="sm">
                     {t('label.add')}
-                  </Button>
-                </Dropdown>
-              </LimitWrapper>
+                  </CoreButton>
+                </LimitWrapper>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.add')}
+                    selectionMode="none">
+                    {items.map((item) => (
+                      <Dropdown.Item
+                        id={item.key}
+                        key={item.key}
+                        onAction={item.onClick}>
+                        {item.label}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )}
             {addQuickLinkModalElement}
           </>
         }
-        icon={<Articles className="tw:text-secondary" />}
+        icon={<File06 />}
         title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.article'),
         })}
@@ -235,13 +284,17 @@ const KnowledgePageEmptyState = ({
 type KnowledgePageListViewState =
   | 'loading'
   | 'noAccess'
+  | 'error'
   | 'noSearchResults'
   | 'empty'
   | 'list';
 
 /**
  * The listing's early-return states are mutually exclusive and checked in
- * priority order: a load in flight always wins, then access, then the two
+ * priority order: a load in flight always wins, then access, then a
+ * load-failure (distinct from a genuine empty list — a failed fetch must
+ * not be reported as empty to the parent, since the parent would then hide
+ * the sidebar/toolbar behind the onboarding placeholder), then the two
  * empty variants — search-empty first, since an unfiltered empty list is a
  * different state (offering to create the first page).
  */
@@ -251,13 +304,17 @@ const resolveKnowledgePageListViewState = (
   isPermissionsLoading: boolean,
   hasViewPermission: boolean,
   knowledgePages: KnowledgePage[],
-  isFiltered: boolean
+  isFiltered: boolean,
+  hasFetchFailed: boolean
 ): KnowledgePageListViewState => {
   if (isLoading || isCreatingNewPage || isPermissionsLoading) {
     return 'loading';
   }
   if (!hasViewPermission) {
     return 'noAccess';
+  }
+  if (hasFetchFailed) {
+    return 'error';
   }
   if (isEmpty(knowledgePages) && isFiltered) {
     return 'noSearchResults';
@@ -296,6 +353,13 @@ const KnowledgePageListComponent = forwardRef<
     const [elementRef, isInView] = useElementInView({});
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+    // Mirrors the parent's `permissionFetchFailed` contract: a failed list GET
+    // is a distinct state from a fetch that legitimately returned zero pages,
+    // so the parent must not be told the list is "empty" (it would then hide
+    // the sidebar/toolbar behind the onboarding placeholder). Reset to `false`
+    // at the start of every fetch; only the latest in-flight request may set
+    // it back to `true` from the catch block.
+    const [hasFetchFailed, setHasFetchFailed] = useState<boolean>(false);
     const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
     const [paging, setPaging] = useState<Paging>({ total: 0 });
     const [pageOffset, setPageOffset] = useState<number>(0);
@@ -378,6 +442,11 @@ const KnowledgePageListComponent = forwardRef<
       } else {
         setIsLoading(true);
       }
+      // Clear any prior failure when a fetch starts: a retry, a
+      // search/sort/filter change, or a permission re-load all begin a fresh
+      // attempt, so a stale failure flag must not poison the new attempt's
+      // empty-state reporting.
+      setHasFetchFailed(false);
       try {
         if (useSearchPath) {
           await fetchFilteredKnowledgePages(offset, requestId);
@@ -386,6 +455,12 @@ const KnowledgePageListComponent = forwardRef<
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+        // Only the latest request may commit failure state, mirroring the
+        // `finally` guard — a slow stale failure must not flip the latest
+        // (possibly already-successful) view back to the error placeholder.
+        if (requestId === latestRequestId.current) {
+          setHasFetchFailed(true);
+        }
       } finally {
         if (requestId === latestRequestId.current) {
           setIsLoading(false);
@@ -586,17 +661,29 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       if (!isLoading && !isPermissionsLoading && !isFiltered) {
-        onEmptyStateChange?.(isEmpty(knowledgePages));
+        // A failed fetch is indistinguishable from "fetched zero" by
+        // `knowledgePages` alone (the setter never runs on rejection, so it
+        // stays `[]`). Suppress the empty report in that case so the parent
+        // keeps the layout (sidebar/toolbar) visible and the in-place error
+        // placeholder can offer a retry — mirroring how the parent already
+        // excludes `permissionFetchFailed` from this decision.
+        onEmptyStateChange?.(!hasFetchFailed && isEmpty(knowledgePages));
       }
     }, [
       isLoading,
       isPermissionsLoading,
       isFiltered,
       knowledgePages,
+      hasFetchFailed,
       onEmptyStateChange,
     ]);
 
     useEffect(() => {
+      // A failed page leaves the error view up; don't auto-retry it on every
+      // isLoadingMore flip — Reload restarts from offset 0 instead.
+      if (hasFetchFailed) {
+        return;
+      }
       const hasMore = knowledgePages.length < paging.total;
       const canLoadMore = isInView && hasMore && !isLoadingMore && !isLoading;
       if (canLoadMore && hasViewPermission) {
@@ -610,10 +697,11 @@ const KnowledgePageListComponent = forwardRef<
       knowledgePages.length,
       isLoadingMore,
       isLoading,
+      hasFetchFailed,
       hasViewPermission,
     ]);
 
-    const items: MenuProps['items'] = [
+    const items: KnowledgePageAddItem[] = [
       {
         label: t('label.article'),
         key: PageType.ARTICLE,
@@ -687,7 +775,8 @@ const KnowledgePageListComponent = forwardRef<
       isPermissionsLoading,
       hasViewPermission,
       knowledgePages,
-      isFiltered
+      isFiltered,
+      hasFetchFailed
     );
 
     if (viewState === 'loading') {
@@ -696,6 +785,17 @@ const KnowledgePageListComponent = forwardRef<
 
     if (viewState === 'noAccess') {
       return <KnowledgePageAccessDenied />;
+    }
+
+    if (viewState === 'error') {
+      return (
+        <KnowledgePageListErrorState
+          onReload={() => {
+            setPageOffset(0);
+            fetchKnowledgePages(0);
+          }}
+        />
+      );
     }
 
     if (viewState === 'noSearchResults') {
@@ -716,10 +816,13 @@ const KnowledgePageListComponent = forwardRef<
 
     return (
       <>
-        <Row data-testid="knowledge-page-listing" gutter={[0, 16]}>
+        <Grid
+          className="layout-row layout-grid"
+          data-testid="knowledge-page-listing"
+          style={{ ...getLayoutGutter(0, 16) }}>
           {map(knowledgePages, (knowledgePage) => (
-            <Col
-              className="knowledge-card-col"
+            <Grid.Item
+              className="layout-column knowledge-card-col"
               key={knowledgePage.id}
               span={24}>
               <KnowledgeCard
@@ -730,10 +833,12 @@ const KnowledgePageListComponent = forwardRef<
                 onUnFollow={unFollowKnowledgePageHandler}
                 onUpdateVote={updateVoteHandler}
               />
-            </Col>
+            </Grid.Item>
           ))}
-        </Row>
-        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
+        </Grid>
+        {isLoadingMore ? (
+          <Loader className="tw:shrink-0" dataTestId="knowledge-page-loader" />
+        ) : null}
         <div
           className="w-full"
           data-testid="observer-element"

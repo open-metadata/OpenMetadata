@@ -16,14 +16,14 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
+        "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets', 'entityStatus'})",
         "prefixCondition": "OR"
       },
       {
         "name": "matchAnySource",
         "effect": "include",
         "prefixCondition": "AND",
-        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric', 'dataContract'})"
       },
       {
         "name": "noBotAllowed",
@@ -71,7 +71,8 @@
               "tags",
               "followers",
               "parameterValues",
-              "pipelineStatus"
+              "pipelineStatus",
+              "entityStatus"
             ]
           }
         ]
@@ -101,7 +102,8 @@
               "table",
               "topic",
               "domain",
-              "dataProduct"
+              "dataProduct",
+              "dataContract"
             ]
           }
         ]

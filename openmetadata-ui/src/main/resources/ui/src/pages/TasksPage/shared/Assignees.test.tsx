@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Assignees from './Assignees';
 
 const mockOptions = [
@@ -50,11 +50,39 @@ const mockProps = {
   onChange: jest.fn(),
 };
 
-jest.mock('../../../components/common/UserTag/UserTag.component', () => ({
-  UserTag: jest.fn().mockReturnValue(<div>UserTag</div>),
-}));
-
 describe('Test assignees component', () => {
+  it('allows a required assignee selection with an empty search query to submit', () => {
+    const { container } = render(
+      <form>
+        <Assignees
+          {...mockProps}
+          isRequired
+          label="Assignees"
+          value={[mockOptions[0]]}
+        />
+      </form>
+    );
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(container.querySelector('form')?.checkValidity()).toBe(true);
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'aria-required',
+      'true'
+    );
+  });
+
+  it('preserves the selected assignee label and identity', async () => {
+    const onChange = jest.fn();
+    render(<Assignees {...mockProps} value={[]} onChange={onChange} />);
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.click(await screen.findByText('adam_matthews2'));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith([mockOptions[0]])
+    );
+  });
+
   it('Should render the component', async () => {
     render(<Assignees {...mockProps} />);
 
@@ -62,7 +90,7 @@ describe('Test assignees component', () => {
 
     fireEvent.change(container, { target: { value: 'adam_matthews2' } });
 
-    const options = await screen.findByTestId(`adam_matthews2`);
+    const options = await screen.findByText('adam_matthews2');
 
     expect(container).toBeInTheDocument();
 

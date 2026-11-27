@@ -24,9 +24,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Header fixtures are the OPTIONS {@code /<dataset>/data} responses captured from real servers:
- * the shipped {@code docker/rdf-store} image, a dataset created through {@code POST /$/datasets} on
- * that image, Apache Jena Fuseki 6.2.0 without the extension, a dataset served with
- * {@code fuseki:serviceReadGraphStore}, and a path with no dataset behind it.
+ * a dataset provisioned by the OpenMetadata Fuseki image, a dataset created through {@code POST
+ * /$/datasets} on a server whose union default graph and deadlines are set per assembler rather
+ * than server-wide, Apache Jena Fuseki 6.2.0 without the extension, a dataset served with {@code
+ * fuseki:serviceReadGraphStore}, and a path with no dataset behind it.
  */
 class FusekiWriteCapabilitiesTest {
   private static final String SERVER = "http://fuseki:3030";

@@ -40,7 +40,6 @@ Parts: **prev/next button**, **page item**, **active item**, **ellipsis**,
 | Active item fill | LESS `@primary-button-background` (brand solid) |
 | Button / indicator size | `--om-font-size-sm` |
 | Button / select weight | `--om-font-weight-semibold` |
-| Disabled prev/next ink | `--om-legacy-color-0-0-0-0-25` (transparent bg; migration debt) |
 | Indicator / label ink | LESS `@grey-700` / `@grey-500` |
 
 ## Props / API (core-components `PaginationPageDefault`)
@@ -61,7 +60,6 @@ Parts: **prev/next button**, **page item**, **active item**, **ellipsis**,
 | Default page | borderless item, `--om-radius-lg` corners |
 | Hover | interactive surface highlight (borderless) |
 | Current page | `@primary-button-background` fill, no border |
-| Disabled prev/next | `--om-legacy-color-0-0-0-0-25` ink, transparent bg, no border |
 | Ellipsis | non-interactive gap marker between page ranges |
 | Focus | outline focus ring — never a `ring-*` (see [`docs/colors.md` §2.3.1](../../docs/colors.md)) |
 
@@ -70,19 +68,9 @@ Parts: **prev/next button**, **page item**, **active item**, **ellipsis**,
 ```less
 /* Layer 3 — reference Layer 2 tokens only */
 .pagination-container {
-  .ant-pagination-item {
-    padding: var(--om-space-4);
-    margin-right: var(--om-space-4);
-    border: none;
-    border-radius: var(--om-radius-lg);
-  }
   .pagination-button {
     font-size: var(--om-font-size-sm);
     font-weight: var(--om-font-weight-semibold);
-  }
-  .ant-pagination-disabled .ant-btn-text[disabled] {
-    background-color: transparent;
-    color: var(--om-legacy-color-0-0-0-0-25);
   }
 }
 ```

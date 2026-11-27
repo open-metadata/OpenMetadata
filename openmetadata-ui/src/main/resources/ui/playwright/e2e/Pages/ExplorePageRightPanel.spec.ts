@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -140,7 +141,7 @@ test.describe('Right Panel Test Suite', () => {
     // beforeEach slow, stacked tripled budgets let a single failing attempt
     // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
     // 3m — run 32500973433) instead of failing fast.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -198,7 +199,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -211,7 +212,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -442,7 +443,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -455,7 +456,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1117,7 +1118,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1335,7 +1336,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1517,7 +1518,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDS.shouldBeVisible();
             }
 
-            if (rightPanelDS.isTabAvailable('custom property')) {
+            if (
+              rightPanelDS.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDS = new CustomPropertiesPageObject(
                 rightPanelDS
               );
@@ -1574,7 +1577,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1589,7 +1592,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1744,7 +1747,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDC.shouldBeVisible();
             }
 
-            if (rightPanelDC.isTabAvailable('custom property')) {
+            if (
+              rightPanelDC.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDC = new CustomPropertiesPageObject(
                 rightPanelDC
               );
@@ -1934,13 +1939,6 @@ test.describe('Right Panel Test Suite', () => {
           await overview.navigateToOverviewTab();
           const tierSection = adminPage.locator('.tier-section');
           await expect(tierSection).toBeVisible();
-          // The tier chip only renders when a tier is assigned — verify it is absent
-          await expect(
-            adminPage
-              .locator('[data-testid="entity-summary-panel-container"]')
-              .getByTestId('Tier')
-              .locator('.ant-tag')
-          ).not.toBeVisible();
         } finally {
           await testEntity.delete(apiContext);
           await afterAction();
@@ -2013,7 +2011,7 @@ test.describe('Right Panel Test Suite', () => {
           await expect(
             adminPage
               .getByTestId('glossary-container')
-              .locator('.no-data-placeholder')
+              .getByText('No Glossary Terms assigned')
           ).toBeVisible();
         } finally {
           await testEntity.delete(apiContext);
@@ -2118,7 +2116,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(

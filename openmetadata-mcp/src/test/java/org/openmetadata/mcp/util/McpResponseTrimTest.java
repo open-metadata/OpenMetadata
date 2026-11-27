@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Pins the shared trimming primitives the MCP tools delegate to. The two truncate conventions are
@@ -29,6 +31,21 @@ import org.junit.jupiter.api.Test;
  * being accidentally unified, which would silently change tool output.
  */
 class McpResponseTrimTest {
+
+  @Test
+  void maxResponseCharsFollowsTheMcpSettingAndFallsBackToTheDefault() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    try {
+      manager.setCurrentMcpConfig(null);
+      assertEquals(McpResponseTrim.MAX_RESPONSE_CHARS, McpResponseTrim.maxResponseChars());
+
+      manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(50_000));
+      assertEquals(50_000, McpResponseTrim.maxResponseChars());
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
+  }
 
   @Test
   void truncateCutsAtMaxAndAppendsEllipsis() {
@@ -94,6 +111,20 @@ class McpResponseTrimTest {
     assertThat(McpResponseTrim.safeMessage(new RuntimeException("boom"))).isEqualTo("boom");
     assertThat(McpResponseTrim.safeMessage(new RuntimeException())).isEqualTo("<no message>");
     assertThat(McpResponseTrim.safeMessage(null)).isEqualTo("<no message>");
+  }
+
+  @Test
+  void searchFailureDoesNotNameTheSearchHost() {
+    RuntimeException failure =
+        new RuntimeException(
+            "method [POST], host [http://search.internal:9200], URI"
+                + " [/dataAsset/_search?typed_keys=true&preference=admin], status line [HTTP/1.1"
+                + " 500 Internal Server Error]\n"
+                + "{\"error\":{\"root_cause\":[{\"type\":\"null_pointer_exception\"}]}}");
+
+    assertThat(McpResponseTrim.summarizeFailure(failure, true))
+        .doesNotContain("search.internal", "preference=admin")
+        .startsWith("search request failed, status line [HTTP/1.1 500 Internal Server Error]");
   }
 
   @Test

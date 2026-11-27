@@ -13,7 +13,7 @@
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Check,
   Plus,
   UserPlus01,
@@ -28,6 +28,7 @@ import { Task } from '../../../../../generated/entity/tasks/task';
 import { TestCaseResolutionStatus } from '../../../../../generated/tests/testCaseResolutionStatus';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatInboxDateTime } from '../inbox.utils';
+import { getProposingAgent } from '../taskDetail.utils';
 import {
   buildTaskTimeline,
   TaskCreatedEventText,
@@ -53,7 +54,7 @@ const EVENT_ICON: Record<TaskTimelineIcon, typeof Check> = {
   approved: Check,
   assigned: UserPlus01,
   created: Plus,
-  incident: AlertTriangle,
+  incident: Alert,
   rejected: XClose,
   resolved: Check,
 };
@@ -67,7 +68,7 @@ const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
 // Each event sits in a ringed circle; an alert's circle is tinted so it reads
 // at a glance.
 const TONE_ICON_CLASS: Record<TaskTimelineTone, string> = {
-  default: 'tw:border-secondary tw:bg-primary tw:text-fg-quaternary',
+  default: 'tw:border-secondary tw:bg-primary tw:text-quaternary',
   error:
     'tw:border-utility-error-200 tw:bg-utility-error-50 tw:text-utility-error-600',
   success:
@@ -89,7 +90,7 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
             'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border',
             TONE_ICON_CLASS[event.tone]
           )}>
-          <Icon height={14} width={14} />
+          <Icon size={14} />
         </span>
         <Typography
           className={classNames('tw:pt-0.5', TONE_TEXT_CLASS[event.tone])}
@@ -97,6 +98,7 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
           size="text-xs">
           {t(event.textKey, {
             user: event.actor ? getEntityName(event.actor) : '',
+            count: event.count,
             ...mapValues(event.textParams, (value) =>
               typeof value === 'string' ? value : getEntityName(value)
             ),
@@ -128,8 +130,13 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
 }) => {
   const { t } = useTranslation();
   const entries = useMemo(
-    () => buildTaskTimeline(task, { incidentStatuses, createdEvent }),
-    [task, incidentStatuses, createdEvent]
+    () =>
+      buildTaskTimeline(task, {
+        incidentStatuses,
+        createdEvent,
+        proposingAgent: getProposingAgent(task, t),
+      }),
+    [task, incidentStatuses, createdEvent, t]
   );
 
   const renderEntry = (entry: TaskTimelineEntry) => {
@@ -158,22 +165,13 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
 
   return (
     <Box data-testid="task-activity-timeline" direction="col" gap={5}>
-      <Box align="center" className="tw:justify-between" gap={3}>
-        <Box align="center" gap={2}>
-          <Typography size="text-md" weight="semibold">
-            {t('label.activity')}
-          </Typography>
-          <Badge color="gray" size="sm" type="pill-color">
-            {entries.length}
-          </Badge>
-        </Box>
-        <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
-        <Typography
-          className="tw:shrink-0 tw:text-tertiary"
-          size="text-xs"
-          weight="medium">
-          {t('label.comments-and-events')}
+      <Box align="center" gap={2}>
+        <Typography size="text-sm" weight="medium">
+          {t('label.activity')}
         </Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {entries.length}
+        </Badge>
       </Box>
 
       <Box direction="col" gap={4}>

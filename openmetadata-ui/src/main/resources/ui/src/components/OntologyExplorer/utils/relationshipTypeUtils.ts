@@ -38,16 +38,16 @@ const HIERARCHICAL_PREDICATES = new Set([
 ]);
 
 const PALETTE_COLOR_TOKENS: Record<PaletteKey, string> = {
-  [PaletteKey.Amber]: 'var(--color-utility-warning-500)',
-  [PaletteKey.Blue]: 'var(--color-utility-blue-500)',
-  [PaletteKey.Gray]: 'var(--color-utility-gray-500)',
-  [PaletteKey.Green]: 'var(--color-utility-success-500)',
-  [PaletteKey.Indigo]: 'var(--color-utility-indigo-500)',
-  [PaletteKey.Pink]: 'var(--color-utility-pink-500)',
-  [PaletteKey.Purple]: 'var(--color-utility-purple-500)',
-  [PaletteKey.Rose]: 'var(--color-fg-error-primary)',
-  [PaletteKey.Teal]: 'var(--color-utility-success-600)',
-  [PaletteKey.Violet]: 'var(--color-utility-purple-600)',
+  [PaletteKey.Amber]: 'var(--tw-color-utility-warning-500)',
+  [PaletteKey.Blue]: 'var(--tw-color-utility-blue-500)',
+  [PaletteKey.Gray]: 'var(--tw-color-utility-gray-500)',
+  [PaletteKey.Green]: 'var(--tw-color-utility-success-500)',
+  [PaletteKey.Indigo]: 'var(--tw-color-utility-indigo-500)',
+  [PaletteKey.Pink]: 'var(--tw-color-utility-pink-500)',
+  [PaletteKey.Purple]: 'var(--tw-color-utility-purple-500)',
+  [PaletteKey.Rose]: 'var(--tw-color-fg-error-primary)',
+  [PaletteKey.Teal]: 'var(--tw-color-utility-success-600)',
+  [PaletteKey.Violet]: 'var(--tw-color-utility-purple-600)',
 };
 
 const PALETTE_HEX_COLORS: Record<PaletteKey, string> = {

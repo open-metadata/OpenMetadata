@@ -88,102 +88,97 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, P
         """
         dimension_results = []
 
-        try:
-            dfs = self.runner
+        dfs = self.runner
 
-            metric_expressions = {
-                Metrics.nullMissingCount.name: Metrics.nullMissingCount(column).get_pandas_computation(),
-                Metrics.rowCount.name: Metrics.rowCount().get_pandas_computation(),
-            }
+        metric_expressions = {
+            Metrics.nullMissingCount.name: Metrics.nullMissingCount(column).get_pandas_computation(),
+            Metrics.rowCount.name: Metrics.rowCount().get_pandas_computation(),
+        }
 
-            missing_values = test_params.get(self.MISSING_VALUE_MATCH)
-            missing_values_expected_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
+        missing_values = test_params.get(self.MISSING_VALUE_MATCH)
+        missing_values_expected_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
-            if missing_values:
-                metric_expressions[Metrics.countInSet.name] = add_props(values=missing_values)(
-                    Metrics.countInSet.value
-                )(column).get_pandas_computation()
+        if missing_values:
+            metric_expressions[Metrics.countInSet.name] = add_props(values=missing_values)(Metrics.countInSet.value)(
+                column
+            ).get_pandas_computation()
 
-            dimension_aggregates = defaultdict(
-                lambda: {metric_name: metric.create_accumulator() for metric_name, metric in metric_expressions.items()}
+        dimension_aggregates = defaultdict(
+            lambda: {metric_name: metric.create_accumulator() for metric_name, metric in metric_expressions.items()}
+        )
+
+        for df in dfs:
+            df_typed = cast(pd.DataFrame, df)  # noqa: TC006
+            grouped = df_typed.groupby(dimension_col.name, dropna=False)
+
+            for dimension_value, group_df in grouped:
+                dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+                for metric_name, metric in metric_expressions.items():
+                    dimension_aggregates[dimension_value][metric_name] = metric.update_accumulator(
+                        dimension_aggregates[dimension_value][metric_name], group_df
+                    )
+
+        results_data = []
+
+        for dimension_value, agg in dimension_aggregates.items():
+            total_missing_count = sum(
+                metric.aggregate_accumulator(agg[metric_name])
+                for metric_name, metric in metric_expressions.items()
+                if metric_name != Metrics.rowCount.name
+            )
+            total_rows = metric_expressions[Metrics.rowCount.name].aggregate_accumulator(agg[Metrics.rowCount.name])
+
+            # Calculate initial deviation (will be recalculated for "Others")
+            deviation = abs(total_missing_count - missing_values_expected_count)
+
+            results_data.append(
+                {
+                    DIMENSION_VALUE_KEY: dimension_value,
+                    self.TOTAL_MISSING_COUNT: total_missing_count,
+                    DIMENSION_TOTAL_COUNT_KEY: total_rows,
+                    DIMENSION_FAILED_COUNT_KEY: deviation,
+                }
             )
 
-            for df in dfs:
-                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
-                grouped = df_typed.groupby(dimension_col.name, dropna=False)
+        results_df = pd.DataFrame(results_data)
 
-                for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
-                    for metric_name, metric in metric_expressions.items():
-                        dimension_aggregates[dimension_value][metric_name] = metric.update_accumulator(
-                            dimension_aggregates[dimension_value][metric_name], group_df
-                        )
+        if not results_df.empty:
+            # Define recalculation function for deviation after aggregation
+            def recalculate_failed_count(df_aggregated, others_mask, metric_column):
+                """Recalculate failed_count (deviation) for 'Others' from aggregated total_missing_count"""
+                result = df_aggregated[metric_column].copy()
+                if others_mask.any():
+                    others_total = df_aggregated.loc[others_mask, self.TOTAL_MISSING_COUNT].iloc[0]
+                    # Deviation is the failed_count
+                    result.loc[others_mask] = abs(others_total - missing_values_expected_count)
+                return result
 
-            results_data = []
+            results_df = calculate_impact_score_pandas(
+                results_df,
+                failed_column=DIMENSION_FAILED_COUNT_KEY,
+                total_column=DIMENSION_TOTAL_COUNT_KEY,
+            )
 
-            for dimension_value, agg in dimension_aggregates.items():
-                total_missing_count = sum(
-                    metric.aggregate_accumulator(agg[metric_name])
-                    for metric_name, metric in metric_expressions.items()
-                    if metric_name != Metrics.rowCount.name
-                )
-                total_rows = metric_expressions[Metrics.rowCount.name].aggregate_accumulator(agg[Metrics.rowCount.name])
+            results_df = aggregate_others_statistical_pandas(
+                results_df,
+                dimension_column=DIMENSION_VALUE_KEY,
+                top_n=top_n,
+                agg_functions={
+                    self.TOTAL_MISSING_COUNT: "sum",  # Sum actual missing counts
+                    DIMENSION_TOTAL_COUNT_KEY: "sum",
+                    DIMENSION_FAILED_COUNT_KEY: "sum",  # This will be recalculated for Others
+                },
+                final_metric_calculators={
+                    DIMENSION_FAILED_COUNT_KEY: recalculate_failed_count,  # Recalculate deviation for Others
+                },
+                # No violation_predicate needed - deviation IS the failed_count
+            )
 
-                # Calculate initial deviation (will be recalculated for "Others")
-                deviation = abs(total_missing_count - missing_values_expected_count)
-
-                results_data.append(
-                    {
-                        DIMENSION_VALUE_KEY: dimension_value,
-                        self.TOTAL_MISSING_COUNT: total_missing_count,
-                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: deviation,
-                    }
-                )
-
-            results_df = pd.DataFrame(results_data)
-
-            if not results_df.empty:
-                # Define recalculation function for deviation after aggregation
-                def recalculate_failed_count(df_aggregated, others_mask, metric_column):
-                    """Recalculate failed_count (deviation) for 'Others' from aggregated total_missing_count"""
-                    result = df_aggregated[metric_column].copy()
-                    if others_mask.any():
-                        others_total = df_aggregated.loc[others_mask, self.TOTAL_MISSING_COUNT].iloc[0]
-                        # Deviation is the failed_count
-                        result.loc[others_mask] = abs(others_total - missing_values_expected_count)
-                    return result
-
-                results_df = calculate_impact_score_pandas(
-                    results_df,
-                    failed_column=DIMENSION_FAILED_COUNT_KEY,
-                    total_column=DIMENSION_TOTAL_COUNT_KEY,
-                )
-
-                results_df = aggregate_others_statistical_pandas(
-                    results_df,
-                    dimension_column=DIMENSION_VALUE_KEY,
-                    top_n=top_n,
-                    agg_functions={
-                        self.TOTAL_MISSING_COUNT: "sum",  # Sum actual missing counts
-                        DIMENSION_TOTAL_COUNT_KEY: "sum",
-                        DIMENSION_FAILED_COUNT_KEY: "sum",  # This will be recalculated for Others
-                    },
-                    final_metric_calculators={
-                        DIMENSION_FAILED_COUNT_KEY: recalculate_failed_count,  # Recalculate deviation for Others
-                    },
-                    # No violation_predicate needed - deviation IS the failed_count
-                )
-
-                dimension_results = self._process_dimension_rows(
-                    results_df.to_dict("records"),
-                    dimension_col.name,
-                    metrics_to_compute,
-                    test_params,
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+            dimension_results = self._process_dimension_rows(
+                results_df.to_dict("records"),
+                dimension_col.name,
+                metrics_to_compute,
+                test_params,
+            )
 
         return dimension_results

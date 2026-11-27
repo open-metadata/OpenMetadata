@@ -204,13 +204,7 @@ class Db2UnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.common_db_source.create_connection")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-        get_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection, get_connection) -> None:
         test_connection.return_value = False
         get_connection.return_value = MagicMock()
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_db2_config)
@@ -234,13 +228,12 @@ class Db2UnitTest(TestCase):
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
-        self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
+        self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.db2.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
-        self.db2.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
 
 class Db2ColumnTypeParserTest(TestCase):

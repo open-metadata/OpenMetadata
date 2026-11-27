@@ -18,6 +18,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
 
+import pendulum
 from airflow import DAG
 from airflow.utils import timezone
 from pydantic import ValidationError
@@ -80,6 +81,9 @@ logger = workflow_logger()
 
 PIPELINE_RUN_ID_PARAM = "pipelineRunId"
 SOURCE_CONFIG_OVERRIDE_PARAM = "sourceConfigOverride"
+
+# Run states that mean the workflow already reported its outcome
+RUN_FINISHED_STATES = (PipelineState.success, PipelineState.partialSuccess)
 
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
@@ -202,8 +206,10 @@ def execute_workflow(workflow: BaseWorkflow, workflow_config: OpenMetadataWorkfl
     """
     Execute the workflow and handle the status
     """
-    workflow.execute()
-    workflow.stop()
+    try:
+        workflow.execute()
+    finally:
+        workflow.stop()
     if workflow_config.workflowConfig.raiseOnError:
         workflow.raise_from_status()
 
@@ -263,6 +269,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
+    # Airflow evaluates a cron schedule in the zone of a zone-aware start_date; this is the only
+    # way the pipeline's timezone reaches the scheduler.
+    schedule_tz = pendulum.timezone(ingestion_pipeline.airflowConfig.pipelineTimezone or "UTC")
     if is_airflow_3_or_higher():
         # We want start_date to be close to "now" (not in the past) so Airflow 3
         # doesn't immediately fire a catch-up run on creation even with catchup
@@ -276,12 +285,12 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         # still resetting close to "now" whenever the schedule is genuinely
         # edited — preserving the original intent without the instability.
         start_date = (
-            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000, tz=schedule_tz)
             if ingestion_pipeline.updatedAt
-            else timezone.utcnow()
+            else timezone.utcnow().astimezone(schedule_tz)
         )
     else:
-        now = datetime.now()
+        now = datetime.now(schedule_tz)
 
         if schedule_interval is None:
             # On-demand DAG, set start_date to now
@@ -299,7 +308,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "start_date": start_date,
         "end_date": ingestion_pipeline.airflowConfig.endDate.root if ingestion_pipeline.airflowConfig.endDate else None,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
-        "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
+        "dagrun_timeout": timedelta(seconds=ingestion_pipeline.airflowConfig.workflowTimeout)
         if ingestion_pipeline.airflowConfig.workflowTimeout
         else None,
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline or False,
@@ -405,6 +414,19 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *ar
                 workflow_config.ingestionPipelineFQN,
                 str(run_id),
             )
+
+            # The workflow already reported its outcome. A late kill or failure signal
+            # (for example Airflow killing the task after the callable returned) must not
+            # overwrite it.
+            if pipeline_status is not None and pipeline_status.pipelineState in RUN_FINISHED_STATES:
+                logger.info(
+                    "Run [%s] of %s already finished as [%s]. Skipping the failed-status callback.",
+                    run_id,
+                    workflow_config.ingestionPipelineFQN,
+                    pipeline_status.pipelineState.value,
+                )
+                return
+
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
 

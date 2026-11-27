@@ -7,8 +7,9 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
-    "org.openmetadata.schema.ColumnsEntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.ColumnsEntityInterface",
+    "org.openmetadata.schema.CreationAudited"
   ],
   "definitions": {
     "profileSampleType": {
@@ -32,13 +33,15 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
+        "DeltaLake",
         "Local",
         "Partitioned",
         "Foreign",
         "Transient",
         "Stream",
         "Stage",
-        "SemanticView"
+        "SemanticView",
+        "Sharded"
       ],
       "javaEnums": [
         {
@@ -63,6 +66,9 @@
           "name": "Iceberg"
         },
         {
+          "name": "DeltaLake"
+        },
+        {
           "name": "Local"
         },
         {
@@ -82,6 +88,9 @@
         },
         {
           "name": "SemanticView"
+        },
+        {
+          "name": "Sharded"
         }
       ]
     },
@@ -469,6 +478,9 @@
             "description": "Data for a single row of the table within the same order as columns fields.",
             "type": "array"
           }
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "additionalProperties": false
@@ -664,6 +676,9 @@
         },
         "cardinalityDistribution": {
           "$ref": "#/definitions/cardinalityDistribution"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -938,6 +953,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -1084,6 +1102,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {
@@ -1344,6 +1370,9 @@
     "entityStatus": {
       "description": "Status of the Table.",
       "$ref": "../../type/status.json"
+    },
+    "tableSharding": {
+      "$ref": "../../type/tableSharding.json"
     }
   },
   "required": [

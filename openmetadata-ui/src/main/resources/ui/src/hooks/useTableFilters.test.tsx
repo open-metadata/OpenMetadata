@@ -58,7 +58,10 @@ describe('useTableFilters', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      { search: expect.stringContaining('search=sales') },
+      {
+        hash: expect.any(String),
+        search: expect.stringContaining('search=sales'),
+      },
       { replace: true }
     );
   });

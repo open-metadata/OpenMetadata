@@ -12,7 +12,9 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { EntityStatus } from '../../../../../generated/entity/data/glossaryTerm';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import {
   renderDomainClassificationTagsCell,
   renderDomainGlossaryTagsCell,
@@ -114,5 +116,84 @@ describe('useDomainTableColumns', () => {
     result.current.renderCell(DOMAIN, 'tags');
 
     expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(DOMAIN);
+  });
+
+  it('adds no column beyond the OSS set when the class base contributes none', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    expect(result.current.columns.map((column) => column.id)).toEqual([
+      'name',
+      'owners',
+      'glossaryTerms',
+      'domainType',
+      'tags',
+    ]);
+  });
+
+  it('returns null for a column id nothing handles', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    expect(result.current.renderCell(DOMAIN, 'entityStatus')).toBeNull();
+  });
+
+  // The seam a downstream build (Collate) uses to add a listing column without
+  // this hook knowing about it.
+  describe('with a class-base contributed column', () => {
+    const EXTRA_COLUMNS = [
+      {
+        id: 'entityStatus',
+        labelKey: 'label.status',
+        render: (domain: Domain) => <span>{`status:${domain.name}`}</span>,
+      },
+    ];
+
+    beforeEach(() => {
+      jest
+        .spyOn(domainClassBase, 'getListingExtraColumns')
+        .mockReturnValue(EXTRA_COLUMNS);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const REVIEWED_DOMAINS = [
+      { ...DOMAIN, entityStatus: EntityStatus.Approved },
+    ] as Domain[];
+
+    it('appends the contributed column after the OSS columns', () => {
+      const { result } = renderHook(() =>
+        useDomainTableColumns({ entities: REVIEWED_DOMAINS })
+      );
+
+      expect(result.current.columns.at(-1)).toEqual({
+        id: 'entityStatus',
+        label: 'label.status',
+      });
+    });
+
+    it('renders the contributed column through its own renderer', () => {
+      const { result } = renderHook(() =>
+        useDomainTableColumns({ entities: REVIEWED_DOMAINS })
+      );
+
+      render(<>{result.current.renderCell(DOMAIN, 'entityStatus')}</>);
+
+      expect(screen.getByText('status:engineering')).toBeInTheDocument();
+    });
+
+    it('hides the status column while every domain is unprocessed', () => {
+      const { result } = renderHook(() =>
+        useDomainTableColumns({
+          entities: [
+            { ...DOMAIN, entityStatus: EntityStatus.Unprocessed },
+          ] as Domain[],
+        })
+      );
+
+      expect(result.current.columns.map((column) => column.id)).not.toContain(
+        'entityStatus'
+      );
+    });
   });
 });

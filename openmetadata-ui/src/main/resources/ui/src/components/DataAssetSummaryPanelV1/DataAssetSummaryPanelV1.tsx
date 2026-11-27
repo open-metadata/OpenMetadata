@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -20,18 +20,16 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { ChangeSummaryEntry } from '../../rest/changeSummaryAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
-import { listTestCases } from '../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
@@ -344,7 +342,6 @@ export const DataAssetSummaryPanelV1 = ({
       ),
     [entityPermissions, dataAsset.deleted]
   );
-  const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
     success: 0,
@@ -432,52 +429,50 @@ export const DataAssetSummaryPanelV1 = ({
       return;
     }
 
+    if (!flags.canViewTests) {
+      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
+
+      return;
+    }
+
     try {
       setIsTestCaseLoading(true);
-      const entityLink = generateEntityLink(dataAsset?.fullyQualifiedName);
+      const entityLink = generateEntityLink(dataAsset.fullyQualifiedName);
+      const countTestCases = async (testCaseStatus: TestCaseStatus) => {
+        const { paging } = await getListTestCaseBySearch({
+          entityLink,
+          includeAllTests: true,
+          testCaseStatus,
+          limit: 0,
+        });
 
-      const response = await listTestCases({
-        entityLink,
-        includeAllTests: true,
-        limit: 100, // Get more test cases to ensure accurate counts
-        fields: ['testCaseResult', 'incidentId'],
+        return paging.total;
+      };
+      // One search count per status: tallying one fetched page capped the counts at the page size,
+      // DB list totals can be served stale from the list-count cache, and the data quality report
+      // endpoint can't evaluate a conditional ViewTests rule (isOwner()) without this table.
+      const [success, failed, aborted, queued] = await Promise.all([
+        countTestCases(TestCaseStatus.Success),
+        countTestCases(TestCaseStatus.Failed),
+        countTestCases(TestCaseStatus.Aborted),
+        countTestCases(TestCaseStatus.Queued),
+      ]);
+
+      setStatusCounts({
+        success,
+        failed,
+        aborted,
+        ack: 0,
+        // Queued results count toward the total, as they did before.
+        total: success + failed + aborted + queued,
       });
-
-      // Calculate status counts
-      const counts = (response.data || []).reduce(
-        (acc, testCase) => {
-          const status = testCase.testCaseResult?.testCaseStatus;
-          if (status) {
-            switch (status) {
-              case TestCaseStatus.Success:
-                acc.success++;
-
-                break;
-              case TestCaseStatus.Failed:
-                acc.failed++;
-
-                break;
-              case TestCaseStatus.Aborted:
-                acc.aborted++;
-
-                break;
-            }
-            acc.total++;
-          }
-
-          return acc;
-        },
-        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
-      );
-
-      setStatusCounts(counts);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
     } finally {
       setIsTestCaseLoading(false);
     }
-  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+  }, [dataAsset?.fullyQualifiedName, entityType, flags.canViewTests]);
 
   const fetchEntityBasedDetails = () => {
     if (entityType === EntityType.TABLE) {
@@ -525,7 +520,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
-    if (!dataAsset.id || isTourPage) {
+    if (!dataAsset.id) {
       return;
     }
 
@@ -570,13 +565,7 @@ export const DataAssetSummaryPanelV1 = ({
       dataAsset.id
     );
     setEntityPermissions(permissions);
-  }, [
-    dataAsset.id,
-    dataAsset.entityType,
-    entityType,
-    isTourPage,
-    getEntityPermission,
-  ]);
+  }, [dataAsset.id, dataAsset.entityType, entityType, getEntityPermission]);
 
   useEffect(() => {
     if (entityPermissions) {
@@ -647,7 +636,9 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography size="text-xs" weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -666,9 +657,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -756,7 +744,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -775,9 +765,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -824,7 +811,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -843,9 +832,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -880,9 +866,7 @@ export const DataAssetSummaryPanelV1 = ({
           entityType={entityType}
           hasPermission={editTagsPermission}
           key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          tags={dataAsset.tags?.filter(
-            (tag: TagLabel) => tag.source !== TagSource.Glossary
-          )}
+          tags={dataAsset.tags}
           onTagsUpdate={onTagsUpdate}
         />
       </div>
@@ -914,7 +898,9 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography size="text-xs" weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -933,9 +919,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -948,9 +931,7 @@ export const DataAssetSummaryPanelV1 = ({
             entityType={entityType}
             hasPermission={editTagsPermission}
             key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-            tags={dataAsset.tags?.filter(
-              (tag: TagLabel) => tag.source !== TagSource.Glossary
-            )}
+            tags={dataAsset.tags}
             onTagsUpdate={onTagsUpdate}
           />
         </div>
@@ -986,6 +967,7 @@ export const DataAssetSummaryPanelV1 = ({
     statusCounts,
     entityPermissions,
     changeSummary,
+    t,
   ]);
 
   useEffect(() => {

@@ -51,9 +51,6 @@ jest.mock(
     )),
   })
 );
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div data-testid="error-placeholder">No columns available</div>)
-);
 jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, expandable }) => (
     <div data-testid="worksheet-data-model-table">
@@ -303,7 +300,11 @@ describe('WorksheetColumnsTable', () => {
       columns: [],
     });
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render error placeholder when columns is undefined', () => {
@@ -311,7 +312,11 @@ describe('WorksheetColumnsTable', () => {
       columns: undefined,
     });
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should handle column description edit click', async () => {

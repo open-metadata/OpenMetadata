@@ -11,92 +11,90 @@
  *  limitations under the License.
  */
 import {
+  AiAutomation03,
+  AiFrameworkControl,
+  AiGovernanceFramework,
+  Alert,
+  Announcement02,
+  ApiCollection,
+  ApiEndpoint,
+  ApiService,
+  App,
+  AppSearchIndexing,
+  Article,
   Atom01,
+  AuditReport,
+  AutomatorBot,
+  Bot,
+  Classification,
   ClipboardMinus,
   CodeSquare01,
+  Column,
+  Container,
+  ContextCenter,
   CpuChip01,
+  Dashboard,
+  DashboardDataModel,
+  DashboardService,
+  Database,
+  DatabaseSchema,
+  DatabaseService,
+  DataContract,
+  DataObservability,
+  DataProduct,
+  Documents,
+  DriveService,
+  DynamicAgent,
+  Eventsubscription,
   File02,
   File05,
   FileCheck02,
+  Globe01,
+  Glossary,
+  GlossaryTerm,
+  Governance,
+  IngestionPipeline,
+  Kpi,
+  LineChartUp01,
+  ListConversation,
+  LlmService,
+  Location,
+  Marketplace,
+  McpService,
+  Memories,
+  MessagingService,
+  MetadataService,
+  Metric,
+  MlModel,
+  MlModelService,
+  Notification,
+  Persona,
+  Pipeline,
+  Policy,
+  Query,
+  Report,
+  Role,
+  Scales02,
+  SearchService,
+  SecurityService,
   Server04,
+  Services,
   Settings02,
   SlashDivider,
+  Spreadsheet,
+  StorageService,
+  StoredProcedure,
+  Table,
+  Tag01,
+  Task,
+  Teams,
+  TestCase,
+  TestDefinition,
+  TestSuite,
+  Topic,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
-import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
-import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
-import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
-import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
-import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
-import { ReactComponent as FolderIcon } from '../assets/svg/common/folder.svg';
-import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
-import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
-import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
-import { ReactComponent as AIFrameworkControl } from '../assets/svg/entity/ai-framework-control.svg';
-import { ReactComponent as AIGovernanceFramework } from '../assets/svg/entity/ai-governance-framework.svg';
-import { ReactComponent as AIGovernancePolicy } from '../assets/svg/entity/ai-governance-policy.svg';
-import { ReactComponent as APICollection } from '../assets/svg/entity/api-collection.svg';
-import { ReactComponent as APIEndpoint } from '../assets/svg/entity/api-endpoint.svg';
-import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
-import { ReactComponent as AuditReport } from '../assets/svg/entity/audit-report.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
-import { ReactComponent as Chart } from '../assets/svg/entity/chart.svg';
-import { ReactComponent as Classification } from '../assets/svg/entity/classification.svg';
-import { ReactComponent as Column } from '../assets/svg/entity/column.svg';
-import { ReactComponent as Container } from '../assets/svg/entity/container.svg';
-import { ReactComponent as DashboardDataModel } from '../assets/svg/entity/dashboard-data-model.svg';
-import { ReactComponent as DashboardService } from '../assets/svg/entity/dashboard-service.svg';
-import { ReactComponent as Dashboard } from '../assets/svg/entity/dashboard.svg';
-import { ReactComponent as DataContract } from '../assets/svg/entity/data-contract.svg';
-import { ReactComponent as DataObservability } from '../assets/svg/entity/data-observability.svg';
-import { ReactComponent as DataProduct } from '../assets/svg/entity/data-product.svg';
-import { ReactComponent as DatabaseSchema } from '../assets/svg/entity/database-schema.svg';
-import { ReactComponent as DatabaseService } from '../assets/svg/entity/database-service.svg';
-import { ReactComponent as DatabaseAsset } from '../assets/svg/entity/database.svg';
-import { ReactComponent as Domain } from '../assets/svg/entity/domain.svg';
-import { ReactComponent as DriveService } from '../assets/svg/entity/drive-service.svg';
-import { ReactComponent as DynamicAgent } from '../assets/svg/entity/dynamic-agent.svg';
-import { ReactComponent as GlossaryTerm } from '../assets/svg/entity/glossary-term.svg';
-import { ReactComponent as Glossary } from '../assets/svg/entity/glossary.svg';
-import { ReactComponent as IngestionPipeline } from '../assets/svg/entity/ingestion-pipeline.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
-import { ReactComponent as LLMService } from '../assets/svg/entity/llm-service.svg';
-import { ReactComponent as Marketplace } from '../assets/svg/entity/marketplace.svg';
-import { ReactComponent as MCPService } from '../assets/svg/entity/mcp-service.svg';
-import { ReactComponent as MessagingService } from '../assets/svg/entity/messaging-service.svg';
-import { ReactComponent as MetadataService } from '../assets/svg/entity/metadata-service.svg';
-import { ReactComponent as Metric } from '../assets/svg/entity/metric.svg';
-import { ReactComponent as MLModelService } from '../assets/svg/entity/ml-model-service.svg';
-import { ReactComponent as MLModel } from '../assets/svg/entity/ml-model.svg';
-import { ReactComponent as PipelineService } from '../assets/svg/entity/pipeline-service.svg';
-import { ReactComponent as Pipeline } from '../assets/svg/entity/pipeline.svg';
-import { ReactComponent as Query } from '../assets/svg/entity/query.svg';
-import { ReactComponent as Report } from '../assets/svg/entity/report.svg';
-import { ReactComponent as SearchIndexIcon } from '../assets/svg/entity/search-index.svg';
-import { ReactComponent as SearchService } from '../assets/svg/entity/search-service.svg';
-import { ReactComponent as SecurityService } from '../assets/svg/entity/security-service.svg';
-import { ReactComponent as SpreadSheet } from '../assets/svg/entity/spreadsheet.svg';
-import { ReactComponent as StorageService } from '../assets/svg/entity/storage-service.svg';
-import { ReactComponent as StoredProcedure } from '../assets/svg/entity/stored-procedure.svg';
-import { ReactComponent as Table } from '../assets/svg/entity/table.svg';
-import { ReactComponent as Tag } from '../assets/svg/entity/tag.svg';
-import { ReactComponent as TestCase } from '../assets/svg/entity/test-case.svg';
-import { ReactComponent as TestDefinition } from '../assets/svg/entity/test-definition.svg';
-import { ReactComponent as TestSuite } from '../assets/svg/entity/test-suite.svg';
-import { ReactComponent as Topic } from '../assets/svg/entity/topic.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -391,7 +389,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_PURPLE_600,
     bgClass: BG_UTILITY_PURPLE_50,
     borderClass: BORDER_UTILITY_PURPLE_200,
-    icon: Chart,
+    icon: LineChartUp01,
   },
   [EntityType.MESSAGING_SERVICE]: {
     iconClass: 'tw:text-cyan-700 tw:dark:text-cyan-300',
@@ -433,7 +431,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_GRAY_BLUE_500,
     bgClass: BG_UTILITY_GRAY_BLUE_50,
     borderClass: BORDER_UTILITY_GRAY_BLUE_200,
-    icon: Tag,
+    icon: Tag01,
   },
   [EntityType.DASHBOARD_DATA_MODEL]: {
     iconClass: TEXT_UTILITY_PURPLE_600,
@@ -445,7 +443,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: DatabaseAsset,
+    icon: Database,
   },
   [EntityType.STORED_PROCEDURE]: {
     iconClass: TEXT_UTILITY_BLUE_700,
@@ -457,13 +455,13 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: FileIcon,
+    icon: Article,
   },
   [EntityType.KNOWLEDGE_CENTER]: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: KnowledgeCenter,
+    icon: ContextCenter,
   },
   [EntityType.WORKSHEET]: {
     iconClass: TEXT_UTILITY_PURPLE_600,
@@ -481,7 +479,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_FUCHSIA_600,
     bgClass: BG_UTILITY_FUCHSIA_50,
     borderClass: BORDER_UTILITY_FUCHSIA_200,
-    icon: MLModel,
+    icon: MlModel,
   },
   [EntityType.CLASSIFICATION]: {
     iconClass: TEXT_UTILITY_GRAY_BLUE_500,
@@ -511,7 +509,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_FUCHSIA_600,
     bgClass: BG_UTILITY_FUCHSIA_50,
     borderClass: BORDER_UTILITY_FUCHSIA_200,
-    icon: SpreadSheet,
+    icon: Spreadsheet,
   },
   [EntityType.DIRECTORY]: {
     iconClass: TEXT_UTILITY_SUCCESS_600,
@@ -535,19 +533,19 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_FUCHSIA_600,
     bgClass: BG_UTILITY_FUCHSIA_50,
     borderClass: BORDER_UTILITY_FUCHSIA_200,
-    icon: MLModelService,
+    icon: MlModelService,
   },
   [EntityType.PIPELINE_SERVICE]: {
     iconClass: TEXT_UTILITY_SUCCESS_600,
     bgClass: BG_UTILITY_SUCCESS_50,
     borderClass: BORDER_UTILITY_SUCCESS_200,
-    icon: PipelineService,
+    icon: Pipeline,
   },
   [EntityType.DOMAIN]: {
     iconClass: TEXT_UTILITY_GRAY_BLUE_500,
     bgClass: BG_UTILITY_GRAY_BLUE_50,
     borderClass: BORDER_UTILITY_GRAY_BLUE_200,
-    icon: Domain,
+    icon: Globe01,
   },
   [EntityType.METADATA_SERVICE]: {
     iconClass: TEXT_UTILITY_GRAY_BLUE_500,
@@ -559,19 +557,19 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_PINK_600,
     bgClass: BG_UTILITY_PINK_50,
     borderClass: BORDER_UTILITY_PINK_200,
-    icon: APIEndpoint,
+    icon: ApiEndpoint,
   },
   [EntityType.API_SERVICE]: {
     iconClass: TEXT_UTILITY_PINK_600,
     bgClass: BG_UTILITY_PINK_50,
     borderClass: BORDER_UTILITY_PINK_200,
-    icon: APIService,
+    icon: ApiService,
   },
   [EntityType.API_COLLECTION]: {
     iconClass: TEXT_UTILITY_PINK_600,
     bgClass: BG_UTILITY_PINK_50,
     borderClass: BORDER_UTILITY_PINK_200,
-    icon: APICollection,
+    icon: ApiCollection,
   },
   [EntityType.SERVICE]: {
     iconClass: TEXT_UTILITY_FUCHSIA_600,
@@ -595,7 +593,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_INDIGO_600,
     bgClass: BG_UTILITY_INDIGO_50,
     borderClass: BORDER_UTILITY_INDIGO_300,
-    icon: SearchIndexIcon,
+    icon: AppSearchIndexing,
   },
   [EntityType.QUERY]: {
     iconClass: TEXT_UTILITY_BLUE_700,
@@ -619,13 +617,13 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_TEAL_600_DARK_TEXT_TEAL_400,
     bgClass: BG_TEAL_50_DARK_BG_TEAL_950,
     borderClass: BORDER_TEAL_300_DARK_BORDER_TEAL_700,
-    icon: MemoriesIcon,
+    icon: Memories,
   },
   aiAutomation: {
     iconClass: 'tw:text-moss-600 tw:dark:text-moss-400',
     bgClass: 'tw:bg-moss-50 tw:dark:bg-moss-950',
     borderClass: 'tw:border-moss-200 tw:dark:border-moss-800',
-    icon: AIAutomation,
+    icon: AiAutomation03,
   },
   marketplace: {
     iconClass: TEXT_UTILITY_WARNING_600,
@@ -643,7 +641,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-utility-error-600',
     bgClass: 'tw:bg-error-primary',
     borderClass: 'tw:border-utility-error-200',
-    icon: FolderIcon,
+    icon: Documents,
   },
   contextPlugin: {
     iconClass: TEXT_UTILITY_FUCHSIA_600,
@@ -667,19 +665,19 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: AIFrameworkControl,
+    icon: AiFrameworkControl,
   },
   aiGovernancePolicy: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: AIGovernancePolicy,
+    icon: Scales02,
   },
   aiGovernanceFramework: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: AIGovernanceFramework,
+    icon: AiGovernanceFramework,
   },
   [EntityType.LLM_MODEL]: {
     iconClass: 'tw:text-utility-purple-700',
@@ -697,13 +695,13 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_INDIGO_700,
     bgClass: BG_UTILITY_INDIGO_50,
     borderClass: BORDER_UTILITY_INDIGO_200,
-    icon: LLMService,
+    icon: LlmService,
   },
   [EntityType.MCP_SERVICE]: {
     iconClass: TEXT_UTILITY_INDIGO_700,
     bgClass: BG_UTILITY_INDIGO_50,
     borderClass: BORDER_UTILITY_INDIGO_200,
-    icon: MCPService,
+    icon: McpService,
   },
   [EntityType.TEST_SUITE]: {
     iconClass: TEXT_TEAL_600_DARK_TEXT_TEAL_400,
@@ -739,61 +737,61 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_GRAY_600,
     bgClass: BG_UTILITY_GRAY_50,
     borderClass: BORDER_UTILITY_GRAY_200,
-    icon: BotIcon,
+    icon: Bot,
   },
   [EntityType.TEAM]: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: TeamIcon,
+    icon: Teams,
   },
   [EntityType.APPLICATION]: {
     iconClass: TEXT_UTILITY_PURPLE_600,
     bgClass: BG_UTILITY_PURPLE_50,
     borderClass: BORDER_UTILITY_PURPLE_200,
-    icon: ApplicationIcon,
+    icon: App,
   },
   [EntityType.PERSONA]: {
     iconClass: TEXT_UTILITY_ORANGE_600,
     bgClass: BG_UTILITY_ORANGE_50,
     borderClass: BORDER_UTILITY_ORANGE_200,
-    icon: PersonaIcon,
+    icon: Persona,
   },
   [EntityType.ROLE]: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: RoleIcon,
+    icon: Role,
   },
   [EntityType.POLICY]: {
     iconClass: TEXT_UTILITY_INDIGO_600,
     bgClass: BG_UTILITY_INDIGO_50,
     borderClass: BORDER_UTILITY_INDIGO_200,
-    icon: PolicyIcon,
+    icon: Policy,
   },
   [EntityType.EVENT_SUBSCRIPTION]: {
     iconClass: TEXT_TEAL_600_DARK_TEXT_TEAL_400,
     bgClass: BG_TEAL_50_DARK_BG_TEAL_950,
     borderClass: BORDER_TEAL_300_DARK_BORDER_TEAL_700,
-    icon: EventSubscriptionIcon,
+    icon: Eventsubscription,
   },
   [EntityType.USER]: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: UserIcon,
+    icon: User01,
   },
   [EntityType.ALERT]: {
     iconClass: 'tw:text-utility-error-600',
     bgClass: 'tw:bg-utility-error-50',
     borderClass: 'tw:border-utility-error-200',
-    icon: AlertIcon,
+    icon: Alert,
   },
   [EntityType.KPI]: {
     iconClass: TEXT_UTILITY_SUCCESS_600,
     bgClass: BG_UTILITY_SUCCESS_50,
     borderClass: BORDER_UTILITY_SUCCESS_200,
-    icon: KPIIcon,
+    icon: Kpi,
   },
   tagCategory: {
     iconClass: TEXT_UTILITY_BLUE_700,
@@ -805,55 +803,55 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_WARNING_600,
     bgClass: BG_UTILITY_WARNING_50,
     borderClass: 'tw:border-utility-warning-200',
-    icon: AnnouncementIcon,
+    icon: Announcement02,
   },
   conversation: {
     iconClass: TEXT_UTILITY_GRAY_600,
     bgClass: BG_UTILITY_GRAY_50,
     borderClass: BORDER_UTILITY_GRAY_200,
-    icon: ConversationIcon,
+    icon: ListConversation,
   },
   task: {
     iconClass: TEXT_UTILITY_BLUE_700,
     bgClass: BG_UTILITY_BLUE_50,
     borderClass: BORDER_UTILITY_BLUE_200,
-    icon: TaskIcon,
+    icon: Task,
   },
   dataQuality: {
     iconClass: TEXT_UTILITY_SUCCESS_600,
     bgClass: BG_UTILITY_SUCCESS_50,
     borderClass: BORDER_UTILITY_SUCCESS_200,
-    icon: DataQualityIcon,
+    icon: DataContract,
   },
   services: {
     iconClass: TEXT_UTILITY_PURPLE_600,
     bgClass: BG_UTILITY_PURPLE_50,
     borderClass: BORDER_UTILITY_PURPLE_200,
-    icon: ServicesIcon,
+    icon: Services,
   },
   automator: {
     iconClass: TEXT_UTILITY_PURPLE_600,
     bgClass: BG_UTILITY_PURPLE_50,
     borderClass: BORDER_UTILITY_PURPLE_200,
-    icon: AutomatorBotIcon,
+    icon: AutomatorBot,
   },
   notification: {
     iconClass: TEXT_UTILITY_ORANGE_600,
     bgClass: BG_UTILITY_ORANGE_50,
     borderClass: BORDER_UTILITY_ORANGE_200,
-    icon: NotificationIcon,
+    icon: Notification,
   },
   location: {
     iconClass: TEXT_UTILITY_GRAY_600,
     bgClass: BG_UTILITY_GRAY_50,
     borderClass: BORDER_UTILITY_GRAY_200,
-    icon: LocationIcon,
+    icon: Location,
   },
   Governance: {
     iconClass: TEXT_UTILITY_INDIGO_600,
     bgClass: BG_UTILITY_INDIGO_50,
     borderClass: BORDER_UTILITY_INDIGO_200,
-    icon: GovernanceIcon,
+    icon: Governance,
   },
   default: {
     iconClass: 'tw:text-quaternary',

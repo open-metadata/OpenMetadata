@@ -292,9 +292,10 @@ describe('EntitySearchSettings', () => {
       );
     });
 
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '' },
-    });
+    // The core NumberInput commits an edit on blur.
+    const weightInput = screen.getByRole('textbox', { name: 'label.value' });
+    fireEvent.change(weightInput, { target: { value: '' } });
+    fireEvent.blur(weightInput);
 
     const { handleSaveChanges } = getLastSearchPreviewProps();
 
@@ -355,9 +356,11 @@ describe('EntitySearchSettings', () => {
     expect(screen.getByTestId('ranking-stage-unnamed-0')).toBeInTheDocument();
     expect(screen.getByTestId('ranking-stage-unnamed-1')).toBeInTheDocument();
 
-    fireEvent.change(screen.getAllByRole('spinbutton')[1], {
-      target: { value: '' },
-    });
+    const stageWeightInput = screen.getAllByRole('textbox', {
+      name: 'label.value',
+    })[1];
+    fireEvent.change(stageWeightInput, { target: { value: '' } });
+    fireEvent.blur(stageWeightInput);
 
     const { handleSaveChanges } = getLastSearchPreviewProps();
 

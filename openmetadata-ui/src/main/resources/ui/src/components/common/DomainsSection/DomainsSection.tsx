@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -213,7 +214,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography className="domains-title">
+          <Typography size="text-xs" weight="semibold">
             {t('label.domain-plural')}
           </Typography>
         </div>
@@ -226,17 +227,17 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography className="domains-title">
+          <Typography size="text-xs" weight="semibold">
             {t('label.domain-plural')}
           </Typography>
           {selectableList}
         </div>
         <div className="domains-content">
-          <span className="no-data-placeholder">
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.domain-plural'),
             })}
-          </span>
+          </Typography>
         </div>
       </div>
     );
@@ -245,7 +246,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   return (
     <div className="domains-section">
       <div className="domains-header">
-        <Typography className="domains-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.domain-plural')}
         </Typography>
         {selectableList}

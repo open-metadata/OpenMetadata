@@ -318,12 +318,338 @@
         "relatedEntity": "global",
         "updatedBy": "ApproveGlossaryTerm"
       }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfGlossaryTermIsAutomationProposal",
+      "displayName": "Check if an Automation proposed the Glossary Term",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"provider\"},\"automation\"]},{\"!=\":[{\"var\":\"entityStatus\"},\"Approved\"]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfAutomationProposalUpdatedByIsReviewer",
+      "displayName": "Check if the Proposal is Updated By a Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalStatusToApprovedByReviewer",
+      "displayName": "Set Proposal Status to 'Approved' (By Reviewer)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutomationProposalApprovedByReviewerEnd",
+      "displayName": "Proposal Approved By Reviewer"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfAutomationProposalIsNew",
+      "displayName": "Check if the Proposal is New",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalStatusToInReview",
+      "displayName": "Set Proposal Status to 'In Review'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveAutomationProposal",
+      "displayName": "Approve the Automation's Proposal",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": [],
+          "emptyAssigneeStrategy": "assignAdmins"
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      },
+      "output": ["updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalStatusToApproved",
+      "displayName": "Set Proposal Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAutomationProposal"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalStatusToRejected",
+      "displayName": "Set Proposal Status to 'Rejected'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAutomationProposal"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutomationProposalApprovedEnd",
+      "displayName": "Proposal Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutomationProposalRejectedEnd",
+      "displayName": "Proposal Rejected"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalUpdateStatusToInReview",
+      "displayName": "Set Proposal Status to 'In Review' (Update)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveAutomationProposalUpdate",
+      "displayName": "Review Changes to the Automation's Proposal",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": [],
+          "emptyAssigneeStrategy": "assignAdmins"
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      },
+      "output": ["updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAutomationProposalUpdateStatusToApproved",
+      "displayName": "Set Proposal Status to 'Approved' (After Review)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAutomationProposalUpdate"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "rollbackEntityTask",
+      "name": "RollbackAutomationProposalChanges",
+      "displayName": "Rollback Changes to the Proposal",
+      "config": {},
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAutomationProposalUpdate"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutomationProposalUpdateApprovedEnd",
+      "displayName": "Proposal Approved After Review"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutomationProposalUpdateRolledBackEnd",
+      "displayName": "Proposal Changes Rolled Back"
     }
   ],
   "edges": [
     {
       "from": "GlossaryTermCreated",
-      "to": "CheckGlossaryTermHasReviewers"
+      "to": "CheckIfGlossaryTermIsAutomationProposal"
+    },
+    {
+      "from": "CheckIfGlossaryTermIsAutomationProposal",
+      "to": "CheckGlossaryTermHasReviewers",
+      "condition": "false"
+    },
+    {
+      "from": "CheckIfGlossaryTermIsAutomationProposal",
+      "to": "CheckIfAutomationProposalUpdatedByIsReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+      "to": "SetAutomationProposalStatusToApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "SetAutomationProposalStatusToApprovedByReviewer",
+      "to": "AutomationProposalApprovedByReviewerEnd"
+    },
+    {
+      "from": "CheckIfAutomationProposalUpdatedByIsReviewer",
+      "to": "CheckIfAutomationProposalIsNew",
+      "condition": "false"
+    },
+    {
+      "from": "CheckIfAutomationProposalIsNew",
+      "to": "SetAutomationProposalStatusToInReview",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfAutomationProposalIsNew",
+      "to": "SetAutomationProposalUpdateStatusToInReview",
+      "condition": "false"
+    },
+    {
+      "from": "SetAutomationProposalStatusToInReview",
+      "to": "ApproveAutomationProposal"
+    },
+    {
+      "from": "ApproveAutomationProposal",
+      "to": "SetAutomationProposalStatusToApproved",
+      "condition": "approve"
+    },
+    {
+      "from": "ApproveAutomationProposal",
+      "to": "SetAutomationProposalStatusToRejected",
+      "condition": "reject"
+    },
+    {
+      "from": "SetAutomationProposalStatusToApproved",
+      "to": "AutomationProposalApprovedEnd"
+    },
+    {
+      "from": "SetAutomationProposalStatusToRejected",
+      "to": "AutomationProposalRejectedEnd"
+    },
+    {
+      "from": "SetAutomationProposalUpdateStatusToInReview",
+      "to": "ApproveAutomationProposalUpdate"
+    },
+    {
+      "from": "ApproveAutomationProposalUpdate",
+      "to": "SetAutomationProposalUpdateStatusToApproved",
+      "condition": "approve"
+    },
+    {
+      "from": "ApproveAutomationProposalUpdate",
+      "to": "RollbackAutomationProposalChanges",
+      "condition": "reject"
+    },
+    {
+      "from": "SetAutomationProposalUpdateStatusToApproved",
+      "to": "AutomationProposalUpdateApprovedEnd"
+    },
+    {
+      "from": "RollbackAutomationProposalChanges",
+      "to": "AutomationProposalUpdateRolledBackEnd"
     },
     {
       "from": "CheckGlossaryTermHasReviewers",

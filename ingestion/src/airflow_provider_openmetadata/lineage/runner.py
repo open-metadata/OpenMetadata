@@ -15,7 +15,6 @@ OpenMetadata Airflow Provider Lineage Runner
 
 import logging
 import os
-from itertools import groupby
 from urllib.parse import quote
 
 from airflow.configuration import conf
@@ -296,13 +295,13 @@ class AirflowLineageRunner:
                 }
                 logger.info("Using Basic auth as fallback")
 
-            # Fetch DAG runs
-            # Airflow 3.x uses 'logical_date' instead of 'execution_date'
+            # Fetch DAG runs. `run_after` is never null, unlike `logical_date` on manually
+            # triggered runs, which the database would sort first or last depending on its engine.
             logger.info(f"Fetching DAG runs from: {api_url}")
-            logger.info(f"Params: limit={self.max_status}, order_by=-logical_date")
+            logger.info("Params: limit=%s, order_by=-run_after", self.max_status)
             response = requests.get(
                 api_url,
-                params={"limit": self.max_status, "order_by": "-logical_date"},
+                params={"limit": self.max_status, "order_by": "-run_after"},
                 headers=headers,
                 timeout=10,
             )
@@ -393,8 +392,11 @@ class AirflowLineageRunner:
                 else:
                     dag_status = StatusType.Successful.value
 
-                # Parse execution date
-                execution_date_str = dag_run.get("logical_date") or dag_run.get("execution_date")
+                # Manually triggered runs have no logical_date: fall back to start_date like the
+                # Airflow connector does, so both stamp the same run with the same timestamp
+                execution_date_str = (
+                    dag_run.get("logical_date") or dag_run.get("execution_date") or dag_run.get("start_date")
+                )
                 execution_timestamp = None
                 if execution_date_str:
                     try:
@@ -402,8 +404,12 @@ class AirflowLineageRunner:
                         execution_timestamp = datetime_to_ts(exec_dt)
                     except Exception:
                         pass
+                if execution_timestamp is None:
+                    logger.info("Skipping DAG run %s: it has neither a logical_date nor a start_date", dag_run_id)
+                    continue
 
                 pipeline_status = PipelineStatus(
+                    executionId=dag_run_id,
                     timestamp=execution_timestamp,
                     executionStatus=dag_status,
                     taskStatus=task_status_list,
@@ -428,20 +434,13 @@ class AirflowLineageRunner:
         Iterate over the DAG's task instances and map
         them to PipelineStatus.
 
-        In Airflow 2.x we can still hit the metadata DB, so we keep
-        the original behaviour. In Airflow 3.x we use the REST API
-        to fetch status information.
+        In Airflow 2.x we can still hit the metadata DB. In Airflow 3.x
+        we use the REST API to fetch status information.
         """
         logger.info(f"get_all_pipeline_status called. IS_AIRFLOW_3_OR_HIGHER={IS_AIRFLOW_3_OR_HIGHER}")
 
         if not IS_AIRFLOW_3_OR_HIGHER:
-            # Airflow 2.x path - rely on get_task_instances()
-            grouped_ti: list[list["TaskInstance"]] = [  # noqa: F821, UP037
-                list(value) for _, value in groupby(self.dag.get_task_instances(), key=lambda ti: ti.run_id)
-            ]
-            grouped_ti.reverse()
-
-            return [self.get_pipeline_status(task_instances) for task_instances in grouped_ti[: self.max_status]]
+            return self.get_pipeline_status_from_db()
 
         # Airflow 3.x - try REST API first, fall back to DB access
         try:
@@ -454,23 +453,7 @@ class AirflowLineageRunner:
 
         # Fallback to direct DB access (will likely fail in Airflow 3.x)
         try:
-            from airflow.models import DagRun
-
-            dag_runs = DagRun.find(dag_id=self.dag.dag_id, state=None)
-            if not dag_runs:
-                logger.info("No DAG runs found for status collection")
-                return []
-
-            recent_runs = sorted(dag_runs, key=lambda r: r.execution_date, reverse=True)[: self.max_status]
-
-            pipeline_statuses = []
-            for dag_run in recent_runs:
-                task_instances = dag_run.get_task_instances()
-                if task_instances:
-                    pipeline_statuses.append(self.get_pipeline_status(task_instances))
-
-            return pipeline_statuses  # noqa: TRY300
-
+            return self.get_pipeline_status_from_db()
         except RuntimeError as e:
             if "Direct database access" in str(e):
                 logger.warning("Direct database access not allowed in Airflow 3.x. Pipeline status collection skipped.")
@@ -479,6 +462,40 @@ class AirflowLineageRunner:
         except Exception as e:
             logger.warning(f"Could not collect pipeline status: {e}")
             return []
+
+    def get_pipeline_status_from_db(self) -> list[PipelineStatus]:
+        """
+        Build the status of the latest `max_status` DAG runs, newest first.
+
+        The LIMIT must happen in SQL: this runs after every task of the DAG.
+        """
+        from airflow.models import DagRun
+        from airflow.utils.session import create_session
+        from sqlalchemy import func
+
+        # Airflow 2.x stores `execution_date` (`logical_date` is a Python property there);
+        # Airflow 3.x only has `logical_date`, which is null for manually triggered runs,
+        # so those are ordered by `run_after`, which is never null.
+        run_date = (
+            DagRun.execution_date
+            if hasattr(DagRun, "execution_date")
+            else func.coalesce(DagRun.logical_date, DagRun.run_after)
+        )
+
+        with create_session() as session:
+            dag_runs = (
+                session.query(DagRun)
+                .filter(DagRun.dag_id == self.dag.dag_id)
+                .order_by(run_date.desc())
+                .limit(self.max_status)
+                .all()
+            )
+            statuses = [
+                self.get_pipeline_status(task_instances)
+                for dag_run in dag_runs
+                if (task_instances := dag_run.get_task_instances(session=session))
+            ]
+        return [status for status in statuses if status]
 
     @staticmethod
     def get_dag_status_from_task_instances(task_instances: list["TaskInstance"]) -> str:  # noqa: F821
@@ -500,9 +517,10 @@ class AirflowLineageRunner:
     def get_pipeline_status(
         self,
         task_instances: list["TaskInstance"],  # noqa: F821
-    ) -> PipelineStatus:
+    ) -> PipelineStatus | None:
         """
-        Given the task instances for a run, prep the PipelineStatus
+        Given the task instances for a run, prep the PipelineStatus.
+        None when the run has no date to stamp it with yet.
         """
 
         task_status = [
@@ -516,11 +534,19 @@ class AirflowLineageRunner:
             for task_instance in task_instances
         ]
 
-        # Airflow 3.x uses logical_date instead of execution_date
-        execution_date = getattr(task_instances[0], "logical_date", None) or task_instances[0].execution_date
+        # Airflow 3.x renamed execution_date to logical_date, which is null for manually triggered
+        # runs: fall back to start_date like the Airflow connector does
+        execution_date = (
+            getattr(task_instances[0], "logical_date", None)
+            or getattr(task_instances[0], "execution_date", None)
+            or task_instances[0].dag_run.start_date
+        )
+        if execution_date is None:
+            logger.info("Skipping DAG run %s: it has neither a logical_date nor a start_date", task_instances[0].run_id)
+            return None
 
         return PipelineStatus(
-            # Use any of the task execution dates for the status execution date
+            executionId=task_instances[0].run_id,
             timestamp=datetime_to_ts(execution_date),
             executionStatus=self.get_dag_status_from_task_instances(task_instances),
             taskStatus=task_status,
@@ -531,6 +557,10 @@ class AirflowLineageRunner:
         Get the latest Pipeline Status from the DAG and send
         it to OM
         """
+        if self.max_status <= 0:
+            logger.info("max_status is 0. Skipping pipeline status")
+            return
+
         pipeline_status_list = self.get_all_pipeline_status()
 
         for status in pipeline_status_list:

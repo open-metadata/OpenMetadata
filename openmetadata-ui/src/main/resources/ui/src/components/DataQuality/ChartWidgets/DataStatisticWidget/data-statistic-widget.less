@@ -12,12 +12,6 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
-.data-statistic-widget-title {
-  div&.ant-typography {
-    margin-bottom: @margin-lg;
-  }
-}
-
 // Default styles for title
 .data-statistic-title-default {
   color: @grey-600;
@@ -124,34 +118,5 @@
 
   a:hover {
     text-decoration: none;
-  }
-
-  .ant-btn {
-    display: flex;
-    align-items: center;
-    gap: @size-xs;
-    border: none;
-
-    &.failed {
-      color: @red-10;
-      background-color: @red-9;
-      &:hover {
-        background-color: @alert-error-icon-bg-1;
-      }
-    }
-    &.success {
-      color: @green-10;
-      background-color: @green-9;
-      &:hover {
-        background-color: @green-100;
-      }
-    }
-    &.aborted {
-      color: @alert-warning-icon;
-      background-color: @yellow-10;
-      &:hover {
-        background-color: @alert-warning-icon-bg-1;
-      }
-    }
   }
 }

@@ -189,7 +189,6 @@ export const MOCK_NODES_AND_EDGES = {
       className: 'leaf-node core',
       data: {
         label: 'ecommerce_db.shopify.raw_product_catalog',
-        isEditMode: false,
         columns: {
           'sample_data.ecommerce_db.shopify.raw_product_catalog.comments': {
             name: 'comments',
@@ -229,7 +228,6 @@ export const MOCK_NODES_AND_EDGES = {
       data: {
         label: 'ecommerce_db.shopify.dim_location',
         entityType: 'table',
-        isEditMode: false,
         isExpanded: true,
         columns: {
           'sample_data.ecommerce_db.shopify.dim_location.location_id': {
@@ -279,7 +277,6 @@ export const MOCK_NODES_AND_EDGES = {
           'sample_data.ecommerce_db.shopify.dim_location.location_id',
         sourceHandle:
           'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
-        isEditMode: false,
         isColumnLineage: true,
       },
     },
@@ -302,7 +299,6 @@ export const MOCK_NODES_AND_EDGES = {
         target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
         sourceType: 'table',
         targetType: 'table',
-        isEditMode: false,
         isColumnLineage: false,
       },
     },

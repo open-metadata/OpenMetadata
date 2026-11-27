@@ -36,15 +36,16 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Edit01,
   FileLock02,
   InfoCircle,
   Lightbulb03,
   Lock01,
   Plus,
   Share07,
-  X,
+  Trash01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
 import {
   Dispatch,
@@ -59,9 +60,7 @@ import {
 import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { Link, useLocation } from 'react-router-dom';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -70,35 +69,41 @@ import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverC
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import {
+  MEMORY_STATUS_LABEL_KEYS,
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import {
   ContextMemory,
+  ContextMemoryStatus,
+  EntityReference,
   MemoryType,
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
-import { Operation } from '../../../generated/entity/policies/policy';
-import { useMemoryOntologyProposals } from '../../../hooks/discovery/context-center/useMemoryOntologyProposals';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { queryClient } from '../../../queryClient';
-import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
+import {
+  deleteContextMemory,
+  updateContextMemory,
+} from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getMemoryStatusPatch } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
+import { navigatesThisTab } from '../../../utils/LinkClickUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
-import { showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
-import MemoryDerivedOntology from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology';
-import { canProposeFromMemory } from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology.utils';
+import MemoryDerivedTerm from '../../discovery/context-center/MemoryDerivedTerm/MemoryDerivedTerm';
+import MemoryStatusActions from '../../discovery/context-center/MemoryStatusActions/MemoryStatusActions';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
@@ -111,8 +116,13 @@ import {
 } from './CreateMemoryModal.interface';
 import {
   buildMemoryFormState,
+  canDecideMemoryStatus,
   getAssetKey,
+  getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
+  getQueryTableFqn,
+  getSuccessorSearch,
+  hasMemoryChangedSince,
   removeAssetByKey,
   submitMemoryCreate,
   submitMemoryUpdate,
@@ -133,8 +143,11 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
+  href?: string;
+  onNavigate?: () => void;
   onRemove?: (fqn: string) => void;
-}> = ({ asset, onRemove }) => {
+}> = ({ asset, href, onNavigate, onRemove }) => {
+  const { t } = useTranslation();
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
@@ -154,13 +167,30 @@ const LinkedAssetCard: FC<{
         align="center"
         className="tw:flex-1 tw:min-w-0 tw:gap-2.5"
         justify="between">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+        <Box
+          className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight"
+          direction="col">
           <Typography
             ellipsis
             className="tw:leading-tight"
             size="text-xs"
             weight="medium">
-            {displayName}
+            {href ? (
+              <Link
+                className="tw:text-brand-secondary tw:hover:underline"
+                data-testid="linked-asset-link"
+                to={href}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (navigatesThisTab(event)) {
+                    onNavigate?.();
+                  }
+                }}>
+                {displayName}
+              </Link>
+            ) : (
+              displayName
+            )}
           </Typography>
           <Typography
             ellipsis
@@ -168,7 +198,7 @@ const LinkedAssetCard: FC<{
             size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
-        </div>
+        </Box>
         <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
@@ -181,9 +211,10 @@ const LinkedAssetCard: FC<{
           )}
           {onRemove && (
             <ButtonUtility
-              color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<X size={18} strokeWidth={2} />}
+              icon={XClose}
+              size="sm"
+              tooltip={t('label.remove')}
               onClick={() => onRemove(fqn)}
             />
           )}
@@ -215,19 +246,25 @@ const EmptyTags: FC = () => {
   );
 };
 
-const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
-  assets,
-}) => {
+// The modal outlives a route change in AI mode, so following a link closes it.
+const LinkedAssetsReadOnly: FC<{
+  assets: DataAssetOption[];
+  onNavigate: () => void;
+}> = ({ assets, onNavigate }) => {
   if (assets.length === 0) {
     return <EmptyLinkedAssets />;
   }
+
+  const tableFqn = getQueryTableFqn(assets);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
       {assets.map((asset) => (
         <LinkedAssetCard
           asset={asset}
+          href={getLinkedAssetPath(asset.reference, tableFqn)}
           key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
+          onNavigate={onNavigate}
         />
       ))}
     </div>
@@ -235,9 +272,9 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
 };
 
 const VISIBILITY_ICON_MAP = {
-  Share07: <Share07 size={12} strokeWidth={2} />,
-  Database01: <Database01 size={12} strokeWidth={2} />,
-  FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+  Share07: <Share07 size={12} />,
+  Database01: <Database01 size={12} />,
+  FileLock02: <FileLock02 size={12} />,
 };
 
 const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
@@ -245,15 +282,12 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
   memoryToEdit,
   memorySource,
   memorySourceLink,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
     <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
-      <Lightbulb03
-        className="tw:text-utility-brand-700"
-        size={20}
-        strokeWidth={1.5}
-      />
+      <Lightbulb03 className="tw:text-utility-brand-700" size={20} />
     </div>
     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
       <div className="tw:max-w-112">
@@ -261,31 +295,30 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           {modalTitle}
         </Typography>
       </div>
-      {(memoryToEdit?.owners?.[0]?.name ?? memoryToEdit?.updatedBy) && (
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <Typography className="tw:text-quaternary" size="text-xs">
-            {t('label.created-by')}
+      {memoryToEdit?.owners?.[0]?.name && (
+        <Box align="center" gap={1} wrap="wrap">
+          <Typography color="secondary" size="text-xs">
+            {t('label.owner')}
           </Typography>
           <UserPopOverCard
             showUserName
             className="tw:text-primary"
+            displayName={memoryToEdit.owners[0].displayName}
             profileWidth={16}
-            userName={memoryToEdit?.owners?.[0]?.name || ''}
+            type={
+              memoryToEdit.owners[0].type === EntityType.TEAM
+                ? OwnerType.TEAM
+                : OwnerType.USER
+            }
+            userName={memoryToEdit.owners[0].name}
           />
-          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xl">
-            &middot;
-          </span>
-          <Typography className="tw:text-quaternary" size="text-xs">
-            {formatDate(memoryToEdit?.updatedAt)}
-          </Typography>
-        </div>
+        </Box>
       )}
       {memorySource && memorySourceLink && (
         <div className="tw:flex tw:items-center tw:gap-1">
           <FileLock02
             className="tw:shrink-0 tw:text-utility-gray-400"
             size={12}
-            strokeWidth={2}
           />
           <Typography className="tw:text-quaternary" size="text-xs">
             {t('label.extracted-from')}
@@ -293,7 +326,12 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <Link
             className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
             data-testid="memory-source-file-link"
-            to={memorySourceLink}>
+            to={memorySourceLink}
+            onClick={(event) => {
+              if (navigatesThisTab(event)) {
+                onNavigate();
+              }
+            }}>
             {getEntityName(memorySource)}
           </Link>
         </div>
@@ -316,26 +354,25 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   }
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2.5">
       <Lock01
-        className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+        className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
-        strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
-          className="tw:text-warning-700"
+          className="tw:text-utility-warning-700"
           size="text-xs"
           weight="semibold">
           {t('label.cant-edit-this-memory')}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-warning-700 tw:leading-4"
+          className="tw:text-utility-warning-700 tw:leading-4"
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
-              memoryToEdit.owners?.[0]?.name ?? memoryToEdit.updatedBy,
+              getEntityName(memoryToEdit.owners?.[0]) || memoryToEdit.updatedBy,
           })}
         </Typography>
       </div>
@@ -348,6 +385,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
   linkedAssets,
   setLinkedAssets,
   handleAssetChange,
+  onNavigate,
   t,
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-2">
@@ -378,7 +416,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
     </Box>
 
     {isViewOnly ? (
-      <LinkedAssetsReadOnly assets={linkedAssets} />
+      <LinkedAssetsReadOnly assets={linkedAssets} onNavigate={onNavigate} />
     ) : (
       <>
         {linkedAssets.length === 0 ? (
@@ -404,6 +442,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
 const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   memoryToEdit,
   canDelete,
+  isDecidingStatus,
   isDeleting,
   isSubmitting,
   handleDelete,
@@ -412,53 +451,60 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   handleSwitchToEdit,
   showSubmitButton,
   isSubmitDisabled,
+  statusActions,
   submitLabel,
   t,
-}) => (
-  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
-    <div>
-      {Boolean(memoryToEdit) && canDelete && (
+}) => {
+  const isBusy = isDeleting || isSubmitting || isDecidingStatus;
+
+  return (
+    <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
+      <div>
+        {Boolean(memoryToEdit) && canDelete && (
+          <Button
+            color="tertiary-destructive"
+            iconLeading={Trash01}
+            isDisabled={isBusy}
+            isLoading={isDeleting}
+            size="sm"
+            onClick={handleDelete}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </div>
+      <div className="tw:flex tw:items-center tw:gap-3">
         <Button
-          color="tertiary-destructive"
-          iconLeading={TrashIcon}
-          isDisabled={isDeleting || isSubmitting}
-          isLoading={isDeleting}
+          color="secondary"
+          isDisabled={isBusy}
           size="sm"
-          onClick={handleDelete}>
-          {t('label.delete')}
+          onClick={handleClose}>
+          {t('label.cancel')}
         </Button>
-      )}
+        {showEditButton && (
+          <Button
+            color={statusActions ? 'secondary' : 'primary'}
+            iconLeading={Edit01}
+            isDisabled={isBusy}
+            size="sm"
+            onClick={handleSwitchToEdit}>
+            {t('label.edit')}
+          </Button>
+        )}
+        {statusActions}
+        {showSubmitButton && (
+          <Button
+            color="primary"
+            isDisabled={isSubmitDisabled || isBusy}
+            isLoading={isSubmitting}
+            size="sm"
+            type="submit">
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <Button
-        color="secondary"
-        isDisabled={isSubmitting || isDeleting}
-        size="sm"
-        onClick={handleClose}>
-        {t('label.cancel')}
-      </Button>
-      {showEditButton && (
-        <Button
-          color="primary"
-          iconLeading={EditIcon}
-          size="sm"
-          onClick={handleSwitchToEdit}>
-          {t('label.edit')}
-        </Button>
-      )}
-      {showSubmitButton && (
-        <Button
-          color="primary"
-          isDisabled={isSubmitDisabled || isSubmitting || isDeleting}
-          isLoading={isSubmitting}
-          size="sm"
-          type="submit">
-          {submitLabel}
-        </Button>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 interface MemoryMetadataSectionProps {
   control: Control<MemoryFormValues>;
@@ -555,9 +601,10 @@ const MemoryVisibilityRow: FC<{
                 )}
                 {!isViewOnly && isOwner && (
                   <ButtonUtility
-                    color="tertiary"
                     data-testid="memory-visibility-edit-button"
-                    icon={<EditIcon height={14} width={14} />}
+                    icon={Edit01}
+                    size="sm"
+                    tooltip={t('label.edit')}
                     onClick={() => setIsEditingVisibility(true)}
                   />
                 )}
@@ -640,23 +687,166 @@ const MemoryTagsRow: FC<{
   </div>
 );
 
+const getEntityStatusColor = (
+  status: ContextMemoryStatus
+): 'error' | 'warning' | 'gray' => {
+  if (
+    status === ContextMemoryStatus.Rejected ||
+    status === ContextMemoryStatus.Invalidated
+  ) {
+    return 'error';
+  }
+  if (
+    status === ContextMemoryStatus.Deprecated ||
+    status === ContextMemoryStatus.Superseded
+  ) {
+    return 'warning';
+  }
+
+  return 'gray';
+};
+
+// Navigating from the editor would open the successor over unsaved edits, so it
+// only links in view mode.
+const MemorySuccessor: FC<{
+  successor: EntityReference;
+  isViewOnly: boolean;
+}> = ({ successor, isViewOnly }) => {
+  const location = useLocation();
+  const successorName = successor.fullyQualifiedName || successor.name;
+
+  return isViewOnly && successorName ? (
+    <Link
+      className="tw:text-brand-secondary tw:hover:underline"
+      data-testid="memory-lifecycle-successor"
+      to={{
+        pathname: ROUTES.CONTEXT_CENTER_MEMORIES,
+        search: getSuccessorSearch(
+          location.pathname,
+          location.search,
+          successorName
+        ),
+      }}>
+      {getEntityName(successor)}
+    </Link>
+  ) : (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="memory-lifecycle-successor"
+      size="text-sm">
+      {successorName ? getEntityName(successor) : successor.id}
+    </Typography>
+  );
+};
+
+const MemoryStatusReasonText: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const reason = useMemoryStatusReason(memory);
+
+  return <>{reason}</>;
+};
+
+const MemoryLifecycleRows: FC<{
+  memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
+  t: TFunc;
+}> = ({ memoryToEdit, isViewOnly, t }) => (
+  <>
+    {memoryToEdit?.entityStatus && (
+      <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.status')}
+          </Typography>
+        </div>
+        <Badge
+          color={getEntityStatusColor(memoryToEdit.entityStatus)}
+          data-testid="memory-lifecycle-status"
+          size="sm"
+          type="color">
+          {MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus]
+            ? t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])
+            : memoryToEdit.entityStatus}
+        </Badge>
+      </div>
+    )}
+    {memoryToEdit?.statusReason && (
+      <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.reason')}
+          </Typography>
+        </div>
+        <Typography
+          className="tw:text-tertiary tw:whitespace-pre-wrap"
+          data-testid="memory-lifecycle-reason"
+          size="text-sm">
+          <MemoryStatusReasonText memory={memoryToEdit} />
+        </Typography>
+      </div>
+    )}
+    {(memoryToEdit?.entityStatus === ContextMemoryStatus.Deprecated ||
+      memoryToEdit?.entityStatus === ContextMemoryStatus.Superseded) &&
+      memoryToEdit.supersededBy && (
+        <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+          <div className="tw:basis-[30%]">
+            <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+              {t('label.superseded-by')}
+            </Typography>
+          </div>
+          <MemorySuccessor
+            isViewOnly={isViewOnly}
+            successor={memoryToEdit.supersededBy}
+          />
+        </div>
+      )}
+  </>
+);
+
+/** Whoever changed the memory last, by display name as on its card, with their profile on hover. */
+const MemoryUpdatedBy: FC<{ userName: string }> = ({ userName }) => {
+  const [, , profile] = useUserProfile({ permission: true, name: userName });
+
+  return (
+    <UserPopOverCard
+      showUserName
+      displayName={profile?.displayName || userName}
+      profileWidth={16}
+      userName={userName}
+    />
+  );
+};
+
 const MemoryMetadataExtraRows: FC<{
   memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
   t: TFunc;
-}> = ({ memoryToEdit, t }) => (
+}> = ({ memoryToEdit, isViewOnly, t }) => (
   <>
-    {Boolean(memoryToEdit?.updatedAt) && (
+    <MemoryLifecycleRows
+      isViewOnly={isViewOnly}
+      memoryToEdit={memoryToEdit}
+      t={t}
+    />
+    {Boolean(memoryToEdit?.updatedBy || memoryToEdit?.updatedAt) && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">
           <Typography
             className="tw:text-quaternary tw:w-28 tw:shrink-0"
             size="text-sm">
-            {t('label.updated')}
+            {t(memoryToEdit?.updatedBy ? 'label.updated-by' : 'label.updated')}
           </Typography>
         </div>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {formatDate(memoryToEdit?.updatedAt)}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
+          {memoryToEdit?.updatedBy && (
+            <MemoryUpdatedBy userName={memoryToEdit.updatedBy} />
+          )}
+          {Boolean(memoryToEdit?.updatedAt) && (
+            <Typography color="secondary" size="text-sm">
+              {memoryToEdit?.updatedBy && <>&middot; </>}
+              {formatDate(memoryToEdit?.updatedAt)}
+            </Typography>
+          )}
+        </Box>
       </div>
     )}
     {memoryToEdit &&
@@ -720,7 +910,11 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
         t={t}
       />
 
-      <MemoryMetadataExtraRows memoryToEdit={memoryToEdit} t={t} />
+      <MemoryMetadataExtraRows
+        isViewOnly={isViewOnly}
+        memoryToEdit={memoryToEdit}
+        t={t}
+      />
     </Card>
   </div>
 );
@@ -731,6 +925,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   memoryToEdit,
   isOpen,
   onClose,
+  onNavigate,
   onCreated,
   onUpdated,
   onDeleted,
@@ -742,7 +937,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   currentUserName,
 }) => {
   const { t } = useTranslation();
-  const modalContainerRef = useRef<HTMLDivElement>(null);
   const [isViewOnly, setIsViewOnly] = useState(viewOnly);
   const isEditMode = Boolean(memoryToEdit) && !isViewOnly;
 
@@ -766,7 +960,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       ? contextCenterClassBase.getArticlePath(
           memorySource.fullyQualifiedName ?? ''
         )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+      : contextCenterClassBase.getDocumentPath(memorySource.id);
   }, [memorySource]);
 
   const submitLabel = isEditMode
@@ -792,6 +986,22 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
+  const [decidingStatus, setDecidingStatus] = useState<ContextMemoryStatus>();
+  const activeDecision = useRef<symbol | undefined>(undefined);
+
+  useEffect(() => {
+    setDecidingStatus(undefined);
+
+    return () => {
+      activeDecision.current = undefined;
+    };
+  }, [isOpen, memoryToEdit?.id]);
+
+  const canDecideStatus = canDecideMemoryStatus(
+    memoryToEdit,
+    Boolean(isAdminUser),
+    isViewOnly
+  );
 
   const isOwner = useMemo(
     () =>
@@ -799,19 +1009,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
-
-  const ontologyProposals = useMemoryOntologyProposals(
-    memoryToEdit?.id,
-    isOpen
-  );
-  const { permissions } = usePermissionProvider();
-  const canCreateOntologyDrafts =
-    Boolean(isAdminUser) ||
-    checkPermission(
-      Operation.Create,
-      ResourceEntity.ONTOLOGY_CHANGE_SET,
-      permissions
-    );
 
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
@@ -846,7 +1043,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setIsEditingVisibility(false);
   }, [memoryToEdit, form, t]);
 
-  const handleClose = () => {
+  const resetModal = () => {
+    activeDecision.current = undefined;
+    setDecidingStatus(undefined);
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
     setSelectedTags([]);
@@ -854,7 +1053,18 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setModalError('');
     setIsEditingVisibility(false);
     setIsViewOnly(viewOnly);
+  };
+
+  const handleClose = () => {
+    resetModal();
     onClose();
+  };
+
+  // In AI mode the modal outlives a route change, so a followed link closes it. A host that keeps
+  // the memory in the URL closes it in place, so Back from the linked page reopens the memory.
+  const handleNavigate = () => {
+    resetModal();
+    (onNavigate ?? onClose)();
   };
 
   const isSubmitDisabled = !watchedMemory?.trim();
@@ -940,6 +1150,45 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
   };
 
+  const handleDecideStatus = async (status: ContextMemoryStatus) => {
+    if (!memoryToEdit) {
+      return;
+    }
+    const decision = Symbol();
+    activeDecision.current = decision;
+    setDecidingStatus(status);
+    try {
+      await updateContextMemory(
+        memoryToEdit.id,
+        getMemoryStatusPatch(memoryToEdit, status)
+      );
+      if (activeDecision.current === decision) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+        });
+        showSuccessToast(
+          t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
+        );
+        onUpdated?.();
+        handleClose();
+      }
+    } catch (err) {
+      const isChanged = await hasMemoryChangedSince(memoryToEdit);
+      if (activeDecision.current === decision) {
+        showErrorToast(
+          isChanged
+            ? t('message.memory-changed-since-opened')
+            : (err as AxiosError)
+        );
+      }
+    } finally {
+      if (activeDecision.current === decision) {
+        activeDecision.current = undefined;
+        setDecidingStatus(undefined);
+      }
+    }
+  };
+
   const handleSwitchToEdit = () => {
     setIsViewOnly(false);
   };
@@ -1020,180 +1269,178 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   return (
     <ModalOverlay
+      isKeyboardDismissDisabled={Boolean(decidingStatus)}
       isOpen={isOpen}
       style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && handleClose()}>
+      onOpenChange={(open) => !open && !decidingStatus && handleClose()}>
       <Modal>
-        <Dialog showCloseButton title="" width={600} onClose={handleClose}>
+        <Dialog
+          data-testid="memory-modal"
+          showCloseButton={!decidingStatus}
+          title=""
+          width={600}
+          onClose={handleClose}>
           <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
-            <div ref={modalContainerRef}>
-              <ConfigProvider
-                getPopupContainer={() =>
-                  modalContainerRef.current ?? document.body
-                }>
-                <HookForm
-                  className="tw:flex tw:flex-col tw:max-h-[92vh]"
-                  form={form}
-                  onSubmit={form.handleSubmit(handleSubmit)}>
-                  {/* Sticky header */}
-                  <MemoryModalHeader
-                    memorySource={memorySource}
-                    memorySourceLink={memorySourceLink}
-                    memoryToEdit={memoryToEdit}
-                    modalTitle={modalTitle}
-                    t={t}
+            <HookForm
+              className="tw:flex tw:flex-col tw:h-[92vh]"
+              form={form}
+              onSubmit={form.handleSubmit(handleSubmit)}>
+              {/* Sticky header */}
+              <MemoryModalHeader
+                memorySource={memorySource}
+                memorySourceLink={memorySourceLink}
+                memoryToEdit={memoryToEdit}
+                modalTitle={modalTitle}
+                t={t}
+                onNavigate={handleNavigate}
+              />
+
+              {/* Scrollable body */}
+              <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
+                {/* Read-only banner for non-owners */}
+                <ReadOnlyBanner
+                  canDelete={canDelete}
+                  isOwner={isOwner}
+                  isViewOnly={isViewOnly}
+                  memoryToEdit={memoryToEdit}
+                  t={t}
+                />
+
+                {/* Inline error alert */}
+                {modalError && (
+                  <Alert
+                    closable
+                    title={modalError}
+                    variant="error"
+                    onClose={() => setModalError('')}
                   />
+                )}
 
-                  {/* Scrollable body */}
-                  <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
-                    {/* Read-only banner for non-owners */}
-                    <ReadOnlyBanner
-                      canDelete={canDelete}
-                      isOwner={isOwner}
-                      isViewOnly={isViewOnly}
-                      memoryToEdit={memoryToEdit}
-                      t={t}
-                    />
+                {/* Section 1: Title — uses getField (TEXT) */}
+                <div className="tw:flex tw:flex-col tw:gap-1">
+                  {getField(titleField)}
+                </div>
 
-                    {/* Inline error alert */}
-                    {modalError && (
-                      <Alert
-                        closable
-                        title={modalError}
-                        variant="error"
-                        onClose={() => setModalError('')}
-                      />
-                    )}
-
-                    {/* Section 1: Title — uses getField (TEXT) */}
+                {/* Section 2: Memory content — FormField escape hatch for custom preview/edit tabs */}
+                <FormField
+                  control={form.control}
+                  name="memory"
+                  rules={{
+                    required: t('label.field-required', {
+                      field: t(MEMORY_LABEL_KEY),
+                    }),
+                  }}>
+                  {({ field, fieldState }) => (
                     <div className="tw:flex tw:flex-col tw:gap-1">
-                      {getField(titleField)}
-                    </div>
-
-                    {/* Section 2: Memory content — FormField escape hatch for custom preview/edit tabs */}
-                    <FormField
-                      control={form.control}
-                      name="memory"
-                      rules={{
-                        required: t('label.field-required', {
-                          field: t(MEMORY_LABEL_KEY),
-                        }),
-                      }}>
-                      {({ field, fieldState }) => (
-                        <div className="tw:flex tw:flex-col tw:gap-1">
-                          <div className="tw:flex tw:items-center tw:justify-between">
-                            <div className="tw:flex tw:items-center tw:gap-1">
-                              <FormItemLabel
-                                label={t(MEMORY_LABEL_KEY)}
-                                required={!isViewOnly}
+                      <div className="tw:flex tw:items-center tw:justify-between">
+                        <div className="tw:flex tw:items-center tw:gap-1">
+                          <FormItemLabel
+                            label={t(MEMORY_LABEL_KEY)}
+                            required={!isViewOnly}
+                          />
+                          <Tooltip
+                            title={t(
+                              contextCenterClassBase.getMemoryPromptTranslationKey()
+                            )}>
+                            <TooltipTrigger className="tw:leading-0">
+                              <InfoCircle
+                                className="tw:text-utility-gray-400 tw:cursor-pointer"
+                                size={14}
                               />
-                              <Tooltip
-                                title={t(
-                                  contextCenterClassBase.getMemoryPromptTranslationKey()
-                                )}>
-                                <TooltipTrigger className="tw:leading-0">
-                                  <InfoCircle
-                                    className="tw:text-utility-gray-400 tw:cursor-pointer"
-                                    size={14}
-                                    strokeWidth={2}
-                                  />
-                                </TooltipTrigger>
-                              </Tooltip>
-                            </div>
-                            {!isViewOnly && (
-                              <Button
-                                color="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  setMemoryTab((prev) =>
-                                    prev === 'edit' ? 'preview' : 'edit'
-                                  )
-                                }>
-                                {memoryTab === 'edit'
-                                  ? t('label.preview')
-                                  : t('label.edit')}
-                              </Button>
-                            )}
-                          </div>
-                          {renderMemoryContent(field)}
-                          {fieldState.error?.message && (
-                            <HintText isInvalid>
-                              {fieldState.error.message}
-                            </HintText>
-                          )}
+                            </TooltipTrigger>
+                          </Tooltip>
                         </div>
-                      )}
-                    </FormField>
-
-                    {/* Section 3: Type — uses getField (SELECT) */}
-                    <div className="tw:flex tw:flex-col tw:gap-1">
-                      {getField(memoryTypeField)}
-                    </div>
-
-                    {/* Section 4: Linked Data Assets */}
-                    <LinkedAssetsSection
-                      handleAssetChange={handleAssetChange}
-                      isViewOnly={isViewOnly}
-                      linkedAssets={linkedAssets}
-                      setLinkedAssets={setLinkedAssets}
-                      t={t}
-                    />
-
-                    {/* Section 5: Metadata */}
-                    <MemoryMetadataSection
-                      control={form.control}
-                      handleRemoveTag={handleRemoveTag}
-                      handleTagSave={handleTagSave}
-                      isEditingVisibility={isEditingVisibility}
-                      isOwner={isOwner}
-                      isViewOnly={isViewOnly}
-                      memoryToEdit={memoryToEdit}
-                      selectedTags={selectedTags}
-                      setIsEditingVisibility={setIsEditingVisibility}
-                      setShowTagForm={setShowTagForm}
-                      showTagForm={showTagForm}
-                      t={t}
-                    />
-
-                    {memoryToEdit && (
-                      <MemoryDerivedOntology
-                        canPropose={canProposeFromMemory(
-                          memoryToEdit,
-                          ontologyProposals.status,
-                          {
-                            isOwner,
-                            canCreateDrafts: canCreateOntologyDrafts,
-                            isViewOnly,
-                          }
+                        {!isViewOnly && (
+                          <Button
+                            color="secondary"
+                            size="sm"
+                            onClick={() =>
+                              setMemoryTab((prev) =>
+                                prev === 'edit' ? 'preview' : 'edit'
+                              )
+                            }>
+                            {memoryTab === 'edit'
+                              ? t('label.preview')
+                              : t('label.edit')}
+                          </Button>
                         )}
-                        isProposing={ontologyProposals.isProposing}
-                        memory={memoryToEdit}
-                        proposeError={ontologyProposals.proposeError}
-                        status={ontologyProposals.status}
-                        onNavigate={handleClose}
-                        onPropose={ontologyProposals.propose}
-                      />
-                    )}
-                  </div>
+                      </div>
+                      {renderMemoryContent(field)}
+                      {fieldState.error?.message && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </div>
+                  )}
+                </FormField>
 
-                  {/* Sticky footer */}
-                  <MemoryModalFooter
-                    canDelete={canDelete}
-                    handleClose={handleClose}
-                    handleDelete={handleDelete}
-                    handleSwitchToEdit={handleSwitchToEdit}
-                    isDeleting={isDeleting}
-                    isSubmitDisabled={isSubmitDisabled}
-                    isSubmitting={isSubmitting}
-                    memoryToEdit={memoryToEdit}
-                    showEditButton={showEditButton}
-                    showSubmitButton={showSubmitButton}
-                    submitLabel={submitLabel}
-                    t={t}
+                {/* Section 3: Type — uses getField (SELECT) */}
+                <div className="tw:flex tw:flex-col tw:gap-1">
+                  {getField(memoryTypeField)}
+                </div>
+
+                {/* Section 4: Linked Data Assets */}
+                <LinkedAssetsSection
+                  handleAssetChange={handleAssetChange}
+                  isViewOnly={isViewOnly}
+                  linkedAssets={linkedAssets}
+                  setLinkedAssets={setLinkedAssets}
+                  t={t}
+                  onNavigate={handleNavigate}
+                />
+
+                {/* Section 5: Metadata */}
+                <MemoryMetadataSection
+                  control={form.control}
+                  handleRemoveTag={handleRemoveTag}
+                  handleTagSave={handleTagSave}
+                  isEditingVisibility={isEditingVisibility}
+                  isOwner={isOwner}
+                  isViewOnly={isViewOnly}
+                  memoryToEdit={memoryToEdit}
+                  selectedTags={selectedTags}
+                  setIsEditingVisibility={setIsEditingVisibility}
+                  setShowTagForm={setShowTagForm}
+                  showTagForm={showTagForm}
+                  t={t}
+                />
+
+                {memoryToEdit && (
+                  <MemoryDerivedTerm
+                    isViewOnly={isViewOnly}
+                    memory={memoryToEdit}
+                    onNavigate={handleNavigate}
                   />
-                </HookForm>
-              </ConfigProvider>
-            </div>
+                )}
+              </div>
+
+              {/* Sticky footer */}
+              <MemoryModalFooter
+                canDelete={canDelete}
+                handleClose={handleClose}
+                handleDelete={handleDelete}
+                handleSwitchToEdit={handleSwitchToEdit}
+                isDecidingStatus={Boolean(decidingStatus)}
+                isDeleting={isDeleting}
+                isSubmitDisabled={isSubmitDisabled}
+                isSubmitting={isSubmitting}
+                memoryToEdit={memoryToEdit}
+                showEditButton={showEditButton}
+                showSubmitButton={showSubmitButton}
+                statusActions={
+                  canDecideStatus && (
+                    <MemoryStatusActions
+                      decidingStatus={decidingStatus}
+                      isDisabled={isDeleting}
+                      onDecide={handleDecideStatus}
+                    />
+                  )
+                }
+                submitLabel={submitLabel}
+                t={t}
+              />
+            </HookForm>
           </Dialog.Content>
         </Dialog>
       </Modal>

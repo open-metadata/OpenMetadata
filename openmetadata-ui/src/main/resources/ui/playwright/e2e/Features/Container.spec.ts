@@ -61,7 +61,7 @@ const S3_SERVICE_CONFIG = {
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
@@ -72,7 +72,7 @@ test.describe('Container entity specific tests ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
@@ -137,10 +137,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByText('25 / Page').click();
     await childrenResponseSizeChange;
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
-
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(
@@ -156,10 +152,6 @@ test.describe('Container entity specific tests ', () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('15 / Page').click();
     await childrenResponseSizeChange2;
-
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(
@@ -250,6 +242,9 @@ test.describe('Container entity specific tests ', () => {
       page,
       buttonTestId: 'copy-column-link-button',
       containerTestId: 'container-data-model-table',
+      // childrenSelectorId holds the column's FQN after create(); the row
+      // renders only the column name, which is its last segment.
+      rowName: (container.childrenSelectorId ?? '').split('.').pop() ?? '',
       expectedUrlPath: '/container/',
       entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -319,7 +314,7 @@ test.describe('Deeply nested container navigation', () => {
   let deepContainer4Fqn = '';
 
   test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
     );
@@ -377,7 +372,7 @@ test.describe('Deeply nested container navigation', () => {
   });
 
   test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
     );

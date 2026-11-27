@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the sampler-to-auto-classification bridge."""
 
+import logging
 import uuid
 from collections.abc import Sequence
 from itertools import pairwise
@@ -38,6 +39,9 @@ from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.sampler.models import SampleData, SamplerResponse
+from metadata.utils.logger import profiler_logger
+
+PROCESSOR_LOGGER = profiler_logger().name
 
 
 class RecordingClassificationProcessor(AutoClassificationProcessor):
@@ -401,3 +405,204 @@ def test_sampled_dotted_path_maps_to_canonical_nested_column(workflow_config):
     processor.run(record)
 
     assert processor.classifier_inputs == [(nested_email, ["first@example.com", "second@example.com"])]
+
+
+def _processor_warnings(caplog) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == PROCESSOR_LOGGER and record.levelno >= logging.WARNING
+    ]
+
+
+def _aliased_query_record() -> tuple[SamplerResponse, Column, Column]:
+    id_column = _column("id")
+    email_column = _column("email")
+    record = SamplerResponse(
+        entity=_table([id_column, email_column]),
+        sample_data=SampleData(
+            data=TableData(
+                columns=[ColumnName(root="id"), ColumnName(root="customer_email")],
+                rows=[[1, "first@example.com"], [2, "second@example.com"]],
+            )
+        ),
+    )
+    return record, id_column, email_column
+
+
+def test_unmapped_sample_fields_report_field_and_unsampled_column(workflow_config, caplog):
+    # Issue #34299: an aliased custom query returns a field that maps to no column.
+    record, id_column, _ = _aliased_query_record()
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    assert processor.classifier_inputs == [(id_column, [1, 2])]
+    warnings = _processor_warnings(caplog)
+    assert len(warnings) == 1
+    assert "['customer_email']" in warnings[0]
+    assert "not covered by mapped sample fields (skipped, not classified): ['email']" in warnings[0]
+    assert "example.com" not in caplog.text
+
+
+def test_unmapped_nested_sample_field_reports_unsampled_leaves(workflow_config, caplog):
+    entity, _ = _nested_table_case()
+    record = SamplerResponse(
+        entity=entity,
+        sample_data=SampleData(
+            data=TableData(
+                columns=[ColumnName(root="id"), ColumnName(root="contact.address"), ColumnName(root="contact_mail")],
+                rows=[[1, {"city": "Paris"}, "first@example.com"]],
+            )
+        ),
+    )
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    warnings = _processor_warnings(caplog)
+    assert len(warnings) == 1
+    assert "['contact_mail']" in warnings[0]
+    assert "not covered by mapped sample fields (skipped, not classified): ['contact.email']" in warnings[0]
+
+
+@pytest.mark.parametrize(
+    "sample_data",
+    [
+        TableData(
+            columns=[ColumnName(root="id"), ColumnName(root="email")],
+            rows=[[1, "first@example.com"]],
+        ),
+        TableData(columns=[], rows=[]),
+        None,
+    ],
+)
+def test_mapped_or_missing_sample_fields_do_not_warn(workflow_config, caplog, sample_data):
+    record = SamplerResponse(
+        entity=_table([_column("id"), _column("email"), _column("other")]),
+        sample_data=SampleData(data=sample_data) if sample_data is not None else None,
+    )
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    assert _processor_warnings(caplog) == []
+
+
+def test_diagnostics_do_not_change_emitted_tags(workflow_config, caplog):
+    def run_once() -> list[tuple[str, str]]:
+        record, _, _ = _aliased_query_record()
+        result = RecordingClassificationProcessor(workflow_config).run(record)
+        return [(tag.column_fqn, tag.tag_label.tagFQN.root) for tag in result.column_tags]
+
+    logging.disable(logging.CRITICAL)
+    try:
+        without_diagnostics = run_once()
+    finally:
+        logging.disable(logging.NOTSET)
+    with caplog.at_level(logging.DEBUG, logger=PROCESSOR_LOGGER):
+        with_diagnostics = run_once()
+
+    assert _processor_warnings(caplog)
+    assert with_diagnostics == without_diagnostics == [("service.database.schema.table.id", "PII.Email")]
+
+
+@pytest.mark.parametrize("store", [True, False])
+def test_inference_memory_error_preserves_other_tags_and_forwards_samples(
+    workflow_config: OpenMetadataWorkflowConfig, store: bool
+):
+    processor = RecordingClassificationProcessor(workflow_config)
+    original_classify = processor.create_column_tag_labels
+
+    def classify(column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
+        if column.name.root == "broken":
+            raise MemoryError("synthetic inference allocation failure")
+        return original_classify(column, sample_data)
+
+    processor.create_column_tag_labels = classify
+    columns = [_column("email"), _column("broken"), _column("later")]
+    table_data = TableData(columns=[column.name for column in columns], rows=[["a", "b", "c"]])
+    record = SamplerResponse(entity=_table(columns), sample_data=SampleData(data=table_data, store=store))
+
+    result = processor.run(record)
+
+    assert result is record
+    assert isinstance(result, SamplerResponse)
+    assert result.column_tags is not None
+    assert [(tag.column_fqn, tag.tag_label.tagFQN.root) for tag in result.column_tags] == [
+        ("service.database.schema.table.email", "PII.Email"),
+        ("service.database.schema.table.later", "PII.Email"),
+    ]
+    assert result.sample_data is not None
+    assert result.sample_data.store is store
+    if store:
+        assert result.sample_data.data == table_data
+    else:
+        assert result.sample_data.data is None
+    assert processor.model_load_failure is None
+    assert len(processor.status.failures) == 1
+    failure = processor.status.failures[0]
+    assert failure.name == "service.database.schema.table"
+    assert "synthetic inference allocation failure" in str(failure.error)
+    assert "broken" in str(failure.error)
+    assert "MemoryError" in str(failure.stackTrace)
+
+
+@pytest.mark.parametrize("store", [True, False])
+def test_model_failure_discards_interrupted_tags_and_forwards_later_samples(workflow_config, store):
+    from metadata.pii.model_loading import ClassificationModelLoadError
+
+    processor = RecordingClassificationProcessor(workflow_config)
+    original_classify = processor.create_column_tag_labels
+    calls = []
+
+    def classify(column, sample_data):
+        calls.append(column.name.root)
+        if column.name.root == "broken":
+            raise ClassificationModelLoadError("fr_core_news_md", "any", "fr", "local_load")
+        return original_classify(column, sample_data)
+
+    processor.create_column_tag_labels = classify
+    columns = [_column("email"), _column("broken"), _column("later")]
+    records = [
+        SamplerResponse(
+            entity=_table(columns),
+            sample_data=SampleData(
+                data=TableData(columns=[c.name for c in columns], rows=[["a", "b", "c"]]), store=store
+            ),
+        )
+        for _ in range(3)
+    ]
+    completed = SamplerResponse(entity=_table([_column("email")]))
+    assert processor._run(completed).right.column_tags
+
+    for record in records:
+        assert processor._run(record).right is record
+        assert record.column_tags == []
+        assert (record.sample_data.data is not None) == store
+
+    assert calls == ["email", "email", "broken"]
+    assert completed.column_tags
+    assert processor.model_load_failure is not None
+    assert len(processor.status.failures) == 1
+    assert "forwarded" in processor.status.failures[0].error
+
+
+def test_deprecated_processor_disables_after_lazy_model_failure(workflow_config, monkeypatch):
+    from metadata.pii.algorithms import presidio_utils
+    from metadata.pii.processor import PIIProcessor
+
+    presidio_utils.load_nlp_engine.cache_clear()
+    monkeypatch.setattr(presidio_utils.spacy, "load", Mock(side_effect=ValueError("broken model")))
+    processor = PIIProcessor(workflow_config, Mock(spec=OpenMetadata))
+    for _ in range(2):
+        record = SamplerResponse(entity=_table([_column("email")]))
+        assert processor._run(record).right is record
+        assert record.column_tags == []
+    assert len(processor.status.failures) == 1
+    assert processor.model_load_failure.phase == "local_load"
+    presidio_utils.spacy.load.assert_called_once()
+    presidio_utils.load_nlp_engine.cache_clear()

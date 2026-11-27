@@ -14,13 +14,16 @@
 package org.openmetadata.service.rdf;
 
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /** Bounded admission and runtime guard for user-authored SPARQL. */
@@ -68,18 +71,36 @@ public final class SparqlQueryExecutionGuard {
   }
 
   private <T> Future<T> submit(final Supplier<T> query, final Semaphore principalPermit) {
+    final var state = new AtomicReference<>(AdmissionState.QUEUED);
+    final FutureTask<T> task =
+        new FutureTask<>(() -> executeAndRelease(query, principalPermit, state)) {
+          @Override
+          protected void done() {
+            if (state.compareAndSet(AdmissionState.QUEUED, AdmissionState.RELEASED)) {
+              release(principalPermit);
+            }
+          }
+        };
     try {
-      return executor.submit(() -> executeAndRelease(query, principalPermit));
+      executor.execute(task);
+      return task;
     } catch (final RuntimeException exception) {
-      release(principalPermit);
+      task.cancel(false);
       throw exception;
     }
   }
 
-  private <T> T executeAndRelease(final Supplier<T> query, final Semaphore principalPermit) {
+  private <T> T executeAndRelease(
+      final Supplier<T> query,
+      final Semaphore principalPermit,
+      final AtomicReference<AdmissionState> state) {
+    if (!state.compareAndSet(AdmissionState.QUEUED, AdmissionState.RUNNING)) {
+      throw new CancellationException();
+    }
     try {
       return query.get();
     } finally {
+      state.set(AdmissionState.RELEASED);
       release(principalPermit);
     }
   }
@@ -96,6 +117,7 @@ public final class SparqlQueryExecutionGuard {
       future.cancel(true);
       throw new QueryTimeoutException(timeoutMillis, exception);
     } catch (final InterruptedException exception) {
+      future.cancel(true);
       Thread.currentThread().interrupt();
       throw new QueryTimeoutException(timeoutMillis, exception);
     } catch (final ExecutionException exception) {
@@ -145,6 +167,12 @@ public final class SparqlQueryExecutionGuard {
       return runtimeException;
     }
     return new IllegalStateException("SPARQL query execution failed", cause);
+  }
+
+  private enum AdmissionState {
+    QUEUED,
+    RUNNING,
+    RELEASED
   }
 
   public static final class QueryCapacityException extends RuntimeException {

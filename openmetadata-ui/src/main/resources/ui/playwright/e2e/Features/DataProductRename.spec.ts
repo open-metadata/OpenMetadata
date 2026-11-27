@@ -138,8 +138,8 @@ test.describe('Data Product Rename', () => {
 
     // Verify the data product header shows the new name (use first() as there may be multiple elements)
     await expect(
-      page.getByTestId('entity-header-display-name').first()
-    ).toBeVisible();
+      page.getByTestId('entity-header-display-name').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Update the data product response data for cleanup
     dataProduct.responseData.name = newName;

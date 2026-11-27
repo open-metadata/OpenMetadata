@@ -70,6 +70,9 @@ public class ConversationResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @QueryParam("entityLink") String entityLink,
+      // With entityLink, also the conversations about the entity's fields (its columns);
+      // ignored without one.
+      @DefaultValue("false") @QueryParam("includeFields") boolean includeFields,
       @QueryParam("userId") UUID userId,
       @QueryParam("filterType") ConversationFilterType filterType,
       @DefaultValue("false") @QueryParam("resolved") Boolean resolved,
@@ -83,6 +86,7 @@ public class ConversationResource {
         securityContext,
         authorizer,
         entityLink,
+        includeFields,
         userId,
         filterType,
         resolved,

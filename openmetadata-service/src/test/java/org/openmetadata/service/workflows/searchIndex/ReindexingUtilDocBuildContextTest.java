@@ -55,7 +55,7 @@ class ReindexingUtilDocBuildContextTest {
   @Test
   void populateDocBuildContextDoesNothingWhenAllPrefetchesReturnNull() {
     Map<String, Object> contextData = new HashMap<>();
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
 
     try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
       indexMock
@@ -74,7 +74,7 @@ class ReindexingUtilDocBuildContextTest {
   @Test
   void populateDocBuildContextSwallowsThrowableAndLeavesContextUntouched() {
     Map<String, Object> contextData = new HashMap<>();
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
 
     try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
       indexMock
@@ -92,8 +92,8 @@ class ReindexingUtilDocBuildContextTest {
     Map<String, Object> contextData = new HashMap<>();
     UUID id1 = UUID.randomUUID();
     UUID id2 = UUID.randomUUID();
-    EntityInterface e1 = mock(EntityInterface.class);
-    EntityInterface e2 = mock(EntityInterface.class);
+    EntityInterface<?> e1 = mock(EntityInterface.class);
+    EntityInterface<?> e2 = mock(EntityInterface.class);
     when(e1.getId()).thenReturn(id1);
     when(e2.getId()).thenReturn(id2);
     List<EsLineageData> edgesForFirst = List.of(new EsLineageData());
@@ -123,7 +123,7 @@ class ReindexingUtilDocBuildContextTest {
   void populateDocBuildContextPrefetchesTestSuiteRelationshipRevision() {
     Map<String, Object> contextData = new HashMap<>();
     UUID id = UUID.randomUUID();
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(id);
 
     try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class);
@@ -152,7 +152,7 @@ class ReindexingUtilDocBuildContextTest {
     UUID id = UUID.randomUUID();
     Map<String, Object> contextData =
         new HashMap<>(Map.of(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, Map.of(id, 23L)));
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(id);
 
     try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class);
@@ -211,8 +211,8 @@ class ReindexingUtilDocBuildContextTest {
     Map<String, Object> contextData = new HashMap<>();
     UUID id1 = UUID.randomUUID();
     UUID id2 = UUID.randomUUID();
-    EntityInterface e1 = mock(EntityInterface.class);
-    EntityInterface e2 = mock(EntityInterface.class);
+    EntityInterface<?> e1 = mock(EntityInterface.class);
+    EntityInterface<?> e2 = mock(EntityInterface.class);
     Style style = new Style().withColor("#123456");
     when(e1.getId()).thenReturn(id1);
     when(e2.getId()).thenReturn(id2);

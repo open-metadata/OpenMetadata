@@ -10,99 +10,70 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { render, screen } from '@testing-library/react';
-import { Form, FormInstance } from 'antd';
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
-import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
+import { AlertType, Effect } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem';
 
-jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
-  getConditionalField: jest
-    .fn()
-    .mockReturnValue(<div data-testid="condition-field" />),
-  getSupportedFilterOptions: jest.fn().mockReturnValue([]),
-}));
-
-const mockSupportedFilters = MOCK_FILTER_RESOURCES.reduce(
-  (resource, current) => {
-    resource.push(...(current.supportedFilters ?? []));
-
-    return resource;
+const selection: AlertSelection = {
+  sources: ['table'],
+  support: {
+    supportedFilters: [
+      {
+        name: 'filter',
+        displayName: 'Filter',
+        condition: 'true',
+        effect: Effect.Include,
+      },
+    ],
+    supportedTriggers: [
+      {
+        name: 'trigger',
+        displayName: 'Trigger',
+        condition: 'true',
+        effect: Effect.Include,
+      },
+    ],
   },
-  [] as EventFilterRule[]
-);
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: async () => [],
+    byId: async () => [],
+  },
+};
 
-describe('ObservabilityFormFiltersItem', () => {
-  it('should renders without crashing', () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
+it('renders the filter section with its saved rules', () => {
+  render(
+    <AlertSelectionProvider value={selection}>
+      <ObservabilityFormFiltersItem
+        isViewMode
+        value={{
+          name: 'saved',
+          alertType: AlertType.Observability,
+          resources: ['table'],
+          destinations: [],
+          timeout: 10,
+          readTimeout: 10,
+          input: { filters: [{ name: 'filter' }] },
+        }}
+      />
+    </AlertSelectionProvider>
+  );
 
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => ['container']);
-
-    render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
-    );
-
-    expect(screen.getByText('label.filter-plural')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.alerts-filter-description')
-    ).toBeInTheDocument();
-
-    expect(screen.getByTestId('filters-list')).toBeInTheDocument();
-    expect(screen.getByTestId('add-filters')).toBeInTheDocument();
-  });
-
-  it('add filter button should be disabled if there is no selected trigger', () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
-
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => []);
-
-    render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
-    );
-
-    const addButton = screen.getByTestId('add-filters');
-
-    expect(addButton).toBeDisabled();
-  });
-
-  it('add filter button should not be disabled if there is selected trigger', () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
-
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => ['container']);
-
-    render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
-    );
-
-    const addButton = screen.getByTestId('add-filters');
-
-    expect(addButton).not.toBeDisabled();
-  });
+  expect(
+    screen.getByTestId('filter-select-0').querySelector('button')
+  ).toBeDisabled();
 });

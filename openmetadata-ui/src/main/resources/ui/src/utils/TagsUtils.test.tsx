@@ -19,7 +19,7 @@ import {
   getUsageCountLink,
   parseTagUsageBuckets,
 } from './TagsPureUtils';
-import { getDeleteIcon } from './TagsUtils';
+import { getDeleteIcon, getTagTooltip } from './TagsUtils';
 
 describe('getDeleteIcon', () => {
   it('renders CheckOutlined icon when deleteTagId matches id and status is "success"', () => {
@@ -73,7 +73,6 @@ describe('getUsageCountLink', () => {
 
     // Assert that the correct explore path is returned
     expect(result).toBe(
-      // eslint-disable-next-line max-len
       '/explore/tables?page=1&quickFilter=%7B%22query%22%3A%7B%22bool%22%3A%7B%22must%22%3A%5B%7B%22bool%22%3A%7B%22should%22%3A%5B%7B%22term%22%3A%7B%22tier.tagFQN%22%3A%22Tier1%22%7D%7D%5D%7D%7D%5D%7D%7D%7D'
     );
   });
@@ -85,7 +84,6 @@ describe('getUsageCountLink', () => {
 
     // Assert that the correct explore path is returned
     expect(result).toBe(
-      // eslint-disable-next-line max-len
       '/explore/tables?page=1&quickFilter=%7B%22query%22%3A%7B%22bool%22%3A%7B%22must%22%3A%5B%7B%22bool%22%3A%7B%22should%22%3A%5B%7B%22term%22%3A%7B%22tags.tagFQN%22%3A%22Tag1%22%7D%7D%5D%7D%7D%5D%7D%7D%7D'
     );
   });
@@ -188,5 +186,30 @@ describe('parseTagUsageBuckets', () => {
 
   it('should return an empty map when there are no aggregations', () => {
     expect(parseTagUsageBuckets(undefined, field)).toEqual({});
+  });
+});
+
+describe('getTagTooltip', () => {
+  it('renders the FQN in bold when the description is HTML with a list', () => {
+    const { container } = render(
+      getTagTooltip(
+        'PII.Sensitive',
+        '<p>Why:</p><ul><li><strong>Business-Critical</strong></li></ul>'
+      )
+    );
+
+    expect(container.querySelector('strong')).toHaveTextContent(
+      'PII.Sensitive'
+    );
+    expect(container).not.toHaveTextContent('**');
+  });
+
+  it('renders only the FQN when there is no description', () => {
+    const { container } = render(getTagTooltip('PII.Sensitive'));
+
+    expect(container).toHaveTextContent('PII.Sensitive');
+    expect(
+      container.querySelector('[data-testid="viewer-container"]')
+    ).not.toBeInTheDocument();
   });
 });

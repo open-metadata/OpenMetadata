@@ -103,22 +103,6 @@ export const searchDomainInDropdownTree = async (
   domain: Domain
 ) => {
   const searchResponse = waitForDomainSearch(page, domain);
-  await page
-    .getByTestId('domain-selectable-tree-search')
-    .fill(domain.data.name);
-  await searchResponse;
-};
-
-// The domains listing search box rewrites the typed term before issuing the request, so the
-// encoded name is not a substring of the URL. Match the domain search request loosely (by
-// index) instead, mirroring the established selectDomain helper.
-export const searchDomainInListing = async (page: Page, domain: Domain) => {
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=domain*'
-  );
-  await page
-    .getByTestId('page-layout-v1')
-    .getByPlaceholder('Search')
-    .fill(domain.data.name);
+  await page.getByTestId('domain-dropdown-search').fill(domain.data.name);
   await searchResponse;
 };

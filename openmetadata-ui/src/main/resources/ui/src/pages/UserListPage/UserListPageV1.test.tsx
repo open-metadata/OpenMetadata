@@ -71,6 +71,9 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, to }) => <a href={to}>{children}</a>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -153,17 +156,6 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-${type}`}>ErrorPlaceHolder</div>
-      ));
-  }
-);
-
 jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
 });
@@ -216,7 +208,7 @@ describe('Test UserListPage component', () => {
 
     const { findByTestId } = render(<UserListPageV1 />);
 
-    const errorPlaceholder = await findByTestId('error-placeholder-CREATE');
+    const errorPlaceholder = await findByTestId(/create-error-placeholder/);
 
     expect(errorPlaceholder).toBeInTheDocument();
     expect(getUsers).toHaveBeenCalledWith({

@@ -37,7 +37,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
-import org.openmetadata.service.util.SubscriptionUtil;
+import org.openmetadata.service.util.http.OutboundHttpClients;
 
 /**
  * Sink provider that sends entity data to HTTP webhook endpoints.
@@ -60,7 +60,7 @@ public class WebhookSinkProvider implements SinkProvider {
   public WebhookSinkProvider(Object rawConfig) {
     this.config = JsonUtils.convertValue(rawConfig, WebhookSinkConfig.class);
     this.client =
-        SubscriptionUtil.getClient(SINK_CONNECT_TIMEOUT_SECONDS, SINK_READ_TIMEOUT_SECONDS);
+        OutboundHttpClients.newClient(SINK_CONNECT_TIMEOUT_SECONDS, SINK_READ_TIMEOUT_SECONDS);
   }
 
   @Override
@@ -69,7 +69,7 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult write(SinkContext context, EntityInterface entity) {
+  public SinkResult write(SinkContext context, EntityInterface<?> entity) {
     try {
       String payload = serializeEntity(entity, context.getOutputFormat());
       return executeWithRetry(
@@ -113,11 +113,11 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   @Override
-  public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+  public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
     List<String> synced = new ArrayList<>();
     List<SinkResult.SinkError> errors = new ArrayList<>();
 
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       try {
         String payload = serializeEntity(entity, context.getOutputFormat());
         SinkResult result =
@@ -269,7 +269,7 @@ public class WebhookSinkProvider implements SinkProvider {
     }
   }
 
-  private String serializeEntity(EntityInterface entity, String format) {
+  private String serializeEntity(EntityInterface<?> entity, String format) {
     if ("yaml".equalsIgnoreCase(format)) {
       try {
         return YAML_MAPPER.writeValueAsString(entity);

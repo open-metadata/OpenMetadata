@@ -20,6 +20,19 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: ({
+    children,
+    className,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    'data-testid'?: string;
+  }) => (
+    <div className={className} data-testid={testId}>
+      {children}
+    </div>
+  ),
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
@@ -58,7 +71,7 @@ describe('MembershipSection', () => {
     expect(screen.getByText('CoreTeam')).toBeInTheDocument();
     expect(screen.getByText('Analyst')).toBeInTheDocument();
     // isAdmin surfaces a synthetic Admin role chip.
-    expect(screen.getByText('label.admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
     // Both rows carry an "Admin-managed" tag.
     expect(screen.getAllByText('label.admin-managed').length).toBe(2);
   });
@@ -73,6 +86,6 @@ describe('MembershipSection', () => {
 
     expect(screen.getByText('message.no-teams-assigned')).toBeInTheDocument();
     expect(screen.getByText('message.no-roles-assigned')).toBeInTheDocument();
-    expect(screen.queryByText('label.admin')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.admin-superuser')).not.toBeInTheDocument();
   });
 });

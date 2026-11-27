@@ -16,16 +16,18 @@ import {
   JsonTree,
 } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { getAllCustomProperties } from '../../../../rest/metadataTypeAPI';
 import {
   getTreeConfig,
   processEntityTypeFields,
 } from '../../../../utils/AdvancedSearchUtils';
-import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
+import {
+  getRuleFilterTree,
+  isRuleFilterFullyRendered,
+} from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import Loader from '../../../common/Loader/Loader';
 import QueryBuilder from '../../../common/QueryBuilder/QueryBuilder';
 import { PERSONA_BUTTON_PRESET } from '../../../common/QueryBuilder/QueryBuilderCanvas/QueryBuilderCanvas.constants';
@@ -38,6 +40,7 @@ interface RuleQueryBuilderFieldProps {
   readonly?: boolean;
   onChange: (queryFilter: string, filterJsonTree?: string) => void;
   onValidityChange?: (isValid: boolean) => void;
+  onReconstructionStatusChange?: (rendered: boolean) => void;
 }
 
 export const RuleQueryBuilderField = ({
@@ -47,10 +50,12 @@ export const RuleQueryBuilderField = ({
   readonly,
   onChange,
   onValidityChange,
+  onReconstructionStatusChange,
 }: RuleQueryBuilderFieldProps) => {
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
   >();
+  const [builderComplete, setBuilderComplete] = useState(true);
   // getAllCustomProperties returns data for ALL entity types regardless of which entityType is currently selected —
   // fetch once on mount and cache it in state.
   const [customProps, setCustomProps] = useState<Awaited<
@@ -95,41 +100,72 @@ export const RuleQueryBuilderField = ({
     setEnrichedFields(nextFields);
   }, [entityType, customProps]);
 
+  const userEditedRef = useRef(false);
   const tree = useMemo(
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
   );
+  // A saved filter the builder shows only in part (or not at all) loses the
+  // hidden conditions on the first builder edit, so the editor warns first.
+  const isUnrendered =
+    !isRuleFilterFullyRendered(filterJsonTree, queryFilter) ||
+    Boolean(queryFilter && !builderComplete && !userEditedRef.current);
+  const onReconstructionStatusChangeRef = useRef(onReconstructionStatusChange);
+  onReconstructionStatusChangeRef.current = onReconstructionStatusChange;
+  useEffect(() => {
+    onReconstructionStatusChangeRef.current?.(!isUnrendered);
+  }, [isUnrendered]);
+  // A server-valid filter can use fields RAQB cannot display. Its mount-time
+  // sanitization must not replace the saved DSL or block an unrelated edit.
+  // Forward value and validity changes only after the user edits the filter.
+  const markUserEdited = useCallback(() => {
+    userEditedRef.current = true;
+  }, []);
   const handleChange = useCallback(
-    (value: string, updatedTree?: JsonTree) =>
+    (value: string, updatedTree?: JsonTree) => {
+      if (queryFilter && !userEditedRef.current) {
+        return;
+      }
       onChange(
         value,
         updatedTree ? JSON.stringify(updatedTree) : filterJsonTree
-      ),
-    [filterJsonTree, onChange]
+      );
+    },
+    [filterJsonTree, queryFilter, onChange]
+  );
+  const handleValidityChange = useCallback(
+    (isValid: boolean) => {
+      setBuilderComplete(isValid);
+      if (!queryFilter || userEditedRef.current) {
+        onValidityChange?.(isValid);
+      }
+    },
+    [onValidityChange, queryFilter]
   );
 
   return (
-    <DrawerPopupContainerProvider>
-      <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
-        {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
-        {enrichedFields ? (
-          <QueryBuilder
-            buttonPreset={PERSONA_BUTTON_PRESET}
-            entityType={entityType as EntityType}
-            fields={enrichedFields}
-            groupMode="flat"
-            outputType={SearchOutputType.ElasticSearch}
-            readonly={readonly}
-            showCountPreview={false}
-            tree={tree}
-            value={queryFilter ?? ''}
-            onChange={handleChange}
-            onValidityChange={onValidityChange}
-          />
-        ) : (
-          <Loader size="small" />
-        )}
-      </div>
-    </DrawerPopupContainerProvider>
+    <div
+      className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3"
+      onKeyDownCapture={markUserEdited}
+      onPointerDownCapture={markUserEdited}>
+      {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
+      {enrichedFields ? (
+        <QueryBuilder
+          buttonPreset={PERSONA_BUTTON_PRESET}
+          entityType={entityType as EntityType}
+          fields={enrichedFields}
+          groupMode="flat"
+          outputType={SearchOutputType.ElasticSearch}
+          readonly={readonly}
+          showCountPreview={false}
+          tree={tree}
+          value={queryFilter ?? ''}
+          onChange={handleChange}
+          onValidityChange={handleValidityChange}
+        />
+      ) : (
+        <Loader size="small" />
+      )}
+    </div>
   );
 };

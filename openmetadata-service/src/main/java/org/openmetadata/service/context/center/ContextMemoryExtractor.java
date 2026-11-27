@@ -32,17 +32,33 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ContextMemoryExtractor implements DocumentMemoryExtractor {
   static final int MAX_PROMPT_CHARS = 60_000;
   static final int MAX_CHUNKS = 8;
-  static final int MAX_NAME_BASE_LENGTH = 200;
+  private static final String MEMORY_NAME_PREFIX = "memory-";
   static final String SYSTEM_PROMPT =
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
-          + "how-to guidance. Return ONLY the JSON array, no prose.";
+          + "how-to guidance. When the document gives different values for the same fact, "
+          + "return one element per value, each answer stating only its own value, with the "
+          + "section it comes from named in the summary, never in the question or the answer; "
+          + "never merge them or choose one, even when a section says it is newer. "
+          + "Never extract personal data (names, email addresses, phone numbers or other "
+          + "contact details of a person), nor credentials, tokens, keys or connection "
+          + "strings: describe the role or team instead. Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
+  private final ContextMemoryStatus initialStatus;
 
   public ContextMemoryExtractor(LLMCompletionClient llmClient) {
+    this(llmClient, ContextMemoryStatus.APPROVED);
+  }
+
+  /**
+   * A provider that reviews extracted memories before they ground answers starts them Unprocessed.
+   * ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values
+   */
+  public ContextMemoryExtractor(LLMCompletionClient llmClient, ContextMemoryStatus initialStatus) {
     this.llmClient = llmClient;
+    this.initialStatus = initialStatus;
   }
 
   /**
@@ -152,14 +168,31 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
     return result;
   }
 
+  /**
+   * One pill per question, except that an answer whose numbers conflict with every kept answer to
+   * that question is a second value the document gives, kept for review; any other is a rewording.
+   */
   private List<KnowledgePill> dedupe(List<KnowledgePill> pills) {
-    Map<String, KnowledgePill> byQuestion = new LinkedHashMap<>();
+    Map<String, List<KnowledgePill>> byQuestion = new LinkedHashMap<>();
     for (KnowledgePill pill : pills) {
       if (isValid(pill)) {
-        byQuestion.putIfAbsent(pill.question().trim().toLowerCase(Locale.ROOT), pill);
+        List<KnowledgePill> kept =
+            byQuestion.computeIfAbsent(normalize(pill.question()), ignored -> new ArrayList<>());
+        boolean newValue =
+            kept.stream()
+                .allMatch(
+                    other ->
+                        MemoryTextSimilarity.hasConflictingNumbers(other.answer(), pill.answer()));
+        if (newValue) {
+          kept.add(pill);
+        }
       }
     }
-    return new ArrayList<>(byQuestion.values());
+    return byQuestion.values().stream().flatMap(List::stream).toList();
+  }
+
+  private static String normalize(String text) {
+    return text.trim().toLowerCase(Locale.ROOT);
   }
 
   private boolean isValid(KnowledgePill pill) {
@@ -172,7 +205,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
 
   private ContextMemory toMemory(
       KnowledgePill pill, EntityReference sourceRef, ContextMemorySourceType sourceType) {
-    String name = memoryName(sourceRef);
+    String name = memoryName();
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(name)
@@ -183,7 +216,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(initialStatus)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
         .withPrimaryEntity(sourceRef)
@@ -192,13 +225,12 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  /** Keeps the generated memory name within the 256-char entityName limit (UUID suffix included). */
-  private String memoryName(EntityReference sourceRef) {
-    String base = sourceRef.getName();
-    if (base.length() > MAX_NAME_BASE_LENGTH) {
-      base = base.substring(0, MAX_NAME_BASE_LENGTH);
-    }
-    return base + "-" + UUID.randomUUID();
+  /**
+   * A generated memory name. A name never changes and is the memory's FQN, so it names no document:
+   * a memory can move to a document whose readers may not read the one it came from.
+   */
+  public static String memoryName() {
+    return MEMORY_NAME_PREFIX + UUID.randomUUID();
   }
 
   private ContextMemoryType parseType(String raw) {

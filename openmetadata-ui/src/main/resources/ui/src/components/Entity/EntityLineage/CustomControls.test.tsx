@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,6 +23,8 @@ import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
+import LineageConfigModal from './LineageConfigModal';
+import LineageTimeFilter from './LineageTimeFilter.component';
 
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
@@ -56,19 +51,18 @@ const defaultProps = {
 // Default `useLineageStore` state, merged for both the single-object call
 // (`useLineageStore()`) and the `useShallow` multi-field selector call the
 // component makes. Individual tests override via `mockStoreImplementation`.
+const mockSetTimeFilter = jest.fn();
 const mockDefaultStoreState = {
   isDQEnabled: false,
   setLineageConfig: mockOnLineageConfigUpdate,
   lineageConfig: {},
-  toggleEditMode: jest.fn(),
-  isEditMode: false,
   platformView: LineagePlatformView.None,
   sceneBand: undefined as LineageBand | undefined,
   nodes: [] as unknown[],
   selectedQuickFilters: [] as { key: string; value?: unknown[] }[],
   setSelectedQuickFilters: mockSetSelectedQuickFilters,
   timeFilter: undefined as { startTime?: number; endTime?: number } | undefined,
-  setTimeFilter: jest.fn(),
+  setTimeFilter: mockSetTimeFilter,
 };
 
 const mockStoreImplementation =
@@ -95,10 +89,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </div>
     )),
+    // `key` is a reserved React prop and is never passed through to a
+    // function component, so capture the component-supplied `id` instead —
+    // the Node Depth items pass `id={String(depth)}`. This lets the menu
+    // mock's `onClick` read the selected depth from `dataset.key`.
     Item: jest
       .fn()
-      .mockImplementation(({ children, key }) => (
-        <li data-key={key}>{children}</li>
+      .mockImplementation(({ children, id }) => (
+        <li data-key={id}>{children}</li>
       )),
   },
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
@@ -110,25 +108,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        disabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={disabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children, onSelectionChange }) => (
       <div
@@ -179,6 +160,10 @@ jest.mock('../../Explore/ExploreQuickFilters', () =>
     .mockReturnValue(
       <div data-testid="explore-quick-filters">ExploreQuickFilters</div>
     )
+);
+
+jest.mock('./LineageTimeFilter.component', () =>
+  jest.fn(() => <div data-testid="lineage-time-filter" />)
 );
 
 jest.mock('./LineageConfigModal', () =>
@@ -281,68 +266,12 @@ describe('CustomControls', () => {
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
-  it('opens and dismisses the edit tooltip with the real core trigger', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+  it('does not render the Edit Lineage button', () => {
+    render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    const button = screen.getByRole('button', { name: 'label.edit-entity' });
-
-    expect(button.parentElement?.closest('button')).toBeNull();
-
-    fireEvent.mouseMove(document);
-    await user.hover(button);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.edit-entity'
-    );
-
-    await user.unhover(button);
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
-  });
-
-  it('shows the zoom-in hint when hovering the disabled Layer edit button', async () => {
-    const store = useLineageStore as unknown as jest.Mock;
-    store.mockReturnValue({ ...store(), sceneBand: LineageBand.Layer });
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
-      wrapper: Wrapper,
-    });
-    const button = screen.getByRole('button', { name: 'label.edit-entity' });
-
-    expect(button).toBeDisabled();
-    expect(button.parentElement?.closest('button')).toBeNull();
-
-    fireEvent.mouseMove(document);
-    await user.hover(button);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.zoom-in'
-    );
-
-    await user.unhover(button);
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
-
-    const trigger = screen.getByRole('group', { name: 'label.edit-entity' });
-
-    expect(trigger).toHaveAttribute('tabindex', '0');
-
-    fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => trigger.focus());
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.zoom-in'
-    );
-
-    act(() => trigger.blur());
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
+    expect(screen.queryByTestId('edit-lineage')).not.toBeInTheDocument();
   });
 
   it('shows LineageSearchSelect by default in lineage mode', () => {
@@ -351,7 +280,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
-    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
@@ -486,6 +415,46 @@ describe('CustomControls', () => {
     });
   });
 
+  it.each([
+    ['lineage', true],
+    ['impact_analysis', false],
+  ])(
+    'offers the temp-table switch only where temp tables are drawn (%s)',
+    (mode, offered) => {
+      (useCustomLocation as jest.Mock).mockImplementation(() => ({
+        search: `?mode=${mode}&depth=3&dir=downstream`,
+      }));
+      render(<CustomControlsComponent {...defaultProps} />, {
+        wrapper: Wrapper,
+      });
+
+      expect(LineageConfigModal).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showTempTablesToggle: offered }),
+        expect.anything()
+      );
+    }
+  );
+
+  it('does not update the lineage config when the dialog saves it unchanged', async () => {
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ lineageConfig: { ...mockLineageConfig } })
+    );
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('lineage-config-modal')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockOnLineageConfigUpdate).not.toHaveBeenCalled();
+  });
+
   it('toggles fullscreen mode when fullscreen button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -540,6 +509,65 @@ describe('CustomControls', () => {
     // The menu items would be rendered by the component library's Menu component
     // This test verifies the click handler is set up correctly
     expect(nodeDepthButton).toBeInTheDocument();
+  });
+
+  it('resets the URL depth to the saved directional config in impact analysis mode', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=5&dir=Downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByText('Save'));
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0][0].search).toContain(
+      `depth=${mockLineageConfig.downstreamDepth}`
+    );
+  });
+
+  it('does not write depth to the URL on config save in lineage mode', () => {
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    mockNavigate.mockClear();
+    fireEvent.click(screen.getByText('Save'));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('writes the selected node depth to the URL via navigate(replace) when a Node Depth menu item is clicked', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    // Expand the filter panel so the Node Depth dropdown renders.
+    fireEvent.click(screen.getByLabelText('label.filter-plural'));
+    // Expanding the panel writes `fullscreen` to the URL (toggleFilterSelection
+    // calls updateURLParams); clear the spy so the next `navigate` call is
+    // unambiguously the depth-selection call.
+    mockNavigate.mockClear();
+
+    // Click the Node Depth menu item for depth "5". The Dropdown.Menu mock
+    // fires `onAction(dataset.key)` on click; the Item mock exposes the
+    // depth via `data-key={id}`, so clicking the "5" item invokes the real
+    // `onAction("5")` -> `handleNodeDepthUpdate(5)` -> `updateURLParams`
+    // -> `navigate(replace)` chain.
+    fireEvent.click(screen.getByText('5'));
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0][0].search).toContain('depth=5');
+    expect(mockNavigate.mock.calls[0][1]).toEqual({ replace: true });
   });
 
   it('calls onSearchValueChange when search value changes in impact analysis mode', () => {
@@ -747,6 +775,24 @@ describe('CustomControls', () => {
       // set is fetched from page 1.
       expect(mockOnPageReset).toHaveBeenCalledTimes(1);
       expect(mockSetSelectedQuickFilters).toHaveBeenCalled();
+    });
+
+    it('calls onPageReset and stores the range when the time filter changes', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      const timeFilterCalls = (LineageTimeFilter as jest.Mock).mock.calls;
+      const range = { startTime: 100, endTime: 200 };
+      timeFilterCalls[timeFilterCalls.length - 1][0].onChange(range);
+
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+      expect(mockSetTimeFilter).toHaveBeenCalledWith(range);
     });
 
     it('does not call onPageReset on tab change', () => {

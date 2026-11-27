@@ -184,10 +184,7 @@ test.describe(
               {
                 suggestionType: 'Tag',
                 fieldPath: 'tags',
-                // suggestedValue is the canonical TagSuggestion form-schema field;
-                // tagsToAdd is what the UI maps to tagLabels, so send both
                 suggestedValue: JSON.stringify(SUGGESTED_TAG_LABELS),
-                tagsToAdd: SUGGESTED_TAG_LABELS,
               }
             );
             await createSuggestionTask(suggesterContext, descriptionOnlyTable, {
@@ -234,7 +231,7 @@ test.describe(
     test('admin sees bulk accept and reject for every suggestion type', async ({
       page,
     }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
 
       await adminUser.signIn(page);
 

@@ -12,7 +12,6 @@
  */
 
 import { BadgeColors } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
 import {
   ResourceCategory,
   ResourceType,
@@ -23,7 +22,6 @@ export { LearningResourceStatus, ResourceCategory, ResourceType };
 
 export const MAX_VISIBLE_TAGS = 2;
 export const MAX_VISIBLE_CONTEXTS = 2;
-export const DEFAULT_PAGE_SIZE = 10;
 
 export const MAX_CHAIN_PAGES = 25;
 
@@ -39,15 +37,28 @@ export const CATEGORY_BADGE_COLORS: Record<ResourceCategory, BadgeColors> = {
   AI: 'purple',
 };
 
-export const ICON_COLOR_CLASS: Record<string, string> = {
-  video: 'tw:text-utility-blue-600',
-  storylane: 'tw:text-utility-purple-600',
-};
-
 export const RESOURCE_TYPE_VALUES = [
   ResourceType.Video,
   ResourceType.Storylane,
+  ResourceType.Link,
+  ResourceType.PDF,
 ];
+
+export const RESOURCE_TYPE_LABEL_KEYS: Record<`${ResourceType}`, string> = {
+  Article: 'label.article',
+  Link: 'label.link',
+  PDF: 'label.pdf',
+  Storylane: 'label.storylane',
+  Video: 'label.video',
+};
+
+export const SOURCE_URL_PLACEHOLDERS: Record<`${ResourceType}`, string> = {
+  Article: 'https://docs.example.com/article',
+  Link: 'https://docs.example.com/guide',
+  PDF: 'https://docs.example.com/guide.pdf',
+  Storylane: 'https://app.storylane.io/share/...',
+  Video: 'https://www.youtube.com/watch?v=...',
+};
 
 export const YOUTUBE_VIDEO_HOSTNAMES = [
   'youtube.com',
@@ -76,12 +87,6 @@ export const isVideoUrl = (url: string | undefined): boolean => {
     return false;
   }
 };
-
-export interface ResourceTypeOption {
-  value: ResourceType;
-  label: string;
-  icon: ReactNode;
-}
 
 export interface CategoryOption {
   value: ResourceCategory;

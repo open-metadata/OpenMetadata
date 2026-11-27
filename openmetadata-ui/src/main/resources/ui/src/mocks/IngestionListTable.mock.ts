@@ -118,13 +118,15 @@ export const mockESIngestionData: IngestionPipeline = {
     deleted: false,
     href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/d520c9bb-a517-4f1e-8962-d8518de71279',
   },
-  pipelineStatuses: {
-    runId: '8bd07fbd-a356-45c1-8621-7bb6a4dff5b2',
-    pipelineState: PipelineState.Success,
-    startDate: 1690885805006,
-    timestamp: 1690885805006,
-    endDate: 1690885844106,
-  },
+  pipelineStatuses: [
+    {
+      runId: '8bd07fbd-a356-45c1-8621-7bb6a4dff5b2',
+      pipelineState: PipelineState.Success,
+      startDate: 1690885805006,
+      timestamp: 1690885805006,
+      endDate: 1690885844106,
+    },
+  ],
   loggerLevel: LogLevels.Info,
   deployed: true,
   enabled: false,

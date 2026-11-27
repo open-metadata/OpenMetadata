@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from './entity';
+import { selectSettingOption } from './searchSettingUtils';
 
 export type WebhookType = 'MS Teams' | 'Slack' | 'G Chat' | 'Webhook' | 'None';
 export type WebhookIconTestId =
@@ -34,21 +35,11 @@ export const selectWebhookType = async (
   page: Page,
   webhookType: WebhookType
 ) => {
-  const webhookInput = page.locator('#webhook');
-  const selectContainer = page
-    .getByTestId('subscription-modal')
-    .locator('.ant-select-selector')
-    .filter({ has: webhookInput });
-
-  await selectContainer.waitFor({ state: 'visible' });
-  await selectContainer.click();
-
-  const dropdown = page.locator('.ant-select-dropdown:visible');
-  const webhookOption = dropdown.getByText(webhookType, { exact: true });
-
-  await expect(webhookOption).toBeVisible();
-  await webhookOption.click();
-  await expect(dropdown).not.toBeVisible();
+  await selectSettingOption(
+    page,
+    page.getByTestId('subscription-modal').getByTestId('webhook-select'),
+    webhookType
+  );
 };
 
 export const fillEndpointAndSave = async (page: Page, endpoint: string) => {
@@ -78,7 +69,8 @@ export const verifyWebhookIcon = async (
 ) => {
   const icon = page.getByTestId(iconTestId);
   await expect(icon).toBeVisible();
-  await expect(icon.locator('..')).toHaveAttribute('href', endpoint);
+  // The endpoint is a secret the server masks, so the page does not link it.
+  await expect(page.locator(`a[href="${endpoint}"]`)).toHaveCount(0);
 };
 
 export const configureWebhook = async (

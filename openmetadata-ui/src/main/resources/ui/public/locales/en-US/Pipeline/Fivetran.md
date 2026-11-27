@@ -52,3 +52,11 @@ $$section
 
 This refers to the maximum number of records that can be returned in a single page of results when using Fivetran's API for pagination.
 $$
+
+$$section
+### Fivetran Platform Connector Schema $(id="logSchema")
+
+Destination schema holding the Fivetran Platform Connector `log` table, which is used to extract per-phase (Extract/Process/Load) run status.
+
+Leave this empty to read the schema name from the Fivetran API, which is correct for each destination. Set it only when auto-detection cannot see the Platform Connector — for example a restricted API key, or a Platform Connector outside the group.
+$$

@@ -18,22 +18,22 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const BarChart01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M18 20V10m-6 10V4M6 20v-6"
+      d="M15 16.667V8.333m-5 8.333V3.333M5 16.667v-5"
       stroke="currentColor"
       strokeWidth={1.3}
     />

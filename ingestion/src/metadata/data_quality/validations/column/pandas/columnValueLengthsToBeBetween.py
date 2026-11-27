@@ -123,111 +123,104 @@ class ColumnValueLengthsToBeBetweenValidator(
         checker = self._get_validation_checker(test_params)
         dimension_results = []
 
-        try:
-            dfs = self.runner
-            min_impl = Metrics.minLength(column).get_pandas_computation()
-            max_impl = Metrics.maxLength(column).get_pandas_computation()
-            row_count_impl = Metrics.rowCount().get_pandas_computation()
+        dfs = self.runner
+        min_impl = Metrics.minLength(column).get_pandas_computation()
+        max_impl = Metrics.maxLength(column).get_pandas_computation()
+        row_count_impl = Metrics.rowCount().get_pandas_computation()
 
-            dimension_aggregates = defaultdict(
-                lambda: {
-                    Metrics.minLength.name: min_impl.create_accumulator(),
-                    Metrics.maxLength.name: max_impl.create_accumulator(),
-                    DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
-                    DIMENSION_FAILED_COUNT_KEY: 0,
+        dimension_aggregates = defaultdict(
+            lambda: {
+                Metrics.minLength.name: min_impl.create_accumulator(),
+                Metrics.maxLength.name: max_impl.create_accumulator(),
+                DIMENSION_TOTAL_COUNT_KEY: row_count_impl.create_accumulator(),
+                DIMENSION_FAILED_COUNT_KEY: 0,
+            }
+        )
+
+        for df in dfs:
+            df_typed = cast(pd.DataFrame, df)  # noqa: TC006
+            grouped = df_typed.groupby(dimension_col.name, dropna=False)
+
+            for dimension_value, group_df in grouped:
+                dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+
+                dimension_aggregates[dimension_value][Metrics.minLength.name] = min_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.minLength.name],
+                    group_df,
+                )
+                dimension_aggregates[dimension_value][Metrics.maxLength.name] = max_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.maxLength.name],
+                    group_df,
+                )
+
+                dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY],
+                    group_df,
+                )
+
+                # Count row-level violations by checking lengths against bounds
+                col_values = group_df[column.name]
+                col_lengths = col_values.str.len()
+                violations_mask = checker.get_violations_mask(col_lengths)
+                dimension_aggregates[dimension_value][DIMENSION_FAILED_COUNT_KEY] += violations_mask.sum()
+
+        results_data = []
+        for dimension_value, agg in dimension_aggregates.items():
+            min_length_value = min_impl.aggregate_accumulator(agg[Metrics.minLength.name])
+            max_length_value = max_impl.aggregate_accumulator(agg[Metrics.maxLength.name])
+            total_rows = row_count_impl.aggregate_accumulator(agg[DIMENSION_TOTAL_COUNT_KEY])
+            failed_count = agg[DIMENSION_FAILED_COUNT_KEY]
+
+            if min_length_value is None or max_length_value is None:
+                logger.warning(
+                    "Skipping '%s=%s' dimension since 'min_length' or 'max_length' are 'None'",
+                    dimension_col.name,
+                    dimension_value,
+                )
+                continue
+
+            results_data.append(
+                {
+                    DIMENSION_VALUE_KEY: dimension_value,
+                    Metrics.minLength.name: min_length_value,
+                    Metrics.maxLength.name: max_length_value,
+                    DIMENSION_TOTAL_COUNT_KEY: total_rows,
+                    DIMENSION_FAILED_COUNT_KEY: failed_count,
                 }
             )
 
-            for df in dfs:
-                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
-                grouped = df_typed.groupby(dimension_col.name, dropna=False)
+        results_df = pd.DataFrame(results_data)
 
-                for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+        if not results_df.empty:
+            results_df = calculate_impact_score_pandas(
+                results_df,
+                failed_column=DIMENSION_FAILED_COUNT_KEY,
+                total_column=DIMENSION_TOTAL_COUNT_KEY,
+            )
 
-                    dimension_aggregates[dimension_value][Metrics.minLength.name] = min_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.minLength.name],
-                        group_df,
-                    )
-                    dimension_aggregates[dimension_value][Metrics.maxLength.name] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.maxLength.name],
-                        group_df,
-                    )
+            results_df = aggregate_others_statistical_pandas(
+                results_df,
+                dimension_column=DIMENSION_VALUE_KEY,
+                agg_functions={
+                    Metrics.minLength.name: "min",
+                    Metrics.maxLength.name: "max",
+                    DIMENSION_TOTAL_COUNT_KEY: "sum",
+                    DIMENSION_FAILED_COUNT_KEY: "sum",
+                },
+                top_n=top_n,
+                violation_metrics=[
+                    Metrics.minLength.name,
+                    Metrics.maxLength.name,
+                ],
+                violation_predicate=checker.violates_pandas,
+            )
 
-                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] = (
-                        row_count_impl.update_accumulator(
-                            dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY],
-                            group_df,
-                        )
-                    )
-
-                    # Count row-level violations by checking lengths against bounds
-                    col_values = group_df[column.name]
-                    col_lengths = col_values.str.len()
-                    violations_mask = checker.get_violations_mask(col_lengths)
-                    dimension_aggregates[dimension_value][DIMENSION_FAILED_COUNT_KEY] += violations_mask.sum()
-
-            results_data = []
-            for dimension_value, agg in dimension_aggregates.items():
-                min_length_value = min_impl.aggregate_accumulator(agg[Metrics.minLength.name])
-                max_length_value = max_impl.aggregate_accumulator(agg[Metrics.maxLength.name])
-                total_rows = row_count_impl.aggregate_accumulator(agg[DIMENSION_TOTAL_COUNT_KEY])
-                failed_count = agg[DIMENSION_FAILED_COUNT_KEY]
-
-                if min_length_value is None or max_length_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'min_length' or 'max_length' are 'None'",
-                        dimension_col.name,
-                        dimension_value,
-                    )
-                    continue
-
-                results_data.append(
-                    {
-                        DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.minLength.name: min_length_value,
-                        Metrics.maxLength.name: max_length_value,
-                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    }
-                )
-
-            results_df = pd.DataFrame(results_data)
-
-            if not results_df.empty:
-                results_df = calculate_impact_score_pandas(
-                    results_df,
-                    failed_column=DIMENSION_FAILED_COUNT_KEY,
-                    total_column=DIMENSION_TOTAL_COUNT_KEY,
-                )
-
-                results_df = aggregate_others_statistical_pandas(
-                    results_df,
-                    dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={
-                        Metrics.minLength.name: "min",
-                        Metrics.maxLength.name: "max",
-                        DIMENSION_TOTAL_COUNT_KEY: "sum",
-                        DIMENSION_FAILED_COUNT_KEY: "sum",
-                    },
-                    top_n=top_n,
-                    violation_metrics=[
-                        Metrics.minLength.name,
-                        Metrics.maxLength.name,
-                    ],
-                    violation_predicate=checker.violates_pandas,
-                )
-
-                dimension_results = self._process_dimension_rows(
-                    results_df.to_dict("records"),
-                    dimension_col.name,
-                    metrics_to_compute,
-                    test_params,
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+            dimension_results = self._process_dimension_rows(
+                results_df.to_dict("records"),
+                dimension_col.name,
+                metrics_to_compute,
+                test_params,
+            )
 
         return dimension_results
 

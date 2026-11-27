@@ -131,8 +131,8 @@ jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockReturnValue(<p>Pagination</p>);
 });
 
-jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolderES', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolderES</p>);
+jest.mock('./SearchEmptyState/SearchEmptyState', () => {
+  return jest.fn().mockReturnValue(<p>SearchEmptyState</p>);
 });
 
 const MOCK_PROPS = {
@@ -230,7 +230,7 @@ describe('Test SearchedData Component', () => {
     expect(getByText(container, /hello world/i)).toBeInTheDocument();
   });
 
-  it('ErrorPlaceHolderES component should display if there is no data', () => {
+  it('SearchEmptyState component should display if there is no data', () => {
     const { container } = render(
       <SearchedData {...MOCK_PROPS} data={[]} totalValue={0} />,
       {
@@ -238,7 +238,7 @@ describe('Test SearchedData Component', () => {
       }
     );
 
-    expect(getByText(container, /ErrorPlaceHolderES/i)).toBeInTheDocument();
+    expect(getByText(container, /SearchEmptyState/i)).toBeInTheDocument();
   });
 
   it('Component should render highlights', () => {
@@ -263,6 +263,19 @@ describe('Test SearchedData Component', () => {
     expect(
       queryByTestId(container, 'search-results-count')
     ).not.toBeInTheDocument();
+  });
+
+  it('does not leave an empty spacer above the results when there is no count', () => {
+    const { container } = render(
+      <SearchedData {...MOCK_PROPS} showResultCount={false} />,
+      { wrapper: TestWrapper }
+    );
+
+    const emptySpacer = [...container.querySelectorAll('div')].find(
+      (div) => div.className === 'tw:mb-4' && div.childElementCount === 0
+    );
+
+    expect(emptySpacer).toBeUndefined();
   });
 
   it('Should show result count when showResultCount is true and isFilterSelected is true', () => {

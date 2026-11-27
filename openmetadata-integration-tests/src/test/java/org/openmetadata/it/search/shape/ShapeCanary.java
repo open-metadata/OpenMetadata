@@ -38,7 +38,7 @@ public final class ShapeCanary {
   }
 
   public ShapeResult index(
-      final String entityType, final EntityInterface entity, final FieldProbe probe) {
+      final String entityType, final EntityInterface<?> entity, final FieldProbe probe) {
     final String docId = entity.getId().toString();
     // Built before the try: JsonUtils.pojoToJson reports a serialization bug as a
     // JsonParsingException caused by a JsonProcessingException, which extends IOException -- so
@@ -98,7 +98,7 @@ public final class ShapeCanary {
    * refusing an unindexable shape, so it must surface as an error rather than masquerade as
    * REJECTED (which is reserved for the write below).
    */
-  private String buildDoc(final String entityType, final EntityInterface entity) {
+  private String buildDoc(final String entityType, final EntityInterface<?> entity) {
     final SearchIndex index =
         searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
     return JsonUtils.pojoToJson(index.buildSearchIndexDoc());

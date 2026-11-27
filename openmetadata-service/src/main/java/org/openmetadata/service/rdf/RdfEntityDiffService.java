@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +39,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.RdfBlankNodeCanonicalizer;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.LiveTagLookup;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /** Creates deterministic, typed RDF statement diffs from database entity history. */
 public final class RdfEntityDiffService {
@@ -49,7 +52,9 @@ public final class RdfEntityDiffService {
   public RdfEntityDiffService(final String baseUri) {
     this(
         RdfEntityDiffService::readVersion,
-        new JsonLdTranslator(JsonUtils.getObjectMapper(), baseUri)::toRdf,
+        new JsonLdTranslator(
+                JsonUtils.getObjectMapper(), baseUri, LiveTagLookup.database(), ReferenceScope.ALL)
+            ::toRdf,
         new RdfBlankNodeCanonicalizer(),
         RdfEntityTypeValidator::requireKnown);
   }
@@ -104,7 +109,7 @@ public final class RdfEntityDiffService {
   }
 
   private Model versionModel(final String entityType, final UUID entityId, final Double version) {
-    final EntityInterface entity = versionReader.read(entityType, entityId, version);
+    final EntityInterface<?> entity = versionReader.read(entityType, entityId, version);
     final Model source = translator.toRdf(entity);
     try {
       return parseCanonical(canonicalizer.canonicalize(source));
@@ -140,17 +145,15 @@ public final class RdfEntityDiffService {
   private static RdfStatement toRdfStatement(final Statement statement) {
     final RdfStatement result =
         new RdfStatement()
-            .withSubjectIri(URI.create(statement.getSubject().getURI()))
-            .withPredicateIri(URI.create(statement.getPredicate().getURI()));
+            .withSubjectIri(safeUri(statement.getSubject().getURI()))
+            .withPredicateIri(safeUri(statement.getPredicate().getURI()));
     populateObject(result, statement.getObject());
     return result;
   }
 
   private static void populateObject(final RdfStatement target, final RDFNode object) {
     if (object.isURIResource()) {
-      target
-          .withObjectKind(RdfObjectKind.IRI)
-          .withObjectIri(URI.create(object.asResource().getURI()));
+      target.withObjectKind(RdfObjectKind.IRI).withObjectIri(safeUri(object.asResource().getURI()));
     } else if (object.isLiteral()) {
       populateLiteral(target, object.asLiteral());
     } else {
@@ -162,13 +165,61 @@ public final class RdfEntityDiffService {
     target
         .withObjectKind(RdfObjectKind.LITERAL)
         .withLiteralValue(literal.getLexicalForm())
-        .withDatatypeIri(optionalUri(literal.getDatatypeURI()))
+        .withDatatypeIri(safeUri(literal.getDatatypeURI()))
         .withLanguage(optionalText(literal.getLanguage()));
   }
 
-  private static URI optionalUri(final String value) {
-    final URI uri = nullOrEmpty(value) ? null : URI.create(value);
-    return uri;
+  /**
+   * Builds a {@link URI} from a canonical statement IRI, percent-encoding any character not
+   * allowed by RFC 3986 as a defense-in-depth guard. The RDF translator mints every IRI it emits
+   * from a URL-encoded FQN path or a UUID identifier, so {@link URI#create(String)} normally
+   * succeeds. When an already-emitted or future code path leaves a malformed IRI in a canonical
+   * statement model (e.g. a tag/glossary FQN that contains a space, brace, or backslash), {@link
+   * URI#create(String)} would otherwise throw {@link IllegalArgumentException} and abort the
+   * entire diff response. This helper encodes the offending bytes and proceeds so a single
+   * invalid IRI cannot fail a request that also reports hundreds of valid statements.
+   */
+  private static URI safeUri(final String raw) {
+    if (nullOrEmpty(raw)) {
+      return null;
+    }
+    try {
+      return URI.create(raw);
+    } catch (IllegalArgumentException exception) {
+      return URI.create(percentEncodeIllegalUriCharacters(raw));
+    }
+  }
+
+  private static String percentEncodeIllegalUriCharacters(final String raw) {
+    final StringBuilder builder = new StringBuilder(raw.length() + 8);
+    for (int index = 0; index < raw.length(); ) {
+      final int codepoint = raw.codePointAt(index);
+      if (isAllowedInIri(codepoint)) {
+        builder.appendCodePoint(codepoint);
+      } else {
+        for (byte codeUnit :
+            new String(Character.toChars(codepoint)).getBytes(StandardCharsets.UTF_8)) {
+          builder.append(String.format("%%%02X", codeUnit & 0xFF));
+        }
+      }
+      index += Character.charCount(codepoint);
+    }
+    return builder.toString();
+  }
+
+  private static boolean isAllowedInIri(final int codepoint) {
+    if (codepoint <= 0x7F) {
+      if ((codepoint >= 'a' && codepoint <= 'z')
+          || (codepoint >= 'A' && codepoint <= 'Z')
+          || (codepoint >= '0' && codepoint <= '9')) {
+        return true;
+      }
+      // RFC 3986 unreserved ( - . _ ~ ), gen-delims ( : / ? # [ ] @ ), sub-delims
+      // ( ! $ & ' ( ) * + , ; = ), and the percent sign itself.
+      return "-._~:/?#[]@!$&'()*+,;=%".indexOf(codepoint) >= 0;
+    }
+    // java.net.URI tolerates non-ASCII characters; keep them as-is.
+    return true;
   }
 
   private static String optionalText(final String value) {
@@ -182,19 +233,19 @@ public final class RdfEntityDiffService {
     }
   }
 
-  private static EntityInterface readVersion(
+  private static EntityInterface<?> readVersion(
       final String entityType, final UUID entityId, final Double version) {
     return Entity.getEntityRepository(entityType).getVersion(entityId, version.toString());
   }
 
   @FunctionalInterface
   interface EntityVersionReader {
-    EntityInterface read(String entityType, UUID entityId, Double version);
+    EntityInterface<?> read(String entityType, UUID entityId, Double version);
   }
 
   @FunctionalInterface
   interface EntityRdfTranslator {
-    Model toRdf(EntityInterface entity);
+    Model toRdf(EntityInterface<?> entity);
   }
 
   private record DiffRequest(

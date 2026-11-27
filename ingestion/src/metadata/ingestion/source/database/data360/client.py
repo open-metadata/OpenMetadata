@@ -67,12 +67,14 @@ def _run_paginator(
     limit: int,
     log_warning: Callable[[str], None],
     extra_params: dict | None = None,
+    first_page_only: bool = False,
 ) -> list[dict]:
     """Fetches all pages of a paginated Data 360 API endpoint and returns all items.
 
     Any page that cannot be fetched or validated aborts the whole listing instead of
     returning what was collected so far: callers treat the result as the complete set
-    of live entities and soft-delete everything missing from it.
+    of live entities and soft-delete everything missing from it. ``first_page_only``
+    is for reachability checks, which must not walk a large listing page by page.
     """
     paging = get_endpoint_paging(object_type=object_type)
     params: dict[str, Any] = {
@@ -112,6 +114,8 @@ def _run_paginator(
                 f"Data 360 reported {total_size} {object_type} at {path} but returned an empty page {fetched_pages}"
             )
         items.extend(page.items)
+        if first_page_only:
+            break
 
     return items
 
@@ -131,18 +135,31 @@ def get_metadata_by_type(
     client: Salesforce,
     entity_type: str,
     dataspace_name: str,
-    pagination_limit: int,
     log_warning: Callable[[str], None],
 ) -> list[dict]:
-    """Fetches all metadata objects of the given type within a dataspace, across all pages."""
-    return _run_paginator(
+    """Fetches all metadata objects of the given type within a dataspace in one call.
+
+    ``ssot/metadata`` ignores ``limit`` and ``offset`` and returns no ``totalSize``, so
+    paging it would re-request the full listing once per page.
+    """
+    context = f"{entity_type} listing at ssot/metadata"
+    payload = _get(
         client=client,
-        object_type=MetadataTypesConstant.METADATA,
         path="ssot/metadata",
-        limit=pagination_limit,
+        params={"dataspace": dataspace_name, "entityType": entity_type},
+        metadata_type=MetadataTypesConstant.METADATA,
         log_warning=log_warning,
-        extra_params={"dataspace": dataspace_name, "entityType": entity_type},
     )
+    if payload is None:
+        raise Data360ResponseError(f"No response from Data 360 API for {context}")
+    paging = get_endpoint_paging(object_type=MetadataTypesConstant.METADATA)
+    page = PaginatedPage.from_payload(payload=payload, paging=paging, context=context)
+    if page.total_size > len(page.items):
+        # A partial listing would be reconciled as the full set and soft-delete the rest.
+        raise Data360ResponseError(
+            f"Data 360 reported {page.total_size} objects for {context} but returned {len(page.items)}"
+        )
+    return page.items
 
 
 def get_calculated_insight_by_name(
@@ -157,7 +174,12 @@ def get_calculated_insight_by_name(
     )
 
 
-def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]) -> list[dict]:
+def get_datastreams(
+    client: Salesforce,
+    pagination_limit: int,
+    log_warning: Callable[[str], None],
+    first_page_only: bool = False,
+) -> list[dict]:
     """Fetches all data streams (including field mappings) from Data 360."""
     return _run_paginator(
         client=client,
@@ -165,11 +187,15 @@ def get_datastreams(client: Salesforce, pagination_limit: int, log_warning: Call
         path="ssot/data-streams?includeMappings=true",
         limit=pagination_limit,
         log_warning=log_warning,
+        first_page_only=first_page_only,
     )
 
 
 def get_calculated_insights(
-    client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]
+    client: Salesforce,
+    pagination_limit: int,
+    log_warning: Callable[[str], None],
+    first_page_only: bool = False,
 ) -> list[dict]:
     """Fetches all Calculated Insights from Data 360."""
     return _run_paginator(
@@ -178,6 +204,7 @@ def get_calculated_insights(
         path="ssot/calculated-insights",
         limit=pagination_limit,
         log_warning=log_warning,
+        first_page_only=first_page_only,
     )
 
 
@@ -194,7 +221,12 @@ def get_dmo_mappings(
     )
 
 
-def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: Callable[[str], None]) -> list[dict]:
+def get_datatransforms(
+    client: Salesforce,
+    pagination_limit: int,
+    log_warning: Callable[[str], None],
+    first_page_only: bool = False,
+) -> list[dict]:
     """Fetches all data transforms from Data 360 (server-side cap of 20 per page)."""
     capped_limit = min(20, pagination_limit)
     return _run_paginator(
@@ -203,6 +235,7 @@ def get_datatransforms(client: Salesforce, pagination_limit: int, log_warning: C
         path="ssot/data-transforms",
         limit=capped_limit,
         log_warning=log_warning,
+        first_page_only=first_page_only,
     )
 
 

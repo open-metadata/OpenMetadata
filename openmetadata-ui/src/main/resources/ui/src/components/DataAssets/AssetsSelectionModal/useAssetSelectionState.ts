@@ -13,7 +13,14 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ES_UPDATE_DELAY,
@@ -21,8 +28,9 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -55,7 +63,7 @@ import {
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
@@ -66,7 +74,10 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { CSVExportJob } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import {
+  CSVExportJob,
+  CSVExportWebsocketResponse,
+} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
@@ -78,9 +89,55 @@ export interface UseAssetSelectionStateProps {
   onSave?: () => void;
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
+  /**
+   * Route the asset picker's search through `POST /v1/search/query`
+   * (searchAPI.searchQueryPost) instead of GET. Set for callers whose `queryFilter`
+   * can grow large enough to overflow the server's request-line size limit — e.g. the
+   * metric Add-Assets modal, whose `must_not` filter embeds every already-linked asset id.
+   */
+  useQueryPost?: boolean;
 }
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 50;
+
+type BulkAssetsActivity = Pick<
+  CSVExportWebsocketResponse,
+  'jobId' | 'status'
+> & {
+  result?: BulkOperationResult;
+};
+
+// A port names a data asset. Columns share the data asset search index but cannot be ports.
+const PORT_ASSETS_FILTER: QueryFilterInterface = {
+  query: {
+    bool: { must_not: [{ term: { entityType: EntityType.TABLE_COLUMN } }] },
+  },
+};
+
+const assetsFilterFor = (type: AssetsOfEntity) =>
+  type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT ||
+  type === AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+    ? PORT_ASSETS_FILTER
+    : undefined;
+
+// `name.keyword` is lowercased in most indices but not all; `case_insensitive`
+// makes the match behave the same for every asset type.
+const exactNameFilterFor = (name: string): QueryFilterInterface => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            [EntityFields.NAME_KEYWORD]: {
+              value: name,
+              case_insensitive: true,
+            },
+          },
+        },
+      ],
+    },
+  },
+});
 
 export const useAssetSelectionState = ({
   entityFqn,
@@ -90,9 +147,11 @@ export const useAssetSelectionState = ({
   type = AssetsOfEntity.GLOSSARY,
   variant = 'modal',
   queryFilter,
+  useQueryPost = false,
 }: UseAssetSelectionStateProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  const [isExactName, setIsExactName] = useState(false);
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [dryRunWarnings, setDryRunWarnings] = useState<BulkResponse[]>();
@@ -102,7 +161,7 @@ export const useAssetSelectionState = ({
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+  const [activeFilter] = useState<SearchIndex>(
     [
       AssetsOfEntity.GLOSSARY,
       AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
@@ -120,12 +179,40 @@ export const useAssetSelectionState = ({
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
+  // Mirrors the in-flight job id for the socket listener, which would otherwise
+  // close over a stale `assetJobResponse`.
+  const activeJobIdRef = useRef<string>();
+  // True from the moment a save is fired until its response has been processed.
+  const pendingSaveRef = useRef(false);
+  // Terminal events that arrived in that window, when the job id was not known
+  // yet. Written only while a save is pending and cleared when it settles, so it
+  // holds at most the events of one request round-trip.
+  const earlyActivitiesRef = useRef(new Map<string, BulkAssetsActivity>());
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const latestFetchIdRef = useRef(0);
 
   const { socket } = useWebSocketConnector();
+
+  const exactName = isExactName ? search.trim() : '';
+  // The relevance query can miss names with query syntax in them, so the filter
+  // alone decides which names match.
+  const searchText = exactName ? '' : search;
+
+  const combinedQueryFilter = useMemo(
+    () =>
+      getCombinedQueryFilterObject(
+        getCombinedQueryFilterObject(
+          queryFilter,
+          quickFilterQuery,
+          assetsFilterFor(type)
+        ),
+        exactName ? exactNameFilterFor(exactName) : undefined
+      ),
+    [queryFilter, quickFilterQuery, type, exactName]
+  );
 
   const fetchEntities = useCallback(
     async ({
@@ -139,9 +226,13 @@ export const useAssetSelectionState = ({
       index?: SearchIndex;
       updatedQueryFilter?: Record<string, unknown>;
     }) => {
+      const fetchId = ++latestFetchIdRef.current;
+      const isLatestFetch = () => fetchId === latestFetchIdRef.current;
+
       try {
         setIsLoading(true);
-        const res = await searchQuery({
+        const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+        const res = await searchFn({
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
@@ -149,16 +240,32 @@ export const useAssetSelectionState = ({
           queryFilter: updatedQueryFilter,
           includeDeleted: false,
         });
+        // A slow loose search must not replace the exact results that followed it.
+        if (!isLatestFetch()) {
+          return;
+        }
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
         setAggregations(getAggregations(res?.aggregations));
+      } catch (err) {
+        if (isLatestFetch()) {
+          // The listed assets answer an earlier search, so they must not stay
+          // selectable as if they matched this one.
+          if (page === 1) {
+            setItems([]);
+            setTotalCount(0);
+          }
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (isLatestFetch()) {
+          setIsLoading(false);
+        }
       }
     },
-    [setActiveFilter]
+    [activeFilter, useQueryPost]
   );
 
   const fetchCurrentEntity = useCallback(async () => {
@@ -218,21 +325,17 @@ export const useAssetSelectionState = ({
 
   useEffect(() => {
     if (open) {
-      const combinedQueryFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface
-      );
       fetchEntities({
         index: activeFilter,
-        searchText: search,
+        searchText,
         updatedQueryFilter: combinedQueryFilter,
       });
     }
-  }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
+  }, [open, activeFilter, searchText, combinedQueryFilter]);
 
   useEffect(() => {
     if (open) {
-      fetchCurrentEntity();
+      fetchCurrentEntity().catch((err) => showErrorToast(err as AxiosError));
     }
   }, [open, fetchCurrentEntity]);
 
@@ -269,6 +372,26 @@ export const useAssetSelectionState = ({
     }
   };
 
+  const handleTerminalActivity = useCallback(
+    (activity: BulkAssetsActivity) => {
+      if (activity.status === 'COMPLETED') {
+        activeJobIdRef.current = undefined;
+        setAssetJobResponse(undefined);
+        if (activity.result?.status === 'success') {
+          onSave?.();
+          onCancel?.();
+        } else {
+          setFailedStatus(activity.result);
+        }
+      } else if (activity.status === 'FAILED') {
+        activeJobIdRef.current = undefined;
+        setExportJob(activity);
+        setAssetJobResponse(undefined);
+      }
+    },
+    [onSave, onCancel]
+  );
+
   const processSaveResponse = useCallback(
     async (res: unknown) => {
       if (isUndefined((res as CSVExportResponse).jobId)) {
@@ -284,14 +407,36 @@ export const useAssetSelectionState = ({
           setFailedStatus(res as BulkOperationResult);
         }
       } else {
+        const { jobId } = res as CSVExportResponse;
+        const earlyActivity = earlyActivitiesRef.current.get(jobId);
+
+        // The server queues the job before it writes this response, so a small
+        // job can already have reported back over the socket.
+        if (earlyActivity) {
+          handleTerminalActivity(earlyActivity);
+
+          return;
+        }
+
+        activeJobIdRef.current = jobId;
         setAssetJobResponse(res as CSVExportResponse);
       }
     },
-    [onSave, onCancel]
+    [onSave, onCancel, handleTerminalActivity]
   );
 
   const handleSaveError = useCallback(
     (err: unknown) => {
+      // A bulk request where every row failed comes back as a 400 carrying the
+      // per-row reasons, which the list shows against each asset.
+      const bulkResult = (err as AxiosError<BulkOperationResult>).response
+        ?.data;
+      if (bulkResult?.failedRequest?.length) {
+        setFailedStatus(bulkResult);
+
+        return;
+      }
+
       if (variant === 'drawer') {
         showErrorToast(
           err as AxiosError,
@@ -310,6 +455,7 @@ export const useAssetSelectionState = ({
     try {
       setIsSaveLoading(true);
       setFailedStatus(undefined);
+      pendingSaveRef.current = true;
       if (!activeEntity) {
         return;
       }
@@ -373,6 +519,8 @@ export const useAssetSelectionState = ({
     } catch (err) {
       handleSaveError(err);
     } finally {
+      pendingSaveRef.current = false;
+      earlyActivitiesRef.current.clear();
       setIsSaveLoading(false);
     }
   }, [activeEntity, selectedItems, type, processSaveResponse, handleSaveError]);
@@ -387,6 +535,7 @@ export const useAssetSelectionState = ({
     }
     try {
       setIsSaveLoading(true);
+      pendingSaveRef.current = true;
       const res = await addAssetsToDomain(
         activeEntity.fullyQualifiedName ?? '',
         pendingDomainEntities
@@ -398,6 +547,8 @@ export const useAssetSelectionState = ({
     } catch (err) {
       handleSaveError(err);
     } finally {
+      pendingSaveRef.current = false;
+      earlyActivitiesRef.current.clear();
       setIsSaveLoading(false);
     }
   }, [
@@ -423,17 +574,12 @@ export const useAssetSelectionState = ({
         remainingScrollHeight < SCROLL_BOTTOM_THRESHOLD_PX &&
         items.length < totalCount
       ) {
-        const combinedQueryFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface
-        );
-
         if (isLoading) {
           return;
         }
 
         fetchEntities({
-          searchText: search,
+          searchText,
           page: pageNumber + 1,
           index: activeFilter,
           updatedQueryFilter: combinedQueryFilter,
@@ -443,15 +589,21 @@ export const useAssetSelectionState = ({
     [
       pageNumber,
       activeFilter,
-      search,
+      searchText,
       totalCount,
       items,
-      quickFilterQuery,
-      queryFilter,
+      combinedQueryFilter,
       isLoading,
       fetchEntities,
     ]
   );
+
+  // Items picked from the other mode's results are no longer listed, so keeping
+  // them selected would save assets the user cannot see.
+  const onExactNameChange = useCallback((isSelected: boolean) => {
+    setIsExactName(isSelected);
+    setSelectedItems(undefined);
+  }, []);
 
   const onSelectAll = (selectAll: boolean) => {
     setSelectedItems((prevItems) => {
@@ -529,32 +681,42 @@ export const useAssetSelectionState = ({
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          if (activity.status === 'COMPLETED') {
-            setAssetJobResponse(undefined);
-            if (activity.result.status === 'success') {
-              onSave?.();
-              onCancel?.();
-            } else {
-              setFailedStatus(activity.result);
-            }
-          } else if (activity.status === 'FAILED') {
-            setExportJob(activity);
-            setAssetJobResponse(undefined);
-          }
+        if (!newActivity) {
+          return;
         }
+
+        const activity = JSON.parse(newActivity) as BulkAssetsActivity;
+
+        // The channel is per-user, so another tab's job also lands here and
+        // would close this drawer; only react to the job we started.
+        if (!activeJobIdRef.current) {
+          if (pendingSaveRef.current) {
+            earlyActivitiesRef.current.set(activity.jobId, activity);
+          }
+
+          return;
+        }
+
+        if (activity.jobId !== activeJobIdRef.current) {
+          return;
+        }
+
+        handleTerminalActivity(activity);
       });
     }
 
     return () => {
       socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
     };
-  }, [socket]);
+  }, [socket, handleTerminalActivity]);
 
   return {
+    assetsFilter: assetsFilterFor(type),
+    activeEntity,
     search,
     setSearch,
+    isExactName,
+    onExactNameChange,
     items,
     failedStatus,
     dryRunWarnings,

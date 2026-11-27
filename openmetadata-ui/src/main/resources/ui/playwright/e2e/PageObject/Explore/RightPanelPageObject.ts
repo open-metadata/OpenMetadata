@@ -12,6 +12,7 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
@@ -20,13 +21,13 @@ import { LineagePageObject } from './LineagePageObject';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
 
-/** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Property"). */
+/** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Properties"). */
 export const RIGHT_PANEL_TAB = {
   OVERVIEW: 'overview',
   SCHEMA: 'schema',
   LINEAGE: 'lineage',
   DATA_QUALITY: 'data quality',
-  CUSTOM_PROPERTIES: 'custom property',
+  CUSTOM_PROPERTIES: 'custom properties',
 } as const;
 
 /** All right-panel tab names; used to assert which tabs must not be visible per asset type. */
@@ -935,7 +936,7 @@ export class RightPanelPageObject {
    * 3. Panel is ready for interaction
    * @param timeout - Optional timeout in milliseconds (default: 30000)
    */
-  async waitForPanelLoaded(timeout: number = 30000) {
+  async waitForPanelLoaded(timeout: number = ACTION_TIMEOUT) {
     // Step 1: Wait for panel to be visible
     await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
 

@@ -84,6 +84,7 @@ export interface TaskFilterBarProps {
 export interface ActivityFeedTabListProps {
   activityEvents: ActivityEvent[];
   emptyPlaceholderText: ReactNode;
+  emptyPlaceholderDescription?: ReactNode;
   entityThread: Conversation[];
   isActivityLoading?: boolean;
   isAllTab: boolean;
@@ -110,4 +111,5 @@ export interface ActivityFeedTabRightPanelProps {
   loader: ReactNode;
   loading: boolean;
   placeholder: ReactNode;
+  placeholderDescription?: ReactNode;
 }

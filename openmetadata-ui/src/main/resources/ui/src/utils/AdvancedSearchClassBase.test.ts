@@ -20,6 +20,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
@@ -140,6 +141,34 @@ describe('AdvancedSearchClassBase', () => {
   beforeEach(() => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
   });
+
+  it.each(['Superseded', 'Invalidated'])(
+    'does not offer %s when filtering tables',
+    async (status) => {
+      const config = advancedSearchClassBase.getCommonConfig({
+        entitySearchIndex: [SearchIndex.TABLE],
+      });
+      const field = config[EntityFields.ENTITY_STATUS];
+      if (!('fieldSettings' in field)) {
+        throw new Error('Status must be a selectable field');
+      }
+      const settings = field.fieldSettings;
+      const fetch =
+        settings && 'asyncFetch' in settings ? settings.asyncFetch : undefined;
+      if (typeof fetch !== 'function') {
+        throw new Error(
+          'Status options must resolve through lifecycle discovery'
+        );
+      }
+
+      await expect(fetch('', 0)).resolves.toMatchObject({
+        values: expect.arrayContaining([
+          expect.objectContaining({ value: 'Approved' }),
+        ]),
+      });
+      await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+    }
+  );
 
   it('getCommonConfig function should return expected fields', () => {
     const result = advancedSearchClassBase.getCommonConfig({});
@@ -298,6 +327,19 @@ describe('getEntitySpecificQueryBuilderFields', () => {
 
   beforeEach(() => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
+  it('should return data contract specific fields', () => {
+    const result = advancedSearchClassBase.getEntitySpecificQueryBuilderFields([
+      SearchIndex.DATA_CONTRACT,
+    ]);
+
+    expect(Object.keys(result)).toEqual([
+      EntityFields.DATA_CONTRACT_ENTITY_TYPE,
+      EntityFields.DATA_CONTRACT_ENTITY_FQN,
+      EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS,
+      EntityFields.REVIEWERS,
+    ]);
   });
 
   it('should return table specific fields', () => {
@@ -1506,5 +1548,94 @@ describe('tag-like field autocomplete casing (#31999)', () => {
         fieldSettings?: { asyncFetch?: unknown };
       }
     );
+  });
+});
+
+describe('getQueryBuilderFields for data contracts', () => {
+  const advancedSearchClassBase = new AdvancedSearchClassBase();
+  const fieldsUnpopulatedOnContracts = [
+    EntityFields.SERVICE,
+    EntityFields.DOMAINS,
+    EntityFields.DATA_PRODUCT,
+    EntityFields.TAG,
+    EntityFields.GLOSSARY_TERMS,
+    EntityFields.TIER,
+    EntityFields.CERTIFICATION,
+  ];
+
+  it('should offer the contract own fields and none it never populates', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.DATA_CONTRACT],
+      })
+    );
+
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        EntityFields.OWNERS,
+        EntityFields.NAME_KEYWORD,
+        EntityFields.DATA_CONTRACT_ENTITY_FQN,
+        EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS,
+        EntityFields.REVIEWERS,
+      ])
+    );
+
+    fieldsUnpopulatedOnContracts.forEach((field) =>
+      expect(fields).not.toContain(field)
+    );
+  });
+
+  it('should drop those fields when contracts are selected alongside tables', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.TABLE, SearchIndex.DATA_CONTRACT],
+      })
+    );
+
+    fieldsUnpopulatedOnContracts.forEach((field) =>
+      expect(fields).not.toContain(field)
+    );
+
+    expect(fields).toContain(EntityFields.OWNERS);
+  });
+
+  it('should keep domains and tags for tables alone', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.TABLE],
+      })
+    );
+
+    expect(fields).toEqual(
+      expect.arrayContaining([EntityFields.DOMAINS, EntityFields.TAG])
+    );
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
   });
 });

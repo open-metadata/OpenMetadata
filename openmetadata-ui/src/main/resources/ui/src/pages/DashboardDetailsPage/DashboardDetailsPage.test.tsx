@@ -96,6 +96,17 @@ describe('DashboardDetailsPage', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
+  it('keeps the page skeleton, not a spinner, while the dashboard fetch is in flight', () => {
+    (getDashboardByFqn as jest.Mock).mockImplementation(
+      () => new Promise(() => undefined)
+    );
+
+    const { container } = renderWithQueryClient(<DashboardDetailsPage />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(container.querySelector('.loader')).toBeNull();
+  });
+
   it('should render dashboard details when data is loaded', async () => {
     (getDashboardByFqn as jest.Mock).mockResolvedValue(mockDashboard);
 

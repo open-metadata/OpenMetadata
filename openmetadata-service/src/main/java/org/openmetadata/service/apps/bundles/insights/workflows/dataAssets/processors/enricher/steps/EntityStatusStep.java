@@ -31,8 +31,8 @@ public final class EntityStatusStep implements EnrichmentStep {
 
   @Override
   public void apply(EnrichmentTarget target) {
-    EntityStatus status = target.entity().getEntityStatus();
-    String value = status != null ? status.value() : EntityStatus.UNPROCESSED.value();
+    Enum<?> status = target.entity().getEntityStatus();
+    String value = status != null ? status.toString() : EntityStatus.UNPROCESSED.value();
     target.entityMap().put("entityStatus", value);
   }
 }

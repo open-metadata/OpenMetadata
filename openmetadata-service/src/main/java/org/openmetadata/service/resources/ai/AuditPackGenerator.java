@@ -37,7 +37,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -318,7 +317,7 @@ public final class AuditPackGenerator {
         enumValue(report.getFormat()),
         String.valueOf(report.getAsOfDate()),
         String.valueOf(Boolean.TRUE.equals(report.getIncludeRedacted())),
-        report.getUpdatedBy() == null ? "" : report.getUpdatedBy());
+        refId(report.getRequestedBy()));
   }
 
   private static String enumValue(Object enumConstant) {
@@ -367,13 +366,15 @@ public final class AuditPackGenerator {
   }
 
   private static AuditPackPayload assemble(AuditReport report) {
+    final AIGovernanceAssetReader reader =
+        AIGovernanceAssetReader.forReport(Entity.getAuthorizer(), report);
     AuditPackPayload payload = new AuditPackPayload();
     List<AuditPackAsset> assets = new ArrayList<>();
     AuditReportScope scope =
         report.getScope() == null ? AuditReportScope.Estate : report.getScope();
-    collectAssets(Entity.AI_APPLICATION, scope, report, assets);
-    collectAssets(Entity.LLM_MODEL, scope, report, assets);
-    collectAssets(Entity.MCP_SERVER, scope, report, assets);
+    collectAssets(reader, Entity.AI_APPLICATION, scope, report, assets);
+    collectAssets(reader, Entity.LLM_MODEL, scope, report, assets);
+    collectAssets(reader, Entity.MCP_SERVER, scope, report, assets);
 
     payload.body =
         new AuditPackDocument(
@@ -400,12 +401,15 @@ public final class AuditPackGenerator {
   }
 
   private static void collectAssets(
-      String entityType, AuditReportScope scope, AuditReport report, List<AuditPackAsset> out) {
+      final AIGovernanceAssetReader reader,
+      String entityType,
+      AuditReportScope scope,
+      AuditReport report,
+      List<AuditPackAsset> out) {
     try {
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      List<? extends EntityInterface> entities =
-          listAssets(entityType, filter, fieldsForScope(entityType, scope));
-      for (EntityInterface entity : entities) {
+      List<? extends EntityInterface<?>> entities =
+          reader.list(entityType, scope == AuditReportScope.Domain ? "domains" : "");
+      for (EntityInterface<?> entity : entities) {
         if (scope == AuditReportScope.Asset && report.getScopeTarget() != null) {
           if (!report.getScopeTarget().getId().equals(entity.getId())) {
             continue;
@@ -431,36 +435,7 @@ public final class AuditPackGenerator {
     }
   }
 
-  private static List<EntityInterface> listAssets(
-      String entityType, ListFilter filter, EntityUtil.Fields fields) {
-    List<EntityInterface> result = new ArrayList<>();
-    EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
-    String after = null;
-    do {
-      ResultList<? extends EntityInterface> page =
-          repo.listAfter(null, fields, filter, PAGE_SIZE, after);
-      result.addAll(page.getData());
-      after = page.getPaging() == null ? null : page.getPaging().getAfter();
-    } while (after != null);
-
-    return result;
-  }
-
-  /**
-   * Domain-scoped packs filter on {@link EntityInterface#getDomains()}; {@code domains}
-   * is a relationship field that stays null unless explicitly requested, so a Domain
-   * pack loaded with {@code EMPTY_FIELDS} would match nothing. Estate/Asset scopes read
-   * only the always-present governance fields and need no relationship fields.
-   */
-  private static EntityUtil.Fields fieldsForScope(String entityType, AuditReportScope scope) {
-    EntityUtil.Fields result = EntityUtil.Fields.EMPTY_FIELDS;
-    if (scope == AuditReportScope.Domain) {
-      result = Entity.getEntityRepository(entityType).getFields("domains");
-    }
-    return result;
-  }
-
-  private static Object governanceMetadata(EntityInterface entity) {
+  private static Object governanceMetadata(EntityInterface<?> entity) {
     Object result = null;
     if (entity instanceof AIApplication app) {
       result = app.getGovernanceMetadata();

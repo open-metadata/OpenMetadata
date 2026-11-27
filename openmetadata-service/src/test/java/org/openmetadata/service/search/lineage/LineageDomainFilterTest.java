@@ -114,6 +114,23 @@ class LineageDomainFilterTest {
   }
 
   @Test
+  @DisplayName("prune keeps the assets a pipeline root connects through its edges")
+  void testPrunePipelineRootReachesTheAssetsItsEdgesConnect() {
+    // Shown as an edge, pipeline P is the A -> B edge's pipeline, not an end of any edge.
+    EsLineageData throughPipeline =
+        edge("e1", "A", "B").getValue().withPipeline(Map.of("fullyQualifiedName", "P"));
+    SearchLineageResult result =
+        lineage(
+            List.of(node("P"), node("A", "D1"), node("B")),
+            List.of(Map.entry("e1", throughPipeline)));
+
+    LineageDomainFilter.prune(result, restricted, "P");
+
+    assertEquals(Set.of("P", "A", "B"), result.getNodes().keySet());
+    assertEquals(1, result.getUpstreamEdges().size(), "the edge through the pipeline survives");
+  }
+
+  @Test
   @DisplayName("prune is a no-op for admins / non-restricted users")
   void testPruneNoOpForAdmin() {
     SubjectContext admin = mock(SubjectContext.class);

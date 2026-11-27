@@ -27,7 +27,7 @@ public final class FollowersCountMutation implements ShapeMutation {
   }
 
   @Override
-  public boolean appliesTo(final EntityInterface entity) {
+  public boolean appliesTo(final EntityInterface<?> entity) {
     return true;
   }
 
@@ -37,7 +37,7 @@ public final class FollowersCountMutation implements ShapeMutation {
   }
 
   @Override
-  public EntityInterface apply(final EntityInterface entity, final Rung rung) {
+  public EntityInterface<?> apply(final EntityInterface<?> entity, final Rung rung) {
     final List<EntityReference> followers = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {
       followers.add(new EntityReference().withId(UUID.randomUUID()).withType("user"));

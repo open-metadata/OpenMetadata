@@ -14,22 +14,37 @@
 package org.openmetadata.service.rdf;
 
 import java.util.Set;
+import org.openmetadata.service.Entity;
 
 /**
- * Entity types that are never represented in the RDF knowledge graph — neither as nodes nor as the
- * endpoint of any relationship edge. The same policy gates both the bulk reindex ({@code
+ * Entity types excluded from generic metadata projection and its relationship edges. Native
+ * ontologies use their active-release graphs instead. The same policy gates both bulk reindex ({@code
  * RdfIndexApp} / {@code RdfBatchProcessor}) and the live per-write sync ({@link RdfUpdater}), so an
- * excluded type stays out of RDF "at all" rather than reappearing between weekly rebuilds.
+ * excluded working definition cannot reappear between rebuilds.
  *
  * <p>{@code aiChart} is a Collate AI-generated chart entity that is not part of the metadata
  * knowledge graph; its rows additionally fail to deserialize during the RDF read pass, so each one
  * was dropped from the graph with an error on every reindex. Excluding it up front keeps the graph
  * free of dangling references and stops the reindex from logging a failure for every aiChart row.
+ *
+ * <p>{@code businessProcess} is a Collate entity whose draft state and staged step links are
+ * visible only to its editors, and whose {@code uses} links stand for reads and writes alike, so
+ * projecting them as {@code prov:used} would both expose drafts and state a false provenance.
  */
 public final class RdfExcludedEntities {
   private static final String AI_CHART = "aiChart";
+  private static final String BUSINESS_PROCESS = "businessProcess";
 
-  public static final Set<String> EXCLUDED_ENTITY_TYPES = Set.of(AI_CHART);
+  // Native ontology meaning is published only through the active release's dedicated graph.
+  public static final Set<String> EXCLUDED_ENTITY_TYPES =
+      Set.of(
+          AI_CHART,
+          BUSINESS_PROCESS,
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM,
+          Entity.ONTOLOGY_RELEASE);
 
   private RdfExcludedEntities() {}
 

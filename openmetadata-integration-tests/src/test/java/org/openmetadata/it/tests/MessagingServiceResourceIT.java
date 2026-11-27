@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -376,43 +377,32 @@ public class MessagingServiceResourceIT
   }
 
   /**
-   * Test: Regular (non-bot, non-admin) user should see masked passwords when fetching messaging
-   * service via API.
-   *
-   * <p>This is the core scenario from Issue #19596: a non-privileged user should NOT see
-   * credentials when fetching service details via the API endpoint
-   * /v1/services/messagingServices/name/{name}.
+   * View-only callers receive no connection under the service connection visibility policy,
+   * including non-secret connection fields.
    *
    * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
    */
   @Test
-  void test_regularUserGetMessagingService_passwordsMasked(TestNamespace ns) {
-    MessagingService service = createKafkaServiceWithCredentials(ns, "user_mask_byid");
+  void test_regularUserGetMessagingService_connectionHidden(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_hidden_byid");
     OpenMetadataClient userClient = SdkClients.testUserClient();
 
     MessagingService fetched = userClient.messagingServices().get(service.getId().toString());
 
-    KafkaConnection conn = extractKafkaConnection(fetched);
-    assertEquals("localhost:9092", conn.getBootstrapServers());
-    assertEquals("kafka_user", conn.getSaslUsername());
-    assertPasswordsMasked(conn, "Regular user GET by ID");
+    assertEquals(service.getId(), fetched.getId());
+    assertNull(fetched.getConnection(), "Regular user GET by ID must not expose the connection");
   }
 
-  /**
-   * Test: Regular user should see masked passwords when fetching by name.
-   *
-   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
-   */
   @Test
-  void test_regularUserGetByNameMessagingService_passwordsMasked(TestNamespace ns) {
-    MessagingService service = createKafkaServiceWithCredentials(ns, "user_mask_byname");
+  void test_regularUserGetByNameMessagingService_connectionHidden(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_hidden_byname");
     OpenMetadataClient userClient = SdkClients.testUserClient();
 
     MessagingService fetched =
         userClient.messagingServices().getByName(service.getFullyQualifiedName());
 
-    KafkaConnection conn = extractKafkaConnection(fetched);
-    assertPasswordsMasked(conn, "Regular user GET by name");
+    assertEquals(service.getId(), fetched.getId());
+    assertNull(fetched.getConnection(), "Regular user GET by name must not expose the connection");
   }
 
   /**
@@ -474,14 +464,9 @@ public class MessagingServiceResourceIT
     assertPasswordsNotMasked(persistedConnection, "Bot GET after masked PATCH");
   }
 
-  /**
-   * Test: Non-bot users listing messaging services should see masked passwords.
-   *
-   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/19596">Issue #19596</a>
-   */
   @Test
-  void test_regularUserListMessagingServices_passwordsMasked(TestNamespace ns) {
-    MessagingService service = createKafkaServiceWithCredentials(ns, "user_list_mask");
+  void test_regularUserListMessagingServices_connectionHidden(TestNamespace ns) {
+    MessagingService service = createKafkaServiceWithCredentials(ns, "user_list_hidden");
     OpenMetadataClient userClient = SdkClients.testUserClient();
 
     ListResponse<MessagingService> response =
@@ -494,9 +479,6 @@ public class MessagingServiceResourceIT
             .orElse(null);
     assertNotNull(found, "Service should appear in list results");
 
-    if (found.getConnection() != null && found.getConnection().getConfig() != null) {
-      KafkaConnection conn = extractKafkaConnection(found);
-      assertPasswordsMasked(conn, "Regular user LIST");
-    }
+    assertNull(found.getConnection(), "Regular user LIST must not expose the connection");
   }
 }

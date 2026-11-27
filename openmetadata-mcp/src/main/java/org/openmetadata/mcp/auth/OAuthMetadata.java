@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -75,6 +76,15 @@ public class OAuthMetadata {
 
   @JsonProperty("code_challenge_methods_supported")
   private List<String> codeChallengeMethodsSupported;
+
+  @JsonProperty("jwks_uri")
+  private URI jwksUri;
+
+  @JsonProperty("subject_types_supported")
+  private List<String> subjectTypesSupported;
+
+  @JsonProperty("id_token_signing_alg_values_supported")
+  private List<String> idTokenSigningAlgValuesSupported;
 
   public OAuthMetadata() {
     this.responseTypesSupported = Arrays.asList("code");
@@ -254,5 +264,33 @@ public class OAuthMetadata {
 
   public void setCodeChallengeMethodsSupported(List<String> codeChallengeMethodsSupported) {
     this.codeChallengeMethodsSupported = codeChallengeMethodsSupported;
+  }
+
+  public URI getJwksUri() {
+    return jwksUri;
+  }
+
+  public void setJwksUri(URI jwksUri) {
+    this.jwksUri = jwksUri;
+  }
+
+  public List<String> getSubjectTypesSupported() {
+    return subjectTypesSupported == null
+        ? null
+        : Collections.unmodifiableList(subjectTypesSupported);
+  }
+
+  public void setSubjectTypesSupported(List<String> subjectTypesSupported) {
+    this.subjectTypesSupported = subjectTypesSupported;
+  }
+
+  public List<String> getIdTokenSigningAlgValuesSupported() {
+    return idTokenSigningAlgValuesSupported == null
+        ? null
+        : Collections.unmodifiableList(idTokenSigningAlgValuesSupported);
+  }
+
+  public void setIdTokenSigningAlgValuesSupported(List<String> idTokenSigningAlgValuesSupported) {
+    this.idTokenSigningAlgValuesSupported = idTokenSigningAlgValuesSupported;
   }
 }

@@ -16,10 +16,12 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class ChangeSummarizer<T extends EntityInterface> {
+public class ChangeSummarizer<T extends EntityInterface<?>> {
   private final Set<String> fields;
   Class<T> clazz;
 
@@ -114,7 +116,10 @@ public class ChangeSummarizer<T extends EntityInterface> {
           .map(map -> (Map<String, Object>) map)
           .map(map -> (String) map.get("name"))
           .forEach(
-              name -> keys.add(FullyQualifiedName.build(deletedList.getName(), name, nestedField)));
+              name ->
+                  keys.add(
+                      EntityUtil.getFieldName(
+                          EntityFieldPath.childKey(deletedList.getName(), name), nestedField)));
     } catch (JsonParsingException e) {
       LOG.warn("Error processing deleted fields", e);
     }

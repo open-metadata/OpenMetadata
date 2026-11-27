@@ -63,6 +63,13 @@ $$section
 - **Note:**
   - Must be registered in Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs
   - Always use HTTPS in production
+  - The web callback defaults to `{your-domain}/callback`. Register the exact URL shown in this field.
+
+**MCP sign-in**
+
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Add `<om-url>/mcp/callback` to the Google OAuth client’s authorized redirect URIs. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
+- For a Google client that requires a secret to redeem the code, configure **Confidential** in OpenMetadata and supply the secret on the server.
 $$
 
 $$section
@@ -280,19 +287,6 @@ $$section
 $$
 
 $$section
-### OIDC Callback URL / Redirect URI $(id="callbackUrl")
-
-- **Definition:** URL where Google redirects after authentication.
-- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
-- **Example:** https://openmetadata.company.com/callback
-- **Why it matters:** Must be registered in your Google Cloud Console configuration.
-- **Note:**
-  - **This field is read-only** - it cannot be edited
-  - **Copy this exact URL** and add it to your Google Cloud Console → OAuth 2.0 Client → Authorized redirect URIs
-  - Format is always: `{your-domain}/callback`
-$$
-
-$$section
 ### OIDC Max Age $(id="maxAge")
 
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
@@ -420,11 +414,8 @@ $$
 $$section
 ### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
-- **Definition:** Whether to use SSL/TLS for secure connections.
+- **Deprecated — has no effect.** Socket handshakes are always authenticated under every configuration; this setting is retained only for backward compatibility.
 - **Default:** false
-- **Example:** true
-- **Why it matters:** Ensures encrypted communication for security.
-- **Note:** Should be enabled in production environments
 
 ## Google Workspace Specific Configuration
 

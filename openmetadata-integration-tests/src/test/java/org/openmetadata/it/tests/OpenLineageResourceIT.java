@@ -2,8 +2,11 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,6 +21,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.OpenLineage;
 
 /**
@@ -33,6 +37,8 @@ import org.openmetadata.sdk.fluent.OpenLineage;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class OpenLineageResourceIT {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @BeforeAll
   static void setup() {
@@ -97,18 +103,18 @@ public class OpenLineageResourceIT {
     String namespace = ns.prefix("namespace");
     String runId = UUID.randomUUID().toString();
 
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(jobName, namespace)
-            .withRun(runId)
-            .addInput("input_dataset_1", ns.prefix("input_ns"))
-            .addInput("input_dataset_2", ns.prefix("input_ns"))
-            .addOutput("output_dataset", ns.prefix("output_ns"))
-            .send();
+    JsonNode rejection =
+        sendExpectingRejection(
+            OpenLineage.event()
+                .withEventType("COMPLETE")
+                .withEventTime(Instant.now().toString())
+                .withJob(jobName, namespace)
+                .withRun(runId)
+                .addInput("input_dataset_1", ns.prefix("input_ns"))
+                .addInput("input_dataset_2", ns.prefix("input_ns"))
+                .addOutput("output_dataset", ns.prefix("output_ns")));
 
-    assertNotNull(response);
+    assertRejectedAsUnparsable(rejection, 3);
   }
 
   @Test
@@ -147,17 +153,17 @@ public class OpenLineageResourceIT {
     outputDataset.put("name", "detailed_output");
     outputDataset.put("namespace", ns.prefix("detailed_ns"));
 
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(jobName, namespace)
-            .withRun(runId)
-            .addInput(inputDataset)
-            .addOutput(outputDataset)
-            .send();
+    JsonNode rejection =
+        sendExpectingRejection(
+            OpenLineage.event()
+                .withEventType("COMPLETE")
+                .withEventTime(Instant.now().toString())
+                .withJob(jobName, namespace)
+                .withRun(runId)
+                .addInput(inputDataset)
+                .addOutput(outputDataset));
 
-    assertNotNull(response);
+    assertRejectedAsUnparsable(rejection, 2);
   }
 
   @Test
@@ -326,19 +332,19 @@ public class OpenLineageResourceIT {
     String namespace = ns.prefix("namespace");
     String runId = UUID.randomUUID().toString();
 
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(jobName, namespace)
-            .withRun(runId)
-            .addInput("input_1", ns.prefix("input_ns"))
-            .addInput("input_2", ns.prefix("input_ns"))
-            .addInput("input_3", ns.prefix("input_ns"))
-            .addOutput("output", ns.prefix("output_ns"))
-            .send();
+    JsonNode rejection =
+        sendExpectingRejection(
+            OpenLineage.event()
+                .withEventType("COMPLETE")
+                .withEventTime(Instant.now().toString())
+                .withJob(jobName, namespace)
+                .withRun(runId)
+                .addInput("input_1", ns.prefix("input_ns"))
+                .addInput("input_2", ns.prefix("input_ns"))
+                .addInput("input_3", ns.prefix("input_ns"))
+                .addOutput("output", ns.prefix("output_ns")));
 
-    assertNotNull(response);
+    assertRejectedAsUnparsable(rejection, 4);
   }
 
   @Test
@@ -347,19 +353,19 @@ public class OpenLineageResourceIT {
     String namespace = ns.prefix("namespace");
     String runId = UUID.randomUUID().toString();
 
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(jobName, namespace)
-            .withRun(runId)
-            .addInput("input", ns.prefix("input_ns"))
-            .addOutput("output_1", ns.prefix("output_ns"))
-            .addOutput("output_2", ns.prefix("output_ns"))
-            .addOutput("output_3", ns.prefix("output_ns"))
-            .send();
+    JsonNode rejection =
+        sendExpectingRejection(
+            OpenLineage.event()
+                .withEventType("COMPLETE")
+                .withEventTime(Instant.now().toString())
+                .withJob(jobName, namespace)
+                .withRun(runId)
+                .addInput("input", ns.prefix("input_ns"))
+                .addOutput("output_1", ns.prefix("output_ns"))
+                .addOutput("output_2", ns.prefix("output_ns"))
+                .addOutput("output_3", ns.prefix("output_ns")));
 
-    assertNotNull(response);
+    assertRejectedAsUnparsable(rejection, 4);
   }
 
   @Test
@@ -384,17 +390,17 @@ public class OpenLineageResourceIT {
       outputs.add(output);
     }
 
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(jobName, namespace)
-            .withRun(runId)
-            .withInputs(inputs)
-            .withOutputs(outputs)
-            .send();
+    JsonNode rejection =
+        sendExpectingRejection(
+            OpenLineage.event()
+                .withEventType("COMPLETE")
+                .withEventTime(Instant.now().toString())
+                .withJob(jobName, namespace)
+                .withRun(runId)
+                .withInputs(inputs)
+                .withOutputs(outputs));
 
-    assertNotNull(response);
+    assertRejectedAsUnparsable(rejection, 5);
   }
 
   @Test
@@ -559,5 +565,23 @@ public class OpenLineageResourceIT {
     facet.put("nominalStartTime", Instant.now().toString());
     facet.put("nominalEndTime", Instant.now().plusSeconds(3600).toString());
     return facet;
+  }
+
+  /**
+   * A dataset named by a bare token carries no schema, so it can neither be matched nor created,
+   * and an event made only of such datasets is rejected with each one listed.
+   */
+  private static JsonNode sendExpectingRejection(OpenLineage.RunEventBuilder event)
+      throws Exception {
+    InvalidRequestException rejection = assertThrows(InvalidRequestException.class, event::send);
+    return MAPPER.readTree(rejection.getResponseBody());
+  }
+
+  private static void assertRejectedAsUnparsable(JsonNode response, int unresolvedDatasets) {
+    assertEquals("failure", response.get("status").asText(), response.toString());
+    assertEquals(0, response.get("lineageEdgesCreated").asInt());
+    JsonNode unresolved = response.get("unresolvedDatasets");
+    assertEquals(unresolvedDatasets, unresolved.size(), response.toString());
+    unresolved.forEach(dataset -> assertEquals("unparsableName", dataset.get("reason").asText()));
   }
 }

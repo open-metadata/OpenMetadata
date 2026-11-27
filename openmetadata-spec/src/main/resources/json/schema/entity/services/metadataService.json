@@ -5,7 +5,7 @@
   "description": "This schema defines the Metadata Service entity, such as Amundsen, Atlas etc.",
   "javaType": "org.openmetadata.schema.entity.services.MetadataService",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "type": "object",

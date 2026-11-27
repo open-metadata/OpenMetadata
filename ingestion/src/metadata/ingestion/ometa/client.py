@@ -128,7 +128,8 @@ class APIError(Exception):
     """
 
     def __init__(self, error, http_error=None):
-        super().__init__(error["message"])
+        # Not every API uses `message`: Alation, for one, answers with `title` and `detail`
+        super().__init__(error.get("message") or error.get("detail") or error.get("title") or str(error))
         self._error = error
         self._http_error = http_error
 
@@ -277,6 +278,11 @@ class REST:
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
+                    # Auth callbacks (e.g. google-auth's ``credentials.expiry``) may
+                    # return a naive UTC datetime. Interpret it as UTC so
+                    # ``.timestamp()`` doesn't skew by the host's local timezone.
+                    if expiry.tzinfo is None:
+                        expiry = expiry.replace(tzinfo=timezone.utc)
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120

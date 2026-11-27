@@ -36,15 +36,6 @@ jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
-  }
-);
-
 jest.mock('../../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest
     .fn()
@@ -117,7 +108,9 @@ describe('PersonaPage', () => {
     render(<PersonaPage {...mockProps} />);
 
     expect(
-      await screen.findByText('ErrorPlaceHolder.component')
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
     ).toBeInTheDocument();
   });
 

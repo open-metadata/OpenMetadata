@@ -70,7 +70,7 @@ def _iso(days_ago: float) -> str:
 
 def _build_source() -> Data360PipelineOperationalSource:
     with (
-        patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+        patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
@@ -118,6 +118,17 @@ class TestDataTransformStatus:
         ) as mock_history:
             list(source.yield_data_transform_status(DataTransformDetails(name="dt1")))
         assert mock_history.call_args.kwargs["limit"] == 7
+
+    def test_a_streaming_transform_is_not_asked_for_run_history(self):
+        # Data 360 keeps no run history for streaming transforms and answers with a
+        # 404, which failed the whole metadata run.
+        source = _build_source()
+        with patch(
+            "metadata.ingestion.source.pipeline.data360pipeline.operational.get_data_transform_run_history",
+        ) as mock_history:
+            assert list(source.yield_data_transform_status(DataTransformDetails(name="dt1", type="STREAMING"))) == []
+        mock_history.assert_not_called()
+        assert not source.status.failures
 
     def test_runs_older_than_the_status_lookback_window_are_dropped(self):
         source = _build_source()
@@ -186,11 +197,12 @@ class TestCalculatedInsightAndDataStreamStatus:
         task = results[0].right.pipeline_status.taskStatus[0]
         assert task.startTime.root == task.endTime.root == 1704067200000
 
-    def test_a_datastream_that_never_refreshed_is_dropped_with_a_warning(self):
+    def test_a_datastream_that_never_refreshed_is_dropped_quietly(self):
+        # Never having run is a normal state, not something to warn about on every run.
         source = _build_source()
         details = DataStreamDetails(name="ds1", lastRunStatus="SUCCESS")
         assert list(source.yield_datastream_status(details)) == []
-        assert len(source.status.warnings) == 1
+        assert not source.status.warnings
 
 
 class TestYieldPipelineStatusDispatch:

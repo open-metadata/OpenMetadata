@@ -87,6 +87,17 @@ export const Sizes: StoryObj = {
   render: () => (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 280 }}>
+      <Select
+        fontSize="xs"
+        items={ITEMS}
+        placeholder="Extra small select"
+        size="xs">
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select>
       <Select items={ITEMS} placeholder="Small select" size="sm">
         {(item) => (
           <Select.Item id={item.id} key={item.id} textValue={item.label}>
@@ -138,6 +149,24 @@ export const WithSupportingText: StoryObj = {
             )}
           </Select.Item>
         )}
+      </Select>
+    </div>
+  ),
+};
+
+export const Empty: StoryObj = {
+  render: () => (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 16, width: 280 }}>
+      <Select items={[]} label="Default empty state" placeholder="No options">
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+      <Select
+        emptyState="No teams to map yet"
+        items={[]}
+        label="Custom empty state"
+        placeholder="No options">
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
       </Select>
     </div>
   ),

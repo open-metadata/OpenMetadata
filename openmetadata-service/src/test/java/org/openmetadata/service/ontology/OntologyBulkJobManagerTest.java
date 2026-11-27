@@ -24,16 +24,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.OntologyBulkJob;
 import org.openmetadata.schema.api.data.OntologyBulkJobArguments;
+import org.openmetadata.schema.api.data.OntologyBulkJobList;
 import org.openmetadata.schema.api.data.OntologyBulkJobStatus;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
 import org.openmetadata.schema.api.data.OntologyBulkResultArtifact;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 
 class OntologyBulkJobManagerTest {
@@ -69,7 +72,7 @@ class OntologyBulkJobManagerTest {
     final ArgumentCaptor<String> arguments = ArgumentCaptor.forClass(String.class);
     verify(jobDao)
         .insertTrackedJobInternal(
-            eq(BackgroundJob.JobType.ONTOLOGY_BULK.name()),
+            eq(BackgroundJobTypes.ONTOLOGY_BULK),
             eq(OntologyBulkJobManager.HANDLER_NAME),
             arguments.capture(),
             eq(OntologyBulkTestFixtures.USER),
@@ -124,6 +127,26 @@ class OntologyBulkJobManagerTest {
             eq(OntologyBulkTestFixtures.NOW));
   }
 
+  @Test
+  void listsJobsScopedByGlossaryAndForwardsGlossaryIdToDao() {
+    final JobDAO jobDao = mock(JobDAO.class);
+    final OntologyBulkRequest request =
+        OntologyBulkTestFixtures.csvRequest(OntologyBulkTestFixtures.header() + '\n', true);
+    final BackgroundJob backgroundJob = backgroundJob(request, BackgroundJob.Status.PENDING, null);
+    final String glossaryId = OntologyBulkTestFixtures.GLOSSARY_ID.toString();
+    when(jobDao.listOntologyBulkJobsByUser(OntologyBulkTestFixtures.USER, glossaryId, 100))
+        .thenReturn(List.of(backgroundJob));
+    final OntologyBulkJobManager manager = manager(jobDao);
+
+    final OntologyBulkJobList result = manager.list(OntologyBulkTestFixtures.USER, glossaryId, 100);
+
+    verify(jobDao)
+        .listOntologyBulkJobsByUser(eq(OntologyBulkTestFixtures.USER), eq(glossaryId), eq(100));
+    assertEquals(1, result.getJobs().size());
+    assertEquals(JOB_ID, result.getJobs().get(0).getId());
+    assertEquals(OntologyBulkJobStatus.QUEUED, result.getJobs().get(0).getStatus());
+  }
+
   private static OntologyBulkJobManager manager(final JobDAO jobDao) {
     return new OntologyBulkJobManager(jobDao, OntologyBulkTestFixtures.clock());
   }
@@ -136,7 +159,7 @@ class OntologyBulkJobManagerTest {
             .withGlossary(OntologyBulkTestFixtures.glossary().getEntityReference());
     return new BackgroundJob()
         .withId(JOB_ID)
-        .withJobType(BackgroundJob.JobType.ONTOLOGY_BULK)
+        .withJobType(BackgroundJobTypes.ONTOLOGY_BULK)
         .withMethodName(OntologyBulkJobManager.HANDLER_NAME)
         .withJobArgs(arguments)
         .withStatus(status)

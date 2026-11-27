@@ -413,16 +413,12 @@ describe('PipelineActionsDropdown', () => {
     expect(screen.queryByText('KillIngestionPipelineModal')).toBeNull();
   });
 
-  it('should pass the moreActionButtonProps to the more action button', async () => {
-    const mockOnClick = jest.fn();
-
+  it('should disable the more action button through moreActionButtonProps', async () => {
     await act(async () => {
       render(
         <PipelineActionsDropdown
           {...mockPipelineActionsDropdownProps}
-          moreActionButtonProps={{
-            onClick: mockOnClick,
-          }}
+          moreActionButtonProps={{ disabled: true }}
         />,
         {
           wrapper: MemoryRouter,
@@ -430,8 +426,6 @@ describe('PipelineActionsDropdown', () => {
       );
     });
 
-    await clickOnMoreActions();
-
-    expect(mockOnClick).toHaveBeenCalled();
+    expect(screen.getByTestId('more-actions')).toBeDisabled();
   });
 });

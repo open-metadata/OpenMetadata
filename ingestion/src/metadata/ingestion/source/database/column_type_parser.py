@@ -93,6 +93,7 @@ class ColumnTypeParser:
         "BOOL": "BOOLEAN",
         "BOOLEAN": "BOOLEAN",
         "BPCHAR": "CHAR",
+        "BYTE": "BINARY",
         "BYTEINT": "BYTEINT",
         "BYTES": "BYTES",
         "CHAR": "CHAR",
@@ -100,7 +101,9 @@ class ColumnTypeParser:
         "BINARY VARYING": "VARBINARY",
         "CURSOR": "BINARY",
         "DATE": "DATE",
+        "DATEV2": "DATE",
         "DATETIME": "DATETIME",
+        "DATETIMEV2": "DATETIME",
         "DATETIME2": "DATETIME",
         "DATETIMEOFFSET": "DATETIME",
         "DECIMAL": "DECIMAL",
@@ -141,6 +144,7 @@ class ColumnTypeParser:
         "INTERVAL DAY TO SECOND": "INTERVAL",
         "INTERVAL YEAR TO MONTH": "INTERVAL",
         "INTERVAL": "INTERVAL",
+        "LARGEINT": "LARGEINT",
         "LONG RAW": "BINARY",
         "LONG VARCHAR": "VARCHAR",
         "LONGBLOB": "LONGBLOB",
@@ -187,6 +191,7 @@ class ColumnTypeParser:
         "UNION": "UNION",
         "UROWID": "VARCHAR",
         "VARBINARY": "VARBINARY",
+        "VARBYTE": "VARBINARY",
         "VARCHAR": "VARCHAR",
         "VARIANT": "JSON",
         "JSON": "JSON",
@@ -311,17 +316,6 @@ class ColumnTypeParser:
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\))?")
-
-    try:
-        # pylint: disable=import-outside-toplevel
-        from teradatasqlalchemy import BYTE, VARBYTE
-
-        _COLUMN_TYPE_MAPPING[BYTE] = "BINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["BYTE"] = "BINARY"
-        _COLUMN_TYPE_MAPPING[VARBYTE] = "VARBINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["VARBYTE"] = "VARBINARY"
-    except ImportError:
-        pass
 
     @staticmethod
     def get_column_type(column_type: Any) -> str:

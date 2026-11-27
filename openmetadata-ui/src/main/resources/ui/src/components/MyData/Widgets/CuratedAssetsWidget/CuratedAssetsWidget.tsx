@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
+import { CuratedAssets } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
-import { ReactComponent as CuratedAssetsIcon } from '../../../../assets/svg/widget/curated-assets.svg';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
@@ -61,10 +60,7 @@ import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import {
-  AdvanceSearchProvider,
-  useAdvanceSearch,
-} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -99,7 +95,6 @@ const CuratedAssetsWidgetContent = ({
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
-  const { config } = useAdvanceSearch();
 
   const curatedAssetsData = useMemo<WidgetConfig | null | undefined>(() => {
     return currentLayout?.find(
@@ -116,17 +111,28 @@ const CuratedAssetsWidgetContent = ({
   );
 
   const queryFilter = useMemo(
-    () => get(curatedAssetsConfig, 'queryFilter', '{}'),
+    () =>
+      typeof curatedAssetsConfig?.queryFilter === 'string'
+        ? curatedAssetsConfig.queryFilter
+        : '{}',
     [curatedAssetsConfig]
   );
 
   const selectedResource = useMemo(
-    () => get(curatedAssetsConfig, 'resources', []),
+    () =>
+      Array.isArray(curatedAssetsConfig?.resources)
+        ? curatedAssetsConfig.resources.filter(
+            (resource): resource is string => typeof resource === 'string'
+          )
+        : [],
     [curatedAssetsConfig]
   );
 
   const title = useMemo(
-    () => get(curatedAssetsConfig, 'title', ''),
+    () =>
+      typeof curatedAssetsConfig?.title === 'string'
+        ? curatedAssetsConfig.title
+        : '',
     [curatedAssetsConfig]
   );
 
@@ -143,9 +149,8 @@ const CuratedAssetsWidgetContent = ({
     return getExploreURLForAdvancedFilter({
       queryFilter,
       selectedResource,
-      config,
     });
-  }, [queryFilter, config, selectedResource]);
+  }, [queryFilter, selectedResource]);
 
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {
@@ -256,9 +261,9 @@ const CuratedAssetsWidgetContent = ({
   };
 
   const handleSortByClick = useCallback(
-    (e: MenuInfo) => {
+    (key: string) => {
       if (!isEditView) {
-        setSelectedSortBy(e.key);
+        setSelectedSortBy(key);
 
         return;
       }
@@ -271,7 +276,7 @@ const CuratedAssetsWidgetContent = ({
         const updatedLayout = hasCurrentCuratedAssets
           ? currentLayout?.map((layout: WidgetConfig) =>
               layout.i === widgetKey
-                ? { ...layout, config: { ...layout.config, sortBy: e.key } }
+                ? { ...layout, config: { ...layout.config, sortBy: key } }
                 : layout
             )
           : [
@@ -281,7 +286,7 @@ const CuratedAssetsWidgetContent = ({
                 i: widgetKey,
                 config: {
                   ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
-                  sortBy: e.key,
+                  sortBy: key,
                 },
               },
             ];
@@ -350,7 +355,16 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListLinkItem = useCallback(
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
-      const title = getEntityName(item);
+      const title = getEntityName({
+        name:
+          'name' in item && typeof item.name === 'string'
+            ? item.name
+            : undefined,
+        displayName:
+          'displayName' in item && typeof item.displayName === 'string'
+            ? item.displayName
+            : undefined,
+      });
       const description = get(item, 'description');
       const certification = get(item, 'certification');
 
@@ -358,7 +372,7 @@ const CuratedAssetsWidgetContent = ({
         <Link
           className="curated-assets-list-item-link"
           to={getEntityLinkFromType(
-            item.fullyQualifiedName as string,
+            'fullyQualifiedName' in item ? item.fullyQualifiedName ?? '' : '',
             item.type as EntityType
           )}>
           <div
@@ -369,7 +383,10 @@ const CuratedAssetsWidgetContent = ({
               <div className="flex items-center gap-1">
                 <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {title}
                 </Typography>
                 {certification && (
@@ -382,7 +399,10 @@ const CuratedAssetsWidgetContent = ({
                 <Typography
                   className="max-two-lines entity-list-item-description"
                   color="secondary"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getTextFromHtmlString(description)}
                 </Typography>
               )}
@@ -396,13 +416,16 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Row className="curated-assets-grid">
+      <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <Col key={item.id} span={12}>
+          <Grid.Item
+            className="layout-column"
+            key={'id' in item ? item.id : undefined}
+            span={12}>
             {entityListLinkItem(item)}
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
+      </Grid>
     ) : (
       data.map((item) => entityListLinkItem(item))
     );
@@ -428,11 +451,7 @@ const CuratedAssetsWidgetContent = ({
           sourceIcon && title ? (
             sourceIcon
           ) : (
-            <CuratedAssetsIcon
-              data-testid="star-outlined-icon"
-              height={24}
-              width={24}
-            />
+            <CuratedAssets data-testid="star-outlined-icon" size={24} />
           )
         }
         isEditView={isEditView}
@@ -449,7 +468,7 @@ const CuratedAssetsWidgetContent = ({
         }
         widgetKey={widgetKey}
         onEditClick={handleModalOpen}
-        onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
+        onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
     ),

@@ -191,14 +191,14 @@ class SecurityUtilTest {
         new CatalogSecurityContext(
             () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
 
-    assertEquals("alice", SecurityUtil.getUserName(impersonatedContext));
-    assertEquals("alice", SecurityUtil.getImpersonatedByUser(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getUserName(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getImpersonatedByUser(impersonatedContext));
 
     CatalogSecurityContext directContext =
         new CatalogSecurityContext(
             () -> "service-account/openmetadata", "https", "openid", Set.of());
 
-    assertEquals("service-account", SecurityUtil.getUserName(directContext));
+    assertEquals("service-account/openmetadata", SecurityUtil.getUserName(directContext));
     assertNull(SecurityUtil.getImpersonatedByUser(directContext));
 
     SecurityContext anonymous = mock(SecurityContext.class);
@@ -206,6 +206,28 @@ class SecurityUtilTest {
 
     assertNull(SecurityUtil.getUserName(anonymous));
     assertNull(SecurityUtil.getImpersonatedByUser(anonymous));
+  }
+
+  @Test
+  void testGetImpersonatingBotNamesOnlyTheBotOfAnImpersonatedRequest() {
+    CatalogSecurityContext impersonatedContext =
+        new CatalogSecurityContext(
+            () -> "alice@example.com", "https", "openid", Set.of(), false, "caip-bot");
+    CatalogSecurityContext directContext =
+        new CatalogSecurityContext(() -> "alice@example.com", "https", "openid", Set.of());
+
+    assertEquals("caip-bot", SecurityUtil.getImpersonatingBot(impersonatedContext));
+    assertNull(SecurityUtil.getImpersonatingBot(directContext));
+    assertNull(SecurityUtil.getImpersonatingBot(mock(SecurityContext.class)));
+  }
+
+  @Test
+  void testGetUserNameIsTheWholePrincipalName() {
+    for (String name : List.of("admin/mallory", "ingestion-bot/mallory", "admin@corp")) {
+      CatalogSecurityContext context =
+          new CatalogSecurityContext(() -> name, "https", "openid", Set.of());
+      assertEquals(name, SecurityUtil.getUserName(context));
+    }
   }
 
   @Test
@@ -566,6 +588,29 @@ class SecurityUtilTest {
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
     assertTrue(outputStream.content().contains("invalid username or password"));
+  }
+
+  /**
+   * The basic-auth email-failure paths raise {@code CustomExceptionMessage(424,
+   * FAILED_SEND_EMAIL, ...)} with a raw int status (424 is not a {@link
+   * jakarta.ws.rs.core.Response.Status} enum constant). {@link SecurityUtil#writeFailureResponse}
+   * reads the status off the exception's {@link
+   * org.openmetadata.sdk.exception.WebServiceException#getResponse()}, so a null stored status used
+   * to throw there and the filter fell through to a 500. It must now report the intended 424.
+   */
+  @Test
+  void testWriteFailureResponseKeepsNonEnum424StatusOfCustomExceptionMessage() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(
+        response, new CustomExceptionMessage(424, "FAILED_SEND_EMAIL", "Email sending issue"));
+
+    verify(response).setStatus(424);
+    assertTrue(
+        outputStream.content().contains("Email sending issue"),
+        "the failure message must reach the client");
   }
 
   @Test
@@ -1301,8 +1346,87 @@ class SecurityUtilTest {
         SecurityUtil.buildPrincipalClaimsMapping(List.of("email:email", "garbage-no-colon")));
   }
 
+  @Test
+  void originOf_keepsSchemeHostAndExplicitPortOnly() {
+    assertEquals(
+        "https://om.example.org:8443",
+        SecurityUtil.originOf("https://om.example.org:8443/callback?x=1#frag"));
+    assertEquals(
+        "https://om.example.org", SecurityUtil.originOf("  https://om.example.org/callback "));
+  }
+
+  @Test
+  void originOf_keepsBracketedIpv6Hosts() {
+    assertEquals("http://[::1]:8585", SecurityUtil.originOf("http://[::1]:8585/callback"));
+  }
+
+  @Test
+  void originOf_dropsUserInfo() {
+    assertEquals("https://om.example.org", SecurityUtil.originOf("https://user@om.example.org/cb"));
+  }
+
+  @Test
+  void originOf_returnsNullForAnythingWithoutAnOrigin() {
+    assertNull(SecurityUtil.originOf(null));
+    assertNull(SecurityUtil.originOf("  "));
+    assertNull(SecurityUtil.originOf("/callback"));
+    assertNull(SecurityUtil.originOf("not a url"));
+    assertNull(SecurityUtil.originOf("mailto:admin@example.org"));
+  }
+
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
+  }
+
+  @Test
+  void testConfiguredEmailDomainsFollowsLoginPrecedence() {
+    // allowedEmailDomains wins over every deprecated setting
+    assertEquals(
+        List.of("a.io"),
+        SecurityUtil.configuredEmailDomains(List.of("a.io"), "p.io", Set.of("b.io"), true));
+    // without it, nothing restricts unless the deprecated enforcePrincipalDomain is on
+    assertTrue(
+        SecurityUtil.configuredEmailDomains(List.of(), "p.io", Set.of("b.io"), false).isEmpty());
+    assertTrue(SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), null).isEmpty());
+    // under enforcement allowedDomains replaces principalDomain, which falls back to the default
+    assertEquals(
+        List.of("b.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), true));
+    assertEquals(
+        List.of("p.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of(), true));
+    assertEquals(
+        List.of(SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN),
+        SecurityUtil.configuredEmailDomains(null, "", null, true));
+  }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
+
+  @Test
+  void registrationDomainCheckRejectsADomainThatOnlyFoldsOntoAnAllowedOne() {
+    assertTrue(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@Fintech.com", Set.of("fintech.com")));
+    assertFalse(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@fıntech.com", Set.of("fintech.com")));
   }
 }

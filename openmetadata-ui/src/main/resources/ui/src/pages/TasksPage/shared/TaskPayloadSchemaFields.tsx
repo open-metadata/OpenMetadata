@@ -10,29 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 
 import {
   Badge,
   Box,
   Button,
+  Checkbox,
+  FormItemLabel,
+  Grid,
+  Input,
+  Select,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
+import { IconProps } from '@openmetadata/ui-core-components/icons';
 import { uniqBy } from 'lodash';
 import {
+  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -41,9 +35,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../rest/tasksAPI';
+import { parseTaskTags } from '../../../utils/TaskPayloadUtils';
 import { DescriptionTabs } from './DescriptionTabs';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -57,7 +54,7 @@ type JsonSchemaProperty = {
 
 interface HeaderRow {
   label: string;
-  iconSrc?: string;
+  Icon?: FC<IconProps>;
   value: ReactNode;
 }
 
@@ -67,7 +64,7 @@ interface TaskPayloadSchemaFieldsProps {
   uiSchema?: JsonSchemaObject;
   mode?: 'edit' | 'read';
   onChange?: (payload: TaskPayload) => void;
-  icons?: Record<string, string>;
+  icons?: Record<string, FC<IconProps>>;
   formatters?: Record<string, (value: unknown) => string>;
   headerRows?: HeaderRow[];
 }
@@ -105,14 +102,14 @@ const ClampedText = ({ text }: { text: string }) => {
     <div className="tw:relative">
       <p
         className={`tw:m-0 tw:text-sm tw:text-primary tw:wrap-break-word${
-          expanded ? '' : ' tw:overflow-hidden tw:max-h-10 tw:break-all'
+          expanded ? '' : ' tw:overflow-hidden tw:max-h-10'
         }`}
         ref={ref}>
         {text}
       </p>
       {!expanded && isClamped && (
         <span className="tw:absolute tw:bottom-0 tw:right-0 tw:flex tw:items-end">
-          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-white/0 tw:to-white" />
+          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-transparent tw:to-bg-primary" />
           <span className="tw:bg-primary tw:text-sm tw:text-primary tw:select-none tw:pr-0.5">
             …
           </span>
@@ -125,10 +122,7 @@ const ClampedText = ({ text }: { text: string }) => {
         </span>
       )}
       {expanded && (
-        <Button
-          className="tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
-          color="link-color"
-          onPress={() => setExpanded(false)}>
+        <Button color="link-color" size="sm" onPress={() => setExpanded(false)}>
           {t('label.show-less')}
         </Button>
       )}
@@ -144,21 +138,23 @@ type FieldWidgetKind =
   | 'number'
   | 'boolean'
   | 'textarea'
+  | 'richtext'
   | 'objectOrArray'
   | 'default';
+
+const OVERRIDING_WIDGETS: ReadonlySet<unknown> = new Set([
+  'descriptionTabs',
+  'tagsTabs',
+  'tagSelector',
+]);
+const TEXT_WIDGETS: ReadonlySet<unknown> = new Set(['textarea', 'richtext']);
 
 function selectFieldWidgetKind(
   widget: unknown,
   fieldSchema?: JsonSchemaProperty
 ): FieldWidgetKind {
-  if (widget === 'descriptionTabs') {
-    return 'descriptionTabs';
-  }
-  if (widget === 'tagsTabs') {
-    return 'tagsTabs';
-  }
-  if (widget === 'tagSelector') {
-    return 'tagSelector';
+  if (OVERRIDING_WIDGETS.has(widget)) {
+    return widget as FieldWidgetKind;
   }
   if (fieldSchema?.enum?.length) {
     return 'enum';
@@ -169,8 +165,8 @@ function selectFieldWidgetKind(
   if (fieldSchema?.type === 'boolean') {
     return 'boolean';
   }
-  if (widget === 'textarea') {
-    return 'textarea';
+  if (TEXT_WIDGETS.has(widget)) {
+    return widget as FieldWidgetKind;
   }
   if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
     return 'objectOrArray';
@@ -182,7 +178,7 @@ function selectFieldWidgetKind(
 const StringArrayDisplay = ({ items }: { items: string[] }) => {
   if (items.length === 0) {
     return (
-      <Typography className="tw:text-gray-400" size="text-sm">
+      <Typography className="tw:text-quaternary" size="text-sm">
         --
       </Typography>
     );
@@ -221,7 +217,14 @@ const TaskPayloadSchemaFields = ({
   }, [properties, uiSchema]);
 
   const requiredFields = useMemo(
-    () => new Set(Array.isArray(schema?.required) ? schema.required : []),
+    () =>
+      new Set(
+        Array.isArray(schema?.required)
+          ? schema.required.filter(
+              (field): field is string => typeof field === 'string'
+            )
+          : []
+      ),
     [schema]
   );
 
@@ -310,36 +313,36 @@ const TaskPayloadSchemaFields = ({
     key: string,
     label: string,
     children: React.ReactNode,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) => (
-    <Box
-      className="tw:grid tw:grid-cols-[160px_auto_1fr] tw:items-start tw:gap-x-2"
-      key={key}>
-      <Box align="center" className="tw:gap-1.5">
-        {iconSrc && (
-          <img
-            alt=""
-            className="tw:h-4 tw:w-4 tw:shrink-0 tw:object-contain"
-            src={iconSrc}
-          />
-        )}
-        <Typography className="tw:text-gray-500" size="text-sm">
-          {label}
+    <Grid className="tw:items-start" colGap="2" key={key}>
+      <Grid.Item span={8}>
+        <Box align="center" className="tw:gap-1.5">
+          {Icon && (
+            <Icon className="tw:shrink-0 tw:text-utility-gray-500" size={16} />
+          )}
+          <Typography color="secondary" size="text-sm">
+            {label}
+          </Typography>
+        </Box>
+      </Grid.Item>
+      <Grid.Item span={1}>
+        <Typography color="secondary" size="text-sm">
+          :
         </Typography>
-      </Box>
-      <Typography className="tw:text-gray-500" size="text-sm">
-        :
-      </Typography>
-      <div className="tw:min-w-0 tw:overflow-hidden tw:wrap-break-word">
+      </Grid.Item>
+      <Grid.Item
+        className="tw:min-w-0 tw:overflow-hidden tw:wrap-break-word"
+        span={15}>
         {children}
-      </div>
-    </Box>
+      </Grid.Item>
+    </Grid>
   );
 
   const renderReadOnlyValue = (value: unknown) => {
     if (value === null || value === undefined || value === '') {
       return (
-        <Typography className="tw:text-gray-400" size="text-sm">
+        <Typography className="tw:text-quaternary" size="text-sm">
           --
         </Typography>
       );
@@ -359,7 +362,7 @@ const TaskPayloadSchemaFields = ({
     label: string,
     value: unknown,
     description?: string,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) =>
     renderReadOnlyRow(
       label,
@@ -369,20 +372,20 @@ const TaskPayloadSchemaFields = ({
         {description ? (
           <Typography
             as="span"
-            className="tw:block tw:text-gray-400 tw:mt-0.5"
+            className="tw:block tw:text-quaternary tw:mt-0.5"
             size="text-sm">
             {description}
           </Typography>
         ) : null}
       </>,
-      iconSrc
+      Icon
     );
 
   const renderReadOnlyTags = (
     label: string,
     value: TagLabel[],
     description?: string,
-    iconSrc?: string
+    Icon?: FC<IconProps>
   ) =>
     renderReadOnlyRow(
       label,
@@ -395,25 +398,26 @@ const TaskPayloadSchemaFields = ({
               color="gray"
               key={tag.tagFQN}
               size="sm"
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>
           ))
         ) : (
-          <Typography className="tw:text-gray-400" size="text-sm">
+          <Typography className="tw:text-quaternary" size="text-sm">
             --
           </Typography>
         )}
         {description ? (
           <Typography
             as="span"
-            className="tw:block tw:w-full tw:text-gray-400 tw:mt-0.5"
+            className="tw:block tw:w-full tw:text-quaternary tw:mt-0.5"
             size="text-sm">
             {description}
           </Typography>
         ) : null}
       </Box>,
-      iconSrc
+      Icon
     );
 
   type FieldRenderer = (
@@ -446,18 +450,19 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+      <Box direction="col" gap={2} key={fieldName}>
+        <FormItemLabel label={label} />
         <DescriptionTabs
           suggestion={String(payload.newDescription ?? '')}
           value={String(payload.currentDescription ?? '')}
           onChange={(value) => updateField(fieldName, value)}
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}
-      </Form.Item>
+      </Box>
     );
   };
 
@@ -484,7 +489,8 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+      <Box direction="col" gap={2} key={fieldName}>
+        <FormItemLabel label={label} />
         <TagsTabs
           tags={currentTags}
           value={suggestedTags}
@@ -494,7 +500,7 @@ const TaskPayloadSchemaFields = ({
             );
             const newTagFqns = new Set(newTags.map((tag) => tag.tagFQN));
 
-            onChange({
+            onChange?.({
               ...payload,
               tagsToAdd: newTags.filter(
                 (tag) => !currentTagFqns.has(tag.tagFQN)
@@ -506,41 +512,48 @@ const TaskPayloadSchemaFields = ({
           }}
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}
-      </Form.Item>
+      </Box>
     );
   };
 
   const renderTagSelectorField: FieldRenderer = (
     fieldName,
-    _fieldSchema,
+    fieldSchema,
     label,
     description
   ) => {
+    // A string-typed tag field (TagSuggestion's suggestedValue) holds the tags as JSON.
+    const isJsonField = fieldSchema?.type === 'string';
+    const tags = parseTaskTags(
+      payload[fieldName] as string | TagLabel[] | undefined
+    ).filter(Boolean);
+
     if (mode === 'read') {
-      return renderReadOnlyTags(
-        label,
-        ((payload[fieldName] as TagLabel[] | undefined) ?? []).filter(Boolean),
-        description,
-        icons?.[fieldName]
-      );
+      return renderReadOnlyTags(label, tags, description, icons?.[fieldName]);
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+      <Box direction="col" gap={2} key={fieldName}>
+        <FormItemLabel label={label} />
         <TagSuggestion
-          value={(payload[fieldName] as TagLabel[] | undefined) ?? []}
-          onChange={(newTags) => updateField(fieldName, newTags)}
+          value={tags}
+          onChange={(newTags) =>
+            updateField(
+              fieldName,
+              isJsonField ? JSON.stringify(newTags) : newTags
+            )
+          }
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}
-      </Form.Item>
+      </Box>
     );
   };
 
@@ -560,30 +573,23 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item
+      <Select
+        hint={description}
+        isRequired={requiredFields.has(fieldName)}
         key={fieldName}
-        label={`${label}:`}
-        required={requiredFields.has(fieldName)}
-        rules={
-          requiredFields.has(fieldName)
-            ? [{ required: true, message: `${label} is required` }]
-            : undefined
-        }>
-        <Select
-          options={(fieldSchema?.enum ?? []).map((value) => ({
-            label: value,
-            value,
-          }))}
-          value={getFieldValue(fieldName) as string | undefined}
-          onChange={(value) => updateField(fieldName, value)}
-        />
-      </Form.Item>
+        label={label}
+        value={(getFieldValue(fieldName) as string | undefined) ?? null}
+        onChange={(value) => updateField(fieldName, value)}>
+        {(fieldSchema?.enum ?? []).map((value) => (
+          <Select.Item id={value} key={value} label={value} />
+        ))}
+      </Select>
     );
   };
 
   const renderNumberField: FieldRenderer = (
     fieldName,
-    _fieldSchema,
+    fieldSchema,
     label,
     description
   ) => {
@@ -596,14 +602,21 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
+    const value = getFieldValue(fieldName);
+
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
-        <InputNumber
-          className="w-full"
-          value={getFieldValue(fieldName) as number | undefined}
-          onChange={(value) => updateField(fieldName, value)}
-        />
-      </Form.Item>
+      <Input
+        hint={description}
+        isRequired={requiredFields.has(fieldName)}
+        key={fieldName}
+        label={label}
+        step={fieldSchema?.type === 'integer' ? 1 : 'any'}
+        type="number"
+        value={value == null ? '' : String(value)}
+        onChange={(value) =>
+          updateField(fieldName, value === '' ? null : Number(value))
+        }
+      />
     );
   };
 
@@ -623,13 +636,13 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`} valuePropName="checked">
-        <Checkbox
-          checked={Boolean(getFieldValue(fieldName, false))}
-          onChange={(event) => updateField(fieldName, event.target.checked)}>
-          {description}
-        </Checkbox>
-      </Form.Item>
+      <Checkbox
+        hint={description}
+        isSelected={Boolean(getFieldValue(fieldName, false))}
+        key={fieldName}
+        label={label}
+        onChange={(value) => updateField(fieldName, value)}
+      />
     );
   };
 
@@ -649,21 +662,47 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item
+      <TextArea
+        hint={description}
+        isRequired={requiredFields.has(fieldName)}
         key={fieldName}
-        label={`${label}:`}
-        required={requiredFields.has(fieldName)}
-        rules={
-          requiredFields.has(fieldName)
-            ? [{ required: true, message: `${label} is required` }]
-            : undefined
-        }>
-        <Input.TextArea
-          autoSize={{ minRows: 4, maxRows: 10 }}
-          value={String(getFieldValue(fieldName, '') ?? '')}
-          onChange={(event) => updateField(fieldName, event.target.value)}
+        label={label}
+        rows={4}
+        value={String(getFieldValue(fieldName, '') ?? '')}
+        onChange={(value) => updateField(fieldName, value)}
+      />
+    );
+  };
+
+  const renderRichTextField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyRow(
+        fieldName,
+        label,
+        <RichTextEditorPreviewerV1
+          markdown={String(getFieldValue(fieldName, '') ?? '')}
+        />,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Box direction="col" gap={2} key={fieldName}>
+        <FormItemLabel label={label} required={requiredFields.has(fieldName)} />
+        <RichTextEditor
+          aria-label={label}
+          initialValue={String(getFieldValue(fieldName, '') ?? '')}
+          placeHolder={description}
+          showMenu={false}
+          variant="comment"
+          onTextChange={(value) => updateField(fieldName, value)}
         />
-      </Form.Item>
+      </Box>
     );
   };
 
@@ -698,26 +737,23 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
-        <Input.TextArea
-          autoSize={{ minRows: 4, maxRows: 12 }}
-          value={stringifyValue(
-            getFieldValue(fieldName, fieldSchema?.type === 'array' ? [] : {})
-          )}
-          onChange={(event) => {
-            try {
-              updateField(fieldName, JSON.parse(event.target.value));
-            } catch {
-              updateField(fieldName, event.target.value);
-            }
-          }}
-        />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+      <TextArea
+        hint={description}
+        key={fieldName}
+        label={label}
+        rows={4}
+        value={stringifyValue(
+          getFieldValue(fieldName, fieldSchema?.type === 'array' ? [] : {})
+        )}
+        onChange={(value) => {
+          try {
+            updateField(fieldName, JSON.parse(value));
+          } catch {
+            // Keep partially typed JSON editable until it becomes a valid value.
+            updateField(fieldName, value);
+          }
+        }}
+      />
     );
   };
 
@@ -737,17 +773,14 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Form.Item key={fieldName} label={`${label}:`}>
-        <Input
-          value={String(getFieldValue(fieldName, '') ?? '')}
-          onChange={(event) => updateField(fieldName, event.target.value)}
-        />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+      <Input
+        hint={description}
+        isRequired={requiredFields.has(fieldName)}
+        key={fieldName}
+        label={label}
+        value={String(getFieldValue(fieldName, '') ?? '')}
+        onChange={(value) => updateField(fieldName, value)}
+      />
     );
   };
 
@@ -759,6 +792,7 @@ const TaskPayloadSchemaFields = ({
     number: renderNumberField,
     boolean: renderBooleanField,
     textarea: renderTextareaField,
+    richtext: renderRichTextField,
     objectOrArray: renderObjectOrArrayField,
     default: renderDefaultField,
   };
@@ -766,8 +800,8 @@ const TaskPayloadSchemaFields = ({
   return (
     <Box direction="col" gap={4}>
       {mode === 'read' &&
-        headerRows?.map(({ iconSrc, label, value }) =>
-          renderReadOnlyRow(label, label, value, iconSrc)
+        headerRows?.map(({ Icon, label, value }) =>
+          renderReadOnlyRow(label, label, value, Icon)
         )}
       {orderedFields.map((fieldName) => {
         const fieldSchema = properties[fieldName];

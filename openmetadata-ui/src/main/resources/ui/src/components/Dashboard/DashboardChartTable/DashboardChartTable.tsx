@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -49,6 +45,7 @@ import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
@@ -423,6 +420,7 @@ export const DashboardChartTable = ({
   useEffect(() => {
     if (isCustomizationPage) {
       setCharts(listChartIds as unknown as ChartType[]);
+      setIsChartsLoading(false);
 
       return;
     }
@@ -466,12 +464,11 @@ export const DashboardChartTable = ({
             <div
               className="tw:relative tw:min-h-70"
               data-testid="no-data-placeholder">
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.chart-plural'),
                 })}
-                variant="blank"
               />
             </div>
           ),

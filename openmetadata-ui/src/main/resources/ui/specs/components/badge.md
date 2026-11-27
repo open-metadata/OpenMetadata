@@ -7,7 +7,7 @@
 | **Name** | Badge |
 | **Category** | Base / status |
 | **Status** | Stable |
-| **Styles** | [`src/styles/components/badge.less`](../../src/styles/components/badge.less) |
+| **Styles** | [`badge.style.less`](../../src/components/common/Badge/badge.style.less) |
 | **Component** | `@openmetadata/ui-core-components` → `Badge`, `BadgeGroup` (new work); Ant Design `Badge` count (legacy) |
 
 ## Overview
@@ -34,8 +34,8 @@ Parts: **pill container** (tinted surface + outline), **label**, optional
 
 ## Tokens used
 
-The legacy `.less` still uses `@grey-*` LESS variables (no `--om-*` yet); the
-modern core-components Badge maps to these semantic tokens.
+The legacy badge styles use `@grey-*` LESS variables backed by project tokens;
+the modern core-components Badge uses semantic theme tokens.
 
 | Part | Token |
 | --- | --- |

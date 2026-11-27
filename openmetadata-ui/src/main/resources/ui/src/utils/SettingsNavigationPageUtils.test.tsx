@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { TreeDataNode } from 'antd';
-import { getNavigationItems } from './SettingsNavigationPageUtils';
+import { NavigationTreeNode } from '../interface/sidebar.interface';
+import {
+  getNavigationItems,
+  moveNavigationItem,
+} from './SettingsNavigationPageUtils';
 
 describe('SettingsNavigationPageUtils', () => {
   describe('getNavigationItems', () => {
     it('should convert empty tree data to empty navigation items', () => {
-      const treeData: TreeDataNode[] = [];
+      const treeData: NavigationTreeNode[] = [];
       const hiddenKeys: string[] = [];
 
       const result = getNavigationItems(treeData, hiddenKeys);
@@ -26,7 +29,7 @@ describe('SettingsNavigationPageUtils', () => {
     });
 
     it('should convert single tree node to navigation item with correct hidden state', () => {
-      const treeData: TreeDataNode[] = [
+      const treeData: NavigationTreeNode[] = [
         {
           key: 'test-key',
           title: 'Test Title',
@@ -47,7 +50,7 @@ describe('SettingsNavigationPageUtils', () => {
     });
 
     it('should handle tree data with children and nested hidden states', () => {
-      const treeData: TreeDataNode[] = [
+      const treeData: NavigationTreeNode[] = [
         {
           key: 'parent-key',
           title: 'Parent Title',
@@ -81,7 +84,7 @@ describe('SettingsNavigationPageUtils', () => {
     });
 
     it('should handle complex tree structure with multiple levels and mixed hidden states', () => {
-      const treeData: TreeDataNode[] = [
+      const treeData: NavigationTreeNode[] = [
         {
           key: 'root',
           title: 'Root',
@@ -136,5 +139,39 @@ describe('SettingsNavigationPageUtils', () => {
         },
       ]);
     });
+  });
+});
+
+describe('moveNavigationItem', () => {
+  const nodes: NavigationTreeNode[] = [
+    { key: 'a', title: 'A', children: [{ key: 'child', title: 'Child' }] },
+    { key: 'b', title: 'B' },
+    { key: 'c', title: 'C' },
+  ];
+
+  it('reorders siblings without changing the original hierarchy', () => {
+    const moved = moveNavigationItem(nodes, 'a', 'b', 'after');
+
+    expect(moved.map((node) => node.key)).toEqual(['b', 'a', 'c']);
+    expect(moved[1].children?.[0].key).toBe('child');
+    expect(nodes.map((node) => node.key)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('moves a child into another parent and back to the root', () => {
+    const moved = moveNavigationItem(nodes, 'child', 'b', 'on');
+
+    expect(moved[0].children).toEqual([]);
+    expect(moved[1].children?.[0].key).toBe('child');
+    expect(
+      moveNavigationItem(moved, 'child', undefined, 'after').map(
+        (node) => node.key
+      )
+    ).toEqual(['a', 'b', 'c', 'child']);
+  });
+
+  it('rejects missing targets, self drops, and drops into descendants', () => {
+    expect(moveNavigationItem(nodes, 'a', 'child', 'on')).toBe(nodes);
+    expect(moveNavigationItem(nodes, 'a', 'a', 'before')).toBe(nodes);
+    expect(moveNavigationItem(nodes, 'a', 'missing', 'on')).toBe(nodes);
   });
 });

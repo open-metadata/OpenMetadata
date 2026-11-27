@@ -88,6 +88,16 @@ def _(elements, compiler, **kwargs):
     return f"APPROX_QUANTILE({col}, {percentile})"
 
 
+@compiles(MedianFn, Dialects.Databend)
+def _(elements, compiler, **kwargs):
+    """
+    Databend does not register `percentile_cont`; its continuous percentile is a
+    ClickHouse-style parametric aggregate: `quantile_cont(<p>)(<col>)`.
+    """
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return f"quantile_cont({percentile})({col})"
+
+
 # pylint: disable=unused-argument
 @compiles(MedianFn, Dialects.Athena)
 @compiles(MedianFn, Dialects.Presto)
@@ -128,6 +138,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.Impala)
+@compiles(MedianFn, Dialects.Impala4)
 def _(elements, compiler, **kwargs):
     """Median computation for Impala
     Median compution for Impala uses the appx_median function.

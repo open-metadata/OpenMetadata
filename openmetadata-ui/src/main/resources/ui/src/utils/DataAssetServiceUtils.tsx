@@ -89,7 +89,6 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   customsecurity: 'Custom Security',
   customstorage: 'Custom Storage',
   dbtcloud: 'dbt Cloud',
-  deltalake: 'DeltaLake',
   domodashboard: 'Domo Dashboard',
   domodatabase: 'Domo Database',
   dynamodb: 'Dynamo DB',

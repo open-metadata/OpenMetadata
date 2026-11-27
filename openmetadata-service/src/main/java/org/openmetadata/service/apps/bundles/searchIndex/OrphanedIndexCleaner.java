@@ -22,6 +22,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 
 /**
  * Cleans up orphaned rebuild indices from failed or interrupted reindex operations. An index is
@@ -206,13 +207,13 @@ public class OrphanedIndexCleaner {
   }
 
   private boolean isOrphanedIndex(SearchRepository repository, String indexName) {
-    // The _rebuild_ term is redundant today — DefaultRecreateHandler stages as
-    // <canonical>_rebuild_<millis>, which the suffix rule already excludes — but a staged index
-    // holds the aliases it is about to be promoted into, so it stays as an interlock against a
-    // future change to that naming.
-    return indexName.endsWith(ENTITY_INDEX_SUFFIX)
-        && !indexName.contains(REBUILD_PATTERN)
-        && !isKnownCanonicalIndex(repository, indexName);
+    // Once any reindex has run, the live index is the promoted <canonical>_rebuild_<millis>, so an
+    // upgraded cluster's 1.12 aiAgent index is ai_agent_search_index_rebuild_<millis>. Judge the
+    // canonical name: a staged or promoted rebuild of a registered entity still maps to it and is
+    // kept, while one whose entity type is gone is an orphan like any other.
+    String canonicalName = SearchClusterFitnessAnalyzer.stripRebuildSuffix(indexName);
+    return canonicalName.endsWith(ENTITY_INDEX_SUFFIX)
+        && !isKnownCanonicalIndex(repository, canonicalName);
   }
 
   private boolean isKnownCanonicalIndex(SearchRepository repository, String indexName) {

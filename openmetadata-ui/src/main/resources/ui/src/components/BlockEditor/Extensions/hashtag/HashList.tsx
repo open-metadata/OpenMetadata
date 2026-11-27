@@ -132,7 +132,10 @@ export default forwardRef<
             <div className="tw:w-full tw:min-w-0 tw:flex tw:flex-wrap">
               <Typography
                 className="tw:text-quaternary tw:block tw:text-left tw:min-w-0"
-                ellipsis={{ tooltip: renderBreakableTooltip(breadcrumbsData) }}
+                ellipsis={{
+                  tooltip: renderBreakableTooltip(breadcrumbsData),
+                  excludeTriggerFromTabOrder: true,
+                }}
                 size="text-xs">
                 {breadcrumbsData}
               </Typography>
@@ -144,7 +147,10 @@ export default forwardRef<
               )}
               <Typography
                 className="tw:block tw:text-left tw:min-w-0"
-                ellipsis={{ tooltip: renderBreakableTooltip(item.label) }}>
+                ellipsis={{
+                  tooltip: renderBreakableTooltip(item.label),
+                  excludeTriggerFromTabOrder: true,
+                }}>
                 {item.label}
               </Typography>
             </Box>

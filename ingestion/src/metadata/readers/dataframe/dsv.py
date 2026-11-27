@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -105,8 +106,10 @@ class DSVDataFrameReader(DataFrameReader):
         client: Any | None,
         separator: str = CSV_SEPARATOR,
         session: Any | None = None,
+        escapechar: str | None = "\\",
     ):
         self.separator = separator
+        self.escapechar = escapechar
         super().__init__(config_source, client, session=session)
 
     def read_from_pandas(
@@ -129,7 +132,7 @@ class DSVDataFrameReader(DataFrameReader):
                 storage_options=storage_options,
                 compression=compression,
                 encoding_errors="ignore",
-                escapechar="\\",
+                escapechar=self.escapechar,
             ) as reader:
                 for chunks in reader:
                     chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]  # noqa: PLW2901
@@ -152,7 +155,9 @@ class DSVDataFrameReader(DataFrameReader):
             compression = "gzip"
 
         path = f"gs://{bucket_name}/{key}"
-        return self.read_from_pandas(path=path, compression=compression)
+        return self.read_from_pandas(
+            path=path, storage_options=get_gcsfs_auth_options(self.client) or None, compression=compression
+        )
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -169,7 +174,7 @@ class DSVDataFrameReader(DataFrameReader):
                     chunksize=CHUNKSIZE,
                     compression=compression,
                     encoding_errors="ignore",
-                    escapechar="\\",
+                    escapechar=self.escapechar,
                 ) as reader:
                     for chunks in reader:
                         fixed = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)

@@ -1,0 +1,104 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfReasoningSnapshot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfReasoningSnapshot",
+  "description": "An immutable result of a reasoning refresh in the RDF store: the deductions computed from one capture of the asserted input. Inferred answers always come from one snapshot, never from live assertions mixed with older conclusions.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningSnapshot",
+  "definitions": {
+    "freshness": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningFreshness",
+      "description": "UNKNOWN while projection health is degraded, for example after a dead-lettered write or a write outside the queue that could not be recorded: the graph may be missing writes, and a refresh cannot repair it. Otherwise CURRENT when the dataset generation still serves, the source revision covers every enqueued live write (writes outside the queue take a queue ID too), and the ontology and rule digests match; STALE when any of these no longer holds. Independent of job state: a SUCCEEDED refresh can publish a snapshot that is already STALE.",
+      "type": "string",
+      "enum": ["CURRENT", "STALE", "UNKNOWN"]
+    },
+    "sourceRevision": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfSourceRevision",
+      "description": "The serving graph a job reads: its dataset generation, and the highest live write acknowledged before the job was submitted. The store captures after submission, so a job sees at least those writes and possibly later ones; the revision is a conservative label.",
+      "type": "object",
+      "properties": {
+        "datasetGeneration": {
+          "description": "Identity of the serving dataset, assigned when it was promoted. Promoting a dataset under a reused physical name always assigns a new generation.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "liveWriteWatermark": {
+          "description": "Highest acknowledged live-write queue ID.",
+          "type": "integer",
+          "minimum": 0,
+          "existingJavaType": "java.lang.Long"
+        }
+      },
+      "required": ["datasetGeneration", "liveWriteWatermark"],
+      "additionalProperties": false
+    },
+    "digest": {
+      "description": "SHA-256 content digest, written as sha256:<64 lowercase hex digits>.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ontologySelection": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologySelection",
+      "description": "Which ontology axioms take part. APPROVED is the production set and the only one a refresh accepts. CANDIDATE adds draft axioms, to check a change before it is approved.",
+      "type": "string",
+      "enum": ["APPROVED", "CANDIDATE"]
+    },
+    "input": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningInput",
+      "description": "What a job reasoned over and what computed it.",
+      "type": "object",
+      "properties": {
+        "sourceRevision": {
+          "$ref": "#/definitions/sourceRevision"
+        },
+        "ontologySelection": {
+          "$ref": "#/definitions/ontologySelection"
+        },
+        "ontologyIri": {
+          "description": "Root ontology of the import closure a check or explanation reasoned over. Absent for a refresh, which covers every selected closure.",
+          "type": "string",
+          "format": "uri"
+        },
+        "ontologyDigest": {
+          "description": "OpenMetadata's digest of the selected ontology input. Opaque to the store, which only records it.",
+          "$ref": "#/definitions/digest"
+        },
+        "ruleBundleDigest": {
+          "description": "OpenMetadata's digest of the governance rule bundle. Opaque to the store, which only records it.",
+          "$ref": "#/definitions/digest"
+        },
+        "engines": {
+          "description": "Engine builds that computed the result.",
+          "type": "array",
+          "items": {
+            "$ref": "rdfReasoningCapabilities.json#/definitions/engine"
+          }
+        }
+      },
+      "required": ["sourceRevision", "ontologySelection"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Snapshot identifier.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "jobId": {
+      "description": "The refresh job that published the snapshot.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "input": {
+      "$ref": "#/definitions/input"
+    },
+    "publishedAt": {
+      "description": "When the snapshot became readable.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "freshness": {
+      "description": "How the snapshot's input compares with the serving graph, ontologies and rules now. OpenMetadata sets it when it serves an answer. The store leaves it out: it cannot see live writes that are enqueued but not yet applied.",
+      "$ref": "#/definitions/freshness"
+    }
+  },
+  "required": ["id", "jobId", "input", "publishedAt"],
+  "additionalProperties": false
+}

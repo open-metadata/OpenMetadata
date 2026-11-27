@@ -6,7 +6,7 @@
   "description": "Workspace-level AI governance framework configuration. A framework is a library of controls that drives compliance assessments. Enabling a framework auto-applies it to in-scope AI assets via the autoApply rules.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.AIGovernanceFramework",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "frameworkSource": {
       "type": "string",

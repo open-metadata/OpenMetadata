@@ -16,14 +16,15 @@ package org.openmetadata.service.util;
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -33,6 +34,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEvents;
+import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
@@ -51,7 +54,7 @@ public class EntityFieldUtils {
    * @param applyPatch Whether to apply the patch immediately (true for workflows, false for manual patching)
    */
   public static void setEntityField(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String entityType,
       String user,
       String fieldName,
@@ -61,7 +64,7 @@ public class EntityFieldUtils {
   }
 
   public static void setEntityField(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String entityType,
       String user,
       String fieldName,
@@ -111,18 +114,17 @@ public class EntityFieldUtils {
         EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
         // The wildcard accepts any current ETag while selecting the version-guarded storage path.
         // This prevents an asynchronously loaded entity from overwriting a concurrent user patch.
-        entityRepository.patch(null, entity.getId(), user, patch, null, "*", impersonatedBy);
+        EntityInterface<?> patched =
+            (EntityInterface<?>)
+                entityRepository
+                    .patch(null, entity.getId(), user, patch, null, "*", impersonatedBy)
+                    .entity();
+        // Built from the patched entity so the event carries its changeDescription: alert and
+        // activity-feed filters match on the changed fields and drop events without one.
         ChangeEvent changeEvent =
-            new ChangeEvent()
-                .withId(UUID.randomUUID())
-                .withEventType(EventType.ENTITY_UPDATED)
-                .withEntityId(entity.getId())
+            ChangeEvents.createChangeEventForEntity(user, EventType.ENTITY_UPDATED, patched)
                 .withEntityType(entityType)
-                .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-                .withUserName(user)
-                .withImpersonatedBy(impersonatedBy)
-                .withTimestamp(System.currentTimeMillis())
-                .withEntity(entity);
+                .withImpersonatedBy(impersonatedBy);
 
         Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
       }
@@ -130,7 +132,7 @@ public class EntityFieldUtils {
   }
 
   public static void setSimpleStringField(
-      EntityInterface entity, String fieldName, String fieldValue) {
+      EntityInterface<?> entity, String fieldName, String fieldValue) {
     try {
       // Try setter method first
       String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
@@ -156,20 +158,35 @@ public class EntityFieldUtils {
   }
 
   /**
+   * Reads a multi-value FQN field. FQNs may contain commas, so the UI writes a JSON array; a plain
+   * comma-separated string is still accepted for workflows saved before that.
+   * ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
+   */
+  static List<String> parseFqnList(String value) {
+    String trimmed = value.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        return JsonUtils.readObjects(trimmed, String.class);
+      } catch (JsonParsingException e) {
+        LOG.debug("Field value {} is not a JSON array, reading it as comma-separated", trimmed);
+      }
+    }
+    return Arrays.asList(trimmed.split(","));
+  }
+
+  /**
    * Appends tags to the entity by fetching actual Tag entities.
    * If new tags are mutually exclusive with existing tags, replaces the conflicting tags.
    */
-  public static void appendTags(EntityInterface entity, String tagFQNs) {
+  public static void appendTags(EntityInterface<?> entity, String tagFQNs) {
     if (tagFQNs == null || tagFQNs.isEmpty()) {
       return;
     }
 
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTagsToAdd = new ArrayList<>();
-    String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
-
     // First, collect all new tags to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(tagFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if tag already exists
@@ -250,16 +267,14 @@ public class EntityFieldUtils {
    * Appends glossary terms to the entity by fetching actual GlossaryTerm entities.
    * If new glossary terms are mutually exclusive with existing tags/terms, replaces the conflicting ones.
    */
-  public static void appendGlossaryTerms(EntityInterface entity, String termFQNs) {
+  public static void appendGlossaryTerms(EntityInterface<?> entity, String termFQNs) {
     if (termFQNs == null || termFQNs.isEmpty()) {
       return;
     }
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTermsToAdd = new ArrayList<>();
-    String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
-
     // First, collect all new glossary terms to add
-    for (String fqn : fqns) {
+    for (String fqn : parseFqnList(termFQNs)) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if term already exists
@@ -334,7 +349,7 @@ public class EntityFieldUtils {
   /**
    * Sets certification on the entity (replaces existing).
    */
-  public static void setCertification(EntityInterface entity, String certificationFQN) {
+  public static void setCertification(EntityInterface<?> entity, String certificationFQN) {
     if (certificationFQN == null || certificationFQN.isEmpty()) {
       entity.setCertification(null);
       return;
@@ -360,7 +375,7 @@ public class EntityFieldUtils {
   /**
    * Sets tier on the entity by managing Tier.* tags (replaces existing tier).
    */
-  public static void setTier(EntityInterface entity, String tierFQN) {
+  public static void setTier(EntityInterface<?> entity, String tierFQN) {
     if (tierFQN == null || tierFQN.isEmpty()) {
       return;
     }
@@ -391,7 +406,7 @@ public class EntityFieldUtils {
    * Sets owners on the entity by fetching User/Team entities.
    * Format: "user:userName" or "team:teamName"
    */
-  public static void setOwners(EntityInterface entity, String ownerNames) {
+  public static void setOwners(EntityInterface<?> entity, String ownerNames) {
     if (ownerNames == null || ownerNames.isEmpty()) {
       entity.setOwners(null);
       return;
@@ -442,7 +457,7 @@ public class EntityFieldUtils {
    * Sets reviewers on the entity by fetching User entities.
    * Format: "user:userName" or "team:teamName"
    */
-  public static void setReviewers(EntityInterface entity, String reviewerNames) {
+  public static void setReviewers(EntityInterface<?> entity, String reviewerNames) {
     if (reviewerNames == null || reviewerNames.isEmpty()) {
       entity.setReviewers(null);
       return;
@@ -512,47 +527,27 @@ public class EntityFieldUtils {
    * Sets the status field on various entity types using appropriate enum values.
    * Handles both legacy 'status' field and new 'entityStatus' field.
    */
-  public static void setEntityStatus(EntityInterface entity, String statusValue) {
+  public static void setEntityStatus(EntityInterface<?> entity, String statusValue) {
+    EntityStatusAdapter<?> adapter;
     try {
-      try {
-        EntityStatus status = parseEntityStatus(statusValue);
-        entity.setEntityStatus(status);
-        LOG.debug(
-            "Successfully set entityStatus to '{}' on entity type: {}",
-            statusValue,
-            entity.getClass().getSimpleName());
-        return;
-      } catch (IllegalArgumentException e) {
-        // Not a valid EntityStatus enum value
-        LOG.warn(
-            "Invalid EntityStatus value '{}' for entity type: {}",
-            statusValue,
-            entity.getClass().getSimpleName());
-      } catch (UnsupportedOperationException e) {
-        // Entity doesn't support entityStatus
-        LOG.debug(
-            "Entity type {} doesn't support entityStatus field, trying legacy status field",
-            entity.getClass().getSimpleName());
-      }
-      try {
-        setSimpleStringField(entity, "status", statusValue);
-        LOG.debug(
-            "Successfully set legacy status field to '{}' on entity type: {}",
-            statusValue,
-            entity.getClass().getSimpleName());
-      } catch (Exception e) {
-        LOG.debug(
-            "Entity type {} doesn't have a legacy status field either",
-            entity.getClass().getSimpleName());
-      }
-
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to set status field to '{}' on entity type: {}",
-          statusValue,
-          entity.getClass().getSimpleName(),
-          e);
-      throw new RuntimeException("Failed to set status field", e);
+      adapter = EntityStatusAdapter.forEntityType(entity.getClass());
+    } catch (IllegalArgumentException exception) {
+      setLegacyStatus(entity, statusValue, exception);
+      return;
     }
+    try {
+      adapter.write(entity, statusValue);
+    } catch (UnsupportedOperationException exception) {
+      setLegacyStatus(entity, statusValue, exception);
+    }
+  }
+
+  private static void setLegacyStatus(
+      EntityInterface<?> entity, String statusValue, RuntimeException exception) {
+    if (Arrays.stream(entity.getClass().getMethods())
+        .noneMatch(method -> method.getName().equals("getStatus"))) {
+      throw exception;
+    }
+    setSimpleStringField(entity, "status", statusValue);
   }
 }

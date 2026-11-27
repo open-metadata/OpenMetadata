@@ -22,6 +22,7 @@ export interface HeaderProps {
   titleProps?: Partial<TypographyProps>;
   subHeaderProps?: Partial<TypographyProps>;
   isBeta?: boolean;
+  badge?: ReactNode;
   learningPageId?: string;
   title?: string;
 }

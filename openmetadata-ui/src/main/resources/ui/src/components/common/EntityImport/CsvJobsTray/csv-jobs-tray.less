@@ -51,7 +51,9 @@
   bottom: 88px;
   position: fixed;
   right: 20px;
-  z-index: var(--om-z-900);
+  // Toast tier: a background-job notification must stay visible and clickable
+  // above any open modal/dialog (which sit at the modal/overlay tiers below).
+  z-index: var(--om-z-toast);
 }
 
 .csv-jobs-tray-launcher {
@@ -109,7 +111,7 @@
   position: fixed;
   right: 20px;
   width: 340px;
-  z-index: var(--om-z-900);
+  z-index: var(--om-z-toast);
 }
 
 .csv-jobs-tray-header {
@@ -148,8 +150,7 @@
   white-space: nowrap;
 }
 
-.csv-jobs-tray-clear,
-.csv-jobs-tray-close {
+.csv-jobs-tray-clear {
   border-radius: var(--om-radius-md) !important;
   height: 26px !important;
   min-height: 26px !important;
@@ -165,11 +166,6 @@
   color: @grey-700 !important;
   font-size: var(--om-font-size-xs) !important;
   font-weight: @font-medium !important;
-}
-
-.csv-jobs-tray-close {
-  padding: 0 !important;
-  width: 26px !important;
 }
 
 .csv-jobs-tray-list {
@@ -237,20 +233,6 @@
   padding: var(--om-space-4) var(--om-space-10) !important;
 
   [data-icon] {
-    height: 14px !important;
-    width: 14px !important;
-  }
-}
-
-.csv-jobs-tray-dismiss {
-  border-radius: var(--om-radius-md) !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding: 0 !important;
-  width: 26px !important;
-
-  [data-icon] {
-    color: @grey-500 !important;
     height: 14px !important;
     width: 14px !important;
   }

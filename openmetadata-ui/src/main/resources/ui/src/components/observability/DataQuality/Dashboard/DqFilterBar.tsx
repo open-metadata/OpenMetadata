@@ -14,7 +14,7 @@ import { Box, Button } from '@openmetadata/ui-core-components';
 import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DqDateRangeFilter from './DqDateRangeFilter';
+import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { DqFilterBarProps } from './DqFilterBar.types';
 import DqFilterChip from './DqFilterChip';
 
@@ -52,7 +52,7 @@ export const DqFilterBar = ({
 
   return (
     <Box align="center" data-testid="dq-filter-bar" gap={3} wrap="wrap">
-      <DqDateRangeFilter
+      <DateRangeFilter
         endTs={dateRange.endTs}
         startTs={dateRange.startTs}
         onApply={onDateRangeChange}

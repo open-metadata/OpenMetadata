@@ -9,7 +9,10 @@
     "severity": {
       "javaType": "org.openmetadata.schema.type.OntologyProfileViolationSeverity",
       "type": "string",
-      "enum": ["ERROR", "WARNING"]
+      "enum": [
+        "ERROR",
+        "WARNING"
+      ]
     },
     "code": {
       "javaType": "org.openmetadata.schema.type.OntologyProfileViolationCode",
@@ -21,7 +24,14 @@
         "TRANSITIVE_CARDINALITY",
         "NON_SIMPLE_CARDINALITY",
         "ILLEGAL_PUNNING",
-        "PROPERTY_CHAIN_REGULARITY"
+        "PROPERTY_CHAIN_REGULARITY",
+        "UNDECLARED_PROPERTY",
+        "NON_SIMPLE_PROPERTY",
+        "UNDECLARED_CLASS",
+        "INVALID_CLASS_KIND",
+        "SUBCLASS_CYCLE",
+        "SUBPROPERTY_CYCLE",
+        "DISJOINT_CLASH"
       ]
     }
   },
@@ -37,8 +47,21 @@
     },
     "message": {
       "type": "string"
+    },
+    "conceptIds": {
+      "description": "Declared concepts a rule clash involves, the clashing class first, so a client can link to each.",
+      "type": "array",
+      "items": {
+        "$ref": "basic.json#/definitions/uuid"
+      },
+      "default": []
     }
   },
-  "required": ["severity", "code", "path", "message"],
+  "required": [
+    "severity",
+    "code",
+    "path",
+    "message"
+  ],
   "additionalProperties": false
 }

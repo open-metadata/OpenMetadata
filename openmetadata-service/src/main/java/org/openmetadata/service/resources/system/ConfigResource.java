@@ -156,9 +156,10 @@ public class ConfigResource {
       })
   public AuthorizerConfiguration getAuthorizerConfig() {
     AuthorizerConfiguration responseAuthorizerConfig = new AuthorizerConfiguration();
-    AuthorizerConfiguration yamlConfig = openMetadataApplicationConfig.getAuthorizerConfiguration();
-    if (yamlConfig != null) {
-      responseAuthorizerConfig.setPrincipalDomain(yamlConfig.getPrincipalDomain());
+    // The configuration in effect, like /config/auth: a value saved in the UI overrides the file.
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    if (current != null) {
+      responseAuthorizerConfig.setPrincipalDomain(current.getPrincipalDomain());
     }
     return responseAuthorizerConfig;
   }

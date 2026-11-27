@@ -22,7 +22,7 @@ import org.openmetadata.schema.EntityInterface;
  * out across the days in the range).
  */
 public record VersionedWindow(
-    EntityInterface entity,
+    EntityInterface<?> entity,
     long windowStartTimestamp,
     long windowEndTimestamp,
     VersionShape shape) {}

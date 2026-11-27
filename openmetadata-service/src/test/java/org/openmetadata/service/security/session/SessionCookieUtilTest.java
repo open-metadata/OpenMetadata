@@ -3,8 +3,10 @@ package org.openmetadata.service.security.session;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -113,12 +115,32 @@ class SessionCookieUtilTest {
 
   @Test
   void clearSessionCookie_setsMaxAgeToZeroAndExpiresHeader() {
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", "a".repeat(43))});
+
     SessionCookieUtil.clearSessionCookie(request, response, authConfig);
 
     String cookie = captureSetCookieHeader();
     assertTrue(cookie.contains("Max-Age=0"));
     assertTrue(cookie.contains("Expires=Thu, 01 Jan 1970 00:00:00 GMT"));
     assertTrue(cookie.startsWith("OM_SESSION=;"));
+  }
+
+  @Test
+  void clearSessionCookie_malformedSessionCookie_isStillCleared() {
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", "invalid")});
+
+    SessionCookieUtil.clearSessionCookie(request, response, authConfig);
+
+    assertTrue(captureSetCookieHeader().startsWith("OM_SESSION=;"));
+  }
+
+  @Test
+  void clearSessionCookie_requestWithoutSessionCookie_addsNoHeader() {
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OTHER_COOKIE", "value")});
+
+    SessionCookieUtil.clearSessionCookie(request, response, authConfig);
+
+    verify(response, never()).addHeader(eq("Set-Cookie"), any());
   }
 
   @Test

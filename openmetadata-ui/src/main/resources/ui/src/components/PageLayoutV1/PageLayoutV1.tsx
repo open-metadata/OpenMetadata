@@ -11,17 +11,23 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
+import {
+  ENTITY_TABS_FILL_COLUMN_CLASS,
+  ENTITY_TABS_FILL_GRID_CLASS,
+} from './PageLayoutV1.constants';
 
 export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
+  children?: ReactNode;
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
@@ -31,6 +37,9 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanelWidth?: number;
   fullHeight?: boolean;
   variant?: PageLayoutVariant;
+  // The page renders `.entity-details-page-tabs`: in the AI shell its active tab
+  // panel grows to the bottom of the canvas.
+  fillEntityTabs?: boolean;
 }
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
@@ -45,6 +54,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   fullHeight = false,
   variant = 'default',
+  fillEntityTabs = false,
 }: PageLayoutProp) => {
   const location = useLocation();
 
@@ -74,49 +84,62 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      <Row
-        className={classNames(
+      <Box
+        className={`layout-row ${classNames(
           'page-layout-v1',
           paddingClassName,
           { 'page-layout-v1-full-height': fullHeight },
           className
-        )}
+        )}`}
         data-testid="page-layout-v1"
         data-variant={variant}
-        wrap={false}>
+        wrap="nowrap">
         {leftPanel && (
-          <Col
-            className="page-layout-leftpanel"
-            flex={leftPanelWidth + 'px'}
-            id="left-panelV1">
+          <Box
+            className="layout-column tw:block page-layout-leftpanel"
+            id="left-panelV1"
+            style={{ flex: `0 0 ${leftPanelWidth + 'px'}` }}>
             {leftPanel}
-          </Col>
+          </Box>
         )}
-        <Col
-          className={classNames(
+        <Box
+          className={`layout-column tw:block ${classNames(
             `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
             },
             mainContainerClassName
-          )}
-          flex={contentWidth}
-          offset={center ? 3 : 0}
-          span={center ? 18 : 24}>
-          <Row>
-            <Col span={24}>{children}</Col>
-          </Row>
-        </Col>
+          )}`}
+          style={{
+            maxWidth: `${((center ? 18 : 24) / 24) * 100}%`,
+            flex: `0 0 ${contentWidth}`,
+            marginInlineStart: `${((center ? 3 : 0) / 24) * 100}%`,
+          }}>
+          <Grid
+            className={classNames('layout-row layout-grid', {
+              [ENTITY_TABS_FILL_GRID_CLASS]: fillEntityTabs,
+            })}
+            data-testid="page-layout-v1-grid">
+            <Grid.Item
+              className={classNames('layout-column', {
+                [ENTITY_TABS_FILL_COLUMN_CLASS]: fillEntityTabs,
+              })}
+              data-testid="page-layout-v1-column"
+              span={24}>
+              {children}
+            </Grid.Item>
+          </Grid>
+        </Box>
         {rightPanel && (
-          <Col
-            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-            flex={rightPanelWidth + 'px'}
-            id="right-panelV1">
+          <Box
+            className="layout-column tw:block page-layout-rightpanel page-layout-v1-vertical-scroll"
+            id="right-panelV1"
+            style={{ flex: `0 0 ${rightPanelWidth + 'px'}` }}>
             {rightPanel}
-          </Col>
+          </Box>
         )}
-      </Row>
+      </Box>
     </Fragment>
   );
 };

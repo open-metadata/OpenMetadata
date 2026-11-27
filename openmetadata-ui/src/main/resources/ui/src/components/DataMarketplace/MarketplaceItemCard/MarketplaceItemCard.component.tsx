@@ -49,13 +49,19 @@ const MarketplaceItemCard = ({
         <Typography
           as="span"
           className="tw:font-semibold tw:text-sm tw:leading-5 tw:text-primary tw:truncate tw:block tw:text-left"
-          ellipsis={{ tooltip: renderBreakableTooltip(name) }}>
+          ellipsis={{
+            tooltip: renderBreakableTooltip(name),
+            excludeTriggerFromTabOrder: true,
+          }}>
           {name}
         </Typography>
         <Typography
           as="span"
           className="tw:text-xs tw:leading-[18px] tw:text-tertiary tw:truncate tw:block tw:text-left"
-          ellipsis={{ tooltip: renderBreakableTooltip(subtitle) }}>
+          ellipsis={{
+            tooltip: renderBreakableTooltip(subtitle),
+            excludeTriggerFromTabOrder: true,
+          }}>
           {subtitle}
         </Typography>
       </div>

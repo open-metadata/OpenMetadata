@@ -1,18 +1,28 @@
 package org.openmetadata.service.search.vector;
 
-import java.util.Locale;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
+  private static final Set<String> LIFECYCLE_TYPES = Set.copyOf(EmbeddedEntityTypes.DATA_ASSETS);
   private final VectorIndexService vectorService;
+
+  @Override
+  public Set<String> getSupportedEntityTypes() {
+    return LIFECYCLE_TYPES;
+  }
 
   public VectorEmbeddingHandler(VectorIndexService vectorService) {
     this.vectorService = vectorService;
@@ -29,13 +39,15 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     updateEmbedding(entity);
   }
 
   @Override
   public void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
@@ -52,15 +64,37 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
     // Entity search doc is deleted by SearchIndexHandler; chunk docs live in the dedicated
     // chunk index and must be cleaned here or the deleted entity keeps matching KNN queries.
     deleteChunks(entity);
   }
 
+  /** Invalidates stale stored text without making a provider call on the index-writing thread. */
+  public void invalidateStaleEmbedding(EntityInterface<?> entity) {
+    if (!hasCurrentEmbedding(entity)) {
+      deleteChunks(entity);
+      clearEntityEmbedding(entity);
+    }
+  }
+
+  private boolean hasCurrentEmbedding(EntityInterface<?> entity) {
+    if (entity == null
+        || !isSupported(entity)
+        || Boolean.TRUE.equals(entity.getDeleted())
+        || !Entity.isVectorEmbeddable(entity)) {
+      return false;
+    }
+    String indexName = resolveEntityIndexName(extractEntityType(entity));
+    return indexName != null
+        && Objects.equals(
+            VectorDocBuilder.computeFingerprintForEntity(entity),
+            vectorService.getExistingFingerprint(indexName, entity.getId().toString()));
+  }
+
   @Override
   public void onEntitySoftDeletedOrRestored(
-      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+      EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
     // Chunk docs carry their own deleted flag, so mirror the transition: drop chunks on soft
     // delete, re-embed on restore. The entity search doc itself is handled by SearchIndexHandler.
     if (isDeleted) {
@@ -74,7 +108,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
    * Entity-doc embedding writes are partial merges, so an entity that stops being embeddable keeps
    * its stale {@code embedding} — and stays kNN-matchable — unless the field is removed explicitly.
    */
-  private void clearEntityEmbedding(EntityInterface entity) {
+  private void clearEntityEmbedding(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
       try {
         String entityIndexName = resolveEntityIndexName(extractEntityType(entity));
@@ -87,7 +121,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private void deleteChunks(EntityInterface entity) {
+  private void deleteChunks(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
       try {
         vectorService.deleteEntityChunks(entity.getId().toString());
@@ -97,12 +131,28 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private boolean isSupported(EntityInterface entity) {
+  private boolean isSupported(EntityInterface<?> entity) {
     String entityType = extractEntityType(entity);
-    return entityType != null && isSupportedEntityType(entityType);
+    return EmbeddedEntityTypes.isEmbedded(entityType);
   }
 
-  private void updateEmbedding(EntityInterface entity) {
+  public void refreshOntologyEmbedding(EntityReference reference) {
+    final var index = resolveEntityIndexName(reference.getType());
+    if (index != null) {
+      refreshOntologyEmbedding(
+          reference, Entity.getSearchRepository().getWriteFanoutTargets(index));
+    }
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference, List<String> targets) {
+    final var active = OntologyTermSearch.activeIndex(reference);
+    if (active != null) {
+      final var body = active.embeddingBody();
+      targets.forEach(target -> vectorService.updateEntityEmbeddings(active.term(), target, body));
+    }
+  }
+
+  public void updateEmbedding(EntityInterface<?> entity) {
     if (entity == null) {
       LOG.warn("Received null entity in updateEmbedding");
       return;
@@ -142,16 +192,12 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
-  private String extractEntityType(EntityInterface entity) {
+  private String extractEntityType(EntityInterface<?> entity) {
     try {
       return entity.getEntityReference().getType();
     } catch (Exception e) {
       LOG.warn("Failed to extract entity type: {}", e.getMessage());
       return null;
     }
-  }
-
-  private boolean isSupportedEntityType(String entityType) {
-    return AvailableEntityTypes.SET.contains(entityType.toLowerCase(Locale.ROOT));
   }
 }

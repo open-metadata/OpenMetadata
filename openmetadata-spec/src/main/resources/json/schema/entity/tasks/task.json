@@ -47,7 +47,9 @@
         "PipelineReview",
         "DataQualityReview",
         "RecognizerFeedbackApproval",
-        "CustomTask"
+        "CustomTask",
+        "MemoryConflictReview",
+        "MetadataCompletion"
       ],
       "javaEnums": [
         {"name": "GlossaryApproval"},
@@ -64,7 +66,9 @@
         {"name": "PipelineReview"},
         {"name": "DataQualityReview"},
         {"name": "RecognizerFeedbackApproval"},
-        {"name": "CustomTask"}
+        {"name": "CustomTask"},
+        {"name": "MemoryConflictReview"},
+        {"name": "MetadataCompletion"}
       ]
     },
     "taskStatus": {
@@ -172,6 +176,48 @@
           "additionalProperties": true
         }
       },
+      "additionalProperties": false
+    },
+    "reviewVoteDecision": {
+      "javaType": "org.openmetadata.schema.type.TaskReviewVoteDecision",
+      "description": "What a counted review vote decided.",
+      "type": "string",
+      "enum": ["Approved", "Rejected"],
+      "javaEnums": [
+        {"name": "Approved"},
+        {"name": "Rejected"}
+      ]
+    },
+    "taskReviewVote": {
+      "javaType": "org.openmetadata.schema.type.TaskReviewVote",
+      "description": "One counted vote on a multi-reviewer approval task. The server records it; clients cannot set it.",
+      "type": "object",
+      "properties": {
+        "voter": {
+          "description": "User who cast the vote.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "assignee": {
+          "description": "Assignee entry the vote covers: the voter's own entry, or the team the voter votes through.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "decision": {
+          "$ref": "#/definitions/reviewVoteDecision"
+        },
+        "comment": {
+          "description": "Comment given with the vote, kept verbatim.",
+          "type": "string"
+        },
+        "stage": {
+          "description": "Workflow stage the task was in when the vote was counted. A voter is recorded once per stage, so a task that moves through several approval stages keeps every stage's vote.",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "When the vote was counted.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["voter", "assignee", "decision", "timestamp"],
       "additionalProperties": false
     },
     "externalReference": {
@@ -345,6 +391,11 @@
       "description": "Users or teams assigned to complete this task.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "useEntityOwnerFallback": {
+      "description": "Whether to assign entity owners when this task is created without assignees. Approval workflows disable this for an explicit wait strategy.",
+      "type": "boolean",
+      "default": true
+    },
     "reviewers": {
       "description": "Users or teams who should review this task.",
       "$ref": "../../type/entityReferenceList.json"
@@ -452,6 +503,17 @@
       "description": "When true indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "ontologyReview": {
+      "description": "Immutable, server-managed review target for ontology approval tasks.",
+      "$ref": "../../type/ontologyReviewTarget.json"
+    },
+    "reviewVotes": {
+      "description": "Counted votes on a workflow approval task, one per voter in each workflow stage, including the deciding vote. Server-managed.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/taskReviewVote"
+      }
     }
   },
   "required": ["id", "name", "category", "type", "status", "createdBy"],

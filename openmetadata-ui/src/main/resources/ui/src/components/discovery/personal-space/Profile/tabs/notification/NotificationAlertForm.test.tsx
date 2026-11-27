@@ -11,7 +11,18 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
 import NotificationAlertForm from './NotificationAlertForm';
 
 const mockT = (key: string) => key;
@@ -40,9 +51,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../../../../../rest/alertsAPI', () => ({
-  getResourceFunctions: jest.fn().mockResolvedValue({
-    data: [{ name: 'table', supportedFilters: [] }],
-  }),
   getAlertsFromName: jest.fn().mockResolvedValue({
     id: 'alert-1',
     name: 'test-alert',
@@ -51,6 +59,11 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
   }),
   createNotificationAlert: jest.fn().mockResolvedValue({}),
   updateNotificationAlert: jest.fn().mockResolvedValue({}),
+}));
+
+// Asking the server what the sources support is tested with the hook itself.
+jest.mock('../../../../../../hooks/useAlertSelection', () => ({
+  useAlertSelection: jest.fn(),
 }));
 
 jest.mock('../../../../../../utils/AlertsClassBase', () => ({
@@ -80,11 +93,12 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 const mockSetInlineAlertDetails = jest.fn();
+let mockInlineAlertDetails: Record<string, unknown> | undefined;
 
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     setInlineAlertDetails: mockSetInlineAlertDetails,
-    inlineAlertDetails: null,
+    inlineAlertDetails: mockInlineAlertDetails,
     currentUser: { id: 'user-1' },
   }),
 }));
@@ -108,13 +122,27 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../../../utils/PermissionDerivation', () => ({
-  getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
-}));
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../../../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {},
-}));
+// Mock the hook, run the real derivation over a minimal permission object.
+const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock(
+  '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: (...args: unknown[]) =>
+      mockUseEntityPermissions(...args),
+  })
+);
 
 jest.mock('../../../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 50,
@@ -148,22 +176,98 @@ jest.mock(
 describe('NotificationAlertForm', () => {
   const mockOnNavigate = jest.fn();
 
+  beforeEach(() => {
+    setMockPermissions({ [Operation.EditAll]: true });
+    (useAlertSelection as jest.Mock).mockReturnValue({
+      support: {},
+      ready: true,
+    });
+  });
+
   afterEach(() => {
+    mockInlineAlertDetails = undefined;
     jest.clearAllMocks();
   });
 
-  it('should render AlertAiForm after loading', async () => {
-    const { getResourceFunctions } = jest.requireMock(
-      '../../../../../../rest/alertsAPI'
-    );
-    getResourceFunctions.mockResolvedValue({ data: [] });
+  it('shows the loader until the server has answered for the sources', async () => {
+    (useAlertSelection as jest.Mock).mockReturnValue({
+      support: {},
+      ready: false,
+    });
 
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('alert-ai-form')).not.toBeInTheDocument();
+  });
+
+  it('starts a new alert enabled, with a switch its creator can use', async () => {
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          canEditEnabled: true,
+          value: expect.objectContaining({ enabled: true }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('lets only someone who can edit the alert switch it off or on', async () => {
+    setMockPermissions({ [Operation.EditAll]: false });
+
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="alert.fqn" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      'eventsubscription',
+      'alert.fqn',
+      { enabled: true }
+    );
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ canEditEnabled: false }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('should render AlertAiForm after loading', async () => {
     await act(async () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
     await waitFor(() => {
       expect(screen.getByTestId('alert-ai-form')).toBeInTheDocument();
+    });
+  });
+
+  it('shows a failed save with the reason the server gave', async () => {
+    mockInlineAlertDetails = {
+      type: 'error',
+      heading: 'Error',
+      description: 'Error while updating alert',
+      subDescription: 'The reason the server gave',
+    };
+
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      const props = (AlertAiForm as jest.Mock).mock.calls.at(-1)?.[0];
+
+      expect(props?.inlineAlert).toEqual(mockInlineAlertDetails);
     });
   });
 
@@ -183,11 +287,25 @@ describe('NotificationAlertForm', () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
-    await waitFor(async () => {
-      const cancelBtn = screen.getByTestId('cancel-btn');
-      cancelBtn.click();
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
 
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('returns to the alert detail when cancel is clicked in edit mode', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
     });
+
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
+
+    expect(mockOnNavigate).toHaveBeenCalledWith({
+      type: 'detail',
+      fqn: 'test-alert',
+      name: 'Test Alert',
+    });
+    expect(mockOnNavigate).not.toHaveBeenCalledWith({ type: 'list' });
   });
 });

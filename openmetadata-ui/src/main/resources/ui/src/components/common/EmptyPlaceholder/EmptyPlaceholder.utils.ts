@@ -18,19 +18,29 @@ import { ReactNode } from 'react';
  * Returns `actions` when the caller supplied a non-empty array, otherwise
  * builds a single primary action from `handler`. When neither is present the
  * placeholder renders without a button. `id`, when provided, is applied to the
- * generated button as its DOM id.
+ * generated button as its DOM id; `testId`, when provided, as its `data-testid`.
  */
 export const resolveSingleAction = (
   actions: EmptyPlaceholderAction[] | undefined,
   handler: (() => void) | undefined,
   key: string,
   label: ReactNode,
-  id?: string
+  id?: string,
+  testId?: string
 ): EmptyPlaceholderAction[] | undefined => {
   let resolvedActions = actions;
 
   if ((!resolvedActions || resolvedActions.length === 0) && handler) {
-    resolvedActions = [{ key, id, label, color: 'primary', onPress: handler }];
+    resolvedActions = [
+      {
+        key,
+        id,
+        label,
+        color: 'primary',
+        onPress: handler,
+        ...(testId && { 'data-testid': testId }),
+      },
+    ];
   }
 
   return resolvedActions;

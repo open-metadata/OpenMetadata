@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { EntityReferenceType } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { parseInt } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -107,7 +107,9 @@ const DataAssetsCoveragePieChartWidget = ({
       <Card
         className={className}
         data-testid="data-assets-coverage-pie-chart-widget">
-        <Skeleton height={200} width="100%" />
+        <Card.Content>
+          <Skeleton height={200} width="100%" />
+        </Card.Content>
       </Card>
     );
   }
@@ -116,24 +118,26 @@ const DataAssetsCoveragePieChartWidget = ({
     <Card
       className={className}
       data-testid="data-assets-coverage-pie-chart-widget">
-      <div className="d-flex flex-column items-center">
-        <div className="d-flex items-center gap-2">
-          <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
-            <DataAssetsCoverageIcon />
+      <Card.Content>
+        <div className="d-flex flex-column items-center">
+          <div className="d-flex items-center gap-2">
+            <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
+              <EntityReferenceType />
+            </div>
+            <Typography as="span" className="font-semibold text-sm">
+              {t('label.data-asset-plural-coverage')}
+            </Typography>
           </div>
-          <Typography as="span" className="font-semibold text-sm">
-            {t('label.data-asset-plural-coverage')}
-          </Typography>
+          <CustomPieChart
+            showLegends
+            ariaLabel={t('label.data-asset-plural-coverage')}
+            data={data}
+            label={chartLabel}
+            name="data-assets-coverage"
+            onSegmentClick={handleSegmentClick}
+          />
         </div>
-        <CustomPieChart
-          showLegends
-          ariaLabel={t('label.data-asset-plural-coverage')}
-          data={data}
-          label={chartLabel}
-          name="data-assets-coverage"
-          onSegmentClick={handleSegmentClick}
-        />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

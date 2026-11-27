@@ -42,12 +42,19 @@ export interface UseInboxInfiniteList<T> {
   // The server holds more pages than are loaded.
   hasMore: boolean;
   total: number;
+  // The first page failed and nothing is cached to show in its place.
+  error: unknown;
+  refetch: () => void;
   // Attach to the scroll container and to a sentinel element at the end of the
   // list; crossing the sentinel triggers the next page fetch.
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
   setItems: (update: SetStateAction<T[]>) => void;
   setTotal: (update: SetStateAction<number>) => void;
+  // Fetches the next page now, as crossing the sentinel would.
+  loadMore: () => void;
+  // The last next-page fetch failed; cleared by the next one that succeeds.
+  isLoadMoreError: boolean;
 }
 
 type ListData<T> = InfiniteData<InboxListPage<T>, string | undefined>;
@@ -92,13 +99,23 @@ export function useInboxInfiniteList<T>(
     placeholderData: keepPreviousData,
     staleTime: LIST_STALE_TIME,
   });
-  const { data, error, hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  const {
+    data,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = query;
 
+  // A first page that fails renders the caller's error state; only a failure
+  // behind rows already on screen (a later page, a refresh) needs the toast.
+  const hasData = Boolean(data);
   useEffect(() => {
-    if (error) {
+    if (error && hasData) {
       showErrorToast(error as AxiosError);
     }
-  }, [error]);
+  }, [error, hasData]);
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.data) ?? [],
@@ -157,6 +174,11 @@ export function useInboxInfiniteList<T>(
     }
   }, [hasNextPage, isFetchingNextPage, canLoadMore, items, fetchNextPage]);
 
+  // A new observer reports the sentinel at once, and `loadMore` changes after
+  // every fetch, so a page that failed would be requested again in a loop. After
+  // a failure only the sentinel coming back into view retries it.
+  const isLoadMoreError = query.isFetchNextPageError;
+  const wasIntersectingRef = useRef(false);
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const root = scrollRef.current;
@@ -165,7 +187,10 @@ export function useInboxInfiniteList<T>(
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
+        const isIntersecting = Boolean(entries[0]?.isIntersecting);
+        const hasCrossed = isIntersecting && !wasIntersectingRef.current;
+        wasIntersectingRef.current = isIntersecting;
+        if (isIntersecting && (hasCrossed || !isLoadMoreError)) {
           loadMore();
         }
       },
@@ -174,7 +199,7 @@ export function useInboxInfiniteList<T>(
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [loadMore, isLoadMoreError]);
 
   return {
     items,
@@ -183,9 +208,13 @@ export function useInboxInfiniteList<T>(
     isLoadingMore: isFetchingNextPage,
     hasMore: Boolean(hasNextPage),
     total,
+    error: data ? null : error,
+    refetch,
     scrollRef,
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
+    isLoadMoreError,
   };
 }

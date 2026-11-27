@@ -21,6 +21,16 @@ const mockProps: SummaryCardProps = {
 };
 
 describe('SummaryCard component', () => {
+  it('shows zero progress for an empty summary', () => {
+    render(<SummaryCard {...mockProps} total={0} value={0} />);
+
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      '0'
+    );
+    expect(screen.getByText('0%')).toBeInTheDocument();
+  });
+
   it('component should render', async () => {
     render(<SummaryCard {...mockProps} />);
 
@@ -31,13 +41,13 @@ describe('SummaryCard component', () => {
     expect(
       await screen.findByTestId('summary-card-description')
     ).toBeInTheDocument();
-    expect(await screen.findByRole('presentation')).toBeInTheDocument();
+    expect(await screen.findByRole('progressbar')).toBeInTheDocument();
   });
 
   it('should not render progress bar, if showProgressBar is false', async () => {
     render(<SummaryCard {...mockProps} showProgressBar={false} />);
 
-    expect(screen.queryByRole('presentation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('should not render skeleton loader, if isLoading is true', async () => {
@@ -67,14 +77,6 @@ describe('SummaryCard component', () => {
     expect(description.textContent).toStrictEqual('description');
   });
 
-  it("label should be inverse, if 'inverseLabel' is true", async () => {
-    render(<SummaryCard {...mockProps} inverseLabel />);
-
-    const label = await screen.findByTestId('summary-card-label');
-
-    expect(label).toHaveClass('inverse-label');
-  });
-
   it("should render title icon, if 'titleIcon' is provided", async () => {
     render(
       <SummaryCard
@@ -84,13 +86,5 @@ describe('SummaryCard component', () => {
     );
 
     expect(await screen.findByTestId('title-icon')).toBeInTheDocument();
-  });
-
-  it("should render card background based on 'cardBackgroundClass'", async () => {
-    render(<SummaryCard {...mockProps} cardBackgroundClass="bg-success" />);
-
-    const container = await screen.findByTestId('summary-card-container');
-
-    expect(container).toHaveClass('bg-success');
   });
 });

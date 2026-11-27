@@ -4,7 +4,7 @@
   "title": "App",
   "javaType": "org.openmetadata.schema.entity.app.App",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
@@ -66,6 +66,10 @@
         },
         "cronExpression": {
           "description": "Cron Expression in case of Custom scheduled Trigger",
+          "type": "string"
+        },
+        "timezone": {
+          "description": "IANA timezone the schedule runs in, for example Europe/Berlin. When unset the server timezone applies, which is UTC in the official images.",
           "type": "string"
         }
       },

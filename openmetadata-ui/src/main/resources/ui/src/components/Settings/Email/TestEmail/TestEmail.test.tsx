@@ -49,7 +49,7 @@ describe('Test Email component', () => {
   it('should trigger onCancel handler on cancel button click', () => {
     render(<TestEmail {...mockProps} />);
 
-    const cancelButton = screen.getByText('Cancel');
+    const cancelButton = screen.getByText('label.cancel');
 
     expect(cancelButton).toBeInTheDocument();
 

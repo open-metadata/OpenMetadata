@@ -41,7 +41,9 @@ const getFQN = (entity: EntityWithFQN): string => {
 export const createUserApprovalWorkflow = async (
   apiContext: APIRequestContext,
   entityType = 'dataProduct',
-  workflowName?: string
+  workflowName?: string,
+  // JsonLogic per entity type; an entity it evaluates TRUE for is excluded from triggering.
+  filter?: Record<string, string>
 ) => {
   const id = uuid();
   const name = workflowName ?? `pw-user-approval-${entityType}-${id}`;
@@ -57,6 +59,7 @@ export const createUserApprovalWorkflow = async (
         entityTypes: [entityType],
         events: ['Created', 'Updated'],
         exclude: [],
+        ...(filter ? { filter } : {}),
       },
       output: ['relatedEntity', 'updatedBy'],
     },

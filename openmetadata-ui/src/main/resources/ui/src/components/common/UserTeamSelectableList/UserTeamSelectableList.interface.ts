@@ -33,9 +33,18 @@ export interface UserSelectDropdownProps {
   multiple?: MultipleUserTeam;
   label?: string;
   previewSelected?: boolean;
+  /** Hide the Teams tab so only the Users list shows. Defaults to true. */
+  showTeamsTab?: boolean;
   listHeight?: number;
   tooltipText?: string;
   overlayClassName?: string;
   /** data-testid for the built-in edit trigger. Defaults to 'edit-owner'. */
   triggerDataTestId?: string;
+  /** Classes for the span wrapping a `children` trigger. */
+  triggerClassName?: string;
+  /**
+   * Offer only these users and teams: the tabs, their counts and the search
+   * work on this list instead of the user and team search indexes.
+   */
+  options?: EntityReference[];
 }

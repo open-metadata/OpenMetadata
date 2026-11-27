@@ -30,7 +30,14 @@ export const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
 // translucent white to sit a shade lighter than the summary row above it.
 const INCIDENT_STRIP_CLASS = 'tw:bg-primary/55';
 
-export const NO_RUN_CONFIG = {
+export const NO_RUN_CONFIG: {
+  readonly containerClassName: string;
+  readonly icon: typeof Minus;
+  readonly iconColor: StatusIconColor;
+  readonly statusClassName: string;
+  readonly statusLabel: string;
+  readonly testId: string;
+} = {
   containerClassName:
     'tw:border-utility-gray-200 tw:border-l-utility-gray-400 tw:bg-secondary',
   icon: Minus,
@@ -74,8 +81,8 @@ export const STATUS_CONFIG: Record<
     icon: SlashCircle01,
     iconColor: 'warning',
     incidentClassName: INCIDENT_STRIP_CLASS,
-    resultClassName: 'tw:text-warning-primary',
-    statusClassName: 'tw:text-warning-primary',
+    resultClassName: 'tw:text-utility-warning-700',
+    statusClassName: 'tw:text-utility-warning-700',
     statusLabel: 'label.aborted',
     testId: 'test-case-last-run-banner-aborted',
   },
@@ -87,8 +94,8 @@ export const STATUS_CONFIG: Record<
     icon: XClose,
     iconColor: 'error',
     incidentClassName: INCIDENT_STRIP_CLASS,
-    resultClassName: 'tw:text-error-primary',
-    statusClassName: 'tw:text-error-primary',
+    resultClassName: 'tw:text-utility-error-700',
+    statusClassName: 'tw:text-utility-error-700',
     statusLabel: 'label.failed',
     testId: 'test-case-last-run-banner-failed',
   },
@@ -113,8 +120,8 @@ export const STATUS_CONFIG: Record<
     icon: Check,
     iconColor: 'success',
     incidentClassName: INCIDENT_STRIP_CLASS,
-    resultClassName: 'tw:text-success-primary',
-    statusClassName: 'tw:text-success-primary',
+    resultClassName: 'tw:text-utility-success-700',
+    statusClassName: 'tw:text-utility-success-700',
     statusLabel: 'label.success',
     testId: 'test-case-last-run-banner-success',
   },

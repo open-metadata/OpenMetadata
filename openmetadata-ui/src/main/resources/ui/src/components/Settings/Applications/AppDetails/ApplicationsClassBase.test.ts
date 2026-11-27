@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import {
+  AppSearchIndexing,
+  LayoutGrid01,
+} from '@openmetadata/ui-core-components/icons';
 import { AppType } from '../../../../generated/entity/applications/app';
 import rdfIndexAppSchema from '../../../../jsons/applicationSchemas/RdfIndexApp.json';
 import searchIndexingAppSchema from '../../../../jsons/applicationSchemas/SearchIndexingApplication.json';
@@ -120,10 +124,12 @@ describe('ApplicationsClassBase', () => {
       const schema = await applicationsClassBase.importSchema('RdfIndexApp');
 
       expect(schema).toEqual(rdfIndexAppSchema);
-      expect(schema.properties.entities.default).toEqual([]);
-      expect(schema.properties.producerThreads.maximum).toBe(10);
-      expect(schema.properties.partitionSize).toBeUndefined();
-      expect(schema.properties.useDistributedIndexing).toBeUndefined();
+      expect(schema.properties).toMatchObject({
+        entities: { default: [] },
+        producerThreads: { maximum: 10 },
+      });
+      expect(schema.properties).not.toHaveProperty('partitionSize');
+      expect(schema.properties).not.toHaveProperty('useDistributedIndexing');
     });
   });
 
@@ -170,6 +176,22 @@ describe('ApplicationsClassBase', () => {
       );
 
       expect(options).toBeUndefined();
+    });
+  });
+
+  describe('settings modal hooks', () => {
+    it('should map known apps to their icon and fall back to the grid icon', () => {
+      expect(
+        applicationsClassBase.getAppIcon('SearchIndexingApplication')
+      ).toBe(AppSearchIndexing);
+      expect(applicationsClassBase.getAppIcon('UnknownApp')).toBe(LayoutGrid01);
+      expect(applicationsClassBase.getAppIcon()).toBe(LayoutGrid01);
+    });
+
+    it('should provide the modal configuration form', () => {
+      expect(
+        applicationsClassBase.getModalAppConfigurationComponent()
+      ).toBeDefined();
     });
   });
 });

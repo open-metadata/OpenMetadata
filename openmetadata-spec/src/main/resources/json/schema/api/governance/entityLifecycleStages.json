@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/entityLifecycleStages.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EntityLifecycleStages",
+  "description": "The lifecycle stages entities can be in, the entity types that have a lifecycle stage (an `entityStatus` property), the stages each type uses and the moves between them, and the active workflows that own each type's stage. Entity types that are not listed have no lifecycle.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.governance.EntityLifecycleStages",
+  "definitions": {
+    "stageTransition": {
+      "description": "The stages an entity can move to from one stage.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.governance.StageTransition",
+      "properties": {
+        "from": {
+          "description": "Stage the entity is in.",
+          "type": "string"
+        },
+        "to": {
+          "description": "Stages the entity can move to from it.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["from", "to"],
+      "additionalProperties": false
+    },
+    "entityTypeLifecycle": {
+      "description": "Lifecycle of one entity type.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.governance.EntityTypeLifecycle",
+      "properties": {
+        "entityType": {
+          "description": "Entity type that has a lifecycle stage.",
+          "type": "string"
+        },
+        "stages": {
+          "description": "Stages an entity of this type can be in. Most types use the general stages; a type with a lifecycle of its own uses the stages it declares, which can include stages no other type has.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transitions": {
+          "description": "The moves this entity type allows between its stages. Any other stage change is rejected.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/stageTransition"
+          }
+        },
+        "stageWorkflows": {
+          "description": "Active governance workflows that own this entity type's lifecycle stage. While one of them applies to an entity, its stage changes only through that workflow and a direct change is rejected. More than one means the workflows overwrite each other's stage.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["entityType", "stages", "transitions", "stageWorkflows"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "stages": {
+      "description": "Every lifecycle stage an entity can be in. Each entity type uses the stages its own entry lists.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "entityTypes": {
+      "description": "Entity types that have a lifecycle stage, sorted by name.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entityTypeLifecycle"
+      }
+    }
+  },
+  "required": ["stages", "entityTypes"],
+  "additionalProperties": false
+}

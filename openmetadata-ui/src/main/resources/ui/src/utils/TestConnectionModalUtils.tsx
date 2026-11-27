@@ -21,20 +21,25 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CheckCircleFilled,
   ChevronDown,
   ChevronRight,
-  Copy01,
+  CloseCircleFilled,
+  DotFilled,
+  ExclamationCircleFilled,
   Lightbulb03,
   RefreshCcw01,
+  StatusSkipped,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
-import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
-import { ReactComponent as IcTcQueued } from '../assets/svg/ic-tc-queued.svg';
-import { ReactComponent as IcTcSkip } from '../assets/svg/ic-tc-skip.svg';
-import { ReactComponent as IcTcWarn } from '../assets/svg/ic-tc-warn.svg';
+import {
+  useMemo,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
+import CopyButton from '../components/common/CopyButton/CopyButton';
 import Loader from '../components/common/Loader/Loader';
 import {
   ConnectionStepState,
@@ -46,8 +51,11 @@ import {
   TestConnectionStepResult,
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
+import { formatDuration } from './date-time/DateTimeUtils';
 
+const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
 const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
+const TEXT_UTILITY_WARNING_300_CLASS = 'tw:text-utility-warning-300';
 
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
@@ -120,18 +128,16 @@ export function getConnectionStatusIcon(
 
   if (isSuccessful) {
     icon = (
-      <IcCheckCircle
+      <CheckCircleFilled
         className="tw:shrink-0 tw:text-fg-success-secondary"
-        height={18}
-        width={18}
+        size={18}
       />
     );
   } else if (isFailed) {
     icon = (
-      <IcTcFail
+      <CloseCircleFilled
         className="tw:shrink-0 tw:text-fg-error-primary"
-        height={18}
-        width={18}
+        size={18}
       />
     );
   }
@@ -252,11 +258,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'passed') {
     return (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
-        <IcCheckCircle
-          className="tw:text-fg-success-secondary"
-          height={16}
-          width={16}
-        />
+        <CheckCircleFilled className="tw:text-fg-success-secondary" size={16} />
       </span>
     );
   }
@@ -264,7 +266,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'failed') {
     return (
       <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail className="tw:text-fg-error-primary" height={16} width={16} />
+        <CloseCircleFilled className="tw:text-fg-error-primary" size={16} />
       </span>
     );
   }
@@ -272,24 +274,28 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'warning') {
     return (
       <span className="tw:flex tw:items-center" data-testid="warning-badge">
-        <IcTcWarn
+        <ExclamationCircleFilled
           className="tw:text-fg-warning-secondary"
-          height={16}
-          width={16}
+          size={16}
         />
       </span>
     );
   }
 
   if (state === 'skipped') {
-    return (
-      <IcTcSkip className="tw:text-utility-gray-300" height={16} width={16} />
-    );
+    return <StatusSkipped className="tw:text-utility-gray-300" size={16} />;
   }
 
-  return (
-    <IcTcQueued className="tw:text-utility-gray-300" height={16} width={16} />
-  );
+  return <DotFilled className="tw:text-utility-gray-300" size={16} />;
+}
+
+// A failed step's summary line is the definition's `errorMessage`, not a success
+// summary — `resultSummary` is the success channel. Painting it green reads as
+// "this step passed", so a failed step gets the advisory colour instead.
+function getSummaryColorClass(passed: boolean | undefined): string {
+  return passed
+    ? TEXT_UTILITY_SUCCESS_300_CLASS
+    : TEXT_UTILITY_WARNING_300_CLASS;
 }
 
 function renderColoredLines(
@@ -307,6 +313,7 @@ function renderColoredLines(
 
 export function ConnectionStatusBanner(
   props: Readonly<{
+    action?: ReactNode;
     gateResult: TestConnectionStepResult | undefined;
     isFailed: boolean;
     isSuccessful: boolean;
@@ -319,6 +326,7 @@ export function ConnectionStatusBanner(
   }>
 ) {
   const {
+    action,
     gateResult,
     isFailed,
     isSuccessful,
@@ -344,10 +352,9 @@ export function ConnectionStatusBanner(
   if (isSuccessful) {
     return (
       <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-3 tw:py-2">
-        <IcCheckCircle
+        <CheckCircleFilled
           className="tw:shrink-0 tw:text-fg-success-secondary"
-          height={18}
-          width={18}
+          size={18}
         />
         <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-utility-success-700">
           {statusText}
@@ -359,14 +366,14 @@ export function ConnectionStatusBanner(
   if (isWarning) {
     return (
       <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2">
-        <IcTcWarn
+        <ExclamationCircleFilled
           className="tw:shrink-0 tw:text-fg-warning-secondary"
-          height={18}
-          width={18}
+          size={18}
         />
-        <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
+        <span className="tw:flex-1 tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
           {statusText}
         </span>
+        {action}
       </div>
     );
   }
@@ -405,6 +412,7 @@ export function ConnectionStatusBanner(
             {`${progressPercent}%`}
           </span>
         )}
+        {isFailed && !isTestingConnection && action}
       </div>
     </div>
   );
@@ -453,11 +461,11 @@ function getGatePillClass(
     'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:px-2',
     'tw:text-xs tw:font-semibold tw:leading-4',
     {
-      'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         !gateResult && !isFailed,
-      'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         gateResult?.passed,
-      'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         gateFailed,
     }
   );
@@ -475,11 +483,7 @@ function getGateIcon(
   if (gateResult?.passed) {
     return (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
-        <IcCheckCircle
-          className="tw:text-fg-success-secondary"
-          height={18}
-          width={18}
-        />
+        <CheckCircleFilled className="tw:text-fg-success-secondary" size={18} />
       </span>
     );
   }
@@ -487,7 +491,7 @@ function getGateIcon(
   if (gateFailed) {
     return (
       <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail className="tw:text-fg-error-primary" height={18} width={18} />
+        <CloseCircleFilled className="tw:text-fg-error-primary" size={18} />
       </span>
     );
   }
@@ -516,21 +520,19 @@ function getGatePillState(
 function getGatePillIcon(pillState: GatePillState): JSX.Element | null {
   if (pillState === 'pass') {
     return (
-      <IcCheckCircle
+      <CheckCircleFilled
         className="tw:shrink-0 tw:text-fg-success-secondary"
         data-testid="pill-icon-pass"
-        height={12}
-        width={12}
+        size={12}
       />
     );
   }
   if (pillState === 'fail') {
     return (
-      <IcTcFail
+      <CloseCircleFilled
         className="tw:shrink-0 tw:text-fg-error-primary"
         data-testid="pill-icon-fail"
-        height={12}
-        width={12}
+        size={12}
       />
     );
   }
@@ -578,15 +580,16 @@ export function ConnectionGateCard(
   );
 
   const pillClass = classNames(
-    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
+    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:px-2.5 tw:text-xs tw:font-medium',
     {
-      'tw:border-utility-success-200 tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         pillState === 'pass',
-      'tw:border-utility-error-200 tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         pillState === 'fail',
-      'tw:border-utility-brand-200 tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         pillState === 'running',
-      'tw:border-gray-300 tw:text-secondary': pillState === 'queued',
+      'tw:border-primary tw:bg-secondary tw:text-secondary':
+        pillState === 'queued',
     }
   );
 
@@ -610,9 +613,9 @@ export function ConnectionGateCard(
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span className={gatePillClass}>{t('label.gate')}</span>
           {isGateExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           )}
         </div>
       </button>
@@ -621,11 +624,10 @@ export function ConnectionGateCard(
           {GATE_STEPS.map((key) => (
             <span className={pillClass} data-testid="gate-step-pill" key={key}>
               {pillIcon ?? (
-                <IcTcQueued
+                <DotFilled
                   className="tw:shrink-0 tw:text-utility-gray-300"
                   data-testid="pill-icon-queued"
-                  height={12}
-                  width={12}
+                  size={12}
                 />
               )}
               {t(key)}
@@ -645,7 +647,7 @@ function renderCapabilityStepLog(
 ): JSX.Element {
   return (
     <div className="tw:border-t tw:border-border-secondary">
-      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold tw:max-h-[220px]">
         {result.executedCommand &&
           renderColoredLines(
             `> ${result.executedCommand}`,
@@ -655,9 +657,9 @@ function renderCapabilityStepLog(
         {(result.resultSummary || result.message) &&
           renderColoredLines(
             `  ${result.resultSummary || result.message}${
-              result.durationMs ? ` (${result.durationMs} ms)` : ''
+              result.durationMs ? ` (${formatDuration(result.durationMs)})` : ''
             }`,
-            'tw:text-utility-success-300',
+            getSummaryColorClass(result.passed),
             'sum-'
           )}
         {result.errorLog &&
@@ -675,7 +677,7 @@ function renderCapabilityStepLog(
             ]
               .filter(Boolean)
               .join('\n'),
-            'tw:text-utility-warning-300',
+            TEXT_UTILITY_WARNING_300_CLASS,
             'diag-'
           )}
       </pre>
@@ -923,7 +925,7 @@ export function ConnectionRawLogSection(
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;
             const timing = result.durationMs
-              ? ` (${result.durationMs} ms)`
+              ? ` (${formatDuration(result.durationMs)})`
               : '';
             const parts: JSX.Element[] = [];
 
@@ -940,7 +942,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-utility-success-300',
+                  getSummaryColorClass(result.passed),
                   `${stepIdx}-sum-`
                 )
               );
@@ -964,7 +966,7 @@ export function ConnectionRawLogSection(
                   ]
                     .filter(Boolean)
                     .join('\n'),
-                  'tw:text-utility-warning-300',
+                  TEXT_UTILITY_WARNING_300_CLASS,
                   `${stepIdx}-diag-`
                 )
               );
@@ -985,7 +987,6 @@ export function ConnectionFooterActions(
     isTestingConnection: boolean;
     onCancel: () => void;
     onConfirm: () => void;
-    onCopyToClipBoard: () => void;
     onTestConnection: () => void;
     rawLog: string;
     t: TranslateFn;
@@ -997,7 +998,6 @@ export function ConnectionFooterActions(
     isTestingConnection,
     onCancel,
     onConfirm,
-    onCopyToClipBoard,
     onTestConnection,
     rawLog,
     t,
@@ -1014,7 +1014,7 @@ export function ConnectionFooterActions(
       <Button
         className="test-connection-footer-try-again"
         color="primary"
-        iconLeading={<RefreshCcw01 size={16} />}
+        iconLeading={RefreshCcw01}
         size="sm"
         onClick={onTestConnection}>
         {t('label.try-again')}
@@ -1040,16 +1040,13 @@ export function ConnectionFooterActions(
 
   return (
     <>
-      <Button
+      <CopyButton
         className="tw:mr-auto"
-        color="secondary"
-        data-testid="copy-log-button"
-        iconLeading={<Copy01 size={16} />}
         isDisabled={!rawLog}
-        size="sm"
-        onClick={() => onCopyToClipBoard()}>
-        {t('label.copy-log')}
-      </Button>
+        label={t('label.copy-log')}
+        testId="copy-log-button"
+        value={rawLog}
+      />
       {!isConnectionTimeout && !isTestingConnection && isFailed && (
         <Button
           color="link-color"
@@ -1148,7 +1145,7 @@ export function ConnectionRemediationCard(
     getConnectionStepResult
   );
 
-  if (!errorContent) {
+  if (!errorContent && !diagnosis) {
     return null;
   }
 
@@ -1188,7 +1185,7 @@ export function ConnectionRemediationCard(
         </div>
       )}
       {!diagnosis && errorContent && (
-        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold tw:max-h-[220px]">
           {renderColoredLines(
             errorContent,
             TEXT_UTILITY_ERROR_300_CLASS,

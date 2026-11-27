@@ -8,15 +8,24 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -26,7 +35,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +48,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -53,24 +65,25 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.FieldError;
@@ -90,33 +103,47 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.DeploymentSettingPreparer;
+import org.openmetadata.service.config.source.DualSourceSetting;
+import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.config.source.SettingsWriteGuard;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettingsUpdate;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
+import org.openmetadata.service.monitoring.ServicesStatusJobHandler;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.BotTokenCheck;
+import org.openmetadata.service.security.BotTokenCheck.UnusableBot;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.TokenValidityResolver;
+import org.openmetadata.service.security.auth.ActiveProviderValidator;
+import org.openmetadata.service.security.auth.LdapDirectoryValidation;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
@@ -124,21 +151,24 @@ import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.seeding.EssentialSeedReport;
+import org.openmetadata.service.seeding.EssentialSeeds;
+import org.openmetadata.service.seeding.EssentialSeedsStatus;
 import org.openmetadata.service.seeding.RequiredSeedRows;
 import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 
 @Slf4j
 @Repository
-public class SystemRepository {
+public class SystemRepository implements DeploymentSettingPreparer {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
       "Glossary term relation settings changed while the JSON Patch was being applied";
@@ -147,8 +177,34 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
+  private static final String SYSTEM_BOTS_VALIDATION_KEY = "System Bots";
+  private static final String LLM_PROVIDER_VALIDATION_KEY = "LLM Provider";
+  private static final String LLM_PROVIDER_DESCRIPTION =
+      "LLM Provider is used to power Context Center memory extraction and Ontology AI";
+  private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
+  private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
+  private static final String LDAP_VALIDATION_KEY = "LDAP";
+  private static final String PUBLIC_KEY_URLS_PATH = "/publicKeyUrls";
+  private static final String PATCH_OPERATION = "op";
+  private static final String PATCH_PATH = "path";
+  private static final String PATCH_VALUE = "value";
+  private static final String REMOVE_OPERATION = "remove";
+  private static final Set<String> PROVIDER_SETTING_OPERATIONS = Set.of("add", "replace");
+  private static final String PROVIDER_PATCH_PATH = "/authenticationConfiguration/provider";
+  private static final String SAML_PROVIDER = AuthProvider.SAML.value();
+  private static final String CLIENT_TYPE_FIELD = "clientType";
+  private static final String OIDC_CONFIGURATION_FIELD = "oidcConfiguration";
+  private static final String SAML_CONFIGURATION_FIELD = "samlConfiguration";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
+  private final BotTokenCheck botTokenCheck = BotTokenCheck.forSystemBots();
+  private volatile StatusJwtFilter statusJwtFilter;
+
+  /** The health check's JWT filter and the security configuration it was built from. */
+  private record StatusJwtFilter(
+      AuthenticationConfiguration authentication,
+      AuthorizerConfiguration authorizer,
+      JwtFilter filter) {}
 
   private enum ValidationStepDescription {
     DATABASE("Validate that we can properly run a query against the configured database."),
@@ -156,9 +212,13 @@ public class SystemRepository {
     PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
     MIGRATION("Validate that all the necessary migrations have been properly executed."),
+    LDAP("Validate that the login LDAP directory is reachable and accepts the lookup account."),
     SEARCH_REINDEX(
         "Validate that every deployed search index was built from the current index mapping "
-            + "(i.e. no reindex is pending).");
+            + "(i.e. no reindex is pending)."),
+    SYSTEM_BOTS(
+        "Validate that the built-in system bots exist, were created without errors, and their"
+            + " tokens can be decrypted and validated.");
 
     public final String key;
 
@@ -168,6 +228,13 @@ public class SystemRepository {
   }
 
   private static final String INDEX_NAME = "table_search_index";
+
+  /**
+   * Login switches that no validation check reads, so changing only these cannot make a security
+   * configuration fail validation. Add a setting here only if no check reads it.
+   */
+  private static final Set<String> UNCHECKED_LOGIN_SWITCHES =
+      Set.of("enableSelfSignup", "enableAutoRedirect", "forceSecureSessionCookie");
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
@@ -253,16 +320,151 @@ public class SystemRepository {
 
     // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
     // previously null
-    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        && fetchedSettings.getConfigValue() != null) {
       AuthenticationConfiguration authConfig =
-          (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+          decryptedAuthentication((AuthenticationConfiguration) fetchedSettings.getConfigValue());
+      if (authConfig.getLdapConfiguration() != null) {
         ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
-        fetchedSettings.setConfigValue(authConfig);
       }
+      fetchedSettings.setConfigValue(authConfig);
     }
 
     return fetchedSettings;
+  }
+
+  /**
+   * The stored security configuration, read fresh from the database rather than from this server's
+   * memory, which may be behind a change made on another server; null when a row is missing.
+   */
+  public StoredSecurityConfiguration getStoredSecurityConfiguration() {
+    String authenticationJson =
+        dao.getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+    String authorizerJson = dao.getConfigJsonWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+    StoredSecurityConfiguration stored = null;
+    if (authenticationJson != null && authorizerJson != null) {
+      AuthenticationConfiguration authentication =
+          decryptedAuthentication(
+              JsonUtils.readValue(authenticationJson, AuthenticationConfiguration.class));
+      if (authentication.getLdapConfiguration() != null) {
+        ensureLdapConfigDefaultValues(authentication.getLdapConfiguration());
+      }
+      SecurityConfiguration configuration =
+          new SecurityConfiguration()
+              .withAuthenticationConfiguration(authentication)
+              .withAuthorizerConfiguration(
+                  JsonUtils.readValue(authorizerJson, AuthorizerConfiguration.class));
+      stored = new StoredSecurityConfiguration(configuration, authenticationJson, authorizerJson);
+    }
+    return stored;
+  }
+
+  /**
+   * Writes both security settings unless one changed since {@code stored} was read, which fails
+   * with a 412 instead of silently undoing that change. Returns what is stored now, for a later
+   * write that must not undo a change made in between either.
+   */
+  public StoredSecurityConfiguration updateSecurityConfigurationIfCurrent(
+      SecurityConfiguration updated, StoredSecurityConfiguration stored) {
+    Settings authentication =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration());
+    Settings authorizer =
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration());
+    assertDeploymentFieldsUnchanged(authentication);
+    assertDeploymentFieldsUnchanged(authorizer);
+    SecuritySettingsUpdate authenticationUpdate =
+        securityUpdate(authentication, stored.authenticationJson());
+    SecuritySettingsUpdate authorizerUpdate = securityUpdate(authorizer, stored.authorizerJson());
+    dao.updateSecuritySettingsIfCurrent(authenticationUpdate, authorizerUpdate);
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+    return new StoredSecurityConfiguration(
+        updated, authenticationUpdate.updatedJson(), authorizerUpdate.updatedJson());
+  }
+
+  /**
+   * Puts back {@code restored}, the rows a save read before it wrote {@code written}, while both
+   * rows still hold what that save wrote; a 412 when another save replaced them meanwhile. The rows
+   * go back as they were read, without the write step: they passed it when they were stored, and
+   * checking them again against the save being undone would refuse what was accepted, such as an
+   * IdP certificate that has expired since.
+   * ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused
+   */
+  public void restoreSecurityConfigurationIfCurrent(
+      final StoredSecurityConfiguration restored, final StoredSecurityConfiguration written) {
+    dao.updateSecuritySettingsIfCurrent(
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHENTICATION_CONFIGURATION.value(),
+            written.authenticationJson(),
+            restored.authenticationJson()),
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHORIZER_CONFIGURATION.value(),
+            written.authorizerJson(),
+            restored.authorizerJson()));
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+  }
+
+  /**
+   * Writes both security settings whatever the rows hold, for when one is missing and there is
+   * nothing to compare with, and returns what is stored now. A failed write is thrown, never
+   * answered with a response the caller could ignore.
+   */
+  public StoredSecurityConfiguration storeSecurityConfiguration(
+      SecurityConfiguration configuration) {
+    Settings authentication =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(configuration.getAuthenticationConfiguration());
+    Settings authorizer =
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(configuration.getAuthorizerConfiguration());
+    assertDeploymentFieldsUnchanged(authentication);
+    assertDeploymentFieldsUnchanged(authorizer);
+    final String authenticationJson =
+        prepareSettingForUpdate(authentication, storedValueOf(authentication.getConfigType()));
+    final String authorizerJson =
+        prepareSettingForUpdate(authorizer, storedValueOf(authorizer.getConfigType()));
+    dao.insertSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value(), authenticationJson);
+    dao.insertSettings(SettingsType.AUTHORIZER_CONFIGURATION.value(), authorizerJson);
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+    return new StoredSecurityConfiguration(configuration, authenticationJson, authorizerJson);
+  }
+
+  private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {
+    return new SecuritySettingsUpdate(
+        setting.getConfigType().value(),
+        expectedJson,
+        prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson)));
+  }
+
+  /**
+   * Rejects {@code updated} before anything is validated or written when it changes a field the
+   * deployment configuration owns, so a write of both security settings never stops halfway.
+   */
+  public void assertSecurityConfigurationWritable(SecurityConfiguration updated) {
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration()));
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration()));
+  }
+
+  private static AuthenticationConfiguration decryptedAuthentication(
+      AuthenticationConfiguration stored) {
+    return JsonUtils.convertValue(
+        SettingsSecrets.decrypted(
+            SettingsType.AUTHENTICATION_CONFIGURATION, JsonUtils.valueToTree(stored)),
+        AuthenticationConfiguration.class);
   }
 
   public AssetCertificationSettings getAssetCertificationSettings() {
@@ -347,20 +549,18 @@ public class SystemRepository {
     return null;
   }
 
+  /**
+   * Stores {@code setting} and answers 201 or 200. A write that fails is thrown, as a 400 when the
+   * value is refused and a 500 otherwise, never answered with a response a caller such as an
+   * administration command could ignore and report as stored.
+   * ADR:2026-11-23-a-settings-write-that-fails-is-thrown
+   */
   @Transaction
-  public Response createOrUpdate(Settings setting) {
+  public Response createOrUpdate(final Settings setting) {
     OpenMetadataBaseUrlValidator.validate(setting);
-    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    final Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
-
-    try {
-      updateSetting(setting);
-    } catch (BadRequestException ex) {
-      throw ex;
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    updateSetting(setting, storedValueOf(oldValue));
     prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
@@ -371,9 +571,13 @@ public class SystemRepository {
   }
 
   public Response createNewSetting(Settings setting) {
+    OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException
+        | SettingsManagedByEnvironmentException
+        | WebApplicationException ex) {
+      // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -387,6 +591,8 @@ public class SystemRepository {
   public Response deleteSettings(SettingsType type) {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
+    SettingsCache.invalidateSettings(type.value());
+    SettingsChangeAnnouncer.announce(type);
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
@@ -415,6 +621,55 @@ public class SystemRepository {
     updateSettingIfCurrent(original, expectedJson);
     prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  /**
+   * Patches one item of a list inside a setting, found by its {@code name}, so a caller changes
+   * that item without sending (and overwriting) the rest of the list. The patch paths are relative
+   * to the item. The item's position and the compare-and-set expectation come from one read, so a
+   * concurrent change to the setting fails with {@link PreconditionFailedException} (HTTP 412).
+   *
+   * @throws EntityNotFoundException when the setting or the named item does not exist
+   * @throws BadRequestException when the patch is invalid, renames, adds or removes items, or
+   *     leaves the setting invalid
+   */
+  public Response patchSettingItem(
+      final SettingsType type,
+      final String listPointer,
+      final String itemName,
+      final JsonPatch itemPatch) {
+    final String expectedJson = dao.getConfigJsonWithKey(type.value());
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(type.value());
+    }
+    final SystemSettingItemPatch item =
+        SystemSettingItemPatch.locate(JsonUtils.readJson(expectedJson), listPointer, itemName);
+    final JsonValue patched = applyItemPatch(expectedJson, item.rebase(itemPatch));
+    item.assertItemKept(patched);
+    final Settings updated = readPatchedSettings(type, patched.toString());
+    replaceSettingIfCurrent(updated, expectedJson);
+    prepareFetchedSettings(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
+  }
+
+  private static JsonValue applyItemPatch(final String storedJson, final JsonPatch patch) {
+    try {
+      return JsonUtils.applyPatch(JsonUtils.readValue(storedJson, Object.class), patch);
+    } catch (JsonException | IllegalArgumentException exception) {
+      throw new BadRequestException("Invalid JSON Patch: " + exception.getMessage(), exception);
+    }
+  }
+
+  private static Settings readPatchedSettings(final SettingsType type, final String patchedJson) {
+    try {
+      final Settings settings = CollectionDAO.SettingsRowMapper.getSettings(type, patchedJson);
+      JsonUtils.validateJsonSchema(settings.getConfigValue(), settings.getConfigValue().getClass());
+      return settings;
+    } catch (JsonParsingException | ConstraintViolationException exception) {
+      throw new BadRequestException(
+          String.format("The patched %s is invalid: %s", type.value(), exception.getMessage()),
+          exception);
+    }
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {
@@ -475,6 +730,22 @@ public class SystemRepository {
   }
 
   private void postUpdate(SettingsType settingsType) {
+    // MCP is not acknowledged: the generic settings API saves it without reloading it, so this
+    // server's watcher applies it like every other server's, retrying and reporting a failed
+    // reload. /system/mcp/config reloads it itself, which leaves the watcher nothing to do.
+    if (settingsType != SettingsType.MCP_CONFIGURATION) {
+      SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    }
+    refreshLocalState(settingsType);
+    // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
+    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
+      Entity.getSearchRepository().reconcileColumnIndex();
+    }
+    SettingsChangeAnnouncer.announce(settingsType);
+  }
+
+  /** Refreshes what this server derives from a setting; every server runs it after a change. */
+  public void refreshLocalState(SettingsType settingsType) {
     if (settingsType == SettingsType.WORKFLOW_SETTINGS) {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
@@ -486,11 +757,16 @@ public class SystemRepository {
   }
 
   public void updateSetting(Settings setting) {
+    updateSetting(setting, storedValueOf(setting.getConfigType()));
+  }
+
+  private void updateSetting(final Settings setting, final JsonNode stored) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -502,17 +778,21 @@ public class SystemRepository {
   }
 
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson =
+          prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
               setting.getConfigType().toString(), expectedJson, updatedJson);
       if (updated == 0) {
         throw new PreconditionFailedException(
-            "Setting changed while the JSON Patch was being applied");
+            setting.getConfigType().value()
+                + " changed since it was read; read it again and retry");
       }
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException | PreconditionFailedException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
+      // A refused value, such as an unusable IdP certificate, or a 412 from a concurrent write.
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -523,7 +803,27 @@ public class SystemRepository {
     }
   }
 
-  private String prepareSettingForUpdate(Settings setting) {
+  /**
+   * Replaces a setting only while it still holds {@code expectedJson}, the stored JSON the caller
+   * read: a write made in between fails with a 412 instead of being overwritten. Write failures are
+   * thrown too, so a caller never reports a value that was not stored.
+   */
+  public void replaceSettingIfCurrent(Settings setting, String expectedJson) {
+    Settings stored =
+        CollectionDAO.SettingsRowMapper.getSettings(setting.getConfigType(), expectedJson);
+    preserveEmailSettings(setting, stored);
+    OpenMetadataBaseUrlValidator.validate(setting);
+    updateSettingIfCurrent(setting, expectedJson);
+  }
+
+  /**
+   * Every write of a setting's value passes here before it reaches the database, whichever way it
+   * came in: an API save, an administration command, a seed or a reconciled deployment value. The
+   * checks of a setting type that compare with what is stored get {@code stored}, the value this
+   * write replaces with its secrets decrypted, or null when there is none.
+   * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+   */
+  private String prepareSettingForUpdate(final Settings setting, final JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -551,6 +851,14 @@ public class SystemRepository {
       JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
     } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
       JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+    } else if (setting.getConfigType() == SettingsType.GLOSSARY_SETTINGS) {
+      try {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), GlossarySettings.class);
+        setting.setConfigValue(
+            JsonUtils.convertValue(setting.getConfigValue(), GlossarySettings.class));
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException("Invalid glossary settings", ex);
+      }
     } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
       ScimConfiguration scimConfig =
           JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
@@ -560,6 +868,11 @@ public class SystemRepository {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
       rejectInvalidTokenValidity(authConfig);
+      SamlIdpCertificateGate.requireUsable(
+          authConfig,
+          stored == null
+              ? null
+              : JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -567,7 +880,84 @@ public class SystemRepository {
       JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
       setting.setConfigValue(authorizerConfig);
     }
-    return JsonUtils.pojoToJson(setting.getConfigValue());
+    return storageJsonOf(setting);
+  }
+
+  /** The stored value of a setting, with its secrets decrypted; null when it is not stored. */
+  private JsonNode storedValueOf(final SettingsType type) {
+    return valueOf(type, dao.getConfigJsonWithKey(type.value()));
+  }
+
+  private static JsonNode storedValueOf(final Settings stored) {
+    return stored == null || stored.getConfigValue() == null
+        ? null
+        : decryptedValue(stored.getConfigType(), JsonUtils.valueToTree(stored.getConfigValue()));
+  }
+
+  private static JsonNode valueOf(final SettingsType type, final String storedJson) {
+    return storedJson == null ? null : decryptedValue(type, JsonUtils.readTree(storedJson));
+  }
+
+  private static JsonNode decryptedValue(final SettingsType type, final JsonNode value) {
+    return value.isObject() ? SettingsSecrets.decrypted(type, value) : value;
+  }
+
+  /** Authentication secrets are stored Fernet-encrypted; the caller keeps the clear values. */
+  private static String storageJsonOf(Settings setting) {
+    Object value = setting.getConfigValue();
+    return setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        ? JsonUtils.pojoToJson(
+            SettingsSecrets.encrypted(setting.getConfigType(), JsonUtils.valueToTree(value)))
+        : JsonUtils.pojoToJson(value);
+  }
+
+  /**
+   * A setting whose source is ENV may only change the fields its deployment configuration does
+   * not define; the next start would overwrite them otherwise.
+   */
+  private void assertDeploymentFieldsUnchanged(Settings setting) {
+    SettingsType type = setting.getConfigType();
+    if (ConfigSources.isManagedByDeployment(type)) {
+      String storedJson = dao.getConfigJsonWithKey(type.value());
+      JsonNode stored =
+          storedJson == null
+              ? null
+              : SettingsSecrets.decrypted(type, JsonUtils.readTree(storedJson));
+      SettingsWriteGuard.assertWritable(
+          type, stored, JsonUtils.valueToTree(setting.getConfigValue()));
+    }
+  }
+
+  /**
+   * Validates a value reconciled from the deployment configuration like an API write of the
+   * setting, without calling the identity provider, and returns the JSON to store.
+   */
+  @Override
+  public String prepareReconciled(
+      final SettingsType type, final JsonNode value, final JsonNode stored) {
+    Settings setting = settingsOf(type, value);
+    OpenMetadataBaseUrlValidator.validate(setting);
+    if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
+      ActiveProviderValidator.validate(authConfig, authConfig);
+    }
+    return prepareSettingForUpdate(setting, stored);
+  }
+
+  /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
+  @Override
+  public String prepareSeed(SettingsType type, JsonNode value) {
+    return prepareSettingForUpdate(settingsOf(type, value), null);
+  }
+
+  private static Settings settingsOf(SettingsType type, JsonNode value) {
+    Class<?> valueClass =
+        DualSourceSetting.of(type)
+            .map(DualSourceSetting::valueClass)
+            .orElseThrow(
+                () -> new IllegalArgumentException(type + " is not a dual-source setting"));
+    return new Settings()
+        .withConfigType(type)
+        .withConfigValue(JsonUtils.convertValue(value, valueClass));
   }
 
   /**
@@ -716,6 +1106,35 @@ public class SystemRepository {
     return JsonUtils.readValue(encryptedSetting, SlackAppConfiguration.class);
   }
 
+  /** The Health Check response, for any caller that has only the application config. */
+  public ValidationResponse validateSystem(OpenMetadataApplicationConfig applicationConfig) {
+    return validateSystem(
+        applicationConfig,
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            applicationConfig.getPipelineServiceClientConfiguration()),
+        statusJwtFilter());
+  }
+
+  /**
+   * Built on first use, when the security configuration is loaded, and rebuilt after a reload
+   * replaces it, so the check validates tokens against the keys the server uses now.
+   */
+  private JwtFilter statusJwtFilter() {
+    AuthenticationConfiguration authentication =
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    StatusJwtFilter cached = statusJwtFilter;
+    if (cached == null
+        || cached.authentication() != authentication
+        || cached.authorizer() != authorizer) {
+      cached =
+          new StatusJwtFilter(
+              authentication, authorizer, new JwtFilter(authentication, authorizer));
+      statusJwtFilter = cached;
+    }
+    return cached.filter();
+  }
+
   public ValidationResponse validateSystem(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient,
@@ -735,18 +1154,61 @@ public class SystemRepository {
       validation.setLogStorage(logStorageValidation);
     }
 
+    addLdapValidation(validation, SecurityConfigurationManager.getCurrentAuthConfig());
+
     if (Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       validation.setAdditionalProperty(
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    addLlmProviderValidation(validation, applicationConfig.getLlmConfiguration());
+
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
+    validation.setAdditionalProperty(
+        SYSTEM_BOTS_VALIDATION_KEY, getSystemBotsValidation(applicationConfig, jwtFilter));
 
     addExtraValidations(applicationConfig, validation);
 
     return validation;
+  }
+
+  /** Shown only when LLM is enabled, so deployments without LLM features get no failing card. */
+  private void addLlmProviderValidation(
+      ValidationResponse validation, LLMConfiguration llmConfiguration) {
+    if (llmConfiguration != null && Boolean.TRUE.equals(llmConfiguration.getEnabled())) {
+      validation.setAdditionalProperty(
+          LLM_PROVIDER_VALIDATION_KEY, getLlmProviderValidation(llmConfiguration));
+    }
+  }
+
+  /** Reports whether the LLM client was built at startup; makes no model call. */
+  @VisibleForTesting
+  static StepValidation getLlmProviderValidation(LLMConfiguration llmConfiguration) {
+    final String provider =
+        Optional.ofNullable(llmConfiguration.getProvider()).orElse(LLMProvider.NOOP).value();
+    final StepValidation validation =
+        new StepValidation().withDescription(LLM_PROVIDER_DESCRIPTION);
+    return LLMClientHolder.getUnavailableReason()
+        .map(
+            reason ->
+                validation
+                    .withPassed(false)
+                    .withMessage(
+                        String.format(
+                            "LLM is enabled but the %s client could not be built: %s",
+                            provider, reason)))
+        .orElseGet(
+            () ->
+                validation
+                    .withPassed(true)
+                    .withMessage(
+                        String.format(
+                            "Provider: %s, model: %s. Memory extraction: %s",
+                            provider,
+                            LLMClientHolder.get().getModelId(),
+                            LLMClientHolder.isMemoryExtractionEnabled() ? "on" : "off")));
   }
 
   private static final String OBJECT_STORAGE_DESCRIPTION =
@@ -874,6 +1336,20 @@ public class SystemRepository {
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
 
+  /** Only an LDAP login depends on the directory, so only then does the status report on it. */
+  @VisibleForTesting
+  static void addLdapValidation(
+      ValidationResponse validation, AuthenticationConfiguration authConfig) {
+    if (authConfig != null
+        && authConfig.getProvider() == AuthProvider.LDAP
+        && authConfig.getLdapConfiguration() != null) {
+      validation.setAdditionalProperty(
+          LDAP_VALIDATION_KEY,
+          LdapDirectoryValidation.validate(authConfig.getLdapConfiguration())
+              .withDescription(ValidationStepDescription.LDAP.key));
+    }
+  }
+
   @VisibleForTesting
   StepValidation getEmbeddingsValidation(OpenMetadataApplicationConfig applicationConfig) {
     StepValidation embeddingsValidation = new StepValidation();
@@ -899,8 +1375,7 @@ public class SystemRepository {
         return embeddingResult;
       }
 
-      return validateHybridSearchPipeline(
-          searchRepository, embeddingResult, description, configMessage);
+      return embeddingsWorking(embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -928,8 +1403,7 @@ public class SystemRepository {
         if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
           return embeddingResult;
         }
-        return validateHybridSearchPipeline(
-            searchRepository, embeddingResult, description, configMessage);
+        return embeddingsWorking(embeddingResult, description, configMessage);
       } catch (Exception e) {
         LOG.error("Error during embedding generation validation after retry", e);
         return embeddingsValidation
@@ -956,35 +1430,18 @@ public class SystemRepository {
         .withDescription(description)
         .withMessage(
             "Vector search service could not be initialized. "
-                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + "The embedding client is configured but the vector service failed to start."
                 + errorSuffix
                 + " "
                 + configMessage)
         .withPassed(false);
   }
 
-  private StepValidation validateHybridSearchPipeline(
-      SearchRepository searchRepository,
-      StepValidation embeddingsValidation,
-      String description,
-      String configMessage) {
-    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
-    if (pipelineError.isPresent()) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Embeddings are working but the hybrid search pipeline check failed: "
-                  + pipelineError.get()
-                  + " "
-                  + configMessage)
-          .withPassed(false);
-    }
-
+  private static StepValidation embeddingsWorking(
+      StepValidation embeddingsValidation, String description, String configMessage) {
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(
-            String.format(
-                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
+        .withMessage("Embeddings are working correctly. " + configMessage)
         .withPassed(true);
   }
 
@@ -1303,7 +1760,8 @@ public class SystemRepository {
     try {
       Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
       for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
-        if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
+        if ((!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey()))
+            || searchRepository.isIndexDisabled(entry.getKey())) {
           continue;
         }
         if (!searchRepository.indexExists(entry.getValue())) {
@@ -1314,6 +1772,45 @@ public class SystemRepository {
       LOG.warn("Failed to check for missing indexes: {}", e.getMessage());
     }
     return missing;
+  }
+
+  private StepValidation getSystemBotsValidation(
+      OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    return EssentialSeedsStatus.toStep(
+        ValidationStepDescription.SYSTEM_BOTS.key,
+        "system bots",
+        () -> currentBotProblems(applicationConfig, jwtFilter));
+  }
+
+  // For each seeded bot: it exists (seed report), and if it does, it can be used (token check).
+  private List<String> currentBotProblems(
+      OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    EssentialSeeds essentialSeeds = EssentialSeeds.getInstance();
+    EssentialSeedReport report = essentialSeeds.report(SYSTEM_BOT_TYPES);
+    List<String> present = presentBots(essentialSeeds.expectedNames(Entity.BOT), report);
+    return systemBotProblems(
+        report, botTokenCheck.unusableBots(present, applicationConfig, jwtFilter));
+  }
+
+  // Bots and their bot users share a name, stored lowercase for users; either one missing means
+  // no connection can be built, and the seed report already lists it.
+  static List<String> presentBots(List<String> seededBots, EssentialSeedReport report) {
+    Set<String> missing =
+        report.missing().stream()
+            .map(artifact -> artifact.name().toLowerCase(Locale.ROOT))
+            .collect(Collectors.toUnmodifiableSet());
+    return seededBots.stream()
+        .filter(botName -> !missing.contains(botName.toLowerCase(Locale.ROOT)))
+        .toList();
+  }
+
+  static List<String> systemBotProblems(
+      EssentialSeedReport report, List<UnusableBot> unusableBots) {
+    return Stream.concat(
+            EssentialSeedsStatus.describe(report).stream(),
+            unusableBots.stream()
+                .map(bot -> String.format(UNUSABLE_TOKEN_LINE, bot.name(), bot.problem().reason)))
+        .toList();
   }
 
   private StepValidation getReindexStatusValidation() {
@@ -1378,6 +1875,8 @@ public class SystemRepository {
     if (!searchRepository.isVectorEmbeddingEnabled()) {
       existingIndexes.remove(VECTOR_EMBEDDING_INDEX_KEY);
     }
+    // A turned-off index is absent, so comparing its stored mapping hash would report false drift.
+    existingIndexes.removeIf(searchRepository::isIndexDisabled);
     return existingIndexes;
   }
 
@@ -1439,23 +1938,25 @@ public class SystemRepository {
 
   private StepValidation getJWKsValidation(
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(applicationConfig).build();
-    OpenMetadataJWTClientConfig realJWTConfig =
-        secretsManager.decryptJWTConfig(openMetadataServerConnection.getSecurityConfig());
+    StepValidation result;
     try {
-      jwtFilter.validateJwtAndGetClaims(realJWTConfig.getJwtToken());
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage("Ingestion Bot token has been validated");
+      jwtFilter.verifySignatureOnly(
+          BotTokenCheck.decryptedToken(applicationConfig, Entity.INGESTION_BOT_NAME));
+      result =
+          new StepValidation()
+              .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Ingestion Bot token has been validated");
     } catch (Exception e) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage(e.getMessage());
+      // A JWKS key lookup throws the checked JwkException through verifySignatureOnly, which does
+      // not declare it.
+      result =
+          new StepValidation()
+              .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+              .withPassed(Boolean.FALSE)
+              .withMessage(e.getMessage());
     }
+    return result;
   }
 
   private StepValidation getMigrationValidation(
@@ -1485,79 +1986,107 @@ public class SystemRepository {
                 missingVersions, unexpectedVersions));
   }
 
+  /**
+   * Drops the operations of a security configuration patch that the provider the patch leaves in
+   * place does not use: a block of another provider, or a client type for SAML. That provider is
+   * the one the patch switches to, if it switches. A patch none of whose changes apply is refused,
+   * since saving it would report success for nothing (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused).
+   */
   public JsonPatch filterInvalidPatchOperations(
       JsonPatch patch, SecurityConfiguration currentConfig) {
-    try {
-      String provider =
-          currentConfig.getAuthenticationConfiguration() != null
-                  && currentConfig.getAuthenticationConfiguration().getProvider() != null
-              ? currentConfig.getAuthenticationConfiguration().getProvider().value()
-              : null;
-
-      LOG.info("Current provider for patch filtering: {}", provider);
-
-      jakarta.json.JsonArrayBuilder filteredPatchBuilder = jakarta.json.Json.createArrayBuilder();
-      jakarta.json.JsonArray patchArray = patch.toJsonArray();
-      LOG.info("Original patch has {} operations", patchArray.size());
-
-      int filteredCount = 0;
-
-      for (int i = 0; i < patchArray.size(); i++) {
-        jakarta.json.JsonObject operation = patchArray.getJsonObject(i);
-
-        String path = operation.getString("path", "");
-        String op = operation.getString("op", "");
-
-        boolean shouldFilter = false;
-
-        if ("saml".equalsIgnoreCase(provider)) {
-          // clientType is not applicable for SAML
-          if (path.contains("clientType")) {
-            LOG.info(
-                "Filtering out clientType patch operation for SAML provider: op={}, path={}",
-                op,
-                path);
-            shouldFilter = true;
-          } else if (path.contains("oidcConfiguration")) {
-            LOG.info(
-                "Filtering out OIDC configuration patch operation for SAML provider: op={}, path={}",
-                op,
-                path);
-            shouldFilter = true;
-          }
-        } else if (!"saml".equalsIgnoreCase(provider) && path.contains("samlConfiguration")) {
-          LOG.info(
-              "Filtering out SAML configuration patch operation for non-SAML provider: op={}, path={}",
-              op,
-              path);
-          shouldFilter = true;
-        } else if (!isOidcProvider(provider) && path.contains("oidcConfiguration")) {
-          LOG.info(
-              "Filtering out OIDC configuration patch operation for non-OIDC provider: op={}, path={}",
-              op,
-              path);
-          shouldFilter = true;
-        }
-
-        if (!shouldFilter) {
-          filteredPatchBuilder.add(operation);
-          filteredCount++;
-        }
+    JsonArray operations = patch.toJsonArray();
+    String provider = providerAfter(operations, currentConfig);
+    JsonArrayBuilder kept = Json.createArrayBuilder();
+    List<JsonObject> dropped = new ArrayList<>();
+    for (JsonValue value : operations) {
+      if (value instanceof JsonObject operation
+          && !appliesToProvider(provider, operation.getString(PATCH_PATH, ""))) {
+        dropped.add(operation);
+      } else {
+        kept.add(value);
       }
-
-      LOG.info(
-          "Patch filtering complete: {} operations -> {} operations",
-          patchArray.size(),
-          filteredCount);
-
-      jakarta.json.JsonArray filteredArray = filteredPatchBuilder.build();
-      return jakarta.json.Json.createPatch(filteredArray);
-
-    } catch (Exception e) {
-      LOG.error("Error filtering patch operations, returning original patch", e);
-      // Return original patch if filtering fails
-      return patch;
     }
+    LOG.debug(
+        "Security config patch for provider {}: {} operations, {} dropped",
+        provider,
+        operations.size(),
+        dropped.size());
+    requireSomethingApplies(provider, operations.size(), dropped);
+    return Json.createPatch(kept.build());
+  }
+
+  /** The provider the patched configuration will have. */
+  private static String providerAfter(JsonArray operations, SecurityConfiguration currentConfig) {
+    AuthenticationConfiguration current = currentConfig.getAuthenticationConfiguration();
+    String provider =
+        current == null || current.getProvider() == null ? null : current.getProvider().value();
+    for (JsonValue value : operations) {
+      if (value instanceof JsonObject operation && setsTheProvider(operation)) {
+        provider = operation.getString(PATCH_VALUE);
+      }
+    }
+    return provider;
+  }
+
+  private static boolean setsTheProvider(JsonObject operation) {
+    return PROVIDER_PATCH_PATH.equals(operation.getString(PATCH_PATH, ""))
+        && PROVIDER_SETTING_OPERATIONS.contains(operation.getString(PATCH_OPERATION, ""))
+        && operation.get(PATCH_VALUE) instanceof JsonString;
+  }
+
+  private boolean appliesToProvider(String provider, String path) {
+    boolean isSaml = SAML_PROVIDER.equalsIgnoreCase(provider);
+    boolean appliesToSaml =
+        !path.contains(CLIENT_TYPE_FIELD) && !path.contains(OIDC_CONFIGURATION_FIELD);
+    boolean isForAnotherProvider =
+        path.contains(SAML_CONFIGURATION_FIELD)
+            || (!isOidcProvider(provider) && path.contains(OIDC_CONFIGURATION_FIELD));
+    return isSaml ? appliesToSaml : !isForAnotherProvider;
+  }
+
+  /**
+   * Removing another provider's block changes nothing, which is how the SSO page tidies a saved
+   * configuration; asking for a value the provider ignores is refused when nothing else applies.
+   */
+  private static void requireSomethingApplies(
+      String provider, int operationCount, List<JsonObject> dropped) {
+    boolean asksForIgnoredValues =
+        dropped.stream()
+            .anyMatch(
+                operation -> !REMOVE_OPERATION.equals(operation.getString(PATCH_OPERATION, "")));
+    if (dropped.size() == operationCount && asksForIgnoredValues) {
+      // A web-application error, which the security config endpoints answer with its own status.
+      throw new jakarta.ws.rs.BadRequestException(
+          String.format(
+              "The %s provider does not use %s, so the patch changes nothing",
+              provider,
+              dropped.stream()
+                  .map(operation -> operation.getString(PATCH_PATH, ""))
+                  .collect(Collectors.joining(", "))));
+    }
+  }
+
+  /**
+   * The checks of {@link #validateSecurityConfiguration} that need no network: settings the active
+   * provider can never apply. A PUT, which skips the full validation, still makes these.
+   */
+  public FieldError applicabilityError(SecurityConfiguration config) {
+    AuthenticationConfiguration authConfig = config.getAuthenticationConfiguration();
+    AuthProvider provider = authConfig == null ? null : authConfig.getProvider();
+    FieldError error = null;
+    if (provider == AuthProvider.SAML && authConfig.getSamlConfiguration() != null) {
+      error = SamlValidator.validateSecurityConfiguration(authConfig.getSamlConfiguration());
+    } else if (provider != null && authConfig.getClientType() == ClientType.CONFIDENTIAL) {
+      error =
+          AuthenticationCodeFlowHandler.unusableClientAuthentication(
+                  authConfig.getOidcConfiguration())
+              .map(
+                  reason ->
+                      ValidationErrorBuilder.createFieldError(
+                          FieldPaths.OIDC_CLIENT_AUTHENTICATION_METHOD, reason))
+              .orElse(null);
+    }
+    return error;
   }
 
   private boolean isOidcProvider(String provider) {
@@ -1656,6 +2185,41 @@ public class SystemRepository {
     }
   }
 
+  /**
+   * Validates an update to the stored security configuration. An update that changes nothing but
+   * {@link #UNCHECKED_LOGIN_SWITCHES} (the SSO page's self-signup switch, say) is not validated: no
+   * check reads what it changed, and a configuration stored before field validation existed can
+   * fail checks such an update never touches (#28379). Any other update is validated in full and
+   * rejected on any error, an older one included, because validators stop at the first failure and
+   * an older error can hide one the update introduces.
+   */
+  public SecurityValidationResponse validateSecurityConfigurationChange(
+      SecurityConfiguration storedConfig,
+      SecurityConfiguration updatedConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername) {
+    return changesOnlyUncheckedLoginSwitches(storedConfig, updatedConfig)
+        ? new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS)
+        : validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
+  }
+
+  private static boolean changesOnlyUncheckedLoginSwitches(
+      SecurityConfiguration storedConfig, SecurityConfiguration updatedConfig) {
+    return Objects.equals(
+            storedConfig.getAuthorizerConfiguration(), updatedConfig.getAuthorizerConfiguration())
+        && Objects.equals(
+            checkedAuthenticationSettings(storedConfig),
+            checkedAuthenticationSettings(updatedConfig));
+  }
+
+  private static JsonNode checkedAuthenticationSettings(SecurityConfiguration config) {
+    JsonNode settings = JsonUtils.valueToTree(config.getAuthenticationConfiguration());
+    if (settings instanceof ObjectNode fields) {
+      fields.remove(UNCHECKED_LOGIN_SWITCHES);
+    }
+    return settings;
+  }
+
   private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
@@ -1664,7 +2228,9 @@ public class SystemRepository {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }
@@ -1835,9 +2401,10 @@ public class SystemRepository {
         return providerValidation;
       }
 
-      // Use existing validation method to test actual connectivity only for confidential clients
-      // or when oidcConfiguration is present (some custom OIDC setups)
-      if ("confidential".equals(clientType) || authConfig.getOidcConfiguration() != null) {
+      // Only a confidential client runs the code flow on the server. A public client signs in from
+      // the browser and never builds an OIDC client from its oidcConfiguration, which is often the
+      // yaml's placeholder with no client id or secret.
+      if ("confidential".equals(clientType)) {
         try {
           AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
         } catch (Exception e) {
@@ -1847,8 +2414,7 @@ public class SystemRepository {
               "OIDC flow validation failed: " + e.getMessage());
         }
       } else {
-        LOG.debug(
-            "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
+        LOG.debug("Skipping AuthenticationCodeFlowHandler validation for public client");
       }
 
       return null; // No errors - validation passed
@@ -1902,6 +2468,13 @@ public class SystemRepository {
 
     if (!isOidcProvider || !isConfidentialClient) {
       LOG.debug("Skipping publicKeyUrls resolution - not OIDC confidential client");
+      return;
+    }
+
+    // In ENV mode the deployment sets the keys; replacing them would make every save a 409.
+    if (SettingsWriteGuard.isDeploymentOwned(
+        SettingsType.AUTHENTICATION_CONFIGURATION, PUBLIC_KEY_URLS_PATH)) {
+      LOG.debug("Keeping publicKeyUrls: the deployment configuration owns them");
       return;
     }
 

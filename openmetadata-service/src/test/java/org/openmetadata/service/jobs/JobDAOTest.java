@@ -25,12 +25,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.sql.ResultSet;
 import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 
 class JobDAOTest {
   private static final String ONTOLOGY_BULK_FILTER = "'ONTOLOGY_BULK'";
@@ -48,8 +49,39 @@ class JobDAOTest {
     for (ConnectionAwareSqlQuery query : queries) {
       assertTrue(query.value().contains(":includeMemoryJobs = true OR jobType NOT IN"));
       assertTrue(query.value().contains("'CONTEXT_MEMORY_EXTRACTION'"));
-      assertTrue(query.value().contains("'ONTOLOGY_MEMORY_DERIVATION'"));
+      assertTrue(query.value().contains("'MEMORY_GLOSSARY_DERIVATION'"));
     }
+  }
+
+  @Test
+  void ontologyBulkListQuerySupportsGlossaryFilterForBothConnectionTypes()
+      throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("listOntologyBulkJobsByUser", String.class, String.class, int.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains("jobType = 'ONTOLOGY_BULK'"));
+      assertTrue(query.value().contains(":glossaryId IS NULL"));
+      assertTrue(query.value().contains(":glossaryId"));
+      assertTrue(query.value().contains("ORDER BY createdAt DESC LIMIT :limit"));
+    }
+    // MySQL variant uses JSON_EXTRACT; Postgres variant uses ->>'glossaryId'
+    boolean hasMysqlVariant = false;
+    boolean hasPostgresVariant = false;
+    for (ConnectionAwareSqlQuery query : queries) {
+      if (query.value().contains("JSON_UNQUOTE(JSON_EXTRACT")) {
+        hasMysqlVariant = true;
+        assertTrue(query.value().contains("$.request.glossaryId"));
+      }
+      if (query.value().contains("->>'glossaryId'")) {
+        hasPostgresVariant = true;
+      }
+    }
+    assertTrue(hasMysqlVariant, "Missing MySQL JSON_EXTRACT variant");
+    assertTrue(hasPostgresVariant, "Missing PostgreSQL ->> variant");
   }
 
   @Test
@@ -72,32 +104,29 @@ class JobDAOTest {
             .getMethod("markStaleRunningJobsFailed", long.class, long.class)
             .getAnnotation(SqlUpdate.class);
 
-    assertTrue(
-        update
-            .value()
-            .contains("'" + BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name() + "'"));
+    assertTrue(update.value().contains("'" + BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION + "'"));
   }
 
   @Test
   void memoryDerivationJobsTargetTheirRegisteredHandler() {
     assertEquals(
-        OntologyMemoryDerivationJobHandler.HANDLER_NAME, JobDAO.ONTOLOGY_MEMORY_DERIVATION_HANDLER);
+        MemoryGlossaryDerivationJobHandler.HANDLER_NAME, JobDAO.MEMORY_GLOSSARY_DERIVATION_HANDLER);
   }
 
   @Test
   void memoryBatchAppendsToAnOpenPendingJob() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
-    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
-    when(jobDao.lockOpenOntologyMemoryBatch(
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.lockOpenMemoryGlossaryBatch(
             "contextFile:file-id",
-            JobDAO.ONTOLOGY_MEMORY_BATCH_LIMIT,
-            JobDAO.ONTOLOGY_MEMORY_BATCH_APPEND_MARGIN_MS))
+            JobDAO.MEMORY_GLOSSARY_BATCH_LIMIT,
+            JobDAO.MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS))
         .thenReturn(7L);
-    when(jobDao.appendToOntologyMemoryBatch(7L, "memory-id")).thenReturn(1);
+    when(jobDao.appendToMemoryGlossaryBatch(7L, "memory-id")).thenReturn(1);
 
     assertEquals(
         Optional.of(7L),
-        jobDao.enqueueOntologyMemoryDerivationBatch(
+        jobDao.enqueueMemoryGlossaryDerivationBatch(
             "memory-id", "contextFile:file-id", "{}", "admin", 100L));
     verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
   }
@@ -105,10 +134,10 @@ class JobDAOTest {
   @Test
   void memoryBatchStartsANewDelayedJobWhenNoneIsOpen() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
-    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
     when(jobDao.insertJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
-            JobDAO.ONTOLOGY_MEMORY_DERIVATION_HANDLER,
+            BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION,
+            JobDAO.MEMORY_GLOSSARY_DERIVATION_HANDLER,
             "{}",
             "admin",
             100L))
@@ -116,19 +145,19 @@ class JobDAOTest {
 
     assertEquals(
         Optional.of(8L),
-        jobDao.enqueueOntologyMemoryDerivationBatch(
+        jobDao.enqueueMemoryGlossaryDerivationBatch(
             "memory-id", "contextFile:file-id", "{}", "admin", 100L));
   }
 
   @Test
-  void memoryBatchSkipsAMemoryAlreadyInFlight() {
+  void memoryBatchSkipsAMemoryAlreadyPending() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
-    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
-    when(jobDao.countInFlightOntologyMemoryJobs("memory-id")).thenReturn(1);
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.countInFlightMemoryGlossaryJobs("memory-id", false)).thenReturn(1);
 
     assertTrue(
         jobDao
-            .enqueueOntologyMemoryDerivationBatch(
+            .enqueueMemoryGlossaryDerivationBatch(
                 "memory-id", "contextFile:file-id", "{}", "admin", 100L)
             .isEmpty());
     verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
@@ -146,7 +175,7 @@ class JobDAOTest {
 
     verify(jobDao, never())
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -163,7 +192,7 @@ class JobDAOTest {
 
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -181,7 +210,7 @@ class JobDAOTest {
 
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -211,7 +240,7 @@ class JobDAOTest {
     verify(jobDao, times(2)).countInFlightMemoryJobs("contextFile:file-id:content-id", true);
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{}",
             "admin",
@@ -228,10 +257,25 @@ class JobDAOTest {
     verify(jobDao).countInFlightMemoryJobs("contextFile:file-id:content-id", false);
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{}",
             "admin",
             null);
+  }
+
+  @Test
+  void workerReadsAJobTypeOpenMetadataDoesNotDefine() throws Exception {
+    ResultSet row = mock(ResultSet.class);
+    when(row.getLong("id")).thenReturn(7L);
+    when(row.getString("jobType")).thenReturn("DOWNSTREAM_REINDEX");
+    when(row.getString("methodName")).thenReturn("DownstreamReindexHandler");
+    when(row.getString("jobArgs")).thenReturn("{}");
+    when(row.getString("status")).thenReturn("PENDING");
+
+    BackgroundJob job = new JobDAO.BackgroundJobMapper().map(row, null);
+
+    assertEquals("DOWNSTREAM_REINDEX", job.getJobType());
+    assertEquals(BackgroundJob.Status.PENDING, job.getStatus());
   }
 }

@@ -41,6 +41,7 @@ def _source(upstreams: dict[str, Table]):
     source.config = SimpleNamespace(serviceName="svc")
     source.metadata = MagicMock()
     source._table_cache = LRUCache(maxsize=10)
+    source._upstream_service_names = ["svc"]
     source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **_: upstreams.get(
         str(fqn).split(".", 1)[1]
     )

@@ -82,8 +82,10 @@ const goToRelationSettings = async (page: Page) => {
   // React Query may serve data from cache without a network request, so
   // page.waitForResponse would hang forever on repeat navigations.
   await expect(
-    page.locator('[data-testid="relation-types-table"] tbody tr').first()
-  ).toBeVisible();
+    page
+      .locator('[data-testid="relation-types-table"] tbody tr')
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 const fillInput = async (page: Page, testId: string, value: string) => {

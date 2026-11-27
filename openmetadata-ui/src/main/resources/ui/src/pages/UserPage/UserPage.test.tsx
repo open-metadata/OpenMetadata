@@ -88,6 +88,9 @@ describe('Test the User Page', () => {
   it('Should call getUserByName  API on load', async () => {
     render(<UserPage />, { wrapper: MemoryRouter });
 
+    // `extension` is load-bearing, not cosmetic: the Custom Properties tab rebuilds the
+    // whole extension object from what it was handed, so fetching without it makes editing
+    // one property wipe every other stored value.
     expect(getUserByName).toHaveBeenCalledWith('xyz', {
       fields: [
         'profile',
@@ -98,6 +101,7 @@ describe('Test the User Page', () => {
         'lastLoginTime',
         'defaultPersona',
         'domains',
+        'extension',
       ],
       include: 'all',
     });
@@ -249,6 +253,7 @@ describe('UserPage - Activity Time Fields', () => {
         'lastLoginTime',
         'defaultPersona',
         'domains',
+        'extension',
       ],
       include: 'all',
     });

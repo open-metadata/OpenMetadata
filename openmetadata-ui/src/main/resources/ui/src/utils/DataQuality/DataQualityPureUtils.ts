@@ -10,6 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Accuracy,
+  ActivityAssetUpdated,
+  Completeness,
+  Dimension,
+  Integrity,
+  Sql,
+  SuccessfulTests,
+  Uniqueness,
+} from '@openmetadata/ui-core-components/icons';
 import { compare, type Operation } from 'fast-json-patch';
 import {
   cloneDeep,
@@ -17,21 +27,15 @@ import {
   isArray,
   isEmpty,
   isNil,
+  isString,
   isUndefined,
   lowerCase,
   omit,
   omitBy,
   parseInt,
+  pick,
 } from 'lodash';
 import QueryString from 'qs';
-import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
-import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
-import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
-import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
-import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
-import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
-import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
-import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import type { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import type { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
@@ -57,7 +61,10 @@ import {
 import { type DataQualityDashboardChartFilters } from '../../interface/observability/dataQuality.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
-import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import type {
+  ListTestCaseParamsBySearch,
+  TestCaseExportFilters,
+} from '../../rest/testAPI';
 import { formatDate } from '../date-time/DateTimeUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../DatePickerMenuUtils';
 import EntityLink from '../EntityLink';
@@ -289,6 +296,81 @@ export const getTestCaseFiltersValue = (
 
   return updatedParams;
 };
+
+/**
+ * The filters the test case list sends to `/search/list`. The Bulk Edit export
+ * is built from the same params so it loads the rows the list showed.
+ */
+export const getTestCaseListFilterParams = (
+  params: TestCaseSearchParams,
+  selectedFilter: string[],
+  searchValue?: string
+): ListTestCaseParamsBySearch => ({
+  ...getTestCaseFiltersValue(params, selectedFilter),
+  testCaseStatus: isEmpty(params?.testCaseStatus)
+    ? undefined
+    : params?.testCaseStatus,
+  q: searchValue || undefined,
+});
+
+const TEST_CASE_EXPORT_FILTER_KEYS: (keyof TestCaseExportFilters)[] = [
+  'testCaseStatus',
+  'testCaseType',
+  'entityLink',
+  'tags',
+  'tier',
+  'owner',
+  'q',
+  'testPlatforms',
+  'dataQualityDimension',
+  'serviceName',
+  'dataProductFqn',
+  'startTimestamp',
+  'endTimestamp',
+];
+
+const isEmptyFilterValue = (value: unknown) =>
+  isNil(value) || ((isString(value) || isArray(value)) && isEmpty(value));
+
+/**
+ * Keeps only the list params the test case export accepts. Paging, sorting and
+ * listing-only params such as `fields` or `include` must not reach the export.
+ */
+export const getTestCaseExportFilters = (
+  params?: ListTestCaseParamsBySearch
+): TestCaseExportFilters =>
+  omitBy(
+    pick(params ?? {}, TEST_CASE_EXPORT_FILTER_KEYS),
+    isEmptyFilterValue
+  ) as TestCaseExportFilters;
+
+/**
+ * Bulk Edit carries the export filters in its URL, next to
+ * `sourceEntityType`, so a reload keeps the rows the user opened it with.
+ */
+export const getTestCaseBulkEditSearch = (
+  sourceEntityType?: string,
+  filters?: TestCaseExportFilters
+) =>
+  QueryString.stringify(
+    { sourceEntityType, ...getTestCaseExportFilters(filters) },
+    // Only the comma joining array items stays raw, so a comma inside a
+    // value (e.g. the search text) is not split back into an array.
+    {
+      arrayFormat: 'comma',
+      encodeValuesOnly: true,
+      skipNulls: true,
+      addQueryPrefix: true,
+    }
+  );
+
+export const getTestCaseExportFiltersFromSearch = (search: string) =>
+  getTestCaseExportFilters(
+    QueryString.parse(search, {
+      ignoreQueryPrefix: true,
+      comma: true,
+    }) as ListTestCaseParamsBySearch
+  );
 
 export const transformToTestCaseStatusObject = (
   data: DataQualityReport['data']
@@ -639,23 +721,36 @@ export const buildDataQualityDashboardFilters = (data: {
 export const getDimensionIcon = (dimension: DataQualityDimensions) => {
   switch (dimension) {
     case DataQualityDimensions.Accuracy:
-      return AccuracyIcon;
+      return Accuracy;
     case DataQualityDimensions.Consistency:
-      return ConsistencyIcon;
+      return ActivityAssetUpdated;
     case DataQualityDimensions.Completeness:
-      return CompletenessIcon;
+      return Completeness;
     case DataQualityDimensions.Integrity:
-      return IntegrityIcon;
+      return Integrity;
     case DataQualityDimensions.SQL:
-      return SqlIcon;
+      return Sql;
     case DataQualityDimensions.Uniqueness:
-      return UniquenessIcon;
+      return Uniqueness;
     case DataQualityDimensions.Validity:
-      return ValidityIcon;
+      return SuccessfulTests;
     default:
-      return NoDimensionIcon;
+      return Dimension;
   }
 };
+
+const DIMENSION_ICON_CLASS: Partial<Record<DataQualityDimensions, string>> = {
+  [DataQualityDimensions.Accuracy]: 'tw:text-utility-blue-500',
+  [DataQualityDimensions.Completeness]: 'tw:text-utility-blue-700',
+  [DataQualityDimensions.Consistency]: 'tw:text-utility-warning-500',
+  [DataQualityDimensions.Integrity]: 'tw:text-utility-error-500',
+  [DataQualityDimensions.SQL]: 'tw:text-utility-brand-900',
+  [DataQualityDimensions.Uniqueness]: 'tw:text-utility-brand-900',
+  [DataQualityDimensions.Validity]: 'tw:text-utility-green-500',
+};
+
+export const getDimensionIconClassName = (dimension: DataQualityDimensions) =>
+  DIMENSION_ICON_CLASS[dimension] ?? 'tw:text-utility-blue-700';
 
 export const convertSearchSourceToTable = (
   searchSource: TableSearchSource

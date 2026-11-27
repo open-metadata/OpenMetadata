@@ -32,10 +32,12 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DefaultRecreateHandler Tests")
 class DefaultRecreateHandlerTest {
+  private static final String STAGED_CHUNKS = "data_asset_embeddings_chunks_g1700000000000";
 
   @Nested
   @DisplayName("promoteEntityIndex Tests")
@@ -150,6 +152,100 @@ class DefaultRecreateHandlerTest {
       }
 
       verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("A promoted staged index tells the staged chunk generation it went live")
+    void aPromotedStagedIndexTellsTheChunkGenerationItWentLive() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table", "table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new RecreateWithEmbeddings().promoteEntityIndex(stagedTable(), true);
+      }
+
+      verify(vectorService).markEntityTypeReindexed("table", true, STAGED_CHUNKS);
+    }
+
+    @Test
+    @DisplayName("A run that could not record a staged chunk delete keeps the live chunks")
+    void aRunThatCouldNotRecordAStagedChunkDeleteKeepsTheLiveChunks() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table", "table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(4L);
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+      EntityReindexContext context = stagedTable();
+      context.setStagedChunkDeleteUnrecorded(true);
+
+      boolean promoted;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        promoted = new RecreateWithEmbeddings().promoteEntityIndex(context, false);
+      }
+
+      assertTrue(promoted, "the entity index still promotes its partial data");
+      verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+    }
+
+    @Test
+    @DisplayName("A discarded empty staged index keeps the type's live chunks")
+    void aDiscardedEmptyStagedIndexKeepsTheTypesLiveChunks() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+
+      boolean finished;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        finished = new RecreateWithEmbeddings().promoteEntityIndex(stagedTable(), false);
+      }
+
+      assertTrue(finished, "discarding an empty staged index is a terminal outcome");
+      verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+    }
+
+    private static EntityReindexContext stagedTable() {
+      return EntityReindexContext.builder()
+          .entityType("table")
+          .canonicalIndex("table_search_index")
+          .stagedIndex("table_search_index_rebuild_new")
+          .stagedChunkIndex(STAGED_CHUNKS)
+          .build();
     }
 
     @Test
@@ -684,6 +780,50 @@ class DefaultRecreateHandlerTest {
         assertEquals(Set.of("table"), handler.recreatedEntities);
       }
     }
+
+    @Test
+    @DisplayName("Should recreate the column index along with the table index")
+    void recreatingTablesAlsoRecreatesTheColumnIndex() {
+      SearchRepository repo = repositoryWithTableAndColumnMappings(true);
+
+      TrackingRecreateHandler handler = new TrackingRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        handler.reCreateIndexes(Set.of("table"));
+      }
+
+      assertEquals(Set.of("table", "tableColumn"), handler.recreatedEntities);
+    }
+
+    @Test
+    @DisplayName("Should not recreate the column index while column indexing is off")
+    void columnIndexIsNotRecreatedWhileColumnIndexingIsOff() {
+      SearchRepository repo = repositoryWithTableAndColumnMappings(false);
+
+      TrackingRecreateHandler handler = new TrackingRecreateHandler();
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        handler.reCreateIndexes(Set.of("table", "tableColumn"));
+      }
+
+      assertEquals(Set.of("table"), handler.recreatedEntities);
+    }
+
+    private SearchRepository repositoryWithTableAndColumnMappings(boolean columnIndexingEnabled) {
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.isColumnIndexingEnabled()).thenReturn(columnIndexingEnabled);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder().indexName("table_search_index").alias("table").build());
+      // Mapped either way: the setting, not a missing mapping, decides whether it is recreated.
+      lenient()
+          .when(repo.getIndexMapping("tableColumn"))
+          .thenReturn(
+              IndexMapping.builder().indexName("column_search_index").alias("tableColumn").build());
+      return repo;
+    }
   }
 
   @Nested
@@ -1134,6 +1274,7 @@ class DefaultRecreateHandlerTest {
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
       when(repo.getClusterAlias()).thenReturn("");
+      when(repo.isColumnIndexingEnabled()).thenReturn(true);
       when(repo.getIndexMapping("tableColumn"))
           .thenReturn(
               IndexMapping.builder()
@@ -1174,6 +1315,47 @@ class DefaultRecreateHandlerTest {
                   + "got "
                   + stagedAliases);
       assertTrue(aliasState.deletedIndices.contains("column_search_index_rebuild_old"));
+    }
+
+    @Test
+    @DisplayName("Should drop a staged column index when column indexing was turned off mid-run")
+    void stagedColumnIndexIsDroppedWhenColumnIndexingWasTurnedOff() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("column_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.isColumnIndexingEnabled()).thenReturn(false);
+      when(repo.getIndexMapping("tableColumn"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("column_search_index")
+                  .alias("tableColumn")
+                  .parentAliases(List.of("all", "table", "dataAsset"))
+                  .childAliases(List.of())
+                  .build());
+
+      boolean finalized;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("tableColumn")
+                .canonicalIndex("column_search_index")
+                .stagedIndex("column_search_index_rebuild_new")
+                .existingAliases(new HashSet<>())
+                .parentAliases(new HashSet<>())
+                .build();
+
+        finalized = new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      assertTrue(finalized);
+      assertTrue(aliasState.deletedIndices.contains("column_search_index_rebuild_new"));
+      verify(client, never()).swapAliases(anySet(), anyString(), anySet(), anySet());
+      verify(repo).unregisterStagedIndex("tableColumn", "column_search_index_rebuild_new");
     }
   }
 

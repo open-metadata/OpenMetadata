@@ -31,6 +31,14 @@ import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
 
 /**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
+
+/**
  * Boot endpoints safe to serve from the per-worker cache.
  *
  * Three things have to hold for a path to be listed here. It must have no
@@ -75,6 +83,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings`, `system/settings/appConfiguration`,
+ *   `system/config/customUiThemePreference` — specs write them, and a write
+ *   invalidates only the writing worker's cache. Every other worker keeps
+ *   whatever it read for the rest of its life.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -84,11 +96,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/rdf',
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
-  // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
-  '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
-  '/api/v1/system/settings/appConfiguration',
 ];
 
 type CachedResponse = {
@@ -109,9 +116,9 @@ type CacheEntry = {
 };
 
 // One entry per (path + query). The key is the URL alone (see cacheKey), so the
-// space is the ~9 cacheable paths plus any query variants — bounded and small.
+// space is the cacheable paths plus any query variants — bounded and small.
 // The cap stays as a guard against an unforeseen query-string explosion; at its
-// ~9-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
 // is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
@@ -373,6 +380,33 @@ const serveStaticAsset = async (route: Route) => {
 };
 
 /**
+ * `BrowserContext.close()` disposes `context.request` — which runs every
+ * `route.fetch()` and owns its response — as its first step, before a single
+ * page is closed, so `page.isClosed()` is still false when the in-flight fetch
+ * ("Request context disposed") or body read ("Response has been disposed")
+ * fails. That check alone let a `beforeAll` that closes its own
+ * `browser.newPage()` fail the first test of the describe. A disposal only
+ * counts as teardown once the context's `close` event proves it; on a live
+ * context it is still an error.
+ */
+const CONTEXT_CLOSE_TIMEOUT_MS = 30_000;
+
+const isContextClosing = async (route: Route) => {
+  const page = route.request().frame().page();
+
+  return (
+    page.isClosed() ||
+    page
+      .context()
+      .waitForEvent('close', { timeout: CONTEXT_CLOSE_TIMEOUT_MS })
+      .then(
+        () => true,
+        () => false
+      )
+  );
+};
+
+/**
  * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
  * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
  * whichever test owns the route. Losing the target mid-flight is routine here
@@ -386,23 +420,25 @@ const serveStaticAsset = async (route: Route) => {
  * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
-const ignoreClosedTarget = async (route: Route, serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {
     if (/has been closed|Route is already handled/.test(String(error))) {
       return;
     }
-    // Closing a context disposes route.fetch's response store before its body
-    // reader resumes. A disposed response on a live page is still an error.
-    if (
-      /Response has been disposed/.test(String(error)) &&
-      route.request().frame().page().isClosed()
-    ) {
-      return;
-    }
 
-    throw error;
+    const disposedByClose =
+      /Response has been disposed|Request context disposed/.test(
+        String(error)
+      ) && (await isContextClosing(route));
+
+    if (!disposedByClose) {
+      throw error;
+    }
   }
 };
 
@@ -432,6 +468,10 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
     ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>

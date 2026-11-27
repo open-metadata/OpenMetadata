@@ -26,6 +26,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
 import { visitProfilerTab } from '../../../utils/incidentManager';
 import { reindexEntities } from '../../../utils/reindex';
+import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -47,6 +48,23 @@ test('Profiler settings survive a table reindex', async ({ browser }) => {
 
     await page.getByTestId('profiler-setting-btn').click();
     await page.getByTestId('profiler-settings-modal').waitFor();
+    await waitForAriaOverlayToSettle(page);
+
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const sampleType = settings
+      .getByTestId('profile-sample')
+      .getByRole('button');
+    await sampleType.click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: 'Row Count', exact: true })
+      .click();
+    await expect(settings.getByTestId('metric-number-input')).toBeVisible();
+    await sampleType.click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: 'Percentage', exact: true })
+      .click();
 
     await page.getByTestId('slider-input').clear();
     await page.getByTestId('slider-input').fill(PROFILE_SAMPLE);
@@ -74,13 +92,10 @@ test('Profiler settings survive a table reindex', async ({ browser }) => {
     await page.getByTestId('profiler-setting-btn').click();
     await page.getByTestId('profiler-settings-modal').waitFor();
 
-    // aria-valuenow, not the input's value: the slider renders its display value with a percent
-    // suffix ("60%") once it loses focus, so asserting on value compares against formatting
-    // rather than against the setting that had to survive the rebuild.
     await expect(
       page.getByTestId('slider-input'),
       'profile sample must survive the rebuild'
-    ).toHaveAttribute('aria-valuenow', PROFILE_SAMPLE);
+    ).toHaveValue(`${PROFILE_SAMPLE}%`);
     await expect(
       page.getByTestId('sample-data-count-input'),
       'sampleDataCount must survive the rebuild'

@@ -10,16 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  createErrorHandler,
+  toErrorList,
+  unwrapErrorHandler,
+} from '@rjsf/utils';
+import { customizeValidator } from '@rjsf/validator-ajv8';
+import { createElement } from 'react';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
   PipelineType as WorkflowType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import profilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 
 import {
   cleanWorkFlowData,
   getMetadataSchemaByServiceCategory,
   getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
 } from './IngestionWorkflowUtils';
 
 const MOCK_WORKFLOW_DATA = {
@@ -62,7 +71,87 @@ const MOCK_CLEANED_WORKFLOW_DATA = {
   type: 'DashboardMetadata',
 };
 
+const validator = customizeValidator();
+
 describe('Ingestion Workflow tests', () => {
+  describe('connector-specific profiler fields', () => {
+    beforeEach(() => {
+      jest
+        .spyOn(profilerConfigurationClassBase, 'getSparkAgentField')
+        .mockImplementation((serviceType) =>
+          serviceType === 'supported' ? () => createElement('div') : undefined
+        );
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each(['unsupported', undefined])(
+      'keeps Native profiling valid without a hidden engine requirement for %s',
+      (serviceType) => {
+        const schema = getSchemaByWorkflowType(
+          WorkflowType.Profiler,
+          ServiceCategory.DATABASE_SERVICES,
+          serviceType
+        );
+
+        expect(schema.properties).not.toHaveProperty('rootProcessingEngine');
+        expect(
+          validator.validateFormData(
+            { name: 'my_profiler', processingEngine: { type: 'Native' } },
+            schema
+          ).errors
+        ).toEqual([]);
+      }
+    );
+
+    it('accepts a saved supported Spark selection and rejects an incomplete one', () => {
+      const schema = getSchemaByWorkflowType(
+        WorkflowType.Profiler,
+        ServiceCategory.DATABASE_SERVICES,
+        'supported'
+      );
+
+      expect(schema.properties).toHaveProperty('rootProcessingEngine');
+      expect(
+        validator.validateFormData(
+          {
+            name: 'my_profiler',
+            rootProcessingEngine: { type: 'ingestionRunner', id: 'engine-1' },
+          },
+          schema
+        ).errors
+      ).toEqual([]);
+      expect(
+        validator.validateFormData(
+          {
+            name: 'my_profiler',
+            rootProcessingEngine: { type: 'ingestionRunner' },
+          },
+          schema
+        ).errors
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'required',
+            property: '.rootProcessingEngine.id',
+          }),
+        ])
+      );
+    });
+
+    it('does not add a processing-engine selector to other workflow types', () => {
+      expect(
+        getSchemaByWorkflowType(
+          WorkflowType.Metadata,
+          ServiceCategory.DATABASE_SERVICES,
+          'supported'
+        ).properties
+      ).not.toHaveProperty('rootProcessingEngine');
+    });
+  });
+
   it('should getMetadataSchemaByServiceCategory return the correct schema for each service category', () => {
     const databaseSchema = getMetadataSchemaByServiceCategory(
       ServiceCategory.DATABASE_SERVICES
@@ -138,5 +227,57 @@ describe('Ingestion Workflow tests', () => {
     const cleanedData = cleanWorkFlowData(MOCK_WORKFLOW_DATA);
 
     expect(cleanedData).toStrictEqual(MOCK_CLEANED_WORKFLOW_DATA);
+  });
+});
+
+describe('validateOwnerConfigMaps', () => {
+  const validate = (formData: Record<string, unknown>) =>
+    toErrorList(
+      unwrapErrorHandler(
+        validateOwnerConfigMaps(formData, createErrorHandler(formData))
+      )
+    );
+
+  it('flags a named ownerConfig map row left without an owner', () => {
+    const errors = validate({
+      ownerConfig: {
+        database: { sales_db: {} },
+        databaseSchema: { public: [] },
+        table: { orders: 'order-team' },
+      },
+    });
+
+    expect(errors.map(({ property }) => property)).toEqual([
+      '.ownerConfig.database',
+      '.ownerConfig.database.sales_db',
+      '.ownerConfig.databaseSchema',
+      '.ownerConfig.databaseSchema.public',
+    ]);
+    expect(
+      errors.every(
+        ({ message }) => message === 'message.field-text-is-required'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves untouched newKey rows to the submit cleanup', () => {
+    expect(
+      validate({ ownerConfig: { database: { newKey: {}, 'newKey-1': [] } } })
+    ).toEqual([]);
+  });
+
+  it('accepts filled rows and the single-owner string form', () => {
+    expect(
+      validate({
+        ownerConfig: {
+          database: 'database-admins',
+          table: { orders: ['alice', 'bob'] },
+        },
+      })
+    ).toEqual([]);
+  });
+
+  it('ignores forms without ownerConfig', () => {
+    expect(validate({ type: 'DashboardMetadata' })).toEqual([]);
   });
 });

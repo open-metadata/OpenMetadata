@@ -36,12 +36,43 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_CONSTRAINTS
 from metadata.utils.bigquery_utils import get_bigquery_client
-from metadata.utils.credentials import get_gcp_impersonate_credentials
+from metadata.utils.credentials import (
+    DEFAULT_GOOGLE_UNIVERSE_DOMAIN,
+    get_gcp_impersonate_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 CONSTRAINT_CACHE = {}
+
+# The connection schema defaults `hostPort` to this value, so it must be treated
+# as "unset" when resolving the API endpoint for a custom `universeDomain` -
+# otherwise a non-default universe would never fall back to
+# `bigquery.{universe_domain}` unless the user also overrode `hostPort` explicitly.
+DEFAULT_BIGQUERY_HOST_PORT = "bigquery.googleapis.com"
+
+
+def with_https_scheme(endpoint: str) -> str:
+    if endpoint.startswith(("http://", "https://")):
+        return endpoint
+    return f"https://{endpoint}"
+
+
+def get_api_endpoint(service_connection: BigQueryConnection) -> str | None:
+    """
+    Resolve the BigQuery API endpoint override for a custom GCP universe domain,
+    or ``None`` when the default `googleapis.com` universe applies.
+    """
+    endpoint = None
+    gcp_config = service_connection.credentials.gcpConfig
+    universe_domain = getattr(gcp_config, "universeDomain", None)
+    if universe_domain and universe_domain != DEFAULT_GOOGLE_UNIVERSE_DOMAIN:
+        host_port = service_connection.hostPort
+        if not host_port or host_port == DEFAULT_BIGQUERY_HOST_PORT:
+            host_port = f"bigquery.{universe_domain}"
+        endpoint = with_https_scheme(host_port)
+    return endpoint
 
 
 def clear_constraint_cache():
@@ -106,6 +137,30 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
     return kwargs
 
 
+def get_data_catalog_client_options(service_connection: BigQueryConnection) -> dict | None:
+    """
+    Build ``client_options`` for the Data Catalog (Policy Tag) client on a custom
+    GCP universe domain, or ``None`` when the default `googleapis.com` universe
+    applies.
+
+    ``PolicyTagManagerClient`` targets ``datacatalog.googleapis.com`` and the
+    default universe unless told otherwise. On a sovereign/partner cloud the
+    service-account credentials carry a non-default ``universe_domain``, and
+    recent ``google-api-core`` clients raise a ``ValueError`` on a
+    credentials/client universe mismatch - so this must be set whenever
+    ``get_api_endpoint`` resolves a custom universe, mirroring the BigQuery
+    client configuration.
+    """
+    client_options = None
+    universe_domain = getattr(service_connection.credentials.gcpConfig, "universeDomain", None)
+    if universe_domain and universe_domain != DEFAULT_GOOGLE_UNIVERSE_DOMAIN:
+        client_options = {
+            "api_endpoint": f"datacatalog.{universe_domain}",
+            "universe_domain": universe_domain,
+        }
+    return client_options
+
+
 def get_policy_tag_client(service_connection: BigQueryConnection) -> PolicyTagManagerClient:
     """
     Build the Data Catalog client used to read policy tags and taxonomies.
@@ -117,14 +172,15 @@ def get_policy_tag_client(service_connection: BigQueryConnection) -> PolicyTagMa
     Without impersonation the credential-less client is returned unchanged so the
     ADC / JSON-key / external-account paths keep their existing behaviour.
     """
+    client_options = get_data_catalog_client_options(service_connection)
     kwargs = get_impersonate_client_kwargs(service_connection)
     if not kwargs:
-        return PolicyTagManagerClient()
+        return PolicyTagManagerClient(client_options=client_options)
     credentials = get_gcp_impersonate_credentials(
         impersonate_service_account=kwargs["impersonate_service_account"],
         lifetime=kwargs["lifetime"],
     )
-    return PolicyTagManagerClient(credentials=credentials)
+    return PolicyTagManagerClient(credentials=credentials, client_options=client_options)
 
 
 def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
@@ -134,6 +190,9 @@ def get_bigquery_client_for_project(database_name: str, service_connection: BigQ
     kwargs = get_impersonate_client_kwargs(new_service_connection)
     if new_service_connection.usageLocation:
         kwargs["location"] = new_service_connection.usageLocation
+    api_endpoint = get_api_endpoint(new_service_connection)
+    if api_endpoint:
+        kwargs["api_endpoint"] = api_endpoint
     return get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
 
 

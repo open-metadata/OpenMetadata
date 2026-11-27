@@ -2,10 +2,23 @@ package org.openmetadata.service.rdf.sql2sparql;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.vocabulary.DCTerms;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class SqlToSparqlTranslatorTest {
+
+  private static final String OM = "https://open-metadata.org/ontology/";
 
   private SqlToSparqlTranslator translator;
   private SqlMappingContext mappingContext;
@@ -27,6 +40,20 @@ public class SqlToSparqlTranslatorTest {
     assertTrue(sparql.contains("name"), "Should project name");
     assertTrue(sparql.contains("description"), "Should project description");
     assertTrue(sparql.contains("om:Table"), "Should reference Table class");
+  }
+
+  @Test
+  public void testProjectedColumnsComeFromTheQueriedTable() {
+    String sparql = translator.translate("SELECT name, description FROM tables");
+
+    assertEquals(List.of("customers|Customer dimension", "orders|Order facts"), execute(sparql));
+  }
+
+  @Test
+  public void testWhereFiltersTheQueriedTable() {
+    String sparql = translator.translate("SELECT name FROM tables WHERE name = 'orders'");
+
+    assertEquals(List.of("orders"), execute(sparql));
   }
 
   @Test
@@ -122,5 +149,37 @@ public class SqlToSparqlTranslatorTest {
 
     assertNotNull(sparql);
     assertTrue(sparql.contains("rdfs:label"));
+  }
+
+  // The column also has a name and a description, so a query that does not tie every projected
+  // column to the selected table returns a cross product of all of them.
+  private static Model catalog() {
+    final Model model = ModelFactory.createDefaultModel();
+    addEntity(model, "Table", "orders", "Order facts");
+    addEntity(model, "Table", "customers", "Customer dimension");
+    addEntity(model, "Column", "order_id", "Order identifier");
+    return model;
+  }
+
+  private static void addEntity(Model model, String type, String name, String description) {
+    model
+        .createResource(OM + type + "/" + name)
+        .addProperty(RDF.type, model.createResource(OM + type))
+        .addProperty(RDFS.label, name)
+        .addProperty(DCTerms.description, description);
+  }
+
+  private static List<String> execute(String sparql) {
+    final List<String> rows = new ArrayList<>();
+    try (QueryExecution execution = QueryExecutionFactory.create(sparql, catalog())) {
+      final ResultSet results = execution.execSelect();
+      results.forEachRemaining(
+          solution ->
+              rows.add(
+                  results.getResultVars().stream()
+                      .map(variable -> solution.getLiteral(variable).getString())
+                      .collect(Collectors.joining("|"))));
+    }
+    return rows.stream().sorted().toList();
   }
 }

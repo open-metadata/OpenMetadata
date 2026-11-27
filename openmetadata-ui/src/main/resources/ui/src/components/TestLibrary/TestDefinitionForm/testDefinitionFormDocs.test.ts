@@ -16,8 +16,8 @@ import path from 'path';
 import enUs from '../../../locale/languages/en-us.json';
 import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
 
-// Every Test Definition form field whose per-field doc backs the modal Form-Hint
-// popover. The popover sources its copy from TestDefinitionForm.md at runtime and
+// Every Test Definition form field whose per-field doc backs the drawer's Form
+// Hint column. The hint sources its copy from TestDefinitionForm.md at runtime and
 // falls back to these i18n keys, so each key MUST resolve in en-US.
 const EXPECTED_FIELDS = [
   'name',

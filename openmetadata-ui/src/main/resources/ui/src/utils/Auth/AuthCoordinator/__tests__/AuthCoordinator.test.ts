@@ -17,6 +17,7 @@ import { getOidcToken } from '../../../SwTokenStorageUtils';
 import { AuthCoordinator } from '../AuthCoordinator';
 import { LockTimeoutError } from '../CrossTabLock';
 import { ReauthRequiredError } from '../ReauthRequiredError';
+import { RefreshFailedError } from '../RefreshQueue';
 import type { RefreshFailedPayload } from '../types';
 
 jest.mock('../../../SwTokenStorageUtils', () => ({
@@ -154,14 +155,15 @@ describe('AuthCoordinator', () => {
   });
 
   it('emits refreshed on success', async () => {
-    const renewer = jest.fn(async () => ({ expiresAt: 42, idToken: 'fresh' }));
+    const expiresAt = Date.now() + 300_000;
+    const renewer = jest.fn(async () => ({ expiresAt, idToken: 'fresh' }));
     coordinator.registerRenewer(renewer);
     const events: unknown[] = [];
     coordinator.on('refreshed', (p) => events.push(p));
 
     await coordinator.ensureFreshToken();
 
-    expect(events).toEqual([{ expiresAt: 42, idToken: 'fresh' }]);
+    expect(events).toEqual([{ expiresAt, idToken: 'fresh' }]);
   });
 
   it('emits refresh-failed and rejects on renewer error', async () => {
@@ -1135,6 +1137,114 @@ describe('AuthCoordinator', () => {
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
     });
 
+    // Hardening symmetric to the follower's isRenewResult guard. A renewer
+    // that violates its contract by returning a missing/empty idToken or an
+    // already-expired expiresAt would otherwise be persisted under the
+    // lock and re-arm the proactive timer with the past expiry (delay
+    // clamps to 0 → a self-sustaining renew loop → circuit-breaker
+    // sign-out). With the leader-path validation the symptom collapses to
+    // a single refresh-failed (source 'renewer', matching the existing
+    // renewer-throws path), and no dead token reaches storage or sibling
+    // tabs. Defense-in-depth for the Auth0 v2 cache regression (PR #35717).
+    it('leader path rejects an expired renewer result instead of persisting a dead token', async () => {
+      const deadPayload = {
+        idToken: 'expired-from-renewer',
+        expiresAt: Date.now() - 100_000, // 100s in the past, beyond the 60s leeway
+      };
+      coordinator.registerRenewer(async () => deadPayload);
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      ) as { setOidcTokenStrict: jest.Mock };
+      setOidcTokenStrict.mockClear();
+      mockNotifyDone.mockClear();
+      const failures: RefreshFailedPayload[] = [];
+      const refreshed: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+      coordinator.on('refreshed', (p) => refreshed.push(p));
+
+      await expect(coordinator.ensureFreshToken()).rejects.toThrow(
+        /invalid or already-expired/i
+      );
+
+      // No dead token persisted, no `done` broadcast to followers, no
+      // `refreshed` event. The error surfaces exactly like a renewer that
+      // threw — one `refresh-failed` with source 'renewer'.
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(mockNotifyDone).not.toHaveBeenCalled();
+      expect(refreshed).toEqual([]);
+      expect(failures).toHaveLength(1);
+      expect(failures[0].source).toBe('renewer');
+      expect(failures[0].error).toBeInstanceOf(Error);
+    });
+
+    it('leader path accepts a renewer result whose expiresAt is within the pre-expiry leeway', async () => {
+      // isRenewResult allows expiresAt up to EXPIRY_THRESHOLD_MILLES in the
+      // past (clock skew / processing delay). The leader path must honour
+      // the same leeway as the follower path — otherwise a token minted at
+      // the boundary would be rejected on the leader and accepted on the
+      // follower, a cross-tab asymmetry.
+      const payload = {
+        idToken: 'just-minted',
+        expiresAt: Date.now() - 5_000, // 5s in the past, within 60s leeway
+      };
+      coordinator.registerRenewer(async () => payload);
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      ) as { setOidcTokenStrict: jest.Mock };
+      setOidcTokenStrict.mockClear();
+      mockNotifyDone.mockClear();
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('just-minted');
+      expect(setOidcTokenStrict).toHaveBeenCalledWith('just-minted');
+      expect(mockNotifyDone).toHaveBeenCalledWith(payload);
+    });
+
+    it('does not rearm an immediate proactive timer for a result accepted within the pre-expiry leeway', async () => {
+      // The leeway-accept test above proves the leader path persists a
+      // boundary result. Without the applyRefreshed guard, ProactiveTimer
+      // would clamp the negative delay to 0, fire immediately, re-enter
+      // ensureFreshToken, and — if the renewer kept returning that same
+      // cached token — renew, write, and broadcast in a tight loop that
+      // never reaches the 401 circuit breaker (Greptile P1 review on
+      // this PR). Advancing fake timers must NOT re-invoke the renewer.
+      jest.useFakeTimers();
+      try {
+        const payload = {
+          idToken: 'boundary-token',
+          expiresAt: Date.now() - 5_000, // 5s in the past, within 60s leeway
+        };
+        const renewer = jest.fn(async () => payload);
+        coordinator.registerRenewer(renewer);
+        const { setOidcTokenStrict } = jest.requireMock(
+          '../../../SwTokenStorageUtils'
+        ) as { setOidcTokenStrict: jest.Mock };
+        setOidcTokenStrict.mockClear();
+        mockNotifyDone.mockClear();
+
+        const token = await coordinator.ensureFreshToken();
+
+        expect(token).toBe('boundary-token');
+        expect(renewer).toHaveBeenCalledTimes(1);
+
+        // Advancing time past any plausible immediate-fire window must
+        // not drive a second renewal — the timer is unarmed for boundary
+        // results, so the next refresh comes only from a real 401.
+        await (
+          jest as unknown as {
+            advanceTimersByTimeAsync: (ms: number) => Promise<void>;
+          }
+        ).advanceTimersByTimeAsync(120_000);
+
+        expect(renewer).toHaveBeenCalledTimes(1);
+        expect(setOidcTokenStrict).toHaveBeenCalledTimes(1);
+        expect(mockNotifyDone).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     // Greptile P1 (r4035047159 + r4039793087): the fail-silent
     // `setOidcToken` used to let the leader broadcast `done` with a
     // payload no sibling tab could trust across a reload. The strict
@@ -1423,6 +1533,142 @@ describe('AuthCoordinator', () => {
 
       expect(unforced).toBe('server-rejected-but-time-fresh');
       expect(renewer).not.toHaveBeenCalled();
+    });
+  });
+
+  // A request that 401s while a sign-out runs still reaches the interceptor.
+  // If its silent refresh resolves after the sign-out started, the session
+  // must stay ended: no persisted token, no `refreshed`, queued requests fail.
+  describe('a refresh overtaken by a sign-out', () => {
+    const { setOidcTokenStrict } = jest.requireMock(
+      '../../../SwTokenStorageUtils'
+    ) as { setOidcTokenStrict: jest.Mock };
+
+    // Resolves once the renewer is running, with a handle to complete it.
+    const startRefreshBehind401 = async () => {
+      let resolveRenewer!: (value: {
+        expiresAt: number;
+        idToken: string;
+      }) => void;
+      let markStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        markStarted = resolve;
+      });
+      coordinator.registerRenewer(
+        () =>
+          new Promise((resolve) => {
+            resolveRenewer = resolve;
+            markStarted();
+          })
+      );
+      const { axios, triggerError } = createMockAxios();
+      coordinator.install(axios, () => true);
+      const pending = triggerError({
+        response: { status: 401, data: {} },
+        config: { url: '/api/v1/users/loggedInUser', headers: {} },
+      });
+      pending?.catch(() => undefined);
+      await started;
+
+      return {
+        axios,
+        pending,
+        resolve: () =>
+          resolveRenewer({
+            expiresAt: Date.now() + 300_000,
+            idToken: 'fresh-after-signout',
+          }),
+      };
+    };
+
+    const events: string[] = [];
+
+    beforeEach(() => {
+      setOidcTokenStrict.mockClear();
+      localStorage.clear();
+      events.length = 0;
+      coordinator.on('refreshed', () => events.push('refreshed'));
+      coordinator.on('refresh-failed', () => events.push('refresh-failed'));
+    });
+
+    afterAll(() => localStorage.clear());
+
+    it.each([
+      ['this tab signed out (pause)', () => coordinator.pause()],
+      [
+        'another tab signed out (stored marker)',
+        () => localStorage.setItem('om-signed-out-at', String(Date.now())),
+      ],
+    ])('drops the renewed token when %s', async (_, signOut) => {
+      const { axios, pending, resolve } = await startRefreshBehind401();
+
+      signOut();
+      resolve();
+
+      await expect(pending).rejects.toBeInstanceOf(RefreshFailedError);
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(axios.request).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('does not adopt a sibling tab token once signed out', async () => {
+      coordinator.registerRenewer(jest.fn());
+      mockRunExclusive.mockImplementationOnce(async () => {
+        coordinator.pause();
+
+        return {
+          role: 'follower',
+          message: {
+            type: 'done',
+            payload: { idToken: 'sibling', expiresAt: Date.now() + 300_000 },
+          },
+        };
+      });
+
+      await expect(
+        coordinator.ensureFreshToken({ force: true })
+      ).rejects.toThrow('Signed out during token refresh');
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('does not start a refresh for a 401 that lands mid-logout', async () => {
+      const renewer = jest.fn();
+      coordinator.registerRenewer(renewer);
+      const { axios, triggerError } = createMockAxios();
+      coordinator.install(axios, () => true);
+      coordinator.pause();
+
+      await expect(
+        triggerError({
+          response: { status: 401, data: {} },
+          config: { url: '/api/v1/tables', headers: {} },
+        })
+      ).rejects.toBeInstanceOf(RefreshFailedError);
+      expect(renewer).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+    });
+
+    it('refreshes normally for the next session', async () => {
+      const first = await startRefreshBehind401();
+      coordinator.pause();
+      // Logout finished; an overtaken refresh still must not land after it.
+      coordinator.resume();
+      first.resolve();
+      await first.pending?.catch(() => undefined);
+
+      expect(events).toEqual([]);
+
+      // Signed back in: a refresh that starts after the sign-out lands.
+      coordinator.registerRenewer(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'next-session',
+      }));
+
+      await expect(coordinator.ensureFreshToken({ force: true })).resolves.toBe(
+        'next-session'
+      );
+      expect(events).toEqual(['refreshed']);
     });
   });
 });

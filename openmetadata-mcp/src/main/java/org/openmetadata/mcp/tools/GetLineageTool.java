@@ -272,7 +272,7 @@ public class GetLineageTool implements McpTool {
   private static String requireExistingColumn(
       String entityType, String fqn, String column, CatalogSecurityContext securityContext) {
     ColumnLineageScope.requireColumnOf(fqn, column);
-    EntityInterface entity =
+    EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     return ColumnLineageScope.requireColumnExists(entity, column);
   }
@@ -318,9 +318,10 @@ public class GetLineageTool implements McpTool {
       Map<UUID, EntityReference> nodeIndex,
       EdgeOptions options,
       Predicate<EntityReference> pipelineVisible) {
-    // The repository dedups nodes but not edges: a node reachable via multiple paths has its
-    // upstream/downstream edges re-added on each recursion. Identical slim edges carry no extra
-    // information, so collapse them with a LinkedHashSet (record equality), preserving order.
+    // The repository adds an edge per relationship row, so a pipeline or stored procedure that
+    // carries several edges from one entity is joined to it once per edge. Identical slim edges
+    // carry no extra information, so collapse them with a LinkedHashSet (record equality),
+    // preserving order.
     Set<SlimEdge> deduped = new LinkedHashSet<>();
     if (!nullOrEmpty(edges)) {
       edges.forEach(edge -> deduped.add(buildSlimEdge(edge, nodeIndex, options, pipelineVisible)));

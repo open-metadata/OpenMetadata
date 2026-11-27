@@ -67,7 +67,10 @@ export function useCanvasMouseEvents({
         rect
       );
 
+      // The pane click also reaches ReactFlow's onPaneClick, which clears the
+      // selection the edge click just made; stop it once an edge is hit.
       if (buttonData && mouseEvent.currentTarget === mouseEvent.target) {
+        mouseEvent.stopPropagation();
         onEdgeClickRef.current?.(buttonData.edge, mouseEvent);
 
         return;
@@ -80,6 +83,7 @@ export function useCanvasMouseEvents({
       );
 
       if (edge && mouseEvent.currentTarget === mouseEvent.target) {
+        mouseEvent.stopPropagation();
         onEdgeClickRef.current?.(edge, mouseEvent);
       }
     },

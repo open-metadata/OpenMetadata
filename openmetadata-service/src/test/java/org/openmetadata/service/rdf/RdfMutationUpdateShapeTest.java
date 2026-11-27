@@ -95,7 +95,8 @@ class RdfMutationUpdateShapeTest {
     String secondUri = "https://open-metadata.org/entity/glossaryTerm/second";
     String predicateUri = "http://www.w3.org/2004/02/skos/core#related";
     String update =
-        RdfRepository.buildGlossaryTermRelationDeleteUpdate(firstUri, secondUri, predicateUri);
+        RdfRepository.buildGlossaryTermRelationDeleteUpdate(
+            firstUri, secondUri, Set.of(predicateUri));
     Dataset dataset = DatasetFactory.createTxnMem();
     Model graph = dataset.getNamedModel(KNOWLEDGE_GRAPH);
     Resource first = graph.createResource(firstUri);

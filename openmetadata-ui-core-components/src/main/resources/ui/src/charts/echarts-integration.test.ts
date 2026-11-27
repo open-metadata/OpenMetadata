@@ -19,10 +19,14 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
+// `getECData` reads the non-enumerable inner store ECharts attaches to each
+// rendered element — the same store `packEventData` writes `dataIndex` into.
+import { getECData } from 'echarts/lib/util/innerStore.js';
 import { SVGRenderer } from 'echarts/renderers';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -34,7 +38,7 @@ import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
 import { buildPieOption } from './options/pie';
 import { REPLACE_MERGE_KEYS } from './options/merge';
-import { LIGHT_CHART_THEME } from './theme';
+import { DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
 
 // These run the builders against a real (server-side) ECharts instance with
@@ -48,6 +52,7 @@ echarts.use([
   LegendComponent,
   DataZoomComponent,
   MarkLineComponent,
+  MarkPointComponent,
   AriaComponent,
   MapChart,
   PieChart,
@@ -106,6 +111,38 @@ const modelOf = (chart: echarts.ECharts) => chart.getOption() as Model;
 
 afterEach(() => {
   charts.splice(0).forEach((chart) => chart.dispose());
+});
+
+describe('the selection ring on a real chart', () => {
+  const ringed = (day?: string) =>
+    buildLineOption(
+      input({
+        series: [
+          {
+            key: 'a',
+            name: 'A',
+            pointStyle: (row) => ({ selected: row.day === day }),
+          },
+        ],
+      }),
+      LIGHT_CHART_THEME
+    );
+  const ringsIn = (chart: echarts.ECharts) =>
+    chart.renderToSVGString().match(/stroke-opacity="0\.3"/g)?.length ?? 0;
+
+  it('moves with the selection and goes when it is cleared', () => {
+    const chart = mount(ringed('d3'));
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed('d7'), MERGE);
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed(), MERGE);
+
+    expect(ringsIn(chart)).toBe(0);
+  });
 });
 
 describe('reference lines on a real chart', () => {
@@ -171,6 +208,161 @@ describe('re-rendering with changed series settings', () => {
     chart.setOption(buildLineOption(input(), LIGHT_CHART_THEME), MERGE);
 
     expect(modelOf(chart).legend[0].selected).toMatchObject({ B: false });
+  });
+});
+
+describe('hovering a real chart right after a re-render', () => {
+  // A caller-built option whose series carry no `id` gets new series models
+  // on every update, so a hovered bar resolves to a model ECharts just made.
+  const bars = (data: number[]): ChartOption => ({
+    xAxis: { type: 'category', data: ['a', 'b', 'c'] },
+    yAxis: {},
+    series: [{ type: 'bar', data }],
+  });
+
+  it('reads the new series without throwing', () => {
+    const chart = mount(bars([1, 2, 3]));
+    // Still drawn from the old option until the next frame repaints them.
+    const elements = chart.getZr().storage.getDisplayList(true);
+    chart.setOption(bars([4, 5, 6]), MERGE);
+
+    expect(() =>
+      elements.forEach((target) =>
+        chart.getZr().trigger('mousemove', { target, offsetX: 1, offsetY: 1 })
+      )
+    ).not.toThrow();
+  });
+});
+
+describe('per-point hover events on a dot-less line series', () => {
+  // ECharts only emits per-point mouseover/mouseout (with a dataIndex) when
+  // the series renders symbol elements. A dot-less line series (the wrapper's
+  // default) renders none, so the hover callbacks never fire. The fix draws
+  // invisible symbols when hasHover is set, restoring the events.
+  const lineInput = (extra: Partial<CartesianBuildInput<Row>> = {}) => ({
+    data: rows.slice(0, 5),
+    xKey: 'day',
+    ariaLabel: 'Hover',
+    series: [{ key: 'a', name: 'A' }],
+    ...extra,
+  });
+
+  it('renders symbol elements that carry a dataIndex when hasHover is set', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    expect(symbols).toHaveLength(5);
+    symbols.forEach((symbol, index) => {
+      const ecData = getECData(symbol) as { dataIndex?: number };
+
+      // Each symbol carries its per-point dataIndex — the property a
+      // mouseover event needs to resolve `data[event.dataIndex]`.
+      expect(ecData.dataIndex).toBe(index);
+    });
+  });
+
+  it('renders no symbol elements on a dot-less line without hasHover', () => {
+    const chart = mount(buildLineOption(lineInput(), LIGHT_CHART_THEME));
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    // No symbols → no per-point mouseover/mouseout events.
+    expect(symbols).toHaveLength(0);
+  });
+
+  it('emits a mouseover with the correct dataIndex when hasHover is set', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const events: Array<{ dataIndex?: number; seriesId?: string }> = [];
+    chart.on(
+      'mouseover',
+      (params: { dataIndex?: number; seriesId?: string }) => {
+        events.push({ dataIndex: params.dataIndex, seriesId: params.seriesId });
+      }
+    );
+
+    // Dispatch a mousemove at the first data point's pixel position — the
+    // same path a real DOM mousemove takes through zrender's hit-test.
+    const [px, py] = chart
+      .convertToPixel({ seriesIndex: 0 }, [0, rows[0].a])
+      .map(Number) as [number, number];
+    chart.getZr().handler.dispatch('mousemove', { zrX: px, zrY: py });
+
+    expect(events).toHaveLength(1);
+    expect(events[0].dataIndex).toBe(0);
+    expect(events[0].seriesId).toBe('a');
+  });
+
+  // The symbols must not show, and must not take the series colour away from
+  // the tooltip marker (a transparent itemStyle colour did both).
+  it('keeps hover symbols hidden and the series colour in the tooltip', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+    const series = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => {
+            getDataParams: (i: number) => { color: unknown };
+          };
+        };
+      }
+    )
+      .getModel()
+      .getSeriesByIndex(0);
+
+    symbols.forEach((symbol) =>
+      expect(
+        (symbol as unknown as { style: { opacity: number } }).style.opacity
+      ).toBe(0)
+    );
+    expect(series.getDataParams(0).color).toBe(
+      LIGHT_CHART_THEME.palette.series[0]
+    );
+  });
+
+  it('draws no hover symbols once the hover callbacks are removed', () => {
+    const chart = mount(
+      buildLineOption(lineInput({ hasHover: true }), LIGHT_CHART_THEME)
+    );
+    chart.setOption(buildLineOption(lineInput(), LIGHT_CHART_THEME), MERGE);
+    const symbols = chart
+      .getZr()
+      .storage.getDisplayList(true)
+      .filter((el) => el.type === 'path');
+
+    expect(symbols).toHaveLength(0);
+  });
+
+  it('emits no mouseover with a dataIndex on a dot-less line without hasHover', () => {
+    const chart = mount(buildLineOption(lineInput(), LIGHT_CHART_THEME));
+    const events: Array<{ dataIndex?: number }> = [];
+    chart.on('mouseover', (params: { dataIndex?: number }) => {
+      if (params.dataIndex !== undefined) {
+        events.push({ dataIndex: params.dataIndex });
+      }
+    });
+
+    // Dispatch at the same pixel position as the previous test — the line
+    // stroke is there, but without symbols no per-point event fires.
+    const [px, py] = chart
+      .convertToPixel({ seriesIndex: 0 }, [0, rows[0].a])
+      .map(Number) as [number, number];
+    chart.getZr().handler.dispatch('mousemove', { zrX: px, zrY: py });
+
+    expect(events).toHaveLength(0);
   });
 });
 
@@ -367,6 +559,53 @@ describe('pie on a real chart', () => {
   });
 });
 
+describe('neutral pie hover on a real chart', () => {
+  it.each([LIGHT_CHART_THEME, DARK_CHART_THEME])(
+    'keeps neutral slices grey while expanding in dark mode: $isDark',
+    (theme) => {
+      const chart = mount(
+        buildPieOption(
+          {
+            ariaLabel: 'Coverage',
+            innerRadius: 40,
+            outerRadius: 54,
+            legend: { show: false },
+            data: [{ name: 'Uncovered', value: 378, status: 'neutral' }],
+            option: { animation: false },
+          },
+          theme
+        )
+      );
+      const slice = chart
+        .getZr()
+        .storage.getDisplayList()
+        .find((element) => element.type === 'sector');
+
+      if (!slice) {
+        throw new Error('Expected a rendered pie slice');
+      }
+
+      const restingWidth = slice.getBoundingRect().width;
+      const fill = () =>
+        chart.renderToSVGString().match(/<path[^>]*fill="([^"]+)"/)?.[1];
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: 0 });
+      // SSR has no automatic frame to apply the hover state.
+      chart.getZr().animation.update();
+
+      expect(slice.getBoundingRect().width).toBeGreaterThan(restingWidth);
+      expect(fill()).toBe(theme.palette.status.neutral);
+
+      chart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex: 0 });
+      chart.getZr().animation.update();
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      expect(slice.getBoundingRect().width).toBe(restingWidth);
+    }
+  );
+});
+
 describe('category value axis on a real chart', () => {
   it('draws string values as categories', () => {
     const chart = mount(
@@ -525,5 +764,30 @@ describe('band series on a real chart', () => {
 
     expect(span.get(stacked, 0)).toBe(2);
     expect(span.get(stacked, 1)).toBe(4);
+  });
+});
+
+describe('axis labels on a real chart', () => {
+  const PALE_LINE = '#e9eaeb';
+  // The fill of the label that reads `text`.
+  const labelFill = (chart: echarts.ECharts, text: string) =>
+    chart
+      .renderToSVGString()
+      .match(new RegExp(`<text[^>]*fill="([^"]+)"[^>]*>${text}</text>`))?.[1];
+
+  it('keep their own colour when the caller themes the axis line', () => {
+    const chart = mount(
+      buildLineOption(
+        input({
+          xAxis: { axisLine: { lineStyle: { color: PALE_LINE } } },
+          yAxis: { axisLine: { show: true, lineStyle: { color: PALE_LINE } } },
+        }),
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(labelFill(chart, 'd0')).toBeDefined();
+    expect(labelFill(chart, 'd0')).not.toBe(PALE_LINE);
+    expect(labelFill(chart, '0')).not.toBe(PALE_LINE);
   });
 });

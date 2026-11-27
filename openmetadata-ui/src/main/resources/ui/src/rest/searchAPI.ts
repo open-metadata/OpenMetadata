@@ -13,14 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
-  KeysOfUnion,
   SearchIndexSearchSourceMapping,
+  SearchIndexValue,
   SearchRequest,
   SearchResponse,
+  SearchSourceFields,
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/StringUtils';
@@ -58,36 +60,21 @@ const getSearchIndexParam: (
  */
 export const formatSearchQueryResponse = <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
-  data: SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >
-): SearchResponse<
-  SI extends Array<SearchIndex> ? SI[number] : SI,
-  TIncludeFields
-> => {
-  let _data = {} as SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >;
+  data: SearchResponse<SearchIndexValue<SI>, TIncludeFields>
+): SearchResponse<SearchIndexValue<SI>, TIncludeFields> => {
+  let _data = {} as SearchResponse<SearchIndexValue<SI>, TIncludeFields>;
 
   _data = data;
 
   /* Elasticsearch responses use 'null' for missing values, we want undefined
        omitDeep is untyped, so this will return unknown, which is not necessarily bad
        since we need to do some more transformations to the response */
-  _data = omitDeep<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >(_data, isNil);
+  _data = omitDeep<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>(
+    _data,
+    isNil
+  );
 
   /* Elasticsearch objects use `entityType` to track their type, but the EntityReference interface uses `type`
       This copies `entityType` into `type` (if `entityType` exists) so responses implement EntityReference */
@@ -107,13 +94,9 @@ export const formatSearchQueryResponse = <
             return {
               ...hit,
               _source: {
-                ...(hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                  ? SI[number]
-                  : SI]),
+                ...(hit._source as SearchIndexSearchSourceMapping[SearchIndexValue<SI>]),
                 type: (
-                  hit._source as SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-                    ? SI[number]
-                    : SI]
+                  hit._source as SearchIndexSearchSourceMapping[SearchIndexValue<SI>]
                 ).entityType,
               },
             };
@@ -147,20 +130,11 @@ export const formatSearchQueryResponse = <
  */
 export const rawSearchQuery = <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
   req: SearchRequest<SI, TIncludeFields>
 ): Promise<
-  AxiosResponse<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >
+  AxiosResponse<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>
 > => {
   const {
     query,
@@ -186,31 +160,33 @@ export const rawSearchQuery = <
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
-  return APIClient.get<
-    SearchResponse<
-      SI extends Array<SearchIndex> ? SI[number] : SI,
-      TIncludeFields
-    >
-  >(apiUrl, {
-    params: {
-      index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
-      size: pageSize,
-      deleted: includeDeletedParam,
-      query_filter: JSON.stringify(queryFilter),
-      post_filter: JSON.stringify(postFilter),
-      sort_field: sortField,
-      sort_order: sortOrder,
-      track_total_hits: trackTotalHits,
-      explain,
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-      exclude_source_fields: req.excludeSourceFields,
-    },
-    paramsSerializer: {
-      indexes: null,
-    },
-  });
+  return APIClient.get<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>(
+    apiUrl,
+    {
+      signal: req.signal,
+      params: {
+        index: getSearchIndexParam(searchIndex),
+        from: (Math.max(1, pageNumber) - 1) * pageSize,
+        size: pageSize,
+        deleted: includeDeletedParam,
+        query_filter: JSON.stringify(queryFilter),
+        post_filter: JSON.stringify(postFilter),
+        sort_field: sortField,
+        sort_order: sortOrder,
+        track_total_hits: trackTotalHits,
+        explain,
+        fetch_source: fetchSource,
+        include_source_fields: req.fetchSource ? req.includeFields : undefined,
+        exclude_source_fields: req.excludeSourceFields,
+      },
+      paramsSerializer: {
+        indexes: null,
+      },
+      ...(req.skipDomainFilter && {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+      }),
+    }
+  );
 };
 
 /**
@@ -221,22 +197,107 @@ export const rawSearchQuery = <
  */
 export const searchQuery = async <
   SI extends SearchIndex | SearchIndex[],
-  TIncludeFields extends KeysOfUnion<
-    SearchIndexSearchSourceMapping[SI extends Array<SearchIndex>
-      ? SI[number]
-      : SI]
-  >
+  TIncludeFields extends SearchSourceFields<SI>
 >(
   req: SearchRequest<SI, TIncludeFields>
-): Promise<
-  SearchResponse<
-    SI extends Array<SearchIndex> ? SI[number] : SI,
-    TIncludeFields
-  >
-> => {
-  const res = await rawSearchQuery(req);
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
+  const res = await rawSearchQuery<SI, TIncludeFields>(req);
 
-  return formatSearchQueryResponse(res.data);
+  return formatSearchQueryResponse<SI, TIncludeFields>(res.data);
+};
+
+/**
+ * Search-response data type returned by {@link rawSearchQueryPost}. Pulled into a type
+ * alias so the call site uses at most two `>` after `APIClient.post<...>`; SWC's TSX-mode
+ * parser mis-reads a triple `>>>` after a method-call generic as comparison operators.
+ */
+type RawSearchPostData<
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+> = SearchResponse<SearchIndexValue<SI>, TIncludeFields>;
+
+/**
+ * Executes a POST-body request to /search/query. Same inputs and same response shape as
+ * {@link rawSearchQuery}, but carries the `queryFilter` / `postFilter` in the JSON body
+ * instead of the request line. Use this whenever the serialized filter could overflow the
+ * server's request-header limit — e.g. the metric Assets tab and Add-Assets modal, whose
+ * `ids` filter enumerates every linked asset id of a metric that can hold thousands of assets.
+ * A GET with that filter fails with HTTP 414 / 400 / 431 once the URL exceeds the 8 KiB
+ * request-line limit (about 140-170 UUIDs). The POST endpoint accepts the same SearchRequest
+ * payload in its body, which the server never sizes against the request line.
+ *
+ * @param req Request object
+ */
+export const rawSearchQueryPost = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  req: SearchRequest<SI, TIncludeFields>
+): Promise<AxiosResponse<RawSearchPostData<SI, TIncludeFields>>> => {
+  const {
+    query,
+    pageNumber = 1,
+    pageSize = 10,
+    queryFilter,
+    sortField,
+    sortOrder,
+    searchIndex,
+    trackTotalHits,
+    postFilter,
+    fetchSource,
+    explain,
+    excludeSourceFields,
+  } = req;
+
+  const includeDeletedParam =
+    'includeDeleted' in req ? req.includeDeleted : false;
+  const queryWithSlash = getQueryWithSlash(query || '');
+  const apiQuery = query && query !== '**' ? queryWithSlash : '';
+
+  // The SearchRequest pojo stores queryFilter / postFilter as Strings (the JSON-serialized
+  // filter), matching the GET path which round-trips the same strings through query params.
+  return APIClient.post<RawSearchPostData<SI, TIncludeFields>>(
+    '/search/query',
+    {
+      query: apiQuery,
+      index: getSearchIndexParam(searchIndex),
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
+      size: pageSize,
+      deleted: includeDeletedParam,
+      queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
+      postFilter: postFilter ? JSON.stringify(postFilter) : undefined,
+      sortFieldParam: sortField,
+      sortOrder,
+      trackTotalHits,
+      explain,
+      fetchSource,
+      includeSourceFields: req.fetchSource ? req.includeFields : undefined,
+      excludeSourceFields,
+    },
+    {
+      signal: req.signal,
+      ...(req.skipDomainFilter && {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+      }),
+    }
+  );
+};
+
+/**
+ * POST-body variant of {@link searchQuery}. Calls {@link rawSearchQueryPost} and applies
+ * {@link formatSearchQueryResponse} so both paths return the same shape.
+ *
+ * @param req Request object
+ */
+export const searchQueryPost = async <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  req: SearchRequest<SI, TIncludeFields>
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
+  const res = await rawSearchQueryPost<SI, TIncludeFields>(req);
+
+  return formatSearchQueryResponse<SI, TIncludeFields>(res.data);
 };
 
 export const searchPreview = async (payload: PreviewSearchRequest) => {
@@ -252,11 +313,12 @@ export const searchEntityTypeCounts = async (
   request: Pick<
     SearchRequest<SearchIndex[]>,
     'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
-  > & { includeTopHit?: boolean }
+  > & { includeTopHit?: boolean; signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/search/entityTypeCounts',
     {
+      signal: request.signal,
       params: {
         q: request.query,
         index: request.searchIndex?.join(','),
@@ -271,7 +333,12 @@ export const searchEntityTypeCounts = async (
   return formatSearchQueryResponse(response.data);
 };
 
-export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+export const nlqSearch = async <
+  SI extends SearchIndex,
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  payload: SearchRequest<SI, TIncludeFields>
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
   const {
     pageNumber = 1,
     pageSize = 10,
@@ -284,23 +351,22 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const includeDeletedParam =
     'includeDeleted' in payload ? payload.includeDeleted : false;
 
-  const response = await APIClient.get<SearchResponse<SearchIndex>>(
-    '/hybrid/nlq/search',
-    {
-      params: {
-        q: query,
-        index: searchIndex,
-        size: pageSize,
-        from: (pageNumber - 1) * pageSize,
-        deleted: includeDeletedParam,
-        sort_field: sortField,
-        sort_order: sortOrder,
-        query_filter: JSON.stringify(queryFilter),
-      },
-    }
-  );
+  const response = await APIClient.get<
+    SearchResponse<SearchIndexValue<SI>, TIncludeFields>
+  >('/hybrid/nlq/search', {
+    params: {
+      q: query,
+      index: searchIndex,
+      size: pageSize,
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
+      deleted: includeDeletedParam,
+      sort_field: sortField,
+      sort_order: sortOrder,
+      query_filter: JSON.stringify(queryFilter),
+    },
+  });
 
-  return formatSearchQueryResponse(response.data);
+  return formatSearchQueryResponse<SI, TIncludeFields>(response.data);
 };
 
 export const getNLPEnabledStatus = async () => {

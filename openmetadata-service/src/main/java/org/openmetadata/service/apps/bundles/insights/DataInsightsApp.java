@@ -5,7 +5,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
@@ -44,6 +43,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
@@ -53,6 +53,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWork
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.TestCaseSnapshotStore;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -70,11 +71,22 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
-  public record Backfill(String startDate, String endDate) {}
+  public record Backfill(String startDate, String endDate) {
+    public Backfill {
+      if (startDate == null || startDate.isBlank() || endDate == null || endDate.isBlank()) {
+        throw new IllegalArgumentException("Backfill requires both startDate and endDate");
+      }
+      if (TimestampUtils.getTimestampFromDateString(startDate)
+          > TimestampUtils.getTimestampFromDateString(endDate)) {
+        throw new IllegalArgumentException("Backfill startDate must not be after endDate");
+      }
+    }
+  }
 
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
   private AppAnalyticsConfig webAnalyticsConfig;
+  private BackfillConfiguration backfillConfiguration;
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
@@ -153,6 +165,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
       IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
       String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
       try {
+        if (Entity.TEST_CASE.equals(dataAssetType)) {
+          new TestCaseSnapshotStore(
+                  searchRepository.getSearchClient(), searchRepository.getClusterAlias())
+              .detachLiveAlias();
+        }
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -185,7 +202,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
       for (String dataAssetType : getDataAssetTypes()) {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
-        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+        if (Entity.TEST_CASE.equals(dataAssetType)) {
+          new TestCaseSnapshotStore(
+                  searchRepository.getSearchClient(), searchRepository.getClusterAlias())
+              .deleteSnapshots();
+        } else if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.deleteDataAssetDataStream(dataStreamName);
         }
       }
@@ -211,17 +232,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
     // Configure recreate
     recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
-    // Configure Backfill
-    Optional<BackfillConfiguration> backfillConfig =
-        Optional.ofNullable(config.getBackfillConfiguration());
-
+    backfillConfiguration = config.getBackfillConfiguration();
     backfill = Optional.empty();
-
-    if (backfillConfig.isPresent() && backfillConfig.get().getEnabled()) {
-      backfill =
-          Optional.of(
-              new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
-    }
 
     createOrUpdateDataAssetsDataStream();
 
@@ -257,8 +269,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
 
+      backfill =
+          runType.equals(ON_DEMAND_JOB)
+              ? Optional.ofNullable(backfillConfiguration)
+                  .filter(config -> Boolean.TRUE.equals(config.getEnabled()))
+                  .map(config -> new Backfill(config.getStartDate(), config.getEndDate()))
+              : Optional.empty();
       if (!runType.equals(ON_DEMAND_JOB)) {
-        backfill = Optional.empty();
         recreateDataAssetsIndex = Optional.empty();
       }
 
@@ -493,54 +510,30 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  public void updateStats(String entityType, StepStats currentEntityStats) {
-    // Job Level Stats
-    Stats jobDataStats = jobData.getStats();
-
-    // Update Entity Level Stats
-    EntityStats entityLevelStats = jobDataStats.getEntityStats();
-    if (entityLevelStats == null) {
-      entityLevelStats =
-          new EntityStats()
-              .withAdditionalProperty(
-                  entityType,
-                  new StepStats()
-                      .withTotalRecords(null)
-                      .withFailedRecords(null)
-                      .withSuccessRecords(null));
-    }
+  public void updateStats(final String entityType, final StepStats currentEntityStats) {
+    final Stats jobDataStats = jobData.getStats();
+    final EntityStats entityLevelStats = getOrCreateEntityStats(jobDataStats);
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
-    // Total Stats
-    StepStats stats = jobData.getStats().getJobStats();
-    if (stats == null) {
-      stats =
-          new StepStats()
-              .withTotalRecords(
-                  getInitialStatsForEntities(jobData.getEntities())
-                      .getJobStats()
-                      .getTotalRecords());
-    }
+    final StepStats stats = getOrCreateJobStats(jobDataStats);
+    final Map<String, StepStats> perEntity = entityLevelStats.getAdditionalProperties();
+    stats.setTotalRecords(WorkflowStats.sumTotalRecords(perEntity));
+    stats.setSuccessRecords(WorkflowStats.sumSuccessRecords(perEntity));
+    stats.setFailedRecords(WorkflowStats.sumFailedRecords(perEntity));
 
-    stats.setTotalRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getTotalRecords)
-            .sum());
-
-    stats.setSuccessRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
-            .sum());
-    stats.setFailedRecords(
-        entityLevelStats.getAdditionalProperties().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
-            .sum());
-
-    // Update for the Job
     jobDataStats.setJobStats(stats);
     jobDataStats.setEntityStats(entityLevelStats);
-
     jobData.setStats(jobDataStats);
+  }
+
+  private static EntityStats getOrCreateEntityStats(final Stats jobDataStats) {
+    return jobDataStats.getEntityStats() != null
+        ? jobDataStats.getEntityStats()
+        : new EntityStats();
+  }
+
+  private static StepStats getOrCreateJobStats(final Stats jobDataStats) {
+    return jobDataStats.getJobStats() != null ? jobDataStats.getJobStats() : new StepStats();
   }
 
   public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {

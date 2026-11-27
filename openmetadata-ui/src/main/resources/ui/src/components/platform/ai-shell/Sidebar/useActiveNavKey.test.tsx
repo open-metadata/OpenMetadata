@@ -20,6 +20,13 @@ import { AppModule } from '../AppModule.types';
 // the hook is exercised against a fixture registry.
 const MODULES = [
   {
+    id: 'home',
+    navOrder: 0,
+    labelKey: 'label.home',
+    prefix: '/',
+    routes: [],
+  },
+  {
     id: 'observability',
     navOrder: 1,
     labelKey: 'label.observability',
@@ -74,8 +81,12 @@ describe('useActiveNavKey', () => {
     expect(activeKeyAt('/some/unknown/route')).toBeUndefined();
   });
 
-  it('returns undefined on the home route, which belongs to no module', () => {
-    expect(activeKeyAt('/')).toBeUndefined();
+  it('returns the home key on the landing route', () => {
+    expect(activeKeyAt('/')).toBe('home');
+  });
+
+  it('does not treat the root prefix as owning every path', () => {
+    expect(activeKeyAt('/my-data')).toBeUndefined();
   });
 
   it('does not match a sibling path that merely shares the prefix string', () => {

@@ -9,8 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 public class NoopAuthServeletHandler implements AuthServeletHandler {
   private static final NoopAuthServeletHandler INSTANCE = new NoopAuthServeletHandler();
 
-  // Private constructor to prevent instantiation
-  private NoopAuthServeletHandler() {}
+  NoopAuthServeletHandler() {}
 
   // Public method to access the singleton instance
   public static NoopAuthServeletHandler getInstance() {

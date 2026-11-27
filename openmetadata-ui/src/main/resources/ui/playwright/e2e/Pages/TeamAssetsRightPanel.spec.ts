@@ -38,7 +38,7 @@ const ownerUser = new UserClass();
 
 test.describe('Team Details Assets Tab - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await teamEntity.create(apiContext);
@@ -143,8 +143,11 @@ test.describe('Team Details Assets Tab - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
-    ).toBeVisible();
+      rightPanel
+        .getSummaryPanel()
+        .getByTestId('entity-link')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Should display overview tab content in team assets context', async ({

@@ -18,20 +18,33 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ClassicDeprecatedLabel,
+  ClassicDeprecationHint,
+} from '../../../components/AppModeSwitcher/ClassicDeprecationNotice';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { DefaultAppMode } from '../../../generated/api/configuration/appConfiguration';
+import { SettingType } from '../../../generated/settings/settings';
+import { useSettingsSource } from '../../../hooks/platform/useSettingsSource';
 import {
   getAppConfiguration,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
+import {
+  findSettingSource,
+  isPathManaged,
+} from '../../../utils/platform/settingsSource.utils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 // Sentinel value for the "no tenant default" radio option — the wire value
 // for that choice is `null`, but native form controls can't carry `null` as
 // a value, so we translate at the option/handler boundary only.
 const NO_DEFAULT_VALUE = 'null';
+
+const APP_SETTING_TYPES = [SettingType.AppConfiguration];
 
 interface AppModeOption {
   value: string;
@@ -54,30 +67,33 @@ const DefaultAppModePage: React.FC = () => {
   const [currentValue, setCurrentValue] = useState<string>(NO_DEFAULT_VALUE);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const { sources, refetch: refetchSources } =
+    useSettingsSource(APP_SETTING_TYPES);
+  const isManagedByDeployment = useMemo(
+    () =>
+      isPathManaged(
+        findSettingSource(sources, SettingType.AppConfiguration),
+        '/defaultAppMode'
+      ),
+    [sources]
+  );
+
+  const loadConfig = useCallback(async () => {
+    try {
+      const config = await getAppConfiguration();
+      const initial = config?.defaultAppMode ?? NO_DEFAULT_VALUE;
+      setInitialValue(initial);
+      setCurrentValue(initial);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    getAppConfiguration()
-      .then((config) => {
-        if (!isMounted) {
-          return;
-        }
-        const initial = config?.defaultAppMode ?? NO_DEFAULT_VALUE;
-        setInitialValue(initial);
-        setCurrentValue(initial);
-      })
-      .catch((error: AxiosError) => showErrorToast(error))
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    void loadConfig();
+  }, [loadConfig]);
 
   const isDirty = currentValue !== initialValue;
 
@@ -109,30 +125,50 @@ const DefaultAppModePage: React.FC = () => {
       <Typography as="p" className="tw:text-secondary tw:mb-6">
         {t('message.default-app-mode-description')}
       </Typography>
+      <SettingsSourceBanner
+        className="tw:mb-6"
+        sources={sources}
+        onAdopted={loadConfig}
+        onRefetch={refetchSources}
+      />
       <RadioGroup
         aria-label={pageTitle}
         data-testid="app-mode-radio-group"
+        isDisabled={isManagedByDeployment}
         value={currentValue}
         onChange={setCurrentValue}>
         {OPTIONS.map((option) => (
           <RadioButton
             data-testid={`app-mode-option-${option.value}`}
+            hint={
+              option.value === DefaultAppMode.Classic ? (
+                <ClassicDeprecationHint />
+              ) : undefined
+            }
             key={option.value}
-            label={t(option.labelKey)}
+            label={
+              option.value === DefaultAppMode.Classic ? (
+                <ClassicDeprecatedLabel label={t(option.labelKey)} />
+              ) : (
+                t(option.labelKey)
+              )
+            }
             value={option.value}
           />
         ))}
       </RadioGroup>
-      <Box className="tw:mt-6">
-        <Button
-          color="primary"
-          data-testid="save-app-mode-settings"
-          isDisabled={!isDirty || isLoading || isSaving}
-          isLoading={isSaving}
-          onPress={handleSave}>
-          {t('label.save')}
-        </Button>
-      </Box>
+      {!isManagedByDeployment && (
+        <Box className="tw:mt-6">
+          <Button
+            color="primary"
+            data-testid="save-app-mode-settings"
+            isDisabled={!isDirty || isLoading || isSaving}
+            isLoading={isSaving}
+            onPress={handleSave}>
+            {t('label.save')}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -13,18 +13,22 @@
 
 package org.openmetadata.service.events;
 
-import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
+import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEvents.getChangeEventFromResponseContext;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -48,6 +52,7 @@ public class ChangeEventHandler implements EventHandler {
 
     // Send to Change Event Table
     String loggedInUserName = requestContext.getSecurityContext().getUserPrincipal().getName();
+    String impersonatingBot = SecurityUtil.getImpersonatingBot(requestContext.getSecurityContext());
     try {
       Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
@@ -58,8 +63,10 @@ public class ChangeEventHandler implements EventHandler {
             || changeEvent.getEntityType().equals(Entity.WORKFLOW)) {
           return null;
         }
-        // Always set the Change Event Username as context Principal, the one creating the CE
+        // The event names the request that made the change. The entity can name an earlier
+        // writer: an edit undone in its session keeps the version it returns to.
         changeEvent.setUserName(loggedInUserName);
+        changeEvent.setImpersonatedBy(impersonatingBot);
         LOG.debug(
             "Recording change event {}:{}:{}:{}",
             changeEvent.getTimestamp(),
@@ -67,9 +74,7 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent.getEventType(),
             changeEvent.getEntityType());
         if (changeEvent.getEntity() != null) {
-          Object entity = changeEvent.getEntity();
-          changeEvent = copyChangeEvent(changeEvent);
-          changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+          changeEvent = withMaskedEntity(changeEvent);
         }
 
         // Insert ChangeEvents if ENTITY Changed
@@ -85,6 +90,25 @@ public class ChangeEventHandler implements EventHandler {
           e);
     }
     return null;
+  }
+
+  /**
+   * The change event a REST write of {@code entity} records, for a write made outside a request:
+   * the event this filter builds from the response, with the entity masked. Like that event, it
+   * names {@code userName} and the bot of the request making the write, not the entity's writers.
+   */
+  public static ChangeEvent entityChangeEvent(
+      String userName, EventType eventType, EntityInterface<?> entity) {
+    ChangeEvent changeEvent =
+        createChangeEventForEntity(userName, eventType, entity)
+            .withImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+    return withMaskedEntity(changeEvent);
+  }
+
+  private static ChangeEvent withMaskedEntity(ChangeEvent changeEvent) {
+    ChangeEvent stored = copyChangeEvent(changeEvent);
+    stored.setEntity(JsonUtils.pojoToMaskedJson(changeEvent.getEntity()));
+    return stored;
   }
 
   public static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {

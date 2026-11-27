@@ -60,6 +60,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', { ...props, onClick }, children),
+    ButtonUtility: ({
+      icon: _icon,
+      tooltip,
+      onClick,
+      ...props
+    }: Record<string, unknown>) =>
+      React.createElement('button', {
+        ...props,
+        'aria-label': tooltip,
+        onClick,
+      }),
     Select: Object.assign(
       ({
         children,

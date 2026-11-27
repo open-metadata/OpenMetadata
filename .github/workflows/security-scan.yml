@@ -46,7 +46,18 @@ jobs:
 
       - name: Install UI dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn install --frozen-lockfile --ignore-scripts
+        run: |
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --ignore-scripts --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Run Retire.js scan
         id: retire-scan
@@ -182,13 +193,17 @@ jobs:
           swap-storage: true
       - uses: actions/checkout@v7
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v6
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
         with:
-          python-version: "3.10"
+          python-version: ${{ steps.versions.outputs.highest }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -293,7 +308,7 @@ jobs:
     steps:
       - name: Download Snyk artifact
         if: needs.security-scan.result != 'skipped'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: security-report
           path: security-report
@@ -301,7 +316,7 @@ jobs:
 
       - name: Download Retire.js Slack artifact
         if: needs.vulnerability-scan.result != 'skipped'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: retire-slack
           path: retire-report

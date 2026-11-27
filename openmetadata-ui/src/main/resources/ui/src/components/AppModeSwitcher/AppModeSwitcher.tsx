@@ -11,10 +11,21 @@
  *  limitations under the License.
  */
 
-import { Box, Popover, Typography } from '@openmetadata/ui-core-components';
-import { Check, ChevronUp } from '@openmetadata/ui-core-components/icons';
+import {
+  Badge,
+  Box,
+  Card,
+  HoverCard,
+  Popover,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Check,
+  ChevronRight,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { useRef, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import appModeAIIcon from '../../assets/svg/app-mode-ai.svg';
@@ -30,26 +41,19 @@ import {
   useIsAiMode,
   writeAppMode,
 } from '../../hooks/useAppMode';
+import {
+  CURRENT_CHECK_CLASS,
+  OPTION_ICON_BOX,
+  TRIGGER_STYLES,
+} from './AppModeSwitcher.constants';
+import {
+  AppModeSwitcherProps,
+  AppModeSwitcherTriggerProps,
+} from './AppModeSwitcher.types';
+import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 
-const OPTION_ICON_BOX =
-  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
-
-const BADGE_CLASS =
-  'tw:inline-flex tw:items-center tw:gap-1 tw:px-2 tw:py-0.5 tw:rounded-full ' +
-  'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:text-utility-blue-700 tw:text-xs tw:font-semibold ' +
-  'tw:whitespace-nowrap tw:shrink-0';
-
-const AppModeSwitcherTrigger: React.FC<{
-  compact?: boolean;
-  isOpen: boolean;
-  isAiMode: boolean;
-  aiLabel: string;
-  modeLabel: string;
-  modeLabelSentence: string;
-  triggerRef: React.RefObject<HTMLButtonElement>;
-  onClick: () => void;
-}> = ({
-  compact,
+const AppModeSwitcherTrigger: FC<AppModeSwitcherTriggerProps> = ({
+  variant,
   isOpen,
   isAiMode,
   aiLabel,
@@ -58,18 +62,14 @@ const AppModeSwitcherTrigger: React.FC<{
   triggerRef,
   onClick,
 }) => {
-  const iconSize = compact ? 12 : 16;
-  const modeLabelText = compact ? modeLabel : modeLabelSentence;
+  const { root, label, iconSize, chevron } = TRIGGER_STYLES[variant];
 
   return (
     <button
       aria-expanded={isOpen}
       aria-haspopup="dialog"
-      className={
-        compact
-          ? 'tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left'
-          : 'tw:flex tw:items-center tw:gap-1.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
-      }
+      aria-label={label ? undefined : modeLabelSentence}
+      className={root}
       data-testid="app-mode-switcher-trigger"
       ref={triggerRef}
       type="button"
@@ -89,34 +89,39 @@ const AppModeSwitcherTrigger: React.FC<{
           width={iconSize}
         />
       )}
-      <span
-        className={
-          compact
-            ? 'tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold'
-            : 'tw:flex-1 tw:text-xs tw:text-secondary tw:font-semibold'
-        }>
-        {modeLabelText}
-      </span>
-      <ChevronUp
-        className={classNames(
-          'tw:shrink-0 tw:transition-transform tw:duration-150',
-          compact ? 'tw:text-utility-blue-500' : undefined,
-          { 'tw:rotate-180': isOpen }
-        )}
-        height={compact ? 10 : 11}
-        width={compact ? 10 : 11}
-      />
+      {label && (
+        <span className={label}>
+          {variant === 'pill' ? modeLabel : modeLabelSentence}
+        </span>
+      )}
+      {chevron === 'up' && (
+        <ChevronUp
+          className={classNames(
+            'tw:shrink-0 tw:text-utility-blue-500 tw:transition-transform tw:duration-150',
+            { 'tw:rotate-180': isOpen }
+          )}
+          height={10}
+          width={10}
+        />
+      )}
+      {chevron === 'right' && (
+        <ChevronRight
+          className="tw:shrink-0 tw:text-tertiary"
+          height={16}
+          width={16}
+        />
+      )}
     </button>
   );
 };
 
-const AppModeSwitcher: React.FC<{
-  className?: string;
-  cardRef?: React.RefObject<HTMLElement>;
-  compact?: boolean;
-  classicHref?: string;
-  aiHref?: string;
-}> = ({ className, cardRef, compact, classicHref = '/', aiHref = '/' }) => {
+const AppModeSwitcher: FC<AppModeSwitcherProps> = ({
+  className,
+  cardRef,
+  classicHref = '/',
+  aiHref = '/',
+  variant = 'inline',
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -127,6 +132,8 @@ const AppModeSwitcher: React.FC<{
   const { preferences, setPreference } = useCurrentUserPreferences();
 
   const modeLabel = isAiMode ? t('label.ai') : t('label.classic');
+  const isPill = variant === 'pill';
+  const { frame } = TRIGGER_STYLES[variant];
 
   const handleClassicClick = () => {
     writeAppMode(DEFAULT_APP_MODE);
@@ -152,28 +159,33 @@ const AppModeSwitcher: React.FC<{
     setPreference({ appMode: isRemembered ? null : currentModeWireToken });
   };
 
+  const trigger = (
+    <AppModeSwitcherTrigger
+      aiLabel={t('label.ai')}
+      isAiMode={isAiMode}
+      isOpen={isOpen}
+      modeLabel={modeLabel}
+      modeLabelSentence={t('label.mode-label', { mode: modeLabel })}
+      triggerRef={triggerRef}
+      variant={variant}
+      onClick={() => setIsOpen((prev) => !prev)}
+    />
+  );
+
   return (
     <div className={classNames(className)}>
-      <AppModeSwitcherTrigger
-        aiLabel={t('label.ai')}
-        compact={compact}
-        isAiMode={isAiMode}
-        isOpen={isOpen}
-        modeLabel={modeLabel}
-        modeLabelSentence={t('label.mode-label', { mode: modeLabel })}
-        triggerRef={triggerRef}
-        onClick={() => setIsOpen((prev) => !prev)}
-      />
+      {frame ? <Card className={frame}>{trigger}</Card> : trigger}
 
       <Popover
-        containerClassName="tw:w-60"
+        aria-label={t('label.switch-interface')}
+        containerClassName="tw:w-64"
         isOpen={isOpen}
-        placement={compact ? 'right' : 'top start'}
+        placement={isPill ? 'right' : 'right bottom'}
         shouldCloseOnInteractOutside={(element) =>
           !triggerRef.current?.contains(element) &&
           !cardRef?.current?.contains(element)
         }
-        triggerRef={compact ? triggerRef : cardRef ?? triggerRef}
+        triggerRef={isPill ? triggerRef : cardRef ?? triggerRef}
         onOpenChange={setIsOpen}>
         <Box
           className="tw:p-2"
@@ -183,35 +195,51 @@ const AppModeSwitcher: React.FC<{
             {t('label.switch-interface')}
           </p>
 
-          <button
-            className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
-              {
-                'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
-              }
-            )}
-            data-testid="app-mode-option-classic"
-            type="button"
-            onClick={handleClassicClick}>
-            <Box align="center" className={OPTION_ICON_BOX} justify="center">
-              <AppModeClassicIcon height={23} width={23} />
-            </Box>
-            <Box className="tw:flex-1 tw:min-w-0" direction="col">
-              <Typography
-                className="tw:text-primary"
-                size="text-sm"
-                weight="semibold">
-                {t('label.classic')}
-              </Typography>
-            </Box>
-            {!isAiMode && (
-              <span className={BADGE_CLASS} data-testid="classic-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
-            )}
-          </button>
+          <HoverCard
+            arrow
+            content={<ClassicDeprecationCard />}
+            offset={28}
+            placement="right">
+            <button
+              className={classNames(
+                'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
+                {
+                  'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
+                  'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
+                }
+              )}
+              data-testid="app-mode-option-classic"
+              type="button"
+              onClick={handleClassicClick}>
+              <Box align="center" className={OPTION_ICON_BOX} justify="center">
+                <AppModeClassicIcon height={23} width={23} />
+              </Box>
+              <Box align="center" className="tw:flex-1 tw:min-w-0" gap={2}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.classic')}
+                </Typography>
+                <Badge
+                  color="warning"
+                  data-testid="classic-deprecated-badge"
+                  size="sm">
+                  {t('label.deprecated')}
+                </Badge>
+              </Box>
+              {!isAiMode && (
+                <Check
+                  aria-hidden={false}
+                  aria-label={t('label.current')}
+                  className={CURRENT_CHECK_CLASS}
+                  data-testid="classic-current-badge"
+                  role="img"
+                  size={16}
+                />
+              )}
+            </button>
+          </HoverCard>
 
           <button
             className={classNames(
@@ -236,10 +264,14 @@ const AppModeSwitcher: React.FC<{
               </Typography>
             </Box>
             {isAiMode && (
-              <span className={BADGE_CLASS} data-testid="ai-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
+              <Check
+                aria-hidden={false}
+                aria-label={t('label.current')}
+                className={CURRENT_CHECK_CLASS}
+                data-testid="ai-current-badge"
+                role="img"
+                size={16}
+              />
             )}
           </button>
 
@@ -256,7 +288,7 @@ const AppModeSwitcher: React.FC<{
               className={classNames(
                 'tw:w-5 tw:h-5 tw:rounded-md tw:shrink-0 tw:transition',
                 {
-                  'tw:bg-blue-600 tw:border-0': isRemembered,
+                  'tw:bg-brand-solid tw:border-0': isRemembered,
                   'tw:bg-surface tw:border tw:border-utility-gray-400':
                     !isRemembered,
                 }

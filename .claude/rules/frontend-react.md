@@ -23,6 +23,9 @@ file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
   `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`. Pure logic goes in `*.utils.ts` (no React,
   no JSX) so it is testable without rendering.
   *(Legacy uses `.component.tsx`/`.interface.ts` — don't rename; the suffix marks migration status.)*
+- **Component files hold only the component** (plus its props type). Module-level constants go in a
+  sibling `.constants.ts`, helpers in a sibling `.utils.ts` — or in root `constants/`/`utils/` when
+  shared. Importers then never pull a component module for a value, which avoids import cycles.
 - **No `index.ts` barrel** inside a component folder — `no-internal-barrel-imports` reports it.
 - **Functional components only** — no class components.
 - **State**: `useState` with proper typing; multiple loading states as one object
@@ -78,8 +81,9 @@ file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
 - **Prettier** — 2-space indent, single quotes, strict HTML whitespace.
 - **Apache-2.0 header** on new files (`yarn license-header-fix`).
 
-> The `UI Checkstyle` workflow runs one `checkstyle` job gating six steps (src lint, licence header,
-> i18n sync, app-docs, playwright lint, core-components lint) — not three separate jobs. The
+> CI runs UI checkstyle as one `ui / lint` job (the `.github/actions/ui-checkstyle` composite) whose
+> steps gate src lint, licence header, i18n sync, app-docs, playwright lint, core-components lint and
+> more — not separate jobs. The
 > `ui-checkstyle` skill runs the same ESLint → Prettier → organize-imports sequence locally.
 
 ## Commands
@@ -90,6 +94,6 @@ yarn start                    # dev server on :3000
 yarn test [path/to.spec.ts]   # Jest (add :watch, :coverage)
 yarn lint / yarn lint:fix     # ESLint
 yarn ui-checkstyle:changed    # CI checkstyle for changed files (excludes tsc)
-npx tsc --noEmit              # type check
+yarn tsc:check              # type check
 yarn build                    # production build (Vite)
 ```

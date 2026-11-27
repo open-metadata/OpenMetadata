@@ -28,15 +28,13 @@ import {
 } from '../../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import Table from '../../../common/Table/TableV2';
 import SpreadsheetsTable from './SpreadsheetsTable';
 import { SpreadsheetsTableProps } from './SpreadsheetsTable.interface';
 
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../../utils/TableColumn.util');
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div data-testid="error-placeholder">No data available</div>)
-);
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn(({ markdown }) => (
     <div data-testid="rich-text-preview">{markdown}</div>
@@ -167,6 +165,9 @@ const mockPaging: UsePagingInterface = {
 };
 
 const defaultProps: SpreadsheetsTableProps = {
+  setSpreadsheets: jest.fn(),
+  setIsLoading: jest.fn(),
+  serviceFqn: 'drive-service',
   showDeleted: false,
   handleShowDeleted: jest.fn(),
   paging: mockPaging,
@@ -497,5 +498,22 @@ describe('SpreadsheetsTable', () => {
     });
 
     expect(screen.getByTestId('spreadsheet-row-0')).toBeInTheDocument();
+  });
+
+  describe('column-visibility preference key isolation', () => {
+    it('passes a unique entityType to TableV2 so column-visibility preferences do not collide with other tables', () => {
+      renderSpreadsheetsTable();
+
+      const TableV2Mock = Table as jest.MockedFunction<typeof Table>;
+
+      expect(TableV2Mock).toHaveBeenCalled();
+
+      const passedProps = TableV2Mock.mock.calls[0][0] as {
+        entityType?: string;
+      };
+
+      expect(passedProps.entityType).toBe('driveSpreadsheetsTable');
+      expect(passedProps.entityType).not.toBe('dashboardDataModelTable');
+    });
   });
 });

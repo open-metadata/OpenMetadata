@@ -17,6 +17,7 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
     TableRuleLibrarySqlExpressionValidator as BaseValidator,
 )
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -29,14 +30,30 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
     expression. Parameters are directly substituted via Jinja2.
     """
 
+    # The expression runs on the dataframes the sampler produced, so unlike the SQL variant
+    # it is evaluated on the configured sample and partition.
+    BYPASSES_SAMPLER = False
+
+    # Rows read while evaluating the expression, so the denominator does not cost a second pass
+    # over the dataset.
+    _evaluated_rows: int = 0
+
     def _run_results(self, sql_expression: str) -> int:
         """Execute the pandas query expression and return matching row count."""
+        if not is_safe_pandas_query(sql_expression):
+            raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         total_count = 0
+        evaluated_rows = 0
         for df in self.runner:
+            evaluated_rows += len(df)
             try:
                 matching_rows = df.query(sql_expression)
                 total_count += len(matching_rows)
             except Exception as exc:
                 logger.exception(f"Error executing pandas query expression on chunk: {exc}")  # noqa: TRY401
                 raise exc  # noqa: TRY201
+        self._evaluated_rows = evaluated_rows
         return total_count
+
+    def _run_row_count(self) -> int:
+        return self._evaluated_rows

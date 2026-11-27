@@ -1,5 +1,6 @@
 package org.openmetadata.service.llm;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -7,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.LLMBedrockConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMProvider;
+import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 
 class LLMClientHolderTest {
 
@@ -27,6 +30,22 @@ class LLMClientHolderTest {
     LLMClientHolder.initialize(config);
 
     assertFalse(LLMClientHolder.isEnabled());
+    assertInstanceOf(NoopCompletionClient.class, LLMClientHolder.get());
+  }
+
+  @Test
+  void unbuildableProviderClientDisablesLlmInsteadOfFailingStartup() {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withEnabled(true)
+            .withMemoryExtractionEnabled(true)
+            .withProvider(LLMProvider.BEDROCK)
+            .withBedrock(new LLMBedrockConfig().withAwsConfig(new AWSBaseConfig().withRegion("")));
+
+    assertDoesNotThrow(() -> LLMClientHolder.initialize(config));
+
+    assertFalse(LLMClientHolder.isEnabled());
+    assertFalse(LLMClientHolder.isMemoryExtractionEnabled());
     assertInstanceOf(NoopCompletionClient.class, LLMClientHolder.get());
   }
 
@@ -57,29 +76,5 @@ class LLMClientHolderTest {
             .withMemoryExtractionEnabled(true)
             .withProvider(LLMProvider.NOOP));
     assertFalse(LLMClientHolder.isMemoryExtractionEnabled());
-  }
-
-  @Test
-  void ontologyMemoryDerivationNeedsBothSwitches() {
-    LLMClientHolder.initialize(
-        new LLMConfiguration()
-            .withEnabled(true)
-            .withMemoryExtractionEnabled(true)
-            .withProvider(LLMProvider.NOOP));
-    assertFalse(LLMClientHolder.isOntologyMemoryDerivationEnabled());
-
-    LLMClientHolder.initialize(
-        new LLMConfiguration()
-            .withEnabled(true)
-            .withOntologyMemoryDerivationEnabled(true)
-            .withProvider(LLMProvider.NOOP));
-    assertTrue(LLMClientHolder.isOntologyMemoryDerivationEnabled());
-
-    LLMClientHolder.initialize(
-        new LLMConfiguration()
-            .withEnabled(false)
-            .withOntologyMemoryDerivationEnabled(true)
-            .withProvider(LLMProvider.NOOP));
-    assertFalse(LLMClientHolder.isOntologyMemoryDerivationEnabled());
   }
 }

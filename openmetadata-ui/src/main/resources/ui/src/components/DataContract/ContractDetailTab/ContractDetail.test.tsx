@@ -44,6 +44,13 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Dialog: jest.requireActual('@openmetadata/ui-core-components').Dialog,
+  Modal: jest.requireActual('@openmetadata/ui-core-components').Modal,
+  ModalOverlay: jest.requireActual('@openmetadata/ui-core-components')
+    .ModalOverlay,
+  Select: jest.requireActual('@openmetadata/ui-core-components').Select,
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -70,14 +77,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children,
       isDisabled,
       onClick,
+      onPress,
+      isLoading,
       ...rest
     }: {
       children: React.ReactNode;
       isDisabled?: boolean;
       onClick?: () => void;
+      onPress?: () => void;
+      isLoading?: boolean;
       [key: string]: unknown;
     }) => (
-      <button disabled={isDisabled} onClick={onClick} {...rest}>
+      <button
+        disabled={isDisabled || isLoading}
+        onClick={onPress ?? onClick}
+        {...rest}>
         {children}
       </button>
     )
@@ -265,22 +279,6 @@ jest.mock('../ContractStatusAlert/ContractStatusAlert', () => {
   };
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({
-    type,
-    children,
-  }: {
-    type?: string;
-    children?: React.ReactNode;
-  }) {
-    return (
-      <div data-testid="error-placeholder" data-type={type}>
-        {children}
-      </div>
-    );
-  };
-});
-
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
   return function MockContractExecutionChart({
     contract,
@@ -317,15 +315,13 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
   return function MockContractViewSwitchTab({
     handleModeChange,
   }: {
-    handleModeChange: (e: { target: { value: DataContractMode } }) => void;
+    handleModeChange: (mode: DataContractMode) => void;
   }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
           data-testid="switch-to-yaml"
-          onClick={() =>
-            handleModeChange({ target: { value: DataContractMode.YAML } })
-          }>
+          onClick={() => handleModeChange(DataContractMode.YAML)}>
           YAML
         </button>
       </div>
@@ -515,7 +511,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
 
     it('should render contract details when contract is provided', async () => {
@@ -820,6 +820,25 @@ describe('ContractDetail', () => {
       expect(downloadContractYamlFile).toHaveBeenCalledWith(mockContract);
     });
 
+    it('opens the ODCS export dialog before downloading', async () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId('export-odcs-contract-button'));
+
+      expect(await screen.findByRole('dialog')).toBeVisible();
+      expect(exportContractToODCSYaml).not.toHaveBeenCalled();
+    });
+
     it('should export contract to ODCS successfully', async () => {
       (exportContractToODCSYaml as jest.Mock).mockResolvedValue('yaml-content');
 
@@ -843,8 +862,14 @@ describe('ContractDetail', () => {
         fireEvent.click(exportOdcsButton);
       });
 
+      fireEvent.click(await screen.findByTestId('confirm-odcs-export'));
+
       await waitFor(() => {
-        expect(exportContractToODCSYaml).toHaveBeenCalledWith('contract-1');
+        expect(exportContractToODCSYaml).toHaveBeenCalledWith(
+          'contract-1',
+          undefined,
+          'v3.1.0'
+        );
         expect(downloadContractAsODCSYaml).toHaveBeenCalledWith(
           'yaml-content',
           'Test Contract'
@@ -876,6 +901,8 @@ describe('ContractDetail', () => {
       await act(async () => {
         fireEvent.click(exportOdcsButton);
       });
+
+      fireEvent.click(await screen.findByTestId('confirm-odcs-export'));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(error);
@@ -1009,6 +1036,28 @@ describe('ContractDetail', () => {
 
       // Owner component would be rendered
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
+    });
+
+    it('should display contract reviewers in header', () => {
+      render(
+        <ContractDetail
+          contract={{
+            ...mockContract,
+            reviewers: [
+              { id: 'reviewer-1', name: 'Reviewer One', type: 'user' },
+              { id: 'reviewer-2', name: 'Reviewer Two', type: 'user' },
+            ],
+          }}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.getByTestId('contract-reviewer-card')).toBeInTheDocument();
+      expect(screen.getByText('2 owner(s)')).toBeInTheDocument();
     });
 
     it('should display contract schema information', () => {
@@ -1172,7 +1221,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
   });
 
@@ -1549,7 +1602,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.getByText('No contract has been defined for this entity.')
       ).toBeInTheDocument();

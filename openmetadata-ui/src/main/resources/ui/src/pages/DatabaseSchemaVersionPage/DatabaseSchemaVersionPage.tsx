@@ -12,7 +12,7 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -20,8 +20,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -32,7 +32,6 @@ import DataProductsContainer from '../../components/DataProducts/DataProductsCon
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -209,7 +208,6 @@ function DatabaseSchemaVersionPage() {
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getSchemaTables({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -217,7 +215,7 @@ function DatabaseSchemaVersionPage() {
         );
       }
     },
-    [paging, getSchemaTables]
+    [paging, pageSize, handlePageChange]
   );
 
   const { versionHandler, backHandler } = useMemo(
@@ -238,7 +236,7 @@ function DatabaseSchemaVersionPage() {
         );
       },
     }),
-    [decodedEntityFQN]
+    [decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -280,7 +278,13 @@ function DatabaseSchemaVersionPage() {
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -299,7 +303,7 @@ function DatabaseSchemaVersionPage() {
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),
@@ -341,13 +345,14 @@ function DatabaseSchemaVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.database-schema-version'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.database-schema-version'),
+            })}
+          />
+        </div>
       );
     }
 
@@ -385,7 +390,7 @@ function DatabaseSchemaVersionPage() {
                   <Tabs
                     className="tw:gap-3"
                     data-testid="tabs"
-                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    selectedKey={getRenderedActiveTab(tabs, tab)}
                     onSelectionChange={(key) => handleTabChange(String(key))}>
                     <Tabs.List size="sm" type="underline" variant="card">
                       {tabs.map(({ key, label }) => (
@@ -429,6 +434,7 @@ function DatabaseSchemaVersionPage() {
     version,
     backHandler,
     tabs,
+    tab,
     versionHandler,
     versionList,
     domainDisplayName,

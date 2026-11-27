@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, uniqWith } from 'lodash';
+import { isEmpty } from 'lodash';
 
 import {
   createContext,
@@ -25,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../../enums/entity.enum';
 import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
@@ -39,17 +41,31 @@ import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import {
   getSuggestionByType,
   getSuggestionTypeBasedOnData,
+  getSuggestionUserKey,
   getUniqueSuggestions,
 } from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { SuggestionsContextType } from './SuggestionsProvider.interface';
 
 export const SuggestionsContext = createContext({} as SuggestionsContextType);
 
-const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
+const SuggestionsProvider = ({
+  children,
+  entityType: entityTypeProp,
+}: {
+  children?: ReactNode;
+  // Required on routes without an `:entityType` param (e.g. `/glossary/:fqn`).
+  entityType?: EntityType;
+}) => {
   const { t } = useTranslation();
   const publish = usePub();
-  const { fqn: entityFqn } = useFqn();
+  const queryClient = useQueryClient();
+  const { entityType: entityTypeParam } = useRequiredParams<{
+    entityType: EntityType;
+  }>();
+  const entityType = entityTypeProp ?? entityTypeParam;
+  const { entityFqn } = useFqn({ type: entityType });
   const { permissions } = usePermissionProvider();
   const [activeUser, setActiveUser] = useState<EntityReference>();
   const [loadingAccept, setLoadingAccept] = useState(false);
@@ -67,10 +83,18 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       getSuggestionByType(suggestions);
 
     return {
-      allSuggestionsUsers: uniqWith(allUsersList, isEqual),
+      allSuggestionsUsers: allUsersList,
       suggestionsByUser: groupedSuggestions,
     };
   }, [suggestions]);
+
+  // Entity detail queries are keyed `[entityType, fqn, fields]`; prefix-invalidating refreshes
+  // the page with the accepted change. Pages not on React Query listen to `updateDetails`.
+  // ADR:2026-10-14-entity-detail-query-keys-start-with-entity-type-and-fqn
+  const refreshEntityDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: [entityType, entityFqn] }),
+    [queryClient, entityType, entityFqn]
+  );
 
   const fetchSuggestions = useCallback(
     async (limit?: number, skipMerge = false) => {
@@ -151,12 +175,13 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
         if (status === SuggestionAction.Accept) {
           publish('updateDetails', suggestion);
+          void refreshEntityDetails();
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [suggestions, publish]
+    [suggestions, publish, refreshEntityDetails]
   );
 
   const onUpdateActiveUser = useCallback((user?: EntityReference) => {
@@ -165,7 +190,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
 
   const selectedUserSuggestions = useMemo(() => {
     return (
-      suggestionsByUser.get(activeUser?.name ?? '') ?? {
+      suggestionsByUser.get(getSuggestionUserKey(activeUser)) ?? {
         tags: [],
         description: [],
         combinedData: [],
@@ -219,6 +244,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
           userSuggestionsToRemove.forEach((suggestion) => {
             publish('updateDetails', suggestion);
           });
+          void refreshEntityDetails();
         }
         setActiveUser(undefined);
       } catch (err) {
@@ -236,6 +262,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
       suggestionLimit,
       fetchSuggestions,
       publish,
+      refreshEntityDetails,
     ]
   );
 

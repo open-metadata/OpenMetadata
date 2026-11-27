@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { DataObservability } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
-import { ReactComponent as ObservabilityIcon } from '../../assets/svg/observability-default.svg';
 import { OBSERVABILITY_ROUTES } from './observability.constants';
 
 /**
@@ -26,6 +26,6 @@ export const getObservabilityRootBreadcrumb = (
 ): Omit<BreadcrumbItemType, 'id'> => ({
   label: null,
   ariaLabel: t('label.observability'),
-  icon: ObservabilityIcon as FC<{ className?: string }>,
+  icon: DataObservability as FC<{ className?: string }>,
   href: OBSERVABILITY_ROUTES.OBSERVABILITY,
 });

@@ -44,7 +44,7 @@ const buildSessionTuple = (mode: string) =>
  * cross-test leakage. The interceptor forwards the real request and mutates the
  * response, so every other preference the server returns is preserved.
  */
-const stubUserPreferencesAppMode = async (
+export const stubUserPreferencesAppMode = async (
   page: Page,
   mode: 'ai' | 'classic'
 ): Promise<void> => {
@@ -270,15 +270,15 @@ export const assertAppMode = async (
 };
 
 /**
- * Switch to AI mode from Classic via the navbar profile-dropdown interface
- * toggle — the production control. Opens the dropdown, clicks "AI", and waits
- * for the AI shell to settle.
+ * Switch to AI mode from Classic via the sidebar-footer interface switcher —
+ * the production control. Opens the switcher, clicks "AI", and waits for the
+ * AI shell to settle.
  */
-export const switchToAiModeViaProfileToggle = async (
+export const switchToAiModeViaSidebarSwitcher = async (
   page: Page
 ): Promise<void> => {
-  await page.getByTestId('dropdown-profile').click();
-  await page.getByTestId('interface-mode-option-ai').click();
+  await page.getByTestId('app-mode-switcher-trigger').click();
+  await page.getByTestId('app-mode-option-ai').click();
   await waitForAllLoadersToDisappear(page);
 };
 

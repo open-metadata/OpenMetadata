@@ -12,11 +12,12 @@
  */
 
 import { Page, Request, Response } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { signInThroughForm } from '../../../utils/formSignIn';
-import { switchToAiModeViaProfileToggle } from '../../Utils/appMode';
+import { switchToAiModeViaSidebarSwitcher } from '../../Utils/appMode';
 
 // The AI sidebar renders two AppModeSwitcher instances (compact rail + expanded
 // card); `:visible` narrows to whichever is shown without a positional locator.
@@ -46,7 +47,7 @@ const isAppModePreferenceDelete = (response: Response) =>
  */
 const openSwitcherAsAi = async (page: Page, user: UserClass) => {
   await signInThroughForm(page, user);
-  await switchToAiModeViaProfileToggle(page);
+  await switchToAiModeViaSidebarSwitcher(page);
   await expect(page.getByTestId('ask-sidebar')).toBeVisible();
   await page.locator(VISIBLE_SWITCHER_TRIGGER).click();
   await expect(page.locator(VISIBLE_SWITCHER_CARD)).toBeVisible();
@@ -80,9 +81,9 @@ test.describe('AppMode — preference round trip', { tag: ['@Platform'] }, () =>
   test('Toggle "remember" ON emits a PUT with the typed-union body', async ({
     browser,
   }) => {
-    // openSwitcherAsAi = login + profile-toggle + open-switcher: three heavy
+    // openSwitcherAsAi = login + sidebar-switch + open-switcher: three heavy
     // sequential steps that tip past the 60s default under CI load. Bump.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
@@ -109,7 +110,7 @@ test.describe('AppMode — preference round trip', { tag: ['@Platform'] }, () =>
   });
 
   test('Toggle "remember" OFF emits a DELETE', async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const context = await browser.newContext();
     const page = await context.newPage();
     try {

@@ -13,8 +13,10 @@
 
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import { useRef } from 'react';
+import type { GraphData } from '../../../interface/discovery/knowledge-graph.interface';
 import { getEntityGraphData } from '../../../rest/rdfAPI';
-import { EntityGraphParams, GraphData } from '../../../rest/rdfAPI.interface';
+import type { EntityGraphParams } from '../../../rest/rdfAPI.interface';
+import { relabelGraphNodes } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 
 interface FetchedGraph {
   params: EntityGraphParams;
@@ -141,7 +143,10 @@ export const useKnowledgeGraphData = (
     queryFn: async ({ signal }) => {
       const data = await getEntityGraphData(unfilteredParams, { signal });
 
-      return { params: unfilteredParams, data };
+      return {
+        params: unfilteredParams,
+        data: relabelGraphNodes(data),
+      };
     },
     enabled,
     retry: false,
@@ -151,7 +156,7 @@ export const useKnowledgeGraphData = (
     queryFn: async ({ signal }) => {
       const data = await getEntityGraphData(filteredParams, { signal });
 
-      return { params: filteredParams, data };
+      return { params: filteredParams, data: relabelGraphNodes(data) };
     },
     enabled: enabled && filtered,
     retry: false,

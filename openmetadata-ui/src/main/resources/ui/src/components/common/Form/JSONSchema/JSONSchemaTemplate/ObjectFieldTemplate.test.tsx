@@ -16,7 +16,7 @@ import {
   ObjectFieldTemplateProps,
   RJSFSchema,
 } from '@rjsf/utils';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
@@ -121,7 +121,7 @@ describe('ObjectFieldTemplate', () => {
         <ObjectFieldTemplate {...propsWithAdvanced} />
       );
 
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector('.advanced-properties-collapse');
 
       expect(collapse).toBeInTheDocument();
 
@@ -138,7 +138,7 @@ describe('ObjectFieldTemplate', () => {
       );
 
       // The collapse should exist
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector('.advanced-properties-collapse');
 
       expect(collapse).toBeInTheDocument();
 
@@ -154,7 +154,9 @@ describe('ObjectFieldTemplate', () => {
     it('should not render collapse when no advanced properties', () => {
       const { container } = render(<ObjectFieldTemplate {...defaultProps} />);
 
-      expect(container.querySelector('.ant-collapse')).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.advanced-properties-collapse')
+      ).not.toBeInTheDocument();
     });
 
     it('should separate normal and advanced properties correctly', () => {
@@ -163,7 +165,7 @@ describe('ObjectFieldTemplate', () => {
       );
 
       // Check that collapse exists for advanced properties
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector('.advanced-properties-collapse');
 
       expect(collapse).toBeInTheDocument();
 
@@ -300,7 +302,7 @@ describe('ObjectFieldTemplate', () => {
       render(<ObjectFieldTemplate {...propsWithFocus} />);
 
       const addButton = screen.getByTestId('add-item-Test Title');
-      fireEvent.focus(addButton);
+      act(() => addButton.focus());
 
       expect(mockHandleFocus).toHaveBeenCalledWith('test-id');
     });
@@ -380,7 +382,9 @@ describe('ObjectFieldTemplate', () => {
         <ObjectFieldTemplate {...allAdvancedProps} />
       );
 
-      expect(container.querySelector('.ant-collapse')).toBeInTheDocument();
+      expect(
+        container.querySelector('.advanced-properties-collapse')
+      ).toBeInTheDocument();
 
       // Advanced properties are in collapsed panel, so check for the header
       const collapseHeader = screen.getByRole('button', {

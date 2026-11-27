@@ -26,7 +26,7 @@ public final class GlossaryShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Glossary()
         .withId(ctx.id())
         .withName("glossary")

@@ -17,6 +17,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from unittest import TestCase
+from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -42,7 +43,7 @@ class Base(DeclarativeBase):
 
 
 TEST_CASE_FQN = "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
-SQLLITE_SHARD = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
+SQLLITE_SHARD = f"file:great_expectations_{uuid4().hex}?mode=memory&cache=shared&check_same_thread=False&uri=true"
 LOGGER = logging.getLogger(__name__)
 
 WORKFLOW_CONFIG = {
@@ -95,10 +96,6 @@ class Order(Base):
 class TestGreatExpectationIntegration(TestCase):
     """Test great expectation integration"""
 
-    engine = create_engine(
-        f"sqlite+pysqlite:///{SQLLITE_SHARD}",
-    )
-    session = create_and_bind_session(engine)
     server_config = OpenMetadataConnection(
         hostPort=WORKFLOW_CONFIG["openMetadataServerConfig"]["hostPort"],
         authProvider=WORKFLOW_CONFIG["openMetadataServerConfig"]["authProvider"],
@@ -106,11 +103,15 @@ class TestGreatExpectationIntegration(TestCase):
             jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"]["jwtToken"]
         ),
     )  # type: ignore
-    metadata = OpenMetadata(server_config)
 
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
+        cls.engine = create_engine(f"sqlite+pysqlite:///{SQLLITE_SHARD}")
+        cls.addClassCleanup(cls.engine.dispose)
+        cls.addClassCleanup(Base.metadata.drop_all, bind=cls.engine)
+        cls.session = create_and_bind_session(cls.engine)
+        cls.addClassCleanup(cls.session.close)
         gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")  # noqa: PTH118, PTH120
         gx_expectations_dir = os.path.join(gx_base_dir, "expectations")  # noqa: PTH118
         gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")  # noqa: PTH118
@@ -124,15 +125,7 @@ class TestGreatExpectationIntegration(TestCase):
         if os.path.exists(checkpoint_file):  # noqa: PTH110
             os.remove(checkpoint_file)  # noqa: PTH107
 
-        try:
-            User.__table__.create(bind=cls.engine)
-        except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")
-
-        try:
-            Order.__table__.create(bind=cls.engine)
-        except Exception as exc:
-            LOGGER.warning(f"Table Already exists: {exc}")
+        Base.metadata.create_all(bind=cls.engine)
 
         cls.session.query(Order).delete()
         cls.session.query(User).delete()
@@ -193,14 +186,18 @@ class TestGreatExpectationIntegration(TestCase):
         cls.session.add_all(orders_data)
         cls.session.commit()
 
+        cls.metadata = OpenMetadata(cls.server_config)
+        cls.addClassCleanup(cls._cleanup_service)
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
-        ingestion_workflow.execute()
-        ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
-        ingestion_workflow.stop()
+        try:
+            ingestion_workflow.execute()
+            ingestion_workflow.raise_from_status()
+            ingestion_workflow.print_status()
+        finally:
+            ingestion_workflow.stop()
 
     @classmethod
-    def tearDownClass(cls) -> None:
+    def _cleanup_service(cls) -> None:
         """
         Clean up
         """
@@ -214,10 +211,6 @@ class TestGreatExpectationIntegration(TestCase):
                 recursive=True,
                 hard_delete=True,
             )
-
-        User.__table__.drop(bind=cls.engine)
-        Order.__table__.drop(bind=cls.engine)
-        cls.session.close()
 
     def test_great_expectation_integration(self):
         """
@@ -255,7 +248,7 @@ class TestGreatExpectationIntegration(TestCase):
         ometa_config = os.path.join(ge_folder, "gx/ometa_config")  # noqa: PTH118
 
         context = gx.get_context()
-        conn_string = f"sqlite+pysqlite:///file:cachedb?mode=memory&cache=shared&check_same_thread=False"  # noqa: F541
+        conn_string = f"sqlite+pysqlite:///{SQLLITE_SHARD}"
         data_source = context.data_sources.add_sqlite(
             name="test_sqlite",
             connection_string=conn_string,

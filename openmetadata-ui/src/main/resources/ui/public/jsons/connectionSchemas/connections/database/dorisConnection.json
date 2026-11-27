@@ -142,6 +142,14 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$",
+          "^performance_schema$",
+          "^__internal_schema$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {
@@ -214,6 +222,12 @@
       "type": "boolean",
       "default": true
     },
+    "supportsUsageExtraction": {
+      "title": "Supports Usage Extraction",
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsDBTExtraction": {
       "description": "Supports DBT Extraction.",
       "type": "boolean",
@@ -222,6 +236,12 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
       "type": "boolean",
       "default": true
     },

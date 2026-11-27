@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { ReactNode } from 'react';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -102,10 +103,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: MockTableBodyProps<T>) => (
     <div>
       {items.length
-        ? items.map((item, index) => (
-            // eslint-disable-next-line react/no-array-index-key -- test mock over generic items, no stable id
-            <div key={index}>{children(item)}</div>
-          ))
+        ? items.map((item, index) => <div key={index}>{children(item)}</div>)
         : renderEmptyState()}
     </div>
   );
@@ -211,9 +209,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  AlertTriangle: () => null,
+  Alert: () => null,
   Bell01: () => null,
-  Edit03: () => null,
+  Edit01: () => null,
+  Lock01: () => null,
   MarkerPin01: () => null,
   Plus: () => null,
   Trash01: () => null,
@@ -229,6 +228,15 @@ jest.mock(
     ),
   })
 );
+
+jest.mock('../../Alerts/AlertStatusBadge/AlertStatusBadge', () => ({
+  __esModule: true,
+  default: ({ enabled }: { enabled?: boolean }) => (
+    <span data-testid="alert-status-badge">
+      {enabled === false ? 'label.disabled' : 'label.active'}
+    </span>
+  ),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -340,6 +348,32 @@ describe('ObservabilityAlertsAiTable', () => {
     expect(screen.getByTestId('alert-name').parentElement).toHaveClass(
       'tw:w-[30%]!',
       'tw:max-w-0'
+    );
+  });
+
+  it('shows a Disabled status for an alert that is switched off', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: false }]}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.disabled'
+    );
+  });
+
+  it('shows an Active status for an enabled alert', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: true }]}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.active'
     );
   });
 
@@ -456,9 +490,51 @@ describe('ObservabilityAlertsAiTable', () => {
       screen.queryByText('label.new-entity:label.alert')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('label.try-again'));
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(onRetryPermission).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders an error + retry state instead of the onboarding when the alerts list failed to load', () => {
+    const onRetry = jest.fn();
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[]}
+        alertsError={{ response: { status: 500 } } as AxiosError}
+        onRetry={onRetry}
+      />
+    );
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.observability-alert-empty-heading')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders an access-denied state when the alerts list is forbidden', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[]}
+        alertsError={{ response: { status: 403 } } as AxiosError}
+        onRetry={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.new-entity:label.alert')
+    ).not.toBeInTheDocument();
   });
 
   it('maps pagination changes to cursor params', () => {

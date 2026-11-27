@@ -20,13 +20,13 @@ import org.openmetadata.schema.EntityInterface;
 
 public final class EntityCases {
   private final String entityType;
-  private final Function<ShapeContext, EntityInterface> minimal;
+  private final Function<ShapeContext, EntityInterface<?>> minimal;
   private final ShapeContext ctx;
   private final List<PlannedCase> cases = new ArrayList<>();
 
   public EntityCases(
       final String entityType,
-      final Function<ShapeContext, EntityInterface> minimal,
+      final Function<ShapeContext, EntityInterface<?>> minimal,
       final ShapeContext ctx) {
     this.entityType = entityType;
     this.minimal = minimal;
@@ -36,7 +36,7 @@ public final class EntityCases {
   public EntityCases add(
       final String dimension,
       final Rung rung,
-      final BiFunction<EntityInterface, Rung, EntityInterface> apply) {
+      final BiFunction<EntityInterface<?>, Rung, EntityInterface<?>> apply) {
     cases.add(
         new PlannedCase(
             entityType, dimension, rung, () -> apply.apply(minimal.apply(ctx), rung), null));

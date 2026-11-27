@@ -14,16 +14,21 @@
 import {
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
+  getFieldPathLabel,
   getPlainDescription,
+  getProposingAgent,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
+  getTaskTypeKey,
   resolveIncidentTestCaseFqn,
+  withExistingValues,
 } from './taskDetail.utils';
 
 // Echo the key so a test asserts which label was chosen, and keep the
@@ -49,6 +54,16 @@ describe('getTaskTypeBadge', () => {
     expect(
       getTaskTypeBadge(buildTask({ type: TaskType.TestCaseResolution }), t)
     ).toEqual({ label: 'label.incident', color: 'error', icon: 'incident' });
+  });
+
+  it('gives a memory conflict review its own chip', () => {
+    expect(
+      getTaskTypeBadge(buildTask({ type: TaskType.MemoryConflictReview }), t)
+    ).toEqual({
+      label: 'label.memory-conflict',
+      color: 'orange',
+      icon: 'approval',
+    });
   });
 
   it('falls back to a neutral chip for an unmapped type', () => {
@@ -104,22 +119,33 @@ describe('resolveIncidentTestCaseFqn', () => {
 });
 
 describe('getTaskDetailDescriptor', () => {
-  it('puts a description task proposal in the callout', () => {
+  // A description task reads as an activity card's change: Existing, then
+  // Suggested.
+  it("shows a description task's proposal beside the existing text", () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({
-        payload: { newDescription: 'The order total in local currency.' },
+        payload: {
+          currentDescription: 'Order total.',
+          newDescription: 'The order total in local currency.',
+        },
       } as unknown as Partial<Task>),
       t
     );
 
-    expect(descriptor.callout).toEqual({
-      label: 'label.suggested-description',
-      text: 'The order total in local currency.',
+    expect(descriptor.change).toEqual({
+      labelKey: 'label.description',
+      before: ['Order total.'],
+      after: ['The order total in local currency.'],
+      isText: true,
     });
+    expect(descriptor.callout).toBeUndefined();
   });
 
-  it('omits the callout when the payload carries no rationale', () => {
-    expect(getTaskDetailDescriptor(buildTask(), t).callout).toBeUndefined();
+  it('has no change when the payload proposes nothing', () => {
+    const descriptor = getTaskDetailDescriptor(buildTask(), t);
+
+    expect(descriptor.change).toBeUndefined();
+    expect(descriptor.callout).toBeUndefined();
   });
 
   // Ownership ships plain: who holds the asset now, and when someone asked.
@@ -139,6 +165,7 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.rows[0].value).toEqual({
       kind: 'users',
       refs: [{ id: 'u3', name: 'carol' }],
+      title: 'label.owner-plural',
     });
     expect(descriptor.callout?.text).toBe('The previous owner left.');
   });
@@ -165,6 +192,30 @@ describe('getTaskDetailDescriptor', () => {
     });
   });
 
+  // Past three people the row collapses into "+N", headed in the plural.
+  it('titles the assignees overflow in the plural', () => {
+    const assignees = [{ id: 'u1', type: 'user', name: 'ann' }];
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.TestCaseResolution,
+        assignees,
+        payload: {},
+      } as unknown as Partial<Task>),
+      t
+    );
+
+    expect(descriptor.rows.find((row) => row.key === 'assignees')).toEqual(
+      expect.objectContaining({
+        label: 'label.assignee',
+        value: {
+          kind: 'users',
+          refs: assignees,
+          title: 'label.assignee-plural',
+        },
+      })
+    );
+  });
+
   it('says "No owner" when nobody holds the asset', () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({
@@ -176,7 +227,7 @@ describe('getTaskDetailDescriptor', () => {
 
     expect(descriptor.rows[0].value).toEqual({
       kind: 'text',
-      text: 'label.no-owner',
+      text: '--',
     });
   });
 
@@ -318,40 +369,231 @@ describe('getTaskDetailDescriptor', () => {
   });
 });
 
-describe('tag request rows', () => {
-  // Approving a tag request removes tags as well as adding them.
-  it('lists the tags to remove beside the tags to add', () => {
-    const rows = getTaskDetailDescriptor(
+describe('tag request change', () => {
+  const changeOf = (payload: Record<string, unknown>) =>
+    getTaskDetailDescriptor(
       buildTask({
         type: TaskType.TagUpdate,
-        payload: {
-          tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
-          tagsToRemove: [{ tagFQN: 'PII.None' }],
-        },
+        payload,
       } as unknown as Partial<Task>),
       t
-    ).rows;
+    ).change;
 
-    expect(rows.find((row) => row.key === 'tags')?.value).toEqual({
-      kind: 'tags',
-      tags: [{ tagFQN: 'PII.Sensitive' }],
-    });
-    expect(rows.find((row) => row.key === 'tagsToRemove')?.value).toEqual({
-      kind: 'tags',
-      tags: [{ tagFQN: 'PII.None' }],
+  // Approving a tag request removes tags as well as adding them.
+  it('shows the tags to remove beside the tags to add', () => {
+    expect(
+      changeOf({
+        tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
+        tagsToRemove: [{ tagFQN: 'PII.None' }],
+      })
+    ).toEqual({
+      labelKey: 'label.tag-plural',
+      before: ['PII.None'],
+      after: ['PII.Sensitive'],
+      isText: false,
     });
   });
 
-  it('omits the removal row when nothing is removed', () => {
-    const rows = getTaskDetailDescriptor(
+  it('shows only the added side when nothing is removed', () => {
+    expect(changeOf({ tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] })).toEqual(
+      expect.objectContaining({ before: [], after: ['PII.Sensitive'] })
+    );
+  });
+
+  it('has no change when the request names no tags', () => {
+    expect(changeOf({})).toBeUndefined();
+  });
+});
+
+describe('tag suggestion', () => {
+  const describeSuggestion = (payload: Record<string, unknown>) =>
+    getTaskDetailDescriptor(
       buildTask({
-        type: TaskType.TagUpdate,
-        payload: { tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] },
+        type: TaskType.Suggestion,
+        payload,
       } as unknown as Partial<Task>),
       t
-    ).rows;
+    );
 
-    expect(rows.some((row) => row.key === 'tagsToRemove')).toBe(false);
+  it('shows the suggested tags as a tags change, not a JSON callout', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual({
+      labelKey: 'label.tag-plural',
+      before: [],
+      after: ['Data Sensitivity.Confidential'],
+      isText: false,
+    });
+    expect(descriptor.callout).toBeUndefined();
+  });
+
+  it('lists only the tags it adds, not the ones the field already has', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      currentValue: JSON.stringify([{ tagFQN: 'Tier.Tier1' }]),
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual(
+      expect.objectContaining({
+        before: [],
+        after: ['Data Sensitivity.Confidential'],
+      })
+    );
+  });
+
+  it('keeps the text callout for a description suggestion', () => {
+    expect(
+      describeSuggestion({
+        suggestionType: 'Description',
+        suggestedValue: 'A customer address',
+      }).callout
+    ).toEqual({ label: 'label.suggestion', text: 'A customer address' });
+  });
+});
+
+describe('withExistingValues for a tag task', () => {
+  const change = {
+    labelKey: 'label.tag-plural',
+    before: ['PII.None'],
+    after: ['PII.Sensitive'],
+    isText: false,
+  };
+  const tagTask = (payload: Record<string, unknown>) =>
+    buildTask({
+      type: TaskType.TagUpdate,
+      payload,
+    } as unknown as Partial<Task>);
+  const entity = {
+    tags: [{ tagFQN: 'Tier.Tier1' }],
+    columns: [
+      {
+        name: 'email',
+        tags: [{ tagFQN: 'PII.Email' }, { tagFQN: 'PII.None' }],
+      },
+    ],
+  } as unknown as EntityUnion;
+
+  // The column's current tags, less the one the task removes.
+  it("keeps the column's other tags on both sides", () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'columns.email.tags' }),
+        entity
+      )?.unchanged
+    ).toEqual(['PII.Email']);
+  });
+
+  it('keeps no tags for a field path it cannot resolve', () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id.tags' }),
+        entity
+      )?.unchanged
+    ).toEqual([]);
+  });
+
+  it("reads the asset's own tags for a table-level task", () => {
+    expect(
+      withExistingValues(change, tagTask({ fieldPath: 'tags' }), entity)
+        ?.unchanged
+    ).toEqual(['Tier.Tier1']);
+  });
+
+  // An empty currentTags is the payload's default, not a snapshot.
+  it('reads the asset when the payload carries an empty currentTags', () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'columns.email.tags', currentTags: [] }),
+        entity
+      )?.unchanged
+    ).toEqual(['PII.Email']);
+  });
+
+  it("prefers the payload's snapshot of the current tags", () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({
+          fieldPath: 'columns.email.tags',
+          currentTags: [{ tagFQN: 'PersonalData.Personal' }],
+        }),
+        entity
+      )?.unchanged
+    ).toEqual(['PersonalData.Personal']);
+  });
+});
+
+describe('withExistingValues', () => {
+  const change = {
+    labelKey: 'label.description',
+    before: [],
+    after: ['Suggested'],
+    isText: true,
+  };
+  const taskFor = (fieldPath: string) =>
+    buildTask({
+      payload: { fieldPath, newDescription: 'Suggested' },
+    } as unknown as Partial<Task>);
+  const entity = {
+    description: 'The table.',
+    columns: [
+      { name: 'country', description: 'Country.' },
+      { name: 'order.total', description: 'Order total.' },
+      {
+        name: 'address',
+        children: [{ name: 'city', description: 'City.' }],
+      },
+    ],
+  } as unknown as EntityUnion;
+
+  it.each([
+    ['description', 'The table.'],
+    ['columns.country.description', 'Country.'],
+    ['columns.address.city.description', 'City.'],
+    ['columns."order.total".description', 'Order total.'],
+  ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
+    expect(
+      withExistingValues(change, taskFor(fieldPath), entity)?.before
+    ).toEqual([existing]);
+  });
+
+  it("keeps the payload's own snapshot", () => {
+    expect(
+      withExistingValues(
+        { ...change, before: ['Snapshot.'] },
+        taskFor('description'),
+        entity
+      )?.before
+    ).toEqual(['Snapshot.']);
+  });
+
+  // A path naming a field this cannot resolve, such as a topic's schema field,
+  // shows nothing rather than the entity's own description.
+  it.each([
+    'messageSchema.schemaFields.order_id.description',
+    'dataModel.columns.amount.description',
+  ])('leaves the Existing side empty for %s', (fieldPath) => {
+    expect(
+      withExistingValues(change, taskFor(fieldPath), entity)?.before
+    ).toEqual([]);
+  });
+
+  it('leaves the Existing side empty for a field the entity lacks', () => {
+    expect(
+      withExistingValues(change, taskFor('columns.gone.description'), entity)
+        ?.before
+    ).toEqual([]);
   });
 });
 
@@ -416,6 +658,7 @@ describe('deriveTaskAboutEntity', () => {
     expect(about).toMatchObject({
       columnCount: 3,
       piiColumnCount: 1,
+      isPii: true,
       downstreamCount: 12,
     });
   });
@@ -432,6 +675,25 @@ describe('deriveTaskAboutEntity', () => {
         ],
       } as unknown as EntityUnion).piiColumnCount
     ).toBe(1);
+  });
+
+  // Entity-level PII.Sensitive masks every column's sample data, so the whole
+  // table counts as PII even when no column carries the tag itself.
+  it('treats every column as PII when the entity is tagged PII.Sensitive', () => {
+    expect(
+      deriveTaskAboutEntity({
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+        columns: [{}, { tags: [{ tagFQN: 'Tier.Tier1' }] }],
+      } as unknown as EntityUnion)
+    ).toMatchObject({ columnCount: 2, piiColumnCount: 2, isPii: true });
+  });
+
+  it('flags an entity-level PII.Sensitive asset that has no columns', () => {
+    expect(
+      deriveTaskAboutEntity({
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+      } as unknown as EntityUnion)
+    ).toMatchObject({ piiColumnCount: undefined, isPii: true });
   });
 
   it('reads the weekly usage count for the queries tile', () => {
@@ -458,6 +720,7 @@ describe('deriveTaskAboutEntity', () => {
       tier: undefined,
       columnCount: undefined,
       piiColumnCount: undefined,
+      isPii: false,
       downstreamCount: undefined,
       weeklyQueryCount: undefined,
       ownerCount: undefined,
@@ -503,5 +766,208 @@ describe('getPlainDescription', () => {
   it('is empty for a missing or blank description', () => {
     expect(getPlainDescription({})).toBe('');
     expect(getPlainDescription({ description: '  ' })).toBe('');
+  });
+});
+
+describe('metadata completion tasks', () => {
+  const task = buildTask({
+    type: TaskType.MetadataCompletion,
+    payload: {
+      workflow: 'DomainLifecycle',
+      node: 'Collect0',
+      stage: 'Draft',
+      targetStage: 'In Review',
+      missingFields: ['experts', 'extension.costCenter'],
+    },
+  });
+
+  it('gives a metadata completion task its own chip', () => {
+    expect(getTaskTypeBadge(task, t)).toEqual({
+      label: 'label.missing-metadata',
+      color: 'warning',
+      icon: 'description',
+    });
+  });
+
+  it('lists the missing fields by name and says which stage they unlock', () => {
+    const descriptor = getTaskDetailDescriptor(task, t);
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')?.value
+    ).toEqual({
+      kind: 'list',
+      items: [{ label: 'label.expert-plural' }, { label: 'costCenter' }],
+      title: 'label.missing-field-plural',
+    });
+    expect(descriptor.callout?.text).toBe('message.metadata-completion-move');
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')
+    ).toBeUndefined();
+  });
+
+  it('reports unmet lifecycle conditions with one generic row', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        payload: { stage: 'Draft', missingFields: [], conditionsMet: false },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')
+    ).toBeUndefined();
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')?.value
+    ).toEqual({ kind: 'text', text: 'message.lifecycle-conditions-not-met' });
+  });
+
+  it('lists nothing outstanding once the task has closed', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        status: TaskStatus.Completed,
+        payload: {
+          stage: 'Draft',
+          missingFields: ['experts'],
+          conditionsMet: false,
+        },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.filter((row) =>
+        ['missingFields', 'conditions'].includes(row.key)
+      )
+    ).toEqual([]);
+  });
+
+  it('reads a revise and resubmit task as its own kind, with the reviewer comment', () => {
+    const revision = buildTask({
+      type: TaskType.MetadataCompletion,
+      payload: {
+        stage: 'In Review',
+        missingFields: [],
+        revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+      },
+    });
+    const descriptor = getTaskDetailDescriptor(revision, t);
+
+    expect(getTaskTypeBadge(revision, t)).toEqual({
+      label: 'label.revise-and-resubmit',
+      color: 'warning',
+      icon: 'approval',
+    });
+    expect(getTaskTypeKey(revision)).not.toBe(getTaskTypeKey(task));
+    expect(descriptor.callout?.text).toBe(
+      'message.metadata-completion-revision'
+    );
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionComment')?.value
+    ).toEqual({ kind: 'text', text: 'Name a business owner' });
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionRequestedBy')?.value
+    ).toEqual({ kind: 'text', text: 'karan' });
+  });
+});
+
+describe('getProposingAgent', () => {
+  const approval = (payload: unknown) =>
+    buildTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+      payload,
+    } as Partial<Task>);
+
+  it('names the agent that proposed the term, in place of its bot', () => {
+    const task = approval({
+      proposal: { provider: 'automation', agent: 'Glossary Agent' },
+    });
+
+    expect(getProposingAgent(task, t)).toBe('Glossary Agent');
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual({ kind: 'agent', name: 'Glossary Agent' });
+  });
+
+  it('falls back to a generic agent when the proposal names none', () => {
+    expect(
+      getProposingAgent(approval({ proposal: { provider: 'automation' } }), t)
+    ).toBe('label.ai-agent');
+  });
+
+  it('keeps the person who opened any other task', () => {
+    const task = approval({ glossaryTerm: { id: 'g1', type: 'glossaryTerm' } });
+
+    expect(getProposingAgent(task, t)).toBeUndefined();
+    expect(
+      getTaskDetailDescriptor(task, t).rows.find(
+        (row) => row.key === 'createdBy'
+      )?.value
+    ).toEqual(expect.objectContaining({ kind: 'users' }));
+  });
+});
+
+describe('getFieldPathLabel', () => {
+  it.each([
+    [
+      'columns.status.description',
+      'label.column-plural › status › label.description',
+    ],
+    [
+      'columns."order.id".description',
+      'label.column-plural › order.id › label.description',
+    ],
+    ['columns.status.tags', 'label.column-plural › status › label.tag-plural'],
+    ['description', 'label.description'],
+    [
+      'columns.address.city.description',
+      'label.column-plural › address › city › label.description',
+    ],
+    [
+      'messageSchema.schemaFields.order_id.description',
+      'label.message-schema › order_id › label.description',
+    ],
+    ['extension.myProp', 'label.extension › myProp'],
+  ])('reads %s as %s', (fieldPath, label) => {
+    expect(getFieldPathLabel(fieldPath)).toBe(label);
+  });
+
+  it('has no label without a path', () => {
+    expect(getFieldPathLabel()).toBeUndefined();
+    expect(getFieldPathLabel('')).toBeUndefined();
+  });
+
+  it('labels the Field row of a suggestion', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
+  });
+
+  it('labels the Field row of a description request', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
   });
 });

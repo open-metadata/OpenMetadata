@@ -13,8 +13,8 @@
 
 import type { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
+import { Marked } from 'marked';
 import type { Dispatch, SetStateAction } from 'react';
-import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ROUTES } from '../constants/constants';
@@ -374,12 +374,72 @@ export const HTMLToMarkdown = new TurndownService({
     },
   });
 
-export const MarkdownToHTMLConverter = new Showdown.Converter({
-  strikethrough: true,
-  tables: true,
-  tasklists: true,
-  simpleLineBreaks: true,
+const headingCounts = new Map<string, number>();
+const feedMarkdownConverter = new Marked({
+  gfm: true,
+  breaks: true,
+  tokenizer: {
+    del(source) {
+      // Single tildes are literal in stored feed messages.
+      return source.startsWith('~~') ? false : undefined;
+    },
+    // Feeds historically link explicit Markdown links, not bare URLs or dotted names.
+    url: () => undefined,
+  },
+  renderer: {
+    br: () => '<br />\n',
+    // Retain the task-list markup used by existing feed/editor content.
+    listitem(text, task) {
+      const attributes = task
+        ? ' class="task-list-item" style="list-style-type: none;"'
+        : '';
+
+      return `<li${attributes}>${text}</li>\n`;
+    },
+    checkbox(checked) {
+      return `<input type="checkbox" disabled style="margin: 0px 0.35em 0.25em -1.6em; vertical-align: middle;"${
+        checked ? ' checked' : ''
+      }>`;
+    },
+    tablecell(content, flags) {
+      const tag = flags.header ? 'th' : 'td';
+      const alignment = flags.align
+        ? ` style="text-align:${flags.align};"`
+        : '';
+
+      return `<${tag}${alignment}>${content}</${tag}>\n`;
+    },
+  },
+  extensions: [
+    {
+      name: 'heading',
+      renderer(token) {
+        // Existing documentation links use ASCII IDs derived from the Markdown source.
+        const base = token.text.replace(/[^\w]/g, '').toLowerCase();
+        const count = headingCounts.get(base) ?? 0;
+        headingCounts.set(base, count + 1);
+        const id = count ? `${base}-${count}` : base;
+        const text = this.parser.parseInline(token.tokens ?? []);
+
+        return `<h${token.depth} id="${id}">${text}</h${token.depth}>\n`;
+      },
+    },
+  ],
 });
+
+export const MarkdownToHTMLConverter = {
+  makeHtml(markdown: string): string {
+    try {
+      // The lexer/parser API keeps makeHtml synchronous.
+      return feedMarkdownConverter
+        .parser(feedMarkdownConverter.lexer(markdown))
+        .trimEnd();
+    } finally {
+      // Drop each document's IDs so duplicate headings never affect the next render.
+      headingCounts.clear();
+    }
+  },
+};
 
 export const prepareFeedLink = (
   entityType: string,
@@ -438,6 +498,7 @@ export const getFeedCounts = async (
     const [conversations, activityRes, taskCounts] = await Promise.all([
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFQN),
+        includeFields: true,
         limit: 1,
       }),
       getEntityActivityByFqn(entityType, entityFQN, {
@@ -520,6 +581,7 @@ export const fetchEntityActivityCountInto = async (
       }),
       listConversations({
         entityLink: getEntityFeedLink(entityType, entityFqn),
+        includeFields: true,
         limit: 1,
       }),
     ]);
@@ -546,9 +608,7 @@ export const fetchEntityActivityCountInto = async (
 
 /**
  * The activity feed's authorship test: match on id when the post carries one,
- * otherwise on name. Shared so a call site that has to pass `canEdit` /
- * `canDelete` into ActivityFeedActions derives them from the same rule the
- * component itself falls back to, rather than a second copy of it.
+ * otherwise on name.
  */
 export const isFeedPostAuthor = (
   currentUser: { id?: string; name?: string } | undefined,
@@ -562,3 +622,14 @@ export const isFeedPostAuthor = (
     ? author.id === currentUser?.id
     : authorName === currentUser?.name;
 };
+
+/**
+ * Who may edit or delete a conversation or its reply: the author or an admin.
+ * ActivityFeedActions falls back to this rule, and a card that has to know
+ * beforehand whether that menu renders asks it too, so the two cannot drift.
+ */
+export const canManageFeedPost = (
+  currentUser: { id?: string; name?: string; isAdmin?: boolean } | undefined,
+  author: Parameters<typeof isFeedPostAuthor>[1]
+): boolean =>
+  isFeedPostAuthor(currentUser, author) || Boolean(currentUser?.isAdmin);

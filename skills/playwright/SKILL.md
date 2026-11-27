@@ -52,7 +52,7 @@ openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.m
 
 The handbook contains:
 - Testing philosophy (user-centric, behavior-focused)
-- Anti-flakiness patterns (the :visible selector chain pattern, etc.)
+- Anti-flakiness patterns (the :visible selector chain pattern, controls under the toast stack, etc.)
 - Test timeout strategies (test.slow() vs test.setTimeout())
 - Common test patterns (form submission, dropdowns, multi-role testing)
 - Locator priority guidelines
@@ -106,7 +106,7 @@ never add a new entry to `eslint-suppressions.json` to make this pass. See the h
 Before returning the generated test, verify ALL items from the handbook's **Validation Checklist**:
 
 - ✅ Structure & Organization (test.step, domain tags, imports, beforeAll/afterAll)
-- ✅ Anti-Flakiness (no waitForTimeout, no networkidle, no force: true, no positional selectors, no stored :visible locators)
+- ✅ Anti-Flakiness (no waitForTimeout, no networkidle, no force: true, no positional selectors, no stored :visible locators, `clickIgnoringToasts` for bottom-aligned controls)
 - ✅ API & Network (waitForResponse before actions, status code validation)
 - ✅ Waits & Assertions (waitForAllLoadersToDisappear, semantic locators, proper assertions)
 - ✅ ESLint (`yarn lint:playwright` passes with zero errors)

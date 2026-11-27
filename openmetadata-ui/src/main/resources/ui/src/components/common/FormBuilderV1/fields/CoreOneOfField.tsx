@@ -12,7 +12,6 @@
  */
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
-import { Hexagon01 } from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
@@ -22,10 +21,6 @@ import classNames from 'classnames';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
-const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
-const STORAGE_CONFIG_ID_SUFFIX =
-  '/sampleDataStorageConfig/config/storageConfig';
-const AWS_S3_STORAGE_CONFIG_TITLE = 'AWS S3 Storage Config';
 const MAX_SEGMENTED_OPTION_COUNT = 3;
 const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
 const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
@@ -56,9 +51,7 @@ const shouldRenderSegmentedOptions = (
   );
 
   const isSegmentedOptionCountWithinLimit =
-    options.length > 1 &&
-    options.length <= MAX_SEGMENTED_OPTION_COUNT &&
-    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID);
+    options.length > 1 && options.length <= MAX_SEGMENTED_OPTION_COUNT;
 
   return (
     isSegmentedOptionCountWithinLimit &&
@@ -225,9 +218,6 @@ const CoreOneOfField = (props: FieldProps) => {
     selectedBranchIsObjectLike,
     shouldRenderAsTabs
   );
-  const isStorageConfigSelector = idSchema.$id.endsWith(
-    STORAGE_CONFIG_ID_SUFFIX
-  );
   const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
     undefined) as string | undefined;
 
@@ -237,20 +227,12 @@ const CoreOneOfField = (props: FieldProps) => {
         const label = getOptionTitle(option, index);
 
         return {
-          icon:
-            isStorageConfigSelector && label === AWS_S3_STORAGE_CONFIG_TITLE ? (
-              <Hexagon01
-                aria-hidden="true"
-                data-testid="storage-config-title-icon"
-                size={16}
-              />
-            ) : undefined,
           id: String(index),
           isRecommended: recommendedTitle === label,
           label,
         };
       }),
-    [isStorageConfigSelector, recommendedTitle, resolvedOptions]
+    [recommendedTitle, resolvedOptions]
   );
 
   const selectedIdSchema = useMemo(
@@ -344,7 +326,7 @@ const CoreOneOfField = (props: FieldProps) => {
                 className={classNames(
                   'tw:flex tw:min-h-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-center tw:text-sm tw:leading-5 tw:transition-colors',
                   isSelected
-                    ? 'tw:border-primary tw:bg-primary tw:font-medium tw:text-primary tw:shadow-xs'
+                    ? 'tw:border-primary tw:bg-surface tw:font-medium tw:text-primary tw:shadow-xs'
                     : 'tw:border-transparent tw:font-medium tw:text-tertiary'
                 )}
                 data-selected={isSelected}

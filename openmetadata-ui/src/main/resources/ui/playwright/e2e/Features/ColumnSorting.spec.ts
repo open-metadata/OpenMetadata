@@ -21,7 +21,7 @@ const SAMPLE_TABLE_FQN = 'sample_data.ecommerce_db.shopify.fact_sale';
 test.describe.serial('Table Column Sorting', () => {
   test.beforeEach('Navigate to home page', async ({ page }) => {
     await redirectToHomePage(page);
-    const tablePromise = page.waitForResponse(/\/columns\?.*limit=50/);
+    const tablePromise = page.waitForResponse(/\/columns\?.*limit=15/);
     await page.goto(`/table/${SAMPLE_TABLE_FQN}`, {
       waitUntil: 'domcontentloaded',
     });

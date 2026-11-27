@@ -20,15 +20,25 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.CreatePersonalToken;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.UserProfileClaims;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
 /**
@@ -39,6 +49,62 @@ import org.openmetadata.service.util.UserUtil;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 class EmailFirstIdentityIT {
+
+  @Test
+  void testMintedTokenRetainsStoredIdentityForCurrentUser(TestNamespace ns) {
+    assertMintedTokenResolvesToItsUser(ns, List.of("sub", "email"));
+  }
+
+  /** The default order reads the email first: our token must still resolve to its own user. */
+  @Test
+  void testMintedTokenRetainsStoredIdentityUnderTheDefaultClaimOrder(TestNamespace ns) {
+    assertMintedTokenResolvesToItsUser(ns, List.of("email", "preferred_username", "sub"));
+  }
+
+  private void assertMintedTokenResolvesToItsUser(TestNamespace ns, List<String> claimOrder) {
+    String localPart = ("minted" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    provision(localPart + "@first.test.om.org", "First User");
+    User user = provision(localPart + "@second.test.om.org", "Second User");
+    String principalDomain = "principal.test.om.org";
+    provision(user.getName() + "@" + principalDomain, "Synthesized Email Owner");
+    JWTAuthMechanism authMechanism =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                user.getName(),
+                Set.of(),
+                false,
+                user.getEmail(),
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS);
+    Entity.getTokenRepository()
+        .insertPersonalAccessToken(
+            user.getName(),
+            TokenUtil.getPersonalAccessToken(
+                new CreatePersonalToken()
+                    .withTokenName(ns.prefix("minted"))
+                    .withJWTTokenExpiry(JWTTokenExpiry.OneHour),
+                user,
+                authMechanism));
+    JwtFilter filter =
+        new JwtFilter(
+            new AuthenticationConfiguration()
+                .withJwtPrincipalClaims(claimOrder)
+                .withPublicKeyUrls(List.of()),
+            new AuthorizerConfiguration().withPrincipalDomain(principalDomain));
+    CatalogPrincipal principal =
+        (CatalogPrincipal)
+            filter.getCatalogSecurityContext(authMechanism.getJWTToken()).getUserPrincipal();
+
+    User currentUser =
+        Entity.getUserRepository()
+            .getLoggedInUserByNameAndEmail(
+                null, principal.getName(), principal.getEmail(), EMPTY_FIELDS);
+
+    assertEquals(user.getId(), currentUser.getId());
+    assertEquals(user.getName(), principal.getName());
+    assertEquals(user.getEmail(), principal.getEmail());
+  }
 
   @Test
   void testEmailFirstUsersWithSameLocalPartStayUnique(TestNamespace ns) {
@@ -149,6 +215,22 @@ class EmailFirstIdentityIT {
         firstEmail, provision(firstEmail, "First").getEmail(), "Failed change must not mutate");
   }
 
+  /** A dotless ı is not an i, so an address that only case-folds to the caller's is still taken. */
+  @Test
+  void testChangeEmailRejectsAnAddressThatOnlyFoldsToTheCurrentOne(TestNamespace ns) {
+    String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
+    String takenEmail = "admin" + suffix + "@x.test.om.org";
+    String lookalikeEmail = "adm\u0131n" + suffix + "@x.test.om.org";
+
+    User holder = provision(takenEmail, "Holder");
+    provision(lookalikeEmail, "Lookalike");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> Entity.getUserRepository().changeEmail(lookalikeEmail, takenEmail, false));
+    assertEquals(holder.getId(), provision(takenEmail, "Holder").getId());
+  }
+
   @Test
   void testChangeEmailPreservesStoredFieldsTheReadDidNotRequest(TestNamespace ns) {
     String localPart = ("keepfields" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
@@ -227,6 +309,45 @@ class EmailFirstIdentityIT {
     assertEquals(user.getId(), after.getId());
   }
 
+  /**
+   * The principal-claims OIDC login finds the account by name and saves it back when the login
+   * changes it, here by filling the display name. The copy it loads must carry the stored profile.
+   */
+  @Test
+  void testLoginByNameDoesNotEraseStoredUserFields(TestNamespace ns) {
+    String localPart = ("byname" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    URI picture = URI.create("https://idp.test.om.org/" + localPart + ".png");
+    User user = provisionWithPicture(localPart + "@x.test.om.org", picture);
+    UserRepository userRepository = Entity.getUserRepository();
+
+    User forLogin = userRepository.getUserByNameForAuthUpdate(user.getName());
+    assertEquals(picture, forLogin.getProfile().getImages().getImage());
+
+    forLogin.setDisplayName("Name From The Provider");
+    UserUtil.addOrUpdateUser(forLogin);
+
+    assertEquals(
+        picture, storedPicture(user.getEmail()), "Saving the login's copy erased the profile");
+  }
+
+  @Test
+  void testSignInStoresAndRefreshesTheProviderPicture(TestNamespace ns) {
+    String localPart = ("picture" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    String email = localPart + "@x.test.om.org";
+    URI firstPicture = URI.create("https://idp.test.om.org/" + localPart + "/first.png");
+    URI newPicture = URI.create("https://idp.test.om.org/" + localPart + "/new.png");
+
+    provisionWithPicture(email, firstPicture);
+    assertEquals(firstPicture, storedPicture(email), "Sign-up must store the provider's picture");
+
+    provisionWithPicture(email, newPicture);
+    assertEquals(newPicture, storedPicture(email), "A new provider picture must replace the old");
+
+    provisionWithPicture(email, null);
+    assertEquals(
+        newPicture, storedPicture(email), "A token without a picture must keep the stored one");
+  }
+
   @Test
   void testSynthesizedEmailDomainListingFindsAccountsToRepair(TestNamespace ns) {
     String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
@@ -255,6 +376,26 @@ class EmailFirstIdentityIT {
    */
   private User provision(String email, String displayName) {
     return provision(email, displayName, null);
+  }
+
+  /** Applies the picture the way the OIDC sign-in does, both to a new account and an existing one. */
+  private User provisionWithPicture(String email, URI picture) {
+    return EmailFirstUserProvisioner.forProvider(
+            "TEST",
+            new AuthorizerConfiguration(),
+            Entity.getUserRepository(),
+            user -> UserProfileClaims.syncPicture(user, picture),
+            user -> UserProfileClaims.syncPicture(user, picture))
+        .getOrCreate(email, "Picture User", null, true);
+  }
+
+  private URI storedPicture(String email) {
+    Profile profile =
+        Entity.getUserRepository()
+            .getByEmail(null, email, new EntityUtil.Fields(Set.of("profile")))
+            .getProfile();
+    assertNotNull(profile, "Expected a stored profile for " + email);
+    return profile.getImages().getImage();
   }
 
   private User provision(String email, String displayName, String identityProviderSubject) {

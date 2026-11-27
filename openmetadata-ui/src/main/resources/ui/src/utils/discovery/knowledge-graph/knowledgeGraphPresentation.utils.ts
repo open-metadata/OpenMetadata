@@ -21,15 +21,22 @@ import {
 } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
 import {
   getGraphRelationCategory,
+  getRelationLabelKey,
   normalizeRelationKey,
   RelationCategory,
   toSentenceCase,
 } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
+import type {
+  GraphData as RdfGraphData,
+  GraphNode as RdfGraphNode,
+} from '../../../rest/rdfAPI.interface';
 import Fqn from '../../Fqn';
 import { identifyGraphEdges } from './knowledge-graph.utils';
 
 export const isConceptNode = (node: GraphNode) =>
-  ['glossaryterm', 'concept', 'term'].includes(node.type.toLowerCase());
+  ['glossaryterm', 'ontologyconcept', 'concept', 'term'].includes(
+    node.type.toLowerCase()
+  );
 
 export const isCoverageNode = (node: GraphNode) =>
   [
@@ -49,7 +56,18 @@ export const isCoverageNode = (node: GraphNode) =>
     'term',
   ].includes(node.type.toLowerCase());
 
-export const getGraphNodeLabel = (node: GraphNode) => {
+export const getGraphNodeLabel = (node: RdfGraphNode) => {
+  // The RDF projection can return an empty label (seen on glossary terms),
+  // which left the ontology concept picker and the node card blank.
+  if (!node.label?.trim()) {
+    return (
+      node.name ||
+      (node.fullyQualifiedName
+        ? Fqn.split(node.fullyQualifiedName).slice(-1)[0]
+        : '') ||
+      node.id
+    );
+  }
   if (node.type.toLowerCase() !== 'column') {
     return node.label;
   }
@@ -59,6 +77,7 @@ export const getGraphNodeLabel = (node: GraphNode) => {
 };
 
 const mappingPredicates = new Set([
+  'boundasset',
   'hasglossaryterm',
   'hasglossary',
   'hastag',
@@ -83,16 +102,23 @@ const isMappingPredicate = (predicate: string) =>
     predicate.split(/[/#:]/).pop()?.replace(/\s/g, '').toLowerCase() ?? ''
   );
 
-/** Reads every predicate as a phrase, the way the design labels edges. */
-export const sentenceCaseGraphLabels = (
-  data: GraphData | null
+/**
+ * Reads every predicate as a phrase in the user's language, the way the design
+ * labels edges. The raw predicate moves to `relationType` because the
+ * classifiers key on `relationType ?? label` and must not see the translation.
+ */
+export const localizeGraphLabels = (
+  data: GraphData | null,
+  translate: (key: string) => string
 ): GraphData | null =>
   data && {
     ...data,
     edges: data.edges.map((edge) => {
-      const label = toSentenceCase(edge.label);
+      const relationType = edge.relationType ?? edge.label;
+      const key = getRelationLabelKey(relationType);
+      const label = key ? translate(key) : toSentenceCase(edge.label);
 
-      return label === edge.label ? edge : { ...edge, label };
+      return label === edge.label ? edge : { ...edge, label, relationType };
     }),
   };
 
@@ -129,6 +155,8 @@ export const getMappingCoverage = (
       return 'mapped';
     }
     if (data.truncated || (inspectedIds && !inspectedIds.has(id))) {
+      // Outside the current traversal depth or truncated — we didn't look,
+      // so this is an "unknown" bucket, not a missing-data gap.
       return 'unknown';
     }
 
@@ -195,55 +223,22 @@ export const restrictToEntityLevel = (
   };
 };
 
-export const filterGraphPresentation = (
-  data: GraphData | null,
-  rootId: string,
-  excludedFamilies: RelationCategory[],
-  coverage: Map<string, MappingCoverage>,
-  coverageMode: string
-): GraphData | null => {
-  if (!data) {
-    return null;
-  }
-  const nodeTypes = new Map(data.nodes.map((node) => [node.id, node.type]));
-  const edges = data.edges.filter(
-    (edge) =>
-      !excludedFamilies.includes(getGraphRelationCategory(edge, nodeTypes))
-  );
-  const connected = new Set([
-    rootId,
-    ...edges.flatMap((edge) => [edge.from, edge.to]),
-  ]);
-  const matchesCoverage = (node: GraphNode) =>
-    node.id === rootId ||
-    !isCoverageNode(node) ||
-    !['mapped', 'unmapped'].includes(coverageMode) ||
-    coverage.get(node.id) === coverageMode;
-  const nodes = data.nodes.filter(
-    (node) =>
-      (!excludedFamilies.length || connected.has(node.id)) &&
-      matchesCoverage(node)
-  );
-  const visible = new Set(nodes.map((node) => node.id));
-
-  return {
-    ...data,
-    nodes: nodes.map((node) => ({ ...node, label: getGraphNodeLabel(node) })),
-    edges: edges.filter(
-      (edge) => visible.has(edge.from) && visible.has(edge.to)
-    ),
-  };
-};
+export const relabelGraphNodes = (data: RdfGraphData): GraphData => ({
+  ...data,
+  nodes: data.nodes.map((node) => ({
+    ...node,
+    label: getGraphNodeLabel(node),
+  })),
+});
 
 export const annotateGraphCoverage = (
   data: GraphData,
   coverage: Map<string, MappingCoverage>,
-  rootId: string,
-  highlight: boolean
+  rootId: string
 ): GraphData => ({
   ...data,
   nodes: data.nodes.map((node) => {
-    if (!node.presentation || (!highlight && node.id !== rootId)) {
+    if (!node.presentation || node.id !== rootId) {
       return node;
     }
     const members = node.presentation.members ?? [node];

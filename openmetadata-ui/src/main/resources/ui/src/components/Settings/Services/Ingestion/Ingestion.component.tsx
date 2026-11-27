@@ -12,6 +12,7 @@
  */
 
 import { Tabs } from '@openmetadata/ui-core-components';
+import { Code01, Suggestions } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import {
   ComponentType,
@@ -23,8 +24,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
-import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -66,11 +65,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   }>();
   const { permissions } = usePermissionProvider();
 
-  const isDBService = useMemo(
-    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
-    [serviceCategory]
-  );
-
   const { CollateAIAgentsWidget } = useMemo(
     () => ({
       ...getDefaultAgentsTabWidgets(),
@@ -86,9 +80,11 @@ const Ingestion: React.FC<IngestionProps> = ({
     Record<string, unknown>
   >;
 
+  // AutoPilot creates AI Automations for services of every type, so the Collate AI sub-tab is
+  // not limited to database services.
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
-    [CollateAIAgentsWidget, isDBService]
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
@@ -158,9 +154,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const subTabItems = useMemo(() => {
     return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        tabName === ServiceAgentSubTabs.COLLATE_AI
-          ? CollateAI
-          : MetadataAgentIcon;
+        tabName === ServiceAgentSubTabs.COLLATE_AI ? Suggestions : Code01;
       const label =
         tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')
@@ -209,7 +203,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <Tabs
           className="tw:w-full"
           data-testid="agents-sub-tabs-switch"
-          selectedKey={subTab}
+          selectedKey={subTab ?? ServiceAgentSubTabs.METADATA}
           onSelectionChange={handleSubTabChange}>
           <Tabs.List type="underline">{subTabItems}</Tabs.List>
         </Tabs>

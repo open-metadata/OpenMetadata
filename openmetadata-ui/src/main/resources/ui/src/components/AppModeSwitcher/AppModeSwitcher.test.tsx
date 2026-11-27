@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import AppModeSwitcher from './AppModeSwitcher';
 
@@ -59,6 +59,21 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement('span', props, children),
+  HoverCard: ({
+    children,
+    content,
+  }: React.PropsWithChildren<{ content: React.ReactNode }>) =>
+    React.createElement(React.Fragment, null, children, content),
+  Card: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement('div', props, children),
   Box: ({
     children,
     ...props
@@ -100,6 +115,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 jest.mock('../../constants/appMode.constants', () => ({
   AI_APP_MODE: 'ai',
   DEFAULT_APP_MODE: 'default',
+  CLASSIC_MODE_RELEASE_NOTES_URL: 'https://docs.example/releases',
 }));
 
 const getTrigger = () => screen.getByTestId('app-mode-switcher-trigger');
@@ -122,6 +138,30 @@ describe('AppModeSwitcher', () => {
     expect(getTrigger()).toHaveTextContent('label.classic mode');
   });
 
+  it('shows the mode as a short pill label in the AI rail', () => {
+    render(<AppModeSwitcher variant="pill" />);
+
+    expect(getTrigger()).toHaveTextContent(/^label\.classic$/);
+  });
+
+  it('shows the full mode sentence on the bordered sidebar card', () => {
+    render(<AppModeSwitcher variant="card" />);
+
+    expect(getTrigger()).toHaveTextContent('label.classic mode');
+    expect(getTrigger()).not.toHaveAttribute('aria-label');
+  });
+
+  it('names the icon-only trigger for the collapsed sidebar and still opens the switcher', () => {
+    render(<AppModeSwitcher variant="icon" />);
+
+    expect(getTrigger()).toHaveAccessibleName('label.classic mode');
+    expect(getTrigger()).toHaveTextContent(/^$/);
+
+    fireEvent.click(getTrigger());
+
+    expect(getCard()).toBeInTheDocument();
+  });
+
   it('renders both Classic and AI options', () => {
     render(<AppModeSwitcher />);
 
@@ -140,6 +180,22 @@ describe('AppModeSwitcher', () => {
 
     expect(screen.getByTestId('app-mode-option-classic')).not.toBeDisabled();
     expect(screen.getByTestId('app-mode-option-ai')).not.toBeDisabled();
+  });
+
+  it('marks only the current option, with a check icon and no "Current" text', () => {
+    currentMode = 'ai';
+    render(<AppModeSwitcher />);
+    fireEvent.click(getTrigger());
+
+    expect(
+      within(screen.getByTestId('app-mode-option-ai')).getByRole('img', {
+        name: 'label.current',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('classic-current-badge')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.current')).not.toBeInTheDocument();
   });
 
   it('clicking Classic writes DEFAULT_APP_MODE and navigates to /', () => {
@@ -219,5 +275,23 @@ describe('AppModeSwitcher', () => {
 
     expect(container).not.toBeEmptyDOMElement();
     expect(getTrigger()).toBeInTheDocument();
+  });
+
+  it('marks Classic as deprecated inside the switcher only', () => {
+    render(<AppModeSwitcher />);
+
+    expect(
+      screen.queryByTestId('classic-deprecated-badge')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(getTrigger());
+
+    expect(screen.getByTestId('classic-deprecated-badge')).toHaveTextContent(
+      'label.deprecated'
+    );
+    expect(screen.getByTestId('classic-deprecation-card')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('classic-deprecation-release-notes')
+    ).toHaveAttribute('href', 'https://docs.example/releases');
   });
 });

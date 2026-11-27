@@ -1,5 +1,15 @@
 [
   {
+    "type": "task",
+    "fields": {
+      "ontologyReview": {
+        "entityId": "00000000-0000-0000-0000-000000000001",
+        "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "author"
+      }
+    }
+  },
+  {
     "type": "table",
     "fields": {
       "name": "orders",
@@ -26,7 +36,7 @@
       "columns": [
         {"name": "id", "fullyQualifiedName": "service.db.schema.orders.id", "dataType": "BIGINT", "constraint": "PRIMARY_KEY", "ordinalPosition": 1},
         {"name": "accountId", "fullyQualifiedName": "service.db.schema.orders.accountId", "dataType": "BIGINT", "constraint": "UNIQUE"},
-        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "dataType": "DOUBLE"}]}
+        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "fullyQualifiedName": "service.db.schema.orders.details.amount", "dataType": "DOUBLE"}]}
       ],
       "tableConstraints": [
         {"constraintType": "PRIMARY_KEY", "columns": ["id"]},
@@ -47,6 +57,71 @@
         "executedBy": {"id": "00000000-0000-0000-0000-000000000002", "type": "user"},
         "inputs": [{"datasetFQN": "service.db.schema.source"}],
         "outputs": [{"datasetFQN": "service.db.schema.output"}]
+      }
+    }
+  },
+  {
+    "type": "dataContract",
+    "fields": {
+      "name": "preserved_odcs_contract",
+      "fullyQualifiedName": "customers.preserved_odcs_contract",
+      "odcsPreservedFields": {
+        "document": "{\"futureField\":{\"enabled\":true}}",
+        "unapplied": []
+      }
+    }
+  },
+  {
+    "type": "testCase",
+    "fields": {
+      "fullyQualifiedName": "service.db.schema.fixture.id.id_not_null",
+      "testSuite": {
+        "id": "00000000-0000-0000-0000-000000000005",
+        "type": "testSuite",
+        "name": "service.db.schema.fixture.testSuite",
+        "fullyQualifiedName": "service.db.schema.fixture.testSuite"
+      },
+      "testDefinition": {
+        "id": "00000000-0000-0000-0000-000000000006",
+        "type": "testDefinition",
+        "name": "columnValuesToBeNotNull",
+        "fullyQualifiedName": "columnValuesToBeNotNull"
+      },
+      "entityLink": "<#E::table::service.db.schema.fixture::columns::id>",
+      "entityFQN": "service.db.schema.fixture.id",
+      "parameterValues": [
+        {
+          "name": "columnName",
+          "value": "id"
+        }
+      ],
+      "incidentStatus": {
+        "stateId": "00000000-0000-0000-0000-000000000003",
+        "timestamp": 1000,
+        "testCaseResolutionStatusType": "Assigned",
+        "severity": "Severity1",
+        "testCaseResolutionStatusDetails": {
+          "assignee": {
+            "id": "00000000-0000-0000-0000-000000000004",
+            "type": "user"
+          }
+        }
+      },
+      "testCaseResult": {
+        "timestamp": 1000,
+        "testCaseStatus": "Failed",
+        "result": "Found 1 null value",
+        "sampleData": "a sampled row never reaches the graph",
+        "passedRows": 9,
+        "failedRows": 1,
+        "minBound": 0.0,
+        "maxBound": 0.0,
+        "testResultValue": [
+          {
+            "name": "nullCount",
+            "value": "1"
+          }
+        ]
       }
     }
   }

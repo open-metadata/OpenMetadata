@@ -19,12 +19,36 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import text
 
+from metadata.data_quality.validations import result_messages
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.column.sqlalchemy.columnValueMaxToBeBetween import (
+    ColumnValueMaxToBeBetweenValidator,
+)
+from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetween import (
+    ColumnValueMeanToBeBetweenValidator,
+)
+from metadata.data_quality.validations.column.sqlalchemy.columnValueMinToBeBetween import (
+    ColumnValueMinToBeBetweenValidator,
+)
+from metadata.data_quality.validations.column.sqlalchemy.columnValuesMissingCount import (
+    ColumnValuesMissingCountValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween import (
+    TableColumnCountToBeBetweenValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToEqual import (
+    TableColumnCountToEqualValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableRowCountToBeBetween import (
+    TableRowCountToBeBetweenValidator,
+)
 from metadata.data_quality.validations.table.sqlalchemy.tableRowCountToEqual import (
     TableRowCountToEqualValidator,
 )
 from metadata.data_quality.validations.thresholds import (
+    FailureThreshold,
     ThresholdUnit,
     _warn_zero_reference,
     apply_bound_tolerance,
@@ -153,10 +177,10 @@ class _MockValidator(BaseTestValidator):
         )
 
 
-def _test_case(parameter_values) -> TestCase:
+def _test_case(parameter_values, entity_link="<#E::table::service.db.schema.table>") -> TestCase:
     return TestCase(
         name="test_case",
-        entityLink="<#E::table::service.db.schema.table>",
+        entityLink=entity_link,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=parameter_values,
@@ -246,3 +270,109 @@ def test_exact_value_validator_tolerates_a_deviation(threshold, unit, expected_s
     validator._run_results = lambda *_args, **_kwargs: 102
 
     assert validator.run_validation().testCaseStatus == expected_status
+
+
+@pytest.mark.parametrize(
+    "validator_class,bound_parameter,statistic",
+    [
+        (ColumnValueMeanToBeBetweenValidator, "maxValueForMeanInCol", "Mean"),
+        (ColumnValueMinToBeBetweenValidator, "maxValueForMinInCol", "Minimum"),
+        (ColumnValueMaxToBeBetweenValidator, "maxValueForMaxInCol", "Maximum"),
+    ],
+)
+@pytest.mark.parametrize(
+    "bound,threshold,unit,tolerance,status",
+    [
+        (100, 5, ABSOLUTE, "5 metric units", TestCaseStatus.Success),
+        (100.5, 4.5, ABSOLUTE, "4.5 metric units", TestCaseStatus.Success),
+        (100, 4.5, ABSOLUTE, "4.5 metric units", TestCaseStatus.Failed),
+        (100, 5, PERCENTAGE, "5%", TestCaseStatus.Success),
+    ],
+)
+def test_statistic_tolerance_message_uses_metric_units(
+    create_sqlite_table, validator_class, bound_parameter, statistic, bound, threshold, unit, tolerance, status
+):
+    runner = create_sqlite_table
+    runner.session.execute(text("UPDATE users SET age = 105"))
+    runner.session.commit()
+    test_case = _test_case(
+        [TestCaseParameterValue(name=bound_parameter, value=str(bound))] + _threshold_params(threshold, unit),
+        entity_link="<#E::table::service.db.users::columns::age>",
+    )
+
+    result = validator_class(runner, test_case, int(datetime.now().timestamp())).run_validation()
+
+    assert result.testCaseStatus == status
+    assert f"{statistic} of `age` is 105." in result.result
+    assert f"widened by a {tolerance} tolerance to at most" in result.result
+    assert "rows tolerance" not in result.result
+
+
+@pytest.mark.parametrize(
+    "validator_class,bound_parameter,bound,noun",
+    [
+        (TableRowCountToBeBetweenValidator, "maxValue", 75, "rows"),
+        (TableColumnCountToBeBetweenValidator, "maxColValue", 6, "columns"),
+    ],
+)
+def test_count_tolerance_message_keeps_count_units(create_sqlite_table, validator_class, bound_parameter, bound, noun):
+    test_case = _test_case(
+        [TestCaseParameterValue(name=bound_parameter, value=str(bound))] + _threshold_params(5, ABSOLUTE)
+    )
+
+    result = validator_class(create_sqlite_table, test_case, int(datetime.now().timestamp())).run_validation()
+
+    assert result.testCaseStatus == TestCaseStatus.Success
+    assert f"widened by a 5 {noun} tolerance" in result.result
+
+
+def test_unbounded_statistic_tolerance_uses_metric_units():
+    sentence = result_messages.statistic_sentence(
+        "Mean", 105, (-INF, INF), (-INF, INF), FailureThreshold(value=4.5, unit=ABSOLUTE), True
+    )
+
+    assert "a 4.5 metric units tolerance did not widen" in sentence
+
+
+@pytest.mark.parametrize(
+    "validator_class,parameter,observed,noun,entity_link",
+    [
+        (TableColumnCountToEqualValidator, "columnCount", 11, "columns", "<#E::table::service.db.users>"),
+        (TableRowCountToEqualValidator, "value", 80, "rows", "<#E::table::service.db.users>"),
+        (
+            ColumnValuesMissingCountValidator,
+            "missingCountValue",
+            20,
+            "rows",
+            "<#E::table::service.db.users::columns::age>",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "difference,threshold,unit,status",
+    [
+        (1, 1, ABSOLUTE, TestCaseStatus.Success),
+        (2, 1, ABSOLUTE, TestCaseStatus.Failed),
+        (1, 10, PERCENTAGE, TestCaseStatus.Success),
+        (1, 1, PERCENTAGE, TestCaseStatus.Failed),
+        (0, 0, ABSOLUTE, TestCaseStatus.Success),
+        (1, 0, ABSOLUTE, TestCaseStatus.Failed),
+    ],
+)
+def test_exact_count_tolerance_message_uses_count_units(
+    create_sqlite_table, validator_class, parameter, observed, noun, entity_link, difference, threshold, unit, status
+):
+    expected = observed - difference
+    test_case = _test_case(
+        [TestCaseParameterValue(name=parameter, value=str(expected))] + _threshold_params(threshold, unit),
+        entity_link=entity_link,
+    )
+
+    result = validator_class(create_sqlite_table, test_case, int(datetime.now().timestamp())).run_validation()
+
+    assert result.testCaseStatus == status
+    assert f"is {observed}. Expected {expected}," in result.result
+    tolerance = f"{threshold}%" if unit is PERCENTAGE else f"{threshold} {noun}"
+    expected_tolerance = f"with a {tolerance} tolerance" if threshold else "with no tolerance"
+    assert expected_tolerance in result.result
+    assert result_messages.verdict(status is TestCaseStatus.Success) in result.result

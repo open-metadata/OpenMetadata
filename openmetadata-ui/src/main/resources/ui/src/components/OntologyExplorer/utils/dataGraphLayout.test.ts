@@ -15,7 +15,10 @@ import {
   CardBox,
   CardPosition,
   layoutDataClusters,
+  layoutSourceGroups,
   Point,
+  SOURCE_CARD_HEIGHT,
+  SOURCE_GROUP_HEADER_HEIGHT,
 } from './dataGraphLayout';
 
 const CARD = { height: 200, width: 236 };
@@ -98,7 +101,7 @@ describe('buildClusterEdgeGeometry', () => {
     expect(start.y).toBeGreaterThan(0);
     expect(start.y).toBeLessThan(200);
     expect(end.x).toBe(500);
-    expect(geometry?.arrowPath).toMatch(/^M 500 /);
+    expect(geometry?.end).toEqual(end);
     expect(geometry?.labelLeft).toBeGreaterThan(236);
     expect(geometry?.labelLeft).toBeLessThan(500);
   });
@@ -156,7 +159,7 @@ describe('buildClusterEdgeGeometry', () => {
 
     expect(start).toEqual({ x: 236, y: 100 });
     expect(end).toEqual({ x: 864, y: 100 });
-    expect(geometry?.arrowPath).toMatch(/^M 864 100 /);
+    expect(geometry?.end).toEqual(end);
     // The label sits on the drawn curve, which rounds off the route's bends.
     expect(geometry?.labelLeft).toBeCloseTo(550, 0);
     expect(geometry?.labelTop).toBeCloseTo(320.4, 0);
@@ -252,5 +255,40 @@ describe('layoutDataClusters', () => {
       expect(position.left + CARD.width).toBeLessThanOrEqual(width);
       expect(position.top + CARD.height).toBeLessThanOrEqual(height);
     });
+  });
+});
+
+describe('layoutSourceGroups', () => {
+  it('stacks each source panel under the previous one with its cards inside, right of the root', () => {
+    const layout = layoutSourceGroups([
+      { key: 'BigQuery', itemIds: ['a', 'b'] },
+      { key: 'Kafka', itemIds: ['c'] },
+    ]);
+    const [first, second] = layout.groups;
+    const card = (id: string) => layout.cards.get(id) as CardBox;
+
+    expect(second.top).toBeGreaterThan(first.top + first.height);
+    expect(card('a').top).toBe(first.top + SOURCE_GROUP_HEADER_HEIGHT);
+    expect(card('b').top).toBeGreaterThan(card('a').top + SOURCE_CARD_HEIGHT);
+    expect(card('b').top + card('b').height).toBeLessThan(
+      first.top + first.height
+    );
+    expect(card('c').top).toBe(second.top + SOURCE_GROUP_HEADER_HEIGHT);
+    expect(card('a').left).toBeGreaterThan(
+      layout.root.left + layout.root.width
+    );
+    expect(layout.bottom).toBeGreaterThan(second.top + second.height);
+  });
+
+  it('keeps the root level with the first cards of a long list', () => {
+    const ids = Array.from({ length: 40 }, (_, index) => `a${index}`);
+    const short = layoutSourceGroups([{ key: 'X', itemIds: ids.slice(0, 1) }]);
+    const long = layoutSourceGroups([{ key: 'X', itemIds: ids }]);
+
+    expect(long.root.top).toBeLessThan(long.bottom / 4);
+    expect(short.root.top + short.root.height / 2).toBeCloseTo(
+      (short.groups[0].top * 2 + short.groups[0].height) / 2,
+      0
+    );
   });
 });

@@ -15,7 +15,7 @@ export interface WorkflowInstanceFromApplicationParams {
   offset?: string;
   startTs: number;
   endTs: number;
-  workflowDefinitionName: string;
+  workflowDefinitionName?: string;
   entityLink: string;
 }
 

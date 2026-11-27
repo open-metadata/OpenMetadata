@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +32,13 @@ const AttachmentPlaceholder: FC<AttachmentPlaceholderProps> = ({
       className="image-placeholder"
       contentEditable={false}
       data-testid="image-placeholder">
-      <Icon component={FileIcon} />
+      <FileIcon
+        aria-hidden
+        className="attachment-placeholder-icon"
+        fill="currentColor"
+        height="1em"
+        width="1em"
+      />
       <Typography className="tw:text-center" color="secondary" size="text-md">
         {t('label.add-an-file-type', {
           fileType: t(`label.${fileType}`),

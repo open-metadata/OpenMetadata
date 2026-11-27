@@ -187,61 +187,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       Directory directory, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
-
-    // Calculate and set directory statistics
-    if (fields.contains("children")
-        || fields.contains("numberOfFiles")
-        || fields.contains("numberOfSubDirectories")
-        || fields.contains("totalSize")) {
-      List<EntityReference> children = getChildrenRefs(directory);
-      directory.withChildren(fields.contains("children") ? children : null);
-
-      // Calculate statistics from children
-      if (children != null && !children.isEmpty()) {
-        int fileCount = 0;
-        int dirCount = 0;
-        long totalSize = 0L;
-
-        for (EntityReference child : children) {
-          if (FILE.equals(child.getType())) {
-            fileCount++;
-            // Get file size if available
-            try {
-              org.openmetadata.schema.entity.data.File file =
-                  Entity.getEntity(child, "", Include.NON_DELETED);
-              if (file.getSize() != null) {
-                totalSize += file.getSize();
-              }
-            } catch (Exception e) {
-              // Ignore if file can't be loaded
-            }
-          } else if (DIRECTORY.equals(child.getType())) {
-            dirCount++;
-          } else if (SPREADSHEET.equals(child.getType())) {
-            fileCount++; // Count spreadsheets as files
-            try {
-              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
-                  Entity.getEntity(child, "", Include.NON_DELETED);
-              if (spreadsheet.getSize() != null) {
-                totalSize += spreadsheet.getSize();
-              }
-            } catch (Exception e) {
-              // Ignore if spreadsheet can't be loaded
-            }
-          }
-        }
-
-        directory.withNumberOfFiles(fileCount);
-        directory.withNumberOfSubDirectories(dirCount);
-        // Convert long to Integer, checking for overflow
-        directory.withTotalSize(
-            totalSize > 0
-                ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize)
-                : null);
-      }
-    } else {
-      directory.withChildren(null);
-    }
+    fetchAndSetStatistics(List.of(directory), fields);
   }
 
   @Override
@@ -444,54 +390,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   private EntityReference getService(Directory directory) {
     return getFromEntityRef(directory.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
-  }
-
-  private List<EntityReference> getChildrenRefs(Directory directory) {
-    List<EntityReference> children = new ArrayList<>();
-
-    // Get subdirectories - we stored parent as "from" and child as "to"
-    // So to find children, we use findTo with parent as "from"
-    List<CollectionDAO.EntityRelationshipRecord> subDirs =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), DIRECTORY);
-    LOG.debug(
-        "Found {} subdirectory relationships for directory {}", subDirs.size(), directory.getId());
-    for (CollectionDAO.EntityRelationshipRecord rel : subDirs) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(DIRECTORY, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    // Get files
-    List<CollectionDAO.EntityRelationshipRecord> files =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), FILE);
-    for (CollectionDAO.EntityRelationshipRecord rel : files) {
-      EntityReference ref = Entity.getEntityReferenceById(FILE, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    // Get spreadsheets
-    List<CollectionDAO.EntityRelationshipRecord> spreadsheets =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .findTo(directory.getId(), DIRECTORY, Relationship.CONTAINS.ordinal(), SPREADSHEET);
-    for (CollectionDAO.EntityRelationshipRecord rel : spreadsheets) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(SPREADSHEET, rel.getId(), Include.NON_DELETED);
-      if (ref != null) {
-        children.add(ref);
-      }
-    }
-
-    LOG.debug("Total children found for directory {}: {}", directory.getId(), children.size());
-    return children;
   }
 
   @Override

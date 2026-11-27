@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EditKPIPage from './EditKPIPage';
 import { KPI_DATA } from './KPIMock.mock';
@@ -51,7 +50,6 @@ jest.mock('../../hooks/authHooks', () => ({
 jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getDisabledDates: jest.fn().mockReturnValue(true),
   getDataInsightPathWithFqn: jest.fn().mockReturnValue(''),
 }));
 
@@ -62,14 +60,6 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
       <div>{secondPanel.children}</div>
     </>
   ))
-);
-
-jest.mock('../../constants/DataInsight.constants', () => ({
-  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
-}));
-
-jest.mock('../../components/common/DatePicker/DatePicker', () =>
-  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
 );
 
 const mockProps = {
@@ -132,8 +122,8 @@ describe('Edit KPI page', () => {
 
     const metricType = await screen.findByTestId('metricType');
 
-    expect(chart).toHaveClass('ant-select-disabled');
+    expect(within(chart).getByRole('button')).toBeDisabled();
 
-    expect(metricType).toHaveClass('ant-select-disabled');
+    expect(within(metricType).getByRole('button')).toBeDisabled();
   });
 });

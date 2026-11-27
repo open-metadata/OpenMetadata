@@ -211,28 +211,6 @@ jest.mock('../../components/DriveService/Spreadsheet/SpreadsheetDetails', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        permissionValue,
-        type,
-      }: {
-        children?: React.ReactNode;
-        permissionValue?: string;
-        type?: string;
-      }) => (
-        <div data-testid="error-placeholder">
-          <div data-testid="error-type">{type}</div>
-          <div data-testid="error-permission">{permissionValue}</div>
-          {children}
-        </div>
-      )
-    )
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -342,7 +320,11 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
@@ -369,17 +351,29 @@ describe('SpreadsheetDetailsPage', () => {
       });
     });
 
-    it('should render permission error when user lacks view permissions', async () => {
-      setMockPermissions({ ViewAll: false, ViewBasic: false });
+    it.each([
+      { ViewAll: false, ViewBasic: false },
+      { ViewAll: true, ViewBasic: false },
+    ])(
+      'should render permission error when user lacks view permissions (%o)',
+      async (permissions) => {
+        setMockPermissions(permissions);
 
-      await renderComponent();
+        await renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
-      });
+        await waitFor(() => {
+          expect(
+            screen.getByTestId(
+              /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+            )
+          ).toBeInTheDocument();
+        });
 
-      expect(screen.getByTestId('error-type')).toHaveTextContent('PERMISSION');
-    });
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
+      }
+    );
   });
 
   describe('Spreadsheet Details Management', () => {

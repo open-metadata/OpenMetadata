@@ -198,8 +198,8 @@ class TestDecimalPrecisionContract:
     digits belong in `precision` and `scale`.
 
     Connectors splat this dict straight into `Column`, so the keys emitted here are the contract
-    every one of them depends on - glue, athena, deltalake, unitycatalog, amundsen, quicksight and
-    superset all read it.
+    every one of them depends on - glue, athena, unitycatalog, amundsen, quicksight and superset all
+    read it.
     """
 
     @pytest.mark.parametrize(

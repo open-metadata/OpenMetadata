@@ -22,6 +22,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -81,6 +82,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -339,7 +341,19 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      TestSuite entity, EntityUtil.Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
+  }
+
+  @Override
+  public EntityInterface<?> getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
       return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
@@ -536,16 +550,37 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return query;
   }
 
-  public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
-    Map<String, String> entityLinkMap = new HashMap<>();
-    for (ResultSummary result : testCaseResults) {
-      TestCase testCase = Entity.getEntityByName(TEST_CASE, result.getTestCaseName(), "", ALL);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(testCase.getEntityLink());
-      String linkString = entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
-      entityLinkMap.put(result.getTestCaseName(), linkString);
-    }
-    return getTestSummary(testCaseResults, entityLinkMap);
+  public static TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
+    Map<String, String> summaryLinkByTestCase = getSummaryLinksOfExistingTestCases(testCaseResults);
+    List<ResultSummary> resultsOfExistingTestCases =
+        testCaseResults.stream()
+            .filter(result -> summaryLinkByTestCase.containsKey(result.getTestCaseName()))
+            .toList();
+    return getTestSummary(resultsOfExistingTestCases, summaryLinkByTestCase);
+  }
+
+  /**
+   * Reads the listed test cases in one batch. A test case deleted after its results were listed is
+   * missing from the batch, so its results drop out of the summary instead of failing the whole
+   * read with a 404.
+   */
+  private static Map<String, String> getSummaryLinksOfExistingTestCases(
+      List<ResultSummary> testCaseResults) {
+    List<String> testCaseFqns =
+        testCaseResults.stream().map(ResultSummary::getTestCaseName).distinct().toList();
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+    return testCaseRepository.findByNames(testCaseFqns, Include.NON_DELETED).stream()
+        .collect(
+            Collectors.toMap(
+                TestCase::getFullyQualifiedName,
+                TestSuiteRepository::getSummaryLink,
+                (first, duplicate) -> first));
+  }
+
+  private static String getSummaryLink(TestCase testCase) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    return entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
   }
 
   private static TestSummary createTestSummary(Map<String, Integer> summaryMap) {
@@ -557,7 +592,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return summary;
   }
 
-  private ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
+  private static ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
     ColumnTestSummaryDefinition summary = new ColumnTestSummaryDefinition();
     summary.setSuccess(summaryMap.getOrDefault("Success", 0));
     summary.setFailed(summaryMap.getOrDefault("Failed", 0));
@@ -601,7 +636,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     super.postCreate(entity);
     if (Boolean.TRUE.equals(entity.getBasic()) && entity.getBasicEntityReference() != null) {
       // Update table index with test suite field
-      EntityInterface entityInterface =
+      EntityInterface<?> entityInterface =
           getEntity(entity.getBasicEntityReference(), "testSuite", ALL);
       IndexMapping indexMapping =
           searchRepository.getIndexMapping(entity.getBasicEntityReference().getType());
@@ -672,7 +707,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     Map<UUID, List<EntityReference>> ingestionPipelineMap =
         entities.stream()
-            .collect(Collectors.toMap(EntityInterface::getId, this::getIngestionPipelines));
+            .collect(Collectors.toMap(EntityInterface<?>::getId, this::getIngestionPipelines));
     setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
   }
 
@@ -714,7 +749,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
                 CollectionDAO.EntityRelationshipCount::getCount));
   }
 
-  private TestSummary getTestSummary(
+  private static TestSummary getTestSummary(
       List<ResultSummary> testCaseResults, Map<String, String> entityLinkMap) {
     record ProcessedTestCaseResults(String entityLink, String status) {}
 
@@ -764,6 +799,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void prepare(TestSuite entity, boolean update) {
     /* Nothing to do */
+  }
+
+  @Override
+  protected void validatePatch(TestSuite original, TestSuite updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    updated
+        .withBasic(original.getBasic())
+        .withBasicEntityReference(original.getBasicEntityReference());
   }
 
   private List<EntityReference> getTestCases(TestSuite entity) {
@@ -819,7 +862,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     setFieldsInternal(updated, putFields);
 
     if (supportsSoftDelete && !hardDelete) {
-      updated.setUpdatedBy(updatedBy);
+      EntityUtil.recordWriter(updated, updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
@@ -838,10 +881,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
    * just go ahead and clean the Ingestion Pipelines
    */
   private void deleteChildIngestionPipelines(UUID id, boolean hardDelete, String updatedBy) {
-    List<CollectionDAO.EntityRelationshipRecord> childrenRecords =
-        daoCollection
-            .relationshipDAO()
-            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+    List<CollectionDAO.EntityRelationshipRecord> childrenRecords = findChildIngestionPipelines(id);
 
     if (childrenRecords.isEmpty()) {
       LOG.debug("No children to delete");
@@ -849,6 +889,28 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Override
+  protected void restoreChildren(UUID id, String updatedBy) {
+    if (Boolean.TRUE.equals(find(id, ALL).getBasic())) {
+      super.restoreChildren(id, updatedBy);
+    } else {
+      // Logical suites only group tests; mirror their pipeline-only delete cascade so tests
+      // deleted independently stay deleted when the suite is restored.
+      final List<UUID> pipelineIds =
+          findChildIngestionPipelines(id).stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .toList();
+      Entity.getEntityRepository(Entity.INGESTION_PIPELINE)
+          .bulkRestoreSubtree(pipelineIds, updatedBy);
+    }
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> findChildIngestionPipelines(UUID id) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
   }
 
   public Response deleteLogicalTestSuiteAsync(
@@ -859,20 +921,21 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
-            () -> {
-              try {
-                RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                    deleteLogicalTestSuite(
-                        securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-                deleteFromSearch(deleteResponse.entity(), hardDelete);
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                        deleteLogicalTestSuite(
+                            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
+                    deleteFromSearch(deleteResponse.entity(), hardDelete);
 
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId, securityContext, testSuite, e.getMessage());
-              }
-            });
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId, securityContext, testSuite, e.getMessage());
+                  }
+                }));
     return Response.accepted()
         .entity(
             new DeleteEntityResponse(
@@ -953,7 +1016,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         if (testSuite.getDataContract() != null) {
           DataContractRepository dataContractRepository =
               (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
-          dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+          dataContractRepository.updateContractDQResults(
+              testSuite.getDataContract(), testSuite, state);
         }
 
         updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
@@ -970,7 +1034,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private Double persistSuiteUpdate(TestSuite suite, String updatedBy) {
     Double previousVersion = suite.getVersion();
     suite.setVersion(EntityUtil.nextVersion(previousVersion));
-    suite.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(suite, updatedBy);
     suite.setUpdatedAt(System.currentTimeMillis());
     storeEntity(suite, true);
     searchRepository.updateEntityIndex(suite);
@@ -1056,7 +1120,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
     @Override
     public void onEntityUpdated(
-        EntityInterface entity,
+        EntityInterface<?> entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       if (!(entity instanceof IngestionPipeline pipeline)) {
@@ -1102,6 +1166,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updated
+          .withBasic(original.getBasic())
+          .withBasicEntityReference(original.getBasicEntityReference());
       compareAndUpdate(
           UPDATE_FIELDS,
           () -> {

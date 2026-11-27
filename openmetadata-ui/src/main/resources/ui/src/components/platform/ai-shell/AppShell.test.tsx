@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, render, screen } from '@testing-library/react';
+import { Location, MemoryRouter, useLocation } from 'react-router-dom';
+import { usePersonalSpaceStore } from '../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../hooks/useSettingsHash';
 import { AppShell } from './AppShell';
 
 const mockPage = jest.fn();
@@ -23,10 +25,12 @@ jest.mock('use-analytics', () => ({
 
 jest.mock('../../AppRouter/withSuspenseFallback', () => ({
   __esModule: true,
-  default: () => () => <div data-testid="personal-space-modal" />,
+  default: () => () => <div data-testid="lazy-overlay" />,
 }));
 
 jest.mock('./Sidebar/Sidebar', () => () => <nav data-testid="sidebar" />);
+
+jest.mock('./GlobalSearch/GlobalSearchModal', () => () => null);
 
 jest.mock('./appModeExtensions', () => ({
   useAppModeBanners: () => [
@@ -67,9 +71,80 @@ describe('AppShell', () => {
     expect(content).toContainElement(screen.getByTestId('route-content'));
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(shell).not.toContainElement(screen.getByTestId('overlay'));
-    expect(shell).not.toContainElement(
-      screen.getByTestId('personal-space-modal')
-    );
+
+    screen
+      .getAllByTestId('lazy-overlay')
+      .forEach((overlay) => expect(shell).not.toContainElement(overlay));
+
+    expect(shell).not.toHaveClass('tw:hidden!');
     expect(mockPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides, but keeps mounted, the shell while a persona fullscreen customize view is open', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/#personas/data-steward/customize/data-assets/Table'
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/my-data']}>
+        <AppShell>
+          <main data-testid="route-content">Route content</main>
+        </AppShell>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('app-shell')).toHaveClass('tw:hidden!');
+    expect(screen.getByTestId('route-content')).toBeInTheDocument();
+
+    window.history.replaceState(null, '', '/');
+  });
+
+  // The personal-space modal is lazy (stubbed above, as before its chunk loads),
+  // so the shell must count the settings pushes that closing pops.
+  it('closes settings opened before the modal loads back to the page entry', () => {
+    window.history.replaceState(null, '', '/explore');
+    let location = {} as Location;
+    let settings = {} as ReturnType<typeof useSettingsHash>;
+    const Probe = () => {
+      location = useLocation();
+      settings = useSettingsHash();
+
+      return null;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/explore']}>
+        <AppShell>
+          <Probe />
+        </AppShell>
+      </MemoryRouter>
+    );
+    // Drop the hash an earlier test left in the module-level store.
+    act(() => settings.clearHash());
+    const pageKey = location.key;
+    const pushView = (tab: string, subPath?: string) =>
+      act(() => {
+        window.history.replaceState(
+          null,
+          '',
+          `/explore#${tab}${subPath ? `/${subPath}` : ''}`
+        );
+        settings.setHash(tab, subPath, undefined, { push: true });
+      });
+
+    pushView('preferences');
+    pushView('personas');
+    pushView('personas', 'add');
+
+    expect(usePersonalSpaceStore.getState().activePanel).toBe('profile');
+
+    act(() => usePersonalSpaceStore.getState().close());
+
+    expect(location.key).toBe(pageKey);
+    expect(location.hash).toBe('');
+
+    window.history.replaceState(null, '', '/');
   });
 });

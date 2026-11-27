@@ -160,6 +160,12 @@ class ProfilerSource(ProfilerSourceInterface):
             randomizedSample=self.source_config.randomizedSample if self.source_config else False,
         )
 
+    def _auto_detect_partition(self) -> bool:
+        supported = getattr(self.service_conn_config, "supportsAutoPartitionDetection", None)
+        return bool(
+            self.source_config and self.source_config.enableAutoPartitionDetection and supported and supported.root
+        )
+
     @inject
     def create_profiler_interface(
         self,
@@ -208,7 +214,11 @@ class ProfilerSource(ProfilerSourceInterface):
                 ),
                 include_columns=get_include_columns(entity, entity_config=config) or [],
                 exclude_columns=get_exclude_columns(entity, entity_config=config) or [],
-                partition_details=get_partition_details(entity=entity, entity_config=config),
+                partition_details=get_partition_details(
+                    entity=entity,
+                    entity_config=config,
+                    auto_detect_partition=self._auto_detect_partition(),
+                ),
                 sample_query=get_sample_query(entity=entity, entity_config=config),
                 # TODO: Change this when we have the processing engine configuration implemented.
                 processing_engine=self.get_processing_engine(self.source_config),

@@ -19,13 +19,13 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -59,17 +59,13 @@ const MetricDetailsPage = () => {
 
   const { fqn: metricFqn } = useFqn();
 
-  // canViewMetric is the query enabler for the entity fetch below, deliberately the
-  // prioritized ViewBasic flag (not the bare hasViewAccess OR used at the render gate near
-  // the bottom of this file) — matches the old getPrioritizedViewPermission(metricPermissions,
-  // Operation.ViewBasic) call exactly (see the canViewBasic doc comment in
-  // PermissionDerivation.ts for why the two must stay distinct).
+  // canViewMetric (prioritized ViewBasic) gates both the entity fetch and the permission
+  // placeholder below, so an explicit ViewBasic deny never leaves the page on the skeleton.
   const {
     permissions: metricPermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic: canViewMetric,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.METRIC, metricFqn, {
     enabled: Boolean(metricFqn),
   });
@@ -339,28 +335,32 @@ const MetricDetailsPage = () => {
   );
 
   if (isPermissionsLoading || metricLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.METRIC, metricFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(EntityType.METRIC, metricFqn)}
+        />
+      </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewMetric) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.metric'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.metric'),
+          })}
+        />
+      </div>
     );
   }
   if (!metricDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

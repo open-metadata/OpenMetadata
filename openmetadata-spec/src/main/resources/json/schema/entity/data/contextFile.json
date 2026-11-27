@@ -6,7 +6,7 @@
   "description": "An uploaded file (PDF, spreadsheet, document) stored in the Context Center Drive.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.ContextFile",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "fileType": {
       "javaType": "org.openmetadata.schema.entity.data.ContextFileType",
@@ -153,6 +153,11 @@
       "description": "Number of knowledge pills (context memories) extracted from this file.",
       "type": "integer",
       "default": 0
+    },
+    "neverExtracted": {
+      "description": "Whether this file was processed but its memories were never extracted, so it shows as Not processed. Computed on read and never stored.",
+      "type": "boolean",
+      "readOnly": true
     },
     "sourceType": {
       "description": "How this file was added.",

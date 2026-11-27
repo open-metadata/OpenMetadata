@@ -16,14 +16,19 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /** Captures live mutations or fences a fixed rebuild generation before touching Fuseki. */
@@ -31,11 +36,15 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   private static final int MAX_TURTLE_BYTES = 64 * 1024 * 1024;
   private final RdfDatasetManager manager;
   private final RdfDatasetManager.BuildTarget target;
+  private final RdfWriteDelivery delivery;
 
   RebuildingRdfStorage(
-      final RdfDatasetManager manager, final RdfDatasetManager.BuildTarget target) {
+      final RdfDatasetManager manager,
+      final RdfDatasetManager.BuildTarget target,
+      final RdfWriteDelivery delivery) {
     this.manager = manager;
     this.target = target;
+    this.delivery = delivery;
   }
 
   @Override
@@ -46,17 +55,24 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   private void mutate(
       final Consumer<RdfStorageInterface> mutation, final Supplier<RdfMutation> captured) {
     if (target == null) {
-      manager.writeActive(mutation, captured);
+      manager.writeActive(delivery, mutation, captured);
     } else {
       manager.writeBuild(target, mutation);
     }
   }
 
+  /**
+   * The journal keeps the full projection, never the difference: the rebuild dataset is projected
+   * on its own, so only the projection makes it match what the serving dataset should hold.
+   */
   @Override
-  public void storeEntity(final String type, final UUID id, final Model model) {
+  public RdfEntityWriteResult storeEntity(
+      final String type, final UUID id, final Model model, final RdfEntityWriteStrategy strategy) {
+    final AtomicReference<RdfEntityWriteResult> result = new AtomicReference<>();
     mutate(
-        storage -> storage.storeEntity(type, id, model),
+        storage -> result.set(storage.storeEntity(type, id, model, strategy)),
         () -> RdfMutation.EntityWrite.capture(type, id, model));
+    return result.get();
   }
 
   @Override
@@ -116,12 +132,44 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
         storage -> storage.executeSparqlUpdate(statement), () -> new RdfMutation.Sparql(statement));
   }
 
+  /**
+   * Maintenance of the serving dataset runs under the write pause instead of the serving row
+   * lock, so a long clear never holds a database transaction open; a build dataset has no other
+   * writers and is fenced as usual.
+   */
+  @Override
+  public void executeMaintenanceUpdate(final String statement, final Duration timeout) {
+    if (target == null) {
+      manager.maintainServing(
+          delivery, storage -> storage.executeMaintenanceUpdate(statement, timeout));
+    } else {
+      manager.writeBuild(target, storage -> storage.executeMaintenanceUpdate(statement, timeout));
+    }
+  }
+
+  @Override
+  public CompactionResult compact(final Duration maxWait) {
+    return target == null ? manager.compactServing(delivery, maxWait) : delegate().compact(maxWait);
+  }
+
+  @Override
+  public CompactionResult compactAndAwait(final Duration warningAfter) {
+    return compact(warningAfter);
+  }
+
   @Override
   public void loadTurtleFile(final InputStream input, final String graph) {
     final byte[] body = readTurtle(input);
     mutate(
         storage -> storage.loadTurtleFile(new ByteArrayInputStream(body), graph),
         () -> new RdfMutation.Turtle(body, graph));
+  }
+
+  @Override
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    mutate(
+        storage -> storage.replaceGraph(graph, releaseId, model),
+        () -> new RdfMutation.GraphReplace(graph, releaseId));
   }
 
   private static byte[] readTurtle(final InputStream input) {

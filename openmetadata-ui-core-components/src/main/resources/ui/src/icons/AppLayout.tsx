@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const AppLayout: FC<Props> = ({
-  size = 24,
+  size = 20,
   color: _color = 'currentColor',
   ...props
 }) => (

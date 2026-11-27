@@ -38,16 +38,18 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/clickzettaConnection.json'),
   [DatabaseServiceType.Cockroach]: () =>
     loadConnectionSchema('connections/database/cockroachConnection.json'),
+  [DatabaseServiceType.Databend]: () =>
+    loadConnectionSchema('connections/database/databendConnection.json'),
   [DatabaseServiceType.Databricks]: () =>
     loadConnectionSchema('connections/database/databricksConnection.json'),
   [DatabaseServiceType.Datalake]: () =>
     loadConnectionSchema('connections/database/datalakeConnection.json'),
   [DatabaseServiceType.Db2]: () =>
     loadConnectionSchema('connections/database/db2Connection.json'),
-  [DatabaseServiceType.DeltaLake]: () =>
-    loadConnectionSchema('connections/database/deltaLakeConnection.json'),
   [DatabaseServiceType.Doris]: () =>
     loadConnectionSchema('connections/database/dorisConnection.json'),
+  [DatabaseServiceType.Dremio]: () =>
+    loadConnectionSchema('connections/database/dremioConnection.json'),
   [DatabaseServiceType.StarRocks]: () =>
     loadConnectionSchema('connections/database/starrocksConnection.json'),
   [DatabaseServiceType.Druid]: () =>
@@ -126,6 +128,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/microsoftFabricConnection.json'),
   [DatabaseServiceType.Iomete]: () =>
     loadConnectionSchema('connections/database/iometeConnection.json'),
+  [DatabaseServiceType.Neo4J]: () =>
+    loadConnectionSchema('connections/database/neo4jConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
@@ -134,14 +138,24 @@ const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
   return maybeDefault ?? (mod as Record<string, unknown>);
 };
 
+const CSV_ESCAPE_CHAR_UI_SCHEMA = {
+  csvEscapeChar: {
+    'ui:emptyValue': '',
+  },
+};
+
 export const getDatabaseConfig = async (type: DatabaseServiceType) => {
   const loader = databaseSchemaLoaders[type];
   let schema: Record<string, unknown> = {};
-  const uiSchema = { ...COMMON_UI_SCHEMA };
+  const uiSchema: Record<string, unknown> = { ...COMMON_UI_SCHEMA };
 
   if (loader) {
     const mod = await loader();
     schema = resolveSchemaModule(mod);
+  }
+
+  if (type === DatabaseServiceType.Datalake) {
+    Object.assign(uiSchema, CSV_ESCAPE_CHAR_UI_SCHEMA);
   }
 
   return cloneDeep({ schema, uiSchema });

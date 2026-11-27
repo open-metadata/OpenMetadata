@@ -217,7 +217,7 @@ public class MigrationUtil {
     return summaries;
   }
 
-  private static <T extends EntityInterface> RepairSummary repairEntityType(
+  private static <T extends EntityInterface<?>> RepairSummary repairEntityType(
       EntityRepair<T> repair) {
     List<String> failedEntityIds = new ArrayList<>();
     int scanned = 0;
@@ -244,7 +244,7 @@ public class MigrationUtil {
     return summary;
   }
 
-  private static <T extends EntityInterface> RowRepair repairRow(
+  private static <T extends EntityInterface<?>> RowRepair repairRow(
       EntityRepair<T> repair, String json, List<String> failedEntityIds) {
     int childCount = 0;
     boolean failed = false;
@@ -421,7 +421,7 @@ public class MigrationUtil {
       BiConsumer<T, String> setFqn,
       Function<T, List<T>> children) {}
 
-  private record EntityRepair<T extends EntityInterface>(
+  private record EntityRepair<T extends EntityInterface<?>>(
       String entityType,
       EntityDAO<T> entityDAO,
       Class<T> entityClass,
@@ -570,19 +570,19 @@ public class MigrationUtil {
         return;
       }
 
-      EntityInterface fromEntity =
+      EntityInterface<?> fromEntity =
           Entity.getEntity(
               record.getFromEntity(),
               UUID.fromString(record.getFromId()),
               Entity.FIELD_SERVICE,
               Include.ALL);
-      EntityInterface toEntity =
+      EntityInterface<?> toEntity =
           Entity.getEntity(
               record.getToEntity(),
               UUID.fromString(record.getToId()),
               Entity.FIELD_SERVICE,
               Include.ALL);
-      EntityInterface pipelineEntity =
+      EntityInterface<?> pipelineEntity =
           Entity.getEntity(
               pipelineRef.getType(), pipelineRef.getId(), Entity.FIELD_SERVICE, Include.ALL);
 
@@ -629,7 +629,14 @@ public class MigrationUtil {
       return;
     }
     ServiceEdge key = new ServiceEdge(fromId, fromType, toId, toType);
-    edgesToCreate.putIfAbsent(key, buildServiceLineageDetails(sourceDetails));
+    // Count each contributing child edge rather than collapsing to a constant 1, so the
+    // assetEdges refcount the runtime decrements per child-edge delete matches the number of
+    // child edges feeding the hop. A hard-coded 1 would let the first delete of any one
+    // contributing child edge remove the hop while the other children still need it.
+    edgesToCreate.merge(
+        key,
+        buildServiceLineageDetails(sourceDetails),
+        (existing, ignored) -> existing.withAssetEdges(existing.getAssetEdges() + 1));
   }
 
   private static LineageDetails buildServiceLineageDetails(LineageDetails source) {

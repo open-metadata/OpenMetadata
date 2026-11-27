@@ -54,6 +54,11 @@ $$section
   - **This field is read-only** - it cannot be edited
   - **Copy this exact URL** and add it to AWS Cognito's allowed redirect URIs list
   - Format is always: `{your-domain}/callback`
+
+**MCP sign-in**
+
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Add `<om-url>/mcp/callback` to the Cognito app client’s allowed callback URLs. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
 $$
 
 $$section
@@ -353,11 +358,8 @@ $$
 $$section
 ### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
-- **Definition:** Whether to use SSL/TLS for secure connections.
+- **Deprecated — has no effect.** Socket handshakes are always authenticated under every configuration; this setting is retained only for backward compatibility.
 - **Default:** false
-- **Example:** true
-- **Why it matters:** Ensures encrypted communication for security.
-- **Note:** Should be enabled in production environments
 $$
 
 $$section

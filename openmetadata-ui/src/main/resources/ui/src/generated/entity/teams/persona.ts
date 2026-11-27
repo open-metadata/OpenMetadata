@@ -76,6 +76,11 @@ export interface Persona {
      */
     updatedBy?: string;
     /**
+     * Distinct active users assigned this persona directly, through a team, or as their default
+     * persona. Derived when requested; does not change direct assignments.
+     */
+    userCount?: number;
+    /**
      * Users that are assigned a persona.
      */
     users?: EntityReference[];

@@ -24,6 +24,7 @@ from uuid import uuid4
 
 import networkx as nx
 
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityLineage import TempLineageTable
 from metadata.ingestion.lineage.sql_lineage import (
@@ -586,7 +587,7 @@ class TestBuildTableLineageWithTempField:
 
     def _make_mock_table(self, table_name):
         table = MagicMock()
-        table.id.root = str(uuid4())
+        table.id = Uuid(uuid4())
         table.name.root = table_name
         table.fullyQualifiedName.root = f"service.db.schema.{table_name}"
         table.columns = []
@@ -661,7 +662,7 @@ class TestGetLineageForPathTempLineage:
 
     def _make_mock_table(self, table_name, fqn):
         table = MagicMock()
-        table.id.root = str(uuid4())
+        table.id = Uuid(uuid4())
         table.name.root = table_name
         table.fullyQualifiedName.root = fqn
         table.columns = []
@@ -903,7 +904,7 @@ class TestMergedLineageByGraph:
 
     def _make_mock_table(self, table_name, fqn):
         table = MagicMock()
-        table.id.root = str(uuid4())
+        table.id = Uuid(uuid4())
         table.name.root = table_name
         table.fullyQualifiedName.root = fqn
         table.columns = []

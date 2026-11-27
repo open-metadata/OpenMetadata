@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEventHandler.entityChangeEvent;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -31,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -62,6 +65,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.SearchClient;
@@ -70,10 +74,15 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchColumnAggregat
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -90,11 +99,20 @@ public class ColumnRepository {
   /** Types that tolerate a constraint in the update payload; only table actually applies it. */
   private static final Set<String> CONSTRAINT_TOLERANT_TYPES = Set.of(TABLE, DASHBOARD_DATA_MODEL);
 
+  /**
+   * Bound on the column occurrences a single synchronous dryRun=false import applies. Larger jobs
+   * must go through /columns/import-async, which runs on the bounded background pool instead of a
+   * request thread.
+   */
+  static final int MAX_SYNC_IMPORT_COLUMN_UPDATES = 200;
+
   private final Authorizer authorizer;
+  private final ViewPermissionFilter viewPermissionFilter;
   private final ColumnAggregator columnAggregator;
 
   public ColumnRepository(Authorizer authorizer, SearchClient searchClient) {
     this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     if (searchClient instanceof ElasticSearchClient) {
       this.columnAggregator = new ElasticSearchColumnAggregator(searchClient.getHighLevelClient());
     } else if (searchClient instanceof OpenSearchClient) {
@@ -111,6 +129,9 @@ public class ColumnRepository {
     // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
     // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
     // size stay correct (#26824). Nothing to post-process here.
+    if (securityContext != null) {
+      request.setSubjectContext(DefaultAuthorizer.getSubjectContext(securityContext));
+    }
     return columnAggregator.aggregateColumns(request);
   }
 
@@ -123,7 +144,7 @@ public class ColumnRepository {
     Objects.requireNonNull(columnFQN, "columnFQN cannot be null");
     ChildFieldResolver.ChildContainerSpec spec = validateEntityType(entityType);
     String parentFQN = extractParentFQN(columnFQN, entityType);
-    EntityInterface parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
+    EntityInterface<?> parent = fetchAuthorizedParent(securityContext, spec, parentFQN, include);
     ChildFieldResolver.ensureChildFqns(parent, entityType);
     FieldInterface child =
         ChildFieldResolver.locate(parent, entityType, columnFQN)
@@ -134,18 +155,21 @@ public class ColumnRepository {
         : child;
   }
 
-  private EntityInterface fetchAuthorizedParent(
+  private EntityInterface<?> fetchAuthorizedParent(
       SecurityContext securityContext,
       ChildFieldResolver.ChildContainerSpec spec,
       String parentFQN,
       Include include) {
     String entityType = spec.entityType();
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    EntityInterface parent =
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
+    // Authorized on this copy, so it carries every attribute a condition reads.
+    EntityInterface<?> parent =
         repository.getByName(
             null,
             parentFQN,
-            repository.getFields(spec.requiredFields() + ",owners"),
+            ResourceContext.authorizationFields(
+                repository, repository.getFields(spec.requiredFields() + ",owners")),
             include,
             false);
     authorizer.authorize(
@@ -157,7 +181,7 @@ public class ColumnRepository {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private ResourceContextInterface resourceContextFor(
-      String entityType, EntityInterface entity, EntityRepository<?> repository) {
+      String entityType, EntityInterface<?> entity, EntityRepository<?> repository) {
     return new ResourceContext(entityType, entity, repository);
   }
 
@@ -169,7 +193,7 @@ public class ColumnRepository {
   private Column enrichChild(
       SecurityContext securityContext,
       ChildFieldResolver.ChildContainerSpec spec,
-      EntityInterface parent,
+      EntityInterface<?> parent,
       Column column,
       String fieldsParam) {
     return switch (spec.entityType()) {
@@ -177,7 +201,7 @@ public class ColumnRepository {
           .enrichSingleColumnFields(
               (Table) parent,
               column,
-              fieldsParam,
+              readableTableColumnFields(securityContext, parent, fieldsParam),
               ((Table) parent).getOwners(),
               authorizer,
               securityContext);
@@ -188,7 +212,36 @@ public class ColumnRepository {
     };
   }
 
+  /** The parent was loaded with the authorization fields, so it is decided on as it stands. */
+  private String readableTableColumnFields(
+      SecurityContext securityContext, EntityInterface<?> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter,
+        securityContext,
+        resourceContextFor(TABLE, table, Entity.getEntityRepository(TABLE)),
+        fieldsParam);
+  }
+
   public FieldInterface updateChildByFQN(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      UpdateColumn updateColumn,
+      ChangeSource changeSource) {
+    return submitChildUpdateByFQN(
+            uriInfo, securityContext, columnFQN, entityType, updateColumn, changeSource)
+        .child();
+  }
+
+  /**
+   * A child update and whether it was published: when an approval workflow holds it,
+   * {@code pendingChangeRequestId} names the change request and nothing was published.
+   */
+  public record ChildUpdate(FieldInterface child, UUID pendingChangeRequestId) {}
+
+  /** As {@link #updateChildByFQN}, also reporting whether the update was held for approval. */
+  public ChildUpdate submitChildUpdateByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -245,7 +298,7 @@ public class ColumnRepository {
     }
   }
 
-  private FieldInterface updateChildByFQN(
+  private ChildUpdate updateChildByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -256,16 +309,23 @@ public class ColumnRepository {
     String parentFQN = extractParentFQN(columnFQN, entityType);
     EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
     String user = securityContext.getUserPrincipal().getName();
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
 
-    EntityInterface original =
+    // Custom-property values are part of the baseline, so a value the update leaves out is removed
+    // (e.g. a reference value, which the column copy loaded without the extension field lacks).
+    String baselineFields =
+        spec.childExtensionType() == null
+            ? spec.requiredFields()
+            : spec.requiredFields() + "," + FIELD_EXTENSION;
+    EntityInterface<?> original =
         repository.get(
             null,
             parentEntityRef.getId(),
-            repository.getFields(spec.requiredFields()),
+            repository.getFields(baselineFields),
             Include.NON_DELETED,
             false);
-    EntityInterface updated = deepCopy(original);
+    EntityInterface<?> updated = deepCopy(original);
     ChildFieldResolver.ensureChildFqns(updated, entityType);
 
     FieldInterface child =
@@ -279,16 +339,32 @@ public class ColumnRepository {
     // A null changeSource makes this identical to the 4-argument overload the two per-type write
     // paths called before consolidation (EntityRepository delegates both to the same method with
     // changeSource null), so an unattributed write stays byte-identical on the wire.
-    RestUtil.PatchResponse<? extends EntityInterface> patchResponse =
-        repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
-    triggerParentChangeEvent(patchResponse.entity(), user);
+    RestUtil.PatchResponse<? extends EntityInterface<?>> patchResponse =
+        repository.patch(
+            uriInfo,
+            parentEntityRef.getId(),
+            user,
+            jsonPatch,
+            changeSource,
+            ImpersonationContext.getImpersonatedBy());
+    UUID pendingChangeRequestId = patchResponse.pendingChangeRequestId();
+    // A held update published nothing; approving it records its own change.
+    if (pendingChangeRequestId == null) {
+      triggerParentChangeEvent(patchResponse.entity(), user);
+    }
 
-    return child;
+    // A published update answers with the column as written: a glossary term held back as
+    // pending is not on it, whatever the request sent.
+    FieldInterface written =
+        pendingChangeRequestId == null
+            ? ChildFieldResolver.locate(patchResponse.entity(), entityType, columnFQN).orElse(child)
+            : child;
+    return new ChildUpdate(written, pendingChangeRequestId);
   }
 
   @SuppressWarnings("unchecked")
-  private EntityInterface deepCopy(EntityInterface original) {
-    return JsonUtils.deepCopy(original, (Class<EntityInterface>) original.getClass());
+  private EntityInterface<?> deepCopy(EntityInterface<?> original) {
+    return JsonUtils.deepCopy(original, (Class<EntityInterface<?>>) original.getClass());
   }
 
   private void applyChildUpdates(
@@ -343,16 +419,14 @@ public class ColumnRepository {
   }
 
   private EntityReference getParentEntityByFQN(String parentFQN, String entityType) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     return repository.findByName(parentFQN, Include.NON_DELETED).getEntityReference();
   }
 
   private void triggerParentChangeEvent(Object parent, String user) {
     ChangeEvent changeEvent =
-        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface) parent);
-    Object entity = changeEvent.getEntity();
-    changeEvent = copyChangeEvent(changeEvent);
-    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+        entityChangeEvent(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
@@ -378,7 +452,14 @@ public class ColumnRepository {
       String trimmed = entityType.trim();
       if (COLUMN_SHAPED_TYPES.contains(trimmed)) {
         searchEntitiesForColumn(
-            groupedColumns, columnName, trimmed, serviceName, databaseName, schemaName, domainId);
+            securityContext,
+            groupedColumns,
+            columnName,
+            trimmed,
+            serviceName,
+            databaseName,
+            schemaName,
+            domainId);
       }
     }
 
@@ -395,6 +476,7 @@ public class ColumnRepository {
   }
 
   private void searchEntitiesForColumn(
+      SecurityContext securityContext,
       Map<String, List<ColumnOccurrence>> groupedColumns,
       String columnName,
       String entityType,
@@ -403,17 +485,41 @@ public class ColumnRepository {
       String schemaName,
       String domainId) {
 
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
+    if (domainId == null) {
+      EntityUtil.addNavbarDomainFilter(securityContext, filter, entityType, () -> null);
+    }
 
-    List<? extends EntityInterface> parents =
-        repository.listAll(repository.getFields(searchFieldsFor(entityType)), filter);
+    List<? extends EntityInterface<?>> parents =
+        viewableParents(
+            securityContext,
+            repository.listAll(repository.getFields(searchFieldsFor(entityType)), filter));
 
-    for (EntityInterface parent : parents) {
+    for (EntityInterface<?> parent : parents) {
       ChildFieldResolver.ensureChildFqns(parent, entityType);
       searchColumnsInHierarchy(columnsOf(parent), columnName, entityType, parent, groupedColumns);
     }
+  }
+
+  /**
+   * Column search walks every table and data model, so it keeps only the parents the caller may
+   * view; otherwise their column names, descriptions and tags would be readable here. An admin
+   * sees every parent.
+   */
+  private List<? extends EntityInterface<?>> viewableParents(
+      SecurityContext securityContext, List<? extends EntityInterface<?>> parents) {
+    if (securityContext == null || DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return parents;
+    }
+    Set<UUID> viewable =
+        new ViewPermissionFilter(authorizer)
+            .viewableIds(
+                securityContext,
+                parents.stream().map(EntityInterface::getEntityReference).toList());
+    return parents.stream().filter(parent -> viewable.contains(parent.getId())).toList();
   }
 
   /**
@@ -458,7 +564,7 @@ public class ColumnRepository {
    * and searchColumnsInHierarchy's null guard still covers a parent that has none.
    */
   @SuppressWarnings("unchecked")
-  private List<Column> columnsOf(EntityInterface parent) {
+  private List<Column> columnsOf(EntityInterface<?> parent) {
     return (List<Column>) ChildFieldResolver.containerListFor(parent, "columns");
   }
 
@@ -540,7 +646,8 @@ public class ColumnRepository {
       try {
         // Fetch current column values by getting the parent entity and finding the column
         Column currentColumn =
-            getColumnForPreview(columnUpdate.getColumnFQN(), columnUpdate.getEntityType());
+            getColumnForPreview(
+                securityContext, columnUpdate.getColumnFQN(), columnUpdate.getEntityType());
 
         if (currentColumn != null) {
           ColumnUpdatePreview previewItem = new ColumnUpdatePreview();
@@ -609,11 +716,12 @@ public class ColumnRepository {
     return preview;
   }
 
-  private Column getColumnForPreview(String columnFQN, String entityType) {
+  private Column getColumnForPreview(
+      SecurityContext securityContext, String columnFQN, String entityType) {
     Column result = null;
     try {
       if (COLUMN_SHAPED_TYPES.contains(entityType)) {
-        result = (Column) loadChildForPreview(columnFQN, entityType).orElse(null);
+        result = (Column) loadChildForPreview(securityContext, columnFQN, entityType).orElse(null);
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch column for preview: {}", columnFQN, e);
@@ -622,21 +730,16 @@ public class ColumnRepository {
   }
 
   /**
-   * Preview reads the stored child without authorizing: the caller already authorized the bulk
-   * update request upstream, and a failure here is reported as an un-previewable column rather than
-   * raised.
+   * Preview echoes a column's current description and tags, so each one needs the same view of its
+   * parent that reading the column directly does. A denied or failed read is reported as an
+   * un-previewable column rather than raised.
    */
-  private Optional<FieldInterface> loadChildForPreview(String columnFQN, String entityType) {
+  private Optional<FieldInterface> loadChildForPreview(
+      SecurityContext securityContext, String columnFQN, String entityType) {
     String parentFQN = ChildFieldResolver.parentFqnOf(columnFQN, entityType);
-    EntityReference parentEntityRef = getParentEntityByFQN(parentFQN, entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    EntityInterface parent =
-        repository.get(
-            null,
-            parentEntityRef.getId(),
-            repository.getFields("columns,tags"),
-            Include.NON_DELETED,
-            false);
+    EntityInterface<?> parent =
+        fetchAuthorizedParent(
+            securityContext, validateEntityType(entityType), parentFQN, Include.NON_DELETED);
     ChildFieldResolver.ensureChildFqns(parent, entityType);
     return ChildFieldResolver.locate(parent, entityType, columnFQN);
   }
@@ -666,20 +769,33 @@ public class ColumnRepository {
             request.getDomainId() != null ? request.getDomainId().toString() : null);
 
     List<ColumnUpdate> columnUpdates = new ArrayList<>();
-
-    // Convert search results to ColumnUpdate objects
     for (GroupedColumnsResponse group : searchResults) {
-      for (ColumnOccurrence occurrence : group.getOccurrences()) {
-        ColumnUpdate update = new ColumnUpdate();
-        update.setColumnFQN(occurrence.getColumnFQN());
-        update.setEntityType(occurrence.getEntityType());
-        update.setDisplayName(request.getDisplayName());
-        update.setDescription(request.getDescription());
-        update.setTags(request.getTags());
-        columnUpdates.add(update);
-      }
+      columnUpdates.addAll(
+          toColumnUpdates(
+              group.getOccurrences(),
+              request.getDisplayName(),
+              request.getDescription(),
+              request.getTags()));
     }
 
+    return columnUpdates;
+  }
+
+  private List<ColumnUpdate> toColumnUpdates(
+      List<ColumnOccurrence> occurrences,
+      String displayName,
+      String description,
+      List<TagLabel> tags) {
+    List<ColumnUpdate> columnUpdates = new ArrayList<>();
+    for (ColumnOccurrence occurrence : occurrences) {
+      ColumnUpdate update = new ColumnUpdate();
+      update.setColumnFQN(occurrence.getColumnFQN());
+      update.setEntityType(occurrence.getEntityType());
+      update.setDisplayName(displayName);
+      update.setDescription(description);
+      update.setTags(tags);
+      columnUpdates.add(update);
+    }
     return columnUpdates;
   }
 
@@ -850,12 +966,43 @@ public class ColumnRepository {
       String databaseName,
       String schemaName,
       String domainId) {
+    return importColumnsCSV(
+        uriInfo,
+        securityContext,
+        csv,
+        dryRun,
+        entityTypes,
+        serviceName,
+        databaseName,
+        schemaName,
+        domainId,
+        MAX_SYNC_IMPORT_COLUMN_UPDATES);
+  }
+
+  /**
+   * The synchronous endpoint caps the column updates one request may apply so a write import
+   * cannot hold its request thread for rows x occurrences; the async endpoint passes {@link
+   * Integer#MAX_VALUE} because the job already runs on the bounded background pool.
+   */
+  public CsvImportResult importColumnsCSV(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String csv,
+      boolean dryRun,
+      String entityTypes,
+      String serviceName,
+      String databaseName,
+      String schemaName,
+      String domainId,
+      int maxColumnUpdates) {
 
     CsvImportResult result = new CsvImportResult();
     result.setDryRun(dryRun);
     result.setNumberOfRowsProcessed(0);
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(0);
+
+    CsvAsyncJobManager.validateImportPayload(csv);
 
     String[] lines = csv.split("\n");
     if (lines.length <= 1) {
@@ -864,71 +1011,89 @@ public class ColumnRepository {
       return result;
     }
 
-    // Skip header row
+    // One catalog walk for the whole import; every row resolves against it with a map lookup.
+    Map<String, List<ColumnOccurrence>> occurrencesByName = new HashMap<>();
+    for (GroupedColumnsResponse group :
+        searchColumns(
+            securityContext, null, entityTypes, serviceName, databaseName, schemaName, domainId)) {
+      occurrencesByName.put(group.getColumnName(), group.getOccurrences());
+    }
+
+    // Resolve all write rows first: an over-limit import is refused before it has applied
+    // anything.
+    Map<List<String>, List<ColumnUpdate>> updatesByRow = new HashMap<>();
+    List<String[]> parsedRows = new ArrayList<>();
     for (int i = 1; i < lines.length; i++) {
       String line = lines[i].trim();
       if (line.isEmpty()) {
         continue;
       }
+      String[] fields = parseCsvLine(line);
+      parsedRows.add(fields);
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+      if (!dryRun) {
+        List<ColumnOccurrence> occurrences = occurrencesByName.get(fields[0]);
+        if (occurrences != null && !occurrences.isEmpty()) {
+          updatesByRow.computeIfAbsent(
+              importRowKey(fields),
+              key ->
+                  toColumnUpdates(
+                      occurrences,
+                      fields.length > 1 ? fields[1] : null,
+                      fields.length > 2 ? fields[2] : null,
+                      parseTags(
+                          fields.length > 3 ? fields[3] : null,
+                          fields.length > 4 ? fields[4] : null)));
+        }
+      }
+    }
 
+    int totalUpdates = updatesByRow.values().stream().mapToInt(List::size).sum();
+    if (totalUpdates > maxColumnUpdates) {
+      throw new IllegalArgumentException(
+          String.format(
+              "CSV import would update %d column occurrences; the maximum for a synchronous import is %d. "
+                  + "Use POST /api/v1/columns/import-async for larger jobs.",
+              totalUpdates, maxColumnUpdates));
+    }
+
+    Map<String, Set<String>> refusedTerms = refusedGlossaryTerms(parsedRows, occurrencesByName);
+    Map<List<String>, BulkOperationResult> resultByRow = new HashMap<>();
+    for (String[] fields : parsedRows) {
       try {
-        result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
-        // Parse CSV row
-        String[] fields = parseCsvLine(line);
-        if (fields.length < 1) {
+        Set<String> acceptingColumns =
+            acceptingColumns(occurrencesByName.get(fields[0]), rowTags(fields), refusedTerms);
+        if (acceptingColumns.isEmpty()) {
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           continue;
         }
 
-        String colName = fields[0];
-        String displayName = fields.length > 1 ? fields[1] : null;
-        String description = fields.length > 2 ? fields[2] : null;
-        String tagsStr = fields.length > 3 ? fields[3] : null;
-        String glossaryTermsStr = fields.length > 4 ? fields[4] : null;
-
-        // Build bulk update request for this column
-        List<TagLabel> tags = parseTags(tagsStr, glossaryTermsStr);
-
         if (dryRun) {
-          // Just validate - find matching columns
-          List<GroupedColumnsResponse> matches =
-              searchColumns(
-                  securityContext,
-                  colName,
-                  entityTypes,
-                  serviceName,
-                  databaseName,
-                  schemaName,
-                  domainId);
-          if (matches.isEmpty() || matches.get(0).getOccurrences().isEmpty()) {
-            result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          } else {
-            result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-          }
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+          continue;
+        }
+
+        BulkOperationResult updateResult =
+            resultByRow.computeIfAbsent(
+                importRowKey(fields),
+                key ->
+                    bulkUpdateColumns(
+                        uriInfo,
+                        securityContext,
+                        new BulkColumnUpdateRequest()
+                            .withColumnUpdates(
+                                updatesByRow.get(key).stream()
+                                    .filter(
+                                        update -> acceptingColumns.contains(update.getColumnFQN()))
+                                    .toList())));
+        if (updateResult.getNumberOfRowsPassed() > 0) {
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
         } else {
-          // Actually apply the update
-          BulkColumnUpdateRequest updateRequest =
-              new BulkColumnUpdateRequest()
-                  .withColumnName(colName)
-                  .withDisplayName(displayName)
-                  .withDescription(description)
-                  .withTags(tags)
-                  .withEntityTypes(
-                      entityTypes != null ? Arrays.asList(entityTypes.split(",")) : null);
-
-          BulkOperationResult updateResult =
-              bulkUpdateColumns(uriInfo, securityContext, updateRequest);
-
-          if (updateResult.getNumberOfRowsPassed() > 0) {
-            result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-          } else {
-            result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          }
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
         }
       } catch (Exception e) {
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-        LOG.error("Error processing CSV row {}: {}", i, line, e);
+        LOG.error("Error processing CSV row: {}", fields[0], e);
       }
     }
 
@@ -943,6 +1108,49 @@ public class ColumnRepository {
     return result;
   }
 
+  /**
+   * The glossary terms a CSV import refuses, per column: like an entity CSV import, it refuses a term
+   * that is not Approved and that a column does not already hold, instead of holding it as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). Judged in one
+   * guard call for the whole file; rows naming the same column pool their labels.
+   */
+  private Map<String, Set<String>> refusedGlossaryTerms(
+      List<String[]> parsedRows, Map<String, List<ColumnOccurrence>> occurrencesByName) {
+    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
+    for (String[] fields : parsedRows) {
+      List<TagLabel> tags = rowTags(fields);
+      for (ColumnOccurrence occurrence : listOrEmpty(occurrencesByName.get(fields[0]))) {
+        tagsByColumn
+            .computeIfAbsent(occurrence.getColumnFQN(), column -> new ArrayList<>())
+            .addAll(tags);
+      }
+    }
+    return ApprovedGlossaryTermGuard.heldTermHashesByTarget(tagsByColumn, Map.of());
+  }
+
+  private List<TagLabel> rowTags(String[] fields) {
+    return parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null);
+  }
+
+  // A row applies to the columns that take all of its terms; it fails when none does.
+  private static Set<String> acceptingColumns(
+      List<ColumnOccurrence> occurrences, List<TagLabel> tags, Map<String, Set<String>> refused) {
+    return listOrEmpty(occurrences).stream()
+        .map(ColumnOccurrence::getColumnFQN)
+        .filter(column -> !ApprovedGlossaryTermGuard.appliesAnyOf(tags, refused.get(column)))
+        .collect(Collectors.toSet());
+  }
+
+  /** Deduplicates write rows: same column name and payload means one shared update pass. */
+  private List<String> importRowKey(String[] fields) {
+    return Arrays.asList(
+        fields[0],
+        fields.length > 1 ? fields[1] : null,
+        fields.length > 2 ? fields[2] : null,
+        JsonUtils.pojoToJson(
+            parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null)));
+  }
+
   private String quote(String value) {
     if (value == null || value.isEmpty()) {
       return "";
@@ -955,20 +1163,17 @@ public class ColumnRepository {
     return escaped;
   }
 
-  private String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
-    if (tags == null || tags.isEmpty()) {
-      return "";
-    }
-
-    return tags.stream()
-        .filter(
-            tag -> {
-              if (classificationsOnly) {
-                return tag.getSource() == TagLabel.TagSource.CLASSIFICATION;
-              } else {
-                return tag.getSource() == TagLabel.TagSource.GLOSSARY;
-              }
-            })
+  /**
+   * The column's own labels of one source, for the CSV export. DERIVED labels -- inherited from the
+   * table, or implied by a term -- are left out: CSV import stores what it reads as MANUAL, so
+   * exporting them would pin them on the column after their source is gone. Package-private for
+   * tests.
+   */
+  static String formatTags(List<TagLabel> tags, boolean classificationsOnly) {
+    TagLabel.TagSource source =
+        classificationsOnly ? TagLabel.TagSource.CLASSIFICATION : TagLabel.TagSource.GLOSSARY;
+    return listOrEmpty(tags).stream()
+        .filter(tag -> tag.getSource() == source && !isSystemGenerated(tag))
         .map(TagLabel::getTagFQN)
         .collect(Collectors.joining(";"));
   }

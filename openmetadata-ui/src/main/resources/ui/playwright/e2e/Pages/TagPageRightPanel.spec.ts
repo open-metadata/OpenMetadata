@@ -40,7 +40,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('Tag Page Assets - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await testClassification.create(apiContext);
@@ -145,8 +145,11 @@ test.describe('Tag Page Assets - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
-    ).toBeVisible();
+      rightPanel
+        .getSummaryPanel()
+        .getByTestId('entity-link')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Should display overview tab content in tag assets page context', async ({

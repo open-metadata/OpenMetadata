@@ -33,10 +33,14 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.McpExecution;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -45,8 +49,10 @@ import org.openmetadata.service.jdbi3.McpExecutionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.McpExecutionContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Slf4j
@@ -63,8 +69,11 @@ public class McpExecutionResource
     extends EntityTimeSeriesResource<McpExecution, McpExecutionRepository> {
   public static final String COLLECTION_PATH = "/v1/mcpExecutions/";
 
+  private final ViewPermissionFilter viewPermissionFilter;
+
   public McpExecutionResource(Authorizer authorizer) {
     super(Entity.MCP_EXECUTION, authorizer);
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
   }
 
   public static class McpExecutionList extends ResultList<McpExecution> {
@@ -109,6 +118,9 @@ public class McpExecutionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (serverId != null) {
+      authorizeServer(securityContext, MetadataOperation.VIEW_BASIC, serverId);
+    }
 
     if ((startTs == null) != (endTs == null)) {
       throw new IllegalArgumentException("Both startTs and endTs must be provided together");
@@ -119,10 +131,11 @@ public class McpExecutionResource
       filter.addQueryParam("serverId", serverId.toString());
     }
 
-    if (startTs != null && endTs != null) {
-      return repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false);
-    }
-    return repository.listWithOffset(null, filter, limitParam, false);
+    ResultList<McpExecution> result =
+        (startTs != null && endTs != null)
+            ? repository.listWithOffset(null, filter, limitParam, startTs, endTs, false, false)
+            : repository.listWithOffset(null, filter, limitParam, false);
+    return viewableOnly(securityContext, result);
   }
 
   @GET
@@ -146,11 +159,13 @@ public class McpExecutionResource
       @Parameter(description = "Id of the MCP Execution", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    McpExecution execution = repository.getByIdOrNotFound(id);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getById(id);
+    authorizeServer(securityContext, MetadataOperation.VIEW_BASIC, execution.getServerId());
+    return execution;
   }
 
   @POST
@@ -173,6 +188,7 @@ public class McpExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeServer(securityContext, MetadataOperation.EDIT_ALL, mcpExecution.getServerId());
     return create(mcpExecution, mcpExecution.getServerId().toString());
   }
 
@@ -200,6 +216,7 @@ public class McpExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeServer(securityContext, MetadataOperation.EDIT_ALL, serverId);
     repository.deleteExecutionData(serverId, timestamp);
     return Response.ok().build();
   }
@@ -225,7 +242,47 @@ public class McpExecutionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = McpExecutionContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    McpExecution execution = repository.getByIdOrNotFound(id);
+    authorizeServer(securityContext, MetadataOperation.EDIT_ALL, execution.getServerId());
     repository.deleteById(id, hardDelete);
     return Response.ok().build();
+  }
+
+  /**
+   * An execution record carries the tool calls run through the server — names, parameters, results —
+   * so every handler authorizes the MCP server the record belongs to. The type-level context used
+   * above has no entity, owners, tags or domains, so a policy denying the server itself — by domain
+   * or by tag — could never fire on it.
+   */
+  private void authorizeServer(
+      SecurityContext securityContext, MetadataOperation operation, UUID serverId) {
+    OperationContext operationContext = new OperationContext(Entity.MCP_SERVER, operation);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(Entity.MCP_SERVER, serverId, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+  }
+
+  /**
+   * A listing answers 200 rather than refusing the page, so each record is kept only if the caller
+   * may view its MCP server. Dropped records shorten the page while {@code paging.total} still
+   * counts them — the same post-filter trade-off {@code ActivityResource} accepts — and paging
+   * cursors are kept because they point at the last row of the unfiltered page. A record whose
+   * server no longer resolves is dropped for every caller.
+   */
+  private ResultList<McpExecution> viewableOnly(
+      SecurityContext securityContext, ResultList<McpExecution> executions) {
+    List<EntityReference> servers =
+        executions.getData().stream()
+            .map(McpExecution::getServerId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .map(id -> new EntityReference().withId(id).withType(Entity.MCP_SERVER))
+            .toList();
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, servers);
+    executions.setData(
+        executions.getData().stream()
+            .filter(record -> viewable.contains(record.getServerId()))
+            .toList());
+    return executions;
   }
 }

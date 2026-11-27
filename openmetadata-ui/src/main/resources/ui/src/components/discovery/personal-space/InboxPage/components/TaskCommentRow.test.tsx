@@ -30,7 +30,7 @@ jest.mock('hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('utils/TaskCommentUtils', () => ({

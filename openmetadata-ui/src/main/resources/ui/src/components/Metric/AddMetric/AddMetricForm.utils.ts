@@ -17,7 +17,11 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
-import type { EntityReference } from '../../../generated/entity/type';
+import type {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import { MetricFormValues } from './AddMetricForm.types';
 
 const optionalProperty = <K extends string, V>(
@@ -53,7 +57,8 @@ const entityReferences = (
  */
 export const transformMetricFormData = (
   values: MetricFormValues,
-  parentMetricFqn?: string
+  parentMetricFqn?: string,
+  customProperties: CustomProperty[] = []
 ): CreateMetric => {
   const name = values.name.trim();
   const code = values.code.trim();
@@ -79,6 +84,15 @@ export const transformMetricFormData = (
 
   return {
     name,
+    ...optionalProperty(
+      'extension',
+      Object.keys(values.extensionFormValues ?? {}).length
+        ? serializeIntakeFormExtension(
+            values.extensionFormValues,
+            customProperties
+          )
+        : undefined
+    ),
     ...optionalProperty('displayName', nonEmptyString(values.displayName)),
     ...optionalProperty('description', nonEmptyString(values.description)),
     ...optionalProperty('granularity', granularity),

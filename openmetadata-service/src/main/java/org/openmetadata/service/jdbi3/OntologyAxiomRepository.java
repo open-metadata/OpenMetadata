@@ -15,150 +15,52 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import jakarta.ws.rs.BadRequestException;
-import java.net.URI;
 import java.util.List;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.OwlProfileGuard;
-import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.ontology.OntologyAxiomResource;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.FreshReadScope;
 
 @Repository
-public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
-  private static final String UPDATE_FIELDS =
-      "axiomType,subjectIri,expressions,propertyIri,targetIri,literal,provenance,entityStatus";
-  private final OwlProfileGuard profileGuard;
+public class OntologyAxiomRepository extends OntologyEntityRepository<OntologyAxiom> {
+  private static final OwlProfileGuard SHAPE_GUARD = new OwlProfileGuard(iri -> null);
 
   public OntologyAxiomRepository() {
     super(
-        OntologyAxiomResource.COLLECTION_PATH,
         Entity.ONTOLOGY_AXIOM,
         OntologyAxiom.class,
         Entity.getCollectionDAO().ontologyAxiomDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
-    final RelationshipTypeResolver relationshipTypes =
-        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
-    profileGuard =
-        new OwlProfileGuard(
-            relationshipTypes::isSimple,
-            new PersistentVocabularyIndex(Entity.getCollectionDAO().ontologyAxiomDAO()));
+        OntologyAxiomResource.COLLECTION_PATH,
+        "ontology,axiomType,subjectIri,expressions,propertyIri,targetIri,literal,provenance");
   }
 
   @Override
-  public void setFields(
-      final OntologyAxiom entity, final Fields fields, final RelationIncludes relationIncludes) {}
-
-  @Override
-  public void clearFields(final OntologyAxiom entity, final Fields fields) {}
-
-  @Override
-  public void prepare(final OntologyAxiom entity, final boolean update) {
-    final Glossary glossary = requireEditableGlossary(entity);
-    entity.setGlossary(glossary.getEntityReference());
-    entity.setFullyQualifiedName(
-        FullyQualifiedName.add(glossary.getFullyQualifiedName(), entity.getName()));
+  protected void validateDefinition(final OntologyAxiom entity) {
+    requireAbsoluteIri(entity.getSubjectIri(), "subjectIri");
+    SHAPE_GUARD.validateOrThrow(entity);
     entity.setExpressions(List.copyOf(listOrEmpty(entity.getExpressions())));
-    entity.setEntityStatus(
-        entity.getEntityStatus() == null ? EntityStatus.DRAFT : entity.getEntityStatus());
-    profileGuard.validateOrThrow(entity);
   }
 
   public OntologyProfileReport validate(final OntologyAxiom entity) {
-    prepare(entity, false);
-    return profileGuard.validate(entity);
-  }
-
-  private static Glossary requireEditableGlossary(final OntologyAxiom entity) {
-    final Glossary glossary =
-        Entity.getEntity(Entity.GLOSSARY, entity.getGlossary().getId(), "", Include.NON_DELETED);
-    final boolean isReadOnly =
-        glossary.getOntologyConfiguration() != null
-            && Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly());
-    if (isReadOnly) {
-      throw new BadRequestException("Reference ontology '" + glossary.getName() + "' is read-only");
+    final var shape = SHAPE_GUARD.validate(entity);
+    if (!shape.getValid()) {
+      return shape;
     }
-    return glossary;
-  }
-
-  @Override
-  public void storeEntity(final OntologyAxiom entity, final boolean update) {
-    store(entity, update);
-  }
-
-  @Override
-  public void storeRelationships(final OntologyAxiom entity) {
-    addRelationship(
-        entity.getGlossary().getId(),
-        entity.getId(),
-        Entity.GLOSSARY,
-        Entity.ONTOLOGY_AXIOM,
-        Relationship.CONTAINS);
-  }
-
-  @Override
-  public EntityUpdater getUpdater(
-      final OntologyAxiom original,
-      final OntologyAxiom updated,
-      final Operation operation,
-      final ChangeSource changeSource) {
-    return new OntologyAxiomUpdater(original, updated, operation);
-  }
-
-  public class OntologyAxiomUpdater extends EntityUpdater {
-    OntologyAxiomUpdater(
-        final OntologyAxiom original, final OntologyAxiom updated, final Operation operation) {
-      super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate(final boolean consolidatingChanges) {
-      if (!original.getGlossary().getId().equals(updated.getGlossary().getId())) {
-        throw new BadRequestException("An ontology axiom cannot move between glossaries");
-      }
-      recordAxiomChanges();
-      recordAssertionChanges();
-      recordGovernanceChanges();
-    }
-
-    private void recordAxiomChanges() {
-      recordChange("axiomType", original.getAxiomType(), updated.getAxiomType());
-      recordChange("subjectIri", original.getSubjectIri(), updated.getSubjectIri());
-      recordChange("expressions", original.getExpressions(), updated.getExpressions(), true);
-    }
-
-    private void recordAssertionChanges() {
-      recordChange("propertyIri", original.getPropertyIri(), updated.getPropertyIri());
-      recordChange("targetIri", original.getTargetIri(), updated.getTargetIri());
-      recordChange("literal", original.getLiteral(), updated.getLiteral());
-    }
-
-    private void recordGovernanceChanges() {
-      recordChange("provenance", original.getProvenance(), updated.getProvenance());
-      recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
-    }
-  }
-
-  private record PersistentVocabularyIndex(CollectionDAO.OntologyAxiomDAO dao)
-      implements OwlProfileGuard.VocabularyIndex {
-    @Override
-    public boolean isClass(final URI iri) {
-      return iri != null && dao.countClassSubjects(iri.toString()) > 0;
-    }
-
-    @Override
-    public boolean isIndividual(final URI iri) {
-      return iri != null && dao.countIndividualSubjects(iri.toString()) > 0;
-    }
+    return executeInTransaction(
+        () -> {
+          try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+            prepare(entity, false);
+            setFullyQualifiedName(entity);
+            final var existing =
+                findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED);
+            if (existing != null) {
+              entity.setId(existing.getId());
+            }
+            return new OntologyWorkingModel(daoCollection).validate(entity);
+          }
+        });
   }
 }

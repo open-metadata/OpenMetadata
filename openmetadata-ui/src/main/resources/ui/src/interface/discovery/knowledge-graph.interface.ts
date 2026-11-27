@@ -16,6 +16,7 @@ import type {
   NodeData as G6NodeData,
   NodeData,
 } from '@antv/g6';
+import type { GraphNode as EntityGraphNode } from '../../generated/api/rdf/entityGraph';
 import { EntityReference } from '../../generated/entity/type';
 import { GraphData as RdfGraphData } from '../../rest/rdfAPI.interface';
 import {
@@ -68,17 +69,16 @@ export interface GraphLevelRing {
  */
 export type ElementFocusState = 'base' | 'focus' | 'dim';
 
-export interface GraphNode {
-  id: string;
-  label: string;
-  type: string;
-  group?: string;
+export interface GraphNode
+  extends Pick<
+      EntityGraphNode,
+      'id' | 'type' | 'description' | 'name' | 'tags'
+    >,
+    Partial<Pick<EntityGraphNode, 'entityId' | 'group'>> {
+  label: NonNullable<EntityGraphNode['label']>;
   title?: string;
-  description?: string;
   owner?: string;
-  tags?: Array<{ name: string; tagFQN: string }>;
-  name?: string;
-  fullyQualifiedName?: string;
+  fullyQualifiedName?: NonNullable<EntityGraphNode['fullyQualifiedName']>;
   ontologyProperty?: { range: string; functional: boolean };
   presentation?: GraphNodePresentation;
 }
@@ -143,11 +143,6 @@ export interface KnowledgeGraphG6Edge extends G6EdgeData {
 export interface GraphData extends Omit<RdfGraphData, 'nodes' | 'edges'> {
   nodes: GraphNode[];
   edges: KnowledgeGraphEdge[];
-  filterOptions?: GraphFilterOptions;
-  totalNodes?: number;
-  totalEdges?: number;
-  source?: string;
-  error?: string;
 }
 
 export type GraphInteractionCtx = {
@@ -195,7 +190,6 @@ export interface KnowledgeGraphDetailsControl {
 }
 
 export interface KnowledgeGraphToolbarProps {
-  hasFilters?: boolean;
   selectedLevel: KnowledgeGraphLevel;
   layout: KnowledgeGraphLayout;
   labelMode: KnowledgeGraphLabelMode;
@@ -205,8 +199,6 @@ export interface KnowledgeGraphToolbarProps {
   filterOptions?: GraphFilterOptions;
   presentation: KnowledgeGraphPresentation;
   showBands: boolean;
-  excludedFamilies: RelationCategory[];
-  familyCounts: Record<RelationCategory, number>;
   ontology: {
     concepts: GraphNode[];
     selectedId?: string;
@@ -215,8 +207,6 @@ export interface KnowledgeGraphToolbarProps {
   viewport: { isFullscreen: boolean; onFullscreen: () => void };
   onPresentationChange: (presentation: KnowledgeGraphPresentation) => void;
   onToggleBands: () => void;
-  onToggleFamily: (family: RelationCategory) => void;
-  onClearFilters: () => void;
   onFindNode: (nodeId: string) => void;
   onLevelChange: (level: KnowledgeGraphLevel) => void;
   onLayoutChange: (layout: KnowledgeGraphLayout) => void;

@@ -35,7 +35,7 @@ const ownerUser = new UserClass();
 
 test.describe('Domain Data Products Tab - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await domainEntity.create(apiContext);
@@ -96,8 +96,11 @@ test.describe('Domain Data Products Tab - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
-    ).toBeVisible();
+      rightPanel
+        .getSummaryPanel()
+        .getByTestId('entity-link')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Should display overview tab for data product', async ({

@@ -12,11 +12,16 @@
 Unit tests for Tag Processor
 """
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
+from presidio_analyzer.nlp_engine import NlpEngine
 
+from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
+    ClassificationFactory,
+)
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
 )
@@ -199,6 +204,55 @@ class TestTagProcessor:
         assert tag_label.state is State.Suggested
         assert tag_label.labelType is LabelType.Generated
 
+    @pytest.mark.parametrize("malformed_spi", [True, False])
+    def test_real_sdk_parsing_classifies_acct_num_beside_malformed_spi(
+        self, workflow_config, pii_classification, malformed_spi
+    ) -> None:
+        pattern = PatternFactory.create(name="acct-num", regex="ACCT_NUM", score=0.85)
+        pii_recognizer = RecognizerFactory.create(
+            name="acct-num",
+            recognizerConfig=PatternRecognizerFactory.create(patterns=[pattern], supportedLanguage="en"),
+            target=recognizer.Target.column_name,
+        )
+        pii_tag = TagFactory.create(
+            tag_name="PII",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=[pii_recognizer],
+        )
+        spi = pii_tag.model_dump(mode="json", exclude_none=True)
+        spi["name"] = "SPI"
+        spi["fullyQualifiedName"] = "PII.SPI"
+        spi["recognizers"][0]["recognizerConfig"]["patterns"][0]["regex"] = "DOES_NOT_MATCH"
+        if malformed_spi:
+            spi["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.side_effect = [
+            {"data": [pii_classification.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+            {"data": [pii_tag.model_dump(mode="json", exclude_none=True), spi], "paging": {"total": 2}},
+        ]
+        workflow_config.source.sourceConfig.config.confidence = 80
+        nlp_engine = Mock(spec=NlpEngine)
+        nlp_engine.process_text.return_value = SimpleNamespace(tokens=[], tokens_indices=[], lemmas=[], entities=[])
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=sdk,
+            classification_filter=["PII"],
+            score_tags_for_column=ScoreTagsForColumnService(nlp_engine=nlp_engine),
+        )
+
+        assert [tag.fullyQualifiedName for tag in processor.candidate_tags] == (
+            ["PII.PII"] if malformed_spi else ["PII.PII", "PII.SPI"]
+        )
+
+        column = Column(
+            name=ColumnName(root="ACCT_NUM"), fullyQualifiedName="svc.db.table.ACCT_NUM", dataType=DataType.VARCHAR
+        )
+        labels = processor.create_column_tag_labels(column, [])
+        assert [label.tagFQN.root for label in labels] == ["PII.PII"]
+
     def test_skip_column_with_existing_pii_tag(self, processor: TagProcessor) -> None:
         """Test that columns with existing PII tags are skipped"""
         # Create column with existing PII tag
@@ -221,6 +275,51 @@ class TestTagProcessor:
         # Should return empty list because PII tag exists
         result = processor.create_column_tag_labels(column, sample_data)
         assert result == []
+
+    @pytest.mark.parametrize(
+        "classification_fqn, applied_fqn, source, candidate_name, has_reference, allowed",
+        [
+            ("PII", "PII.Sensitive.Email", TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", False, False),
+            ('"My.PII"', '"My.PII".Sensitive.Email', TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Customer.Email", TagSource.Glossary, "Personal", True, True),
+        ],
+    )
+    def test_nested_tags_respect_classification_exclusivity(
+        self,
+        workflow_config: OpenMetadataWorkflowConfig,
+        mock_metadata: OpenMetadata,
+        classification_fqn: str,
+        applied_fqn: str,
+        source: TagSource,
+        candidate_name: str,
+        has_reference: bool,
+        allowed: bool,
+    ) -> None:
+        classification = ClassificationFactory.create(
+            fqn=classification_fqn, mutuallyExclusive=True, autoClassificationConfig__enabled=True
+        )
+        candidate = TagFactory.create(tag_name=candidate_name, tag_classification=classification)
+        if not has_reference:
+            candidate.classification = None
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=mock_metadata,
+            classification_manager=FakeClassificationManager((classification, [])),
+            score_tags_for_column=lambda *_: [],
+        )
+        column = Column(
+            name=ColumnName(root="customer_col"),
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabel(
+                    tagFQN=TagFQN(root=applied_fqn), state=State.Confirmed, labelType=LabelType.Manual, source=source
+                )
+            ],
+        )
+
+        assert processor.filter_tags_to_analyze(column, [candidate]) == ([candidate] if allowed else [])
 
     def test_classify_email_column(self, processor: TagProcessor, email_tag: Tag) -> None:
         """Test classifying an email column"""

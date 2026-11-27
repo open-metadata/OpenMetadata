@@ -90,6 +90,59 @@ class OpenLineageDatasetNameNormalizerTest {
   }
 
   @Test
+  void extractCandidates_glueFormWithEmptyDatabaseSegment_doesNotProduceEmptySchema() {
+    // A Glue symlink name "table//foo" (empty middle segment) used to be accepted and normalized
+    // to ".foo", yielding an empty schema that broke FQN building. It must no longer produce a
+    // candidate with an empty first segment — the empty segment is dropped instead.
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("arn:aws:glue:us-west-2:123456789012")
+                .withName("table//foo")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(
+            "s3://bucket", "deep/opaque/path", facets);
+
+    assertEquals(
+        List.of("table.foo"),
+        tableNames(candidates),
+        "An empty Glue segment must not yield a '.foo' candidate with an empty schema");
+  }
+
+  @Test
+  void extractCandidates_glueFormDatasetNameWithEmptySegment_doesNotProduceEmptySchema() {
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates("ns", "table//foo", null);
+
+    assertTrue(
+        !tableNames(candidates).contains(".foo"),
+        "An empty Glue segment must never normalize to a leading-dot (empty schema) name");
+  }
+
+  @Test
+  void extractCandidates_glueFormWithEmptyMiddleSegment_resolvesToNonEmptySchemaAndTable() {
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("arn:aws:glue:us-west-2:123456789012")
+                .withName("table//foo")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates("ns", "irrelevant", facets);
+
+    assertEquals(1, candidates.size());
+    String[] parts = candidates.get(0).tableName().split("\\.");
+    assertTrue(parts.length >= 2);
+    for (String part : parts) {
+      assertTrue(
+          !part.isEmpty(), "No dot-separated part may be empty: " + candidates.get(0).tableName());
+    }
+  }
+
+  @Test
   void extractCandidates_dotFormSymlink_passedThrough() {
     DatasetFacets facets =
         facetsWithSymlinks(

@@ -29,6 +29,7 @@ import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -39,6 +40,30 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
+
+  @Test
+  void policyTagsAreEveryTagOfTheTableItsColumnsAndItsDataModelOnce() {
+    Column nested =
+        new Column().withName("inner").withTags(List.of(new TagLabel().withTagFQN("PII.Email")));
+    Column parent =
+        new Column()
+            .withName("outer")
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+            .withChildren(List.of(nested));
+    Table table =
+        new Table()
+            .withTags(
+                List.of(
+                    new TagLabel().withTagFQN("Tier.Tier1"),
+                    new TagLabel().withTagFQN("PII.Sensitive")))
+            .withColumns(List.of(parent))
+            .withDataModel(
+                new DataModel().withTags(List.of(new TagLabel().withTagFQN("Glossary.Revenue"))));
+
+    assertEquals(
+        List.of("Tier.Tier1", "PII.Sensitive", "PII.Email", "Glossary.Revenue"),
+        SearchIndexUtils.policyTagFqns(table));
+  }
 
   @ParameterizedTest
   @MethodSource("indexTargets")
@@ -116,6 +141,61 @@ class SearchIndexUtilsTest {
         List.of("table"),
         SearchIndexUtils.getEntityTypesForIndex(
             "table_search_index", resolutionMappings(), Map.of(), ""));
+  }
+
+  @Test
+  void knownIndexNamesCoversEntityTypesIndexNamesAndAliases() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+
+    assertTrue(known.containsAll(List.of("table", "tableColumn", "customEntity")));
+    assertTrue(known.containsAll(List.of("table_search_index", "custom_search_index")));
+    assertTrue(known.containsAll(List.of("all", "dataAsset")));
+    assertFalse(known.contains("nope_search_index"));
+    assertEquals(Set.of(), SearchIndexUtils.knownIndexNames(null));
+  }
+
+  @ParameterizedTest
+  @MethodSource("typedIndexes")
+  void unknownIndexNamesNamesOnlyWhatOpenMetadataDoesNotManage(
+      String typed, List<String> expected) {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    for (String clusterAlias : new String[] {"cluster", null}) {
+      String resolved =
+          SearchIndexUtils.getIndexOrAliasName(typed, resolutionMappings(), Map.of(), clusterAlias);
+      assertEquals(
+          expected,
+          SearchIndexUtils.unknownIndexNames(resolved, known, clusterAlias),
+          typed + " with cluster alias " + clusterAlias);
+    }
+  }
+
+  static Stream<Arguments> typedIndexes() {
+    return Stream.of(
+        Arguments.of("table", List.of()),
+        Arguments.of("table_search_index", List.of()),
+        Arguments.of("all", List.of()),
+        Arguments.of("dataAsset", List.of()),
+        Arguments.of("nope_search_index", List.of("nope_search_index")),
+        Arguments.of("table,nope", List.of("nope")),
+        Arguments.of("nope,nope", List.of("nope")),
+        Arguments.of("nope*", List.of()),
+        Arguments.of("di-data-assets-table", List.of()));
+  }
+
+  @Test
+  void unknownIndexNamesStripsTheClusterPrefixTheCallerAlreadyTyped() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    assertEquals(
+        List.of(),
+        SearchIndexUtils.unknownIndexNames("cluster_table_search_index", known, "cluster"));
+    assertEquals(
+        List.of("nope"), SearchIndexUtils.unknownIndexNames("cluster_nope", known, "cluster"));
+  }
+
+  @Test
+  void unknownIndexNamesKeepsServerErrorWhenItCannotClassify() {
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames("nope", Set.of(), "cluster"));
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames(null, Set.of("table"), null));
   }
 
   @Test

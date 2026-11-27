@@ -14,6 +14,7 @@ import {
   Alert,
   Avatar,
   Box,
+  Button,
   FieldProp,
   FieldPropsMap,
   FieldTypes,
@@ -23,7 +24,7 @@ import {
 import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useWatch } from 'react-hook-form';
+import { Control, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -41,8 +42,14 @@ import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
+import {
+  getMetricEnumLabel,
+  getMetricLanguageLabel,
+} from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import Loader from '../../common/Loader/Loader';
+import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
+import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
 import {
   AddMetricFormProps,
   MetricFormSelectItem,
@@ -50,6 +57,7 @@ import {
 } from './AddMetricForm.types';
 
 export const METRIC_FORM_DEFAULTS: MetricFormValues = {
+  extensionFormValues: {},
   name: '',
   displayName: '',
   description: '',
@@ -77,10 +85,27 @@ const mapEntityReferenceToOption = (
 
 const AddMetricForm = ({
   form,
+  intake,
   parentMetricFqn,
   onSubmit,
 }: AddMetricFormProps) => {
   const { t } = useTranslation();
+  const applyIntakeRequired = (field: FieldProp): FieldProp => {
+    const required = intake.requiredNativeFields.get(field.name);
+
+    return required
+      ? {
+          ...field,
+          required: true,
+          rules: {
+            ...field.rules,
+            required:
+              required.errorMessage ||
+              t('label.field-required', { field: required.fieldLabel }),
+          },
+        }
+      : field;
+  };
   const [userTeamOptions, setUserTeamOptions] = useState<
     MetricFormSelectItem[]
   >([]);
@@ -134,7 +159,7 @@ const AddMetricForm = ({
     () =>
       Object.values(Language).map((value) => ({
         id: value,
-        label: getMetricEnumLabel(t, value),
+        label: getMetricLanguageLabel(t, value),
         value,
       })),
     [t]
@@ -576,6 +601,24 @@ const AddMetricForm = ({
     type: FieldTypes.ASYNC_SELECT,
   };
 
+  if (intake.isError) {
+    return (
+      <Alert title={t('label.error')} variant="error">
+        <Button
+          color="link-color"
+          size="sm"
+          onPress={() => {
+            void intake.retry();
+          }}>
+          {t('label.retry')}
+        </Button>
+      </Alert>
+    );
+  }
+  if (!intake.isLoaded) {
+    return <Loader />;
+  }
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-5"
@@ -587,21 +630,21 @@ const AddMetricForm = ({
           {getField(nameField)}
         </div>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(displayNameField)}
+          {getField(applyIntakeRequired(displayNameField))}
         </div>
       </Box>
-      <div>{getField(descriptionField)}</div>
+      <div>{getField(applyIntakeRequired(descriptionField))}</div>
       <Box gap={4}>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(metricTypeField)}
+          {getField(applyIntakeRequired(metricTypeField))}
         </div>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(granularityField)}
+          {getField(applyIntakeRequired(granularityField))}
         </div>
       </Box>
       <Box gap={4}>
         <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
-          {getField(unitField)}
+          {getField(applyIntakeRequired(unitField))}
         </div>
         {isCustomUnit && (
           <div className="tw:min-w-0 tw:flex-1 tw:basis-0">
@@ -621,12 +664,17 @@ const AddMetricForm = ({
           {getField(parentMetricField)}
         </div>
       )}
-      <div>{getField(ownersField)}</div>
-      <div>{getField(reviewersField)}</div>
-      <div>{getField(domainsField)}</div>
+      <div>{getField(applyIntakeRequired(ownersField))}</div>
+      <div>{getField(applyIntakeRequired(reviewersField))}</div>
+      <div>{getField(applyIntakeRequired(domainsField))}</div>
       <div>{getField(relatedMetricsField)}</div>
       <div>{getField(languageField)}</div>
       <div>{getField(codeField)}</div>
+      <AddDomainFormExtensionFields
+        control={form.control as unknown as Control<DomainFormValues>}
+        customProperties={intake.customProperties}
+        formFields={intake.extensionFormFields}
+      />
     </HookForm>
   );
 };

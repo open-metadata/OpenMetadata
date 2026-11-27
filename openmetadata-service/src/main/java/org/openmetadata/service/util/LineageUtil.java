@@ -14,6 +14,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -46,6 +50,12 @@ public class LineageUtil {
   private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
       new ThreadLocal<>();
 
+  private static final String ROOT_ID_FIELD = "id";
+
+  /** Source fields a lineage root lookup reads: the root's identity and the FQN keying the hits. */
+  public static final List<String> ROOT_SOURCE_FIELDS =
+      List.of(ROOT_ID_FIELD, Entity.FIELD_ENTITY_TYPE, Entity.FIELD_FULLY_QUALIFIED_NAME);
+
   /**
    * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
    * toEntity} is retained so a post-commit drain that fails the {@code updateLineage}/{@code
@@ -60,6 +70,14 @@ public class LineageUtil {
   }
 
   private LineageUtil() {}
+
+  /** A successful HTTP response can still contain incomplete hits after a search timeout. */
+  public static void rejectTimedOutSearch(final boolean timedOut, final String indexAlias) {
+    if (timedOut) {
+      throw new SearchException(
+          String.format("Lineage search for index [%s] timed out.", indexAlias));
+    }
+  }
 
   /**
    * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves
@@ -243,6 +261,10 @@ public class LineageUtil {
   }
 
   private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
+    // Two assets of one domain or data product give it no edge to itself.
+    if (fromRef.getId().equals(toRef.getId())) {
+      return;
+    }
     if (count > 0) {
       LineageDetails domainLineageDetails =
           new LineageDetails()
@@ -345,6 +367,81 @@ public class LineageUtil {
             ref);
       }
     }
+  }
+
+  /**
+   * Recounts each pair of two different data products from the stored asset edges. A pair no asset
+   * edge connects any more loses its rollup, but an edge drawn between the products stays.
+   */
+  public static void recountDataProductsLineage(Set<Pair<UUID, UUID>> pairs) {
+    for (Pair<UUID, UUID> pair : pairs) {
+      if (!pair.getLeft().equals(pair.getRight())) {
+        recountDataProductLineage(
+            Entity.getEntityReferenceById(Entity.DATA_PRODUCT, pair.getLeft(), Include.ALL),
+            Entity.getEntityReferenceById(Entity.DATA_PRODUCT, pair.getRight(), Include.ALL));
+      }
+    }
+  }
+
+  /**
+   * A stored edge whose source is not {@code ChildAssets} was drawn between the products. It keeps
+   * its details and only carries the count, as {@code LineageRepository} does when an asset edge is
+   * added under it, so no recount replaces or deletes it.
+   */
+  private static void recountDataProductLineage(EntityReference from, EntityReference to) {
+    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+    int count = dao.countDataProductsChildAssets(from.getId(), to.getId());
+    CollectionDAO.EntityRelationshipObject row =
+        dao.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+    LineageDetails stored =
+        row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
+    if (stored != null && stored.getSource() != LineageDetails.Source.CHILD_ASSETS) {
+      recountDrawnLineage(from, to, stored, count);
+    } else if (count > 0) {
+      insertLineage(count, from, to);
+    } else if (stored != null) {
+      dao.delete(
+          from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal());
+      deleteLineageFromSearch(from, to, stored);
+    }
+  }
+
+  private static void recountDrawnLineage(
+      EntityReference from, EntityReference to, LineageDetails drawn, int count) {
+    Integer assetEdges = count > 0 ? count : null;
+    if (!Objects.equals(drawn.getAssetEdges(), assetEdges)) {
+      drawn.withAssetEdges(assetEdges);
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              from.getId(),
+              to.getId(),
+              from.getType(),
+              to.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(drawn));
+      addLineageToSearch(from, to, drawn);
+    }
+  }
+
+  /**
+   * The entity behind the single document a lineage root lookup returns, or empty when nothing is
+   * indexed under the FQN. The hits are keyed by FQN, which is why {@link #ROOT_SOURCE_FIELDS}
+   * carries it.
+   */
+  @SuppressWarnings("unchecked")
+  public static Optional<EntityReference> lineageRoot(Map<String, Object> hitsByFqn) {
+    return hitsByFqn.values().stream()
+        .findFirst()
+        .map(doc -> rootReference((Map<String, Object>) doc));
+  }
+
+  private static EntityReference rootReference(Map<String, Object> doc) {
+    Object id = doc.get(ROOT_ID_FIELD);
+    return new EntityReference()
+        .withId(id == null ? null : UUID.fromString(id.toString()))
+        .withType(Objects.toString(doc.get(Entity.FIELD_ENTITY_TYPE), null))
+        .withFullyQualifiedName(Objects.toString(doc.get(Entity.FIELD_FULLY_QUALIFIED_NAME), null));
   }
 
   public static NodeInformation getNodeInformation(

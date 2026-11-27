@@ -19,6 +19,7 @@ import esES from './languages/es-es.json';
 import frFR from './languages/fr-fr.json';
 import glES from './languages/gl-es.json';
 import heHE from './languages/he-he.json';
+import itIT from './languages/it-it.json';
 import jaJP from './languages/ja-jp.json';
 import koKR from './languages/ko-kr.json';
 import mrIN from './languages/mr-in.json';
@@ -48,6 +49,7 @@ const CORE_BUNDLES: Record<string, ResourceKey> = {
   'fr-FR': frFR,
   'gl-ES': glES,
   'he-HE': heHE,
+  'it-IT': itIT,
   'ja-JP': jaJP,
   'ko-KR': koKR,
   'mr-IN': mrIN,
@@ -63,13 +65,17 @@ const CORE_BUNDLES: Record<string, ResourceKey> = {
   'zh-TW': zhTW,
 };
 
+type CoreI18nHost = Pick<I18n, 'hasResourceBundle'> & {
+  addResourceBundle(...args: Parameters<I18n['addResourceBundle']>): void;
+};
+
 /**
  * Register the library's `core` namespace on the host i18next instance for
  * every supported language. Safe to call multiple times — resource-bundle
  * registration is idempotent when `overwrite=false`. Call once after the
  * host's own `i18next.init(...)` resolves.
  */
-export function initCoreI18n(i18n: I18n): void {
+export function initCoreI18n(i18n: CoreI18nHost): void {
   for (const [lng, bundle] of Object.entries(CORE_BUNDLES)) {
     if (i18n.hasResourceBundle(lng, CORE_NS)) {
       continue;

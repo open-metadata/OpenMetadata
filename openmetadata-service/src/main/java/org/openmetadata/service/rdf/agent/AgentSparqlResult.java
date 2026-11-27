@@ -14,10 +14,15 @@
 package org.openmetadata.service.rdf.agent;
 
 import java.util.Objects;
+import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
 
-/** A serialized agent response and the row count reported in the audit log. */
-public record AgentSparqlResult(byte[] body, int rowCount) {
+/**
+ * A serialized agent response, the row count reported in the audit log, and the completeness
+ * already embedded in the body, so a transport that bounds the body can still report it.
+ */
+public record AgentSparqlResult(byte[] body, int rowCount, AgentSparqlCompleteness completeness) {
   public AgentSparqlResult {
     Objects.requireNonNull(body);
+    Objects.requireNonNull(completeness);
   }
 }

@@ -17,8 +17,8 @@ as run history.
 | Per-task status | Yes (flow-level) | Every task in a flow run receives the same status — Tableau reports status at flow granularity, not per step |
 | Owner extraction | Yes | Resolves the owner of the flow / data source / workbook → Tableau user email (or an email-shaped username, as on Tableau Cloud) → OpenMetadata user; honours `includeOwners` |
 | Tag extraction | Yes | Emits a `TableauTags` classification and attaches tags to the pipeline |
-| Table and data model lineage (input → output) | Yes | Each input (`Flow.upstreamTables`, `Flow.upstreamDatasources`) is linked to the outputs it feeds (`Flow.downstreamTables` for output to a database, `Flow.downstreamDatasources` for a published data source), with the flow in `lineageDetails.pipeline` |
-| Custom SQL input parsing | Yes | Only for upstream tables Tableau returns without a name, as the dashboard connector does |
+| Table and data model lineage (input → output) | Yes | Each of the flow's own inputs (the tables and published data sources of `Flow.inputFields`) is linked to the outputs it feeds (the tables and data sources of `Flow.outputFields`), with the flow in `lineageDetails.pipeline`. `Flow.upstream*` / `downstream*` are not used: they also list assets reached through other flows and data sources |
+| Custom SQL input parsing | Yes | A custom SQL input stands for the tables Tableau read from its query; when Tableau read none, its query is parsed |
 | Downstream flow lineage (pipeline → pipeline) | Yes | `Flow.nextDownstreamFlows` (direct consumers only); edges to flows listed later are drawn in the post-process |
 | Column-level lineage | No | Not built yet: the edges run between assets, so the field lineage the input → output pairing reads could carry it |
 | Extract refresh pipelines | Yes | One pipeline per data source / workbook with an extract refresh task; `includeExtractRefreshes` (default on) |
@@ -49,7 +49,7 @@ Key fields on `TableauPipelineConnection`:
 | Field | Purpose |
 |-------|---------|
 | `hostPort` | Tableau Server URL |
-| `authType` | `BasicAuth` (username/password) or `AccessTokenAuth` (PAT name + secret) |
+| `authType` | `BasicAuth` (username/password), `AccessTokenAuth` (PAT name + secret) or `TableauConnectedAppAuth` (direct trust connected app: client ID, secret ID, secret value, username) |
 | `siteName` | Tableau site (empty for default) |
 | `apiVersion` | Optional REST API version override |
 | `verifySSL` + `sslConfig` | TLS validation mode, CA certificate, and client certificate + key (mutual TLS) when `verifySSL=validate` |
@@ -70,8 +70,7 @@ Which inputs feed which outputs:
    output.
 2. A flow with several of each can run separate branches, so the pairs are
    read from the lineage of the fields its output steps write
-   (`FlowOutputField.upstream*` / `downstream*`), in a query of its own so a
-   flow that exceeds the node budget keeps its main lineage.
+   (`FlowOutputField.upstream*` / `downstream*`), in a query of its own.
 3. When Tableau does not say, no input → output edge is drawn for that flow
    (a warning names it) rather than every input being tied to every output.
 
@@ -94,13 +93,14 @@ dashboard Tableau connector does:
 2. Without them, a search across every database service is used, and only
    a single match is accepted — a same-named table elsewhere never gets the
    edge, and names that match several tables do not fall back to looser ones.
-3. For an upstream table Tableau returns without a name, its custom SQL is
-   fetched (in a separate query, so popular tables do not spend the main
-   query's node budget) and parsed (ANSI dialect); each source table resolves
-   via steps 1–2.
+3. A custom SQL input whose source tables Tableau did not read has its query
+   parsed (ANSI dialect); each source table resolves via steps 1–2.
 
-A file a flow reads (Excel, CSV, …) is reported with the file as its database
-and no schema, so it is not mistaken for a database table of the same name.
+A file a flow reads or writes (Excel, text, JSON, PDF, spatial, statistical,
+Hyper, Google Sheets, one of these in cloud storage, or a SharePoint list) is
+never resolved to a database table: Tableau reports it with a file connection
+type, or with no database and no schema, and by name alone it would match a
+table of the same name.
 
 Published data sources resolve to the `DashboardDataModel`s the dashboard
 Tableau connector created — in every dashboard service that ingests the site
@@ -142,18 +142,36 @@ would replace their column lineage whenever `overrideLineage` is on.
   inside the flow) is not exposed by the Metadata API. The Task DAG captures
   the flow boundary (inputs → processing → outputs) only.
 - **Metadata API outages keep the DAG.** When the Metadata API cannot be
-  queried, a flow keeps the tasks it already has in OpenMetadata rather than
-  collapsing to a single task; a flow with no lineage records is a single
-  task.
-- **Partial listings delete nothing.** When the extract refresh tasks, or one
-  of their data sources / workbooks, cannot be read, no pipeline is marked as
-  deleted that run. A data source or workbook that no longer exists is
-  skipped normally.
+  queried, answers with errors and no data, or returns a flow record the
+  connector cannot read, a flow keeps the tasks it already has in OpenMetadata
+  rather than collapsing to a single task; a flow with no lineage records is a
+  single task.
+- **Partial listings delete nothing.** When the flows, the extract refresh
+  tasks, or one of their data sources / workbooks, cannot be read, no pipeline
+  is marked as deleted that run. A data source or workbook that no longer exists is
+  skipped normally. A partial listing also fails the run, whatever the success
+  threshold.
 - **Retries.** 429 and 502-504 answers are retried three times with backoff,
-  honouring `Retry-After`.
-- **Metadata API node limit.** A query that exceeds the node limit (20,000
-  by default on Tableau Server) returns partial data plus `errors`; the
-  connector logs the errors and ingests what was returned.
+  honouring a `Retry-After` of up to 30 seconds. A longer one, as Tableau Cloud
+  sends once a site's hourly flow quota is used up, is not waited out: the call
+  fails at once with Tableau's message and a warning
+  (ADR:2026-10-30-tableau-pipeline-retry-after-cap).
+- **Timeouts.** Each attempt gives up after 10 seconds without a connection,
+  retried like other connection errors, or after 60 seconds without data, which
+  is not retried (ADR:2026-10-30-tableau-pipeline-http-timeout).
+- **One session per token.** Tableau ends a personal access token's session when
+  the same token signs in elsewhere, for example from another ingestion. The
+  connector then signs in again once and repeats the call, which ends the other
+  client's session in turn; the Tableau dashboard connector does not sign in
+  again. Give each ingestion its own token
+  (ADR:2026-10-30-tableau-pipeline-sign-in-again).
+- **Metadata API node and time limits.** A query that exceeds the node limit
+  (20,000 by default on Tableau Server) or the time limit returns partial data
+  plus `errors`. The flow query reads input and output fields 100 at a time,
+  so a wide flow stays under the node limit; a page cut short anyway, or a
+  later page that comes back without the flow, keeps the flow's stored tasks
+  and gets no new lineage that run, with a warning; other queries log the
+  errors and ingest what was returned.
 
 ## Test connection steps
 

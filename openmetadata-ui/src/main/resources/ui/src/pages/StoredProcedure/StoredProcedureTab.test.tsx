@@ -14,13 +14,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import StoredProcedureTab from './StoredProcedureTab';
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-  }
-);
-
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
     <p data-testid="next-previous" role="presentation" onClick={pagingHandler}>

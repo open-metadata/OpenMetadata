@@ -40,8 +40,11 @@ const mockTestCaseFqn =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 
 const mockUseTestCase: UseTestCaseStoreInterface = {
+  selectedRunTimestamp: undefined,
+  setSelectedRunTimestamp: jest.fn(),
   testCase: MOCK_TEST_CASE_DATA,
   setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
   isLoading: false,
   setIsLoading: jest.fn(),
   reset: jest.fn(),
@@ -58,6 +61,7 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
 };
 
 jest.mock('./useTestCase.store', () => ({
+  ...jest.requireActual('./useTestCase.store'),
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
 }));
 
@@ -387,6 +391,32 @@ describe('useTestCaseDetailPage', () => {
     );
   });
 
+  // #37951: the PATCH response omits the last run result, so the header and
+  // the Last run banner went blank after an owner change until a reload.
+  it('handleOwnerChange should keep the last run result the PATCH response omits', async () => {
+    const { testCaseResult, ...patchResponse } = MOCK_TEST_CASE_DATA;
+    const updatedAt = 1_800_000_000_000;
+    (updateTestCaseById as jest.Mock).mockResolvedValueOnce({
+      ...patchResponse,
+      updatedAt,
+    });
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleOwnerChange([
+        { id: 'owner-id', type: 'user' },
+      ]);
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseResult, updatedAt })
+      )
+    );
+  });
+
   it('handleDisplayNameChange should patch the test case', async () => {
     const { result } = renderDetailPageHook();
 
@@ -517,6 +547,34 @@ describe('useTestCaseDetailPage', () => {
 
     expect(restoreTestCase).toHaveBeenCalledWith(MOCK_TEST_CASE_DATA.id);
     expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('should keep the last run result when the restore response omits it', async () => {
+    const { testCaseResult, ...restoreResponse } = MOCK_TEST_CASE_DATA;
+    const restoredAt = 1_800_000_000_000;
+    (restoreTestCase as jest.Mock).mockResolvedValueOnce({
+      ...restoreResponse,
+      deleted: false,
+      updatedAt: restoredAt,
+    });
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ updatedAt: restoredAt })
+      )
+    );
+
+    expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+      expect.objectContaining({ testCaseResult, updatedAt: restoredAt })
+    );
   });
 
   it('should report restore failures without showing a success toast', async () => {

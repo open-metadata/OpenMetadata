@@ -12,22 +12,16 @@
  */
 
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Inbox01, InboxFilled } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as InboxIconActive } from '../../../../assets/svg/ask-collate-nav-bar/inbox-active.svg';
-import { ReactComponent as InboxIconDefault } from '../../../../assets/svg/ask-collate-nav-bar/inbox-default.svg';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
-import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../inbox.constants';
-import { getDefaultInboxDateRange } from '../InboxPage/inbox.utils';
+import { openTaskCountQuery } from '../openTaskCount';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-
-const OPEN_TASK_COUNT_STALE_TIME = 30 * 1000;
 
 // Keep badge positioning local to this component
 const INBOX_BADGE_CLASS =
@@ -40,8 +34,8 @@ const INBOX_BADGE_CLASS =
  * collapsed `Rail`). The badge combines OPEN tasks the user needs to act on
  * (Open/InProgress/Pending — closed and already-granted tasks are excluded) with
  * activity they have not looked at yet, so a chat shared with them is visible
- * without opening the Inbox. Fetched here (independent of the Inbox page's
- * all-tasks counts) so it shows before the Inbox is opened.
+ * without opening the Inbox. It reads the same open-task query as the Triage
+ * tab badge (`openTaskCountQuery`), so the two agree and share one fetch.
  */
 const InboxIconButton: React.FC = () => {
   const { t } = useTranslation();
@@ -49,31 +43,8 @@ const InboxIconButton: React.FC = () => {
   const { pathname } = useLocation();
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
-  const storedDateRange = usePersonalSpaceStore((s) => s.inboxDateRange);
-  const dateRange = useMemo(
-    () => storedDateRange ?? getDefaultInboxDateRange(),
-    [storedDateRange]
-  );
 
-  const { data: openTaskCount = 0 } = useQuery({
-    queryKey: [
-      ...INBOX_OPEN_TASK_COUNT_QUERY_KEY,
-      dateRange.startTs,
-      dateRange.endTs,
-      userId,
-    ],
-    queryFn: () =>
-      listMyVisibleTasks({
-        limit: 1,
-        startTs: dateRange.startTs,
-        endTs: dateRange.endTs,
-        statusGroup: TaskStatusGroup.Open,
-      })
-        .then((res) => res.paging?.total ?? 0)
-        .catch(() => 0),
-    enabled: Boolean(userId),
-    staleTime: OPEN_TASK_COUNT_STALE_TIME,
-  });
+  const { data: openTaskCount = 0 } = useQuery(openTaskCountQuery(userId));
 
   const unreadActivityCount = useUnreadInboxActivity();
   const pendingCount = openTaskCount + unreadActivityCount;
@@ -89,43 +60,34 @@ const InboxIconButton: React.FC = () => {
 
   const isActive =
     pathname === PERSONAL_SPACE_ROUTES.INBOX ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`) ||
-    pathname === PERSONAL_SPACE_ROUTES.MY_DATA ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.MY_DATA}/`);
+    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`);
 
   return (
     <Tooltip arrow placement="right" title={t('label.inbox')}>
-      <TooltipTrigger>
-        <button
-          aria-label={t('label.inbox')}
-          className={classNames('ask-rail__item', {
-            'ask-rail__item--active': isActive,
-          })}
-          data-testid="ai-inbox-icon-btn"
-          type="button"
-          onClick={() =>
-            navigate(
-              openTaskCount > 0
-                ? PERSONAL_SPACE_ROUTES.INBOX_TASKS
-                : PERSONAL_SPACE_ROUTES.INBOX
-            )
-          }>
-          {isActive ? (
-            <InboxIconActive height={20} width={20} />
-          ) : (
-            <InboxIconDefault
-              className="tw:text-fg-quaternary"
-              height={20}
-              width={20}
-            />
-          )}
+      <TooltipTrigger
+        aria-label={t('label.inbox')}
+        className={classNames('ask-rail__item', {
+          'ask-rail__item--active': isActive,
+        })}
+        data-testid="ai-inbox-icon-btn"
+        onPress={() =>
+          navigate(
+            openTaskCount > 0
+              ? PERSONAL_SPACE_ROUTES.INBOX_TASKS
+              : PERSONAL_SPACE_ROUTES.INBOX
+          )
+        }>
+        {isActive ? (
+          <InboxFilled className="tw:text-brand-800" size={20} />
+        ) : (
+          <Inbox01 size={20} />
+        )}
 
-          {badgeLabel && (
-            <span className={INBOX_BADGE_CLASS} data-testid="ai-inbox-badge">
-              {badgeLabel}
-            </span>
-          )}
-        </button>
+        {badgeLabel && (
+          <span className={INBOX_BADGE_CLASS} data-testid="ai-inbox-badge">
+            {badgeLabel}
+          </span>
+        )}
       </TooltipTrigger>
     </Tooltip>
   );

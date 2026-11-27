@@ -17,44 +17,64 @@ import {
   expect,
   Response,
 } from '@playwright/test';
-import { test as base } from '../../support/fixtures/base';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
+import { test as base } from '../../support/fixtures/userPages';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
+import { okJson } from '../../utils/apiResponse';
 import {
+  clickIgnoringToasts,
   disableEtagConditionalReads,
+  dismissToasts,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../utils/common';
 import {
   BulkOperationResult,
   ContextCenterDocument,
   ContextCenterFolder,
+  createMemoryViaApi,
+  DOCUMENTS_URL,
   expectBulkIdsRequest,
+  expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   expectSelectedCount,
   getDocumentRowByName,
   getDocumentSearchInput,
   getFolderTreeItem,
+  getMemoryStatus,
+  MEMORIES_API,
+  MEMORY_EXTRACTION_AVAILABILITY_API,
+  MEMORY_EXTRACTION_CANNOT_START_MESSAGE,
+  MEMORY_EXTRACTION_OFF_MESSAGE,
   navigateToDocuments,
   parseResponseJson,
   revealFolderRow,
   scrollUntilResponse,
   searchAndGetDocumentRow,
   selectDocumentByName,
+  selectDocumentsBySharedTerm,
   selectFolderInSidebar,
   uploadDocument as uploadDocumentToApi,
+  waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
 import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
 
 const contextFileIdsToCleanup = new Set<string>();
 const contextFolderIdsToCleanup = new Set<string>();
+const contextMemoryNamesToCleanup = new Set<string>();
 let paginationFolder: ContextCenterFolder;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,6 +94,53 @@ const uploadDocument = async (
   contextFileIdsToCleanup.add(document.id);
 
   return document;
+};
+
+interface ExtractedMemoryApproval {
+  approved: number;
+  failed?: number;
+  needsDecision: { id: string }[];
+}
+
+interface DocumentExtractionState {
+  fullyQualifiedName: string;
+  neverExtracted?: boolean;
+  processingStatus?: string;
+}
+
+const getExtractionState = async (
+  apiContext: APIRequestContext,
+  documentId: string
+): Promise<DocumentExtractionState> =>
+  okJson<DocumentExtractionState>(
+    await apiContext.get(`/api/v1/contextCenter/drive/files/${documentId}`, {
+      params: { fields: 'neverExtracted' },
+    }),
+    `Read the extraction state of document ${documentId}`
+  );
+
+/** A memory as extraction stores it: Unprocessed, linked to its document and anchored on it. */
+const createExtractedMemory = async (
+  apiContext: APIRequestContext,
+  document: ContextCenterDocument,
+  question: string,
+  answer: string
+): Promise<{ id: string; name: string }> => {
+  const name = `cc_extracted_${uuid()}`;
+  contextMemoryNamesToCleanup.add(name);
+  const source = { id: document.id, type: 'contextFile' };
+
+  return createMemoryViaApi(apiContext, {
+    name,
+    title: question,
+    question,
+    answer,
+    sourceType: 'FileExtraction',
+    sourceEntity: source,
+    primaryEntity: source,
+    entityStatus: 'Unprocessed',
+    shareConfig: { visibility: 'Entity' },
+  });
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -106,7 +173,7 @@ const test = base.extend<object, { documentSession: DocumentSession }>({
           // A worker's fixture cleanup must not cover another worker's controls.
           await use({
             apiContext,
-            storageState: await context.storageState({ indexedDB: true }),
+            storageState: await captureRecoverableStorageState(context),
           });
         } finally {
           await disposeApiContext();
@@ -132,8 +199,10 @@ test.describe('Context Center - Documents Page', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ documentSession }) => {
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     contextFileIdsToCleanup.clear();
     contextFolderIdsToCleanup.clear();
+    contextMemoryNamesToCleanup.clear();
     const { apiContext } = documentSession;
     await uploadDocument(
       apiContext,
@@ -180,9 +249,22 @@ test.describe('Context Center - Documents Page', () => {
             ).toContain(response.status());
           })
         );
+      const deleteMemories = () =>
+        Promise.allSettled(
+          [...contextMemoryNamesToCleanup].map(async (name) => {
+            const response = await apiContext.delete(
+              `${MEMORIES_API}/name/${encodeURIComponent(name)}?hardDelete=true`
+            );
+            expect(
+              [200, 404],
+              `Delete memory ${name}: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
       const results = [
-        ...(await deleteIds('files', contextFileIdsToCleanup)),
+        ...(await deleteMemories()),
         ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
       ];
       const failures = results.filter(
         (result): result is PromiseRejectedResult =>
@@ -197,6 +279,7 @@ test.describe('Context Center - Documents Page', () => {
     } finally {
       contextFileIdsToCleanup.clear();
       contextFolderIdsToCleanup.clear();
+      contextMemoryNamesToCleanup.clear();
     }
   });
 
@@ -211,9 +294,7 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     await navigateToDocuments(page);
-    await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -238,9 +319,7 @@ test.describe('Context Center - Documents Page', () => {
     const loadMoreRes = await loadMoreResPromise;
     expect(loadMoreRes.status()).toBe(200);
 
-    await page.getByTestId('document-row-skeleton').last().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);
@@ -333,6 +412,7 @@ test.describe('Context Center - Documents Page', () => {
       res.request().method() === 'GET';
 
     test.beforeAll(async ({ documentSession }) => {
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       const { apiContext } = documentSession;
       const suffix = uuid();
 
@@ -507,7 +587,7 @@ test.describe('Context Center - Documents Page', () => {
 
       // If the seed document was indexed, it appears; otherwise the empty state shows
       if (count > 0) {
-        await expect(rows.first()).toBeVisible();
+        await expect(rows.filter({ visible: true })).not.toHaveCount(0);
       } else {
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
           timeout: 8000,
@@ -570,8 +650,8 @@ test.describe('Context Center - Documents Page', () => {
         page
           .getByTestId('documents-view')
           .locator('[data-testid^="document-row-"]')
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
@@ -703,7 +783,7 @@ test.describe('Context Center - Documents Page', () => {
     const hint = modal.locator('[class*="hint"], p').filter({
       hasText: /supports all file types/i,
     });
-    await expect(hint.first()).toBeVisible();
+    await expect(hint.filter({ visible: true })).not.toHaveCount(0);
 
     const attachBtn = modal.getByRole('button', { name: /attach/i });
     await expect(attachBtn).toBeVisible();
@@ -732,7 +812,9 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -744,7 +826,9 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName).first()).toBeVisible();
+    await expect(
+      page.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
@@ -808,7 +892,11 @@ test.describe('Context Center - Documents Page', () => {
   }) => {
     const fileName = `card-menu-delete-${uuid()}.txt`;
     const { apiContext } = documentSession;
-    await uploadDocument(apiContext, fileName, Buffer.from('delete from menu'));
+    const doc = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from('delete from menu')
+    );
 
     await navigateToDocuments(page);
 
@@ -828,6 +916,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('confirm-button').click();
     const deleteRes = await deleteResPromise;
     expect(deleteRes.status()).toBe(200);
+    contextFileIdsToCleanup.delete(doc.id);
 
     await expect(getDocumentRowByName(page, fileName)).not.toBeVisible();
   });
@@ -988,7 +1077,9 @@ test.describe('Context Center - Documents Page', () => {
 
     const currentFolderItem = page.getByTestId(`move-to-folder-${folder.id}`);
     await expect(currentFolderItem).toBeVisible();
-    await expect(currentFolderItem.locator('svg').last()).toBeVisible();
+    await expect(
+      currentFolderItem.locator('svg').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const removeResPromise = page.waitForResponse(
       (res) =>
@@ -1063,6 +1154,284 @@ test.describe('Context Center - Documents Page', () => {
     await expect(panel).not.toBeVisible();
   });
 
+  // ─── Req 5b: Approve a document's extracted memories from its preview ─────
+
+  test('approving extracted memories from the preview approves a unique fact and leaves two values of one question pending', async ({
+    documentSession,
+    page,
+  }) => {
+    // The upload's processing has to finish before the memories exist, which can take a while.
+    test.slow();
+    const { apiContext } = documentSession;
+    const token = uuid();
+    const fileName = `extracted-approval-${token}.txt`;
+    // Unique content: processing reuses the memories of a file with the same checksum.
+    const document = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from(`Refund policy ${token} for extracted memory approval`)
+    );
+    // Extraction deletes the Unprocessed memories of a document it no longer derives, so the
+    // fixtures are linked only after it has run.
+    await waitForDocumentProcessingComplete(apiContext, document.id);
+    const refundWindow = `What is the refund window for ${token}?`;
+    const unique = await createExtractedMemory(
+      apiContext,
+      document,
+      `Who signs off refunds for ${token}?`,
+      'The finance lead'
+    );
+    const thirtyDays = await createExtractedMemory(
+      apiContext,
+      document,
+      refundWindow,
+      '30 days'
+    );
+    const fortyFiveDays = await createExtractedMemory(
+      apiContext,
+      document,
+      refundWindow,
+      '45 days'
+    );
+
+    await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    const panel = page.getByTestId('document-preview-panel');
+    await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
+    const card = panel.getByTestId('extracted-memories-card');
+    for (const memory of [unique, thirtyDays, fortyFiveDays]) {
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+    }
+    // The action counts the fact it approves and the two values it leaves for a decision.
+    const approve = card.getByTestId('approve-extracted-memories-btn');
+    await expect(approve).toHaveText(/\b3 pending\b/);
+
+    const approval = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'PUT' &&
+        new URL(response.url()).pathname ===
+          `${MEMORIES_API}/extractedApproval`,
+      200
+    );
+    await clickIgnoringToasts(approve);
+    const result = (await (await approval).json()) as ExtractedMemoryApproval;
+
+    expect(result.approved).toBe(1);
+    expect(result.failed ?? 0).toBe(0);
+    expect(new Set(result.needsDecision.map(({ id }) => id))).toEqual(
+      new Set([thirtyDays.id, fortyFiveDays.id])
+    );
+    // Nothing is left that approval could approve, so the action goes away.
+    await expect(approve).toHaveCount(0);
+    expect(await getMemoryStatus(apiContext, unique.id)).toBe('Approved');
+    expect(await getMemoryStatus(apiContext, thirtyDays.id)).toBe(
+      'Unprocessed'
+    );
+    expect(await getMemoryStatus(apiContext, fortyFiveDays.id)).toBe(
+      'Unprocessed'
+    );
+  });
+
+  // ─── Req 5c: Extract and Retry, for a document's owners and admins only ───
+
+  // A Collate server runs with memory extraction on, so these states exist only on OSS.
+  if (process.env.PLAYWRIGHT_IS_OSS) {
+    test('a document uploaded while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
+      documentSession,
+      page,
+      dataConsumerPage,
+    }) => {
+      // The upload's processing has to finish before the document reads Not processed.
+      test.slow();
+      const { apiContext } = documentSession;
+      await expectMemoryExtractionOff(apiContext);
+      const fileName = `not-extracted-${uuid()}.txt`;
+      const document = await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from(`Never extracted ${uuid()}`)
+      );
+      await waitForDocumentProcessingComplete(apiContext, document.id);
+      const state = await getExtractionState(apiContext, document.id);
+
+      expect(state.neverExtracted).toBe(true);
+
+      await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const panel = page.getByTestId('document-preview-panel');
+      await expect(panel.getByTestId('document-status-badge')).toHaveText(
+        'Not processed'
+      );
+      const extract = panel.getByTestId('memory-extraction-btn');
+      await expect(extract).toHaveText('Extract');
+      await expect(extract).toBeDisabled();
+      await expectMemoryExtractionOffTooltip(page);
+
+      await test.step('the row menu offers it the same way', async () => {
+        // A search lists the rows from the index, so wait for it to say Not processed too.
+        await waitForSearchIndexed(
+          apiContext,
+          state.fullyQualifiedName,
+          'contextFile',
+          {
+            queryFilter: JSON.stringify({
+              query: { bool: { filter: [{ term: { neverExtracted: true } }] } },
+            }),
+          }
+        );
+        const row = await searchAndGetDocumentRow(page, fileName, document.id);
+        await expect(row).toBeVisible();
+        await row.getByTestId('manage-button').click();
+        const item = page.getByTestId('memory-extraction-menu-btn');
+        await expect(item).toHaveAccessibleName('Extract');
+        await expect(item).toHaveAttribute('aria-disabled', 'true');
+        // Keyboard navigation skips a disabled item, so the reason is visible, and its description.
+        await expect(item).toHaveAccessibleDescription(
+          MEMORY_EXTRACTION_OFF_MESSAGE
+        );
+        await page.keyboard.press('Escape');
+        await expect(item).toHaveCount(0);
+      });
+
+      await test.step('a data consumer, neither owner nor admin, is offered nothing', async () => {
+        await dataConsumerPage.goto(
+          `${DOCUMENTS_URL}?document=${document.id}`,
+          {
+            waitUntil: 'domcontentloaded',
+          }
+        );
+        const consumerPanel = dataConsumerPage.getByTestId(
+          'document-preview-panel'
+        );
+        await expect(
+          consumerPanel.getByTestId('document-status-badge')
+        ).toHaveText('Not processed');
+        await expect(
+          consumerPanel.getByTestId('memory-extraction-btn')
+        ).toHaveCount(0);
+      });
+    });
+
+    test('a failed document offers an admin Retry, which reaches the server and shows why it is refused', async ({
+      documentSession,
+      page,
+    }) => {
+      // The upload's processing has to finish before the document reads Failed.
+      test.slow();
+      const { apiContext } = documentSession;
+      await expectMemoryExtractionOff(apiContext);
+      // Not a PDF, so its text extraction fails.
+      const fileName = `unreadable-${uuid()}.pdf`;
+      const document = await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('These bytes are not a PDF document')
+      );
+      await waitForDocumentProcessingComplete(apiContext, document.id);
+      const state = await getExtractionState(apiContext, document.id);
+
+      expect(state.processingStatus).toBe('Failed');
+
+      await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      const panel = page.getByTestId('document-preview-panel');
+      const badge = panel.getByTestId('document-status-badge');
+      const retry = panel.getByTestId('memory-extraction-btn');
+      await expect(badge).toHaveText('Failed');
+      await expect(retry).toHaveText('Retry');
+      await expect(retry).toBeDisabled();
+      await expectMemoryExtractionOffTooltip(page);
+
+      const isRetryRequest = (response: Response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/contextCenter/drive/files/${document.id}/extract`;
+      const row = page
+        .getByTestId('documents-view')
+        .getByTestId(`document-row-${document.id}`);
+      const menuRetry = page.getByTestId('memory-extraction-menu-btn');
+
+      await test.step('a page that reads extraction as on gets a 409 and says the document cannot start now', async () => {
+        // Every availability read answers on, the one after the 409 included.
+        await page.route(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`, (route) =>
+          route.fulfill({ json: { available: true } })
+        );
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await expect(retry).toBeEnabled();
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(retry);
+
+        expect(await (await refusal).json()).toMatchObject({
+          code: 409,
+          message: 'Memory extraction is unavailable: ExtractionDisabled',
+        });
+
+        await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
+        await expect(badge).toHaveText('Failed');
+        await expect(retry).toBeEnabled();
+      });
+
+      await test.step('the row menu Retry reaches the server and says the same', async () => {
+        // The same text would match the first toast, so it goes first.
+        await dismissToasts(page);
+        await waitForToastToDisappear(
+          page,
+          MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+        );
+        // A search lists the rows from the index, so wait for it to say Failed too.
+        await waitForSearchIndexed(
+          apiContext,
+          state.fullyQualifiedName,
+          'contextFile',
+          {
+            queryFilter: JSON.stringify({
+              query: {
+                bool: { filter: [{ term: { processingStatus: 'Failed' } }] },
+              },
+            }),
+          }
+        );
+        await expect(
+          await searchAndGetDocumentRow(page, fileName, document.id)
+        ).toBeVisible();
+        await row.getByTestId('manage-button').click();
+        await expect(menuRetry).toHaveAccessibleName('Retry');
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(menuRetry);
+        await refusal;
+
+        await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
+      });
+
+      await test.step('once the read after a 409 reaches the server, it says extraction is off and disables Retry', async () => {
+        // The page keeps the availability it read until a 409 reads it again.
+        await page.unroute(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`);
+        await dismissToasts(page);
+        await waitForToastToDisappear(
+          page,
+          MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+        );
+        await row.getByTestId('manage-button').click();
+        const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+        await clickIgnoringToasts(menuRetry);
+        await refusal;
+
+        await toastNotification(page, MEMORY_EXTRACTION_OFF_MESSAGE);
+        await clickIgnoringToasts(row.getByTestId('manage-button'));
+        await expect(menuRetry).toHaveAttribute('aria-disabled', 'true');
+        await expect(menuRetry).toHaveAccessibleDescription(
+          MEMORY_EXTRACTION_OFF_MESSAGE
+        );
+      });
+    });
+  }
+
   // ─── Req 6: Copy link button on document list row ─────────────────────────
 
   test('copy link button on document list row copies URL with correct document id and opening the link shows the preview panel', async ({
@@ -1110,8 +1479,9 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     const folderName = `bulk-move-folder-${uuid()}`;
-    const firstFileName = `bulk-move-one-${uuid()}.txt`;
-    const secondFileName = `bulk-move-two-${uuid()}.txt`;
+    const fileId = uuid();
+    const firstFileName = `bulk-move-one-${fileId}.txt`;
+    const secondFileName = `bulk-move-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const firstDocument = await uploadDocument(
@@ -1144,8 +1514,10 @@ test.describe('Context Center - Documents Page', () => {
     contextFolderIdsToCleanup.add(targetFolder.id);
 
     await revealFolderRow(page, folderName);
-    await selectDocumentByName(page, firstFileName);
-    await selectDocumentByName(page, secondFileName);
+    await selectDocumentsBySharedTerm(page, fileId, [
+      firstFileName,
+      secondFileName,
+    ]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-move-btn').click();
@@ -1184,8 +1556,9 @@ test.describe('Context Center - Documents Page', () => {
     documentSession,
     page,
   }) => {
-    const firstName = `bulk-del-archive-one-${uuid()}.txt`;
-    const secondName = `bulk-del-archive-two-${uuid()}.txt`;
+    const fileId = uuid();
+    const firstName = `bulk-del-archive-one-${fileId}.txt`;
+    const secondName = `bulk-del-archive-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const doc1 = await uploadDocument(
@@ -1201,8 +1574,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    await selectDocumentByName(page, firstName);
-    await selectDocumentByName(page, secondName);
+    await selectDocumentsBySharedTerm(page, fileId, [firstName, secondName]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-delete-btn').click();
@@ -1224,6 +1596,8 @@ test.describe('Context Center - Documents Page', () => {
       doc1.id,
       doc2.id,
     ]);
+    contextFileIdsToCleanup.delete(doc1.id);
+    contextFileIdsToCleanup.delete(doc2.id);
 
     await expect(
       await searchAndGetDocumentRow(page, firstName)
@@ -1238,6 +1612,19 @@ test.describe('Context Center - Documents Page', () => {
     await page
       .getByTestId('context-center-archive-page')
       .waitFor({ state: 'visible' });
+    await waitForAllLoadersToDisappear(page);
+
+    // "All" is one newest-first page of 15 across every worker, so another
+    // worker archiving its pagination docs at the same moment pushes these two
+    // off it. Each worker signs in as its own user, so "Created by me" holds
+    // only this worker's archive.
+    const mineResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/contextCenter/drive/files?') &&
+        response.url().includes('updatedBy=')
+    );
+    await page.getByRole('tab', { name: 'Created by me' }).click();
+    await mineResponse;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId(`archive-row-${doc1.id}`)).toBeVisible();
@@ -1293,7 +1680,16 @@ test.describe('Context Center - Documents Page', () => {
     const tree = page.getByRole('treegrid', { name: 'Folders' });
     const folderRow = await revealFolderRow(page, folderName);
 
+    const folderFilesResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        res.url().includes(`folderId=${folder.id}`) &&
+        !res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();
@@ -1349,15 +1745,24 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toBeVisible();
     await expect(folderViewCount).toBeVisible();
 
-    const globalCountText = await documentsViewCount.textContent();
-    const globalCount = parseInt(globalCountText ?? '0', 10);
-    expect(globalCount).toBeGreaterThanOrEqual(2);
+    // Clear the search before comparing the two headers. While a search is
+    // active the DocumentsView count reports the *result* total, not the global
+    // one, so the two headers are measuring different things and comparing them
+    // is meaningless.
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // The folder-view header should show the same global total.
+    // Unsearched and unfiltered, both headers show the same system-wide total.
     // Re-read both counts each attempt rather than comparing one to a value
-    // captured earlier. Both headers show a system-wide total that every other
-    // worker in the run is adding to and deleting from, so two reads taken a
-    // moment apart are not two views of the same number.
+    // captured earlier: every other worker in the run is adding to and deleting
+    // from that corpus, so two reads taken a moment apart are not two views of
+    // the same number.
     await expect
       .poll(async () => {
         const global = parseInt(
@@ -1369,17 +1774,9 @@ test.describe('Context Center - Documents Page', () => {
           10
         );
 
-        return folder >= global;
+        return global >= 2 && folder >= global;
       })
       .toBe(true);
-    const browseResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files') &&
-        !res.url().includes('search')
-    );
-    await getDocumentSearchInput(page).clear();
-    await browseResPromise;
-    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
@@ -1389,7 +1786,8 @@ test.describe('Context Center - Documents Page', () => {
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     // DocumentsView header count updates to reflect the folder-scoped total.
-    await expect(documentsViewCount).toContainText('1');
+    // Anchored: toContainText('1') would also accept "21 files" or "100 files".
+    await expect(documentsViewCount).toHaveText(/^1\s+files?$/i);
 
     // DocumentFolderView header is not scoped by the sidebar selection, so it
     // still counts the document outside the folder as well as the one inside
@@ -1481,27 +1879,28 @@ test.describe('Context Center - Documents Page', () => {
     const dupRes = await dupResPromise;
     expect(dupRes.status()).toBe(400);
 
-    await expect(modal.getByText(/try again|failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/try again|failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
-    let uploadedDocId: string;
-    {
-      const { apiContext: api2 } = documentSession;
-      const uploadedDoc = await uploadDocument(
-        api2,
-        sharedFileName,
-        Buffer.from('same filename in folder B'),
-        folderB.fullyQualifiedName
-      );
-      uploadedDocId = uploadedDoc.id;
-    }
+    const { id: uploadedDocId } = await uploadDocument(
+      apiContext,
+      sharedFileName,
+      Buffer.from('same filename in folder B'),
+      folderB.fullyQualifiedName
+    );
 
     await navigateToDocuments(page);
 
-    const uploadedRow = page.getByTestId(`document-row-${uploadedDocId}`);
+    const uploadedRow = await searchAndGetDocumentRow(
+      page,
+      sharedFileName,
+      uploadedDocId
+    );
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
@@ -1592,7 +1991,9 @@ test.describe('Context Center - Documents Page', () => {
 
     expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
     expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 
@@ -1655,7 +2056,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: fileName,
     });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Trigger the first (failing) upload.
     const failedResPromise = page.waitForResponse(
@@ -1666,7 +2069,9 @@ test.describe('Context Center - Documents Page', () => {
     expect(failedRes.status()).toBe(500);
 
     // File row should show "Failed" with a "Try again" button.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     const tryAgainBtn = modal.getByRole('button', { name: /try again/i });
     await expect(tryAgainBtn).toBeVisible();
 
@@ -1804,7 +2209,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: errorFile,
     });
-    await expect(modal.getByText(errorFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(errorFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const firstFailRes = page.waitForResponse(
       '**/api/v1/contextCenter/drive/files/upload'
@@ -1813,7 +2220,9 @@ test.describe('Context Center - Documents Page', () => {
     await firstFailRes;
 
     // First file is now in error state; Attach button is disabled.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     // Add a second, valid file.
@@ -1823,7 +2232,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: newFile,
     });
-    await expect(modal.getByText(newFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(newFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Upload the new file — it succeeds.
     const secondSuccessRes = waitForResponseWithStatus(
@@ -1840,7 +2251,11 @@ test.describe('Context Center - Documents Page', () => {
 
     // Modal must stay open because the first file is still in error state.
     await expect(modal).toBeVisible();
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
+    await expect(
+      modal.getByText(/complete/i).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 });

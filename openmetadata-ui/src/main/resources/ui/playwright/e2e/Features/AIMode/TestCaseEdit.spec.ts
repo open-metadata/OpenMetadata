@@ -13,13 +13,14 @@
 import { expect, Page, Response, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, uuid } from '../../../utils/common';
+import { selectTestType } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
-// The AI observability pages open the shared TestCaseFormDrawer in
-// `variant="modal"` WITHOUT a `table` prop, so the table's columns load
-// asynchronously via getTableDetailsByFQN. These specs cover the migrated form
-// end-to-end in that AI-modal context: the edit-prefill regressions the async
+// The AI observability pages open the shared TestCaseFormDrawer WITHOUT a
+// `table` prop, so the table's columns load asynchronously via
+// getTableDetailsByFQN. These specs cover the migrated form end-to-end in that
+// AI-mode context: the edit-prefill regressions the async
 // path is prone to (a react-aria Select dropping a selectedKey before its
 // options load), the edit save round-trip, and the full create flow (table +
 // searchable test-type dropdown + parameters + submit).
@@ -27,7 +28,7 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const openEditModal = async (page: Page, testCaseFqn: string) => {
+const openEditDrawer = async (page: Page, testCaseFqn: string) => {
   await page.goto(
     `/observability/test-case/${encodeURIComponent(
       testCaseFqn
@@ -44,7 +45,7 @@ const openEditModal = async (page: Page, testCaseFqn: string) => {
   await page.getByTestId('profiler-setting-button').click();
 };
 
-test.describe('AI Observability - test case edit modal', () => {
+test.describe('AI Observability - test case edit drawer', () => {
   const table = new TableClass();
   let columnTestCaseFqn = '';
   let editTestCaseFqn = '';
@@ -99,8 +100,8 @@ test.describe('AI Observability - test case edit modal', () => {
     await enableAiAppMode(page);
   });
 
-  test('edit modal prefills the column-level test case', async ({ page }) => {
-    await openEditModal(page, columnTestCaseFqn);
+  test('edit drawer prefills the column-level test case', async ({ page }) => {
+    await openEditDrawer(page, columnTestCaseFqn);
 
     // REGRESSION GUARD: the column select must display the prefilled column,
     // not a blank placeholder, even though its options load asynchronously.
@@ -151,7 +152,7 @@ test.describe('AI Observability - test case edit modal', () => {
   });
 
   test('saves an edited parameter (edit round-trip)', async ({ page }) => {
-    await openEditModal(page, editTestCaseFqn);
+    await openEditDrawer(page, editTestCaseFqn);
 
     const maxParam = page.locator('#testCaseFormV1_params_maxValueForMaxInCol');
     await expect(maxParam).toHaveValue('100');
@@ -237,15 +238,7 @@ test.describe('AI Observability - test case edit modal', () => {
       .locator('input')
       .fill(testCaseName);
 
-    // Searchable test-type dropdown: type to filter, then pick the option.
-    await page.click('[id="root\\/testType"]');
-    await page.fill('[id="root\\/testType"]', 'Table Row Count To Be Between');
-    // eslint-disable-next-line om-playwright/no-positional-locator -- already narrowed by name; .first() guards against sibling definitions sharing this prefix
-    await page
-      .getByRole('option')
-      .filter({ hasText: 'Table Row Count To Be Between' })
-      .first()
-      .click();
+    await selectTestType(page, 'Table Row Count To Be Between');
 
     await page.fill('#testCaseFormV1_params_minValue', '5');
     await page.fill('#testCaseFormV1_params_maxValue', '50');

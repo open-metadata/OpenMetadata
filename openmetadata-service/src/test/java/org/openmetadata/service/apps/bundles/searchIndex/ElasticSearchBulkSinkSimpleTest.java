@@ -2,9 +2,12 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
@@ -13,6 +16,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,8 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 
@@ -39,6 +45,9 @@ class ElasticSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
@@ -61,6 +70,24 @@ class ElasticSearchBulkSinkSimpleTest {
     assertEquals(0, stats.getTotalRecords());
     assertEquals(0, stats.getSuccessRecords());
     assertEquals(0, stats.getFailedRecords());
+  }
+
+  @Test
+  void testCountsSuccessfulOntologyBatch() throws Exception {
+    var entities = List.of(new OntologyConcept(), new OntologyConcept());
+    when(searchRepository.getIndexMapping(Entity.ONTOLOGY_CONCEPT)).thenReturn(indexMapping);
+    when(searchRepository.writeSpecializedIndexBatch(
+            Entity.ONTOLOGY_CONCEPT, entities, "test_index", null))
+        .thenReturn(true);
+
+    try {
+      elasticSearchBulkSink.write(entities, Map.of(ENTITY_TYPE_KEY, Entity.ONTOLOGY_CONCEPT));
+      var stats = elasticSearchBulkSink.getStats();
+      assertEquals(2, stats.getSuccessRecords());
+      assertEquals(2, stats.getTotalRecords());
+    } finally {
+      elasticSearchBulkSink.close();
+    }
   }
 
   @Test
@@ -90,13 +117,6 @@ class ElasticSearchBulkSinkSimpleTest {
     assertEquals(false, recreateIndex);
   }
 
-  @Test
-  void testIsVectorEmbeddingEnabledForEntity() {
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
-  }
-
   /**
    * Mirror of {@code OpenSearchBulkSinkSimpleTest#semaphoreTimeoutRecordsPermanentFailure...}.
    * The Elasticsearch sink shares the leaked-future failure mode — without the bounded
@@ -107,40 +127,63 @@ class ElasticSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    ElasticSearchBulkSink.CustomBulkProcessor processor =
-        getCustomBulkProcessor(elasticSearchBulkSink);
+    // A zero bulk lifetime means its flush cannot wait at all for a free slot.
+    ElasticSearchBulkSink sink =
+        new ElasticSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
+    try {
+      ElasticSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
-    processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
+      BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
+      Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
+      semaphore.acquire(2);
+      int permitsBefore = semaphore.availablePermits();
 
-    Semaphore semaphore = getField(processor, "concurrentRequestSemaphore", Semaphore.class);
-    semaphore.acquire(2);
-    int permitsBefore = semaphore.availablePermits();
+      AtomicInteger activeBulkRequests =
+          getField(processor, "activeBulkRequests", AtomicInteger.class);
+      AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
+      long failedBefore = totalFailed.get();
+      int activeBefore = activeBulkRequests.get();
 
-    AtomicInteger activeBulkRequests =
-        getField(processor, "activeBulkRequests", AtomicInteger.class);
-    AtomicLong totalFailed = getField(elasticSearchBulkSink, "totalFailed", AtomicLong.class);
-    long failedBefore = totalFailed.get();
-    int activeBefore = activeBulkRequests.get();
+      @SuppressWarnings("unchecked")
+      List<BulkOperation> buffer = getField(processor, "buffer", List.class);
+      buffer.add(mock(BulkOperation.class));
 
-    @SuppressWarnings("unchecked")
-    List<BulkOperation> buffer = getField(processor, "buffer", List.class);
-    buffer.add(mock(BulkOperation.class));
+      Method flushInternal =
+          ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
+      flushInternal.setAccessible(true);
+      flushInternal.invoke(processor);
 
-    Method flushInternal =
-        ElasticSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
-    flushInternal.setAccessible(true);
-    flushInternal.invoke(processor);
+      assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
+      assertEquals(
+          activeBefore,
+          activeBulkRequests.get(),
+          "activeBulkRequests must not increment when semaphore acquire times out");
+      assertEquals(
+          permitsBefore,
+          semaphore.availablePermits(),
+          "permits must not change when tryAcquire returns false");
+      assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+    } finally {
+      sink.close();
+    }
+  }
 
-    assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
-    assertEquals(
-        activeBefore,
-        activeBulkRequests.get(),
-        "activeBulkRequests must not increment when semaphore acquire times out");
-    assertEquals(
-        permitsBefore,
-        semaphore.availablePermits(),
-        "permits must not change when tryAcquire returns false");
-    assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+  @Test
+  void liveWritesBuildDocumentsOffTheReindexPool() throws Exception {
+    ElasticSearchBulkSink live = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000000L);
+    ElasticSearchBulkSink reindex =
+        new ElasticSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 1_000, 10_000));
+    try {
+      // A reindex out of send slots blocks its doc-build tasks; live writes must not queue there.
+      assertNotSame(
+          getField(reindex, "docBuildExecutor", Executor.class),
+          getField(live, "docBuildExecutor", Executor.class));
+    } finally {
+      live.close();
+      reindex.close();
+    }
   }
 
   @SuppressWarnings("unchecked")

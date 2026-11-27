@@ -21,6 +21,13 @@ $$
 
 $$section
 
+### Logo Dark Mode URL $(id="customLogoDarkUrlPath")
+
+URL path for the logo shown when the dark theme is active. Falls back to the Logo URL when empty.
+$$
+
+$$section
+
 ### Monogram URL $(id="customMonogramUrlPath")
 
 URL path for the navbar logo.
@@ -28,6 +35,13 @@ $$
 
 $$note
 Monogram aspect ratio should be 1:1 and Recommended size should be 30 x 30 px
+$$
+
+$$section
+
+### Monogram Dark Mode URL $(id="customMonogramDarkUrlPath")
+
+URL path for the navbar logo shown when the dark theme is active. Falls back to the Monogram URL when empty.
 $$
 
 $$section

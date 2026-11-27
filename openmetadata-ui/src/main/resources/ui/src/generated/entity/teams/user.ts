@@ -27,6 +27,21 @@ export interface User {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
+     * The domain the user selects in the navbar to scope list views. Persisted so the global
+     * (navbar) domain filter is applied from the start of the session; it narrows lists only
+     * and never restricts access.
+     */
+    defaultDomain?: EntityReference;
+    /**
      * Default Persona for the user from list of personas.
      */
     defaultPersona?: EntityReference;
@@ -50,6 +65,10 @@ export interface User {
      * Email address of the user.
      */
     email: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * External identifier from identity provider (used for SCIM).
      */
@@ -106,6 +125,11 @@ export interface User {
      * If the User has verified the mail
      */
     isEmailVerified?: boolean;
+    /**
+     * When true indicates the user is accessing the product for the first time. Turns false
+     * once the user first reaches the home page.
+     */
+    isFirstTimeUser?: boolean;
     /**
      * Last time the user was active in the system.
      */
@@ -336,7 +360,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -378,7 +405,8 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
@@ -390,7 +418,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**
@@ -506,12 +536,16 @@ export interface FieldChange {
 }
 
 /**
- * Default Persona for the user from list of personas.
+ * The domain the user selects in the navbar to scope list views. Persisted so the global
+ * (navbar) domain filter is applied from the start of the session; it narrows lists only
+ * and never restricts access.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Default Persona for the user from list of personas.
  *
  * Domain the User belongs to. This is inherited by the team the user belongs to.
  *

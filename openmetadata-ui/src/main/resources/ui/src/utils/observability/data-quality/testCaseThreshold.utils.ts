@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
+import { isNil, omit } from 'lodash';
 import {
   ProfileSampleType,
   SampleConfigType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
+import {
+  ProfileSampleType as RunProfileSampleType,
+  TestCase,
+  TestCaseEvaluationScope,
+  TestCaseResult,
+  TestCaseStatus,
+  ThresholdUnit,
+} from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { unwrapSelectValue } from '../../ParameterForm/ParameterFieldsUtils';
 
@@ -23,16 +32,16 @@ export const THRESHOLD_PARAM = 'threshold';
 export const THRESHOLD_UNIT_PARAM = 'thresholdUnit';
 const OPERATOR_PARAM = 'operator';
 const STRATEGY_PARAM = 'strategy';
-const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+
+export const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+export const MIN_ROWS_PER_DIMENSION_PARAM = 'minRowsPerDimension';
+const ANY_DIMENSION_POLICY = 'ANY_DIMENSION';
 const MATCH_ENUM_PARAM = 'matchEnum';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const COLUMN_VALUES_TO_BE_IN_SET = 'columnValuesToBeInSet';
 
-export enum ThresholdUnit {
-  Absolute = 'ABSOLUTE',
-  Percentage = 'PERCENTAGE',
-}
+export { ThresholdUnit };
 
 export enum CustomSqlStrategy {
   Rows = 'ROWS',
@@ -138,7 +147,7 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
 
 /**
  * The denominator a PERCENTAGE threshold is read against, per row-countable
- * test. Membership *is* the row-countable classification: these six are the
+ * test. Membership *is* the row-countable classification: these are the
  * validators that call `_apply_row_threshold`, and the value is the metric
  * they pass as its denominator — `valuesCount` (the column's non-null values)
  * or `rowCount` (every row). Getting this wrong misnames the very quantity the
@@ -146,12 +155,15 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
  * predicate.
  */
 const ROW_COUNTABLE_DENOMINATORS: Record<string, ThresholdNoun> = {
+  columnValueLengthsToBeBetween: ThresholdNoun.Rows,
+  columnValuesToBeBetween: ThresholdNoun.Rows,
   columnValuesToMatchRegex: ThresholdNoun.NonNullValues,
   columnValuesToBeUnique: ThresholdNoun.NonNullValues,
   columnValuesToBeInSet: ThresholdNoun.Rows,
   columnValuesToBeNotInSet: ThresholdNoun.Rows,
   columnValuesToBeNotNull: ThresholdNoun.Rows,
   columnValuesToNotMatchRegex: ThresholdNoun.Rows,
+  columnValuesToBeAtExpectedLocation: ThresholdNoun.Rows,
 };
 
 export const THRESHOLD_NOUN_KEYS: Record<ThresholdNoun, string> = {
@@ -193,6 +205,51 @@ const STRATEGY_LABEL_KEYS: Record<string, string> = {
 const DIMENSION_FAILURE_POLICY_LABEL_KEYS: Record<string, string> = {
   OVERALL_ONLY: 'label.dimension-failure-policy-overall-only',
   ANY_DIMENSION: 'label.dimension-failure-policy-any-dimension',
+};
+
+/**
+ * Whether `minRowsPerDimension` can change the test case status. Mirrors
+ * ingestion's `get_min_rows_per_dimension`: nothing rolls up under
+ * `OVERALL_ONLY`, and an `ABSOLUTE` threshold compares the same violation
+ * count whatever the group size, so the minimum is ignored in both cases.
+ */
+export const isMinRowsPerDimensionApplicable = (
+  isDimensionalTest: boolean,
+  policy: unknown,
+  unit: unknown
+): boolean =>
+  isDimensionalTest &&
+  unwrapSelectValue(policy) === ANY_DIMENSION_POLICY &&
+  unwrapSelectValue(unit) === ThresholdUnit.Percentage;
+
+/**
+ * Drops the dimension roll-up params the form hides from the submitted
+ * params: both on a test case without dimension columns, and
+ * `minRowsPerDimension` wherever it does not apply. A value left over from an
+ * earlier selection must not be saved where nobody can see or change it.
+ */
+export const omitInapplicableDimensionParams = <T extends object>(
+  params: T | undefined,
+  isDimensionalTest: boolean
+): T | undefined => {
+  if (!params) {
+    return params;
+  }
+  if (!isDimensionalTest) {
+    return omit(params, [
+      DIMENSION_FAILURE_POLICY_PARAM,
+      MIN_ROWS_PER_DIMENSION_PARAM,
+    ]) as T;
+  }
+  const values = params as Record<string, unknown>;
+
+  return isMinRowsPerDimensionApplicable(
+    true,
+    values[DIMENSION_FAILURE_POLICY_PARAM],
+    values[THRESHOLD_UNIT_PARAM]
+  )
+    ? params
+    : (omit(params, MIN_ROWS_PER_DIMENSION_PARAM) as T);
 };
 
 export const getThresholdTestSemantic = (
@@ -288,20 +345,6 @@ export const getParamOptionLabelKey = (
 
   return undefined;
 };
-
-/**
- * Whether a `thresholdUnit` option may be picked for this test.
- * `tableCustomSQLQuery` compares its threshold as a raw count
- * (`evaluate_threshold(threshold, operator, len_rows)`) and never reads the
- * unit, so PERCENTAGE is offered disabled rather than dropped: a test case
- * already saved with it would otherwise lose its selected option.
- */
-export const isThresholdUnitOptionDisabled = (
-  definitionName: string | undefined,
-  optionValue: string
-): boolean =>
-  definitionName === TABLE_CUSTOM_SQL_QUERY &&
-  optionValue === ThresholdUnit.Percentage;
 
 export const hasThresholdUnitParam = (
   definition: TestDefinition | undefined
@@ -420,6 +463,8 @@ export interface ThresholdPreviewInput {
   /** Column name for column-level tests, table name for table-level ones. */
   target?: string;
   profilerConfig?: TableProfilerConfig;
+  /** True when the form's Dynamic Assertion switch is on. */
+  useDynamicAssertion?: boolean;
 }
 
 export interface ThresholdSampling {
@@ -444,6 +489,8 @@ export interface ThresholdPreviewData {
   bound?: string;
   /** Statistical only: the bound after the deviation. Absent when there is none. */
   effectiveRange?: string;
+  /** Statistical only: the bound is learned at run time, not configured. */
+  isBoundLearned: boolean;
   /** Custom SQL only: the raw comparison operator id. */
   operator?: string;
   /** Custom SQL only: sentence key for `operator`, absent for an unknown id. */
@@ -463,12 +510,6 @@ export interface ThresholdPreviewData {
    * once that flag is on, so the preview says so instead of promising one.
    */
   needsMatchEnum: boolean;
-  /**
-   * The test reads `threshold` but ignores `thresholdUnit` — true for
-   * `tableCustomSQLQuery` with a PERCENTAGE unit, which `evaluate_threshold`
-   * still compares as a raw count.
-   */
-  isUnitIgnored: boolean;
 }
 
 /**
@@ -558,18 +599,18 @@ const getStatisticalPreview = (
  * the tolerance, however row-countable the test is on paper.
  */
 const getEffectiveSemantic = (
-  definition: TestDefinition,
+  definitionName: string | undefined,
   params: Record<string, unknown>
 ): { semantic: ThresholdTestSemantic; needsMatchEnum: boolean } => {
   const needsMatchEnum =
-    definition.name === COLUMN_VALUES_TO_BE_IN_SET &&
+    definitionName === COLUMN_VALUES_TO_BE_IN_SET &&
     !isBooleanParamOn(params[MATCH_ENUM_PARAM]);
 
   return {
     needsMatchEnum,
     semantic: needsMatchEnum
       ? ThresholdTestSemantic.NotEnforced
-      : getThresholdTestSemantic(definition.name),
+      : getThresholdTestSemantic(definitionName),
   };
 };
 
@@ -592,7 +633,9 @@ const getCustomSqlPreview = (
  * Builds the data behind the live preview of what the configured threshold
  * actually does. Returns `undefined` when the selected test has no
  * `thresholdUnit` param, or when a statistical test has no bound yet — in both
- * cases there is nothing truthful to say.
+ * cases there is nothing truthful to say. A dynamic statistical assertion
+ * always has something to say: its bounds are learned, so the sentence
+ * describes the tolerance without quoting configured values.
  */
 export const getThresholdPreviewData = (
   input: ThresholdPreviewInput
@@ -605,7 +648,10 @@ export const getThresholdPreviewData = (
   const threshold = toNumber(params[THRESHOLD_PARAM]) ?? 0;
   const unit =
     unwrapSelectValue(params[THRESHOLD_UNIT_PARAM]) ?? ThresholdUnit.Absolute;
-  const { semantic, needsMatchEnum } = getEffectiveSemantic(definition, params);
+  const { semantic, needsMatchEnum } = getEffectiveSemantic(
+    definition.name,
+    params
+  );
   const isPercentage = unit === ThresholdUnit.Percentage;
 
   const common = {
@@ -616,14 +662,21 @@ export const getThresholdPreviewData = (
     target: input.target,
     sampling: getThresholdSampling(input.profilerConfig),
     hasZeroBound: false,
+    isBoundLearned: false,
     needsMatchEnum,
     // The match-enum case has its own, more specific warning.
     isThresholdIgnored:
       semantic === ThresholdTestSemantic.NotEnforced && !needsMatchEnum,
-    isUnitIgnored: semantic === ThresholdTestSemantic.CustomSql && isPercentage,
   };
 
   if (semantic === ThresholdTestSemantic.Statistical) {
+    // A dynamic assertion learns its bounds, so the static ones the form still
+    // holds are not what the run judges against — the sentence describes the
+    // tolerance around the learned bounds and quotes no configured values.
+    if (input.useDynamicAssertion) {
+      return { ...common, isBoundLearned: true };
+    }
+
     const statistical = getStatisticalPreview(input, threshold, unit);
 
     return statistical ? { ...common, ...statistical } : undefined;
@@ -634,4 +687,214 @@ export const getThresholdPreviewData = (
   }
 
   return common;
+};
+
+// ─── Run results ─────────────────────────────────────────────────────────────
+
+/**
+ * A test case's stored parameters keyed by name — the shape the form's
+ * `params` has, so the preview helpers read a saved test case the same way.
+ * A stored value is the raw enum id, which `unwrapSelectValue` passes through.
+ */
+export const getTestCaseParams = (
+  testCase: Pick<TestCase, 'parameterValues'>
+): Record<string, unknown> =>
+  Object.fromEntries(
+    (testCase.parameterValues ?? []).map(({ name, value }) => [name, value])
+  );
+
+/** The fields a run reports, on an overall result and a dimension's alike. */
+export type RunThresholdResult = Pick<
+  TestCaseResult,
+  | 'testCaseStatus'
+  | 'passedRows'
+  | 'failedRows'
+  | 'failedRowsPercentage'
+  | 'minBound'
+  | 'maxBound'
+  | 'configuredMinBound'
+  | 'configuredMaxBound'
+  | 'appliedThreshold'
+>;
+
+/**
+ * What one run measured next to the threshold it was judged by, as data. The
+ * threshold comes from the run's own snapshot of it, never from the test
+ * case's current parameters — those can have been edited since the run, and
+ * the tolerance a verdict was taken under is part of that verdict. It is never
+ * parsed out of `TestCaseResult.result` either: that string is English free
+ * text built in ingestion.
+ */
+export interface RunThresholdData {
+  semantic:
+    | ThresholdTestSemantic.RowCountable
+    | ThresholdTestSemantic.Statistical;
+  /**
+   * `0` when the run tolerated nothing. `undefined` when the run recorded no
+   * threshold — a run from an agent that predates the snapshot, whose
+   * tolerance cannot be recovered.
+   */
+  threshold?: number;
+  isPercentage: boolean;
+  noun: ThresholdNoun;
+  /** Row-countable only: the run's failing rows, when it counted them. */
+  failedRows?: number;
+  failedPercentage?: number;
+  /** Row-countable only: the population the percentage is a share of. */
+  evaluatedRows?: number;
+  populationNoun?: ThresholdNoun;
+  /** Statistical only: the bound as configured when the run executed. */
+  configuredRange?: string;
+  /** Statistical only: the bound the run was judged against, once widened. */
+  effectiveRange?: string;
+}
+
+const COMPLETED_RUN_STATUSES = new Set<TestCaseStatus | undefined>([
+  TestCaseStatus.Success,
+  TestCaseStatus.Failed,
+]);
+
+const getRowCountableRun = (
+  definitionName: string,
+  result: RunThresholdResult
+): Pick<
+  RunThresholdData,
+  'failedRows' | 'failedPercentage' | 'evaluatedRows' | 'populationNoun'
+> => {
+  const { passedRows, failedRows, failedRowsPercentage } = result;
+  const evaluatedRows =
+    isNil(passedRows) || isNil(failedRows)
+      ? undefined
+      : passedRows + failedRows;
+
+  const populationNoun = ROW_COUNTABLE_DENOMINATORS[definitionName];
+  // The share is taken of the population the threshold is judged on.
+  // `failedRowsPercentage` divides by the table's rows, which for a test
+  // counted over non-null values (regex, unique) is a different, smaller share.
+  let failedPercentage: number | undefined;
+  if (evaluatedRows) {
+    failedPercentage = ((failedRows ?? 0) / evaluatedRows) * 100;
+  } else if (populationNoun === ThresholdNoun.Rows) {
+    failedPercentage = failedRowsPercentage ?? undefined;
+  }
+
+  return {
+    failedRows: failedRows ?? undefined,
+    failedPercentage,
+    evaluatedRows,
+    populationNoun,
+  };
+};
+
+/**
+ * Both bounds come from the run itself: the configured one as it stood when
+ * the run executed, the effective one as the run was judged against it, after
+ * a failure threshold widened it or a dynamic assertion learned it. A run that
+ * recorded no configured bound — one from an agent that predates the snapshot,
+ * or a dynamic assertion that configured none — reports only the effective
+ * one, which is the truth about that run either way.
+ */
+const getStatisticalRun = (
+  result: RunThresholdResult
+): Pick<RunThresholdData, 'configuredRange' | 'effectiveRange'> => {
+  const toBound = (value: number | undefined) =>
+    isNil(value) ? undefined : normalizeValue(value);
+
+  return {
+    configuredRange: formatBound(
+      toBound(result.configuredMinBound),
+      toBound(result.configuredMaxBound)
+    ),
+    effectiveRange: formatBound(
+      toBound(result.minBound),
+      toBound(result.maxBound)
+    ),
+  };
+};
+
+/**
+ * The threshold a run was judged by, and what the run measured against it.
+ * `undefined` when there is nothing to set side by side: the run computed no
+ * verdict (queued, aborted), or the test reads no tolerance — including
+ * `tableCustomSQLQuery`, whose threshold is its expected result, already the
+ * card's Expected value.
+ *
+ * Only the shape of the comparison is read from the test case — which test
+ * definition it is, and so which numbers a run of it reports. The tolerance
+ * itself is the run's own, so that editing the test case cannot rewrite what
+ * an earlier run tolerated.
+ */
+export const getRunThresholdData = (
+  testCase: Pick<TestCase, 'testDefinition'>,
+  result: RunThresholdResult
+): RunThresholdData | undefined => {
+  if (
+    !COMPLETED_RUN_STATUSES.has(result.testCaseStatus) ||
+    result.appliedThreshold?.applied === false
+  ) {
+    return undefined;
+  }
+
+  const definitionName = testCase.testDefinition?.name ?? '';
+  const semantic = getThresholdTestSemantic(definitionName);
+
+  if (
+    semantic !== ThresholdTestSemantic.RowCountable &&
+    semantic !== ThresholdTestSemantic.Statistical
+  ) {
+    return undefined;
+  }
+
+  const applied = result.appliedThreshold;
+  // The noun a threshold is counted in follows its unit, and an unrecorded
+  // threshold shows no amount at all, so the default only picks the noun.
+  const unit = applied?.unit ?? ThresholdUnit.Absolute;
+  const common = {
+    semantic,
+    threshold: isNil(applied) ? undefined : applied.value ?? 0,
+    isPercentage: unit === ThresholdUnit.Percentage,
+    noun: getThresholdNoun(unit, definitionName),
+  };
+
+  return semantic === ThresholdTestSemantic.RowCountable
+    ? { ...common, ...getRowCountableRun(definitionName, result) }
+    : { ...common, ...getStatisticalRun(result) };
+};
+
+/** How the rows behind a run were narrowed, as data for its badges. */
+export interface RunScopeBadges {
+  sample?: { kind: ThresholdSamplingKind; value?: number };
+  partitionColumn?: string;
+  isPartitioned: boolean;
+}
+
+/**
+ * The run's own record of what it read — never the table's current profiler
+ * config, which may have changed since, and never the result message. A run
+ * from an agent that predates the record has no scope and so no badge.
+ */
+export const getRunScopeBadges = (
+  scope: TestCaseEvaluationScope | undefined
+): RunScopeBadges | undefined => {
+  if (!scope?.sampled && !scope?.partitioned) {
+    return undefined;
+  }
+
+  let sample: RunScopeBadges['sample'];
+  if (scope.sampled) {
+    const hasSize = !isNil(scope.profileSample);
+    sample = {
+      kind:
+        scope.profileSampleType === RunProfileSampleType.Rows
+          ? ThresholdSamplingKind.StaticRows
+          : ThresholdSamplingKind.StaticPercentage,
+      value: hasSize ? scope.profileSample : undefined,
+    };
+  }
+
+  return {
+    sample,
+    isPartitioned: Boolean(scope.partitioned),
+    partitionColumn: scope.partitioned ? scope.partitionColumnName : undefined,
+  };
 };

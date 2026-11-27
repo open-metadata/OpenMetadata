@@ -203,6 +203,37 @@ class DescriptionSanitizerTest {
   }
 
   @Test
+  void anEntityLinkTokenInAnAttributeContextIsNotRestored() {
+    // The link token stands where an href would be; if it were restored there it could carry an
+    // event handler into the tag. It stays the inert placeholder instead.
+    String input = "<a href=\"<#E::table::x\" onmouseover=\"y::z>\">click</a>";
+    String result = DescriptionSanitizer.sanitize(input);
+
+    assertFalse(result.contains("<#E::table::x"));
+    assertFalse(result.contains("onmouseover"));
+  }
+
+  @Test
+  void aLiteralPlaceholderInTheInputIsNotExpanded() {
+    String result = DescriptionSanitizer.sanitize("<p>__OM_ENTITY_LINK_0_1__ literal</p>");
+
+    assertTrue(result.contains("__OM_ENTITY_LINK_0_1__"));
+  }
+
+  @Test
+  void aDescriptionOfManyEntityLinksSanitizesQuickly() {
+    String link = "<#E::table::db.schema.t> ";
+    String input = "<p>" + link.repeat(200_000) + "</p>";
+
+    long start = System.nanoTime();
+    String result = DescriptionSanitizer.sanitize(input);
+    long elapsedSeconds = (System.nanoTime() - start) / 1_000_000_000L;
+
+    assertTrue(result.contains("<#E::table::db.schema.t>"));
+    assertTrue(elapsedSeconds < 10, "sanitizing took " + elapsedSeconds + "s");
+  }
+
+  @Test
   void entityLinkWithScriptInjectionIsStillSafe() {
     String input = "<p><#E::table::clean.fqn> and <script>alert(1)</script></p>";
     String result = DescriptionSanitizer.sanitize(input);

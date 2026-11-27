@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -33,13 +36,18 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -80,7 +88,7 @@ class PatchEntityToolTest {
   @Test
   void execute_refusesToPatchAnotherUsersPrivateMemory() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     ContextMemory memory =
         new ContextMemory()
             .withId(UUID.randomUUID())
@@ -123,14 +131,77 @@ class PatchEntityToolTest {
     verify(repository, never()).patch(any(), anyString(), any(), any(), any(), any(), any());
   }
 
+  /** A bot may patch a memory citing a Query it cannot view; the answer is still a read. */
+  @Test
+  void execute_reducesAQueryTheCallerMayNotViewToIdAndType() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    EntityReference query =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.QUERY)
+            .withName("payroll")
+            .withFullyQualifiedName("erp.payroll")
+            .withDisplayName("Who earns more than the CEO?");
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("salary-bands")
+            .withFullyQualifiedName("salary-bands")
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
+            .withRelatedEntities(List.of(query))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(List.of(new FieldChange().withName("relatedEntities"))));
+    when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, memory, EventType.ENTITY_UPDATED));
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            eq(securityContext),
+            argThat(operation -> Entity.QUERY.equals(operation.getResource())),
+            any());
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.CONTEXT_MEMORY);
+    params.put("fqn", "salary-bands");
+    params.put("patch", "[{\"op\": \"remove\", \"path\": \"/relatedEntities/1\"}]");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+          .thenReturn(repository);
+      CitedQueries.stillExist(entityMock);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.CONTEXT_MEMORY), eq("salary-bands"), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+
+      result = new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
+    assertThat(memory.getRelatedEntities()).containsExactly(query);
+  }
+
   @Test
   void execute_passesImpersonationContextToRepository() {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
 
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -169,9 +240,9 @@ class PatchEntityToolTest {
   @Test
   void execute_withNoImpersonationContext_passesNullImpersonatedBy() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -212,9 +283,9 @@ class PatchEntityToolTest {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
 
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -243,8 +314,8 @@ class PatchEntityToolTest {
   @Test
   void execute_authorizesWithPatchResourceContext() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
     when(mockRepo.getPatchFields()).thenReturn(new Fields(Set.of()));
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(
@@ -275,10 +346,38 @@ class PatchEntityToolTest {
     verify(mockRepo).getPatchFields();
   }
 
+  @Test
+  void execute_letsMetricDescriptionEditsThrough() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "metric");
+    params.put("fqn", "revenue");
+    params.put("patch", "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Net\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("metric")).thenReturn(mockRepo);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+      jsonMock.when(() -> JsonUtils.extractPatchedFields(any())).thenCallRealMethod();
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    verify(mockRepo).patch(any(), eq("revenue"), any(), any(), any(), any(), any());
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "announcement",
         "app",
+        "contextFile",
         "document",
         "eventsubscription",
         "ingestionPipeline",
@@ -288,6 +387,7 @@ class PatchEntityToolTest {
         "testCase",
         "testSuite",
         "task",
+        "team",
         "user",
         "workflow"
       })
@@ -329,6 +429,62 @@ class PatchEntityToolTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "[{\"op\":\"replace\",\"path\":\"/connection/config/authType/password\",\"value\":\"*\"}]",
+        "[{\"op\":\"replace\",\"path\":\"/connection\",\"value\":{}}]",
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{}}]",
+        "[{\"op\":\"copy\",\"from\":\"/connection/config/authType/password\",\"path\":\"/description\"}]",
+        "[{\"op\":\"test\",\"path\":\"/connection/config/authType/password\",\"value\":\"guess\"}]"
+      })
+  void execute_rejectsPatchesThatReachAServiceConnection(String patch) {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", patch);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("'/connection'")
+          .hasMessageContaining("Nothing was changed");
+    }
+    verifyNoInteractions(authorizer, serviceRepository);
+  }
+
+  @Test
+  void execute_servicePatchOutsideTheConnectionReachesTheRepository() {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    doReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, mock(EntityInterface.class), EventType.ENTITY_UPDATED))
+        .when(serviceRepository)
+        .patch(any(), any(String.class), any(), any(), any(), any(), any());
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+
+      verify(serviceRepository).patch(any(), any(String.class), any(), any(), any(), any(), any());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]",
         "[{\"op\":\"add\",\"path\":\"/owners/-\",\"value\":{\"id\":\"u\",\"type\":\"user\"}}]",
         "[{\"op\":\"remove\",\"path\":\"/owners/0\"}]",
@@ -342,8 +498,8 @@ class PatchEntityToolTest {
     // the tool description itself advertises - because the paths do not exist in '{}'. Whether a
     // path exists is the repository's question to answer against the real entity.
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(
             new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
@@ -425,6 +581,62 @@ class PatchEntityToolTest {
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'entityType' and 'fqn' are required");
+  }
+
+  /** A held write leaves the entity as published, so the reply must not say it was updated. */
+  @Test
+  void execute_reportsAWriteAnApprovalWorkflowHeldAsPendingApproval() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    Table published =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("shop.db.sales.orders")
+            .withDescription("old")
+            .withVersion(0.2)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("tags"))));
+    UUID changeRequestId = UUID.randomUUID();
+    when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.ACCEPTED, published, EventType.ENTITY_NO_CHANGE, changeRequestId));
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new\"}]");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      result = new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    assertThat(result)
+        .containsEntry("_operation", "pendingApproval")
+        .containsEntry("changeRequestId", changeRequestId.toString())
+        .containsEntry("entityType", Entity.TABLE)
+        .doesNotContainKeys("changed", "description", "tags");
+  }
+
+  /** As REST's identity endpoints: an impersonated call never writes what grants privileges. */
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.POLICY, Entity.ROLE, Entity.BOT})
+  void execute_refusesAnImpersonatedWriteThatGrantsPrivileges(String entityType) {
+    when(securityContext.impersonatedUser()).thenReturn("ingestion-bot");
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", entityType);
+    params.put("fqn", "target");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(AuthorizationException.class)
+          .hasMessageContaining("Impersonated requests cannot write a " + entityType);
+    }
+    verifyNoInteractions(authorizer);
   }
 
   @Test

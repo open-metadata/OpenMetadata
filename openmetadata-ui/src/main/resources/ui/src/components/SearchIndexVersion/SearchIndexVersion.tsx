@@ -12,7 +12,7 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -170,7 +170,13 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -187,7 +193,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),
@@ -253,7 +259,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <div className="entity-version-page-tabs">
                 <Tabs
                   className="tw:gap-3"
-                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  selectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
                   <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (

@@ -144,8 +144,7 @@ class LookerUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
 
@@ -505,7 +504,7 @@ class LookerUnitTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
         with (
-            patch.object(fqn, "build", return_value=None),
+            patch.object(fqn, "build", return_value="service.db.schema.dashboard_name"),
             patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
             original_lineage = self.looker.build_lineage_request(source, db_service_name, to_entity).right
@@ -643,7 +642,7 @@ class LookerUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.looker.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -664,7 +663,7 @@ class LookerUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.looker.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):

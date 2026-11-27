@@ -15,12 +15,11 @@ import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/StringUtils';
-import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from './SearchedData.interface';
+import SearchEmptyState from './SearchEmptyState/SearchEmptyState';
 
 const ASSETS_NAME = new Set([
   'table_name',
@@ -117,6 +116,8 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     [isFilterSelected, filter, showResultCount]
   );
 
+  const resultCount = ResultCount(totalValue);
+
   return (
     <>
       {isLoading ? (
@@ -126,16 +127,13 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
-              <div className="tw:mb-4">{ResultCount(totalValue)}</div>
+              {resultCount && <div className="tw:mb-4">{resultCount}</div>}
               <div data-testid="search-results">{searchResultCards}</div>
             </>
           ) : (
             <div className="flex-center h-full">
               {children}
-              <ErrorPlaceHolderES
-                query={filter}
-                type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
+              <SearchEmptyState query={filter} />
             </div>
           )}
         </div>

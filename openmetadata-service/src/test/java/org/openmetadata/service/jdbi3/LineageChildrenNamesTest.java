@@ -289,7 +289,7 @@ class LineageChildrenNamesTest {
 
   @Test
   void parity_registryChildrenMatchOldSwitch_tableTopicMlmodel() throws Exception {
-    record Case(String type, EntityInterface entity) {}
+    record Case(String type, EntityInterface<?> entity) {}
     List<Case> cases =
         List.of(
             new Case(Entity.TABLE, tableFixture()),

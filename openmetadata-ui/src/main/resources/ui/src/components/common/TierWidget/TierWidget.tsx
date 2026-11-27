@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ClassificationTag } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  ClassificationTag,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,12 +30,7 @@ import {
 } from '../../../utils/TagsPureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TierCard from '../TierCard/TierCard';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
-import './TierWidget.less';
 const TierWidget = () => {
   const {
     data: entity,
@@ -71,53 +70,44 @@ const TierWidget = () => {
   );
 
   const tierEditControl = tier ? (
-    <WidgetEditButton
-      aria-expanded={isEditing}
-      aria-haspopup="dialog"
+    <ButtonUtility
       data-testid="edit-tier"
-      title={t('label.edit-entity', { entity: t('label.tier') })}
-      onClick={() => setIsEditing(true)}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.tier') })}
     />
   ) : (
-    <WidgetPlusButton
-      aria-expanded={isEditing}
-      aria-haspopup="dialog"
+    <ButtonUtility
       data-testid="add-tier"
-      title={t('label.add-entity', { entity: t('label.tier') })}
-      onClick={() => setIsEditing(true)}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.tier') })}
     />
   );
 
-  const headerExtra = canEdit ? tierEditControl : null;
-
-  const tierDisplay = tier ? (
-    <ClassificationTag
-      color={tier.style?.color}
-      data-testid="Tier"
-      href={getTagRedirectLink(tier)}
-      icon={tier.style?.iconURL}
-      label={getTagName(tier)}
-      maxWidth={200}
-      size="sm"
-      tooltip={getTagName(tier)}
-    />
-  ) : null;
-
-  const content = (
+  // Anchored to the header button, like the Certification widget; the
+  // button's click opens it through TierCard's trigger.
+  const headerExtra = canEdit ? (
     <TierCard
       currentTier={tier?.tagFQN}
-      footerActionButtonsClassName="p-x-md"
       open={isEditing}
-      tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}
-      onOpenChange={(visible: boolean) => {
-        if (!visible) {
-          setIsEditing(false);
-        }
-      }}>
-      {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
+      onOpenChange={setIsEditing}>
+      {tierEditControl}
     </TierCard>
+  ) : null;
+
+  const content = tier && (
+    <div data-testid="tier-selector-display">
+      <ClassificationTag
+        color={tier.style?.color}
+        data-testid="Tier"
+        href={getTagRedirectLink(tier)}
+        icon={tier.style?.iconURL}
+        label={getTagName(tier)}
+        maxWidth={200}
+        size="sm"
+        tooltip={getTagName(tier)}
+      />
+    </div>
   );
 
   return (

@@ -166,7 +166,7 @@
       "description": "Variables this node outputs for use in subsequent nodes",
       "type": "array",
       "items": { "type": "string" },
-      "default": ["syncResult", "syncedCount", "failedCount", "result"]
+      "default": ["syncResult", "syncedCount", "failedCount", "skippedCount", "result"]
     },
     "branches": {
       "type": "array",

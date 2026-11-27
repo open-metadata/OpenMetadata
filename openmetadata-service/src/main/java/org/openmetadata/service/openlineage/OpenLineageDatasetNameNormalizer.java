@@ -152,7 +152,15 @@ public final class OpenLineageDatasetNameNormalizer {
   }
 
   private static boolean isGlueForm(String name) {
-    return name.startsWith(GLUE_TABLE_PREFIX) && name.split("/").length == 3;
+    boolean result = name.startsWith(GLUE_TABLE_PREFIX);
+    if (result) {
+      String[] segments = name.split("/");
+      result = segments.length == 3;
+      for (String segment : segments) {
+        result = result && !segment.isEmpty();
+      }
+    }
+    return result;
   }
 
   private static String normalizeGlueForm(String name) {

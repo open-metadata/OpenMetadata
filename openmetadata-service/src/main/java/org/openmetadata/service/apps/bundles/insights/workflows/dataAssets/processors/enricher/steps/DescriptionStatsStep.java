@@ -35,7 +35,7 @@ public final class DescriptionStatsStep implements EnrichmentStep {
 
   @Override
   public void apply(EnrichmentTarget target) {
-    EntityInterface entity = target.entity();
+    EntityInterface<?> entity = target.entity();
     Map<String, Object> entityMap = target.entityMap();
     entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     if (!SearchIndexUtils.hasColumns(entity)) {

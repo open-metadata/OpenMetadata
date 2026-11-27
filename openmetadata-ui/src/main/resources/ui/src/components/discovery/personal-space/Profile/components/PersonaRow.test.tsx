@@ -68,12 +68,14 @@ jest.mock('./InlineEditCard', () => {
     renderEdit,
     canEdit,
     onSave,
+    isSaveDisabled,
     onEnterEdit,
   }: {
     view?: ReactNode;
     renderEdit?: () => ReactNode;
     canEdit?: boolean;
     onSave?: () => void;
+    isSaveDisabled?: boolean;
     onEnterEdit?: () => void;
   }) => {
     // The mock renders the edit control immediately, so trigger the row's
@@ -87,7 +89,7 @@ jest.mock('./InlineEditCard', () => {
         <span data-testid="can-edit">{String(canEdit)}</span>
         {view}
         {renderEdit?.()}
-        <button data-testid="save" onClick={onSave}>
+        <button data-testid="save" disabled={isSaveDisabled} onClick={onSave}>
           save
         </button>
       </div>
@@ -104,13 +106,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Autocomplete: Object.assign(
     ({
+      items,
+      maxVisibleItems,
       onItemInserted,
       onSearchChange,
     }: {
+      items?: { id: string }[];
+      maxVisibleItems?: number;
       onItemInserted: (...args: unknown[]) => void;
       onSearchChange?: (...args: unknown[]) => void;
     }) => (
       <div>
+        <span data-testid="max-visible">{String(maxVisibleItems)}</span>
+        <span data-testid="option-ids">
+          {(items ?? []).map((item) => item.id).join(',')}
+        </span>
         <button
           data-testid="add-persona"
           type="button"
@@ -183,6 +193,39 @@ describe('PersonaRow', () => {
     );
   });
 
+  it('caps the visible chips so many selections collapse into a "+N" count', async () => {
+    await act(async () => {
+      render(<PersonaRow updateUserDetails={jest.fn()} userData={userData} />);
+    });
+
+    expect(screen.getByTestId('max-visible')).toHaveTextContent('3');
+  });
+
+  it('keeps a picked persona listed after a new search drops it from the results', async () => {
+    await act(async () => {
+      render(<PersonaRow updateUserDetails={jest.fn()} userData={userData} />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('option-ids')).toHaveTextContent('p2')
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-persona'));
+    });
+
+    mockSearchPersonas.mockResolvedValue([]);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('search-persona'));
+    });
+
+    await waitFor(() =>
+      expect(mockSearchPersonas).toHaveBeenCalledWith('analyst', 50)
+    );
+
+    // The "+N" overflow list is built from the options, so the draft selection must stay in it.
+    expect(screen.getByTestId('option-ids')).toHaveTextContent('p2');
+  });
+
   it('shows an error toast when loading the persona options fails', async () => {
     mockSearchPersonas.mockRejectedValue(new Error('boom'));
 
@@ -211,7 +254,7 @@ describe('PersonaRow', () => {
     expect(screen.getAllByTestId('can-edit')[1]).toHaveTextContent('true');
   });
 
-  it('persists only the existing personas when nothing changed', async () => {
+  it('disables save and skips the API when nothing changed', async () => {
     const updateUserDetails = jest.fn().mockResolvedValue(undefined);
 
     await act(async () => {
@@ -220,20 +263,17 @@ describe('PersonaRow', () => {
       );
     });
 
+    expect(screen.getByTestId('save')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('save'));
+
+    expect(updateUserDetails).not.toHaveBeenCalled();
+
     await act(async () => {
-      fireEvent.click(screen.getByTestId('save'));
+      fireEvent.click(screen.getByTestId('add-persona'));
     });
 
-    await waitFor(() =>
-      expect(updateUserDetails).toHaveBeenCalledWith(
-        {
-          personas: [
-            { id: 'p1', name: 'data-steward', displayName: 'Data Steward' },
-          ],
-        },
-        'personas'
-      )
-    );
+    expect(screen.getByTestId('save')).toBeEnabled();
   });
 
   it('sends the full selected persona refs (with name/FQN) on save', async () => {

@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,18 +12,28 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.server.SearchTestImages;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.opensearch.OsUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -35,7 +46,7 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 /**
  * Behavioral, per-language guard for the search "consumer contract": rather than asserting a
  * mapping <em>declares</em> a field, this indexes a real document into the actual index mapping for
- * every supported language ({@code en/jp/ru/zh}) and then runs the actual search / filter /
+ * every supported language ({@code en/jp/ko/ru/zh}) and then runs the actual search / filter /
  * aggregation each product feature relies on, asserting it returns the document. A failure is
  * reported as a broken <em>feature</em> in a specific language (e.g. "Domain filter is broken in
  * [jp]"), which is what an operator can act on — not "index is missing a mapping".
@@ -43,9 +54,10 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * <p>This is the search-side coverage the suite lacked for non-English languages — without running
  * the whole integration-test suite once per language. The container is built with the
  * language-analysis plugins ({@link SearchTestImages}), so every language indexes with its
- * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, zh uses {@code
- * ik_max_word}/{@code ik_smart} via analysis-ik). Creating the real mappings here therefore also
- * catches analyzer drift — e.g. fields referencing analyzers the mapping never defined.
+ * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, ko uses {@code
+ * nori_tokenizer} via analysis-nori, zh uses {@code ik_max_word}/{@code ik_smart} via analysis-ik).
+ * Creating the real mappings here therefore also catches analyzer drift — e.g. fields referencing
+ * analyzers the mapping never defined.
  *
  * <p>It would have caught the {@code jp/topic} mapping dropping top-level {@code domains} (the
  * domain-filter assertion returns zero hits for {@code jp}) and the jp analyzer references that made
@@ -107,20 +119,32 @@ class SearchConsumerFieldBehaviorIT {
   private static final String FAILURE_COMMENT_TERM = "flakyupstream";
   private static final String FAILURE_COMMENT =
       "closed after the " + FAILURE_COMMENT_TERM + " feed was backfilled";
+  private static final String DOMAIN_ROOT = "Finance";
+  private static final String DOMAIN_CHILD_NAME = "Sales.Region";
+  private static final String DOMAIN_LEAF_NAME = "매출销售東京";
+  private static final String DOMAIN_CHILD =
+      FullyQualifiedName.build(DOMAIN_ROOT, DOMAIN_CHILD_NAME);
+  private static final String DOMAIN_GRANDCHILD =
+      FullyQualifiedName.build(DOMAIN_ROOT, DOMAIN_CHILD_NAME, DOMAIN_LEAF_NAME);
+  private static final String DISTINCT_CASE_ROOT = "finance";
+  private static final String DISTINCT_CASE_CHILD =
+      FullyQualifiedName.build(DISTINCT_CASE_ROOT, "Separate");
 
   // Native-script sample text per language plus a token its analyzer must produce.
   // Keyword/identifier
   // fields are language-neutral and never exercise the text analyzers; this is the only check that
   // the per-language analyzers actually work — the reason the per-language mappings exist at all.
   // jp/zh require kuromoji/IK to segment CJK (the plain standard analyzer splits it into single
-  // characters, never the 2-char tokens 東京 / 销售); ru requires the Russian stemmer (продажи ->
-  // продаж); en is the latin baseline.
+  // characters, never the 2-char tokens 東京 / 销售); ko requires nori to strip the subject particle
+  // (매출이 -> 매출, the standard analyzer keeps it as one token); ru requires the Russian stemmer
+  // (продажи -> продаж); en is the latin baseline.
   private static final Map<String, String[]> LANGUAGE_SAMPLE_TEXT =
       Map.of(
           "en", new String[] {"Monthly revenue report", "revenue"},
           "ru", new String[] {"Ежемесячные продажи", "продаж"},
           "jp", new String[] {"東京タワーの売上", "東京"},
-          "zh", new String[] {"北京大学的销售报表", "销售"});
+          "zh", new String[] {"北京大学的销售报表", "销售"},
+          "ko", new String[] {"월간 매출이 증가했다", "매출"});
 
   @Container
   static OpensearchContainer<?> opensearch =
@@ -131,6 +155,10 @@ class SearchConsumerFieldBehaviorIT {
           .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
           .withEnv("DISABLE_SECURITY_PLUGIN", "true")
           .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+          // This small fixture shares developer disks with other projects.
+          .withEnv("cluster.routing.allocation.disk.watermark.low", "3gb")
+          .withEnv("cluster.routing.allocation.disk.watermark.high", "2gb")
+          .withEnv("cluster.routing.allocation.disk.watermark.flood_stage", "1gb")
           .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
 
   private OpenSearchClient openSearchClient;
@@ -167,6 +195,20 @@ class SearchConsumerFieldBehaviorIT {
           "/elasticsearch/" + language + "/test_case_resolution_status_index_mapping.json");
       indexDocument(resolutionIndex(language), RESOLUTION_ID, resolutionStatusDocument());
       indexDocument(resolutionIndex(language), RESOLVED_ID, resolvedStatusDocument());
+      createIndex(
+          domainIndex(language), "/elasticsearch/" + language + "/domain_index_mapping.json");
+      createIndex(
+          emptyDomainIndex(language), "/elasticsearch/" + language + "/domain_index_mapping.json");
+      for (String fqn :
+          List.of(
+              DOMAIN_ROOT,
+              DOMAIN_CHILD,
+              DOMAIN_GRANDCHILD,
+              DISTINCT_CASE_ROOT,
+              DISTINCT_CASE_CHILD)) {
+        final String id = UUID.nameUUIDFromBytes(fqn.getBytes(StandardCharsets.UTF_8)).toString();
+        indexDocument(domainIndex(language), id, domainDocument(fqn));
+      }
     }
   }
 
@@ -225,6 +267,72 @@ class SearchConsumerFieldBehaviorIT {
     assertFeatureWorksInAllLanguages(
         "Hierarchical search / autocomplete (fqnParts)",
         language -> hits(topicIndex(language), termQuery("fqnParts", FQN_PART)) == 1);
+  }
+
+  @Test
+  void domainHierarchyAggregatesExactFqnPartsInAllLanguages() throws Exception {
+    final Map<String, Long> expected =
+        Map.of(
+            DOMAIN_ROOT,
+            2L,
+            DOMAIN_CHILD,
+            2L,
+            FullyQualifiedName.build(DOMAIN_CHILD_NAME),
+            1L,
+            DOMAIN_GRANDCHILD,
+            1L,
+            FullyQualifiedName.build(DOMAIN_CHILD_NAME, DOMAIN_LEAF_NAME),
+            1L,
+            DISTINCT_CASE_ROOT,
+            1L,
+            DISTINCT_CASE_CHILD,
+            1L);
+    for (String language : LANGUAGES) {
+      assertEquals(
+          expected,
+          domainHierarchyBuckets(domainIndex(language)),
+          language + " domain hierarchy must preserve complete, case-sensitive FQN parts");
+    }
+  }
+
+  @Test
+  void domainHierarchyFiltersPreserveCaseAndQuotedNamesInAllLanguages() throws Exception {
+    for (String language : LANGUAGES) {
+      assertEquals(2, hits(domainIndex(language), termQuery("fqnParts", DOMAIN_CHILD)), language);
+      assertEquals(2, hits(domainIndex(language), termQuery("fqnParts", DOMAIN_ROOT)), language);
+      assertEquals(
+          1, hits(domainIndex(language), termQuery("fqnParts", DISTINCT_CASE_ROOT)), language);
+      assertEquals(
+          0, hits(domainIndex(language), termQuery("fqnParts", "unrelated-domain")), language);
+    }
+  }
+
+  @Test
+  void emptyDomainHierarchyAggregationSucceedsInAllLanguages() throws Exception {
+    for (String language : LANGUAGES) {
+      assertEquals(Map.of(), domainHierarchyBuckets(emptyDomainIndex(language)), language);
+    }
+  }
+
+  @Test
+  void domainProvenanceFiltersReturnOnlyPopulatedCountersInAllLanguages() throws Exception {
+    for (String language : LANGUAGES) {
+      for (String field :
+          List.of("descriptionSources.Ingested", "tagSources.Generated", "tierSources.Generated")) {
+        assertEquals(4, hits(domainIndex(language), existsQuery(field)), language + " " + field);
+      }
+    }
+  }
+
+  @Test
+  void aiGeneratedSourceFiltersReturnAssetInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Collate AI insights drill-down (exists on descriptionSources.Suggested, "
+            + "tagSources.Generated, tierSources.Generated)",
+        language ->
+            hits(topicIndex(language), existsQuery("descriptionSources.Suggested")) == 1
+                && hits(topicIndex(language), existsQuery("tagSources.Generated")) == 1
+                && hits(topicIndex(language), existsQuery("tierSources.Generated")) == 1);
   }
 
   @Test
@@ -385,9 +493,12 @@ class SearchConsumerFieldBehaviorIT {
             .execute(Requests.builder().method("GET").endpoint("/_cat/plugins").build())) {
       String plugins = response.getBody().map(b -> b.bodyAsString()).orElse("");
       assertTrue(
-          plugins.contains("analysis-kuromoji") && plugins.contains("analysis-ik"),
-          "The integration-test OpenSearch image must ship analysis-kuromoji (jp) and analysis-ik "
-              + "(zh) so jp/zh mappings index with their real analyzers. Installed: "
+          plugins.contains("analysis-kuromoji")
+              && plugins.contains("analysis-ik")
+              && plugins.contains("analysis-nori"),
+          "The integration-test OpenSearch image must ship analysis-kuromoji (jp), analysis-ik "
+              + "(zh) and analysis-nori (ko) so those mappings index with their real analyzers. "
+              + "Installed: "
               + plugins);
     }
   }
@@ -497,8 +608,12 @@ class SearchConsumerFieldBehaviorIT {
                     .endpoint("/" + index + "/_search")
                     .json(body)
                     .build())) {
+      assertEquals(200, response.getStatus(), "Search must succeed for " + index);
       String raw = response.getBody().map(b -> b.bodyAsString()).orElse("{}");
-      return mapper.readTree(raw);
+      final JsonNode result = mapper.readTree(raw);
+      assertEquals(
+          0, result.path("_shards").path("failed").asInt(-1), "Search shards failed for " + index);
+      return result;
     }
   }
 
@@ -554,6 +669,9 @@ class SearchConsumerFieldBehaviorIT {
             Map.entry("deleted", false),
             Map.entry("entityType", "topic"),
             Map.entry("fqnParts", List.of("svc", "ns", FQN_PART)),
+            Map.entry("descriptionSources", Map.of("Suggested", 1, "Ingested", 2)),
+            Map.entry("tagSources", Map.of("Generated", 1)),
+            Map.entry("tierSources", Map.of("Generated", 1)),
             Map.entry("tags", List.of(tagLabel(TAG_FQN))),
             Map.entry("tier", tagLabel(TIER_FQN)),
             Map.entry("certification", Map.of("tagLabel", Map.of("tagFQN", CERTIFICATION_FQN))),
@@ -571,6 +689,55 @@ class SearchConsumerFieldBehaviorIT {
                         "fullyQualifiedName",
                         DOMAIN_FQN))));
     return mapper.writeValueAsString(document);
+  }
+
+  private Map<String, Long> domainHierarchyBuckets(String index) throws Exception {
+    final JsonNode buckets =
+        runSearch(index, termsAggregation("parents", "fqnParts"))
+            .path("aggregations")
+            .path("parents")
+            .path("buckets");
+    assertTrue(buckets.isArray(), "Domain hierarchy aggregation must return buckets for " + index);
+    final Map<String, Long> counts = new HashMap<>();
+    for (JsonNode bucket : buckets) {
+      counts.put(bucket.path("key").asText(), bucket.path("doc_count").asLong());
+    }
+    return counts;
+  }
+
+  private String domainDocument(String fqn) throws Exception {
+    final String[] parts = FullyQualifiedName.split(fqn);
+    final Domain domain =
+        new Domain()
+            .withId(UUID.nameUUIDFromBytes(fqn.getBytes(StandardCharsets.UTF_8)))
+            .withName(FullyQualifiedName.unquoteName(parts[parts.length - 1]))
+            .withFullyQualifiedName(fqn)
+            .withDomainType(DomainType.SOURCE_ALIGNED);
+    if (parts.length > 1) {
+      final String parentFqn = FullyQualifiedName.getParentFQN(parts);
+      domain.withParent(
+          new EntityReference()
+              .withId(UUID.nameUUIDFromBytes(parentFqn.getBytes(StandardCharsets.UTF_8)))
+              .withType(Entity.DOMAIN)
+              .withFullyQualifiedName(parentFqn)
+              .withName(FullyQualifiedName.unquoteName(parts[parts.length - 2])));
+    }
+    if (!DISTINCT_CASE_ROOT.equals(fqn)) {
+      domain
+          .withDescription("Domain hierarchy provenance fixture")
+          .withTags(List.of(generatedTag(TAG_FQN), generatedTag(TIER_FQN)));
+    }
+    final Map<String, Object> document = JsonUtils.getMap(domain);
+    new DomainIndex(domain).populateCommonFields(document, domain, Entity.DOMAIN);
+    return mapper.writeValueAsString(document);
+  }
+
+  private TagLabel generatedTag(String fqn) {
+    return new TagLabel()
+        .withTagFQN(fqn)
+        .withLabelType(TagLabel.LabelType.GENERATED)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   private String testCaseDocument() throws Exception {
@@ -670,6 +837,10 @@ class SearchConsumerFieldBehaviorIT {
         "state", "Confirmed");
   }
 
+  private String existsQuery(String field) throws Exception {
+    return mapper.writeValueAsString(Map.of("query", Map.of("exists", Map.of("field", field))));
+  }
+
   private String termQuery(String field, String value) throws Exception {
     return mapper.writeValueAsString(Map.of("query", Map.of("term", Map.of(field, value))));
   }
@@ -722,5 +893,13 @@ class SearchConsumerFieldBehaviorIT {
 
   private String resolutionIndex(String language) {
     return "behavior_resolution_" + language;
+  }
+
+  private String domainIndex(String language) {
+    return "behavior_domain_" + language;
+  }
+
+  private String emptyDomainIndex(String language) {
+    return "behavior_empty_domain_" + language;
   }
 }

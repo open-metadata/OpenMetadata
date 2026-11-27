@@ -54,7 +54,7 @@ public class EntityETag {
    * @param entity The entity to generate ETag for
    * @return quoted strong ETag, or {@code null} if entity is null
    */
-  public static String generateETag(EntityInterface entity) {
+  public static String generateETag(EntityInterface<?> entity) {
     String etag = null;
     if (entity != null) {
       etag = ETAG_PREFIX + generateHash(fingerprint(entity)) + ETAG_SUFFIX;
@@ -74,7 +74,7 @@ public class EntityETag {
    * never a stale or incorrect body. OpenMetadata map fields (e.g. {@code extension}) deserialize
    * into order-preserving structures, so this stays stable in practice.
    */
-  private static String fingerprint(EntityInterface entity) {
+  private static String fingerprint(EntityInterface<?> entity) {
     String result;
     try {
       result = JsonUtils.pojoToJson(entity);
@@ -100,7 +100,7 @@ public class EntityETag {
    * @param entity The entity to generate weak ETag for
    * @return Weak ETag string in format W/"version"
    */
-  public static String generateWeakETag(EntityInterface entity) {
+  public static String generateWeakETag(EntityInterface<?> entity) {
     if (entity == null) {
       return null;
     }
@@ -127,7 +127,7 @@ public class EntityETag {
    * @throws PreconditionFailedException if ETags don't match and enforcement is enabled
    */
   public static void validateETag(
-      String ifMatchHeader, EntityInterface entity, boolean enforceETag) {
+      String ifMatchHeader, EntityInterface<?> entity, boolean enforceETag) {
     LOG.debug(
         "validateETag called - ifMatchHeader: {}, enforceETag: {}, entity: {}",
         ifMatchHeader,
@@ -181,7 +181,7 @@ public class EntityETag {
    * @return The response builder with ETag header added
    */
   public static Response.ResponseBuilder addETagHeader(
-      Response.ResponseBuilder responseBuilder, EntityInterface entity) {
+      Response.ResponseBuilder responseBuilder, EntityInterface<?> entity) {
     String etag = generateETag(entity);
     if (etag != null) {
       responseBuilder.header(ETAG_HEADER, etag);
@@ -196,7 +196,7 @@ public class EntityETag {
    * @param entity The entity to match against
    * @return true if weak match, false otherwise
    */
-  private static boolean isWeakMatch(String providedETag, EntityInterface entity) {
+  private static boolean isWeakMatch(String providedETag, EntityInterface<?> entity) {
     if (providedETag.startsWith(WEAK_PREFIX)) {
       String weakETag = generateWeakETag(entity);
       return weakETag.equals(providedETag);

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.QueryFilterParser;
 
 class AbstractLineageGraphBuilderTest {
@@ -740,6 +742,48 @@ class AbstractLineageGraphBuilderTest {
   }
 
   @Test
+  void applyInMemoryFiltersWithPathPreservationMatchesLeafColumnAndDatabase() {
+    Map<String, NodeInformation> nodes = new HashMap<>();
+    nodes.put(ROOT_FQN, nodeAtDepth(0));
+    nodes.put(
+        "svc.db.schema.mid",
+        new NodeInformation()
+            .withEntity(
+                Map.of(
+                    "columns", List.of(Map.of("name", "id")),
+                    "database", Map.of("displayName", "mid_db")))
+            .withNodeDepth(1));
+    nodes.put(
+        "svc.db.schema.leaf",
+        new NodeInformation()
+            .withEntity(
+                Map.of(
+                    "columns", List.of(Map.of("name", "id"), Map.of("name", "email")),
+                    "database", Map.of("displayName", "leaf_db")))
+            .withNodeDepth(2));
+    SearchLineageResult result = resultWithNodes(nodes);
+    Map<String, EsLineageData> downEdges = new HashMap<>();
+    downEdges.put("e1", edge(ROOT_FQN, "svc.db.schema.mid"));
+    downEdges.put("e2", edge("svc.db.schema.mid", "svc.db.schema.leaf"));
+    result.setDownstreamEdges(downEdges);
+
+    for (String filter :
+        List.of(
+            "{\"term\":{\"columns.name.keyword\":\"email\"}}",
+            "{\"term\":{\"database.displayName.keyword\":\"leaf_db\"}}")) {
+      SearchLineageRequest request =
+          new SearchLineageRequest().withFqn(ROOT_FQN).withQueryFilter(filter);
+      SearchLineageResult out =
+          builder.applyInMemoryFiltersWithPathPreservation(
+              JsonUtils.deepCopy(result, SearchLineageResult.class), request);
+      assertEquals(
+          Set.of(ROOT_FQN, "svc.db.schema.mid", "svc.db.schema.leaf"),
+          out.getNodes().keySet(),
+          filter);
+    }
+  }
+
+  @Test
   void getTraversalDepthPrefersSelectedDepthWhenProvided() {
     assertEquals(3, builder.getTraversalDepth(3, 10000));
     assertEquals(4, builder.getTraversalDepth(-4, 10000));
@@ -782,6 +826,12 @@ class AbstractLineageGraphBuilderTest {
   }
 
   private static class TestableLineageGraphBuilder extends AbstractLineageGraphBuilder {
+
+    @Override
+    protected Map<String, Map<String, Object>> documentsByHash(
+        Set<String> hashes, EntityCountLineageRequest request) {
+      return Map.of();
+    }
 
     TestableLineageGraphBuilder() {
       super();
@@ -883,5 +933,106 @@ class AbstractLineageGraphBuilderTest {
     builder.invalidateLineageCacheForFqn("");
 
     assertTrue(builder.checkCacheForTest(request).isPresent());
+  }
+
+  // --- Cache key differentiation tests (bug: omitted fields caused collisions) ---
+
+  @Test
+  void cacheKeyDifferentiatesByLayerFrom() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerFrom(0);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerFrom(100);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in layerFrom must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByLayerSize() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerSize(50);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerSize(999);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in layerSize must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeDeleted() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(true);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(false);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in includeDeleted must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeDeletedNullVsFalse() {
+    SearchLineageRequest requestNull =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3);
+    SearchLineageRequest requestFalse =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(false);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestNull, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestFalse).isPresent(),
+        "Requests differing in includeDeleted (null vs false) must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeSourceFields() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns"));
+    SearchLineageRequest requestB =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns", "tags"));
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in includeSourceFields must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeySameRequestProducesCacheHit() {
+    SearchLineageRequest request =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withLayerFrom(10)
+            .withLayerSize(50)
+            .withIncludeDeleted(true)
+            .withIncludeSourceFields(Set.of("columns"));
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(request, result);
+
+    assertTrue(
+        builder.checkCacheForTest(request).isPresent(), "Same request must produce a cache hit");
   }
 }

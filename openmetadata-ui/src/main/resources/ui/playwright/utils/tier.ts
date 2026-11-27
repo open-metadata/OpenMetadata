@@ -27,11 +27,11 @@ export const openTierDropdown = async (page: Page) => {
   const tierResponse = page.waitForResponse('/api/v1/tags?*parent=Tier*');
   await page.getByTestId('edit-tier').click();
   await tierResponse;
-  await page.getByTestId('cards').waitFor({ state: 'visible' });
+  await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
 export const closeTierDropdown = async (page: Page) => {
-  await page.getByTestId('close-tier-card').click();
-  await page.getByTestId('cards').waitFor({ state: 'hidden' });
+  await page.keyboard.press('Escape');
+  await page.getByTestId('drop-down-menu').waitFor({ state: 'hidden' });
 };

@@ -33,6 +33,7 @@ export const PERMISSION_OPERATIONS = [
   Operation.EditAll,
   Operation.EditDescription,
   Operation.EditDisplayName,
+  Operation.EditDomains,
   Operation.EditLineage,
   Operation.EditOwners,
   Operation.EditCustomFields,

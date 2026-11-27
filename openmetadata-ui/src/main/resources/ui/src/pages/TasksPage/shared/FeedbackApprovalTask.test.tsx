@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { FeedbackType } from '../../../generated/type/recognizerFeedback';
 import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
 import { Task } from '../../../rest/tasksAPI';
@@ -93,15 +94,17 @@ jest.mock('../../../utils/RouterUtils', () => ({
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
-  default: ({
-    displayName,
-    userName,
-    children,
-  }: {
-    displayName?: string;
-    userName?: string;
-    children?: ReactNode;
-  }) => <span>{displayName || userName || children}</span>,
+  default: jest.fn(
+    ({
+      displayName,
+      userName,
+      children,
+    }: {
+      displayName?: string;
+      userName?: string;
+      children?: ReactNode;
+    }) => <span>{displayName || userName || children}</span>
+  ),
 }));
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
@@ -341,5 +344,29 @@ describe('FeedbackApprovalTask', () => {
     });
 
     expect(screen.getByText('admin')).toBeInTheDocument();
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: undefined, userName: 'admin' }),
+      expect.anything()
+    );
+  });
+
+  it('should not render a submitter when createdBy has no name', () => {
+    const taskWithoutCreatorName = {
+      ...mockProps.task,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          createdBy: { id: 'user-id', type: 'user' },
+        },
+      },
+    } as unknown as Task;
+
+    render(<FeedbackApprovalTask task={taskWithoutCreatorName} />, {
+      wrapper: Wrapper,
+    });
+
+    expect(screen.queryByText('label.submitted-by')).not.toBeInTheDocument();
+    expect(screen.queryByText('-')).not.toBeInTheDocument();
   });
 });

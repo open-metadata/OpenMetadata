@@ -12,7 +12,6 @@
  */
 
 import { FieldOrGroup } from '@react-awesome-query-builder/ui';
-import { render } from '@testing-library/react';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -33,15 +32,12 @@ import {
   getSelectedOptionLabelString,
 } from './AdvancedSearchPureUtils';
 import {
-  generateSearchDropdownLabel,
-  getSearchDropdownLabels,
   processCustomPropertyField,
   processEntityTypeFields,
 } from './AdvancedSearchUtils';
 import {
   mockBucketOptions,
   mockLongOptionsArray,
-  mockOptionsArray,
   mockShortOptionsArray,
 } from './mocks/AdvancedSearchUtils.mock';
 
@@ -70,46 +66,6 @@ describe('AdvancedSearchUtils tests', () => {
 
       return `test-uuid-${uuidCounter}`;
     });
-  });
-
-  it('Function getSearchDropdownLabels should return menuItems for passed options', () => {
-    const resultMenuItems = getSearchDropdownLabels(mockOptionsArray, true);
-
-    expect(resultMenuItems).toHaveLength(4);
-  });
-
-  it('Function getSearchDropdownLabels should return an empty array if passed 1st argument as other than array', () => {
-    const resultMenuItems = getSearchDropdownLabels(
-      '' as unknown as SearchDropdownOption[],
-      true
-    );
-
-    expect(resultMenuItems).toHaveLength(0);
-  });
-
-  it('Function getSearchDropdownLabels should return menuItems for passed options if third argument is passed', () => {
-    const resultMenuItems = getSearchDropdownLabels(
-      mockOptionsArray,
-      true,
-      'option'
-    );
-
-    expect(resultMenuItems).toHaveLength(4);
-  });
-
-  it('renders dropdown labels as text instead of executable HTML', () => {
-    const payload = '<img src=x onerror="alert(1)">';
-    const label = generateSearchDropdownLabel(
-      { key: 'malicious', label: payload },
-      false,
-      'img',
-      false
-    );
-    const { container } = render(label);
-
-    expect(container.querySelector('img')).not.toBeInTheDocument();
-    expect(container).toHaveTextContent(payload);
-    expect(container.querySelector('mark')).toHaveTextContent('img');
   });
 
   it('Function getSelectedOptionLabelString should return all options if the length of resultant string is less than 15', () => {

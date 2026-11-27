@@ -40,6 +40,7 @@ import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.RdfIndexingFields;
+import org.openmetadata.service.rdf.RdfQualityEvidence;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -88,7 +89,7 @@ final class RdfReindexer {
   @FunctionalInterface
   interface BatchWriter {
     CompletableFuture<BatchProcessingResult> submit(
-        String entityType, List<? extends EntityInterface> entities) throws InterruptedException;
+        String entityType, List<? extends EntityInterface<?>> entities) throws InterruptedException;
   }
 
   /** One entity type's stored rows, read a keyset page at a time. */
@@ -96,7 +97,7 @@ final class RdfReindexer {
     List<String> readPage(KeysetCursor after, int limit);
 
     /** Deserializes rows and loads their fields; failures come back as errors, not exceptions. */
-    ResultList<? extends EntityInterface> load(List<String> rows);
+    ResultList<? extends EntityInterface<?>> load(List<String> rows);
 
     KeysetCursor cursorAfter(List<String> rows);
   }
@@ -119,9 +120,45 @@ final class RdfReindexer {
     this.readers = readers;
   }
 
-  /** Reads the stored entities of {@code entityType} through its repository. */
+  /**
+   * Reads the stored entities of {@code entityType} through its repository, with the latest
+   * profiles and test results the live write projects too
+   * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
+   */
   static EntityPages repositoryPages(final String entityType) {
-    return RepositoryPages.of(entityType);
+    return withQualityEvidence(
+        entityType, RepositoryPages.of(entityType), RdfQualityEvidence.database());
+  }
+
+  /** {@code pages}, whose loaded entities carry {@code evidence}; stored-data-only ones too. */
+  static EntityPages withQualityEvidence(
+      final String entityType, final EntityPages pages, final RdfQualityEvidence evidence) {
+    return new EvidencePages(entityType, pages, evidence);
+  }
+
+  private record EvidencePages(String entityType, EntityPages pages, RdfQualityEvidence evidence)
+      implements EntityPages {
+    @Override
+    public List<String> readPage(final KeysetCursor after, final int limit) {
+      return pages.readPage(after, limit);
+    }
+
+    @Override
+    public ResultList<? extends EntityInterface<?>> load(final List<String> rows) {
+      final ResultList<? extends EntityInterface<?>> loaded = pages.load(rows);
+      final List<EntityInterface<?>> entities = new ArrayList<>(loaded.getData());
+      listOrEmpty(loaded.getErrors()).stream()
+          .map(EntityError::getEntity)
+          .filter(EntityInterface.class::isInstance)
+          .forEach(entity -> entities.add((EntityInterface<?>) entity));
+      evidence.attach(entityType, entities);
+      return loaded;
+    }
+
+    @Override
+    public KeysetCursor cursorAfter(final List<String> rows) {
+      return pages.cursorAfter(rows);
+    }
   }
 
   /** Indexes {@code entityTypes} in order and returns once every page read has been written. */
@@ -232,7 +269,7 @@ final class RdfReindexer {
   private record WrittenPage(LoadedPage page, BatchProcessingResult result) {}
 
   private CompletableFuture<BatchProcessingResult> submitToWriter(
-      final String entityType, final List<EntityInterface> entities) {
+      final String entityType, final List<EntityInterface<?>> entities) {
     try {
       return writer.submit(entityType, entities);
     } catch (InterruptedException e) {
@@ -274,8 +311,8 @@ final class RdfReindexer {
    */
   private LoadedPage load(final TypeRead read, final List<String> rows) {
     final long startedAt = System.nanoTime();
-    final ResultList<? extends EntityInterface> loaded = read.pages.load(rows);
-    final List<EntityInterface> entities = new ArrayList<>(loaded.getData());
+    final ResultList<? extends EntityInterface<?>> loaded = read.pages.load(rows);
+    final List<EntityInterface<?>> entities = new ArrayList<>(loaded.getData());
     final List<EntityError> errors = listOrEmpty(loaded.getErrors());
     final int dropped = keepStoredData(read.entityType, errors, entities);
     final String firstError = errors.isEmpty() ? null : errors.getFirst().getMessage();
@@ -291,11 +328,11 @@ final class RdfReindexer {
   private int keepStoredData(
       final String entityType,
       final List<EntityError> errors,
-      final List<EntityInterface> entities) {
+      final List<EntityInterface<?>> entities) {
     int storedOnly = 0;
     String storedOnlyReason = null;
     for (final EntityError error : errors) {
-      if (error.getEntity() instanceof EntityInterface entity) {
+      if (error.getEntity() instanceof EntityInterface<?> entity) {
         LOG.debug(
             "RDF reindex indexes {} {} with its stored data only", entityType, entity.getId());
         entities.add(entity);
@@ -316,7 +353,7 @@ final class RdfReindexer {
   }
 
   private record LoadedPage(
-      List<EntityInterface> entities, int dropped, String firstError, long readerTimeMs) {}
+      List<EntityInterface<?>> entities, int dropped, String firstError, long readerTimeMs) {}
 
   /**
    * The cursor after the last row of {@code rows} that deserializes. Walks back past rows that do
@@ -343,10 +380,19 @@ final class RdfReindexer {
   private record RepositoryPages(EntityRepository<?> repository, Fields fields, ListFilter filter)
       implements EntityPages {
     static RepositoryPages of(final String entityType) {
+      final EntityRepository<?> repository = Entity.getEntityRepository(entityType);
       return new RepositoryPages(
-          Entity.getEntityRepository(entityType),
+          repository,
           Entity.getOnlySupportedFields(entityType, RdfIndexingFields.forEntityType(entityType)),
-          new ListFilter(Include.ALL));
+          new ListFilter(liveRows(repository)));
+    }
+
+    /**
+     * Live entities only (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only). A table
+     * without a deleted column holds live rows only, and filtering on that column would fail.
+     */
+    private static Include liveRows(final EntityRepository<?> repository) {
+      return repository.getDao().supportsSoftDelete() ? Include.NON_DELETED : Include.ALL;
     }
 
     @Override
@@ -355,7 +401,7 @@ final class RdfReindexer {
     }
 
     @Override
-    public ResultList<? extends EntityInterface> load(final List<String> rows) {
+    public ResultList<? extends EntityInterface<?>> load(final List<String> rows) {
       return repository.hydrate(rows, fields, filter);
     }
 
@@ -365,7 +411,7 @@ final class RdfReindexer {
           repository.getEntityType(), rows, row -> cursorOf(repository, filter, row));
     }
 
-    private static <T extends EntityInterface> KeysetCursor cursorOf(
+    private static <T extends EntityInterface<?>> KeysetCursor cursorOf(
         final EntityRepository<T> repository, final ListFilter filter, final String row) {
       final T entity = JsonUtils.readValue(row, repository.getEntityClass());
       return cursorOf(JsonUtils.readTree(repository.getCursorValue(entity, filter)));

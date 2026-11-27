@@ -49,6 +49,17 @@ class SqlFailureProbeTest {
   }
 
   @Test
+  void matchesAStatementWhoseOptimizerHintSplitsTheFragment() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe = probe(jdbi, "delete from chart_entity")) {
+      assertTrue(
+          probe.claimInjection(
+              null,
+              "DELETE /*+ INDEX(chart_entity PRIMARY) */ FROM chart_entity WHERE id IN (?, ?)"));
+    }
+  }
+
+  @Test
   void doesNotSpendItselfOnAStatementThatDoesNotMatch() {
     Jdbi jdbi = unconnectedJdbi();
     try (var probe = probe(jdbi, "insert into chart_entity")) {

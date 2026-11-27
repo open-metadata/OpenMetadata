@@ -41,7 +41,7 @@ substitute AIRFLOW_HOME with your airflow installation home
 
 
 ```
-pip install "apache-airflow==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.9.txt"
+pip install "apache-airflow==2.3.3" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.3.3/constraints-3.10.txt"
 ```
 
 1. Install the package
@@ -224,3 +224,23 @@ curl -X GET http://localhost:8080/rest_api/api?api=delete_dag&dag_id=dag_test
   "status": "success"
 }
 ```
+
+## Local tests
+
+Start the OpenMetadata backend without an ingestion container:
+
+```bash
+./docker/run_local_docker.sh -m no-ui -i false
+make generate ARGS=--python-only
+make -C openmetadata-airflow-apis test
+```
+
+The test command uses the pinned uv executable and this module's `uv.lock` and
+Nox session. The module has its own `.venv`; ingestion's test environment is not
+used. Java and ANTLR are required for the backend and generated ingestion models.
+
+Run `make -C openmetadata-airflow-apis coverage` to also write `ci-coverage.xml`.
+Pass pytest arguments with `ARGS`, for example `ARGS="-k test_dag_status"`.
+CI runs the same commands on the lowest configured Python version. Pull requests
+and merge queue run selected API changes; nightly collects coverage and publishes
+Sonar analysis on `main`.

@@ -146,6 +146,9 @@ public class Auth0Validator {
     }
   }
 
+  private static final String NO_MANAGEMENT_API_GRANT =
+      "is not authorized to access resource server";
+
   private FieldError validateClientCredentials(
       String auth0Domain, String clientId, String clientSecret, String redirectUri) {
     try {
@@ -195,6 +198,12 @@ public class Auth0Validator {
           if ("invalid_client".equals(error) || "unauthorized_client".equals(error)) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
+          } else if ("access_denied".equals(error)
+              && errorDescription.contains(NO_MANAGEMENT_API_GRANT)) {
+            // Auth0 checks the client grant only after it has accepted the client ID and secret.
+            // A sign-in app normally has no Management API grant, so this refusal proves the
+            // credentials are valid.
+            return null;
           } else if ("access_denied".equals(error)) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,

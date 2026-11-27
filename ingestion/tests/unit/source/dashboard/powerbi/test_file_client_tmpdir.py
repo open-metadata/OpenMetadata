@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azureConfig import (
     AzureConfig,
@@ -32,6 +33,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
 )
 from metadata.ingestion.source.dashboard.powerbi.file_client import (
     PowerBiFileClient,
+    PowerBIFileConfigException,
     get_pbit_files,
 )
 
@@ -141,8 +143,68 @@ class TestExtractDirRecreatedBeforeDownload:
         gcs_config.pbitFilesExtractDir = str(extract_dir)
         gcs_config.prefixConfig = None
         gcs_config.securityConfig = MagicMock()
+        gcs_config.securityConfig.gcpImpersonateServiceAccount = None
         mock_storage.return_value.list_buckets.return_value = []
 
         get_pbit_files(gcs_config)
 
         assert extract_dir.is_dir()
+
+
+class TestS3ListingErrorPropagation:
+    """When list_s3_objects raises (e.g. AccessDenied, wrong bucket), the S3
+    get_pbit_files handler must re-raise as PowerBIFileConfigException so the
+    error surfaces to the user instead of silently producing an empty .pbit
+    list."""
+
+    @patch("metadata.ingestion.source.dashboard.powerbi.file_client.AWSClient")
+    def test_listing_error_raises_powerbi_file_config_exception(self, mock_aws, tmp_path):
+        extract_dir = tmp_path / "pbitFiles"
+        s3_config = MagicMock(spec=S3Config)
+        s3_config.pbitFilesExtractDir = str(extract_dir)
+        s3_config.prefixConfig = None
+        s3_config.securityConfig = MagicMock()
+
+        mock_s3_client = MagicMock()
+        mock_s3_client.list_buckets.return_value = {"Buckets": [{"Name": "my-bucket"}]}
+        mock_aws.return_value.get_client.return_value = mock_s3_client
+
+        access_denied = ClientError({"Error": {"Code": "AccessDenied", "Message": "AccessDenied"}}, "ListObjectsV2")
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.powerbi.file_client.list_s3_objects",
+                side_effect=access_denied,
+            ),
+            pytest.raises(PowerBIFileConfigException) as exc_info,
+        ):
+            get_pbit_files(s3_config)
+
+        assert "Error fetching .pbit files from s3" in str(exc_info.value)
+
+    @patch("metadata.ingestion.source.dashboard.powerbi.file_client.AWSClient")
+    def test_mid_pagination_listing_error_raises_powerbi_file_config_exception(self, mock_aws, tmp_path):
+        """A mid-pagination failure (after yielding some keys) must also
+        surface, not be swallowed as a partial .pbit list."""
+
+        def _gen(_client, **_):
+            yield {"Key": "reports/report1.pbit", "Size": 1}
+            raise ClientError({"Error": {"Code": "Throttling", "Message": "Throttling"}}, "ListObjectsV2")
+
+        extract_dir = tmp_path / "pbitFiles"
+        s3_config = MagicMock(spec=S3Config)
+        s3_config.pbitFilesExtractDir = str(extract_dir)
+        s3_config.prefixConfig = None
+        s3_config.securityConfig = MagicMock()
+
+        mock_s3_client = MagicMock()
+        mock_s3_client.list_buckets.return_value = {"Buckets": [{"Name": "my-bucket"}]}
+        mock_aws.return_value.get_client.return_value = mock_s3_client
+
+        with (
+            patch(
+                "metadata.ingestion.source.dashboard.powerbi.file_client.list_s3_objects",
+                side_effect=_gen,
+            ),
+            pytest.raises(PowerBIFileConfigException),
+        ):
+            get_pbit_files(s3_config)

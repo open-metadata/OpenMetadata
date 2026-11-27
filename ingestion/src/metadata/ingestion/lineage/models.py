@@ -34,9 +34,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Type,
 )
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisType,
 )
@@ -149,7 +146,6 @@ MAP_CONNECTION_TYPE_DIALECT: dict[str, Dialect] = {
     str(PostgresType.Postgres.value): Dialect.POSTGRES,
     str(RedshiftType.Redshift.value): Dialect.REDSHIFT,
     str(SnowflakeType.Snowflake.value): Dialect.SNOWFLAKE,
-    str(DeltaLakeType.DeltaLake.value): Dialect.SPARKSQL,
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,

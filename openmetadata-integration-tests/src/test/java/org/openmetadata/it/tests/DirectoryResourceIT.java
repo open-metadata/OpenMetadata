@@ -40,6 +40,7 @@ import org.openmetadata.sdk.services.drives.SpreadsheetService;
 public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory> {
 
   {
+    supportsLineage = true;
     supportsFollowers = false;
     supportsDomains = false;
     supportsDataProducts = false;
@@ -562,6 +563,41 @@ public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory
         parentDir.getId(),
         listedSub.getParent().getId(),
         "Parent reference must match on the list path");
+  }
+
+  @Test
+  void test_getWithChildren_skipsSoftDeletedChild(TestNamespace ns) {
+    DriveService driveService = sharedDriveService(ns);
+    Directory parentDir =
+        Directories.create()
+            .name(ns.prefix("get_parent"))
+            .withService(driveService.getFullyQualifiedName())
+            .execute();
+    File liveFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("get_live_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(100));
+    File deletedFile =
+        getFileService()
+            .create(
+                new CreateFile()
+                    .withName(ns.prefix("get_deleted_file"))
+                    .withService(driveService.getFullyQualifiedName())
+                    .withDirectory(parentDir.getFullyQualifiedName())
+                    .withSize(999));
+    getFileService().delete(deletedFile.getId().toString());
+
+    Directory fetched =
+        getDirectoryService().get(parentDir.getId().toString(), "children,numberOfFiles,totalSize");
+
+    assertEquals(1, fetched.getChildren().size(), "Only the live file is a child");
+    assertEquals(liveFile.getId(), fetched.getChildren().getFirst().getId());
+    assertEquals(1, fetched.getNumberOfFiles());
+    assertEquals(100, fetched.getTotalSize());
   }
 
   /**

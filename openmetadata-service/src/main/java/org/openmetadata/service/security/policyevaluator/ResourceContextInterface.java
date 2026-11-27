@@ -24,14 +24,14 @@ public interface ResourceContextInterface {
   // return null
   List<TagLabel> getTags();
 
-  EntityInterface getEntity();
+  EntityInterface<?> getEntity();
 
   /**
    * The entity already resolved while evaluating policy, or null if evaluation never needed it.
    * Unlike {@link #getEntity()} this never triggers a load, so callers can reuse what the decision
    * fetched without forcing work on requests that were authorized without inspecting the resource.
    */
-  default EntityInterface getResolvedEntity() {
+  default EntityInterface<?> getResolvedEntity() {
     return null;
   }
 
@@ -47,6 +47,14 @@ public interface ResourceContextInterface {
   List<EntityReference> getDomains();
 
   /**
+   * True when the request concerns the entity type itself rather than any asset of it, so no
+   * owners, domains or tags exist to evaluate conditions against.
+   */
+  default boolean isEntityTypeLevel() {
+    return false;
+  }
+
+  /**
    * The service that ingested this resource, or null when the resource is not backed by one.
    *
    * <p>{@link org.openmetadata.schema.EntityInterface#getService()} defaults to null, so entities
@@ -55,7 +63,7 @@ public interface ResourceContextInterface {
    * always null.
    */
   default EntityReference getServiceReference() {
-    EntityInterface entity = getEntity();
+    EntityInterface<?> entity = getEntity();
     return entity == null ? null : entity.getService();
   }
 

@@ -56,7 +56,11 @@ export function isValidUUID(str: string): boolean {
 }
 
 export function isTermNode(node: OntologyNode): boolean {
-  return node.type === 'glossaryTerm' || node.type === 'glossaryTermIsolated';
+  return (
+    node.type === 'glossaryTerm' ||
+    node.type === 'glossaryTermIsolated' ||
+    node.type === 'ontologyConcept'
+  );
 }
 
 export function isDataAssetLikeNode(node: OntologyNode): boolean {

@@ -24,6 +24,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,19 +41,27 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 
 /**
  * A minimal OpenID provider on a loopback port: a discovery document and a token endpoint. It lets
- * the Test Login OIDC leg run its real discovery, PKCE, client-authentication and nonce handling
- * end to end without mocking any of it. The token endpoint records what it was sent.
+ * the Test Login OIDC leg run its real discovery, PKCE, client-authentication, nonce and
+ * refresh-token handling end to end without mocking any of it. The token endpoint answers the code
+ * exchange and the refresh-token grant separately, and records what it was sent.
  */
 public final class FakeOidcProvider implements AutoCloseable {
   public static final String CLIENT_ID = "om-test-login-client";
   public static final String CLIENT_SECRET = "candidate-client-secret";
   public static final String CALLBACK_URL = "http://localhost:8585/callback";
+  public static final String REFRESH_TOKEN = "provider-refresh-token";
+  private static final String REFRESH_TOKEN_GRANT = "refresh_token";
 
   private final HttpServer server;
   private final String issuer;
   private final AtomicInteger tokenStatus = new AtomicInteger(200);
   private final AtomicReference<String> tokenResponse = new AtomicReference<>("{}");
   private final AtomicReference<Map<String, String>> lastTokenRequest =
+      new AtomicReference<>(Map.of());
+  private final AtomicInteger refreshStatus = new AtomicInteger(400);
+  private final AtomicReference<String> refreshResponse =
+      new AtomicReference<>("{\"error\":\"invalid_grant\"}");
+  private final AtomicReference<Map<String, String>> lastRefreshRequest =
       new AtomicReference<>(Map.of());
   private final AtomicReference<String> lastTokenAuthorization = new AtomicReference<>();
   private final AtomicReference<String> authorizationEndpoint = new AtomicReference<>();
@@ -94,21 +103,63 @@ public final class FakeOidcProvider implements AutoCloseable {
 
   /** The token endpoint will answer the next exchange with an id_token for this identity. */
   public void issueIdToken(String nonce, String email) {
-    JWTClaimsSet claims =
+    tokenStatus.set(200);
+    tokenResponse.set(tokenResponseJson(idToken(nonce, email, Duration.ofMinutes(1)), ""));
+  }
+
+  /**
+   * As {@link #issueIdToken}, plus a refresh token that the provider then renews with a fresh ID
+   * token valid for an hour.
+   */
+  public void issueIdTokenWithRefreshToken(String nonce, String email) {
+    tokenStatus.set(200);
+    tokenResponse.set(
+        tokenResponseJson(
+            idToken(nonce, email, Duration.ofMinutes(1)),
+            ",\"refresh_token\":\"" + REFRESH_TOKEN + "\""));
+    renewWithIdTokenValidFor(Duration.ofHours(1));
+  }
+
+  public void renewWithIdTokenValidFor(Duration validity) {
+    refreshStatus.set(200);
+    refreshResponse.set(tokenResponseJson(idToken(null, "alice@example.com", validity), ""));
+  }
+
+  /** OpenID Connect allows a refresh response without an ID token. */
+  public void renewWithoutIdToken() {
+    refreshStatus.set(200);
+    refreshResponse.set(
+        "{\"access_token\":\"renewed-access-token\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+  }
+
+  public void rejectRefreshTokens(int status, String error) {
+    refreshStatus.set(status);
+    refreshResponse.set(String.format("{\"error\":\"%s\"}", error));
+  }
+
+  public Map<String, String> lastRefreshRequest() {
+    return lastRefreshRequest.get();
+  }
+
+  private String idToken(String nonce, String email, Duration validity) {
+    JWTClaimsSet.Builder claims =
         new JWTClaimsSet.Builder()
             .issuer(issuer)
             .audience(CLIENT_ID)
             .subject("subject-123")
             .claim("email", email)
-            .claim("nonce", nonce)
-            .expirationTime(new Date(System.currentTimeMillis() + 60_000))
-            .build();
-    tokenStatus.set(200);
-    tokenResponse.set(
-        String.format(
-            "{\"access_token\":\"access-token\",\"token_type\":\"Bearer\",\"expires_in\":3600,"
-                + "\"id_token\":\"%s\"}",
-            new PlainJWT(claims).serialize()));
+            .expirationTime(new Date(System.currentTimeMillis() + validity.toMillis()));
+    if (nonce != null) {
+      claims.claim("nonce", nonce);
+    }
+    return new PlainJWT(claims.build()).serialize();
+  }
+
+  private static String tokenResponseJson(String idToken, String extraMembers) {
+    return String.format(
+        "{\"access_token\":\"access-token\",\"token_type\":\"Bearer\",\"expires_in\":3600,"
+            + "\"id_token\":\"%s\"%s}",
+        idToken, extraMembers);
   }
 
   public void rejectTokenRequests(int status, String error, String description) {
@@ -167,10 +218,16 @@ public final class FakeOidcProvider implements AutoCloseable {
   }
 
   private void handleTokenRequest(HttpExchange exchange) throws IOException {
-    lastTokenRequest.set(
-        formParameters(new String(exchange.getRequestBody().readAllBytes(), UTF_8)));
+    Map<String, String> parameters =
+        formParameters(new String(exchange.getRequestBody().readAllBytes(), UTF_8));
     lastTokenAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
-    respond(exchange, tokenStatus.get(), tokenResponse.get());
+    if (REFRESH_TOKEN_GRANT.equals(parameters.get("grant_type"))) {
+      lastRefreshRequest.set(parameters);
+      respond(exchange, refreshStatus.get(), refreshResponse.get());
+    } else {
+      lastTokenRequest.set(parameters);
+      respond(exchange, tokenStatus.get(), tokenResponse.get());
+    }
   }
 
   private static void respond(HttpExchange exchange, int status, String json) throws IOException {

@@ -27,9 +27,24 @@ export interface DashboardServiceMetadataPipeline {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of data models.
      */
     includeDataModels?: boolean;
+    /**
+     * Optional configuration to toggle direct lineage from a chart's upstream sources to the
+     * chart, such as Looker Explore to Chart and Metabase Table to Chart. When disabled, the
+     * charts are not looked up for this lineage and no direct edges are written, while the
+     * lineage from those sources to the dashboard and the Dashboard to Chart lineage are still
+     * created.
+     */
+    includeDirectChartLineage?: boolean;
     /**
      * Optional Configuration to include/exclude draft dashboards. By default it will include
      * draft dashboards

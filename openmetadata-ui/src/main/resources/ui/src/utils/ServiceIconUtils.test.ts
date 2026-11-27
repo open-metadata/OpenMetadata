@@ -18,7 +18,7 @@ jest.mock(
 );
 
 import rill from '../assets/svg/service-icon-rill.svg';
-import { getServiceIcon } from './ServiceIconUtils';
+import { getServiceIcon, getServiceLogoThemeClass } from './ServiceIconUtils';
 
 describe('ServiceIconUtils', () => {
   it('resolves the Clickzetta service icon case-insensitively', () => {
@@ -27,5 +27,23 @@ describe('ServiceIconUtils', () => {
 
   it('should return the Rill service icon', () => {
     expect(getServiceIcon('Rill')).toBe(rill);
+  });
+});
+
+describe('service logo dark theme', () => {
+  // Kafka and Power BI were redrawn to read on dark, so inverting them would turn them white —
+  // invisible on the white logo tiles some surfaces still draw in dark mode.
+  it.each([
+    'PowerBI',
+    'power-bi',
+    'Kafka',
+    'KafkaConnect',
+    'BigQuery',
+    'Snowflake',
+    'Superset',
+    '',
+    undefined,
+  ])('preserves the original artwork for %s', (serviceType) => {
+    expect(getServiceLogoThemeClass(serviceType)).toBe('');
   });
 });

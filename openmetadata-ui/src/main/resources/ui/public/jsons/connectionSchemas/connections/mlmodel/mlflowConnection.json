@@ -30,8 +30,9 @@
     },
     "registryUri": {
       "title": "Registry URI",
-      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
-      "type": "string"
+      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected as a secret, including URIs without credentials. Secret references must resolve to the entire URI.",
+      "type": "string",
+      "format": "password"
     },
     "mlModelFilterPattern": {
       "description": "Regex to only fetch MlModels with names matching the pattern.",

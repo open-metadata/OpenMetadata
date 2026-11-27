@@ -31,6 +31,12 @@ export interface NotificationTemplateSendRequest {
  */
 export interface Destination {
     category: SubscriptionCategory;
+    /**
+     * Id of the registered channel that serves this destination, when it is not the one
+     * registered for its type. A save that names a channel not registered on the server is
+     * rejected.
+     */
+    channel?: string;
     config?:  Webhook;
     /**
      * Maximum depth for downstream stakeholder notification traversal. If null, traverses

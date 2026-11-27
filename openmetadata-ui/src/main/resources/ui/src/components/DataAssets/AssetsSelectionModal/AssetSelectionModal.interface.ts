@@ -35,6 +35,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
@@ -59,6 +60,12 @@ export interface AssetSelectionModalProps {
   onSave?: () => void;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  /**
+   * Route the asset picker's search through `POST /v1/search/query`. Set for callers
+   * whose `queryFilter` can grow large enough to overflow the server's request-line
+   * size limit — e.g. the metric Add-Assets modal.
+   */
+  useQueryPost?: boolean;
 }
 
 export type AssetsUnion =
@@ -120,6 +127,7 @@ export type MapPatchAPIResponse = {
   [EntityType.METRIC]: Metric;
   [EntityType.TAG]: Tag;
   [EntityType.DOMAIN]: Domain;
+  [EntityType.DATA_PRODUCT]: DataProduct;
   [EntityType.CLASSIFICATION]: Classification;
   [EntityType.CHART]: Chart;
   [EntityType.SECURITY_SERVICE]: SecurityService;

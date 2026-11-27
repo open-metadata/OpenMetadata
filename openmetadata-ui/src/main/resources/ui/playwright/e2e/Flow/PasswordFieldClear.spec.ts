@@ -17,7 +17,12 @@ import { DashboardServiceClass } from '../../support/entity/service/DashboardSer
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { expect, test } from '../../support/fixtures/base';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  clickIgnoringToasts,
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { waitForServiceConnectionForm } from '../../utils/serviceIngestion';
@@ -28,7 +33,7 @@ const MASKED_PASSWORD = '*********';
 const navigateToEditConnection = async (
   page: Parameters<typeof visitServiceDetailsPage>[0],
   serviceName: string,
-  serviceType: SERVICE_TYPE = SERVICE_TYPE.Messaging
+  serviceType: (typeof SERVICE_TYPE)[keyof typeof SERVICE_TYPE] = SERVICE_TYPE.Messaging
 ) => {
   await visitServiceDetailsPage(
     page,
@@ -95,7 +100,7 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('updated-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the response listener immediately before the Save click so no
@@ -106,7 +111,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
 
       const patch = await patchResponse;
       const patchBody = patch.request().postDataJSON() as Array<{
@@ -145,7 +150,7 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('roundtrip-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the listener right before Save so no intermediate response races.
@@ -155,7 +160,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
       await patchResponse;
 
       // After save, the page navigates back to the service details page.
@@ -185,7 +190,7 @@ test.describe(
         .locator(String.raw`#root\/bootstrapServers`)
         .fill('regression-broker:9092');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       // Hoist the listener right before Save.
@@ -195,7 +200,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
 
       const patch = await patchResponse;
       const patchBody = patch.request().postDataJSON() as Array<{
@@ -274,7 +279,7 @@ test.describe(
       // The password is still the masked sentinel — no patch op must be generated for it.
       await page.locator(String.raw`#root\/hostPort`).fill('mysql:3307');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -283,7 +288,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
 
       const patch = await patchResponse;
       const patchBody = patch.request().postDataJSON() as Array<{
@@ -311,7 +316,7 @@ test.describe(
       // Change hostPort so the form is dirty and triggers a PATCH.
       await page.locator(String.raw`#root\/hostPort`).fill('mysql:3308');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -320,7 +325,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
 
       const patch = await patchResponse;
       const patchBody = patch.request().postDataJSON() as Array<{
@@ -405,7 +410,7 @@ test.describe(
         .locator(String.raw`#root\/hostPort`)
         .fill('http://localhost:8089');
 
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
       await waitForAllLoadersToDisappear(page);
 
       const patchResponse = page.waitForResponse(
@@ -414,7 +419,7 @@ test.describe(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByRole('button', { name: 'Save' }).click();
+      await clickIgnoringToasts(page.getByRole('button', { name: 'Save' }));
 
       const patch = await patchResponse;
       const patchBody = patch.request().postDataJSON() as Array<{

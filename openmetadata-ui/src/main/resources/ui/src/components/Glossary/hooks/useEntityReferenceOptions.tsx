@@ -100,6 +100,13 @@ export interface EntityReferencePicker {
   onSearchChange: (searchText: string) => void;
 }
 
+export interface SearchEntityReferencePicker extends EntityReferencePicker {
+  isFetching: boolean;
+  isPlaceholderData: boolean;
+  error: Error | null;
+  refetch: () => Promise<unknown>;
+}
+
 const fetchUserTeamOptions = async (
   searchText: string
 ): Promise<EntityReferenceOption[]> => {
@@ -130,14 +137,15 @@ const fetchDomainOptions = async (
 /** One query per search text, so a slow older search can never overwrite newer results. */
 const useSearchPicker = (
   queryKey: string,
-  fetchOptions: (searchText: string) => Promise<EntityReferenceOption[]>
-): EntityReferencePicker => {
+  fetchOptions: (searchText: string) => Promise<EntityReferenceOption[]>,
+  scope?: string
+): SearchEntityReferencePicker => {
   const [isActive, setIsActive] = useState(false);
   const [searchText, setSearchText] = useState('');
   const debouncedSearchText = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
 
-  const { data: options = NO_OPTIONS } = useQuery({
-    queryKey: ['glossary-form', queryKey, debouncedSearchText],
+  const query = useQuery({
+    queryKey: ['glossary-form', queryKey, debouncedSearchText, scope],
     queryFn: () => fetchOptions(debouncedSearchText),
     enabled: isActive,
     staleTime: OPTIONS_STALE_TIME_MS,
@@ -145,18 +153,30 @@ const useSearchPicker = (
     placeholderData: keepPreviousData,
   });
 
+  const options = query.data ?? NO_OPTIONS;
+  const isFetching = query.isFetching || searchText !== debouncedSearchText;
+  const { isPlaceholderData, error, refetch } = query;
+
   const onFocus = useCallback(() => setIsActive(true), []);
 
   // Stable identity, so field configs memoized on the picker stay memoized.
   return useMemo(
-    () => ({ options, onFocus, onSearchChange: setSearchText }),
-    [options, onFocus]
+    () => ({
+      options,
+      onFocus,
+      onSearchChange: setSearchText,
+      isFetching,
+      isPlaceholderData,
+      error,
+      refetch,
+    }),
+    [options, onFocus, isFetching, isPlaceholderData, error, refetch]
   );
 };
 
 /** Users and teams, for an owners or reviewers picker. */
-export const useUserTeamOptions = () =>
-  useSearchPicker('user-team-options', fetchUserTeamOptions);
+export const useUserTeamOptions = (scope?: string) =>
+  useSearchPicker('user-team-options', fetchUserTeamOptions, scope);
 
 export const useDomainOptions = () =>
   useSearchPicker('domain-options', fetchDomainOptions);

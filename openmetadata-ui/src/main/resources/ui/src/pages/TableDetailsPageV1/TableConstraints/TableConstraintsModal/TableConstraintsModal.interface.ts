@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  ConstraintType,
   RelationshipType,
   Table,
   TableConstraint,
@@ -23,13 +24,23 @@ export interface TableConstraintModalProps {
   onSave: (values: TableConstraint[]) => Promise<void>;
 }
 
-export interface TableConstraintForm {
-  columns: string;
-  referredColumns: string;
-  relationshipType: RelationshipType;
+export interface ForeignConstraintFormValues {
+  columns?: string;
+  relationshipType?: RelationshipType;
+  referredColumns?: string;
 }
 
-export interface SelectOptions {
-  label: string;
-  value: string;
-}
+export type ConstraintKeyField =
+  | 'primaryConstraints'
+  | 'uniqueConstraints'
+  | 'sortConstraints'
+  | 'distConstraints'
+  | 'clusterConstraints';
+
+export type TableConstraintFormValues = Record<
+  ConstraintKeyField,
+  string[] | undefined
+> & {
+  constraintType?: ConstraintType;
+  foreignConstraints: ForeignConstraintFormValues[];
+};

@@ -15,11 +15,13 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
+  getParameterBounds,
   getStatusChartStatus,
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
+  placedSeriesKey,
   PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
@@ -381,6 +383,58 @@ describe('prepareChartData', () => {
     });
   });
 
+  // The band is the allowed range, so it is read by parameter name, not by
+  // position, and keeps decimal bounds.
+  it.each<
+    [
+      string,
+      PrepareChartDataType['testCaseParameterValue'],
+      [number, number] | undefined
+    ]
+  >([
+    [
+      'decimal bounds',
+      [
+        { name: 'minValueForMeanInCol', value: '0.5' },
+        { name: 'maxValueForMeanInCol', value: '1.5' },
+      ],
+      [0.5, 1.5],
+    ],
+    [
+      'a range that also has a threshold',
+      [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+        { name: 'threshold', value: '5' },
+      ],
+      [12, 34],
+    ],
+    [
+      'an expected value and a threshold, which state no range',
+      [
+        { name: 'value', value: '10000' },
+        { name: 'threshold', value: '5' },
+      ],
+      undefined,
+    ],
+  ])(
+    'should read the allowed band from %s',
+    (_, testCaseParameterValue, boundArea) => {
+      const { data } = prepareChartData({
+        testCaseParameterValue,
+        testCaseResults: [
+          {
+            timestamp: 1720525804736,
+            testCaseStatus: TestCaseStatus.Success,
+            testResultValue: [{ name: 'value', value: '1' }],
+          },
+        ],
+      });
+
+      expect(data[0].boundArea).toEqual(boundArea);
+    }
+  );
+
   it('should show calculate test case result params accurately', () => {
     const testObj = {
       testCaseParameterValue: [],
@@ -488,6 +542,26 @@ describe('prepareChartData', () => {
       information: [{ label: 'value', color: '#7147E8' }],
       showAILearningBanner: true,
     });
+  });
+
+  it('should leave out the Table Diff values that are not numbers', () => {
+    const result = prepareChartData({
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'diffCount', value: '52' },
+            { name: 'columnDiffCounts', value: '{"city": 49, "name": 3}' },
+          ],
+        },
+      ],
+      tasks: [],
+    } as PrepareChartDataType);
+
+    expect(result.information.map(({ label }) => label)).toEqual(['diffCount']);
+    expect(result.data[0]).not.toHaveProperty('columnDiffCounts');
   });
 
   it('should name no series when there are no runs', () => {
@@ -628,6 +702,20 @@ describe('getThresholdReference', () => {
   const params = (values: Record<string, string>) =>
     Object.entries(values).map(([name, value]) => ({ name, value }));
 
+  it('should not read minRowsPerDimension as a lower bound', () => {
+    const notNullRollUp = params({
+      threshold: '10',
+      thresholdUnit: 'PERCENTAGE',
+      dimensionFailurePolicy: 'ANY_DIMENSION',
+      minRowsPerDimension: '4',
+    });
+
+    expect(getParameterBounds(notNullRollUp).min).toBeUndefined();
+    expect(getThresholdReference(notNullRollUp)?.labelKey).not.toBe(
+      'label.allowed-min'
+    );
+  });
+
   it('should read the single assertion parameter as the expected value', () => {
     expect(
       getThresholdReference(
@@ -736,12 +824,13 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    // Placed on the series itself, so the line runs through the run.
+    // Placed on a series of its own, so the line joins measured runs only
+    // and an aborted run does not read as a measured drop.
     expect(data[2]).toEqual({
       name: 3,
       status: TestCaseStatus.Aborted,
-      rowCount: 90,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 90,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -758,8 +847,8 @@ describe('applyStatusPlacements', () => {
     expect(data[1]).toEqual({
       name: 2,
       status: TestCaseStatus.Queued,
-      rowCount: 10000,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 10000,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -782,6 +871,39 @@ describe('applyStatusPlacements', () => {
     expect(applyStatusPlacements([point], series)).toEqual([point]);
   });
 
+  it('should pin passed and failed runs that reported no value to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 0, status: TestCaseStatus.Success, rowCount: 40 },
+        { name: 1, status: TestCaseStatus.Success },
+        { name: 2, status: TestCaseStatus.Failed },
+      ],
+      series,
+      100
+    );
+
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      undefined,
+      100,
+      100,
+    ]);
+    expect(data.map((point) => point[series[0]])).toEqual([
+      40,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  // tableDiff reports its column counts only when the schemas differ, so an
+  // older run lacks series a newer one names.
+  it('should not place series a passed or failed run that measured others never reported', () => {
+    const point = { name: 1, status: TestCaseStatus.Failed, diffCount: 3 };
+
+    expect(
+      applyStatusPlacements([point], ['diffCount', 'addedColumns'], 0)
+    ).toEqual([point]);
+  });
+
   it('should place runs on the zero line when no run plotted a value and no line exists', () => {
     const data = applyStatusPlacements(
       [
@@ -791,7 +913,9 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    expect(data.map((point) => point[series[0]])).toEqual([0, 0]);
-    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series);
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      0, 0,
+    ]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series.map(placedSeriesKey));
   });
 });

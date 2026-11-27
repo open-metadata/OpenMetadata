@@ -35,7 +35,9 @@ import {
   commonPrerequisites,
   generateAlertName,
   waitForRecentEventsToFinishExecution,
+  watchPerSourceListRequests,
 } from '../../../utils/alert';
+import { deleteFixtureEntity, okJson } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -54,6 +56,11 @@ import {
   navigateToEditAlert,
   saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
+import {
+  startWebhookReceiver,
+  stopWebhookReceiver,
+} from '../../../utils/webhook';
 
 // ── Test entities (instantiated in beforeAll) ────────────────────────────────
 
@@ -115,6 +122,14 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await dashboard.delete(apiContext);
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -339,7 +354,7 @@ test('Task source alert', async ({ page }) => {
     await addInternalDestinationProfile({
       page,
       destinationNumber: 0,
-      category: 'Owners',
+      category: 'Mentions',
       type: 'Email',
     });
     await page.click('[data-testid="add-destination-button"]');
@@ -434,66 +449,90 @@ test('Alert with recent events check', async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
-  await navigateToAlertsList(page);
+  // Set while the alert exists, so a test that stops early still removes it.
+  let createdAlertId: string | undefined;
 
-  await test.step('Create and trigger alert', async () => {
-    await page.getByTestId('add-alert').click();
-    await inputAlertInformation({
-      page,
-      name: ALERT_NAME,
-      sourceName: SOURCE_NAME_5,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEntityFQNFilterProfile({
-      page,
-      filterNumber: 0,
-      entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
-        .fullyQualifiedName,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEventTypeFilterProfile({
-      page,
-      filterNumber: 1,
-      eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
-    });
-
-    await page.click('[data-testid="add-destination-button"]');
-    await addInternalDestinationProfile({
-      page,
-      destinationNumber: 0,
-      category: 'Owners',
-      type: 'Email',
-    });
-
-    data.alertDetails = await saveNewAlertAndVerify(page);
-
-    await table.deleteTable(apiContext, false);
-    await table.restore(apiContext);
-  });
-
-  await test.step('Check alert details and recent events', async () => {
+  try {
+    // A receiver this test runs, so each event is really sent and counted as sent.
+    const destinationEndpoint = await startWebhookReceiver();
     await navigateToAlertsList(page);
 
-    await waitForRecentEventsToFinishExecution(page, data.alertDetails.name, 2);
+    await test.step('Create and trigger alert', async () => {
+      await page.getByTestId('add-alert').click();
+      await inputAlertInformation({
+        page,
+        name: ALERT_NAME,
+        sourceName: SOURCE_NAME_5,
+      });
 
-    await navigateToAlertDetail(page, data.alertDetails);
+      await page.getByTestId('add-filters').click();
+      await addEntityFQNFilterProfile({
+        page,
+        filterNumber: 0,
+        entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
+          .fullyQualifiedName,
+      });
 
-    await expect(page.getByTestId('edit-description-btn')).toBeVisible();
+      await page.getByTestId('add-filters').click();
+      await addEventTypeFilterProfile({
+        page,
+        filterNumber: 1,
+        eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
+      });
 
-    await checkRecentEventDetailsProfile({
-      page,
-      alertDetails: data.alertDetails,
-      table,
-      totalEventsCount: 2,
+      await page.click('[data-testid="add-destination-button"]');
+      await addExternalDestinationProfile({
+        page,
+        destinationNumber: 0,
+        category: 'Webhook',
+        input: destinationEndpoint,
+      });
+
+      data.alertDetails = await saveNewAlertAndVerify(page);
+      createdAlertId = data.alertDetails.id;
+
+      await table.deleteTable(apiContext, false);
+      await table.restore(apiContext);
     });
-  });
 
-  await test.step('Delete alert', async () => {
-    await navigateToAlertsList(page);
-    await deleteAlertFromList(page, data.alertDetails);
-  });
+    await test.step('Check alert details and recent events', async () => {
+      await navigateToAlertsList(page);
+
+      await waitForRecentEventsToFinishExecution(
+        page,
+        data.alertDetails.name,
+        2
+      );
+
+      await navigateToAlertDetail(page, data.alertDetails);
+
+      await expect(page.getByTestId('edit-description-btn')).toBeVisible();
+
+      await checkRecentEventDetailsProfile({
+        page,
+        alertDetails: data.alertDetails,
+        table,
+        totalEventsCount: 2,
+      });
+    });
+
+    await test.step('Delete alert', async () => {
+      await navigateToAlertsList(page);
+      await deleteAlertFromList(page, data.alertDetails);
+      createdAlertId = undefined;
+    });
+  } finally {
+    try {
+      if (createdAlertId) {
+        await deleteFixtureEntity(
+          apiContext,
+          `/api/v1/events/subscriptions/${createdAlertId}?hardDelete=true`
+        );
+      }
+    } finally {
+      await stopWebhookReceiver();
+    }
+  }
 });
 
 test('Destination should work properly', async ({ page }) => {
@@ -591,15 +630,115 @@ test('System alert is read-only', async ({ page }) => {
   await expect(page.getByTestId('delete-alert-btn')).not.toBeAttached();
 });
 
+test('Edit cancel returns to the detail and the owner picker takes two users', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const alert = await okJson<AlertDetails>(
+    await apiContext.post('/api/v1/events/subscriptions', {
+      data: {
+        name: generateAlertName(),
+        alertType: 'Notification',
+        resources: [SOURCE_NAME_1],
+        enabled: true,
+        destinations: [{ category: 'Admins', type: 'Email' }],
+      },
+    }),
+    'Create notification alert'
+  );
+
+  try {
+    await navigateToAlertsList(page);
+
+    await test.step('Cancel while editing returns to the alert detail', async () => {
+      await navigateToEditAlert(page, alert);
+      await expect(page.getByTestId('alert-name-input')).toBeVisible();
+
+      const detailResponse = waitForResponseWithStatus(
+        page,
+        // The detail page also requests `/name/<fqn>/eventsRecord`; match only the alert itself.
+        (res) =>
+          /^\/api\/v1\/events\/subscriptions\/name\/[^/]+$/.test(
+            new URL(res.url()).pathname
+          ) && res.request().method() === 'GET',
+        200
+      );
+      await page.getByTestId('cancel-btn').click();
+      await detailResponse;
+
+      await expect(page.getByTestId('edit-alert-btn')).toBeVisible();
+      await expect(
+        page.getByTestId('alerts-list-container')
+      ).not.toBeAttached();
+    });
+
+    await test.step('Header owner picker accepts two users', async () => {
+      await page.getByTestId('edit-owner').click();
+      await page
+        .getByTestId('select-owner-tabs')
+        .getByRole('tab', { name: 'Users' })
+        .click();
+      const usersPanel = page.getByTestId('owner-select-users-panel');
+
+      for (const user of [user1, user2]) {
+        // Match the typed text: the empty query fired on focus would satisfy a looser predicate.
+        const searchUser = waitForResponseWithStatus(
+          page,
+          (res) => {
+            const url = new URL(res.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              (url.searchParams.get('index') ?? '').startsWith('user') &&
+              (url.searchParams.get('q') ?? '').includes(
+                user.getUserDisplayName()
+              )
+            );
+          },
+          200
+        );
+        await usersPanel
+          .getByTestId('owner-select-users-search-bar')
+          .fill(user.getUserDisplayName());
+        await searchUser;
+        await usersPanel
+          .getByTestId('owner-option')
+          .filter({ hasText: user.getUserDisplayName() })
+          .click();
+      }
+
+      const patchAlert = waitForResponseWithStatus(
+        page,
+        (res) =>
+          res.url().includes(`/api/v1/events/subscriptions/${alert.id}`) &&
+          res.request().method() === 'PATCH',
+        200
+      );
+      await usersPanel.getByTestId('selectable-list-update-btn').click();
+      const patchResponse = await patchAlert;
+
+      const patchBody = JSON.stringify(patchResponse.request().postDataJSON());
+      expect(patchBody).toContain(user1.responseData.id);
+      expect(patchBody).toContain(user2.responseData.id);
+    });
+  } finally {
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/events/subscriptions/${alert.id}?hardDelete=true`
+    );
+    await afterAction();
+  }
+});
+
 test('Breadcrumb navigation', async ({ page }) => {
   await navigateToAlertsList(page);
 
   await page.getByTestId('add-alert').click();
   await expect(page.getByTestId('alert-name-input')).toBeVisible();
 
-  await page.getByRole('link', { name: /alert/i }).click();
+  await page.getByRole('link', { name: 'Alerts', exact: true }).click();
   await expect(page.getByTestId('alerts-list-container')).toBeVisible();
 
-  await page.getByRole('link', { name: /notification/i }).click();
+  await page.getByRole('link', { name: 'Alerts & Notifications' }).click();
   await expect(page.getByTestId('notification-landing')).toBeVisible();
 });

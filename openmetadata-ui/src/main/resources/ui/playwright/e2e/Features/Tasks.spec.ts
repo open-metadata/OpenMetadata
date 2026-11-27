@@ -156,9 +156,7 @@ test.describe('Task Workflow Tests', () => {
       });
 
       // Add suggested tags
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selection-search input'
-      );
+      const tagsInput = page.getByTestId('tag-selector').getByRole('combobox');
       if (await tagsInput.isVisible().catch(() => false)) {
         await addTagSuggestion({
           page,
@@ -267,9 +265,8 @@ test.describe('Task Workflow Tests', () => {
             assignees: [regularUser.responseData.name],
           },
         });
-        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBeTruthy();
 
-        // Login as regular user (who is the assignee)
         const page = await browser.newPage();
         await regularUser.signIn(page);
 

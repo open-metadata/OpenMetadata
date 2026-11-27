@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
@@ -30,21 +31,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class SetEntityCertificationImpl implements JavaDelegate {
   private Expression certificationExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
-                      RELATED_ENTITY_VARIABLE));
-      String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
-
       String certification =
           Optional.ofNullable(certificationExpr)
               .map(certificationExpr -> (String) certificationExpr.getValue(execution))
@@ -55,8 +48,22 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       varHandler.getNamespacedVariable(
                           inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
-      setStatus(entity, entityType, user, certification);
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> certify(entityLink, user, certification),
+          () ->
+              certify(
+                  (String)
+                      varHandler.getNamespacedVariable(
+                          inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                          RELATED_ENTITY_VARIABLE),
+                  user,
+                  certification));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -65,8 +72,14 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     }
   }
 
+  private void certify(String entityLinkValue, String user, String certification) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "certification", Include.ALL);
+    setStatus(entity, entityLink.getEntityType(), user, certification);
+  }
+
   private void setStatus(
-      EntityInterface entity, String entityType, String user, String certification) {
+      EntityInterface<?> entity, String entityType, String user, String certification) {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     Optional<String> oCertification = Optional.ofNullable(certification);
@@ -100,6 +113,8 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    entityRepository.patch(null, entity.getId(), user, patch);
+    // governance-bot as impersonator marks this as the workflow's own write, so the event
+    // consumer does not start the entity's workflows again for it.
+    entityRepository.patch(null, entity.getId(), user, patch, null, GOVERNANCE_BOT);
   }
 }

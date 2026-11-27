@@ -56,16 +56,24 @@ export const verifyGreetingBanner = async (page: Page, displayName: string) => {
   );
 };
 
+/**
+ * `name` is worth setting whenever a test asserts the order announcements come
+ * back in: the list endpoint sorts by `name`, and when the caller omits one the
+ * server generates `announcement-<uuid>` — so the order is a random UUID sort,
+ * not creation order.
+ */
 export const createAnnouncementViaApi = async (
   apiContext: APIRequestContext,
   entityLink: string,
   message: string,
-  description: string
+  description: string,
+  name?: string
 ) => {
   const startTime = Date.now();
   const endTime = startTime + 86400 * 1000;
   const response = await apiContext.post('/api/v1/announcements', {
     data: {
+      ...(name ? { name } : {}),
       displayName: message,
       description,
       entityLink,

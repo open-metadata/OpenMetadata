@@ -17,7 +17,10 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -28,6 +31,10 @@ class OMetaFQNLineageRequest(BaseModel):
     to_entity_fqn: str
     to_entity_type: str
     lineage_details: LineageDetails | None = None
+    # The sink writes the edge by FQN; producers that already resolved the entities pass
+    # their ids too, so consumers can reference both ends without looking them up again
+    from_entity_id: Uuid | None = None
+    to_entity_id: Uuid | None = None
 
 
 LineageRequest = AddLineageRequest | OMetaFQNLineageRequest
@@ -38,3 +45,13 @@ class OMetaLineageRequest(BaseModel):
     lineage_request: LineageRequest
     entity_fqn: str | None = None
     entity: type[T] | None = None
+
+
+class OMetaDeleteLineageBySource(BaseModel):
+    """
+    Drops the upstream lineage one source drew into an entity. An override otherwise only clears old
+    edges while writing a new one, so an entity whose source now declares no upstream keeps them all.
+    """
+
+    entity: EntityReference
+    source: LineageSource

@@ -16,10 +16,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import {
-  useSettingsHash,
-  useSettingsHashSync,
-} from '../../../../hooks/useSettingsHash';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import PersonalSpaceGate from '../PersonalSpaceGate/PersonalSpaceGate';
 import ProfilePage from '../Profile/ProfilePage';
@@ -45,17 +42,18 @@ const DIALOG_CLASS = 'ai-personal-space__dialog';
 const PersonalSpaceModal: React.FC = () => {
   const { t } = useTranslation();
   const activePanel = usePersonalSpaceStore((state) => state.activePanel);
-  const open = usePersonalSpaceStore((state) => state.open);
   const close = usePersonalSpaceStore((state) => state.close);
+  const exitGuard = usePersonalSpaceStore((state) => state.exitGuard);
+  const requestClose = useCallback(() => {
+    if (!exitGuard?.(close)) {
+      close();
+    }
+  }, [close, exitGuard]);
   const { pathname } = useLocation();
 
   const isOpen = activePanel !== null;
 
-  const openProfile = useCallback((panel: 'profile') => open(panel), [open]);
-
   const { state: hashState } = useSettingsHash();
-
-  useSettingsHashSync(openProfile, isOpen);
 
   // A pathname change while the modal is open means a link inside it navigated
   // away — close the overlay so it doesn't linger over the new page.
@@ -76,24 +74,29 @@ const PersonalSpaceModal: React.FC = () => {
 
   return (
     <ModalOverlay
-      isKeyboardDismissDisabled
+      // The dialog is viewport-capped (see personal-space-modal.less) and scrolls
+      // its own body, so the overlay must not add a second scrollbar — without
+      // this it scrolls the whole dialog whenever an inner page (e.g. a long team
+      // table) is tall. `!` beats the core overlay's base `overflow-y-auto`.
+      className="tw:overflow-hidden!"
       isOpen={isOpen}
-      onOpenChange={(isOpen) => !isOpen && close()}>
+      onOpenChange={(isOpen) => !isOpen && requestClose()}>
       <Modal>
         <Dialog
           showCloseButton
+          // Untitled, so My Data names the dialog for assistive tech.
+          aria-label={
+            activePanel === 'my-data'
+              ? t('label.my-data-and-following')
+              : undefined
+          }
           className={DIALOG_CLASS}
-          // Profile draws its own header; My Data has none of its own.
-          title={activePanel === 'my-data' ? t('label.my-data') : undefined}
           width={1600}
-          onClose={close}>
+          onClose={requestClose}>
           <PersonalSpaceGate>
             {activePanel === 'profile' && <ProfilePage />}
-            {activePanel === 'my-data' && (
-              <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:p-4">
-                <MyData />
-              </div>
-            )}
+            {/* Both panels draw their own header, so the dialog has no title. */}
+            {activePanel === 'my-data' && <MyData cardVariant="muted" />}
           </PersonalSpaceGate>
         </Dialog>
       </Modal>

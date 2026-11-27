@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Navigate } from 'react-router-dom';
-import {
+import { hideChartTooltips } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Navigate, useNavigate } from 'react-router-dom';
+import KeepAliveRoutes, {
   getActiveCacheableRoute,
   isCacheableRoutePath,
 } from './KeepAliveRoutes';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  hideChartTooltips: jest.fn(),
+}));
 
 describe('isCacheableRoutePath', () => {
   it('accepts a static concrete path', () => {
@@ -65,5 +71,35 @@ describe('getActiveCacheableRoute', () => {
     // there is no cacheable route and it falls through to the fallback <Routes>
     // where the redirect fires exactly once.
     expect(getActiveCacheableRoute('/observability', routes)).toBeUndefined();
+  });
+});
+
+describe('KeepAliveRoutes', () => {
+  const GoTo = ({ to }: { to: string }) => {
+    const navigate = useNavigate();
+
+    return (
+      <button type="button" onClick={() => navigate(to)}>
+        {to}
+      </button>
+    );
+  };
+
+  it('hides open chart tooltips when the active route changes', () => {
+    render(
+      <MemoryRouter initialEntries={['/first']}>
+        <KeepAliveRoutes
+          routes={[
+            { element: <GoTo to="/second" />, path: '/first' },
+            { element: <div>second</div>, path: '/second' },
+          ]}
+        />
+      </MemoryRouter>
+    );
+    (hideChartTooltips as jest.Mock).mockClear();
+
+    fireEvent.click(screen.getByText('/second'));
+
+    expect(hideChartTooltips).toHaveBeenCalledTimes(1);
   });
 });

@@ -18,10 +18,12 @@ import {
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
-  filterGraphPresentation,
+  getGraphNodeLabel,
   getGroupMemberLabelKey,
   getMappingCoverage,
   getSharedMemberType,
+  localizeGraphLabels,
+  relabelGraphNodes,
   restrictToEntityLevel,
 } from './knowledgeGraphPresentation.utils';
 
@@ -218,66 +220,31 @@ it('reports missing mappings only within a complete returned neighborhood', () =
   ).toBe('unmapped');
 });
 
-it('filters confirmed gaps while retaining the selected entity and metadata context', () => {
-  const data: GraphData = {
-    ...graph,
-    nodes: [...graph.nodes, { id: 'owner', label: 'Steward', type: 'user' }],
-    edges: [...graph.edges, { from: 'root', to: 'owner', label: 'Owned by' }],
-  };
-  const coverage = getMappingCoverage(
-    data,
-    new Set([
-      'root',
-      ...graph.nodes
-        .filter((node) => node.type === 'column')
-        .map((node) => node.id),
-    ])
-  );
-  const result = filterGraphPresentation(
-    data,
-    'root',
-    [],
-    coverage,
-    'unmapped'
-  );
+it('relabels every node without filtering or reordering', () => {
+  const result = relabelGraphNodes(graph);
 
-  expect(result?.nodes.some((node) => node.id === 'root')).toBe(true);
-  expect(result?.nodes.some((node) => node.id === 'owner')).toBe(true);
-  expect(result?.nodes.some((node) => node.id === 'c0')).toBe(false);
-  expect(result?.nodes.filter((node) => node.type === 'column')).toHaveLength(
-    299
+  expect(result?.nodes).toHaveLength(graph.nodes.length);
+  expect(result?.edges).toBe(graph.edges);
+  expect(result?.nodes.every((node) => typeof node.label === 'string')).toBe(
+    true
   );
-  expect(
-    result?.edges.every(
-      (edge) =>
-        result.nodes.some((node) => node.id === edge.from) &&
-        result.nodes.some((node) => node.id === edge.to)
-    )
-  ).toBe(true);
 });
 
-it('highlights gaps within a group without changing positions or losing statements', () => {
+it('annotates the root with the aggregated coverage of its members', () => {
   const grouped = buildGraphPresentation(graph, graph, 'root', 'balanced', []);
   const annotated = annotateGraphCoverage(
     grouped.data,
     getMappingCoverage(graph),
-    'root',
-    true
+    'root'
   );
 
   expect(
-    annotated.nodes.find((node) => node.presentation?.members)?.presentation
-      ?.coverage
+    annotated.nodes.find((node) => node.id === 'root')?.presentation?.coverage
   ).toBe('unmapped');
   expect(annotated.nodes.map((node) => node.presentation?.position)).toEqual(
     grouped.data.nodes.map((node) => node.presentation?.position)
   );
   expect(annotated.edges).toBe(grouped.data.edges);
-  expect(
-    annotated.edges
-      .flatMap((edge) => edge.members ?? [edge])
-      .every((edge) => edge.id)
-  ).toBe(true);
 });
 
 it('bundles columns around a collapsed parent branch and prefers containment over shared mappings', () => {
@@ -983,4 +950,89 @@ it('puts a person who both owns and follows the entity on the ownership bundle',
   expect(scene.edges.flatMap((edge) => edge.members ?? [edge])).toHaveLength(
     data.edges.length
   );
+});
+
+describe('getGraphNodeLabel', () => {
+  it('falls back to name, then the last FQN segment, then the id when the label is empty', () => {
+    expect(
+      getGraphNodeLabel({
+        id: 'term-1',
+        type: 'glossaryTerm',
+        label: '',
+        name: 'Account',
+      })
+    ).toBe('Account');
+    expect(
+      getGraphNodeLabel({
+        id: 'term-2',
+        type: 'glossaryTerm',
+        label: ' ',
+        fullyQualifiedName: 'Banking.Branch',
+      })
+    ).toBe('Branch');
+    expect(
+      getGraphNodeLabel({ id: 'term-3', type: 'glossaryTerm', label: '' })
+    ).toBe('term-3');
+  });
+
+  it('keeps a non-empty label', () => {
+    expect(
+      getGraphNodeLabel({
+        id: 'term-1',
+        type: 'glossaryTerm',
+        label: 'Customer',
+        name: 'customer',
+      })
+    ).toBe('Customer');
+  });
+});
+
+describe('localizeGraphLabels', () => {
+  const translate = (key: string) => `t(${key})`;
+  const graph = (edges: GraphData['edges']): GraphData => ({
+    nodes: [],
+    edges,
+  });
+
+  it('translates a known predicate and keeps the raw one for classification', () => {
+    const result = localizeGraphLabels(
+      graph([{ from: 'a', to: 'b', label: 'Belongs To Database' }]),
+      translate
+    );
+
+    expect(result?.edges[0]).toEqual(
+      expect.objectContaining({
+        label: 't(label.belongs-to-database)',
+        relationType: 'Belongs To Database',
+      })
+    );
+  });
+
+  it('looks the translation up by relationType when the server sends one', () => {
+    const result = localizeGraphLabels(
+      graph([
+        { from: 'a', to: 'b', label: 'Has Column', relationType: 'hasColumn' },
+      ]),
+      translate
+    );
+
+    expect(result?.edges[0].label).toBe('t(label.has-column)');
+    expect(result?.edges[0].relationType).toBe('hasColumn');
+  });
+
+  it('falls back to the sentence-cased server label for an unknown predicate', () => {
+    const result = localizeGraphLabels(
+      graph([
+        {
+          from: 'a',
+          to: 'b',
+          label: 'Calculated From',
+          relationType: 'calculatedFrom',
+        },
+      ]),
+      translate
+    );
+
+    expect(result?.edges[0].label).toBe('Calculated from');
+  });
 });

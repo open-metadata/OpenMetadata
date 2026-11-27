@@ -1,6 +1,7 @@
 {
   "globalSettings": {
     "enableAccessControl": false,
+    "enableColumnIndexing": true,
     "maxAggregateSize": 10000,
     "maxResultHits": 10000,
     "maxAnalyzedOffset": 1000,

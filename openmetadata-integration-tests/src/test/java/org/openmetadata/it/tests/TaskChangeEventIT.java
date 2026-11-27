@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.type.BulkTaskOperationType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DescriptionUpdatePayload;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TaskCategory;
@@ -48,13 +52,18 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
  * A task lifecycle change (resolve, close, reopen, workflow transition) records exactly one
@@ -72,6 +81,7 @@ public class TaskChangeEventIT {
   private static final String STATUS = "status";
   private static final String RESOLUTION = "resolution";
   private static final String COMMENTS = "comments";
+  private static final String RESOLUTION_NOTE = "not a real failure";
   private static final String NEW_STAGE = "new";
 
   @Test
@@ -81,6 +91,9 @@ public class TaskChangeEventIT {
     Task task = client().tasks().create(descriptionUpdateTask(ns, table));
     awaitWorkflowBound(task.getId());
     assertUpdatedEventCount(task.getId(), createdAt, 0);
+    WorkflowHandler workflow = WorkflowHandler.getInstance();
+    String processId = workflow.approvalTaskContext(task.getId()).processInstanceId();
+    String comment = "Keep the original approval comment";
 
     long resolvedAt = System.currentTimeMillis();
     client()
@@ -89,12 +102,100 @@ public class TaskChangeEventIT {
             task.getId().toString(),
             new ResolveTask()
                 .withResolutionType(TaskResolutionType.Approved)
-                .withNewValue("approved description"));
+                .withNewValue("approved description")
+                .withComment(comment));
 
     ChangeEvent event = awaitUpdatedEvents(task.getId(), resolvedAt, 1).getFirst();
     assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Approved);
     assertTrue(names(event.getChangeDescription().getFieldsAdded()).contains(RESOLUTION));
     assertTrue(event.getCurrentVersion() > event.getPreviousVersion());
+    assertCountedVotes(event, processId, task.getId(), comment);
+    assertEquals(
+        "approved description", client().tables().get(table.getId().toString()).getDescription());
+  }
+
+  @Test
+  void approvingOntologyReviewRecordsItsVotesAndResolution(TestNamespace ns) throws Exception {
+    OntologyRelease release =
+        BaseOntologyApprovalIT.capture(BaseOntologyApprovalIT.createOntology(ns));
+    try {
+      Task task =
+          BaseOntologyApprovalIT.submit(
+              ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+      String processId =
+          WorkflowHandler.getInstance().approvalTaskContext(task.getId()).processInstanceId();
+      String comment = "Keep the ontology approval comment";
+      long resolvedAt = System.currentTimeMillis();
+
+      SdkClients.user1Client()
+          .tasks()
+          .resolve(
+              task.getId().toString(),
+              new ResolveTask()
+                  .withResolutionType(TaskResolutionType.Approved)
+                  .withComment(comment));
+
+      ChangeEvent event = awaitUpdatedEvents(task.getId(), resolvedAt, 1).getFirst();
+      assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Approved);
+      assertTrue(names(event.getChangeDescription().getFieldsAdded()).contains(RESOLUTION));
+      assertCountedVotes(event, processId, task.getId(), comment);
+      assertEquals(
+          EntityStatus.APPROVED, BaseOntologyApprovalIT.current(release).getEntityStatus());
+    } finally {
+      BaseOntologyIT.deleteRoots(ns);
+    }
+  }
+
+  @Test
+  void finalWorkflowDecisionKeepsPreviouslyProjectedVotes(TestNamespace ns) {
+    Task task = client().tasks().create(descriptionUpdateTask(ns, createTable(ns)));
+    awaitWorkflowBound(task.getId());
+    TaskReviewVote earlierVote =
+        new TaskReviewVote()
+            .withVoter(SharedEntities.get().USER1.getEntityReference())
+            .withAssignee(SharedEntities.get().USER1.getEntityReference())
+            .withDecision(TaskReviewVoteDecision.Approved)
+            .withComment("An earlier stage approved")
+            .withTimestamp(1L);
+    TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    tasks.recordReviewVotes(task.getId(), List.of(earlierVote), "admin");
+
+    Task resolved =
+        client()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                new ResolveTask()
+                    .withResolutionType(TaskResolutionType.Approved)
+                    .withComment("Final approval"));
+
+    assertEquals(2, resolved.getReviewVotes().size());
+    assertEquals(earlierVote, resolved.getReviewVotes().getFirst());
+    assertEquals("Final approval", resolved.getReviewVotes().getLast().getComment());
+    assertEquals(
+        resolved.getReviewVotes(), client().tasks().get(task.getId().toString()).getReviewVotes());
+  }
+
+  private static void assertCountedVotes(
+      ChangeEvent event, String processId, UUID taskId, String comment) {
+    List<TaskReviewVote> countedVotes =
+        WorkflowHandler.getInstance().recordedReviewVotes(processId, taskId);
+    assertEquals(1, countedVotes.size());
+    assertEquals(TaskReviewVoteDecision.Approved, countedVotes.getFirst().getDecision());
+    assertEquals(comment, countedVotes.getFirst().getComment());
+    assertNotNull(countedVotes.getFirst().getTimestamp());
+    FieldChange votes =
+        event.getChangeDescription().getFieldsUpdated().stream()
+            .filter(change -> "reviewVotes".equals(change.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        countedVotes,
+        JsonUtils.convertValue(votes.getNewValue(), new TypeReference<List<TaskReviewVote>>() {}));
+    assertEquals(countedVotes, client().tasks().get(taskId.toString()).getReviewVotes());
+    assertEquals(
+        countedVotes,
+        client().tasks().getVersion(taskId.toString(), event.getCurrentVersion()).getReviewVotes());
   }
 
   @Test
@@ -178,16 +279,35 @@ public class TaskChangeEventIT {
 
     long resolvedAt = System.currentTimeMillis();
     createResolvedIncidentStatus(testCase);
-    ChangeEvent resolution = awaitUpdatedEvents(incident.getId(), resolvedAt, 1).getFirst();
-    assertStatusChange(resolution, TaskEntityStatus.InProgress, TaskEntityStatus.Completed);
+    // The resolution note is also posted as a task comment, with its own event so mentions in it
+    // notify: one event for the status change, one for the comment.
+    List<ChangeEvent> resolution = awaitUpdatedEvents(incident.getId(), resolvedAt, 2);
+    assertStatusChange(
+        resolution.stream()
+            .filter(
+                event ->
+                    event.getChangeDescription() != null
+                        && names(event.getChangeDescription().getFieldsUpdated()).contains(STATUS))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no status change in " + resolution)),
+        TaskEntityStatus.InProgress,
+        TaskEntityStatus.Completed);
+    assertTrue(
+        resolution.stream()
+            .filter(event -> event.getChangeDescription() != null)
+            .flatMap(event -> event.getChangeDescription().getFieldsAdded().stream())
+            .anyMatch(
+                change ->
+                    COMMENTS.equals(change.getName())
+                        && RESOLUTION_NOTE.equals(String.valueOf(change.getNewValue()))),
+        () -> "no comment event for the resolution note in " + resolution);
 
-    long reopenedAt = System.currentTimeMillis();
-    createIncidentStatus(testCase, TestCaseResolutionStatusTypes.Ack);
-    List<ChangeEvent> reopenAndAck = awaitUpdatedEvents(incident.getId(), reopenedAt, 2);
-    ChangeEvent reopen = eventWithNewStatus(reopenAndAck, TaskEntityStatus.Open);
-    assertStatusChange(reopen, TaskEntityStatus.Completed, TaskEntityStatus.Open);
-    assertTrue(names(reopen.getChangeDescription().getFieldsDeleted()).contains(RESOLUTION));
-    assertNotNull(eventWithNewStatus(reopenAndAck, TaskEntityStatus.InProgress));
+    // ADR:2026-11-17-resolved-incidents-are-final: a legacy status write cannot reopen it.
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createIncidentStatus(testCase, TestCaseResolutionStatusTypes.Ack));
+    assertEquals(
+        TaskEntityStatus.Completed, client().tasks().get(incident.getId().toString()).getStatus());
   }
 
   @Test
@@ -217,6 +337,9 @@ public class TaskChangeEventIT {
     ChangeEvent event = awaitUpdatedEvents(incident.getId(), closedAt, 1).getFirst();
     assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Completed);
     assertEquals("governance-bot", event.getUserName());
+    Task resolved = client().tasks().get(incident.getId().toString(), "comments,resolution");
+    assertTrue(resolved.getComments() == null || resolved.getComments().isEmpty());
+    assertEquals("AutoResolved", resolved.getResolution().getComment());
   }
 
   // ---------------------------------------------------------------- change events
@@ -270,19 +393,6 @@ public class TaskChangeEventIT {
             .orElseThrow(() -> new AssertionError("no status change in " + event));
     assertEquals(from.value(), String.valueOf(status.getOldValue()));
     assertEquals(to.value(), String.valueOf(status.getNewValue()));
-  }
-
-  private static ChangeEvent eventWithNewStatus(List<ChangeEvent> events, TaskEntityStatus to) {
-    return events.stream()
-        .filter(
-            event ->
-                event.getChangeDescription().getFieldsUpdated().stream()
-                    .anyMatch(
-                        change ->
-                            STATUS.equals(change.getName())
-                                && to.value().equals(String.valueOf(change.getNewValue()))))
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("no event moving the task to " + to));
   }
 
   private static List<String> names(List<FieldChange> changes) {
@@ -340,7 +450,10 @@ public class TaskChangeEventIT {
     Awaitility.await("task %s bound to its workflow".formatted(taskId))
         .atMost(EVENT_TIMEOUT)
         .pollInterval(Duration.ofMillis(500))
-        .until(() -> client().tasks().get(taskId.toString()).getWorkflowInstanceId() != null);
+        .until(
+            () ->
+                client().tasks().get(taskId.toString()).getWorkflowInstanceId() != null
+                    && WorkflowHandler.getInstance().hasActiveRuntimeTask(taskId));
   }
 
   private static void runBulk(
@@ -439,6 +552,6 @@ public class TaskChangeEventIT {
                 .withTestCaseResolutionStatusDetails(
                     new Resolved()
                         .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
-                        .withTestCaseFailureComment("not a real failure")));
+                        .withTestCaseFailureComment(RESOLUTION_NOTE)));
   }
 }

@@ -248,7 +248,7 @@ export const CronExpressionBuilder: React.FC<CronExpressionBuilderProps> = ({
         </div>
       </div>
 
-      <Typography className="tw:m-0 tw:mt-3  tw:text-secondary" size="text-xs">
+      <Typography className="tw:block tw:mt-3 tw:text-secondary" size="text-xs">
         {generateDescription(config)}
       </Typography>
     </>

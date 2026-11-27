@@ -75,6 +75,28 @@ This is applicable for fields like description, tags, owner and displayName
 $$
 
 $$section
+### Max Schema Inference Depth $(id="maxSchemaInferenceDepth")
+
+Maximum nesting depth of the column children that ingestion infers from sampled JSON values in a container's sample file. The direct children of a column are depth 1.
+
+Deeper children are not ingested. A column at the limit keeps its data type (`JSON`, or `ARRAY` of `STRUCT`) without children. `0` keeps no inferred children at all. Leave the field empty for no limit.
+
+Applies to JSON files and to CSV or TSV cells that hold JSON objects, including files inside zip and tar archives. Declared schemas (JSON Schema files, Avro, Parquet, Iceberg or Delta metadata) are never limited.
+
+When the limit removes children, the run reports one warning per sample file or archive that names the affected columns.
+$$
+
+$$section
+### Max Children Per Column $(id="maxChildrenPerColumn")
+
+Maximum number of direct children kept for any column inferred from sampled JSON values, applied at every nesting level.
+
+When a column has more children, the ones whose names come first in code point order are kept, in their original order. The selection does not depend on the order of the sampled records or on which file was sampled, as long as the files share their keys, so repeated runs keep the same children and do not create new container versions. `0` keeps no inferred children at all. Leave the field empty for no limit.
+
+Together with `Max Schema Inference Depth`, it caps every inferred tree at this many children per column and that many levels. It applies to the same files and reports its warnings the same way.
+$$
+
+$$section
 ### Number of Retries $(id="retries")
 
 Times to retry the workflow in case it ends with a failure.

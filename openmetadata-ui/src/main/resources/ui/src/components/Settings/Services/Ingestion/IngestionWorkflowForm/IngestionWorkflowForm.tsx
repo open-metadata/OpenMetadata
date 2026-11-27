@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFValidationError, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -45,7 +46,11 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
@@ -134,16 +139,13 @@ const classificationLanguageEnumNames = (
 ).map((v) => capitalize(v));
 
 /**
- * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
- * section, whose children are unmounted until it is expanded. Without their own boundary they
- * suspend the form-wide one below, which swaps the entire form for a loader; the scroll container
- * then collapses, the browser clamps scrollTop to 0, and the form repaints at the top. Wrapping
- * localises the suspension so expanding a section keeps the scroll position.
+ * Collapsed sections keep these fields mounted (hidden, not unmounted) so `transformErrors` still
+ * reports their validation errors. If their chunk resolves late, their own boundary shows a local
+ * loader instead of suspending the form-wide one below, which would swap the entire form for a
+ * loader, collapse the scroll container and repaint the form at the top.
  *
  * Wrapped at module scope, not inside the `useMemo` registries: `withSuspenseFallback` returns a
  * new component per call, so wrapping per render would remount the field on every re-render.
- * The remaining lazy fields/templates all render at initial mount, where a form-wide loader is
- * the correct behaviour, so they are deliberately left alone.
  */
 const SuspendedFilterPatternField = withSuspenseFallback(FilterPatternField);
 const SuspendedProfileSampleConfigField = withSuspenseFallback(
@@ -188,13 +190,26 @@ const IngestionWorkflowForm = forwardRef<
   const formRef = useRef<Form<IngestionWorkflowData>>(null);
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
+  const [failedSubmit, setFailedSubmit] = useState<{
+    count: number;
+    firstError?: RJSFValidationError;
+  }>({ count: 0 });
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory,
+      serviceData?.serviceType
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),
@@ -208,6 +223,9 @@ const IngestionWorkflowForm = forwardRef<
 
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
+
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
 
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -231,6 +249,8 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
       };
     }
 
@@ -256,6 +276,7 @@ const IngestionWorkflowForm = forwardRef<
     return commonSchema;
   }, [
     hideFooter,
+    isAutoPartitionDetectionSupported,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
     pipeLineType,
@@ -301,7 +322,9 @@ const IngestionWorkflowForm = forwardRef<
       OneOfField: CoreOneOfField,
     };
 
-    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField(
+      serviceData?.serviceType
+    );
 
     if (
       !isUndefined(SparkAgentField) &&
@@ -315,7 +338,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return fields;
-  }, [pipeLineType]);
+  }, [pipeLineType, serviceData?.serviceType]);
 
   // RJSF getWidget only accepts function/forwardRef/memo widgets; React.lazy
   // widgets are objects and throw "Unsupported widget definition". Wrap each in a
@@ -357,9 +380,22 @@ const IngestionWorkflowForm = forwardRef<
     [onFocus, schema]
   );
 
+  const handleError = (errors: RJSFValidationError[]) =>
+    setFailedSubmit((prev) => ({
+      count: prev.count + 1,
+      firstError: errors[0],
+    }));
+
+  useEffect(() => {
+    if (failedSubmit.firstError) {
+      formRef.current?.focusOnError(failedSubmit.firstError);
+      document.activeElement?.scrollIntoView({ block: 'center' });
+    }
+  }, [failedSubmit]);
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
@@ -396,11 +432,14 @@ const IngestionWorkflowForm = forwardRef<
       }>
       <FormReadyNotifier onReady={onReady} />
       <Form
-        focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
-        formContext={{ handleFocus: handleFieldFocus }}
+        formContext={{
+          failedSubmitCount: failedSubmit.count,
+          handleFocus: handleFieldFocus,
+        }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -418,21 +457,27 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
+        onError={handleError}
         onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width
          * and keep the card's bottom border-radius visible during scroll. */}
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
-            <Space>
-              <Button type="link" onClick={onCancel}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
-            </Space>
+            </Box>
           </div>
         )}
       </Form>

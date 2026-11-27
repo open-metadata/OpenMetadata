@@ -54,7 +54,7 @@ border), **label**, optional **addon** (`Dot`/icon/flag/image), optional
 | `size` | `xs`, `sm`, `md`, `lg` (default `md`) |
 | `color` | `gray`, `brand`, `error`, `warning`, `success`, `gray-blue`, `blue-light`, `blue`, `indigo`, `purple`, `pink`, `orange`, `blue-dark` (default `gray`) |
 | `bordered` | boolean (default `true`) |
-| `iconLeading` / `iconTrailing` | `@untitledui/icons` (`BadgeWithIcon`) |
+| `iconLeading` / `iconTrailing` | `@openmetadata/ui-core-components/icons` (`BadgeWithIcon`) |
 | `flag` / `imgSrc` | flag code / image URL (flag & image variants) |
 | `buttonLabel` / `onButtonClick` / `isDisabled` | dismiss button (`BadgeWithButton`) |
 

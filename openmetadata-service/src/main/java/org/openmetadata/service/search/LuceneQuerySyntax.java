@@ -1,6 +1,8 @@
 package org.openmetadata.service.search;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -61,9 +63,10 @@ public final class LuceneQuerySyntax {
    */
   private static String withLiteralSpansMasked(String query) {
     StringBuilder masked = new StringBuilder(query.length());
+    Set<String> kindsWithoutCloser = new HashSet<>();
     int index = 0;
     while (index < query.length()) {
-      int spanEnd = endOfLiteralSpan(query, index);
+      int spanEnd = endOfLiteralSpan(query, index, kindsWithoutCloser);
       if (spanEnd > index) {
         masked.append(MASKED_TERM);
         index = spanEnd;
@@ -79,8 +82,13 @@ public final class LuceneQuerySyntax {
    * Index just past the literal span opening at {@code start}, or {@code start} when none opens
    * there or the span never closes. A range accepts either closer, since Lucene reads {@code [a TO
    * b}} as a half-open range rather than a mismatch.
+   *
+   * <p>A kind that has already been scanned to the end of the query once is never scanned again: a
+   * later opener of that kind would step through the same tail with the same escape handling, so it
+   * cannot find a closer the earlier scan missed. Without that memo a run of unterminated openers
+   * rescans the tail from every position, which is quadratic in the query length.
    */
-  private static int endOfLiteralSpan(String query, int start) {
+  private static int endOfLiteralSpan(String query, int start, Set<String> kindsWithoutCloser) {
     char opener = query.charAt(start);
     if (opener == '\\') {
       return start + 2 <= query.length() ? start + 2 : start;
@@ -92,7 +100,7 @@ public final class LuceneQuerySyntax {
           case '[', '{' -> "]}";
           default -> "";
         };
-    if (closers.isEmpty()) {
+    if (closers.isEmpty() || kindsWithoutCloser.contains(closers)) {
       return start;
     }
     for (int index = start + 1; index < query.length(); index++) {
@@ -102,6 +110,7 @@ public final class LuceneQuerySyntax {
         return index + 1;
       }
     }
+    kindsWithoutCloser.add(closers);
     return start;
   }
 

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { FormProps } from '@rjsf/core';
+import defaultValidator from '@rjsf/validator-ajv8';
 import {
   act,
   fireEvent,
@@ -29,6 +31,15 @@ const mockFormatFormDataForRender = jest.fn(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>
+  ),
   Button: jest.fn(
     ({
       children,
@@ -190,6 +201,32 @@ describe('FormBuilderV1', () => {
     });
   });
 
+  it('routes custom-field focus to the form-level onFocus', () => {
+    const onFocus = jest.fn();
+    render(<FormBuilderV1 schema={schema} onFocus={onFocus} />);
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/autoTune');
+
+    expect(onFocus).toHaveBeenCalledWith('root/autoTune', undefined);
+  });
+
+  it('keeps a consumer-provided formContext.handleFocus', () => {
+    const onFocus = jest.fn();
+    const handleFocus = jest.fn();
+    render(
+      <FormBuilderV1
+        formContext={{ handleFocus }}
+        schema={schema}
+        onFocus={onFocus}
+      />
+    );
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/name');
+
+    expect(handleFocus).toHaveBeenCalledWith('root/name');
+    expect(onFocus).not.toHaveBeenCalled();
+  });
+
   it('supports custom labels and submit button states', () => {
     const { rerender } = render(
       <FormBuilderV1
@@ -211,6 +248,25 @@ describe('FormBuilderV1', () => {
     expect(screen.getByTestId('submit-btn')).toHaveTextContent(
       'label.submitting'
     );
+  });
+
+  it('uses the default validator unless one is passed', () => {
+    const customValidator = {} as FormProps['validator'];
+    const { rerender } = render(
+      <FormBuilderV1 formData={{}} schema={schema} />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(defaultValidator);
+
+    rerender(
+      <FormBuilderV1
+        formData={{}}
+        schema={schema}
+        validator={customValidator}
+      />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(customValidator);
   });
 
   it('disables submit when requested', () => {

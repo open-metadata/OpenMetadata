@@ -80,7 +80,7 @@ public class EntityPipelineRunner {
     EntityLink entityLink = EntityLink.parse(request.getEntityLink());
     PipelineType pipelineType = request.getPipelineType();
     RunnablePipelineResolver resolver = resolverFor(entityLink, pipelineType);
-    EntityInterface target =
+    EntityInterface<?> target =
         Entity.getEntity(entityLink, resolver.entityFields(), Include.NON_DELETED);
     authorizeView(securityContext, entityLink.getEntityType(), target);
     IngestionPipeline pipeline =
@@ -127,7 +127,7 @@ public class EntityPipelineRunner {
   }
 
   private static NotFoundException noRunnablePipeline(
-      EntityInterface target, PipelineType pipelineType) {
+      EntityInterface<?> target, PipelineType pipelineType) {
     return new NotFoundException(
         String.format(
             "'%s' has no enabled, deployed %s ingestion pipeline to run.",
@@ -137,7 +137,7 @@ public class EntityPipelineRunner {
   // The run aims a pipeline at the entity the caller named, so a caller who may not see that entity
   // may not aim a pipeline at it either. The Trigger check covers the pipeline, not its target.
   private void authorizeView(
-      SecurityContext securityContext, String entityType, EntityInterface target) {
+      SecurityContext securityContext, String entityType, EntityInterface<?> target) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),

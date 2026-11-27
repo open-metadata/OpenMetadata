@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsPage from './DataProductsPage.component';
 
@@ -108,10 +110,6 @@ jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
   return jest.fn().mockReturnValue(<div>EntityVersionTimeLine</div>);
 });
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
 describe('DataProductsPage component', () => {
   it('should render successfully', async () => {
     const { container } = renderWithQueryClient(
@@ -140,5 +138,23 @@ describe('DataProductsPage component', () => {
         expect.anything()
       );
     });
+  });
+
+  it('should render the permission placeholder, not not-found, on 403', async () => {
+    (getDataProductByName as jest.Mock).mockRejectedValueOnce({
+      response: { status: 403 },
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <DataProductsPage />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('no-data-placeholder')).not.toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

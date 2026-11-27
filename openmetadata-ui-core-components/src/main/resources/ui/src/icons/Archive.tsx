@@ -18,22 +18,22 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Archive: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M3.6 6.798a2 2 0 0 1-.312-.028A1.6 1.6 0 0 1 2.03 5.513C2 5.358 2 5.173 2 4.8s0-.558.03-.712a1.6 1.6 0 0 1 1.258-1.257C3.442 2.8 3.628 2.8 4 2.8h12c.372 0 .558 0 .712.03a1.6 1.6 0 0 1 1.258 1.26c.031.154.031.34.031.712s0 .557-.03.712a1.6 1.6 0 0 1-1.258 1.257c-.085.017-.18.025-.312.028m-8 4.003h3.2m-8-4h12.8v6.56c0 1.344 0 2.016-.262 2.53a2.4 2.4 0 0 1-1.048 1.048c-.514.262-1.186.262-2.53.262H7.44c-1.344 0-2.016 0-2.53-.262a2.4 2.4 0 0 1-1.048-1.049c-.262-.513-.262-1.185-.262-2.53z"
+      d="M18 13.8V9.2A2.2 2.2 0 0 0 15.8 7h-2.307a2.2 2.2 0 0 0-1.334.45l-.722.55c-.775.59-1.85.59-2.624 0l-.722-.55A2.2 2.2 0 0 0 6.757 7H4.2A2.2 2.2 0 0 0 2 9.2v4.6A2.2 2.2 0 0 0 4.2 16h11.6a2.2 2.2 0 0 0 2.2-2.2M3 4h14m-8 9h2"
       stroke="currentColor"
       strokeWidth={1.3}
     />

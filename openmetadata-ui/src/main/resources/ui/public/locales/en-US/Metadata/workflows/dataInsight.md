@@ -3,7 +3,7 @@
 Data Insight Ingestion Pipeline Configuration.
 
 
-You can find further information on the Data Insight Ingestion in the <a href="https://docs.open-metadata.org/openmetadata/data-insight" target="_blank">docs</a>.
+You can find further information on the Data Insight Ingestion in the <a href="https://docs.open-metadata.org/how-to-guides/data-insights/ingestion" target="_blank">docs</a>.
 
 $$section
 

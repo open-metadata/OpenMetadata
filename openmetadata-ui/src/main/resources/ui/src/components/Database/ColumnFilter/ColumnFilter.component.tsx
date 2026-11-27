@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu } from 'antd';
-import Checkbox, { CheckboxChangeEvent } from 'antd/lib/checkbox/Checkbox';
+import { Box } from '@openmetadata/ui-core-components';
+
+import { Checkbox } from '@openmetadata/ui-core-components';
 import { isEmpty, startCase } from 'lodash';
 import React from 'react';
 import i18n from '../../../utils/i18next/LocalUtil';
@@ -23,8 +24,7 @@ export const ColumnFilter = ({
   confirm,
   filters,
 }: FilterDropdownProps) => {
-  const handleClick = (e: CheckboxChangeEvent) => {
-    const checkedKey = e.target.value;
+  const handleClick = (checkedKey: React.Key) => {
     if (selectedKeys.indexOf(checkedKey) > -1) {
       setSelectedKeys(selectedKeys.filter((key) => key !== checkedKey));
     } else {
@@ -46,18 +46,18 @@ export const ColumnFilter = ({
   }
 
   return (
-    <Menu
-      items={filters?.map((f) => ({
-        key: f.value as string,
-        label: (
-          <Checkbox
-            checked={selectedKeys.indexOf(f.value as React.Key) > -1}
-            value={f.value}
-            onChange={handleClick}>
-            {startCase(f.text as string)}
-          </Checkbox>
-        ),
-      }))}
-    />
+    <Box className="tw:px-3 tw:py-2" direction="col" gap={2}>
+      {filters?.map((filter) => (
+        <Checkbox
+          isSelected={selectedKeys.indexOf(filter.value as React.Key) > -1}
+          key={String(filter.value)}
+          label={startCase(filter.text as string)}
+          // Rendered inside the table header, which provides react-aria's row
+          // selection checkbox context; opt out of it.
+          slot={null}
+          onChange={() => handleClick(filter.value as React.Key)}
+        />
+      ))}
+    </Box>
   );
 };

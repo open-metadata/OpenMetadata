@@ -22,7 +22,8 @@ jest.mock('../Loader/Loader', () => {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: unknown) => fn, // Make debounce execute immediately
+  // Run immediately; `cancel` is called on unmount.
+  debounce: (fn: () => void) => Object.assign(fn, { cancel: jest.fn() }),
 }));
 
 const mockSetFilters = jest.fn();
@@ -50,6 +51,15 @@ describe('Test Searchbar Component', () => {
     const searchElement = await screen.findByTestId('searchbar');
 
     expect(searchElement).toHaveValue('');
+  });
+
+  it('turns off browser autocomplete on the search input', () => {
+    render(<Searchbar onSearch={jest.fn()} />);
+
+    expect(screen.getByTestId('searchbar')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
   });
 
   it('Renders the user typed text when a change event is fired', async () => {

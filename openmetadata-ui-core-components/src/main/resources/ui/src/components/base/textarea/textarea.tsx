@@ -1,5 +1,5 @@
-import type { ReactNode, Ref } from 'react';
-import React from 'react';
+import type { FormEvent, ReactNode, Ref } from 'react';
+import React, { forwardRef, useCallback, useLayoutEffect, useRef } from 'react';
 import type {
   TextAreaProps as AriaTextAreaProps,
   TextFieldProps as AriaTextFieldProps,
@@ -21,16 +21,80 @@ import { fontSizeClass } from '@/utils';
 const RESIZE_GRIP_CLASSES =
   'tw:[&::-webkit-resizer]:text-border-primary tw:[&::-webkit-resizer]:bg-transparent tw:[&::-webkit-resizer]:bg-[linear-gradient(135deg,transparent_31%,currentColor_31%_37%,transparent_37%_47%,currentColor_47%_53%,transparent_53%)]';
 
+export interface TextAreaAutoSize {
+  /** Rows the textarea never shrinks below. */
+  minRows?: number;
+  /** Rows after which the textarea stops growing and scrolls. */
+  maxRows?: number;
+}
+
 interface TextAreaBaseProps extends AriaTextAreaProps {
   ref?: Ref<HTMLTextAreaElement>;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  /**
+   * Grow with the content instead of scrolling. `true` grows without limit;
+   * `{ minRows, maxRows }` clamps the height to that many lines.
+   */
+  autoSize?: boolean | TextAreaAutoSize;
 }
 
-export const TextAreaBase = ({
-  className,
-  size,
-  ...props
-}: TextAreaBaseProps) => {
+const toPx = (value: string) => Number.parseFloat(value) || 0;
+
+/** Fits the textarea's height to its content, clamped to the row limits. */
+const fitToContent = (
+  element: HTMLTextAreaElement,
+  { minRows, maxRows }: TextAreaAutoSize
+) => {
+  const style = getComputedStyle(element);
+  const lineHeight = toPx(style.lineHeight) || toPx(style.fontSize) * 1.5;
+  const borders = toPx(style.borderTopWidth) + toPx(style.borderBottomWidth);
+  const chrome = toPx(style.paddingTop) + toPx(style.paddingBottom) + borders;
+
+  // Collapse first so scrollHeight measures the content, not the old height.
+  element.style.height = 'auto';
+  const contentHeight = element.scrollHeight + borders;
+  const minHeight = minRows ? minRows * lineHeight + chrome : 0;
+  const maxHeight = maxRows ? maxRows * lineHeight + chrome : Infinity;
+
+  element.style.height = `${Math.min(
+    Math.max(contentHeight, minHeight),
+    maxHeight
+  )}px`;
+  element.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+};
+
+export const TextAreaBase = forwardRef<
+  HTMLTextAreaElement,
+  Omit<TextAreaBaseProps, 'ref'>
+>(function TextAreaBase({ className, size, autoSize, onInput, ...props }, ref) {
+  const innerRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const setRefs = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      innerRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    },
+    [ref]
+  );
+
+  const resize = useCallback(() => {
+    if (autoSize && innerRef.current) {
+      fitToContent(innerRef.current, autoSize === true ? {} : autoSize);
+    }
+  }, [autoSize]);
+
+  // Every render, so a controlled value set from outside is measured too.
+  useLayoutEffect(resize);
+
+  const handleInput = (event: FormEvent<HTMLTextAreaElement>) => {
+    resize();
+    onInput?.(event);
+  };
+
   return (
     <AriaTextArea
       {...props}
@@ -55,12 +119,17 @@ export const TextAreaBase = ({
 
           fontSizeClass[size || 'md'],
 
+          // A user-dragged height would fight the content-driven one.
+          autoSize && 'tw:resize-none',
+
           typeof className === 'function' ? className(state) : className
         )
       }
+      ref={setRefs}
+      onInput={handleInput}
     />
   );
-};
+});
 
 TextAreaBase.displayName = 'TextAreaBase';
 
@@ -87,57 +156,67 @@ interface TextFieldProps extends AriaTextFieldProps {
   cols?: number;
   /** Size of the textarea. */
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  /** Grow with the content; see `TextAreaBase`. */
+  autoSize?: TextAreaBaseProps['autoSize'];
 }
 
-export const TextArea = ({
-  label,
-  hint,
-  tooltip,
-  textAreaRef,
-  hideRequiredIndicator,
-  textAreaClassName,
-  placeholder,
-  className,
-  rows,
-  cols,
-  size,
-  ...props
-}: TextFieldProps) => {
-  return (
-    <AriaTextField
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:group tw:flex tw:h-max tw:w-full tw:flex-col tw:items-start tw:justify-start tw:gap-1.5',
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {({ isInvalid, isRequired }) => (
-        <>
-          {label && (
-            <Label
-              isRequired={
-                hideRequiredIndicator ? !hideRequiredIndicator : isRequired
-              }
-              tooltip={tooltip}>
-              {label}
-            </Label>
-          )}
+export const TextArea = forwardRef<HTMLDivElement, Omit<TextFieldProps, 'ref'>>(
+  function TextArea(
+    {
+      label,
+      hint,
+      tooltip,
+      textAreaRef,
+      hideRequiredIndicator,
+      textAreaClassName,
+      placeholder,
+      className,
+      rows,
+      cols,
+      size,
+      autoSize,
+      ...props
+    },
+    ref
+  ) {
+    return (
+      <AriaTextField
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:group tw:flex tw:h-max tw:w-full tw:flex-col tw:items-start tw:justify-start tw:gap-1.5',
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {({ isInvalid, isRequired }) => (
+          <>
+            {label && (
+              <Label
+                isRequired={
+                  hideRequiredIndicator ? !hideRequiredIndicator : isRequired
+                }
+                tooltip={tooltip}>
+                {label}
+              </Label>
+            )}
 
-          <TextAreaBase
-            className={textAreaClassName}
-            cols={cols}
-            placeholder={placeholder}
-            ref={textAreaRef}
-            rows={rows}
-            size={size}
-          />
+            <TextAreaBase
+              autoSize={autoSize}
+              className={textAreaClassName}
+              cols={cols}
+              placeholder={placeholder}
+              ref={textAreaRef}
+              rows={rows}
+              size={size}
+            />
 
-          {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
-        </>
-      )}
-    </AriaTextField>
-  );
-};
+            {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+          </>
+        )}
+      </AriaTextField>
+    );
+  }
+);
 
 TextArea.displayName = 'TextArea';

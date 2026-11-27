@@ -12,6 +12,9 @@
  */
 export type Theme = 'light' | 'dark';
 
+/** What the user chose; `system` follows the operating system's colour scheme. */
+export type ThemePreference = Theme | 'system';
+
 export interface BrandColors {
   primaryColor?: string;
   hoverColor?: string;
@@ -23,7 +26,9 @@ export interface BrandColors {
 }
 
 export interface ThemeContextType {
+  /** The theme in effect, with `system` already resolved. */
   theme: Theme;
+  themePreference: ThemePreference;
   brandColors?: BrandColors;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: ThemePreference) => void;
 }

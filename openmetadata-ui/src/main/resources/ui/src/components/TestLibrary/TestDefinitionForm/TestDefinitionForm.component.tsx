@@ -10,38 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import {
-  OPEN_METADATA,
-  TEST_DEFINITION_FORM,
-} from '../../../constants/service-guide.constant';
-import { ServiceCategory } from '../../../enums/service.enum';
 import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
 import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
-import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import {
   isExternalTestDefinition,
   isSystemTestDefinition,
 } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
+import { FormHintDoc } from '../../common/atoms/drawer/formHint/FormHintDoc';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import {
   TestDefinitionFormProps,
   TestDefinitionFormValues,
@@ -55,7 +40,6 @@ import {
 
 const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   open,
-  variant = 'drawer',
   initialValues,
   onSuccess,
   onCancel,
@@ -63,7 +47,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const isEditMode = Boolean(initialValues);
-  const isModalVariant = variant === 'modal';
 
   // A system test definition is editable, but only its data quality dimension is: every other
   // field is rendered read-only, exactly like an externally-managed definition.
@@ -85,8 +68,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   });
 
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeField, setActiveField] = useState('');
-  const [showHint, setShowHint] = useState(true);
 
   const resolvedTitle =
     title ??
@@ -169,17 +150,9 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     onCancel();
   }, [form, onCancel]);
 
-  const scrollToError = useMemo(
-    () =>
-      createScrollToErrorHandler({
-        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
-      }),
-    []
-  );
-
-  // Raw RHF success handler. Passed to `useFormDrawerWithHook.onSubmit`, which
-  // runs it through a single `hookForm.handleSubmit`; the modal variant needs the
-  // pre-wrapped `submitAndClose` below because it calls submit on a button press.
+  // Raw RHF success handler. `useFormDrawerWithHook` runs it through a single
+  // `hookForm.handleSubmit` for both the footer button and the form's own
+  // submit (Enter in a field).
   const onValidSubmit = useCallback(
     async (data: TestDefinitionFormValues) => {
       try {
@@ -192,46 +165,14 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     [handleSubmit, handleDismiss]
   );
 
-  const submitAndClose = useMemo(
-    () => form.handleSubmit(onValidSubmit, () => scrollToError()),
-    [form, onValidSubmit, scrollToError]
-  );
-
   const formBody = (
     <TestDefinitionFormBody
       errorMessage={errorMessage}
       form={form}
       isEditMode={isEditMode}
       isReadOnlyField={isReadOnlyField}
-      onActiveFieldChange={setActiveField}
       onErrorDismiss={handleErrorDismiss}
     />
-  );
-
-  const drawerForm = (
-    <HookForm
-      className="tw:flex tw:min-h-0 tw:w-full tw:flex-1 tw:flex-col"
-      form={form}
-      onSubmit={submitAndClose}>
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:gap-6">
-        <div className="drawer-form-content tw:min-h-0 tw:min-w-0 tw:basis-[60%] tw:overflow-y-auto tw:py-6 tw:pr-2">
-          {formBody}
-        </div>
-        <div
-          className={classNames(
-            'drawer-doc-panel service-doc-panel markdown-parser',
-            'tw:my-6 tw:mr-6 tw:min-h-0 tw:min-w-0 tw:basis-[40%]',
-            'tw:overflow-y-auto tw:rounded-xl tw:border',
-            'tw:border-solid tw:border-secondary tw:px-5'
-          )}>
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName={TEST_DEFINITION_FORM}
-            serviceType={OPEN_METADATA as ServiceCategory}
-          />
-        </div>
-      </div>
-    </HookForm>
   );
 
   const drawerTitle = (
@@ -240,97 +181,35 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     </Typography>
   );
 
-  const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithHook<TestDefinitionFormValues>({
-      className: 'test-definition-form-drawer',
-      title: drawerTitle,
-      hookForm: form,
-      form: drawerForm,
-      width: '80vw',
-      submitLabel: t('label.save'),
-      submitTestId: 'save-test-definition',
-      onClose: handleDismiss,
-      onSubmit: onValidSubmit,
-    });
+  const { formDrawer } = useFormDrawerWithHook<TestDefinitionFormValues>({
+    className: 'test-definition-form-drawer',
+    title: drawerTitle,
+    hookForm: form,
+    form: formBody,
+    formHint: {
+      renderDoc: (markdown) => (
+        <FormHintDoc markdown={monospaceParameterNames(markdown)} />
+      ),
+    },
+    open,
+    submitLabel: t('label.save'),
+    submitTestId: 'save-test-definition',
+    onClose: handleDismiss,
+    onSubmit: onValidSubmit,
+  });
 
   // react-hook-form applies defaultValues only on the first render; re-seed the
-  // form whenever the target entity reference changes (edit a different
-  // definition, create↔edit, or a same-id refetch) so a persistently mounted
-  // form never shows stale values. Callers pass a stable `initialValues` ref per
-  // selection, so this does not loop.
+  // form on every open and whenever the target entity reference changes (edit a
+  // different definition, create↔edit, or a same-id refetch) so a persistently
+  // mounted form never shows stale values. Seeding on open, before the fields
+  // mount, matters for the drawer: its fields stay mounted while it slides out
+  // and re-register their last value, undoing a reset made on close. Callers
+  // pass a stable `initialValues` ref per selection, so this does not loop.
   useEffect(() => {
-    form.reset(buildFormDefaults(initialValues));
-  }, [initialValues, form]);
-
-  useEffect(() => {
-    if (!isModalVariant && open) {
-      openDrawer();
+    if (open) {
+      form.reset(buildFormDefaults(initialValues));
     }
-  }, [isModalVariant, open, openDrawer]);
-
-  useEffect(() => {
-    if (!isModalVariant && !open && isOpen) {
-      closeDrawer();
-    }
-  }, [isModalVariant, open, isOpen, closeDrawer]);
-
-  const hintLabel = (label: string) => (
-    <Box align="center" className="tw:gap-2" direction="row">
-      <Lightbulb05 className="tw:size-4 tw:shrink-0 tw:text-secondary" />
-      <Typography
-        className="tw:whitespace-nowrap tw:text-secondary"
-        size="text-sm"
-        weight="medium">
-        {label}
-      </Typography>
-    </Box>
-  );
-
-  if (isModalVariant) {
-    return (
-      <AiFormModal
-        hintOpen={showHint}
-        isSubmitting={form.formState.isSubmitting}
-        open={open}
-        submitLabel={t('label.save')}
-        subtitle={t('message.page-sub-header-for-test-definitions')}
-        title={resolvedTitle}
-        onClose={handleDismiss}
-        onHintToggle={setShowHint}
-        onSubmit={submitAndClose}>
-        <HookForm
-          emptyFieldDoc={
-            // width="100%" is required: EmptyPlaceholder's 300px default is
-            // wider than the hint column's 260px minimum and would overflow
-            // once the column shrinks on a narrow viewport.
-            <EmptyPlaceholder
-              description={t('message.form-hint-empty-state')}
-              icon={Lightbulb05}
-              title={t('label.no-entity-selected', {
-                entity: t('label.field'),
-              })}
-              width="100%"
-            />
-          }
-          fieldDocDisplay="panel"
-          fieldDocHeader={hintLabel(t('label.form-hint'))}
-          form={form}
-          formClassName="tw:px-7 tw:pt-6 tw:pb-7"
-          renderFieldDoc={(markdown) => (
-            <div className="form-hint-doc">
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant={false}
-                markdown={monospaceParameterNames(markdown)}
-              />
-            </div>
-          )}
-          showFieldDocs={showHint}
-          onSubmit={submitAndClose}>
-          {formBody}
-        </HookForm>
-      </AiFormModal>
-    );
-  }
+  }, [open, initialValues, form]);
 
   return formDrawer;
 };

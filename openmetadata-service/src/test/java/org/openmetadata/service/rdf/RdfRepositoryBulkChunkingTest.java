@@ -346,12 +346,14 @@ class RdfRepositoryBulkChunkingTest {
   void untranslatableEntityIsIsolatedFromItsBatch() {
     RdfStorageInterface storage = mock(RdfStorageInterface.class);
     JsonLdTranslator translator = mock(JsonLdTranslator.class);
+    JsonLdTranslator.Page page = mock(JsonLdTranslator.Page.class);
     RdfRepository repository = new RdfRepository(config(), storage, translator);
 
-    EntityInterface good = entityWithId(UUID.randomUUID());
-    EntityInterface bad = entityWithId(UUID.randomUUID());
-    when(translator.toRdf(good)).thenReturn(ModelFactory.createDefaultModel());
-    when(translator.toRdf(bad)).thenThrow(new IllegalStateException("tagLabel missing tagFQN"));
+    EntityInterface<?> good = entityWithId(UUID.randomUUID());
+    EntityInterface<?> bad = entityWithId(UUID.randomUUID());
+    when(translator.page(List.of(good, bad))).thenReturn(page);
+    when(page.toRdf(good)).thenReturn(ModelFactory.createDefaultModel());
+    when(page.toRdf(bad)).thenThrow(new IllegalStateException("tagLabel missing tagFQN"));
 
     List<RdfStorageInterface.EntityWriteRequest> requests =
         repository.translateEntities(List.of(good, bad));
@@ -362,8 +364,8 @@ class RdfRepositoryBulkChunkingTest {
     assertEquals(good.getId(), requests.getFirst().entityId());
   }
 
-  private static EntityInterface entityWithId(UUID id) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> entityWithId(UUID id) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     lenient().when(entity.getId()).thenReturn(id);
     lenient()
         .when(entity.getEntityReference())

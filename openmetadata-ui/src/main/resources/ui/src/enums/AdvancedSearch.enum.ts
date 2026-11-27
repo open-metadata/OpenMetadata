@@ -82,6 +82,10 @@ export enum EntityFields {
   PARENT = 'parent.displayName.keyword',
   DIRECTORY = 'directory.displayName.keyword',
   FILE_TYPE = 'fileType',
+  DATA_CONTRACT_ENTITY_TYPE = 'entity.type',
+  DATA_CONTRACT_ENTITY_FQN = 'entity.fullyQualifiedName.keyword',
+  DATA_CONTRACT_LATEST_RESULT_STATUS = 'latestResult.status',
+  REVIEWERS = 'reviewers.displayName.keyword',
   FILE_EXTENSION = 'fileExtension',
   LAST_MODIFIED_BY = 'lastModifiedBy',
   SPREADSHEET = 'spreadsheet.displayName.keyword',
@@ -115,6 +119,7 @@ export enum EntityReferenceFields {
   SYNONYMS = 'synonyms',
   ASSETS_COUNT = 'assetsCount',
   ENTITY_STATUS = 'entityStatus',
+  PROVIDER = 'provider',
   OUTPUT_PORTS_COUNT = 'outputPortsCount',
   TEST_SUITE = 'testSuite.name',
 }

@@ -73,6 +73,45 @@ describe('useKnowledgeGraphData', () => {
     expect(result.current.unfiltered).toEqual(graph);
   });
 
+  it('gives nodes with an empty label a readable one, so pickers and cards are never blank', async () => {
+    fetchGraph.mockResolvedValue({
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: 'term',
+          label: '',
+          name: 'Account',
+          type: 'glossaryTerm',
+        },
+      ],
+    });
+    const { wrapper } = withClient();
+    const { result } = renderHook(() => useKnowledgeGraphData(query, 0), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(
+      result.current.unfiltered?.nodes.find((node) => node.id === 'term')?.label
+    ).toBe('Account');
+  });
+
+  it('uses the node ID as its label when the response omits all node text', async () => {
+    fetchGraph.mockResolvedValue({
+      ...graph,
+      nodes: [{ id: 'unnamed', type: 'table' }],
+    });
+    const { wrapper } = withClient();
+    const { result } = renderHook(() => useKnowledgeGraphData(query, 0), {
+      wrapper,
+    });
+
+    await waitFor(() =>
+      expect(result.current.data?.nodes[0].label).toBe('unnamed')
+    );
+  });
+
   it('ignores a stale response even when the transport does not honor cancellation', async () => {
     const old = deferred();
     const latest = deferred();

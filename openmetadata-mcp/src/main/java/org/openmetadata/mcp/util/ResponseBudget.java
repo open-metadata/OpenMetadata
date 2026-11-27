@@ -76,7 +76,7 @@ public final class ResponseBudget {
 
   /** Default item budget: {@link #DEFAULT_BUDGET_FACTOR} of the dispatch-level cap. */
   public static long defaultBudgetChars() {
-    return (long) (McpResponseTrim.MAX_RESPONSE_CHARS * DEFAULT_BUDGET_FACTOR);
+    return (long) (McpResponseTrim.maxResponseChars() * DEFAULT_BUDGET_FACTOR);
   }
 
   /**

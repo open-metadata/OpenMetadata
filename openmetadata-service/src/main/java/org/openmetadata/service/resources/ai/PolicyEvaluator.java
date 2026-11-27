@@ -30,13 +30,8 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.AICompliance;
 import org.openmetadata.schema.type.AIComplianceRecord;
 import org.openmetadata.schema.type.AIEvidence;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Evaluates a small set of always-on AI governance policies against an entity.
@@ -51,7 +46,6 @@ import org.openmetadata.service.util.EntityUtil;
 final class PolicyEvaluator {
 
   private static final long FAIRNESS_FRESHNESS_MS = 90L * 24 * 60 * 60 * 1000;
-  private static final int PAGE_SIZE = 500;
 
   private PolicyEvaluator() {}
 
@@ -61,7 +55,7 @@ final class PolicyEvaluator {
     NOT_APPLICABLE
   }
 
-  static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface entity, String entityType) {
+  static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface<?> entity, String entityType) {
     List<AIGovernancePolicyRuleResult> rules = new ArrayList<>();
     rules.add(piiAccessRequiresDpia(entity));
     rules.add(subgroupFairnessQuarterly(entity));
@@ -72,7 +66,7 @@ final class PolicyEvaluator {
     return rules;
   }
 
-  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     boolean accessesPii =
         governance.dataClassification() != null
@@ -98,7 +92,7 @@ final class PolicyEvaluator {
         dpiaUrl == null ? (accessesPii ? "No DPIA on file" : "N/A") : dpiaUrl);
   }
 
-  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     String euRisk = euRiskClassification(governance.aiCompliance());
     boolean highRisk = "High".equals(euRisk) || "Unacceptable".equals(euRisk);
@@ -129,7 +123,7 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult humanOversight(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult humanOversight(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     Boolean oversight = humanOversightFromGovernance(governance.aiCompliance());
     Status status;
@@ -152,7 +146,7 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult auditLogRetention(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult auditLogRetention(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     DataClassificationSnapshot classification = governance.dataClassification();
     String value =
@@ -197,7 +191,7 @@ final class PolicyEvaluator {
         .withValue(value);
   }
 
-  private static GovernanceSnapshot governance(EntityInterface entity) {
+  private static GovernanceSnapshot governance(EntityInterface<?> entity) {
     GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
       result = governance(app.getGovernanceMetadata());
@@ -276,7 +270,7 @@ final class PolicyEvaluator {
     return result;
   }
 
-  private static Long lastBiasEval(EntityInterface entity) {
+  private static Long lastBiasEval(EntityInterface<?> entity) {
     Long result = null;
     if (entity instanceof AIApplication app && app.getBiasMetrics() != null) {
       result = app.getBiasMetrics().getLastEvaluatedAt();
@@ -295,49 +289,50 @@ final class PolicyEvaluator {
    * AI assets table; a real time-series store can replace this later without
    * changing the response shape.
    */
-  static List<AIGovernancePolicyViolation> recentViolations(UUID policyId, Long since, int limit) {
-    String ruleNamePattern = ruleNameForPolicy(policyId);
-    long sinceMs = since == null ? 0 : since;
-    int effectiveLimit = Math.max(1, Math.min(limit, 500));
-
-    List<AIGovernancePolicyViolation> rows = new ArrayList<>();
-    scanAssets(Entity.AI_APPLICATION, ruleNamePattern, sinceMs, effectiveLimit, rows);
-    if (rows.size() < effectiveLimit) {
-      scanAssets(Entity.LLM_MODEL, ruleNamePattern, sinceMs, effectiveLimit, rows);
-    }
-    if (rows.size() < effectiveLimit) {
-      scanAssets(Entity.MCP_SERVER, ruleNamePattern, sinceMs, effectiveLimit, rows);
+  static List<AIGovernancePolicyViolation> recentViolations(
+      final AIGovernanceAssetReader reader, UUID policyId, Long since, int limit) {
+    final ViolationScan scan =
+        new ViolationScan(
+            ruleNameForPolicy(policyId),
+            since == null ? 0 : since,
+            Math.max(1, Math.min(limit, 500)));
+    final List<AIGovernancePolicyViolation> rows = new ArrayList<>();
+    for (final String entityType :
+        List.of(Entity.AI_APPLICATION, Entity.LLM_MODEL, Entity.MCP_SERVER)) {
+      scanAssets(reader, entityType, scan, rows);
+      if (rows.size() >= scan.limit()) {
+        break;
+      }
     }
 
     return rows;
   }
 
   private static void scanAssets(
+      final AIGovernanceAssetReader reader,
       String entityType,
-      String ruleNamePattern,
-      long sinceMs,
-      int limit,
+      final ViolationScan scan,
       List<AIGovernancePolicyViolation> rows) {
-    List<? extends EntityInterface> entities = listEntities(entityType, limit);
-    for (EntityInterface entity : entities) {
-      if (rows.size() >= limit) {
+    List<? extends EntityInterface<?>> entities = reader.list(entityType, "", scan.limit());
+    for (EntityInterface<?> entity : entities) {
+      if (rows.size() >= scan.limit()) {
         return;
       }
       List<AIGovernancePolicyRuleResult> rules = evaluate(entity, entityType);
       for (AIGovernancePolicyRuleResult rule : rules) {
-        if (rows.size() >= limit) {
+        if (rows.size() >= scan.limit()) {
           return;
         }
         if (!"Breached".equals(rule.getStatus())) {
           continue;
         }
         String ruleName = rule.getName();
-        if (ruleNamePattern != null
-            && !ruleName.toLowerCase(Locale.ROOT).contains(ruleNamePattern)) {
+        if (scan.ruleNamePattern() != null
+            && !ruleName.toLowerCase(Locale.ROOT).contains(scan.ruleNamePattern())) {
           continue;
         }
         Long observedAt = entity.getUpdatedAt();
-        if (observedAt == null || observedAt < sinceMs) {
+        if (observedAt == null || observedAt < scan.sinceMs()) {
           continue;
         }
         rows.add(
@@ -354,24 +349,7 @@ final class PolicyEvaluator {
     }
   }
 
-  private static List<? extends EntityInterface> listEntities(String entityType, int limit) {
-    List<EntityInterface> result = new ArrayList<>();
-    try {
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
-      String after = null;
-      do {
-        int pageSize = Math.min(PAGE_SIZE, Math.max(1, limit - result.size()));
-        ResultList<? extends EntityInterface> page =
-            repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, pageSize, after);
-        result.addAll(page.getData());
-        after = page.getPaging() == null ? null : page.getPaging().getAfter();
-      } while (after != null && result.size() < limit);
-    } catch (Exception ignored) {
-      // Swallow - empty list is acceptable for the violations endpoint
-    }
-    return result;
-  }
+  private record ViolationScan(String ruleNamePattern, long sinceMs, int limit) {}
 
   /**
    * Maps a stored policy id to a substring pattern that PolicyEvaluator's

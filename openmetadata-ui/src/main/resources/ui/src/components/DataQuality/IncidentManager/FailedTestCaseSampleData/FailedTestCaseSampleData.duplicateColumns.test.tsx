@@ -31,11 +31,11 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../../utils/EntityPureUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityPureUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('my_status'),
 }));
 

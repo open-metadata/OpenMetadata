@@ -19,6 +19,7 @@ import {
 } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TestCasePageTabs } from '../enums/TestSuite.enum';
+import { TaskType } from '../generated/entity/tasks/task';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
 import {
   getEntityDetailsPath,
@@ -27,6 +28,7 @@ import {
   getUserPath,
 } from './RouterUtils';
 import { getEncodedFqn } from './StringUtils';
+import { getTaskDetailPath, isOntologyReviewTask } from './TaskUtils';
 
 export const TASK_ENTITIES = [
   EntityType.TABLE,
@@ -59,10 +61,11 @@ export const getKnowledgeCenterPagePath = (
   return `${ROUTES.CONTEXT_CENTER_ARTICLES}/${encodedFqn}/${tab}/${subTab}`;
 };
 
-export const getTaskDetailPathFromTask = (task: TaskEntity) => {
-  const entityFqn = task.about?.fullyQualifiedName ?? '';
-  const entityType = (task.about?.type as EntityType) ?? '';
-
+/** The tasks tab of an asset, where the asset's tasks are opened. */
+export const getEntityTasksPath = (
+  entityType: EntityType,
+  entityFqn: string
+) => {
   if (entityType === EntityType.TEST_CASE) {
     return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
@@ -94,6 +97,14 @@ export const getTaskDetailPathFromTask = (task: TaskEntity) => {
     ActivityFeedTabs.TASKS
   );
 };
+
+export const getTaskDetailPathFromTask = (task: TaskEntity) =>
+  isOntologyReviewTask(task)
+    ? getTaskDetailPath(task)
+    : getEntityTasksPath(
+        (task.about?.type as EntityType) ?? '',
+        task.about?.fullyQualifiedName ?? ''
+      );
 
 /**
  * Where a task's asset lives, for a task that may not name one: an incident
@@ -138,6 +149,39 @@ export const isTaskTerminalStatus = (status?: TaskEntityStatus) =>
 
 export const isTaskPendingFurtherApproval = (task?: TaskEntity) =>
   Boolean(task) && !isTaskTerminalStatus(task?.status);
+
+/** Votes counted in the task's current stage; an earlier stage's vote does not decide this one. */
+export const getCurrentStageVotes = (task?: TaskEntity) =>
+  (task?.reviewVotes ?? []).filter(
+    (vote) => vote.stage === task?.workflowStageId
+  );
+
+export const hasVotedInCurrentStage = (
+  task?: TaskEntity,
+  user?: { id?: string }
+) =>
+  Boolean(user?.id) &&
+  getCurrentStageVotes(task).some((vote) => vote.voter.id === user?.id);
+
+/**
+ * A workflow approval is decided by its assignees only (the server refuses
+ * anyone else), so the ResolveTask permission alone does not let a reviewer act.
+ */
+export const isDecidedByAssignees = (task: TaskEntity) =>
+  Boolean(task.workflowInstanceId) &&
+  (task.type === TaskType.RequestApproval ||
+    typeof task.payload?.changeRequestId === 'string');
+
+/**
+ * Whether the assignee rule lets the viewer decide: any task that is not a
+ * workflow approval, or one assigned to the viewer directly or through a team.
+ */
+export const isAllowedDecider = (
+  task: TaskEntity,
+  currentUserIds: ReadonlySet<string>
+) =>
+  !isDecidedByAssignees(task) ||
+  (task.assignees ?? []).some((assignee) => currentUserIds.has(assignee.id));
 
 export const getRequestDescriptionPath = (
   entityType: string,

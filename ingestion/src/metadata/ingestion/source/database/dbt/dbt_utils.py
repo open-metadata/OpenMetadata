@@ -16,6 +16,7 @@ import re
 import traceback
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from metadata.generated.schema.entity.data.metric import MetricType
 from metadata.generated.schema.entity.data.table import Table
@@ -27,6 +28,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.constants import (
+    DBT_SQL_LANGUAGE,
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
     DbtCommonEnum,
@@ -758,7 +760,7 @@ def _extract_dbt_reference(reference: Any) -> tuple[str | None, str] | None:
     return resolved
 
 
-def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
+def build_upstream_node(parent_node, parent_fqn: str, table_id: UUID | None = None) -> UpstreamNode:
     """Pair a dbt manifest node with its table FQN, recording the namespace that a
     ``ref('pkg', 'model')`` or ``source('source_name', 'table')`` reference would use."""
     namespace = getattr(parent_node, "source_name", None) or getattr(parent_node, "package_name", None)
@@ -766,6 +768,7 @@ def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
         name=parent_node.name,
         qualified_name=f"{namespace}.{parent_node.name}" if namespace else None,
         fqn=parent_fqn,
+        table_id=table_id,
     )
 
 
@@ -814,12 +817,20 @@ def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> str | N
     return resolved
 
 
-def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> str | None:
-    """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
-    parent, so if removing it leaves exactly one candidate that must be the tested table."""
-    referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
-    candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn] if referenced_fqn else []
-    return candidates[0] if len(candidates) == 1 else None
+def _resolve_without_model(upstream_list, upstream_by_name, kwargs) -> str | None:
+    """Last resort when the tested model did not resolve.
+
+    The ``to:`` upstream of a ``relationships`` test is the referenced parent, never the tested
+    table, so it is excluded and only a single remaining candidate is trusted. None left means
+    the tested model's table is not in OpenMetadata; several left would be an arbitrary pick.
+    A ``to:`` that cannot be identified cannot be excluded, and dbt lists it first, so the
+    first-upstream fallback is kept only for tests without ``to:``.
+    """
+    if kwargs.get("to"):
+        referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
+        candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn]
+        return candidates[0] if referenced_fqn and len(candidates) == 1 else None
+    return upstream_list[0] if upstream_list else None
 
 
 def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
@@ -840,9 +851,7 @@ def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
 
     primary_table_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("model"))
     if not primary_table_fqn:
-        primary_table_fqn = _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs)
-    if not primary_table_fqn and upstream_list:
-        primary_table_fqn = upstream_list[0]
+        primary_table_fqn = _resolve_without_model(upstream_list, upstream_by_name, kwargs)
 
     return primary_table_fqn
 
@@ -867,6 +876,17 @@ def generate_entity_link(dbt_test):
     """
     primary_table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
     if not primary_table_fqn:
+        if dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+            manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
+            model_reference = _extract_dbt_reference(_get_test_kwargs(manifest_node).get("model"))
+            logger.warning(
+                "Skipping dbt test [%s]: the table of its model [%s] could not be identified among"
+                " its upstreams %s in OpenMetadata (missing, filtered out, or ambiguous); it is"
+                " never attached to the table it references",
+                getattr(manifest_node, "name", None),
+                model_reference[1] if model_reference else None,
+                dbt_test.get(DbtCommonEnum.UPSTREAM.value),
+            )
         return []
 
     entity_link_str = entity_link.get_entity_link(
@@ -899,6 +919,15 @@ def get_dbt_raw_query(mnode) -> str | None:
         return mnode.raw_sql
     logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
     return None
+
+
+def is_dbt_sql_node(mnode: object) -> bool:
+    """
+    dbt writes a node's language from manifest v7 (dbt 1.3, which introduced Python models) and
+    never on seeds, so a node without one is SQL
+    """
+    language = getattr(mnode, "language", None)
+    return not language or str(language).lower() == DBT_SQL_LANGUAGE
 
 
 def check_or_create_test_suite(metadata: OpenMetadata, test_entity_link: str) -> TestSuite | EntityReference:

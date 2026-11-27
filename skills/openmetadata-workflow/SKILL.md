@@ -7,6 +7,14 @@ description: Meta-skill loaded at session start. Directs Claude to check for app
 
 This skill is loaded automatically at session start. It ensures you follow the right workflow for every task.
 
+## Completion boundary
+
+Follow AGENTS.md's task completion policy. Select verification once for the requested outcome;
+these skills share evidence, not independent test runs. Implementation, push and PR creation use
+focused checks; merge readiness includes the full impacted plan. Report broader pending coverage
+and finish at the requested outcome. CI monitoring and workflow dispatch need that task scope.
+Load only applicable instructions, batch independent reads, and return compact command summaries.
+
 ## Before Starting Any Task
 
 **Check which skills apply to your task and use them.** This is not optional — if a skill applies, you must follow it.
@@ -19,14 +27,14 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | Bug fix | `/systematic-debugging` then `/tdd` (write regression test) then `/verification` |
 | New API endpoint | `/planning` then `/tdd` then `/test-enforcement` (must include integration test) |
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
-| UI component | **Read `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` first** (folder structure + file naming for any new file), then `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + Playwright if user-facing) |
+| UI component | **Read `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` first** (folder structure + file naming for any new file), then `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + a browser test for page behaviour or Playwright E2E for cross-feature journeys if user-facing — see `.claude/rules/frontend-browser-tests.md`) |
 | UI a11y / UX / design audit | `/web-design-guidelines` |
 | React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
-| Opening / finalizing a PR | `/test-enforcement` then `/verification` then `/pr-checklist` |
+| Opening / finalizing a PR | `/test-enforcement` then `/java-affected-tests` (any Java, schema, migration or pom change) then `/verification` then `/pr-checklist` (includes `/ui-pr-recording` when creating a PR for a UI feature or feature task) |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
-| Finishing implementation | `/test-enforcement` then `/verification` |
+| Finishing implementation | `/test-enforcement` then `/java-affected-tests` (Java side) then `/verification` |
 
 > **Note:** Connector skills (`/connector-standards`, `/connector-building`, `/connector-review`) and `/playwright` are part of the OpenMetadata Skills plugin and ship together with this workflow skill. They are defined in the `skills/` directory alongside this file.
 
@@ -52,14 +60,14 @@ This skill is loaded automatically at session start. It ensures you follow the r
 3. **Always enforce test coverage.** Before any PR, use `/test-enforcement` to verify:
    - 90% line coverage on changed Java classes
    - Integration tests for all changed/new API endpoints
-   - Playwright E2E tests for new user-facing features
+   - Browser tests for new UI page behaviour + Playwright E2E for cross-feature journeys (per `.claude/rules/frontend-browser-tests.md`)
    - Jest unit tests for new React components
 
 4. **Verify with evidence.** Use `/verification` before claiming completion. Show actual test output, not claims.
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
-6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps. When creating a PR for a UI feature or feature task, use [ui-pr-recording](../ui-pr-recording/SKILL.md): run the PR build in Docker with sample data and upload the verified feature video into the description. Other changes may explain N/A; this requirement does not activate during implementation or standalone review.
 
 ### OpenMetadata Cross-Layer Checklist
 

@@ -182,11 +182,6 @@ public final class OntologyAiService {
 
   private Glossary editableGlossary(final String fullyQualifiedName) {
     final Glossary glossary = catalog.glossary(fullyQualifiedName);
-    if (glossary.getOntologyConfiguration() != null
-        && Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly())) {
-      throw new IllegalArgumentException(
-          "Glossary '%s' is read-only".formatted(glossary.getFullyQualifiedName()));
-    }
     return glossary;
   }
 

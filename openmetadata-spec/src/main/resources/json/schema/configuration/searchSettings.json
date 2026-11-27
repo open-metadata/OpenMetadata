@@ -13,6 +13,11 @@
           "description": "Flag to enable or disable RBAC Search Configuration globally.",
           "default": false
         },
+        "enableColumnIndexing": {
+          "type": "boolean",
+          "description": "Index table columns as standalone search documents in the column search index. Disabling it stops column indexing and deletes the column search index; enabling it creates the index again, and a reindex of tables fills it.",
+          "default": true
+        },
         "maxAggregateSize": {
           "type": "integer",
           "default": 10000
@@ -54,12 +59,12 @@
           "description": "Optional list of numeric field-based boosts applied globally."
         },
         "keywordWeight": {
-          "description": "Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)",
+          "description": "Weight for BM25 keyword search in hybrid search (0.0-1.0)",
           "type": "number",
           "default": 0.6
         },
         "semanticWeight": {
-          "description": "Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)",
+          "description": "Weight for semantic vector search in hybrid search (0.0-1.0)",
           "type": "number",
           "default": 0.4
         }

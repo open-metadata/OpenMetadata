@@ -27,7 +27,7 @@ class EntityETagTest {
 
   @Test
   void generateETagReturnsQuotedHashAndWeakVariant() {
-    EntityInterface entity = entity(1.2, 123456L);
+    EntityInterface<?> entity = entity(1.2, 123456L);
 
     String strong = EntityETag.generateETag(entity);
     String weak = EntityETag.generateWeakETag(entity);
@@ -42,7 +42,7 @@ class EntityETagTest {
 
   @Test
   void etagIsStableForUnchangedEntity() {
-    EntityInterface entity = entity(1.2, 123456L);
+    EntityInterface<?> entity = entity(1.2, 123456L);
 
     assertEquals(EntityETag.generateETag(entity), EntityETag.generateETag(entity));
   }
@@ -54,8 +54,8 @@ class EntityETagTest {
     // the post-vote conditional GET was answered 304 and the header rendered stale counts.
     // The ETag must move when the votes block moves, even though version/updatedAt are identical.
     UUID id = UUID.randomUUID();
-    EntityInterface before = table(id, 1.2, 123456L, 0);
-    EntityInterface after = table(id, 1.2, 123456L, 1);
+    EntityInterface<?> before = table(id, 1.2, 123456L, 0);
+    EntityInterface<?> after = table(id, 1.2, 123456L, 1);
 
     assertEquals(before.getVersion(), after.getVersion());
     assertEquals(before.getUpdatedAt(), after.getUpdatedAt());
@@ -65,8 +65,8 @@ class EntityETagTest {
   @Test
   void etagChangesWhenVersionChanges() {
     UUID id = UUID.randomUUID();
-    EntityInterface v1 = table(id, 1.0, 100L, 0);
-    EntityInterface v2 = table(id, 1.1, 200L, 0);
+    EntityInterface<?> v1 = table(id, 1.0, 100L, 0);
+    EntityInterface<?> v2 = table(id, 1.1, 200L, 0);
 
     assertNotEquals(EntityETag.generateETag(v1), EntityETag.generateETag(v2));
   }
@@ -79,9 +79,9 @@ class EntityETagTest {
     // never hand back an owners-bearing body. The same selection with unchanged data stays stable
     // so the conditional GET still short-circuits to 304.
     UUID id = UUID.randomUUID();
-    EntityInterface tagsOnly =
+    EntityInterface<?> tagsOnly =
         partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
-    EntityInterface ownersOnly =
+    EntityInterface<?> ownersOnly =
         partialTable(id)
             .withOwners(
                 List.of(
@@ -89,7 +89,7 @@ class EntityETagTest {
                         .withId(UUID.randomUUID())
                         .withType("user")
                         .withName("u1")));
-    EntityInterface tagsOnlyUnchanged =
+    EntityInterface<?> tagsOnlyUnchanged =
         partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
 
     assertNotEquals(EntityETag.generateETag(tagsOnly), EntityETag.generateETag(ownersOnly));
@@ -104,7 +104,7 @@ class EntityETagTest {
     // updatedAt and differs only in the named field — exactly the shape a version-only ETag missed.
     UUID t = UUID.randomUUID();
     UUID u = UUID.randomUUID();
-    record Case(String field, EntityInterface before, EntityInterface after) {}
+    record Case(String field, EntityInterface<?> before, EntityInterface<?> after) {}
     List<Case> cases =
         List.of(
             new Case(
@@ -149,7 +149,7 @@ class EntityETagTest {
 
   @Test
   void validateETagSupportsExactWildcardWeakAndMultipleMatches() {
-    EntityInterface entity = entity(2.5, 98765L);
+    EntityInterface<?> entity = entity(2.5, 98765L);
     String etag = EntityETag.generateETag(entity);
     String weak = EntityETag.generateWeakETag(entity);
 
@@ -192,8 +192,8 @@ class EntityETagTest {
     // validator survives the round trip. Same entity, same version, two projections:
     UUID id = UUID.randomUUID();
     TagLabel tag = new TagLabel().withTagFQN("PII.Sensitive");
-    EntityInterface asPublishedByRead = partialTable(id).withTags(List.of(tag));
-    EntityInterface asLoadedForPatch =
+    EntityInterface<?> asPublishedByRead = partialTable(id).withTags(List.of(tag));
+    EntityInterface<?> asLoadedForPatch =
         partialTable(id)
             .withTags(List.of(tag))
             .withTableConstraints(List.of(new TableConstraint().withColumns(List.of("id"))));
@@ -213,7 +213,7 @@ class EntityETagTest {
 
   @Test
   void validateETagRejectsMismatchedHeaders() {
-    EntityInterface entity = entity(3.1, 24680L);
+    EntityInterface<?> entity = entity(3.1, 24680L);
 
     assertThrows(
         PreconditionFailedException.class,
@@ -222,7 +222,7 @@ class EntityETagTest {
 
   @Test
   void addETagHeaderAndEnforcementFlagBehaveAsExpected() {
-    EntityInterface entity = entity(4.0, 13579L);
+    EntityInterface<?> entity = entity(4.0, 13579L);
 
     Response response = EntityETag.addETagHeader(Response.ok(), entity).build();
 
@@ -230,7 +230,7 @@ class EntityETagTest {
     assertFalse(EntityETag.isETagEnforcementEnabled());
   }
 
-  private static EntityInterface entity(double version, long updatedAt) {
+  private static EntityInterface<?> entity(double version, long updatedAt) {
     return new Table()
         .withId(UUID.randomUUID())
         .withName("etag_table")
@@ -238,7 +238,7 @@ class EntityETagTest {
         .withUpdatedAt(updatedAt);
   }
 
-  private static EntityInterface table(UUID id, double version, long updatedAt, int upVotes) {
+  private static EntityInterface<?> table(UUID id, double version, long updatedAt, int upVotes) {
     return new Table()
         .withId(id)
         .withName("etag_table")

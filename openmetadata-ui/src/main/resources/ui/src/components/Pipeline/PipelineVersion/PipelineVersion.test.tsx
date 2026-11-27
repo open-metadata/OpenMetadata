@@ -12,12 +12,19 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
 } from '../../../mocks/PipelineVersion.mock';
 import PipelineVersion from './PipelineVersion.component';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 const mockNavigate = jest.fn();
 
@@ -56,10 +63,6 @@ jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
@@ -89,6 +92,10 @@ jest.mock(
 );
 
 JSON.parse = jest.fn().mockReturnValue([]);
+
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'pipeline' });
+});
 
 describe('PipelineVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -175,9 +182,37 @@ describe('PipelineVersion tests', () => {
 
     expect(taskWithoutDisplayName).toBeInTheDocument();
   });
+
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(
+      <PipelineVersion {...pipelineVersionMockProps} />
+    );
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'pipeline' });
+    rerender(<PipelineVersion {...pipelineVersionMockProps} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.task-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
 });
 
 describe('PipelineVersion ViewCustomFields permission', () => {
+  beforeEach(() => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+  });
+
   const mockCustomPropertyTable = jest.requireMock(
     '../../common/CustomPropertyTable/CustomPropertyTable'
   ).CustomPropertyTable;
@@ -193,8 +228,6 @@ describe('PipelineVersion ViewCustomFields permission', () => {
       />,
       { wrapper: MemoryRouter }
     );
-
-    fireEvent.click(screen.getByText('label.custom-property-plural'));
   };
 
   beforeEach(() => {

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Box, Card } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC } from 'react';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
+import { FC, KeyboardEvent } from 'react';
 import { BetaBadge } from '../Badge/Badge.component';
 import './selection-card-group.less';
 import {
@@ -29,32 +29,50 @@ export const SelectionCard: FC<SelectionCardProps> = ({
   disabled = false,
   layout = 'horizontal',
 }: SelectionCardProps) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <Card
+      aria-checked={isSelected}
+      aria-disabled={disabled}
       className={classNames('selection-card', `selection-card-${layout}`, {
         selected: isSelected,
         disabled: disabled,
         'has-beta': option.isBeta,
       })}
+      role="radio"
       style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
-      onClick={disabled ? undefined : onClick}>
+      tabIndex={disabled ? -1 : 0}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={handleKeyDown}>
       {option.isBeta && <BetaBadge />}
-      <div className="selection-content">
-        <div className="selection-body">
+      <Box
+        align={layout === 'vertical' ? 'start' : 'stretch'}
+        className="selection-content"
+        justify="between">
+        <Box
+          className="selection-body"
+          direction={layout === 'vertical' ? 'col' : 'row'}
+          gap={3}>
           <span className="selection-icon">{option.icon}</span>
           <div className="selection-header">
             <div className="selection-title">{option.label}</div>
             <div className="selection-description">{option.description}</div>
           </div>
-        </div>
+        </Box>
         {isSelected ? (
           <div className="custom-radio checked">
-            <CheckIcon />
+            <Check />
           </div>
         ) : (
           <div className="custom-radio unchecked" />
         )}
-      </div>
+      </Box>
     </Card>
   );
 };
@@ -76,10 +94,12 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   };
 
   return (
-    <div
+    <Box
       className={classNames('selection-card-group', className, {
         'selection-card-group-disabled': disabled,
-      })}>
+      })}
+      gap={5}
+      role="radiogroup">
       {options.map((option) => (
         <SelectionCard
           disabled={disabled}
@@ -90,7 +110,7 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
           onClick={() => handleOptionSelect(option.value)}
         />
       ))}
-    </div>
+    </Box>
   );
 };
 

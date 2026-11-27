@@ -57,6 +57,69 @@ const CUSTOM_DIR = join(ROOT, 'icons-custom');
 const OUT_DIR = join(ROOT, 'src', 'icons');
 
 const createComponentTemplate = require('../templates/component.cjs');
+const { parsePathData, stringifyPathData } = require('svgo/lib/path.js');
+
+const GRID = 20;
+const SOURCE_GRID = 24;
+
+/** Rescale icons drawn on UntitledUI's 24-unit grid to the 20-unit grid
+ *  (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec).
+ *  Only path geometry is scaled — stroke-width stays as authored, so a 1.3
+ *  stroke renders at the same weight as every native 20-grid icon. */
+const normalizeToGrid = {
+  name: 'normalizeToGrid',
+  fn: (_root, _params, info) => {
+    let scale = 1;
+
+    return {
+      element: {
+        enter: (node, parentNode) => {
+          if (node.name === 'svg' && parentNode.type === 'root') {
+            if (
+              node.attributes.viewBox === `0 0 ${SOURCE_GRID} ${SOURCE_GRID}`
+            ) {
+              scale = GRID / SOURCE_GRID;
+              node.attributes.viewBox = `0 0 ${GRID} ${GRID}`;
+            }
+
+            return;
+          }
+          if (scale === 1) {
+            return;
+          }
+          if (
+            node.name !== 'path' &&
+            node.name !== 'g' &&
+            node.name !== 'defs'
+          ) {
+            throw new Error(
+              `${info.path}: <${node.name}> on the ${SOURCE_GRID} grid is not rescaled; convert it to a <path>`
+            );
+          }
+          if (node.attributes.transform) {
+            throw new Error(
+              `${info.path}: transforms on the ${SOURCE_GRID} grid are not supported`
+            );
+          }
+          if (node.name === 'path') {
+            const pathData = parsePathData(node.attributes.d).map(
+              ({ command, args }) => ({
+                command,
+                // Arc rotation and the two flags (indices 2–4) are not lengths.
+                args: args.map((value, i) =>
+                  (command === 'A' || command === 'a') && i >= 2 && i <= 4
+                    ? value
+                    : value * scale
+                ),
+              })
+            );
+            node.attributes.d = stringifyPathData({ pathData, precision: 3 });
+          }
+        },
+      },
+    };
+  },
+};
 
 /** Convert any filename to a valid PascalCase component name. */
 function toComponentName(filename) {
@@ -75,13 +138,21 @@ async function eslintFix(code, filePath) {
   return result.output ?? code;
 }
 
-/** SVGO plugins shared by both pipelines. */
-const sharedPlugins = [
+/** SVGO plugins shared by both pipelines. IDs are prefixed with the icon
+ *  name: every icon minifies its ids to `a`, `b`, …, and `url(#a)` resolves
+ *  to the first `#a` in the document, so two icons on one page clip, mask or
+ *  fill through each other's definitions (or vanish). */
+const sharedPlugins = (iconBaseName) => [
+  normalizeToGrid,
   {
     name: 'preset-default',
     params: { overrides: { removeViewBox: false } },
   },
   { name: 'cleanupIds', params: { minify: true, remove: true } },
+  {
+    name: 'prefixIds',
+    params: { prefix: iconBaseName, delim: '_', prefixClassNames: false },
+  },
   // Remove the root <svg>'s width/height — SVGR's svgProps re-injects them
   // dynamically as size props. Root-only by design, so inner shapes (e.g. a
   // <rect> that legitimately carries width/height as geometry) keep theirs.
@@ -107,10 +178,10 @@ const removeLinecapLinejoin = {
 };
 
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
-const svgoRegularConfig = {
+const svgoRegularConfig = (iconBaseName) => ({
   multipass: true,
   plugins: [
-    ...sharedPlugins,
+    ...sharedPlugins(iconBaseName),
     removeLinecapLinejoin,
     // Replace hardcoded hex colors so icons are fully themeable via the color prop.
     // fill="none", fill="white", and fill="url(...)" are preserved as-is.
@@ -120,12 +191,16 @@ const svgoRegularConfig = {
         element: {
           enter: (node) => {
             const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+            // preset-default's convertColors already rewrote `white` to `#fff`
+            // by the time this runs, so match the hex forms too — otherwise the
+            // white knockout on filled icons gets themed away into currentColor.
+            const WHITE = /^(white|#fff|#ffffff)$/i;
             for (const attr of ['fill', 'stroke']) {
               const val = node.attributes[attr];
               if (
                 val &&
                 val !== 'none' &&
-                val !== 'white' &&
+                !WHITE.test(val) &&
                 val !== 'currentColor' &&
                 !val.startsWith('url(') &&
                 HEX.test(val)
@@ -138,25 +213,20 @@ const svgoRegularConfig = {
       }),
     },
   ],
-};
+});
 
-/** SVGO config for custom icons — same as regular but skips color replacement.
- *  IDs are also prefixed with the icon name to prevent gradient/mask conflicts
- *  when multiple custom icons render on the same page. */
+/** SVGO config for custom icons — same as regular but skips color replacement. */
 const svgoCustomConfig = (iconBaseName) => ({
   multipass: true,
-  plugins: [
-    ...sharedPlugins,
-    {
-      name: 'prefixIds',
-      params: { prefix: iconBaseName, delim: '_' },
-    },
-  ],
+  plugins: sharedPlugins(iconBaseName),
 });
 
 /** SVGR config, parameterized by pipeline.
- *  Regular icons: outline-style — forced to a single themeable stroke via the
- *  color prop, with fill/linecap/linejoin normalized.
+ *  Regular icons: hex colors become currentColor (see replaceHardcodedColors)
+ *  and the color prop is set as the root's CSS `color`, so it themes every
+ *  stroke and fill; fill/linecap/linejoin are normalized. The root carries no
+ *  stroke: a shape without its own (e.g. a glyph Figma outlined into a fill)
+ *  would inherit it and render bolder than designed.
  *  Custom icons: full-color/gradient/brand art — only size control is
  *  injected; stroke/fill/linecap/linejoin are left exactly as authored
  *  (post-SVGO) so hardcoded brand colors survive. */
@@ -177,7 +247,7 @@ function buildSvgrConfig(isCustom) {
       : {
           width: '{size}',
           height: '{size}',
-          stroke: '{color}',
+          color: '{color}',
           fill: 'none',
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
@@ -203,7 +273,7 @@ async function processFolder(dir, isCustom, generatedNames) {
     const rawSvg = readFileSync(inputPath, 'utf8');
 
     const { data: optimizedSvg } = optimize(rawSvg, {
-      ...(isCustom ? svgoCustomConfig(baseName) : svgoRegularConfig),
+      ...(isCustom ? svgoCustomConfig : svgoRegularConfig)(baseName),
       path: inputPath,
     });
 

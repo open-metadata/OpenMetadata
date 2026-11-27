@@ -28,6 +28,12 @@ public final class JsonRpcErrorBody {
   public static final int UNAUTHORIZED = -32001;
 
   /**
+   * The server could not confirm the credential just now, and a retry may succeed. -32002 is MCP's
+   * resource-not-found, so this takes the next code of the reserved range.
+   */
+  public static final int UNAVAILABLE = -32003;
+
+  /**
    * A private mapper keeps the envelope byte-identical no matter how a caller configured its own
    * {@link ObjectMapper}.
    */

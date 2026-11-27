@@ -546,3 +546,74 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 --      AND sqlstatement LIKE '%idx\_profiler\_data\_time\_series\_fqnhash\_pattern%' ESCAPE '\';
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiler_data_time_series_fqnhash_pattern
     ON profiler_data_time_series (entityFQNHash text_pattern_ops);
+
+-- Tables that 2.1.0 creates (see 2.1.0/schemaChanges.sql), also created here: an upgrade from below
+-- 2.0.0 runs the 2.0.0 Java data migration before the 2.1.0 SQL, and the platform code it calls reads
+-- them. Keep each statement identical to its 2.1.0 copy, which still creates them for databases
+-- already past 2.0.0.
+CREATE TABLE IF NOT EXISTS test_case_incident (
+    stateId varchar(36) NOT NULL,
+    entityFQNHash varchar(768) NOT NULL,
+    testCaseResolutionStatusType varchar(36) NOT NULL,
+    assignee varchar(256) DEFAULT NULL,
+    severity varchar(36) DEFAULT NULL,
+    createdAt bigint NOT NULL,
+    updatedAt bigint NOT NULL,
+    latestRecordId varchar(36) NOT NULL,
+    PRIMARY KEY (stateId)
+);
+CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseResolutionStatusType, entityFQNHash);
+CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
+CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    fqnHash VARCHAR(768) DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS metric_group_entity_name_index ON metric_group_entity (name);
+CREATE INDEX IF NOT EXISTS idx_metric_group_entity_deleted_name_id ON metric_group_entity (deleted, name, id);
+CREATE TABLE IF NOT EXISTS change_request (
+  id VARCHAR(36) NOT NULL,
+  entityType VARCHAR(256) NOT NULL,
+  entityId VARCHAR(36) NOT NULL,
+  requestedBy VARCHAR(256) NOT NULL,
+  workflowDefinitionId VARCHAR(36) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  activeInterceptKey VARCHAR(300) DEFAULT NULL,
+  taskId VARCHAR(36) DEFAULT NULL,
+  deliveryStatus VARCHAR(32) NOT NULL,
+  deliveryAttempts INTEGER NOT NULL DEFAULT 0,
+  nextDeliveryAt BIGINT NOT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
+  leaseUntil BIGINT DEFAULT NULL,
+  updatedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_request_active_intercept_key ON change_request (activeInterceptKey);
+CREATE INDEX IF NOT EXISTS change_request_entity_status_index ON change_request (entityId, status);
+CREATE INDEX IF NOT EXISTS change_request_requester_status_index ON change_request (requestedBy, status);
+CREATE INDEX IF NOT EXISTS change_request_workflow_status_index ON change_request (workflowDefinitionId, status);
+CREATE INDEX IF NOT EXISTS change_request_delivery_index ON change_request (deliveryStatus, nextDeliveryAt);
+CREATE INDEX IF NOT EXISTS change_request_task_index ON change_request (taskId);
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
+);
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);

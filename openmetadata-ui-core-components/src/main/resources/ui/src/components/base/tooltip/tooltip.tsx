@@ -10,7 +10,6 @@ import type {
 import { forwardRef, isValidElement, useRef } from 'react';
 import {
   Button as AriaButton,
-  Focusable as AriaFocusable,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
@@ -33,6 +32,29 @@ const NATIVELY_FOCUSABLE_HTML = new Set([
   'summary',
   'textarea',
 ]);
+
+type TooltipVariant = 'dark' | 'light';
+
+// `light` sits on the floating surface that cards and popovers use, so it is white in light mode
+// and follows dark mode.
+const VARIANT_STYLES: Record<
+  TooltipVariant,
+  { surface: string; title: string; description: string; arrow: string }
+> = {
+  dark: {
+    surface: 'tw:bg-primary-solid tw:shadow-lg',
+    title: 'tw:text-white',
+    description: 'tw:text-tooltip-supporting-text',
+    arrow: 'tw:fill-bg-primary-solid',
+  },
+  light: {
+    surface:
+      'tw:bg-floating tw:shadow-raised tw:outline-1 tw:outline-secondary_alt',
+    title: 'tw:text-primary',
+    description: 'tw:text-tertiary',
+    arrow: 'tw:fill-bg-floating',
+  },
+};
 
 interface TooltipProps
   extends AriaTooltipTriggerComponentProps,
@@ -68,6 +90,12 @@ interface TooltipProps
    */
   containerClassName?: string;
   /**
+   * `dark` is the default tooltip; `light` draws it on the floating surface, as a small card.
+   *
+   * @default 'dark'
+   */
+  variant?: TooltipVariant;
+  /**
    * className forwarded to the auto-generated focusable wrapper that Tooltip
    * creates when its child is a non-focusable element (e.g. a plain span, an
    * SVG icon, or a bare div). Providing this prop also forces wrapping even
@@ -99,17 +127,22 @@ interface TooltipProps
   excludeTriggerFromTabOrder?: boolean;
 }
 
-// Trigger for `excludeTriggerFromTabOrder`. A bare span never consumes
-// TooltipTrigger's FocusableContext, so it got no hover handlers and the
-// tooltip could not open. useFocusable reads that context (hover, aria, ref)
-// but always assigns a tabIndex; dropping it keeps the span unreachable by
-// focus, including antd FocusTrap.restoreFocus().
-const UnfocusableTrigger = ({
+// Span trigger for disabled children and `excludeTriggerFromTabOrder`. A bare
+// span never consumes TooltipTrigger's FocusableContext, so it got no hover
+// handlers and the tooltip could not open. useFocusable reads that context
+// (hover, aria, ref) without react-aria's `<Focusable>` component, whose
+// development-only check calls getComputedStyle and throws when the span is
+// rendered into a collection's window-less document (a disabled button in the
+// Tabs `actions` slot). Unfocusable spans drop the tabIndex so nothing,
+// including antd FocusTrap.restoreFocus(), can reach them.
+const SpanTrigger = ({
   children,
   className,
+  isFocusable,
 }: {
   children: ReactNode;
   className?: string;
+  isFocusable: boolean;
 }) => {
   const ref = useRef<HTMLSpanElement>(null);
   const {
@@ -117,7 +150,11 @@ const UnfocusableTrigger = ({
   } = useFocusable({}, ref);
 
   return (
-    <span {...triggerProps} className={className} ref={ref}>
+    <span
+      {...triggerProps}
+      className={className}
+      ref={ref}
+      tabIndex={isFocusable ? 0 : undefined}>
       {children}
     </span>
   );
@@ -143,6 +180,7 @@ export const Tooltip = ({
   onTriggerPress,
   triggerIsDisabled = false,
   excludeTriggerFromTabOrder,
+  variant = 'dark',
   ...tooltipProps
 }: TooltipProps) => {
   const resolvedDelay = delay ?? 300;
@@ -188,36 +226,27 @@ export const Tooltip = ({
       // swallowing pointer events, or the wrapper never sees the hover.
       //
       // `excludeTriggerFromTabOrder` still applies here, and collapses to the
-      // same shape as the non-disabled branch below: a bare span, with no
-      // `tabIndex` and no `Focusable`. Deliberately not `tabIndex={-1}` - that
-      // stays programmatically focusable and so remains reachable by Ant
-      // Design's FocusTrap.restoreFocus(), which is the problem that branch
-      // exists to avoid. Opting out of the tab order costs the same keyboard
-      // affordance there as here; the two paths make the same trade.
-      excludeTriggerFromTabOrder ? (
-        <UnfocusableTrigger
-          className={cx(disabledWrapClassName, triggerClassName)}>
-          {children}
-        </UnfocusableTrigger>
-      ) : (
-        <AriaFocusable>
-          <span
-            className={cx(disabledWrapClassName, triggerClassName)}
-            tabIndex={0}>
-            {children}
-          </span>
-        </AriaFocusable>
-      )
+      // same shape as the non-disabled branch below: a span with no
+      // `tabIndex`. Deliberately not `tabIndex={-1}` - that stays
+      // programmatically focusable and so remains reachable by Ant Design's
+      // FocusTrap.restoreFocus(), which is the problem that branch exists to
+      // avoid. Opting out of the tab order costs the same keyboard affordance
+      // there as here; the two paths make the same trade.
+      <SpanTrigger
+        className={cx(disabledWrapClassName, triggerClassName)}
+        isFocusable={!excludeTriggerFromTabOrder}>
+        {children}
+      </SpanTrigger>
     ) : excludeTriggerFromTabOrder ? (
       // Use a plain span instead of AriaButton when the trigger is explicitly
       // excluded from the tab order. AriaButton with tabindex="-1" is still
       // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can
       // accidentally land on it inside rdg cells. A span without a tabIndex
       // has no focusability at all — FocusTrap cannot reach it — and
-      // UnfocusableTrigger still wires the hover handlers.
-      <UnfocusableTrigger className={triggerClassName}>
+      // SpanTrigger still wires the hover handlers.
+      <SpanTrigger className={triggerClassName} isFocusable={false}>
         {children}
-      </UnfocusableTrigger>
+      </SpanTrigger>
     ) : (
       <AriaButton
         className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
@@ -266,9 +295,17 @@ export const Tooltip = ({
         {...tooltipProps}
         className={({ isEntering, isExiting }) =>
           cx(
-            isEntering && 'tw:ease-out tw:animate-in',
+            // While it is first positioned, an overlay that flips (top → bottom)
+            // can sit under the cursor for a frame; taking the pointer then ends
+            // the hover and closes the tooltip. Ignore the pointer only until it
+            // has entered, so a settled tooltip stays hoverable and clickable.
+            isEntering && 'tw:ease-out tw:animate-in tw:pointer-events-none',
             isExiting && 'tw:ease-in tw:animate-out',
-            'tw:break-words' // Ensure long words in the tooltip wrap instead of overflowing.
+            // Wrap at spaces; break inside a word only when it alone overflows (long FQNs).
+            // `w-max` keeps the measured width independent of the overlay's left
+            // offset: shrink-to-fit near the viewport edge let react-aria measure a
+            // narrower box than the one it paints, so the tooltip ran off-screen.
+            'tw:w-max tw:wrap-anywhere'
           )
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}
@@ -279,7 +316,10 @@ export const Tooltip = ({
             {arrow && (
               <AriaOverlayArrow>
                 <svg
-                  className="tw:block tw:size-2.5 tw:fill-bg-primary-solid tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180"
+                  className={cx(
+                    'tw:block tw:size-2.5 tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180',
+                    VARIANT_STYLES[variant].arrow
+                  )}
                   viewBox="0 0 100 100">
                   <path d="M0,0 L35.858,35.858 Q50,50 64.142,35.858 L100,0 Z" />
                 </svg>
@@ -287,7 +327,8 @@ export const Tooltip = ({
             )}
             <div
               className={cx(
-                'tw:z-50 tw:flex tw:max-w-xs tw:origin-(--trigger-anchor-point) tw:flex-col tw:items-start tw:gap-1 tw:rounded-lg tw:bg-primary-solid tw:px-3 tw:shadow-lg tw:will-change-transform',
+                'tw:z-50 tw:flex tw:max-w-xs tw:origin-(--trigger-anchor-point) tw:flex-col tw:items-start tw:gap-1 tw:rounded-lg tw:px-3 tw:will-change-transform',
+                VARIANT_STYLES[variant].surface,
                 description ? 'tw:py-3' : 'tw:py-2',
                 containerClassName,
 
@@ -296,12 +337,20 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:break-all tw:text-xs tw:font-semibold tw:text-white">
+              <span
+                className={cx(
+                  'tw:text-xs tw:font-semibold',
+                  VARIANT_STYLES[variant].title
+                )}>
                 {title}
               </span>
 
               {description && (
-                <span className="tw:text-xs tw:font-medium tw:text-tooltip-supporting-text">
+                <span
+                  className={cx(
+                    'tw:text-xs tw:font-medium',
+                    VARIANT_STYLES[variant].description
+                  )}>
                   {description}
                 </span>
               )}

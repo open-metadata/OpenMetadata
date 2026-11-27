@@ -19,12 +19,14 @@ import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.consumer.schedule.AuditLogSchedule;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.SchedulerException;
 
 /**
  * Quartz job that consumes change events from the change_event table and writes them to the
@@ -89,18 +91,15 @@ public class AuditLogConsumer implements Job {
 
       int totalProcessed = 0;
       int batchCount = 0;
+      boolean caughtUp = false;
 
       // Process multiple batches when behind, but limit to avoid busy loops
       // This allows catching up faster while still being fair to other consumers
-      while (batchCount < MAX_BATCHES_PER_EXECUTION) {
+      while (batchCount < MAX_BATCHES_PER_EXECUTION && !caughtUp) {
         int processed = processBatch(collectionDAO, auditLogRepository);
         totalProcessed += processed;
         batchCount++;
-
-        // If we processed less than a full batch, we're caught up
-        if (processed < BATCH_SIZE) {
-          break;
-        }
+        caughtUp = isCaughtUp(collectionDAO, processed);
       }
 
       if (totalProcessed > 0) {
@@ -109,6 +108,28 @@ public class AuditLogConsumer implements Job {
       }
     } catch (Exception ex) {
       LOG.error("Error in audit log consumer execution: {}", ex.getMessage(), ex);
+    }
+    restartIfBehind(context);
+  }
+
+  // A read stops at its byte budget as well as at its row count, so a short batch is caught up only
+  // when it advanced nothing or the offset reached the newest event.
+  private boolean isCaughtUp(CollectionDAO collectionDAO, int processed) {
+    return processed == 0
+        || processed < BATCH_SIZE
+            && loadOffsetFromDatabase(collectionDAO).currentOffset()
+                >= collectionDAO.changeEventDAO().getLatestOffset();
+  }
+
+  // A run that ended past the next slot restarts the timetable one interval from now.
+  private static void restartIfBehind(JobExecutionContext context) {
+    if (context != null) {
+      try {
+        AuditLogSchedule.restartIfBehind(context);
+      } catch (SchedulerException | RuntimeException e) {
+        LOG.warn(
+            "Audit log consumer could not restart its timetable; the misfire scan fires it", e);
+      }
     }
   }
 

@@ -68,6 +68,10 @@ jobs:
           dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
+      - name: Read Node version
+        id: node
+        run: echo "version=$(sed 's/^v//' openmetadata-ui/src/main/resources/ui/.nvmrc)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v7
         env:
@@ -75,6 +79,7 @@ jobs:
         with:
           context: .
           file: docker/storybook/Dockerfile
+          build-args: NODE_VERSION=${{ steps.node.outputs.version }}
           platforms: linux/amd64,linux/arm64
           # On scheduled runs always push; on workflow_dispatch respect the input.
           push: ${{ github.event_name == 'schedule' || inputs.push_image }}

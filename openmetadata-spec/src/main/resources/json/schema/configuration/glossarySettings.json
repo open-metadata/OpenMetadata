@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/glossarySettings.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GlossarySettings",
+  "description": "Catalog-wide preferences for glossary terms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.GlossarySettings",
+  "properties": {
+    "enableTagPropagation": {
+      "description": "Apply classification tags from glossary terms to their associated assets. Changes to existing search results require reindexing.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

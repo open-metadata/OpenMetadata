@@ -22,7 +22,7 @@ import org.openmetadata.search.IndexMappingLoader;
 
 class IndexMappingNestedFieldConsistencyTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
   private static final String TESTS_SCHEMA_DIR = "json/schema/tests/";
   private static final String RESOLUTION_STATUS_ENTITY = "testCaseResolutionStatus";
   private static final String RESOLUTION_DETAILS_FIELD = "testCaseResolutionStatusDetails";
@@ -127,6 +127,26 @@ class IndexMappingNestedFieldConsistencyTest {
             + "Missing in: "
             + violations
             + ". RBAC nested queries will fail on these indices.");
+  }
+
+  @Test
+  void fqnPartsMustMatchEnglishInEveryLanguage() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String key = entry.getKey();
+      JsonNode english = allMappings.get(key.substring(0, key.indexOf('[')) + "[en]");
+      JsonNode expected = english == null ? null : getTopLevelProperties(english).get("fqnParts");
+      JsonNode actual = getTopLevelProperties(entry.getValue()).get("fqnParts");
+      if (expected != null && !expected.equals(actual)) {
+        violations.add(key + " (" + actual + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every entity document carries fqnParts, so a language that omits it gets a dynamic text "
+            + "field that keyword-only queries reject (e.g. the hierarchy terms aggregation). "
+            + "Map it as English does. Violations: "
+            + violations);
   }
 
   @Test

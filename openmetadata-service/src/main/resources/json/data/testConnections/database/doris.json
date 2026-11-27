@@ -27,6 +27,12 @@
       "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
       "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
       "mandatory": false
+    },
+    {
+      "name": "GetQueries",
+      "description": "Check if we can read the query log, __internal_schema.audit_log. These queries are analyzed in the usage workflow.",
+      "errorMessage": "Failed to fetch queries, please validate that Doris is 4.1 or later and that the user has SELECT_PRIV on internal.__internal_schema.audit_log",
+      "mandatory": false
     }
   ]
 }

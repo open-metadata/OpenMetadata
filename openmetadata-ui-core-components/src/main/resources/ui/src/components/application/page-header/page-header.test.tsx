@@ -229,6 +229,15 @@ describe('PageHeader', () => {
     expect(screen.getByPlaceholderText('Search…')).toBeInTheDocument();
   });
 
+  it('turns off browser autocomplete on the search input', () => {
+    render(<PageHeader search={{ placeholder: 'Search…' }} title="Titled" />);
+
+    expect(screen.getByPlaceholderText('Search…')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
+  });
+
   it('forwards extra HTML attributes (className, id) to the root', () => {
     render(<PageHeader className="custom-root" id="hdr" title="Titled" />);
 

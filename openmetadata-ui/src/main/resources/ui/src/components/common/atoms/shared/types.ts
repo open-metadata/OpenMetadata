@@ -44,6 +44,7 @@ export interface UrlStateHook {
   setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
+  resetPaging: () => void;
 }
 
 export interface DataFetchingConfig<T> {
@@ -106,6 +107,17 @@ export interface ColumnConfig<T> {
   customRenderer?: string;
 }
 
+/**
+ * A listing column contributed by a ClassBase override rather than by the
+ * listing hook itself, so a downstream build can add a column without the
+ * shared hook having to know about it.
+ */
+export interface ListingExtraColumn<T> {
+  id: string;
+  labelKey: string;
+  render: (entity: T) => ReactNode;
+}
+
 export interface CellRenderer<T> {
   [key: string]: (entity: T, column?: ColumnConfig<T>) => ReactNode;
 }
@@ -138,11 +150,14 @@ export interface ListingData<T> {
   actionHandlers: ActionHandlers<T>;
   filterOptions?: FilterOptions;
   aggregations?: Aggregations | null;
+  /** The listing's fixed scope (e.g. one parent's sub-domains), as an ES query JSON. */
+  baseFilter?: string;
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handleClearAll: () => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
+  resetPaging?: () => void;
   refetch: (options?: { silent?: boolean }) => void | Promise<void>;
 }
 

@@ -118,7 +118,7 @@ const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   createdDataProducts.length = 0;
-  test.slow(true);
+  test.setTimeout(test.info().timeout * 3);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.create(apiContext);
@@ -738,8 +738,11 @@ test.describe(
           page.getByTestId('certification-Certification.Gold')
         ).toBeVisible();
 
+        // Scoped to the entity's own glossary panel: a term on a table is inherited by every one
+        // of its columns, so an unscoped link lookup also matches the chip rendered on each column
+        // row and trips strict mode.
         await expect(
-          page.getByRole('link', {
+          page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
             name: glossaryTerm.data.displayName,
           })
         ).toBeVisible();

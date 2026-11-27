@@ -13,6 +13,7 @@
 import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { UseFormReturn } from 'react-hook-form';
 import { EntityReference } from '../../../generated/entity/type';
+import { MetricIntakeFormState } from './useMetricIntakeForm';
 
 /**
  * Select/autocomplete option that carries a typed payload on `value`:
@@ -26,6 +27,7 @@ export interface MetricFormSelectItem extends FormSelectItem {
 }
 
 export interface MetricFormValues {
+  extensionFormValues?: Record<string, unknown>;
   name: string;
   displayName: string;
   description: string;
@@ -43,6 +45,7 @@ export interface MetricFormValues {
 }
 
 export interface AddMetricFormProps {
+  intake: MetricIntakeFormState;
   form: UseFormReturn<MetricFormValues>;
   parentMetricFqn?: string;
   onSubmit: (data: MetricFormValues) => void;

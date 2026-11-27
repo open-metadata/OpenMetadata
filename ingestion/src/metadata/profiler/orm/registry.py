@@ -18,7 +18,7 @@ import math
 from enum import Enum
 
 import sqlalchemy
-from sqlalchemy import Date, DateTime, Integer, Numeric, Time
+from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, LargeBinary, Text
 
 from metadata.generated.schema.entity.data.table import DataType
@@ -26,9 +26,11 @@ from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.types.bigquery_json import BigQueryJSON
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
+from metadata.profiler.orm.types.custom_geometry import CustomGeometry
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
+from metadata.profiler.orm.types.custom_largeint import CustomLargeInt
 from metadata.profiler.orm.types.custom_time import CustomTime
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 from metadata.profiler.orm.types.undetermined_type import UndeterminedType
@@ -47,6 +49,8 @@ class CustomTypes(TypeRegistry):
     SQADATETIMERANGE = CustomDateTimeRange
     UNDETERMINED = UndeterminedType
     TIME = CustomTime
+    GEOMETRY = CustomGeometry
+    LARGEINT = CustomLargeInt
 
 
 class PythonDialects(Enum):
@@ -66,6 +70,7 @@ class PythonDialects(Enum):
     ClickHouse = "clickhouse"
     Clickzetta = "clickzetta"
     Cockroach = "cockroachdb"
+    Databend = "databend"
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"
@@ -77,6 +82,7 @@ class PythonDialects(Enum):
     Hana = "hana"
     Hive = "hive"
     Impala = "impala"
+    Impala4 = "impala4"
     IbmDbSa = "ibm_db_sa"
     Ibmi = "ibmi"
     Informix = "informix"
@@ -139,6 +145,7 @@ NOT_COMPUTE = {
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
+    CustomTypes.GEOMETRY.value.__name__,
     DataType.XML.value,
     CustomTypes.UNDETERMINED.value.__name__,
 }
@@ -147,6 +154,7 @@ FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 QUANTIFIABLE_SET = {
     DataType.INT.value,
     DataType.BIGINT.value,
+    DataType.LARGEINT.value,
     DataType.SMALLINT.value,
     DataType.NUMERIC.value,
     DataType.NUMBER.value,
@@ -192,6 +200,13 @@ def is_date_time(_type) -> bool:
         or issubclass(_type.__class__, DateTime)
         or issubclass(_type.__class__, CustomTimestamp)
     )
+
+
+def is_boolean(_type) -> bool:
+    """
+    Check if _type is a boolean, as a sqlalchemy type or an OpenMetadata DataType
+    """
+    return _type == DataType.BOOLEAN if isinstance(_type, DataType) else isinstance(_type, Boolean)
 
 
 def is_quantifiable(_type) -> bool:

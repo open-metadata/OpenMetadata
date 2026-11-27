@@ -170,11 +170,128 @@ public class RelationshipTypeContradictionIT {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Inverse-induced asymmetric contradiction: an ASYMMETRIC relationship whose
+  // inverse points to itself. owl:inverseOf R R entails Sym(R); combined with
+  // AsymmetricProperty(R) this forces R's extension empty — the same policy
+  // contradiction the characteristic-pair check rejects, reached via inverse.
+  // -------------------------------------------------------------------------
+
+  /** POST with {ASYMMETRIC, IRREFLEXIVE} and inverse == own name must be rejected (core fix). */
+  @Test
+  void post_rejectsAsymmetricSelfInverse_400(TestNamespace ns) {
+    String name = ns.prefix("asymSelfInverseRejected");
+    CreateRelationshipType request =
+        baseRequest(name).withCharacteristics(asymIrreflexive()).withInverse(name);
+
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().relationshipTypes().create(request));
+    String msg = ex.getMessage().toLowerCase();
+    assertTrue(
+        msg.contains("asymmetric") && msg.contains("inverse"),
+        "Error message must name the asymmetric self-inverse contradiction: " + ex.getMessage());
+  }
+
+  /**
+   * POST with {ASYMMETRIC, IRREFLEXIVE} and a *distinct* existing inverse must be accepted. A
+   * cross-property inverse (A inverseOf B, B != A) only propagates asymmetry to B and is not
+   * contradictory; the new guard must reject only the self-inverse case and not over-reject.
+   */
+  @Test
+  void post_acceptsAsymmetricWithDistinctInverse_201(TestNamespace ns) {
+    RelationshipType target = createTransitive(ns, "distinctInverseTarget");
+    try {
+      String name = ns.prefix("asymWithDistinctInverse");
+      CreateRelationshipType request =
+          baseRequest(name).withCharacteristics(asymIrreflexive()).withInverse(target.getName());
+      RelationshipType created = SdkClients.adminClient().relationshipTypes().create(request);
+      try {
+        assertNotNull(created.getId());
+      } finally {
+        SdkClients.adminClient().relationshipTypes().delete(created.getId().toString(), true);
+      }
+    } finally {
+      SdkClients.adminClient().relationshipTypes().delete(target.getId().toString(), true);
+    }
+  }
+
+  /**
+   * PUT /v1/relationshipTypes (upsert by name) that supplies inverse == own name on an
+   * ASYMMETRIC definition must be rejected. Upsert validates through {@code
+   * EntityResource.createOrUpdate} → {@code prepareInternal} → {@code validate}.
+   */
+  @Test
+  void put_rejectsAsymmetricSelfInverse_400(TestNamespace ns) {
+    RelationshipType created = createTransitive(ns, "putRejectAsymSelfInverse");
+    try {
+      CreateRelationshipType upsertRequest =
+          baseRequest(created.getName())
+              .withCharacteristics(asymIrreflexive())
+              .withInverse(created.getName());
+      InvalidRequestException ex =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> SdkClients.adminClient().relationshipTypes().upsert(upsertRequest));
+      String msg = ex.getMessage().toLowerCase();
+      assertTrue(
+          msg.contains("asymmetric") && msg.contains("inverse"),
+          "PUT error must name the asymmetric self-inverse contradiction: " + ex.getMessage());
+    } finally {
+      SdkClients.adminClient().relationshipTypes().delete(created.getId().toString(), true);
+    }
+  }
+
+  /**
+   * JSON-patch flipping a previously SYMMETRIC type (whose inverse is self) to ASYMMETRIC must be
+   * rejected. The patched entity keeps inverse == self while becoming ASYMMETRIC; both the {@code
+   * prepareInternal} guard and the updater's {@code characteristicsChanged} revalidation must
+   * reject the inverse-induced contradiction.
+   */
+  @Test
+  void patch_rejectsAsymmetricSelfInverseOnPreviouslySymmetric_400(TestNamespace ns)
+      throws Exception {
+    RelationshipType created = createSymmetric(ns, "patchRejectAsymSelfInverse");
+    try {
+      String patch =
+          "[{\"op\":\"replace\",\"path\":\"/characteristics\",\"value\":[\"ASYMMETRIC\",\"IRREFLEXIVE\"]}]";
+      JsonNode patchDocument = OBJECT_MAPPER.readTree(patch);
+      InvalidRequestException ex =
+          assertThrows(
+              InvalidRequestException.class,
+              () ->
+                  SdkClients.adminClient()
+                      .relationshipTypes()
+                      .patch(created.getId().toString(), patchDocument));
+      String msg = ex.getMessage().toLowerCase();
+      assertTrue(
+          msg.contains("asymmetric") && msg.contains("inverse"),
+          "PATCH error must name the asymmetric self-inverse contradiction: " + ex.getMessage());
+    } finally {
+      SdkClients.adminClient().relationshipTypes().delete(created.getId().toString(), true);
+    }
+  }
+
   private RelationshipType createTransitive(TestNamespace ns, String suffix) {
     String name = ns.prefix(suffix);
     CreateRelationshipType request =
         baseRequest(name).withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE));
     return SdkClients.adminClient().relationshipTypes().create(request);
+  }
+
+  private RelationshipType createSymmetric(TestNamespace ns, String suffix) {
+    // A symmetric type is created without an explicit inverse; applyDefaults auto-assigns
+    // inverse == self, which is persisted. This gives a baseline whose inverse is already
+    // a self-reference for the inverse-induced contradiction tests below.
+    String name = ns.prefix(suffix);
+    CreateRelationshipType request =
+        baseRequest(name).withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+    return SdkClients.adminClient().relationshipTypes().create(request);
+  }
+
+  private static Set<RelationshipCharacteristic> asymIrreflexive() {
+    return Set.of(RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE);
   }
 
   private static Set<RelationshipCharacteristic> asymReflexive() {

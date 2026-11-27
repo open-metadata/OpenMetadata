@@ -122,17 +122,12 @@
     background: @grey-9;
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
     width: inherit;
     border: 0.5px solid @grey-15;
 
-    .ant-card-body {
+    .activity-feed-card-new-body {
       width: inherit;
       padding: var(--om-space-20);
-
-      .ant-space-item {
-        width: inherit;
-      }
     }
   }
 
@@ -140,28 +135,10 @@
     background: @primary-50;
     border: 1px solid @primary-3;
 
-    // --ant-primary-* are injected theme-agnostic, so they stay light in dark.
+    // --theme-primary-* are injected theme-agnostic, so they stay light in dark.
     // Match the AI sidebar's selected nav surface instead.
     .dark-mode & {
       border-color: var(--om-color-border-brand-subtle);
-    }
-  }
-
-  .activity-feed-card-message {
-    padding: var(--om-space-20);
-    background-color: var(--om-color-bg-surface);
-    width: inherit;
-    margin-top: var(--om-space-2);
-    border: 0.5px solid @grey-15;
-
-    // Same message-well treatment as FeedCardBody's .hide-thread in dark.
-    .dark-mode & {
-      background-color: transparent;
-    }
-
-    .ant-card-body {
-      padding: 0;
-      border-radius: var(--om-radius-lg);
     }
   }
 
@@ -175,10 +152,9 @@
 
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
     width: inherit;
 
-    .ant-card-body {
+    .activity-feed-card-new-body {
       width: inherit;
       padding: 0;
       //  margin: 10px  0px 20px 0px;
@@ -187,25 +163,12 @@
       background: var(--om-legacy-color-239-244-250-0-25);
 
       padding-bottom: var(--om-space-16);
-
-      .ant-space-item {
-        width: inherit;
-      }
     }
 
     .activity-feed-reply-card-message {
       padding-left: var(--om-space-50);
       border: none;
       background: var(--om-legacy-color-239-244-250-0-25);
-
-      .ant-card-body {
-        margin: 0;
-        margin-top: calc(-1 * var(--om-space-8));
-        margin-bottom: calc(-1 * var(--om-space-6));
-        border: none;
-        padding: 0;
-        background: var(--om-legacy-color-239-244-250-0-25);
-      }
 
       .activity-feed-comment-text {
         word-wrap: break-word;
@@ -226,12 +189,26 @@
 
     &,
     & a {
-      color: @primary-heading-color;
+      color: var(--tw-color-text-link);
 
       &:hover {
-        color: @primary-heading-color;
+        color: var(--tw-color-text-link);
       }
     }
+  }
+}
+
+// Widget feed cards keep their compact, unpadded body layout.
+.feed-widget-container,
+.widget-wrapper-container {
+  .activity-feed-card-new .activity-feed-card-new-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
   }
 }
 
@@ -239,45 +216,44 @@
   background-color: @grey-1;
 }
 
-.count-loader.ant-skeleton-element .ant-skeleton-button-sm {
-  width: 72px;
-}
-
 .activity-feed-editor-container-new {
-  background-color: @grey-9;
-  border: 0.5px solid @grey-15;
+  background-color: var(--tw-color-bg-surface);
+  border: 1px solid var(--tw-color-border-subtle);
   border-radius: var(--om-radius-10);
   width: 100%;
 
   .ql-container {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: var(--tw-color-bg-surface);
+    border: none;
     width: 100%;
 
     &:focus-within {
-      border: 0.5px solid @grey-15;
+      outline: 1px solid var(--tw-color-border-brand);
+      outline-offset: -1px;
     }
   }
 
   .ql-toolbar {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: var(--tw-color-bg-surface);
+    border: none;
+    border-bottom: 1px solid var(--tw-color-border-subtle);
     flex-wrap: wrap;
 
     &:focus-within {
-      border: 0.5px solid @grey-15;
+      outline: 1px solid var(--tw-color-border-brand);
+      outline-offset: -1px;
     }
   }
 
   .ql-toolbar button {
-    color: var(--om-color-gray-true-800);
+    color: var(--tw-color-text-secondary);
   }
 }
 
 .activity-feed-editor-send-btn {
   color: var(--tw-color-text-white);
 
-  .ant-btn.send-button {
+  .send-button {
     position: absolute;
     bottom: 8px;
     right: 8px;
@@ -363,7 +339,7 @@
   }
 
   // Selected-row and count-chip colours follow the configurable antd theme
-  // primary (--ant-primary-*), which has no Tailwind counterpart yet.
+  // primary (--theme-primary-*), which has no Tailwind counterpart yet.
   .task-tab-filter-menu-item {
     box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
     padding: 0;
@@ -372,7 +348,7 @@
       box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-05);
       background-color: @primary-25;
 
-      // --ant-primary-25 is a fixed light tint; use the sidebar selected surface.
+      // --theme-primary-25 is a fixed light tint; use the sidebar selected surface.
       .dark-mode & {
         background-color: var(--om-color-bg-brand);
       }
@@ -416,10 +392,6 @@
   }
 }
 
-.footer-container {
-  height: 24px;
-}
-
 .profile-picture {
   width: 32px;
 }
@@ -440,22 +412,6 @@
   }
 }
 
-// .feed-actions is absolutely positioned at a fixed top: 24px, which only
-// lined up while this card's padding was also 24px. It now uses 16px, so pull
-// the bar up to match - otherwise it hangs below the author row and covers the
-// first line of the comment. Scoped to the reply card so the conversation
-// card, which keeps its own spacing, is unaffected.
-// A reply renders its actions inside the author row rather than floating them
-// over the card, so undo the shared absolute positioning here. Keeping them in
-// normal flow is what stops the bar overlapping the comment text - it can no
-// longer be mispositioned relative to a padding or line-height it doesn't know
-// about.
-.reply-card .feed-actions.ant-space {
-  position: static;
-  padding-top: var(--om-space-2);
-  padding-bottom: var(--om-space-2);
-}
-
 .reply-message {
   color: var(--om-legacy-color-4a4a4a);
   white-space: normal;
@@ -469,11 +425,6 @@
   font-style: normal;
   font-weight: var(--om-font-weight-medium);
   line-height: 24px;
-}
-
-.feed-footer-avatar-group .ant-avatar {
-  margin-inline-end: calc(-1 * var(--om-space-8)) !important;
-  border: 1px solid var(--om-color-white);
 }
 
 .no-description-suggestion-card {
@@ -495,29 +446,6 @@
   padding: 0;
   background: none;
   box-shadow: none;
-
-  &.ant-btn {
-    color: @primary-heading-color;
-    border: none;
-    background: none;
-    box-shadow: none;
-
-    &:hover,
-    &:focus,
-    &:active {
-      color: @primary-heading-color;
-      border: none;
-      background: none;
-      box-shadow: none;
-      outline: none;
-    }
-
-    &::before,
-    &::after {
-      display: none;
-      content: none;
-    }
-  }
 }
 
 .task-filter-container {
@@ -534,7 +462,8 @@
 
 .owner-chip {
   border-radius: var(--om-radius-lg);
-  background: @grey-16;
+  // Was @grey-16, a fixed hex that stayed a white pill in dark mode.
+  background: var(--tw-background-color-tertiary);
   padding: var(--om-space-4) var(--om-space-8);
   margin-right: @margin-xs;
   border: 1px solid @grey-15;
@@ -555,37 +484,6 @@
 
 .feed-filter-icon {
   cursor: pointer;
-  &.ant-btn.ant-btn-default {
-    border: 1px solid @grey-15;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    &.disabled {
-      cursor: not-allowed;
-      stroke: border-color-2;
-      border-radius: @size-xs;
-      border: 1px solid @grey-100;
-      background: var(--tw-color-bg-primary);
-    }
-    &:not(.disabled):hover {
-      border: 1px solid @blue-12;
-
-      svg {
-        stroke: @blue-12;
-        stroke-width: 0.2px;
-      }
-    }
-    &.selected,
-    &.ant-dropdown-open,
-    &.ant-popover-open {
-      border: 1px solid @blue-12;
-      background: @primary-button-background;
-      svg {
-        stroke: @blue-12;
-        stroke-width: 0.2px;
-      }
-    }
-  }
 }
 .no-data-placeholder-container-right-panel {
   margin-top: @size-xl;

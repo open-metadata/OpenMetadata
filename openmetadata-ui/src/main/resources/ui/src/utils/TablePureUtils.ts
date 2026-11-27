@@ -23,6 +23,7 @@ import {
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import { CUSTOM_PROPERTY_COLUMN_KEY_PREFIX } from '../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type {
@@ -171,12 +172,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   searchIndex: Array<T>,
   searchText: string
 ): Array<T> => {
+  const searchLowerCase = lowerCase(searchText);
   const searchedValue: Array<T> = searchIndex.reduce(
     (searchedFields, field) => {
       const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+        lowerCase(field.name).includes(searchLowerCase) ||
+        lowerCase(field.description).includes(searchLowerCase) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchLowerCase);
 
       if (isContainData) {
         return [...searchedFields, field];
@@ -207,7 +209,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
 export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
   const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
     ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
+    // The server computes a derived label -- implied by a glossary term, or inherited from the
+    // parent entity -- and ignores it on write. Sent back as Manual it would be stored as the
+    // field's own label and outlive its source.
+    labelType:
+      tag.labelType === LabelType.Derived
+        ? LabelType.Derived
+        : LabelType.Manual,
     state: State.Confirmed,
     source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
@@ -323,10 +331,22 @@ export const getJoinsFromTableJoins = (
 };
 
 export const createTableConstraintObject = (
-  constraints: string[],
+  constraints: string[] | undefined,
   type: ConstraintType
 ) =>
   isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
+
+export const getConstraintGroupLabel = (index: number): string => {
+  let label = '';
+  let remaining = index;
+
+  do {
+    label = String.fromCharCode(65 + (remaining % 26)) + label;
+    remaining = Math.floor(remaining / 26) - 1;
+  } while (remaining >= 0);
+
+  return label;
+};
 
 export const getColumnOptionsFromTableColumn = (
   columns: Column[],
@@ -572,6 +592,71 @@ export const findFieldByFQN = <
   }
 
   return undefined;
+};
+
+const compareNullsLast = <V>(
+  a: V | undefined,
+  b: V | undefined,
+  compare: (x: V, y: V) => number
+): number => {
+  if (a === undefined || a === null) {
+    return b === undefined || b === null ? 0 : 1;
+  }
+  if (b === undefined || b === null) {
+    return -1;
+  }
+
+  return compare(a, b);
+};
+
+const compareCaseInsensitive = (x: string, y: string): number => {
+  const left = x.toLowerCase();
+  const right = y.toLowerCase();
+
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
+};
+
+/**
+ * Page (1-based) of the server-paginated column list that holds `targetFqn`, or of its
+ * top-level ancestor when the target is nested. The ordering must stay in lockstep with the
+ * backend's TableRepository.columnComparator so the computed page matches what the API returns.
+ * ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
+ */
+export const getColumnPageForFqn = <
+  T extends {
+    name?: string;
+    ordinalPosition?: number;
+    fullyQualifiedName?: string;
+    children?: T[];
+  }
+>(
+  columns: T[],
+  targetFqn: string,
+  sortBy: 'name' | 'ordinalPosition',
+  sortOrder: 'asc' | 'desc',
+  pageSize: number
+): number | undefined => {
+  const direction = sortOrder === 'desc' ? -1 : 1;
+  const sorted = [...columns].sort(
+    (a, b) =>
+      direction *
+      (sortBy === 'ordinalPosition'
+        ? compareNullsLast(
+            a.ordinalPosition,
+            b.ordinalPosition,
+            (x, y) => x - y
+          )
+        : compareNullsLast(a.name, b.name, compareCaseInsensitive))
+  );
+  const index = sorted.findIndex((column) =>
+    findFieldByFQN([column], targetFqn)
+  );
+
+  return index === -1 ? undefined : Math.floor(index / pageSize) + 1;
 };
 
 export const fieldExistsByFQN = <
@@ -838,6 +923,9 @@ export const getHighlightedRowClassName = <
 
   return '';
 };
+
+export const getCustomPropertyColumnKey = (propertyName: string): string =>
+  `${CUSTOM_PROPERTY_COLUMN_KEY_PREFIX}${propertyName}`;
 
 export const getNestedSectionTitle = (
   entityType: EntityType | undefined

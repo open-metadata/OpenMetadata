@@ -18,6 +18,10 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
@@ -77,18 +81,23 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     term: GlossaryTerm,
     status: string
   ) => {
-    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/entityStatus',
-          value: status,
+    const response = await apiContext.patch(
+      `/api/v1/glossaryTerms/${term.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/entityStatus',
+            value: status,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+      }
+    );
+
+    expect(response.ok(), await response.text()).toBe(true);
   };
 
   // Helper to apply status filter
@@ -253,6 +262,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
+    // GlossaryTermApprovalWorkflow owns term stages, so this glossary stays excluded until
+    // afterAll: a run its seeding events start late would otherwise approve the seeded terms.
+    await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create basic hierarchy: Parent (Approved) -> Child (Draft)
     basicParent = new GlossaryTerm(glossary, undefined, 'BasicParent');
@@ -360,6 +372,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await glossary.delete(apiContext);
     await afterAction();
   });

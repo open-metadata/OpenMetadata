@@ -12,7 +12,14 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SsoRolesSelectField from './SsoRolesSelectField';
@@ -60,6 +67,13 @@ const rolesSelectProps: FieldProps = {
   uiSchema: { 'ui:placeholder': 'label.select-field' },
   registry: {} as FieldProps['registry'],
 } as unknown as FieldProps;
+
+const typeInCombobox = (text: string) => {
+  const combobox = screen.getByRole('combobox');
+
+  act(() => combobox.focus());
+  fireEvent.change(combobox, { target: { value: text } });
+};
 
 describe('SsoRolesSelectField', () => {
   beforeEach(() => {
@@ -208,5 +222,52 @@ describe('SsoRolesSelectField', () => {
       expect(mockSearchRoles).toHaveBeenCalled();
       expect(mockShowErrorToast).not.toHaveBeenCalled();
     });
+  });
+
+  it('searches roles with the typed text and offers the matching roles', async () => {
+    mockSearchRoles.mockImplementation((text: string) =>
+      Promise.resolve(
+        text === 'Data'
+          ? [{ name: 'DataSteward', displayName: 'Data Steward' }]
+          : mockRolesResponse
+      )
+    );
+
+    render(<SsoRolesSelectField {...rolesSelectProps} />);
+
+    typeInCombobox('Data');
+
+    await waitFor(() => expect(mockSearchRoles).toHaveBeenCalledWith('Data'));
+
+    expect(
+      await screen.findByRole('option', { name: 'Data Steward' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Administrator' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds a picked role to the selection', async () => {
+    render(<SsoRolesSelectField {...rolesSelectProps} />);
+
+    await waitFor(() => expect(mockSearchRoles).toHaveBeenCalled());
+    typeInCombobox('Admin');
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Administrator' })
+    );
+
+    expect(mockOnChange).toHaveBeenCalledWith(['Admin']);
+  });
+
+  it('removes a role from the selection', async () => {
+    render(<SsoRolesSelectField {...rolesSelectProps} formData={['Admin']} />);
+
+    fireEvent.click(
+      within(screen.getByTestId('autocomplete-selected-item')).getByRole(
+        'button'
+      )
+    );
+
+    expect(mockOnChange).toHaveBeenCalledWith([]);
   });
 });

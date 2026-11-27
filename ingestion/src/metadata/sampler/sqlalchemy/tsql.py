@@ -15,6 +15,7 @@ Sampling helpers shared by the T-SQL engines (MSSQL, AzureSQL)
 from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import Table as TableEntity
+from metadata.profiler.orm.registry import CustomTypes
 
 TEMPORAL_PERIOD_COLUMNS_QUERY = text(
     "SELECT c.name FROM sys.columns c"
@@ -24,6 +25,12 @@ TEMPORAL_PERIOD_COLUMNS_QUERY = text(
     " AND s.name = :schema_name"
     " AND c.generated_always_type IN (1, 2)"
 )
+
+# Column types kept out of sample data on both engines, since pyodbc throws
+# pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
+# for geography, and geometry comes back as MSSQL's own binary serialization (SRID + version +
+# flags + points), not WKB: showing it means OPENMETADATA_UNDETERMIND[...] markers.
+NOT_COMPUTE_PYODBC = frozenset({"SQASGeography", "UndeterminedType", CustomTypes.GEOMETRY.value.__name__})
 
 
 def get_temporal_column_names(sampler) -> frozenset:

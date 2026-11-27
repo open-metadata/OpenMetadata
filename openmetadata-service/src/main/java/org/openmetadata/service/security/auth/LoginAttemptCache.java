@@ -4,6 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import io.dropwizard.logback.shaded.guava.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
@@ -16,6 +17,9 @@ public class LoginAttemptCache {
   private static LoginAttemptCache INSTANCE;
   private int maxAttempt = 3;
   private final LoadingCache<String, Integer> attemptsCache;
+  // Attempts for identities the provider doesn't know, kept apart so a flood of made-up names can
+  // never evict a real account's counter and reset its lockout.
+  private final LoadingCache<String, Integer> unknownAttemptsCache;
 
   private LoginAttemptCache() {
     LoginConfiguration loginConfiguration =
@@ -25,16 +29,8 @@ public class LoginAttemptCache {
       maxAttempt = loginConfiguration.getMaxLoginFailAttempts();
       accessBlockTime = loginConfiguration.getAccessBlockTime();
     }
-    attemptsCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
-            .build(
-                new CacheLoader<>() {
-                  public @NotNull Integer load(@NonNull String username) {
-                    return 0;
-                  }
-                });
+    attemptsCache = newCounter(accessBlockTime);
+    unknownAttemptsCache = newCounter(accessBlockTime);
   }
 
   public static LoginAttemptCache getInstance() {
@@ -51,36 +47,40 @@ public class LoginAttemptCache {
   @VisibleForTesting
   public LoginAttemptCache(int maxAttempt, int blockTimeInSec) {
     this.maxAttempt = maxAttempt;
-    attemptsCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
-            .build(
-                new CacheLoader<>() {
-                  public @NotNull Integer load(@NonNull String username) {
-                    return 0;
-                  }
-                });
+    attemptsCache = newCounter(blockTimeInSec);
+    unknownAttemptsCache = newCounter(blockTimeInSec);
+  }
+
+  private static LoadingCache<String, Integer> newCounter(long expireAfterSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumSize(1000)
+        .expireAfterWrite(expireAfterSeconds, TimeUnit.SECONDS)
+        .build(
+            new CacheLoader<>() {
+              public @NotNull Integer load(@NonNull String username) {
+                return 0;
+              }
+            });
   }
 
   public void recordSuccessfulLogin(String username) {
-    attemptsCache.invalidate(username.toLowerCase());
+    attemptsCache.invalidate(cacheKey(username));
+    unknownAttemptsCache.invalidate(cacheKey(username));
   }
 
   public void recordFailedLogin(String username) {
-    int attempts;
-    try {
-      attempts = attemptsCache.get(username.toLowerCase());
-    } catch (ExecutionException e) {
-      attempts = 0;
-    }
-    attempts++;
-    attemptsCache.put(username, attempts);
+    attemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
+  }
+
+  /** A failed login for an identity the provider doesn't know; locks it out like a real one. */
+  public void recordFailedUnknownLogin(String username) {
+    unknownAttemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
   }
 
   public boolean isLoginBlocked(String username) {
     try {
-      return attemptsCache.get(username.toLowerCase()) >= maxAttempt;
+      String key = cacheKey(username);
+      return attemptsCache.get(key) >= maxAttempt || unknownAttemptsCache.get(key) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }
@@ -88,9 +88,13 @@ public class LoginAttemptCache {
 
   public int getUserFailedLoginCount(String username) {
     try {
-      return attemptsCache.get(username.toLowerCase());
+      return attemptsCache.get(cacheKey(username));
     } catch (ExecutionException e) {
       return -1;
     }
+  }
+
+  private static String cacheKey(String username) {
+    return username.toLowerCase(Locale.ROOT);
   }
 }

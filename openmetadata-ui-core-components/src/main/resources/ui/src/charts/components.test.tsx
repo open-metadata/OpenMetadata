@@ -313,6 +313,104 @@ describe('point hover', () => {
     expect(events.mouseover).toBeUndefined();
     expect(events.mouseout).toBeUndefined();
   });
+
+  it('draws invisible symbols so a dot-less line series can be hovered', () => {
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={vi.fn()}
+      />
+    );
+    const built = hostSeries();
+
+    // Both series are dot-less by default; with onPointHover they get
+    // invisible symbols so ECharts emits per-point mouseover/mouseout.
+    built.forEach((s) => {
+      const itemStyle = s.itemStyle as Record<string, unknown>;
+
+      expect(s.showSymbol).toBe(true);
+      // Hidden by opacity, so the colour still feeds the tooltip and legend.
+      expect(itemStyle.opacity).toBe(0);
+      expect(itemStyle.color).not.toBe('transparent');
+      expect(s.symbolSize).toBe(10);
+    });
+  });
+
+  it('keeps the default dot-less look without hover callbacks', () => {
+    render(
+      <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
+    );
+    const built = hostSeries();
+
+    built.forEach((s) => {
+      const itemStyle = s.itemStyle as Record<string, unknown>;
+
+      expect(s.showSymbol).toBe(false);
+      expect(s.symbolSize).toBe(6);
+      expect(itemStyle.opacity).toBe(1);
+    });
+  });
+
+  it('reports hover for a dot-less line series through the mouseover handler', () => {
+    const onPointHover = vi.fn();
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    // A dot-less line series would never emit this event without the fix;
+    // the invisible symbols make ECharts produce it.
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'passed',
+      dataIndex: 0,
+    });
+
+    expect(onPointHover).toHaveBeenCalledWith(rows[0], 'passed', {
+      x: 50,
+      y: 60,
+    });
+  });
+
+  it('reports hover for a dot-less area series through the mouseover handler', () => {
+    const onPointHover = vi.fn();
+    const onPointLeave = vi.fn();
+    render(
+      <AreaChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+        onPointLeave={onPointLeave}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+    fire('mouseout', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+
+    expect(onPointHover).toHaveBeenCalledWith(rows[1], 'failed', {
+      x: 50,
+      y: 60,
+    });
+    expect(onPointLeave).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('keyboard navigation', () => {

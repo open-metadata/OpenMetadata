@@ -21,19 +21,29 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 
@@ -50,6 +60,7 @@ class AIContextMcpIT extends McpTestBase {
   private static final String ARTICLE_BODY =
       "Revenue reporting rule: exclude cancelled and refunded orders from all revenue metrics.";
   private static final String METRIC_CODE = "SUM(amount) WHERE status = 'completed'";
+  private static final String RESTRICTED_TAG_FQN = "PII.Sensitive";
   private static final String LONG_ARTICLE_LEAD = "Revenue recognition handbook";
   private static final String LONG_ARTICLE_TAIL = "REFUNDEXCLUSIONZZ";
   private static final String LONG_ARTICLE_BODY =
@@ -225,6 +236,123 @@ class AIContextMcpIT extends McpTestBase {
   }
 
   @Test
+  void getEntityDetails_parentMetricCarriesEachVariantExpression() throws Exception {
+    Metric parent =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_variant_parent_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode("COUNT(*)")),
+            Metric.class);
+    String variantCode = "COUNT(*) GROUP BY segment";
+    Metric variant =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_variant_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withMetricExpression(new MetricExpression().withCode(variantCode)),
+            Metric.class);
+
+    JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_entity_details",
+                Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())));
+
+    JsonNode child =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("children")
+            .get(0);
+    assertThat(child.path("fullyQualifiedName").asText())
+        .isEqualTo(variant.getFullyQualifiedName());
+    assertThat(child.path("metricExpression").path("code").asText()).isEqualTo(variantCode);
+  }
+
+  @Test
+  void getEntityDetails_withholdsExpressionOfAVariantTheCallerCannotView() throws Exception {
+    Metric parent =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_parent_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode("COUNT(*)")),
+            Metric.class);
+    Metric guarded =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
+                .withMetricExpression(
+                    new MetricExpression().withCode("SUM(salary) GROUP BY person")),
+            Metric.class);
+    String openCode = "COUNT(*) GROUP BY team";
+    Metric open =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_open_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withMetricExpression(new MetricExpression().withCode(openCode)),
+            Metric.class);
+
+    JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_entity_details",
+                Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())),
+            restrictedMetricViewerToken());
+
+    // A child the caller cannot view is dropped from the response
+    // (ADR:2026-10-31-metric-and-metric-group-responses-hide-relations-the-viewer-cannot-see).
+    String text = response.get("result").get("content").get(0).get("text").asText();
+    JsonNode children = OBJECT_MAPPER.readTree(text).path("children");
+    assertThat(children.size()).isEqualTo(1);
+    assertThat(children.get(0).path("fullyQualifiedName").asText())
+        .isEqualTo(open.getFullyQualifiedName());
+    assertThat(children.get(0).path("metricExpression").path("code").asText()).isEqualTo(openCode);
+    assertThat(text).doesNotContain(guarded.getName());
+  }
+
+  private static String restrictedMetricViewerToken() throws Exception {
+    Rule denyRestricted =
+        new Rule()
+            .withName("DenyRestrictedMetrics")
+            .withResources(List.of("metric"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        post(
+            "policies",
+            new CreatePolicy()
+                .withName("aicontext_restricted_metrics_policy_" + suffix)
+                .withRules(List.of(denyRestricted)),
+            Policy.class);
+    Role role =
+        post(
+            "roles",
+            new CreateRole()
+                .withName("aicontext_restricted_metrics_role_" + suffix)
+                .withPolicies(List.of(policy.getFullyQualifiedName())),
+            Role.class);
+    String name = "aicontext_restricted_metrics_" + suffix;
+    User user =
+        post(
+            "users",
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@test.openmetadata.org")
+                .withRoles(List.of(role.getId())),
+            User.class);
+    return "Bearer "
+        + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
+  }
+
+  @Test
   void getAssetContext_returnsStructuralAndAttachedKnowledgeAsMarkdown() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
@@ -239,16 +367,23 @@ class AIContextMcpIT extends McpTestBase {
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();
-    assertThat(text).contains("# Schema");
-    assertThat(text).contains("# Foreign Keys");
-    assertThat(text).contains(customersTable.getFullyQualifiedName() + ".id");
-    assertThat(text).contains("MANY_TO_ONE");
-    assertThat(text).contains("# Business Definitions");
-    assertThat(text).contains(TERM_DEFINITION);
-    assertThat(text).contains("# Knowledge Articles");
-    assertThat(text).contains(ARTICLE_BODY);
-    assertThat(text).contains("# Metrics");
-    assertThat(text).contains(METRIC_CODE);
+    String markdown = OBJECT_MAPPER.readTree(text).path("context").path("content").asText();
+    assertThat(markdown).contains("# Schema");
+    assertThat(markdown).contains("# Foreign Keys");
+    assertThat(markdown).contains(customersTable.getFullyQualifiedName() + ".id");
+    assertThat(markdown).contains("MANY_TO_ONE");
+    assertThat(markdown).contains("# Business Definitions");
+    assertThat(markdown).contains(TERM_DEFINITION);
+    assertThat(markdown).contains("# Knowledge Articles");
+    assertThat(markdown).contains(ARTICLE_BODY);
+    assertThat(markdown)
+        .contains(
+            "get_entity_details(entityType=`page`, fqn=`"
+                + longArticleFqn
+                + "`, include=[\"content\"])");
+    assertThat(markdown).doesNotContain("get_knowledge_content");
+    assertThat(markdown).contains("# Metrics");
+    assertThat(markdown).contains(METRIC_CODE);
   }
 
   @Test
@@ -323,6 +458,85 @@ class AIContextMcpIT extends McpTestBase {
     String text = response.get("result").get("content").get(0).get("text").asText();
     assertThat(text).contains(LONG_ARTICLE_LEAD);
     assertThat(text).contains(LONG_ARTICLE_TAIL);
+  }
+
+  @Test
+  void getEntityDetails_stripsInlineImagesBeforeReadingAndBudgetingArticles() throws Exception {
+    Table linkedTable = createServiceDatabaseSchemaTable("aicontext_image_anchor_" + suffix);
+    String base64Payload = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(4_000) + "ErkJggg==";
+    String htmlBody =
+        "<p><img src=\"data:image/png;base64,"
+            + base64Payload
+            + "\" alt=\"Architecture\"></p>\n\n"
+            + "<p>Architecture summary for revenue reporting.</p>"
+            + "<p>Keep x &gt;&#61; 1 and label &#39;a&#39;.</p>";
+    Map<String, Object> createPage =
+        Map.of(
+            "name",
+            "aicontext_image_article_" + suffix,
+            "displayName",
+            "Revenue Architecture With Image",
+            "description",
+            htmlBody,
+            "pageType",
+            "Article",
+            "page",
+            Map.of(),
+            "relatedEntities",
+            List.of(Map.of("id", linkedTable.getId().toString(), "type", "table")));
+    JsonNode page = post("contextCenter/pages", createPage, JsonNode.class);
+    String imageArticleFqn = page.get("fullyQualifiedName").asText();
+
+    for (String format : List.of("markdown", "json")) {
+      Map<String, Object> toolCall =
+          McpTestUtils.createToolCallRequest(
+              "get_entity_details",
+              Map.of(
+                  "entityType",
+                  "page",
+                  "fqn",
+                  imageArticleFqn,
+                  "include",
+                  List.of("content"),
+                  "format",
+                  format));
+      JsonNode response = executeMcpRequest(toolCall);
+      String rawResponse = response.get("result").get("content").get(0).get("text").asText();
+      String content = OBJECT_MAPPER.readTree(rawResponse).path("content").path("content").asText();
+
+      assertThat(content)
+          .contains("Architecture summary for revenue reporting.")
+          .contains("Keep x >= 1 and label 'a'.")
+          .doesNotContain("base64")
+          .doesNotContain("<img")
+          .doesNotContain(base64Payload);
+      assertThat(content.length()).isLessThan(500);
+    }
+
+    Map<String, Object> contextCall =
+        McpTestUtils.createToolCallRequest(
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                linkedTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
+                "format",
+                "json"));
+    JsonNode response = executeMcpRequest(contextCall);
+    JsonNode context =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
+    JsonNode linkedArticle = findArticle(context.path("articles"), imageArticleFqn);
+    assertThat(linkedArticle).isNotNull();
+    assertThat(linkedArticle.path("contentTruncated").asBoolean()).isFalse();
+    assertThat(linkedArticle.path("content").asText())
+        .startsWith("<p>Architecture summary for revenue reporting.</p>")
+        .contains("Keep x >= 1 and label 'a'.")
+        .doesNotContain("base64", "<img", base64Payload);
   }
 
   private static JsonNode findArticle(JsonNode articles, String fqn) {

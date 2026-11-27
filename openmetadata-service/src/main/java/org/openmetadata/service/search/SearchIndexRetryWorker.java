@@ -178,9 +178,17 @@ public class SearchIndexRetryWorker implements Managed {
 
   private void processRecord(SearchIndexRetryRecord record) {
     try {
+      final var type = normalize(record.getEntityType());
+      final var id = normalize(record.getEntityId());
+      if (OntologyTermSearch.isTerm(type) && !id.isEmpty()) {
+        searchRepository.reindexOntologyTerm(
+            new EntityReference().withType(type).withId(UUID.fromString(id)));
+        completeClaim(record);
+        return;
+      }
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
-        EntityInterface rootEntity = reindexEntityCascade(root);
+        EntityInterface<?> rootEntity = reindexEntityCascade(root);
         propagateAfterRetry(rootEntity, record.getFailureReason());
         completeClaim(record);
         return;
@@ -415,14 +423,14 @@ public class SearchIndexRetryWorker implements Managed {
   // Reindexing
   // ---------------------------------------------------------------------------
 
-  EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
+  EntityInterface<?> reindexEntityCascade(EntityReference root) throws Exception {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
-    List<EntityInterface> entitiesToIndex = new ArrayList<>();
+    List<EntityInterface<?>> entitiesToIndex = new ArrayList<>();
     Map<UUID, Long> relationshipRevisions = new HashMap<>();
     queue.add(root);
     int processed = 0;
-    EntityInterface rootEntity = null;
+    EntityInterface<?> rootEntity = null;
 
     while (!queue.isEmpty() && processed < MAX_CASCADE_REINDEX) {
       EntityReference current = queue.poll();
@@ -449,7 +457,7 @@ public class SearchIndexRetryWorker implements Managed {
         throw ex;
       }
 
-      EntityInterface entity = snapshot.entity();
+      EntityInterface<?> entity = snapshot.entity();
       if (entity == null) {
         throw new IllegalStateException(
             "Loaded an empty entity while processing search retry for " + current.getId());
@@ -499,7 +507,7 @@ public class SearchIndexRetryWorker implements Managed {
     return rootEntity;
   }
 
-  void propagateAfterRetry(EntityInterface rootEntity, String failureReason) throws IOException {
+  void propagateAfterRetry(EntityInterface<?> rootEntity, String failureReason) throws IOException {
     ChangeDescription propagationChangeDescription =
         SearchIndexRetryQueue.getPropagationContext(failureReason);
     if (rootEntity != null && propagationChangeDescription != null) {
@@ -519,7 +527,7 @@ public class SearchIndexRetryWorker implements Managed {
       if (cachedReadBundle != null) {
         cachedReadBundle.invalidate(reference.getType(), reference.getId());
       }
-      EntityInterface entity = Entity.getEntity(reference, fields, Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(reference, fields, Include.ALL);
       if (entity instanceof TestSuite testSuite && !Boolean.FALSE.equals(testSuite.getBasic())) {
         return new StableEntitySnapshot(entity, null);
       }
@@ -545,15 +553,15 @@ public class SearchIndexRetryWorker implements Managed {
   }
 
   private void upsertEntitiesInBulk(
-      List<EntityInterface> entitiesToIndex, Map<UUID, Long> relationshipRevisions)
+      List<EntityInterface<?>> entitiesToIndex, Map<UUID, Long> relationshipRevisions)
       throws Exception {
     if (entitiesToIndex.size() == 1 && relationshipRevisions.isEmpty()) {
       upsertEntityDirect(entitiesToIndex.getFirst());
       return;
     }
 
-    Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
-    for (EntityInterface entity : entitiesToIndex) {
+    Map<String, List<EntityInterface<?>>> entitiesByType = new HashMap<>();
+    for (EntityInterface<?> entity : entitiesToIndex) {
       if (entity == null || entity.getEntityReference() == null) {
         continue;
       }
@@ -582,7 +590,7 @@ public class SearchIndexRetryWorker implements Managed {
         });
 
     try {
-      for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
         Map<UUID, Long> typeRelationshipRevisions =
@@ -595,8 +603,8 @@ public class SearchIndexRetryWorker implements Managed {
       }
 
       if (!relationshipRevisions.isEmpty()) {
-        for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
-          List<EntityInterface> relationshipEntities =
+        for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
+          List<EntityInterface<?>> relationshipEntities =
               entry.getValue().stream()
                   .filter(entity -> relationshipRevisions.containsKey(entity.getId()))
                   .toList();
@@ -639,9 +647,9 @@ public class SearchIndexRetryWorker implements Managed {
   }
 
   private Map<UUID, Long> relationshipRevisionsFor(
-      List<EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+      List<EntityInterface<?>> entities, Map<UUID, Long> relationshipRevisions) {
     Map<UUID, Long> revisions = new HashMap<>();
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       Long revision = relationshipRevisions.get(entity.getId());
       if (revision != null) {
         revisions.put(entity.getId(), revision);
@@ -650,11 +658,15 @@ public class SearchIndexRetryWorker implements Managed {
     return revisions;
   }
 
-  private void upsertEntityDirect(EntityInterface entity) throws Exception {
+  private void upsertEntityDirect(EntityInterface<?> entity) throws Exception {
     if (entity == null || entity.getEntityReference() == null || entity.getId() == null) {
       return;
     }
     String entityType = entity.getEntityReference().getType();
+    if (OntologyTermSearch.isTerm(entityType)) {
+      searchRepository.reindexOntologyTerm(entity.getEntityReference());
+      return;
+    }
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       return;
@@ -716,7 +728,7 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private record StableEntitySnapshot(EntityInterface entity, Long relationshipRevision) {}
+  private record StableEntitySnapshot(EntityInterface<?> entity, Long relationshipRevision) {}
 
   // ---------------------------------------------------------------------------
   // Resilience: client availability, backoff, and error classification

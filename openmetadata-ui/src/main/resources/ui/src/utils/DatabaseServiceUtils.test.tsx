@@ -13,6 +13,7 @@
 import { useNavigate } from 'react-router-dom';
 import bigQueryConnection from '../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import customDatabaseConnection from '../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import datalakeConnection from '../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import mysqlConnection from '../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import postgresConnection from '../../public/jsons/connectionSchemas/connections/database/postgresConnection.json';
 import snowflakeConnection from '../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json';
@@ -29,6 +30,7 @@ jest.mock('./loadConnectionSchema', () => {
   const schemas: Record<string, unknown> = {
     'connections/database/bigQueryConnection.json': require('../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json'),
     'connections/database/customDatabaseConnection.json': require('../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json'),
+    'connections/database/datalakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json'),
     'connections/database/mysqlConnection.json': require('../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json'),
     'connections/database/postgresConnection.json': require('../../public/jsons/connectionSchemas/connections/database/postgresConnection.json'),
     'connections/database/snowflakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json'),
@@ -41,14 +43,6 @@ jest.mock('./loadConnectionSchema', () => {
   };
 });
 
-jest.mock(
-  '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn().mockReturnValue({
-      showModal: jest.fn(),
-    }),
-  })
-);
 jest.mock(
   '../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
   () => ({
@@ -63,6 +57,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
+
+const mockShowModal = jest.fn();
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {
   beforeEach(() => {
@@ -80,7 +76,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
@@ -97,11 +94,31 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('export-button');
+  });
+
+  // Callers build these options inside useMemo, so the helper must not call
+  // hooks: a hook here broke ServiceDetailsPage's hook order. Run outside any
+  // component, a hook call would throw.
+  it('should use the passed showModal instead of calling a hook', () => {
+    const result = ExtraDatabaseServiceDropdownOptions(
+      'databaseServiceFqn',
+      { ViewAll: true, EditAll: false } as OperationPermission,
+      false,
+      mockNavigate,
+      mockShowModal
+    );
+
+    result[0].onClick?.();
+
+    expect(mockShowModal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'databaseServiceFqn' })
+    );
   });
 
   it('should render both button when user has viewAll & editAll permission', () => {
@@ -114,7 +131,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(2);
@@ -131,7 +149,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);
@@ -147,7 +166,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       true,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);
@@ -199,6 +219,16 @@ describe('getDatabaseConfig', () => {
     expect(result).toHaveProperty('uiSchema');
     expect(result.schema).toStrictEqual(customDatabaseConnection);
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should keep an empty CSV escape character for Datalake', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Datalake);
+
+    expect(result.schema).toStrictEqual(datalakeConnection);
+    expect(result.uiSchema).toEqual({
+      ...COMMON_UI_SCHEMA,
+      csvEscapeChar: { 'ui:emptyValue': '' },
+    });
   });
 
   it('should return empty schema and default UI schema for unknown database type', async () => {

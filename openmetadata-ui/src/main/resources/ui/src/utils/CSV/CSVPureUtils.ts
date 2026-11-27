@@ -88,15 +88,34 @@ const CSV_CHIP_ROW_SAFETY_MARGIN = 20;
 const getCsvColumnType = (key: string) =>
   key.replaceAll('*', '').split('.').pop() ?? '';
 
-const getChipLabelWidth = (label: string) =>
-  Math.min(
-    CSV_CHIP_MAX_WIDTH,
-    label.length * CSV_CHIP_CHAR_WIDTH + CSV_CHIP_HORIZONTAL_PADDING
-  );
+// Tag and glossary cells render the core tag chip: its label truncates at the
+// core DEFAULT_TAG_MAX_WIDTH and the chip adds an icon, a gap and wider padding.
+const CSV_TAG_CHIP_COLUMN_TYPES = new Set([
+  'tags',
+  'glossaryTerms',
+  'relatedTerms',
+]);
+const CSV_TAG_CHIP_LABEL_MAX_WIDTH = 130;
+const CSV_TAG_CHIP_CHROME_WIDTH = 34;
+
+const getChipLabelWidth = (label: string, colType: string) =>
+  CSV_TAG_CHIP_COLUMN_TYPES.has(colType)
+    ? Math.min(
+        CSV_TAG_CHIP_LABEL_MAX_WIDTH,
+        label.length * CSV_CHIP_CHAR_WIDTH
+      ) + CSV_TAG_CHIP_CHROME_WIDTH
+    : Math.min(
+        CSV_CHIP_MAX_WIDTH,
+        label.length * CSV_CHIP_CHAR_WIDTH + CSV_CHIP_HORIZONTAL_PADDING
+      );
 
 // Greedy line packing that mirrors the flex-wrap chip layout: fit chips onto a
 // line until the next one overflows the column's content width, then wrap.
-const estimateChipRowLines = (items: string[], columnWidth: number) => {
+const estimateChipRowLines = (
+  items: string[],
+  columnWidth: number,
+  colType: string
+) => {
   const availableWidth = Math.max(
     1,
     columnWidth - CSV_CHIP_CELL_PADDING - CSV_CHIP_ROW_SAFETY_MARGIN
@@ -105,7 +124,7 @@ const estimateChipRowLines = (items: string[], columnWidth: number) => {
   let lineWidth = 0;
 
   items.forEach((label) => {
-    const chipWidth = getChipLabelWidth(label);
+    const chipWidth = getChipLabelWidth(label, colType);
     const projectedWidth =
       lineWidth === 0 ? chipWidth : lineWidth + CSV_CHIP_GAP + chipWidth;
 
@@ -154,7 +173,10 @@ export const getCsvGridRowHeight = (
       columnWidth = CSV_DEFAULT_CHIP_COLUMN_WIDTH;
     }
 
-    return Math.max(currentMax, estimateChipRowLines(items, columnWidth));
+    return Math.max(
+      currentMax,
+      estimateChipRowLines(items, columnWidth, colType)
+    );
   }, 1);
 
   return baseRowHeight + (maxLines - 1) * CSV_CHIP_ROW_LINE_HEIGHT;
@@ -292,6 +314,20 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
   }
 };
 
+// Mirrors CsvUtil.java: a formula trigger, possibly behind leading quotes (e.g. "=x", "'=x").
+export const FORMULA_LIKE = /^'*[=+\-@\t\r]/;
+const isFormulaLike = (value: string) => FORMULA_LIKE.test(value);
+
+// Prefix cells a spreadsheet would evaluate (e.g. "=HYPERLINK(..)") the way the server export does.
+export const neutralizeFormula = (value: string) =>
+  isFormulaLike(value) ? `'${value}` : value;
+
+// Undo neutralizeFormula, so the grid shows the stored value.
+export const restoreFormula = (value: string) =>
+  value.startsWith("'") && isFormulaLike(value.slice(1))
+    ? value.slice(1)
+    : value;
+
 export const getCSVStringFromColumnsAndDataSource = (
   columns: Array<Pick<Column<unknown>, 'key'>>,
   dataSource: Record<string, string>[]
@@ -301,7 +337,7 @@ export const getCSVStringFromColumnsAndDataSource = (
   const data = dataSource.map((row) =>
     Object.fromEntries(
       fieldNames.map((key) => {
-        const value = String(row[key] ?? '');
+        const value = neutralizeFormula(String(row[key] ?? ''));
 
         return [key, value];
       })
@@ -408,6 +444,60 @@ export const convertEntityExtensionToCustomPropertyString = (
   return `${convertedString}`;
 };
 
+/**
+ * Ids of the submitted rows that an import result marked `failure`.
+ *
+ * The server does not keep upload order (successes are buffered, failures are
+ * written straight away), so each result row is matched to a submitted row by
+ * the values it echoes back. `submittedRowIds[i]` is the grid id of the i-th
+ * submitted row; without it the id is the row's position in `submittedCsv`.
+ */
+export const getFailedImportRowIds = ({
+  importResultsCsv = '',
+  submittedCsv = '',
+  submittedRowIds,
+}: {
+  importResultsCsv?: string;
+  submittedCsv?: string;
+  submittedRowIds?: string[];
+}): Set<string> => {
+  const parseRows = (csv: string) =>
+    parse<string[]>(csv, { skipEmptyLines: true }).data;
+  const [resultHeader = [], ...results] = parseRows(importResultsCsv);
+  const [submittedHeader = [], ...submitted] = parseRows(submittedCsv);
+  const statusIndex = resultHeader.indexOf('status');
+  const resultIndexes = submittedHeader.map((column) =>
+    resultHeader.indexOf(column)
+  );
+  const toKey = (values: string[]) => JSON.stringify(values);
+
+  // A count per record, so identical rows are each claimed once.
+  const pendingFailures = new Map<string, number>();
+  results.forEach((row) => {
+    if (row[statusIndex] !== 'failure') {
+      return;
+    }
+    const key = toKey(resultIndexes.map((index) => row[index] ?? ''));
+    pendingFailures.set(key, (pendingFailures.get(key) ?? 0) + 1);
+  });
+
+  const failedIds = new Set<string>();
+  submitted.forEach((row, position) => {
+    // The server echoes parsed (restored) cells, so compare stored values (e.g. "- x" not "'- x").
+    const key = toKey(
+      submittedHeader.map((_, index) => restoreFormula(row[index] ?? ''))
+    );
+    const remaining = pendingFailures.get(key) ?? 0;
+
+    if (remaining > 0) {
+      pendingFailures.set(key, remaining - 1);
+      failedIds.add(submittedRowIds?.[position] ?? String(position));
+    }
+  });
+
+  return failedIds;
+};
+
 export const splitCSV = (input: string): string[] => {
   const normalizedInput = input.replaceAll(/\\"/g, '__ESCAPED_QUOTE__');
 
@@ -438,3 +528,26 @@ export const getCustomPropertyEntityType = (entityType: EntityType) => {
       return entityType;
   }
 };
+
+// A quoted cell (a quote at the start of the text, after a comma or after a line break, as
+// papaparse reads one) or a line break outside such a cell. Lookbehind is avoided because the
+// build still targets Safari 16.0.
+const QUOTED_CELL_OR_LINE_BREAK = /(^|,|\r\n|\r|\n)("(?:[^"]|"")*")|\r\n?/g;
+
+const normalizeCellBoundary = (boundary: string): string =>
+  boundary === '' || boundary === ',' ? boundary : '\n';
+
+/**
+ * Rewrites each CRLF and lone CR that ends a row as LF, leaving line breaks inside quoted cells as
+ * they are. Papaparse infers one line separator for the whole text, so a file mixing CRLF and LF
+ * rows (an export with rows appended in another editor) would otherwise merge the minority rows
+ * into their neighbours.
+ */
+export const normalizeCsvLineBreaks = (content: string): string =>
+  content.replaceAll(
+    QUOTED_CELL_OR_LINE_BREAK,
+    (_match, boundary?: string, quotedCell?: string) =>
+      quotedCell === undefined
+        ? '\n'
+        : `${normalizeCellBoundary(boundary ?? '')}${quotedCell}`
+  );

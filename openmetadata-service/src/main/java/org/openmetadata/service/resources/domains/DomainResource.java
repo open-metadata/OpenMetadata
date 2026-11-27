@@ -45,6 +45,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.DomainStyles;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -60,14 +61,20 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.DomainStyleReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.tasks.TaskAboutVisibility;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -85,11 +92,14 @@ import org.openmetadata.service.util.RestUtil;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
+  private final TaskAboutVisibility taskAboutVisibility;
+  private final DomainStyleReader styleReader = new DomainStyleReader(Entity.getCollectionDAO());
   static final String FIELDS =
       "tags,children,childrenCount,owners,experts,extension,followers,votes,certification";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);
+    this.taskAboutVisibility = new TaskAboutVisibility(authorizer);
   }
 
   @Override
@@ -273,9 +283,11 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         securityContext, listOperationContext, filter.getResourceContext(Entity.TASK));
     EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TASK);
 
-    return before != null
-        ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
-        : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after);
+    return taskAboutVisibility.retainViewable(
+        securityContext,
+        before != null
+            ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
+            : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after));
   }
 
   @GET
@@ -478,10 +490,10 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -510,11 +522,10 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkRemoveAssets(
-                name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PATCH
@@ -596,9 +607,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid org.openmetadata.schema.api.VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -657,6 +666,31 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   }
 
   @GET
+  @Path("/styles")
+  @Operation(
+      operationId = "listDomainStyles",
+      summary = "List domain and data product styles",
+      description =
+          "Get the colour and icon of every domain and data product that has a style. Clients draw"
+              + " domain and data product chips from the id their references hold.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Styles of the styled domains and data products",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DomainStyles.class)))
+      })
+  public DomainStyles listStyles(@Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
+    return styleReader.listStyles();
+  }
+
+  @GET
   @Path("/hierarchy")
   @Operation(
       operationId = "listDomainsHierarchy",
@@ -700,6 +734,10 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
     return repository.buildHierarchy(
         fieldsParam, limitParam, directChildrenOf, offset, securityContext);
   }
@@ -795,7 +833,14 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getDomainAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -836,7 +881,14 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-    return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getDomainAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -854,7 +906,12 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       })
   public Response getAllDomainsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDomainsWithAssetsCount();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    java.util.Map<String, Integer> result =
+        repository.getAllDomainsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
 }

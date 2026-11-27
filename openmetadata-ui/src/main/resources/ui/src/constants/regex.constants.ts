@@ -51,8 +51,14 @@ export const TEST_CASE_NAME_REGEX = ENTITY_NAME_REGEX;
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 export const NAME_LENGTH_REGEX = /^.{2,64}$/;
 
-export const passwordRegex =
-  /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,56}$/g;
+// Mirrors Passay 1.6.6 `EnglishCharacterData.Special`, enforced by the server's
+// `PasswordUtil`. The UI and Java tests pin the exact character list.
+export const PASSWORD_SPECIAL_CHAR_REGEX =
+  /[!-/:-@[-`{-~¡-¿×÷–-―‗-„†-•…‰′″‹›‼‾⁄⁊₠-₾]/;
+
+export const passwordRegex = new RegExp(
+  `^(?=.*\\d)(?=.*[A-Z])(?=.*[a-z])(?=.*${PASSWORD_SPECIAL_CHAR_REGEX.source})\\S{8,56}$`
+);
 
 export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 
@@ -103,3 +109,8 @@ export const ADMONITION_BLOCK_REGEX = new RegExp(
   `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
   'gm'
 );
+
+// Allowlist for entity-link hrefs (mention/hashtag): absolute http(s) URLs,
+// root-relative paths and fragments. An allowlist, because a `javascript:`
+// blocklist is bypassed by whitespace the URL parser strips (`java\tscript:`).
+export const SAFE_HREF_REGEX = /^(https?:\/\/|\/|#)/i;

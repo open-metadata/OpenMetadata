@@ -1,0 +1,11 @@
+{
+  "protocolVersion": "1",
+  "readiness": "NOT_READY",
+  "reasons": ["The memory budget needs 11930464712 bytes; the container limit is 8589934592."],
+  "engines": [],
+  "coverage": [],
+  "memoryBudget": {
+    "containerLimitBytes": 8589934592,
+    "requiredBytes": 11930464712
+  }
+}

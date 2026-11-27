@@ -13,12 +13,14 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import React, { PropsWithChildren, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   CreateKnowledgePage,
   PageType,
@@ -35,6 +37,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../../KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { Intent } from '../../platform/ai-shell/AppModule.types';
+import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';
 import { useIntent } from '../../platform/ai-shell/useIntent';
 import UploadDocumentModal from '../UploadDocumentModal/UploadDocumentModal.component';
@@ -53,22 +56,38 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   const queryClient = useQueryClient();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddQuickLinkOpen, setIsAddQuickLinkOpen] = useState(false);
+  const isAiMode = useIsAiMode();
+
+  // Every Context Center route mounts its own ContextCenterLayout, and the
+  // intent bus keeps a single listener per name. Navigating to a non-cacheable
+  // detail route (e.g. a `/context-center/articles/:fqn`) mounts a second
+  // layout that clobbers this one's listener and, on its unmount, deletes the
+  // shared slot — leaving this kept-alive layout silently unsubscribed. Bump a
+  // token whenever this route becomes visible again so the intent listeners are
+  // re-claimed on reactivation.
+  const [activationEpoch, setActivationEpoch] = useState(0);
+  useRouteActivation(
+    useCallback(() => setActivationEpoch((epoch) => epoch + 1), [])
+  );
 
   useIntent(
     Intent.UploadFile,
-    useCallback(() => setIsUploadModalOpen(true), [])
+    useCallback(() => setIsUploadModalOpen(true), []),
+    activationEpoch
   );
 
   useIntent(
     Intent.CreateArticle,
     useCallback(() => {
       createArticleKnowledgePage(currentUser?.id ?? '', navigate);
-    }, [currentUser?.id, navigate])
+    }, [currentUser?.id, navigate]),
+    activationEpoch
   );
 
   useIntent(
     Intent.AddQuickLink,
-    useCallback(() => setIsAddQuickLinkOpen(true), [])
+    useCallback(() => setIsAddQuickLinkOpen(true), []),
+    activationEpoch
   );
 
   const handleSaveQuickLink = useCallback(
@@ -109,7 +128,13 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   );
 
   return (
-    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto">
+    // Transparent in AI mode so the shell's content card shows; classic paints
+    // the canvas (see ContextCenterClassBase.getPageContainerClassName).
+    <div
+      className={classNames(
+        'tw:flex tw:flex-col tw:h-full tw:overflow-auto',
+        !isAiMode && 'tw:bg-canvas'
+      )}>
       {/* Reloads the embedded page on a contextMemory/page change for the active CC route
           (registry → markRouteDirty); the layout, its modals and intents stay mounted. */}
       <LiveRefreshBoundary>{children}</LiveRefreshBoundary>

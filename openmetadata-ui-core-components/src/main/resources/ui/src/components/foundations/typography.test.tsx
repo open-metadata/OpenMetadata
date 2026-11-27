@@ -51,6 +51,29 @@ describe('Typography', () => {
     expect(screen.getByText('Hello')).toHaveClass('tw:text-error-primary');
   });
 
+  it('applies tw:text-brand-secondary for color="brand"', () => {
+    render(<Typography color="brand">Hello</Typography>);
+
+    expect(screen.getByText('Hello')).toHaveClass('tw:text-brand-secondary');
+  });
+
+  it('puts the brand color on the element that clips an ellipsis', () => {
+    render(
+      <a href="/entity">
+        <Typography ellipsis color="brand">
+          A long entity name
+        </Typography>
+      </a>
+    );
+
+    // The "…" takes the color of the box that clips, so the color and the
+    // truncation must sit on the same element.
+    expect(screen.getByText('A long entity name')).toHaveClass(
+      'tw:text-brand-secondary',
+      'tw:truncate'
+    );
+  });
+
   it('still applies a consumer className alongside the color class', () => {
     render(
       <Typography className="tw:italic" color="secondary">
@@ -181,6 +204,20 @@ describe('Typography ellipsis tooltip', () => {
     expect(wrapper).toHaveClass('tw:inline-block', 'tw:max-w-full');
   });
 
+  it('clips an inline ellipsis on the text element so the "…" takes its color', () => {
+    render(
+      <Typography ellipsis className="tw:text-white">
+        Inline text
+      </Typography>
+    );
+
+    expect(screen.getByText('Inline text')).toHaveClass(
+      'tw:block',
+      'tw:truncate',
+      'tw:text-white'
+    );
+  });
+
   it('shows the tooltip when only a block inner element overflows', async () => {
     vi.restoreAllMocks();
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
@@ -213,6 +250,59 @@ describe('Typography ellipsis tooltip', () => {
     );
 
     expect(screen.getByText('Block text').parentElement?.tagName).toBe('DIV');
+  });
+
+  it('renders no nested button inside a link when the trigger is excluded from the tab order', () => {
+    render(
+      <a href="/target">
+        <Typography
+          ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+          Linked text
+        </Typography>
+      </a>
+    );
+
+    const link = screen.getByRole('link');
+
+    expect(link.querySelector('button')).toBeNull();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('still opens the tooltip on hover when the trigger is excluded from the tab order', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Typography
+        ellipsis={{ tooltip: 'Full text', excludeTriggerFromTabOrder: true }}>
+        Clipped text
+      </Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Clipped text'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('lets a click reach the enclosing link when the trigger is excluded from the tab order', () => {
+    const handleLinkClick = vi.fn((e: { preventDefault: () => void }) =>
+      e.preventDefault()
+    );
+
+    render(
+      <a href="/target" onClick={handleLinkClick}>
+        <Typography
+          ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+          Linked text
+        </Typography>
+      </a>
+    );
+
+    fireEvent.click(screen.getByText('Linked text'));
+
+    expect(handleLinkClick).toHaveBeenCalledTimes(1);
   });
 
   it('propagates a click through to an ancestor onClick handler', () => {

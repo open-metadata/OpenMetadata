@@ -27,7 +27,6 @@ final class OntologyBulkRequestValidator {
 
   void validate(final Glossary glossary, final OntologyBulkRequest request) {
     requireRequestIdentity(glossary, request);
-    requireWritable(glossary);
     requireChangeSetMetadata(request);
     switch (request.getOperation()) {
       case CSV_UPSERT -> requireCsvPayload(request);
@@ -46,16 +45,6 @@ final class OntologyBulkRequestValidator {
             || !glossary.getId().equals(request.getGlossaryId());
     if (isInvalid) {
       throw new BadRequestException("Ontology bulk request does not match the target glossary");
-    }
-  }
-
-  private static void requireWritable(final Glossary glossary) {
-    final boolean isReadOnly =
-        glossary.getOntologyConfiguration() == null
-            || Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly());
-    if (isReadOnly) {
-      throw new BadRequestException(
-          "Ontology bulk authoring requires a writable configured glossary");
     }
   }
 

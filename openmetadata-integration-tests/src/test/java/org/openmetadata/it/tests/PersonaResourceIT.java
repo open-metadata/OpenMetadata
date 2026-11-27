@@ -41,6 +41,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
 
   // Persona has special characteristics
   {
+    supportsEntityStatus = false;
     supportsOwners = false;
     supportsFollowers = false;
     supportsTags = false;
@@ -201,6 +202,14 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     Persona fetched = getEntityWithFields(persona.getId().toString(), "users");
     assertNotNull(fetched.getUsers());
     assertEquals(2, fetched.getUsers().size());
+
+    // The list endpoint resolves fields in bulk, a separate path from the single-entity get.
+    Persona listed =
+        listEntities(new ListParams().withLimit(1000).setFields("users")).getData().stream()
+            .filter(p -> p.getId().equals(persona.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(2, listed.getUsers().size());
   }
 
   @Test

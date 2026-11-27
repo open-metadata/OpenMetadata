@@ -21,8 +21,10 @@ import type {
 import {
   buildRuleIndex,
   countRules,
+  isNegatedPeerRoot,
   QUERY_BUILDER_GROUP_TYPE,
 } from './QueryBuilderCanvas.utils';
+import QueryBuilderConjunctionHint from './QueryBuilderConjunctionHint';
 import QueryBuilderGroupCard from './QueryBuilderGroupCard';
 import QueryBuilderGroupConnector from './QueryBuilderGroupConnector';
 
@@ -36,6 +38,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
   preset,
   readonly,
   showConjunction,
+  allowRemoveLastRule = false,
 }) => {
   const root = useMemo(
     () =>
@@ -54,7 +57,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
       preset,
       readonly,
       showConjunction,
-      canRemoveRule: countRules(root) > 1,
+      canRemoveRule: allowRemoveLastRule || countRules(root) > 1,
       ruleIndexById: buildRuleIndex(root),
     }),
     [
@@ -65,6 +68,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
       preset,
       readonly,
       showConjunction,
+      allowRemoveLastRule,
       root,
     ]
   );
@@ -80,6 +84,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
     rootChildren.length > 0 &&
     rootChildren.every((child) => child.type === QUERY_BUILDER_GROUP_TYPE);
   const conjunctions = Object.keys(config.conjunctions ?? {});
+  const rootConjunction = root.properties?.conjunction ?? 'AND';
 
   const addGroup = (conjunction?: string) => {
     if (conjunction) {
@@ -90,12 +95,17 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
 
   return (
     <Box data-testid="query-builder" direction="col">
+      {isNegatedPeerRoot(root, asSiblings) && (
+        <div className="tw:pb-3">
+          <QueryBuilderConjunctionHint negated conjunction={rootConjunction} />
+        </div>
+      )}
       {asSiblings ? (
         rootChildren.map((child, index) => (
           <Fragment key={child.id ?? index}>
             {index > 0 && (
               <QueryBuilderGroupConnector
-                conjunction={root.properties?.conjunction ?? 'AND'}
+                conjunction={rootConjunction}
                 conjunctions={conjunctions}
                 readonly={readonly}
                 onChange={(next) => actions.setConjunction(rootPath, next)}

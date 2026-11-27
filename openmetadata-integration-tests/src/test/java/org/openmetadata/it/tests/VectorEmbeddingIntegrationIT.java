@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -252,16 +253,12 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateEntityEmbedding(entity2, TEST_INDEX);
     Thread.sleep(1000);
 
-    Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+    Map<String, Supplier<String>> currentById =
         Map.of(
             entity1Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity1.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity1)),
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity1),
             entity2Id.toString(),
-            new OpenSearchVectorService.EntityFingerprintInput(
-                entity2.getUpdatedAt(),
-                () -> VectorDocBuilder.computeFingerprintForEntity(entity2)));
+            () -> VectorDocBuilder.computeFingerprintForEntity(entity2));
 
     Map<String, JsonNode> cachedEmbeddings =
         vectorService.getExistingEmbeddingsBatch(TEST_INDEX, currentById);
@@ -275,72 +272,6 @@ class VectorEmbeddingIntegrationIT {
     assertTrue(cached2.path("fingerprint").isTextual());
     assertTrue(cached1.path("embedding").isArray() && !cached1.path("embedding").isEmpty());
     assertTrue(cached2.path("embedding").isArray() && !cached2.path("embedding").isEmpty());
-  }
-
-  @Test
-  void testEnsureHybridSearchPipelineCreatesAndUpdates() throws Exception {
-    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
-
-    Map<String, Object> pipeline = getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
-    assertNotNull(pipeline, "Pipeline should exist after creation");
-    assertWeightsInPipeline(pipeline, 0.4, 0.6);
-
-    vectorService.ensureHybridSearchPipeline(0.3, 0.7);
-
-    Map<String, Object> updatedPipeline =
-        getSearchPipeline(OpenSearchVectorService.HYBRID_PIPELINE_NAME);
-    assertNotNull(updatedPipeline, "Pipeline should still exist after update");
-    assertWeightsInPipeline(updatedPipeline, 0.3, 0.7);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> getSearchPipeline(String pipelineName) throws Exception {
-    var genericClient = openSearchClient.generic();
-    try (var response =
-        genericClient.execute(
-            os.org.opensearch.client.opensearch.generic.Requests.builder()
-                .method("GET")
-                .endpoint("/_search/pipeline/" + pipelineName)
-                .build())) {
-      if (response.getStatus() == 404) {
-        return null;
-      }
-      String body =
-          response
-              .getBody()
-              .map(
-                  b -> {
-                    try {
-                      return new String(b.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                    } catch (Exception e) {
-                      return "{}";
-                    }
-                  })
-              .orElse("{}");
-      JsonNode root = mapper.readTree(body);
-      return mapper.convertValue(root.path(pipelineName), Map.class);
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private void assertWeightsInPipeline(
-      Map<String, Object> pipeline, double expectedKeyword, double expectedSemantic) {
-    List<Map<String, Object>> processors =
-        (List<Map<String, Object>>) pipeline.get("phase_results_processors");
-    assertNotNull(processors, "Pipeline should have phase_results_processors");
-    assertFalse(processors.isEmpty(), "phase_results_processors should not be empty");
-
-    Map<String, Object> scoreRanker =
-        (Map<String, Object>) processors.get(0).get("score-ranker-processor");
-    assertNotNull(scoreRanker, "Pipeline should have score-ranker-processor");
-
-    Map<String, Object> combination = (Map<String, Object>) scoreRanker.get("combination");
-    assertEquals("rrf", combination.get("technique"));
-
-    Map<String, Object> parameters = (Map<String, Object>) combination.get("parameters");
-    List<Number> weights = (List<Number>) parameters.get("weights");
-    assertEquals(expectedKeyword, weights.get(0).doubleValue(), 0.001);
-    assertEquals(expectedSemantic, weights.get(1).doubleValue(), 0.001);
   }
 
   @Test

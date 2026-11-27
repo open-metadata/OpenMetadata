@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.providers.WebhookSinkProvider;
 
 class WebhookSinkProviderTest {
@@ -279,7 +280,7 @@ class WebhookSinkProviderTest {
     }
   }
 
-  private static class TestEntity implements EntityInterface {
+  private static class TestEntity implements EntityInterface<EntityStatus> {
     private final UUID id = UUID.randomUUID();
     private final String name;
 
@@ -382,7 +383,7 @@ class WebhookSinkProviderTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       return (T) this;
     }
   }

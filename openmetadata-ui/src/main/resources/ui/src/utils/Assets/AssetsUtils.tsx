@@ -46,6 +46,7 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../rest/dataProductAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getDriveAssetByFqn,
@@ -176,6 +177,7 @@ const GET_ENTITY_API_MAP: Partial<
   [EntityType.API_ENDPOINT]: getApiEndPointByFQN,
   [EntityType.METRIC]: getMetricByFqn,
   [EntityType.DOMAIN]: getDomainByName,
+  [EntityType.DATA_PRODUCT]: getDataProductByName,
   [EntityType.DIRECTORY]: (fqn: string, params?: ListParams) =>
     getDriveAssetByFqn<Directory>(
       fqn,
@@ -299,7 +301,6 @@ export const getEntityFqnQueryFilter = (fqns: string[]) => {
 export interface EntityIconProps {
   className?: string;
   size?: number;
-  strokeWidth?: number;
 }
 
 export const getEntityIconWithBg = (
@@ -312,11 +313,7 @@ export const getEntityIconWithBg = (
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};
-  const {
-    className: iconClassName,
-    size = 14,
-    strokeWidth = 1.2,
-  } = iconProps ?? {};
+  const { className: iconClassName, size = 14 } = iconProps ?? {};
 
   return (
     <Box
@@ -332,11 +329,10 @@ export const getEntityIconWithBg = (
       {Icon && (
         <Icon
           className={classNames(
-            style?.iconClass ?? 'tw:text-gray-500',
+            style?.iconClass ?? 'tw:text-quaternary',
             iconClassName
           )}
           height={size}
-          strokeWidth={strokeWidth}
           width={size}
         />
       )}

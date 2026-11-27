@@ -119,6 +119,12 @@ describe('ExploreSearchInput', () => {
     expect(searchInput).not.toHaveAttribute(ARIA_KEY_SHORTCUTS);
   });
 
+  it('turns off browser autocomplete so it does not cover the suggestions', () => {
+    render(<SearchInputHarness />);
+
+    expect(screen.getByRole('textbox')).toHaveAttribute('autocomplete', 'off');
+  });
+
   it('leaves the shortcut for the global Ask Collate listener', () => {
     render(<SearchInputHarness />);
 
@@ -130,26 +136,6 @@ describe('ExploreSearchInput', () => {
     expect(globalShortcutHandler).toHaveBeenCalledTimes(1);
 
     window.removeEventListener('keydown', globalShortcutHandler);
-  });
-
-  it('uses a compact clear icon without an added stroke', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<SearchInputHarness />);
-
-    await user.type(screen.getByRole('textbox'), 'orders');
-
-    const clearIcon = screen
-      .getByTestId('explore-clear-search-button')
-      .querySelector('svg-mock');
-
-    expect(clearIcon).toHaveAttribute(
-      'classname',
-      expect.stringContaining('tw:size-3.5')
-    );
-    expect(clearIcon).not.toHaveAttribute(
-      'classname',
-      expect.stringContaining('tw:[&_path]:stroke-current')
-    );
   });
 
   it('uses the prefixed placeholder color utility only once', () => {

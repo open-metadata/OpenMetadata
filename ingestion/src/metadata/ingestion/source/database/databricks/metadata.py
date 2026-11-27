@@ -15,7 +15,7 @@ import re
 import traceback
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -66,6 +66,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_COLUMN_TYPE,
     DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
@@ -117,7 +118,7 @@ DATABRICKS_TAG_MAPPING = TagMappingConfig(
 # dialect object.
 _DESCRIBE_JSON_CACHE_KEY = "databricks_describe_json"
 _DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
-_TABLE_TYPES_CACHE_KEY = "databricks_table_types"
+_TABLE_INFO_CACHE_KEY = "databricks_table_info"
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -547,12 +548,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             }
             if col_type in {"array", "struct", "map"}:
                 try:
-                    sub_rows = {
-                        r[0]: r[1]
-                        for r in connection.execute(
-                            text(f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`")
-                        ).fetchall()
-                    }
+                    if db_name and schema:
+                        column_type_query = _format_identifier_query(
+                            DATABRICKS_GET_COLUMN_TYPE,
+                            database_name=db_name,
+                            schema_name=schema,
+                            table_name=table_name,
+                            column_name=col_name,
+                        )
+                    else:
+                        # No catalog (older Hive-metastore path), or no schema:
+                        # compose the table reference the same way get_table_type's
+                        # fallback does, and quote the column on its own.
+                        column_type_query = (
+                            f"DESCRIBE TABLE {_qualified_identifier(schema, table_name)} {_quote_identifier(col_name)}"
+                        )
+                    sub_rows = {r[0]: r[1] for r in connection.execute(text(column_type_query)).fetchall()}
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
                     # Map values aren't surfaced as named children, so map
@@ -591,8 +602,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    if kw.get("database") and kw.get("is_old_version") is not True:
-        connection.execute(text(f"USE CATALOG '{kw.get('database')}'"))
+    database = kw.get("database")
+    if database and kw.get("is_old_version") is not True:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(database)}"))
     return [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
 
 
@@ -631,11 +643,12 @@ def get_view_names(  # pylint: disable=unused-argument
     only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
     **kw: Any,
 ) -> list[str]:
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW VIEWS"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     view_in_schema = connection.execute(text(query))
     views = []
     for row in view_in_schema:
@@ -768,11 +781,12 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
 
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW TABLES"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
@@ -798,25 +812,39 @@ def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unu
     return [table for table in tables if table not in views]
 
 
-def _get_schema_table_types(
+class _TableInfo(NamedTuple):
+    """The two ``information_schema.tables`` columns the dialect reads: the raw
+    Databricks table type (to skip FOREIGN tables) and the storage format (to
+    classify Delta/Iceberg)."""
+
+    table_type: str
+    data_source_format: str | None
+
+
+_UNKNOWN_TABLE_INFO = _TableInfo(table_type="", data_source_format=None)
+
+
+def _get_schema_table_info(
     self,
     connection: Connection,
     database: str | None,
     schema: str,
-) -> dict[str, str]:
-    """One ``information_schema.tables`` query per schema in place of a per-table
-    ``DESCRIBE``. Held in a size-1 cache on ``connection.info`` so it is scoped to
-    the current thread's connection (the source hands each thread its own
-    connection) and bounded: every ``get_table_type`` call for a schema's tables
-    runs inside one ``get_table_names`` pass, so the current schema's map is
-    reused, then evicted when the next schema is fetched — never accumulated
-    across the catalog. Returns an empty mapping on failure so callers fall back
-    to a per-table ``DESCRIBE``."""
+) -> dict[str, _TableInfo]:
+    """The schema's tables mapped to their ``_TableInfo``, from one
+    ``information_schema.tables`` query in place of a per-table ``DESCRIBE``.
+
+    Held in a size-1 cache on ``connection.info`` so it is scoped to the current
+    thread's connection (the source hands each thread its own connection) and
+    bounded: every ``get_table_type`` call for a schema's tables runs inside one
+    ``get_table_names`` pass, so the current schema's map is reused, then evicted
+    when the next schema is fetched — never accumulated across the catalog.
+    Returns an empty mapping on failure so callers fall back to a per-table
+    ``DESCRIBE``."""
     cache_key = (database, schema)
-    cached = connection.info.get(_TABLE_TYPES_CACHE_KEY)
+    cached = connection.info.get(_TABLE_INFO_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
         return cached[cache_key]
-    table_types = {}
+    table_info: dict[str, _TableInfo] = {}
     if database:
         try:
             rows = connection.execute(
@@ -827,22 +855,44 @@ def _get_schema_table_types(
                     )
                 ).bindparams(schema_name=schema)
             )
-            table_types = {row[0]: row[1] for row in rows}
+            table_info = {row[0]: _TableInfo(table_type=row[1], data_source_format=row[2]) for row in rows}
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(
-                f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"
+                "Bulk table-info fetch failed for %s.%s, falling back to per-table DESCRIBE: %s",
+                database,
+                schema,
+                err,
             )
     # Size-1: replace, don't accumulate — the previous schema's map is dead.
-    connection.info[_TABLE_TYPES_CACHE_KEY] = {cache_key: table_types}
-    return table_types
+    connection.info[_TABLE_INFO_CACHE_KEY] = {cache_key: table_info}
+    return table_info
+
+
+def _table_type_from_data_source_format(data_source_format: str | None) -> TableType | None:
+    """Map a Databricks ``information_schema.tables.data_source_format`` to an
+    OpenMetadata table type. Unity Catalog reports every Delta table — managed,
+    partitioned and UniForm(Iceberg) alike — as ``DELTA``, while native Iceberg
+    tables report ``ICEBERG``. Both are matched exactly: DELTASHARING shares the
+    prefix but is a Delta Sharing table. Any other/unknown/missing value returns
+    ``None`` so the caller keeps its default type."""
+    if not data_source_format:
+        return None
+    normalized = data_source_format.strip().upper()
+    if normalized == "DELTA":
+        return TableType.DeltaLake
+    if normalized == "ICEBERG":
+        return TableType.Iceberg
+    return None
 
 
 def get_table_type(self, connection, database, schema, table):
-    """get table type (regular/foreign)"""
+    """The table's raw Databricks type string (MANAGED/EXTERNAL/VIEW/FOREIGN/...),
+    read from the schema's bulk map or, failing that, a per-table ``DESCRIBE``.
+    ``get_table_names`` uses it to skip FOREIGN tables."""
     try:
-        table_types = _get_schema_table_types(self, connection, database, schema)
-        if table in table_types:
-            return table_types[table]
+        table_info = _get_schema_table_info(self, connection, database, schema)
+        if table in table_info:
+            return table_info[table].table_type
         if database:
             query = _format_identifier_query(
                 DATABRICKS_GET_TABLE_COMMENTS,
@@ -985,12 +1035,24 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
-        """
 
+        Delta/Iceberg storage is stamped from the schema's cached
+        ``data_source_format`` (populated while listing the tables) so managed,
+        partitioned and UniForm Delta tables surface as DeltaLake and native
+        Iceberg tables as Iceberg, without a per-table query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        table_names = self.inspector.get_table_names(schema=schema_name, db_name=database) or []
+        table_info = _get_schema_table_info(self.connection.dialect, self.connection, database, schema_name)
         return [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema=schema_name, db_name=self.context.get().database)
-            or []
+            TableNameAndType(
+                name=table_name,
+                type_=_table_type_from_data_source_format(
+                    table_info.get(table_name, _UNKNOWN_TABLE_INFO).data_source_format
+                )
+                or TableType.Regular,
+            )
+            for table_name in table_names
         ]
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:

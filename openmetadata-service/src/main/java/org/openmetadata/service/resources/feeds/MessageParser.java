@@ -40,12 +40,16 @@ public final class MessageParser {
   // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id>
   // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}::{arrayFieldValue}>
   // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id::description>
+  // The lookahead requires the closing '>' before any other '<' or '>', which every match needs
+  // anyway, so the optional groups are only tried for a link that closes
+  // (ADR:2026-11-03-input-parsing-is-bounded).
   private static final Pattern ENTITY_LINK_PATTERN =
       Pattern.compile(
           "<#E"
               + ENTITY_LINK_SEPARATOR
               + // Match initial string <#E::
-              "([^<>]+?)"
+              "(?=[^<>]*>)"
+              + "([^<>]+?)"
               + // Non-greedy collection group 1 for {entityType}
               ENTITY_LINK_SEPARATOR
               + "([^<>]+?)"

@@ -30,37 +30,42 @@ const mockTermBoosts: TermBoost[] = [
 const mockHandleDeleteTermBoost = jest.fn();
 const mockHandleTermBoostChange = jest.fn();
 
-jest.mock('../TermBoost/TermBoost', () => {
-  return jest
-    .fn()
-    .mockImplementation(
-      ({ termBoost, showNewTermBoost, onDeleteBoost, onTermBoostChange }) => (
-        <div
-          data-testid={
-            showNewTermBoost
-              ? 'new-term-boost'
-              : `term-boost-${termBoost.value}`
-          }>
-          {termBoost.value || 'New Term Boost'}
-          <button
-            data-testid={`delete-${termBoost.value || 'new'}`}
-            onClick={() => onDeleteBoost(termBoost.value)}>
-            Delete
-          </button>
-          <button
-            data-testid={`edit-${termBoost.value || 'new'}`}
-            onClick={() =>
-              onTermBoostChange({
-                ...termBoost,
-                boost: termBoost.boost + 1,
-              })
+jest.mock(
+  '../../discovery/personal-space/Profile/tabs/platform-settings/search/TermBoostCard',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(
+        ({
+          termBoost,
+          onDelete: onDeleteBoost,
+          onChange: onTermBoostChange,
+        }) => (
+          <div
+            data-testid={
+              termBoost ? `term-boost-${termBoost.value}` : 'new-term-boost'
             }>
-            Edit
-          </button>
-        </div>
-      )
-    );
-});
+            {termBoost?.value || 'New Term Boost'}
+            <button
+              data-testid={`delete-${termBoost?.value || 'new'}`}
+              onClick={() => onDeleteBoost(termBoost?.value ?? '')}>
+              Delete
+            </button>
+            <button
+              data-testid={`edit-${termBoost?.value || 'new'}`}
+              onClick={() =>
+                onTermBoostChange({
+                  ...termBoost,
+                  boost: (termBoost?.boost ?? 0) + 1,
+                })
+              }>
+              Edit
+            </button>
+          </div>
+        )
+      );
+  }
+);
 
 describe('TermBoostList', () => {
   beforeEach(() => {

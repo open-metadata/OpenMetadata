@@ -21,14 +21,6 @@ jest.mock('../../../rest/searchAPI', () => ({
     ),
 }));
 
-jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest.fn().mockImplementation(() => ({ pathname: '/explore' }));
-});
-
-jest.mock('../../../constants/constants', () => ({
-  ROUTES: {},
-}));
-
 describe('QueryCount test', () => {
   it('component should render', async () => {
     render(<QueryCount tableId="testID" />);

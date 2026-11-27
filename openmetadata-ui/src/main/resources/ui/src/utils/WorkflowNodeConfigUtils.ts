@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EmptyAssigneeStrategy } from '../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import {
@@ -180,6 +181,7 @@ const NODE_SPECIFIC_CONFIG_HANDLERS: Record<
   [NodeSubType.CheckChangeDescriptionTask]: applyCheckChangeDescriptionConfig,
   [NodeSubType.RollbackEntityTask]: applyPassthroughConfig,
   [NodeSubType.SinkTask]: applyPassthroughConfig,
+  [NodeSubType.CollectMetadataTask]: applyPassthroughConfig,
 };
 
 const addNodeSpecificConfig = (
@@ -198,6 +200,12 @@ const AUTOMATED_TASK_SINGLE_INPUT_SUBTYPES: string[] = [
   NodeSubType.CheckEntityAttributesTask,
   NodeSubType.CheckChangeDescriptionTask,
   NodeSubType.DataCompletenessTask,
+  NodeSubType.CollectMetadataTask,
+];
+
+// Nodes whose schema declares no output variables, so the request may not carry one.
+const AUTOMATED_TASK_WITHOUT_OUTPUT_SUBTYPES: string[] = [
+  NodeSubType.CollectMetadataTask,
 ];
 
 const AUTOMATED_TASK_OUTPUT_MAP: Record<
@@ -224,7 +232,13 @@ const AUTOMATED_TASK_OUTPUT_MAP: Record<
     ],
   },
   [NodeSubType.SinkTask]: {
-    output: ['syncResult', 'syncedCount', 'failedCount', 'result'],
+    output: [
+      'syncResult',
+      'syncedCount',
+      'failedCount',
+      'skippedCount',
+      'result',
+    ],
     branches: ['success', 'failure'],
   },
 };
@@ -239,7 +253,9 @@ const configureAutomatedTaskIO = (
     : ['relatedEntity', 'updatedBy'];
 
   const outputConfig = AUTOMATED_TASK_OUTPUT_MAP[subType];
-  config.output = outputConfig?.output ?? [];
+  if (!AUTOMATED_TASK_WITHOUT_OUTPUT_SUBTYPES.includes(subType)) {
+    config.output = outputConfig?.output ?? [];
+  }
   if (outputConfig?.branches) {
     config.branches = outputConfig.branches;
   }
@@ -255,7 +271,7 @@ const applyUserApprovalConfig = (
     | {
         addReviewers?: boolean;
         addOwners?: boolean;
-        emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+        emptyAssigneeStrategy?: EmptyAssigneeStrategy;
         candidates?: Array<{
           id: string;
           type: string;
@@ -264,11 +280,15 @@ const applyUserApprovalConfig = (
         }>;
       }
     | undefined;
-  config.config = {};
+  // Start from the step's stored config so settings this builder does not edit (partial
+  // decisions, transition metadata, task status, domain-owner approvers) survive a save.
+  config.config = { ...nodeData.config };
   config.config.assignees = {
+    ...assigneesFromNode,
     addReviewers: assigneesFromNode?.addReviewers ?? true,
     addOwners: assigneesFromNode?.addOwners ?? false,
-    emptyAssigneeStrategy: assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
+    emptyAssigneeStrategy:
+      assigneesFromNode?.emptyAssigneeStrategy ?? EmptyAssigneeStrategy.None,
     candidates: assigneesFromNode?.candidates ?? [],
   };
   config.config.approvalThreshold =

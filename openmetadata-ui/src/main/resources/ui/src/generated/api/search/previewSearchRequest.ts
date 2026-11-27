@@ -468,6 +468,12 @@ export interface GlobalSettings {
      */
     enableAccessControl?: boolean;
     /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
+    /**
      * Optional list of numeric field-based boosts applied globally.
      */
     fieldValueBoosts?: FieldValueBoost[];
@@ -476,14 +482,14 @@ export interface GlobalSettings {
      */
     highlightFields?: string[];
     /**
-     * Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search in hybrid search (0.0-1.0)
      */
     keywordWeight?:     number;
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
     /**
-     * Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
     /**

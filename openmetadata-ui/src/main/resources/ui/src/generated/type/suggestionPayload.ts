@@ -23,7 +23,9 @@ export interface SuggestionPayload {
      */
     currentValue?: string;
     /**
-     * Path to the field being updated (e.g., 'columns.customer_id.description').
+     * Path to the property being updated. For a Description or Tag suggestion it is written as
+     * <container>.<name>[.<child name>...].<description|tags>, for example
+     * 'columns.customer_id.description', or 'description' / 'tags' alone for the entity itself.
      */
     fieldPath: string;
     /**

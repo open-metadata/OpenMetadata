@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for the Omni dashboard connector."""
 
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -512,6 +513,102 @@ def test_resolve_topic_prefers_the_data_model_named_by_the_reference(omni_source
     assert omni_source._resolve_topic("Post-Acquisition Lifecycle").name == "Post-Acquisition Lifecycle"
 
 
+def test_dashboard_lineage_when_topic_name_differs_from_its_base_view(omni_source, caplog):
+    """Regression for #32597: topic ``orders`` sits on base view
+    ``schema__orders__fact_orders`` and the view file is present in the same model,
+    so both become data models. A tile queries the topic through its base view, so
+    its table is the view name; that must resolve to the view's data model instead
+    of being skipped as ambiguous between the topic and the view."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "model": "",
+        "schema__orders__fact_orders.view": (
+            "schema: SCHEMA\ntable_name: FACT_ORDERS\ndimensions:\n  order_id:\n    label: Order ID\n"
+        ),
+        "orders.topic": "base_view: schema__orders__fact_orders\nlabel: Orders\n",
+    }
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+    assert sorted(omni_source._datamodel_name(topic) for topic in omni_source.topics) == [
+        "sales.orders",
+        "sales.schema__orders__fact_orders",
+    ]
+
+    datamodel_entity = DashboardDataModel(
+        id="550e8400-e29b-41d4-a716-446655440040",
+        name="sales.schema__orders__fact_orders",
+        dataModelType="OmniDataModel",
+        columns=[],
+    )
+    dashboard_entity = Dashboard(
+        id="550e8400-e29b-41d4-a716-446655440041",
+        name="doc-1",
+        service=EntityReference(id="550e8400-e29b-41d4-a716-446655440042", type="dashboardService"),
+    )
+    datamodel_fqns = []
+
+    def get_by_name(entity, fqn, **_):
+        if entity is Dashboard:
+            return dashboard_entity
+        datamodel_fqns.append(fqn)
+        return datamodel_entity
+
+    omni_source.metadata.get_by_name = MagicMock(side_effect=get_by_name)
+    details = OmniDashboardDetails(
+        document=MOCK_DOCUMENT,
+        dashboard=OmniDashboardDocument(
+            identifier="doc-1",
+            queryPresentations=[
+                QueryPresentation(
+                    name="Orders",
+                    query=OmniQuery(
+                        table="schema__orders__fact_orders",
+                        fields=["schema__orders__fact_orders.order_id"],
+                    ),
+                )
+            ],
+        ),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        edges = [
+            r for r in _rights(omni_source.yield_dashboard_lineage_details(details)) if isinstance(r, AddLineageRequest)
+        ]
+
+    assert datamodel_fqns == ['mock_omni.model."sales.schema__orders__fact_orders"']
+    assert [(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges] == [("dashboardDataModel", "dashboard")]
+    assert edges[0].edge.fromEntity.id == datamodel_entity.id
+    assert "Ambiguous tile reference" not in caplog.text
+
+
+def test_resolve_topic_names_the_colliding_data_models_when_ambiguous(omni_source, caplog):
+    """Two topics of one model share a base view that has no data model of its own,
+    so a tile naming that view cannot be routed. The warning must name the data
+    models that collide; counting them as models is wrong when they belong to one
+    model (#32597)."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "model": "",
+        "orders.topic": "base_view: schema__shared__fact_orders\n",
+        "returns.topic": "base_view: schema__shared__fact_orders\n",
+    }
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    with caplog.at_level(logging.WARNING):
+        assert omni_source._resolve_topic("schema__shared__fact_orders") is None
+
+    warnings = [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING]
+    assert warnings == [
+        "Ambiguous tile reference 'schema__shared__fact_orders' matches data models sales.orders, sales.returns; "
+        "skipping lineage"
+    ]
+
+
 def test_get_owner_ref_resolves_via_user_directory(omni_source):
     """The documents API carries no owner email, so the owner is matched on the
     display name it does carry against the SCIM user directory."""
@@ -793,30 +890,83 @@ def test_yield_tags_skipped_when_include_tags_disabled(omni_source):
     assert list(omni_source.yield_tags(details)) == []
 
 
-def test_yield_dashboard_attaches_label_tags(omni_source):
-    """The dashboard request carries the document's labels, resolved against the
-    Omni classification (tag FQN resolution itself is a server call)."""
-    from metadata.generated.schema.type.tagLabel import (
-        LabelType,
-        State,
-        TagFQN,
-        TagLabel,
-        TagSource,
-    )
-
-    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Company North Star")]})
+def test_yield_dashboard_attaches_label_tags(omni_source, tag_metadata):
+    omni_source.metadata = tag_metadata
+    labelled = MOCK_DOCUMENT.model_copy(update={"labels": [OmniLabel(name="Shared.Tag")]})
     details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
-    resolved = [
-        TagLabel(
-            tagFQN=TagFQN(root='OmniLabels."Company North Star"'),
-            source=TagSource.Classification,
-            labelType=LabelType.Automated,
-            state=State.Suggested,
-        )
-    ]
-    with patch("metadata.ingestion.source.dashboard.omni.metadata.get_tag_labels", return_value=resolved) as get_labels:
-        dashboard = _rights(omni_source.yield_dashboard(details))[0]
+    dashboard = _rights(omni_source.yield_dashboard(details))[0]
+    assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Shared.Tag"']
 
-    assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Company North Star"']
-    assert get_labels.call_args.kwargs["tags"] == ["Company North Star"]
-    assert get_labels.call_args.kwargs["classification_name"] == "OmniLabels"
+
+ORDERS_TOPIC = OmniTopic(
+    model_id="m1", model_name="sales", name="Orders", base_view="analytics__orders", base_schema="ANALYTICS"
+)
+ORDERS_VIEW = OmniTopic(model_id="m1", model_name="sales", name="orders", base_view="orders", base_schema="ANALYTICS")
+
+
+def _index(source, *topics):
+    for topic in topics:
+        for key in source._topic_name_keys(topic):
+            source._topic_name_index[key].append(topic)
+        for key in source._topic_alias_keys(topic):
+            source._topic_alias_index[key].append(topic)
+
+
+def test_resolve_topic_view_handle_picks_the_view_over_a_same_named_topic(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("analytics__orders") is ORDERS_VIEW
+    assert omni_source._resolve_topic("ANALYTICS/orders") is ORDERS_VIEW
+
+
+def test_resolve_topic_topic_name_picks_the_topic_over_a_same_named_view(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("Orders") is ORDERS_TOPIC
+
+
+def test_resolve_topic_same_named_views_across_models_stay_ambiguous(omni_source):
+    _index(omni_source, ORDERS_VIEW, ORDERS_VIEW.model_copy(update={"model_id": "m2", "model_name": "finance"}))
+    assert omni_source._resolve_topic("analytics__orders") is None
+
+
+def test_resolve_topic_same_model_collision_without_exact_spelling_stays_ambiguous(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("ORDERS") is None
+
+
+def test_resolve_topic_shared_base_view_named_like_a_topic_stays_ambiguous(omni_source):
+    """A reference that only matches a shared base view names the view, not a topic,
+    so a topic spelled like the view's leaf must not win the tie."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "model": "",
+        "orders.topic": "base_view: schema__shared__orders\n",
+        "returns.topic": "base_view: schema__shared__orders\n",
+    }
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    assert omni_source._resolve_topic("schema__shared__orders") is None
+
+
+MOCK_APP = OmniDocument(
+    identifier="doc-4",
+    name="Sales App",
+    hasDashboard=False,
+    hasApp=True,
+    url="https://acme.omniapp.co/apps/doc-4",
+)
+
+
+def test_get_dashboards_list_includes_apps(omni_source):
+    archived_app = MOCK_APP.model_copy(update={"identifier": "doc-5", "deleted": True})
+    omni_source.client.get_documents = lambda *_: [MOCK_DOCUMENT, MOCK_APP, archived_app, MOCK_WORKBOOK_ONLY]
+    assert [d.identifier for d in omni_source.get_dashboards_list()] == ["doc-1", "doc-4"]
+
+
+def test_documents_response_reads_has_app():
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {"records": [{"identifier": "doc-4", "hasDashboard": False, "hasApp": True}], "pageInfo": {}}
+    assert DocumentsResponse.model_validate(page).records[0].hasApp is True

@@ -22,21 +22,24 @@ import { AxiosError } from 'axios';
 import { act } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
-import { listTestCases } from '../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { generateEntityLink } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataAssetSummaryPanelV1 } from './DataAssetSummaryPanelV1';
 import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface';
@@ -49,14 +52,14 @@ jest.mock('../../utils/TablePureUtils', () => {
   const mockGetTagsWithoutTier = jest.fn(() => []);
   const mockGetUsagePercentile = jest.fn(() => 0);
   const mockGetDataTypeString = jest.fn(() => 'string');
-  const mockGenerateEntityLink = jest.fn();
 
   return {
-    generateEntityLink: mockGenerateEntityLink,
     getTierTags: mockGetTierTags,
     getTagsWithoutTier: mockGetTagsWithoutTier,
     getUsagePercentile: mockGetUsagePercentile,
     getDataTypeString: mockGetDataTypeString,
+    generateEntityLink: jest.requireActual('../../utils/TablePureUtils')
+      .generateEntityLink,
   };
 });
 
@@ -67,10 +70,6 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(),
-}));
-
-jest.mock('../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(),
 }));
 
 jest.mock('../../hooks/useChangeSummary', () => ({
@@ -90,7 +89,7 @@ jest.mock('../../rest/incidentManagerAPI', () => ({
 }));
 
 jest.mock('../../rest/testAPI', () => ({
-  listTestCases: jest.fn(),
+  getListTestCaseBySearch: jest.fn(),
 }));
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
@@ -274,6 +273,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   });
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Owner: () => <div data-testid="owners-section">Owners Section</div>,
     Button: ({ children, onPress, onClick, ...rest }: any) => (
       <button onClick={onPress ?? onClick} {...rest}>
@@ -331,9 +331,18 @@ jest.mock('../common/GlossaryTermsSection/GlossaryTermsSection', () => {
 jest.mock('../common/TagsSection/TagsSection', () => {
   return jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="tags-section">Tags Section</div>
-    ));
+    .mockImplementation(
+      (props: { tags?: Array<{ tagFQN?: string; source?: string }> }) => (
+        <div data-testid="tags-section">
+          Tags Section
+          {(props?.tags ?? []).map((tag) => (
+            <span data-testid={`mock-tag-${tag.tagFQN}`} key={tag.tagFQN ?? ''}>
+              {tag.source}:{tag.tagFQN}
+            </span>
+          ))}
+        </div>
+      )
+    );
 });
 
 jest.mock('../common/DataProductsSection/DataProductsSection', () => {
@@ -418,26 +427,22 @@ const mockEntityPermissions = {
   EditDescription: true,
 };
 
-const mockTestCaseData = [
-  {
-    id: 'test-case-1',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Success,
-    },
-  },
-  {
-    id: 'test-case-2',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Failed,
-    },
-  },
-  {
-    id: 'test-case-3',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Aborted,
-    },
-  },
-];
+// The search listing's total for each status filter, as a `limit: 0` request returns it.
+const mockTestCaseStatusTotals = (
+  totals: Partial<Record<TestCaseStatus, number>>
+) =>
+  (getListTestCaseBySearch as jest.Mock).mockImplementation(
+    async ({ testCaseStatus }: { testCaseStatus: TestCaseStatus }) => ({
+      data: [],
+      paging: { total: totals[testCaseStatus] ?? 0 },
+    })
+  );
+
+const mockTestCaseStatusCounts = {
+  [TestCaseStatus.Success]: 1,
+  [TestCaseStatus.Failed]: 1,
+  [TestCaseStatus.Aborted]: 1,
+};
 
 const mockIncidentData = {
   paging: {
@@ -475,9 +480,6 @@ describe('DataAssetSummaryPanelV1', () => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       getEntityPermission: mockGetEntityPermission,
     });
-    (useTourProvider as jest.Mock).mockReturnValue({
-      isTourPage: false,
-    });
     (useChangeSummary as jest.Mock).mockReturnValue({
       changeSummary: {},
       totalEntries: 0,
@@ -490,11 +492,10 @@ describe('DataAssetSummaryPanelV1', () => {
     mockGetEntityPermission.mockResolvedValue(mockEntityPermissions);
     (getCurrentMillis as jest.Mock).mockReturnValue(1234567890);
     (getEpochMillisForPastDays as jest.Mock).mockReturnValue(1234567890);
-    (generateEntityLink as jest.Mock).mockReturnValue('test-link');
     (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue(
       mockIncidentData
     );
-    (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
+    mockTestCaseStatusTotals(mockTestCaseStatusCounts);
     (getEntityOverview as jest.Mock).mockImplementation(
       (
         _entityType: unknown,
@@ -663,11 +664,21 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(listTestCases).toHaveBeenCalledWith({
-          entityLink: 'test-link',
+        expect(getListTestCaseBySearch).toHaveBeenCalledTimes(4);
+      });
+
+      // Scoped to this table's entity link, so ViewTests is checked on this table.
+      [
+        TestCaseStatus.Success,
+        TestCaseStatus.Failed,
+        TestCaseStatus.Aborted,
+        TestCaseStatus.Queued,
+      ].forEach((testCaseStatus) => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith({
+          entityLink: `<#E::table::${mockDataAsset.fullyQualifiedName}>`,
           includeAllTests: true,
-          limit: 100,
-          fields: ['testCaseResult', 'incidentId'],
+          testCaseStatus,
+          limit: 0,
         });
       });
     });
@@ -692,20 +703,6 @@ describe('DataAssetSummaryPanelV1', () => {
           'table',
           mockDataAsset.id
         );
-      });
-    });
-
-    it('should not fetch data when on tour page', async () => {
-      (useTourProvider as jest.Mock).mockReturnValue({
-        isTourPage: true,
-      });
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
-      });
-
-      await waitFor(() => {
-        expect(mockGetEntityPermission).not.toHaveBeenCalled();
       });
     });
   });
@@ -842,9 +839,7 @@ describe('DataAssetSummaryPanelV1', () => {
       // Ensure clean state for this test
       jest.clearAllMocks();
       mockGetEntityPermission.mockResolvedValue(mockEntityPermissions);
-      (listTestCases as jest.Mock).mockResolvedValue({
-        data: mockTestCaseData,
-      });
+      mockTestCaseStatusTotals(mockTestCaseStatusCounts);
       (getEntityOverview as jest.Mock).mockReturnValue([]);
 
       await act(async () => {
@@ -871,8 +866,107 @@ describe('DataAssetSummaryPanelV1', () => {
       );
     });
 
+    it('should count every test case of a table with more than 100 tests', async () => {
+      mockTestCaseStatusTotals({
+        [TestCaseStatus.Success]: 90,
+        [TestCaseStatus.Failed]: 40,
+        [TestCaseStatus.Aborted]: 20,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('150');
+      });
+
+      expect(screen.getByTestId('test-success')).toHaveTextContent(
+        'success: 90'
+      );
+      expect(screen.getByTestId('test-failed')).toHaveTextContent('failed: 40');
+      expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        'aborted: 20'
+      );
+    });
+
+    it('should count queued test cases in the total only', async () => {
+      mockTestCaseStatusTotals({
+        [TestCaseStatus.Success]: 1,
+        [TestCaseStatus.Queued]: 1,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('2');
+      });
+
+      expect(screen.getByTestId('test-success')).toHaveTextContent(
+        'success: 1'
+      );
+      expect(screen.getByTestId('test-failed')).toHaveTextContent('failed: 0');
+      expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        'aborted: 0'
+      );
+    });
+
+    it('should not fetch test case counts without ViewTests permission', async () => {
+      mockGetEntityPermission.mockResolvedValue({
+        ...mockEntityPermissions,
+        ViewTests: false,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
+      });
+
+      expect(getListTestCaseBySearch).not.toHaveBeenCalled();
+      expect(screen.getByTestId('total-tests')).toHaveTextContent('0');
+    });
+
+    it('should clear the counts once ViewTests is no longer granted', async () => {
+      const { rerender } = render(
+        <DataAssetSummaryPanelV1 {...defaultProps} />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('3');
+      });
+
+      mockGetEntityPermission.mockResolvedValue({
+        ...mockEntityPermissions,
+        ViewTests: false,
+      });
+
+      // A new id with the same FQN re-reads permissions without the FQN-change refetch.
+      await act(async () => {
+        rerender(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            dataAsset={
+              { ...mockDataAsset, id: 'other-id' } as unknown as DataAssetType
+            }
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('0');
+      });
+
+      // One fetch: a count request per status.
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(4);
+    });
+
     it('should not render data quality section when no test cases', async () => {
-      (listTestCases as jest.Mock).mockResolvedValue({ data: [] });
+      mockTestCaseStatusTotals({});
 
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...defaultProps} />);
@@ -896,7 +990,7 @@ describe('DataAssetSummaryPanelV1', () => {
 
     it('should handle test cases fetch error', async () => {
       const mockError = new Error('Test fetch failed') as AxiosError;
-      (listTestCases as jest.Mock).mockRejectedValue(mockError);
+      (getListTestCaseBySearch as jest.Mock).mockRejectedValue(mockError);
 
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...defaultProps} />);
@@ -1080,5 +1174,143 @@ describe('DataAssetSummaryPanelV1', () => {
         ).not.toBeInTheDocument();
       });
     });
+  });
+
+  describe('i18n: stale section headers after language switch', () => {
+    // Regression test for the missing `t` in the `commonEntitySummaryInfo`
+    // `useMemo` dependency array. When the UI language changes, react-i18next
+    // hands the component a new `t` function instance. If `t` is not listed as
+    // a dependency, the memo returns the previously cached JSX and the owners
+    // section header (e.g. "Owners") keeps rendering in the previous language
+    // until some other dependency changes. All four summary branches bake
+    // `t('label.owner-plural')` into the memoized output, so each must
+    // recompute when `t`'s identity changes.
+    const branches: Array<{ name: string; summaryEntityType: EntityType }> = [
+      // DATABASE exercises the common-layout branch. It is intentionally NOT
+      // TABLE: `fetchTestCases`/`fetchIncidentCount` early-return when the
+      // `entityType` prop is not TABLE, which keeps init's async chain shallow
+      // (only `setEntityPermissions` lands post-mount). With TABLE, the deeper
+      // test-count/incident `setState`s can land after the `t` switch below
+      // and force a memo recompute that masks the missing-`t`-dep bug.
+      { name: 'common layout', summaryEntityType: EntityType.DATABASE },
+      { name: 'knowledge page', summaryEntityType: EntityType.KNOWLEDGE_PAGE },
+      { name: 'data product', summaryEntityType: EntityType.DATA_PRODUCT },
+      { name: 'misc layout', summaryEntityType: EntityType.USER },
+    ];
+
+    it.each(branches)(
+      'recomputes the owners-title header for the $name branch after `t` identity changes',
+      async ({ summaryEntityType }) => {
+        const tEN = jest.fn((key: string) => `EN:${key}`);
+        const tFR = jest.fn((key: string) => `FR:${key}`);
+
+        (useTranslation as jest.Mock).mockReturnValue({ t: tEN });
+
+        const { rerender } = render(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            entityType={summaryEntityType}
+            summaryEntityType={summaryEntityType}
+          />
+        );
+
+        await waitFor(() => {
+          expect(screen.getByText('EN:label.owner-plural')).toBeInTheDocument();
+        });
+
+        // Simulate the `languageChanged` event: react-i18next replaces `t`
+        // with a new function instance while every other memo dep is unchanged.
+        (useTranslation as jest.Mock).mockReturnValue({ t: tFR });
+
+        await act(async () => {
+          rerender(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              entityType={summaryEntityType}
+              summaryEntityType={summaryEntityType}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('FR:label.owner-plural')).toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByText('EN:label.owner-plural')
+        ).not.toBeInTheDocument();
+      }
+    );
+  });
+
+  describe('Glossary tag preservation in TagsSection prop (regression)', () => {
+    const tierTag: TagLabel = {
+      tagFQN: 'Tier.Tier1',
+      source: TagSource.Classification,
+      name: 'Tier1',
+      displayName: 'Tier 1',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const classificationTag: TagLabel = {
+      tagFQN: 'PII.Sensitive',
+      source: TagSource.Classification,
+      name: 'Sensitive',
+      displayName: 'Sensitive',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const glossaryTag: TagLabel = {
+      tagFQN: 'Glossary.CustomerData',
+      source: TagSource.Glossary,
+      name: 'CustomerData',
+      displayName: 'Customer Data',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+
+    const dataAssetWithGlossaryTags = {
+      ...mockDataAsset,
+      tags: [tierTag, classificationTag, glossaryTag],
+    } as unknown as DataAssetType;
+
+    // Regression for bug where the Data Product and misc summary layouts
+    // filtered glossary tags out of the `tags` prop passed to TagsSection.
+    // TagsSection treats the `tags` prop as a full replacement on save, so
+    // filtering glossary tags upstream caused classification-tag edits to
+    // silently delete all glossary term taggings on the entity.
+    it.each([
+      ['DATA_PRODUCT', EntityType.DATA_PRODUCT],
+      ['USER (misc layout)', EntityType.USER],
+      ['TABLE (common layout)', EntityType.TABLE],
+    ])(
+      'passes unfiltered tags (including glossary) to TagsSection for %s',
+      async (_label, type) => {
+        await act(async () => {
+          render(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              dataAsset={dataAssetWithGlossaryTags}
+              entityType={type}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        });
+
+        // The glossary tag must be present in the tags passed to TagsSection
+        expect(
+          screen.getByTestId('mock-tag-Glossary.CustomerData')
+        ).toBeInTheDocument();
+        // The classification tag must also be present
+        expect(
+          screen.getByTestId('mock-tag-PII.Sensitive')
+        ).toBeInTheDocument();
+        // The tier tag must also be present
+        expect(screen.getByTestId('mock-tag-Tier.Tier1')).toBeInTheDocument();
+      }
+    );
   });
 });

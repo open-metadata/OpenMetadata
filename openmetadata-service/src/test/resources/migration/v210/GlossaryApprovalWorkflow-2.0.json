@@ -1,0 +1,425 @@
+{
+  "name": "GlossaryTermApprovalWorkflow",
+  "fullyQualifiedName": "GlossaryTermApprovalWorkflow",
+  "displayName": "Glossary Approval Workflow",
+  "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityTypes": ["glossaryTerm"],
+      "events": ["Created", "Updated"],
+      "exclude": ["entityStatus"],
+      "include": [],
+      "filter": {}
+    },
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "GlossaryTermCreated",
+      "displayName": "Glossary Term Created or Updated"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutoApprovedByReviewerEnd",
+      "displayName": "Auto-Approved by Reviewer"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEndAfterApproval",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "Glossary Term Status: Rejected"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "DraftEnd",
+      "displayName": "Glossary Term Status: Draft"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "displayName": "Check if Glossary Term Updated By is Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToApprovedByReviewer",
+      "displayName": "Set Status to 'Approved' (By Reviewer)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermHasReviewers",
+      "displayName": "Check if Glossary Term has Reviewers",
+      "config": {
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermIsReadyToBeReviewed",
+      "displayName": "Check if Glossary Term is Ready to be Reviewed",
+      "config": {
+        "rules": "{\"and\":[{\"!!\":[{\"var\":\"description\"}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToInReview",
+      "displayName": "Set Status to 'In Review'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToDraft",
+      "displayName": "Set Status to 'Draft'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Draft"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveGlossaryTerm",
+      "displayName": "Create User Approval Task",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfGlossaryTermIsNew",
+      "displayName": "Check if Glossary Term is New",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToInReviewForUpdate",
+      "displayName": "Set Status to 'In Review' (Update)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApprovalForUpdates",
+      "displayName": "Review Changes for Updates",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      },
+      "output": ["updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "rollbackEntityTask",
+      "name": "RollbackGlossaryTermChanges",
+      "displayName": "Rollback Glossary Term Changes",
+      "config": {},
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApprovalForUpdates"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToApprovedAfterReview",
+      "displayName": "Set Status to 'Approved' (After Review)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApprovalForUpdates"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RollbackEnd",
+      "displayName": "Changes Rolled Back"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovalEnd",
+      "displayName": "Approved After Unified Review"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToApproved",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetGlossaryTermStatusToRejected",
+      "displayName": "Set Status to 'Rejected'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "GlossaryTermCreated",
+      "to": "CheckGlossaryTermHasReviewers"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "SetGlossaryTermStatusToApproved",
+      "condition": "false"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "SetGlossaryTermStatusToApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "CheckGlossaryTermIsReadyToBeReviewed",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedByReviewer",
+      "to": "AutoApprovedByReviewerEnd"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "SetGlossaryTermStatusToDraft",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToDraft",
+      "to": "DraftEnd"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "CheckIfGlossaryTermIsNew",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermIsNew",
+      "to": "SetGlossaryTermStatusToInReview",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermIsNew",
+      "to": "SetGlossaryTermStatusToInReviewForUpdate",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToInReview",
+      "to": "ApproveGlossaryTerm"
+    },
+    {
+      "from": "SetGlossaryTermStatusToInReviewForUpdate",
+      "to": "ApprovalForUpdates"
+    },
+    {
+      "from": "ApprovalForUpdates",
+      "to": "SetGlossaryTermStatusToApprovedAfterReview",
+      "condition": "approve"
+    },
+    {
+      "from": "ApprovalForUpdates",
+      "to": "RollbackGlossaryTermChanges",
+      "condition": "reject"
+    },
+    {
+      "from": "RollbackGlossaryTermChanges",
+      "to": "RollbackEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedAfterReview",
+      "to": "ApprovalEnd"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "condition": "approve"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToRejected",
+      "condition": "reject"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "to": "ApprovedEndAfterApproval"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApproved",
+      "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToRejected",
+      "to": "RejectedEnd"
+    }
+  ]
+}

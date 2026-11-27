@@ -22,28 +22,9 @@ import { ReactNode } from 'react';
 
 let mockIsAdmin: boolean | undefined;
 
-jest.mock('rest/domainAPI', () => ({
-  searchDomains: jest.fn().mockResolvedValue([]),
-}));
-
-jest.mock('utils/StringUtils', () => ({
-  escapeESReservedCharacters: (t: string) => t,
-  getEncodedFqn: (t: string) => t,
-}));
-
 jest.mock('hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: mockIsAdmin }),
 }));
-
-jest.mock('utils/EntityNameUtils', () => ({
-  getEntityName: (ref: { name?: string }) => ref?.name ?? '',
-}));
-
-jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-jest.mock('antd', () => ({ Select: () => <div /> }));
 
 jest.mock('./ChipView', () => ({
   __esModule: true,
@@ -63,38 +44,49 @@ jest.mock('./InlineEditCard', () => ({
     renderEdit,
     canEdit,
     onSave,
+    isSaveDisabled,
   }: {
     view?: ReactNode;
     renderEdit?: () => ReactNode;
     canEdit?: boolean;
     onSave?: () => void;
+    isSaveDisabled?: boolean;
   }) => (
     <div>
       <span data-testid="can-edit">{String(canEdit)}</span>
       {view}
       {renderEdit?.()}
-      <button data-testid="save" type="button" onClick={onSave}>
+      <button
+        data-testid="save"
+        disabled={isSaveDisabled}
+        type="button"
+        onClick={onSave}>
         save
       </button>
     </div>
   ),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
-  Autocomplete: Object.assign(
-    ({ onItemInserted }: { onItemInserted: (...args: unknown[]) => void }) => (
-      <button
-        data-testid="add-domain"
-        type="button"
-        onClick={() => onItemInserted('d2')}>
-        add
-      </button>
-    ),
-    { Item: ({ children }: { children?: ReactNode }) => <div>{children}</div> }
+jest.mock('../../../../common/DomainSelect/DomainSelect', () => ({
+  __esModule: true,
+  default: ({
+    selectedDomain,
+    onUpdate,
+  }: {
+    selectedDomain: { id: string }[];
+    onUpdate: (domains: { id: string; name: string }[]) => void;
+  }) => (
+    <button
+      data-testid="add-domain"
+      type="button"
+      onClick={() =>
+        onUpdate([
+          ...(selectedDomain as { id: string; name: string }[]),
+          { id: 'd2', name: 'marketing' },
+        ])
+      }>
+      add
+    </button>
   ),
 }));
 
@@ -148,9 +140,14 @@ describe('DomainsRow', () => {
       );
     });
 
+    expect(screen.getByTestId('save')).toBeDisabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-domain'));
     });
+
+    expect(screen.getByTestId('save')).toBeEnabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('save'));
     });

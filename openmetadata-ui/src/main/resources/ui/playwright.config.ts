@@ -61,9 +61,16 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // under every co-scheduled worker: an owner change made mid-reindex is missing from the
 // rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
 // single-worker Reindex lane alongside the other reindexing specs.
+// ChangeRequestReviewLifecycle.spec.ts deploys an Enforce-mode glossary workflow, which makes
+// glossary a gated entity type server-wide while it runs, so it shares the single-worker
+// GlobalSettings lane instead of racing the glossary specs on chromium.
+// LineageSettings.spec.ts saves the global default lineage layer and depth, which every lineage
+// spec reads when its page boots; a co-scheduled LineageInteraction test opened on Column.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
+      '**/ChangeRequestReviewLifecycle.spec.ts',
+      '**/LineageSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
       '**/SearchIndexApplication.spec.ts',
@@ -249,7 +256,7 @@ export default defineConfig({
     /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
      * transitions resolve instantly — a click landing before the animation
      * settles is a common flake source. Pixel/geometry-sensitive projects
-     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * (visual-regression, Knowledge Graph) opt back out via
      * reducedMotion: 'no-preference' below, because the graph's fit/centering
      * geometry shifts under reduced motion and the snapshot/geometry
      * assertions are calibrated for the default motion path. */
@@ -297,11 +304,6 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'ontology-rdf-setup',
-      testMatch: '**/ontology-rdf.setup.ts',
-      dependencies: ['entity-data-setup'],
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -313,7 +315,6 @@ export default defineConfig({
         ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
         ...(hasDedicatedImportExportLane ? [/@import-export/] : []),
         /@knowledge-graph/,
-        /@ontology-rdf/,
       ],
       teardown: entityTeardown,
       testIgnore: [
@@ -329,8 +330,8 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
-        '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/ProfileGovernance.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
@@ -340,10 +341,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
@@ -425,17 +429,6 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
-      name: 'Ontology RDF',
-      // Same graph canvas as Knowledge Graph — keep the default motion path so
-      // fit/centering geometry matches the assertions.
-      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
-      dependencies: ['ontology-rdf-setup'],
-      grep: /ontology-rdf/,
-      teardown: 'entity-data-teardown',
-      fullyParallel: false,
-      workers: 1,
-    },
-    {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       grep: shardGrep,
@@ -450,16 +443,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
-    },
-    {
-      name: 'search-rbac-setup',
-      testMatch: '**/search-rbac.setup.ts',
-      dependencies: authDependencies,
-      teardown: 'search-rbac-teardown',
-    },
-    {
-      name: 'search-rbac-teardown',
-      testMatch: '**/search-rbac.teardown.ts',
     },
     {
       name: 'Basic',
@@ -510,15 +493,6 @@ export default defineConfig({
           },
         ]
       : []),
-    {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
-      grep: shardGrep,
-      dependencies: ['search-rbac-setup'],
-      use: { ...devices['Desktop Chrome'] },
-      fullyParallel: false,
-      workers: 1,
-    },
     // Domain isolation E2E suite (issue #24180). Runs in the single-worker global-state lane
     // because several specs toggle the global `enableAccessControl` search setting; each file
     // restores it in afterAll, and serial execution (workers: 1) prevents cross-file races.
@@ -548,7 +522,11 @@ export default defineConfig({
           },
           {
             name: 'GlobalSettings',
-            testMatch: '**/SearchSettings.spec.ts',
+            testMatch: [
+              '**/SearchSettings.spec.ts',
+              '**/ChangeRequestReviewLifecycle.spec.ts',
+              '**/LineageSettings.spec.ts',
+            ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },
             dependencies: authDependencies,
@@ -570,11 +548,15 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      // ADR:2026-10-14-intake-form-specs-run-in-the-single-worker-intakeform-project
+      // Intake forms are one-per-entityType and global: a required field on the
+      // dataProduct form makes every parallel DataProduct.create() fail with 400.
+      testMatch: ['**/IntakeForm.spec.ts', '**/ProfileGovernance.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+      workers: 1,
     },
     // AdvancedSearch runs in its own dedicated lane so its timing-sensitive
     // waitForResponse/debounce flow is not interleaved with other chromium shards.

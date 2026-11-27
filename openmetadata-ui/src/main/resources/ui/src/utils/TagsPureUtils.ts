@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isString, omit } from 'lodash';
+import { omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
@@ -478,17 +478,24 @@ export const getClassificationTags = (
 ): TagLabel[] =>
   tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
 
-export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-  if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-      ? tag.split(FQN_SEPARATOR_CHAR)[1]
-      : tag;
-  } else {
-    return {
-      ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : tag.tagFQN,
-    };
-  }
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => tag;
+
+/**
+ * A label the server derives on read -- implied by a glossary term, or inherited from a parent such
+ * as the service. It is never stored on the asset, so a tag picker cannot take it off.
+ */
+export const isDerivedTag = (tag: TagLabel): boolean =>
+  tag.labelType === LabelType.Derived;
+
+/** `selected` plus the `derived` labels it left out, since a picker cannot remove them. */
+export const withDerivedTags = <T extends TagLabel>(
+  selected: T[],
+  derived: T[]
+): T[] => {
+  const selectedFqns = new Set(selected.map((tag) => tag.tagFQN));
+
+  return [
+    ...selected,
+    ...derived.filter((tag) => !selectedFqns.has(tag.tagFQN)),
+  ];
 };

@@ -145,7 +145,7 @@ export const Tag = ({
         cx(
           // Border on ::after — the element's own outline is reserved for the focus ring.
           'tw:relative tw:flex tw:cursor-default tw:items-center tw:gap-0.75 tw:rounded-md tw:bg-primary tw:text-secondary',
-          'tw:focus:outline-hidden tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring',
+          'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring',
           `${borderAfter} tw:after:outline-primary`,
           styles[context.size].root.base,
 

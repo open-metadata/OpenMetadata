@@ -1,19 +1,27 @@
 ---
 name: test-enforcement
-description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and Playwright E2E tests for UI changes.
+description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 user-invocable: true
 argument-hint: "[PR number, branch name, or file paths]"
 ---
 
 # Test Enforcement for OpenMetadata
 
-Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and Playwright E2E tests for UI changes.
+Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 
 ## When to Use
 
 - After implementing any feature or bug fix (before creating a PR)
 - When reviewing a PR to check test completeness
 - When the `/tdd` skill was not used during implementation
+
+## Scope and evidence reuse
+
+Apply AGENTS.md's completion boundary. Check coverage and test gaps for changed behavior;
+do not treat each skill as a separate execution requirement. Reuse applicable results. For
+implementation, push or PR creation run focused checks and list broader coverage as outstanding;
+full impacted runs are required for merge-readiness tasks. An infrastructure blocker is a
+reported limitation, not permission to retry indefinitely or dispatch new workflows.
 
 ## Workflow
 
@@ -40,7 +48,7 @@ Classify each changed file:
 | `openmetadata-spec/src/main/resources/json/schema/` | Schema | Regeneration verification + downstream tests |
 | `openmetadata-integration-tests/` | Integration tests | Self — verify they pass |
 | `ingestion/src/metadata/` | Python ingestion | pytest unit tests (90% coverage) |
-| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + Playwright E2E |
+| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + browser tests for page behaviour + Playwright only for cross-feature journeys (`.claude/rules/frontend-browser-tests.md`) |
 | `bootstrap/sql/migrations/` | Database | Integration tests verifying migration |
 
 ### Step 2: Check Java Service Coverage
@@ -161,10 +169,11 @@ If an API endpoint lacks integration test coverage:
 2. Read a similar entity's IT class as a reference pattern
 3. Create the IT class with all CRUD operations tested
 4. Add entity-specific endpoint tests
-5. Run and verify:
+5. Run and verify. A new or changed IT is selected by the planner, which prints the per-lane command:
    ```bash
-   mvn verify -pl openmetadata-integration-tests -Dtest=MyEntityIT
+   make java_affected        # then copy MyEntityIT's line, or run them all with make java_affected_run
    ```
+   PR CI does not run integration tests; see the `java-affected-tests` skill.
 
 ### Step 4: Check Playwright E2E Tests
 
@@ -195,6 +204,10 @@ ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/
 ```
 
 #### 4c. Determine if new Playwright tests are needed
+
+**First decide the layer** (`.claude/rules/frontend-browser-tests.md`): a page's own behaviour (paging,
+forms, pickers, permission-driven controls, empty/error states) gets a Vitest browser test
+(`*.browser.test.tsx`), not a Playwright test. The rest of this step is for real journeys.
 
 **New Playwright tests ARE needed when:**
 - A new page or major UI section was added
@@ -304,7 +317,8 @@ Produce a summary for the PR:
 |-------|--------|--------|----------------|
 | openmetadata-service | Line coverage | 90% | JaCoCo with `-P static-code-analysis` |
 | openmetadata-integration-tests | API endpoint coverage | 100% of changed endpoints | Manual check against resource classes |
-| Playwright | Feature coverage | All new/changed user-facing flows | Spec file existence + test pass |
+| Browser tests (UI page behaviour) | Page behaviour coverage | New/changed page behaviour | `yarn test:ui:coverage` |
+| Playwright | Feature coverage | New/changed cross-feature UI journeys | Spec file existence + test pass |
 | Jest | Component coverage | 90% lines | `yarn test --coverage` |
 | Python ingestion | Line coverage | 90% | `pytest --cov` |
 
@@ -314,6 +328,7 @@ Produce a summary for the PR:
 openmetadata-service/src/test/java/org/openmetadata/         # Java unit tests
 openmetadata-integration-tests/src/test/java/org/openmetadata/it/  # Integration tests
 openmetadata-ui/.../ui/src/**/*.test.{ts,tsx}                 # Jest unit tests
+openmetadata-ui/.../ui/src/**/*.browser.test.tsx               # Vitest browser tests (page behaviour)
 openmetadata-ui/.../ui/playwright/e2e/                        # Playwright E2E
 ingestion/tests/unit/                                         # Python unit tests
 ingestion/tests/integration/                                  # Python integration tests

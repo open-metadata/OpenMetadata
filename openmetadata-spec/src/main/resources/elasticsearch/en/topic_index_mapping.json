@@ -161,6 +161,13 @@
         "type": "date",
         "format": "epoch_second"
       },
+      "createdAt": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "createdBy": {
+        "type": "keyword"
+      },
       "updatedBy": {
         "type": "text"
       },
@@ -348,6 +355,10 @@
       },
       "retentionSize": {
         "type": "long"
+      },
+      "topicConfig": {
+        "type": "object",
+        "enabled": false
       },
       "service": {
         "properties": {
@@ -685,15 +696,69 @@
       },
       "descriptionSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
       },
       "tagSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "tierSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "certification": {
         "type": "object",

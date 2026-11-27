@@ -106,18 +106,18 @@ describe('CanvasButtonUtils', () => {
   it('resolves semantic tokens to concrete colors for the canvas', () => {
     const root = document.documentElement;
     const tokenValues = {
-      '--om-color-bg-error': 'rgb(1, 1, 1)',
-      '--om-color-bg-primary': 'rgb(2, 2, 2)',
-      '--om-color-bg-success': 'rgb(3, 3, 3)',
-      '--om-color-bg-warning': 'rgb(4, 4, 4)',
-      '--om-color-border-brand': 'rgb(5, 5, 5)',
-      '--om-color-border-error': 'rgb(6, 6, 6)',
-      '--om-color-border-secondary': 'rgb(7, 7, 7)',
-      '--om-color-fg-brand': 'rgb(8, 8, 8)',
-      '--om-color-fg-error': 'rgb(9, 9, 9)',
-      '--om-color-fg-success': 'rgb(10, 10, 10)',
-      '--om-color-fg-warning': 'rgb(11, 11, 11)',
-      '--om-color-text-primary': 'rgb(12, 12, 12)',
+      '--tw-background-color-error-primary': 'rgb(1, 1, 1)',
+      '--tw-background-color-primary': 'rgb(2, 2, 2)',
+      '--tw-background-color-success-primary': 'rgb(3, 3, 3)',
+      '--tw-background-color-warning-primary': 'rgb(4, 4, 4)',
+      '--tw-border-color-brand': 'rgb(5, 5, 5)',
+      '--tw-border-color-error': 'rgb(6, 6, 6)',
+      '--tw-border-color-secondary': 'rgb(7, 7, 7)',
+      '--tw-color-fg-brand-primary': 'rgb(8, 8, 8)',
+      '--tw-color-fg-error-primary': 'rgb(9, 9, 9)',
+      '--tw-color-fg-success-primary': 'rgb(10, 10, 10)',
+      '--tw-color-fg-warning-primary': 'rgb(11, 11, 11)',
+      '--tw-text-color-primary': 'rgb(12, 12, 12)',
     };
     Object.entries(tokenValues).forEach(([token, value]) =>
       root.style.setProperty(token, value)

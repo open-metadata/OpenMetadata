@@ -371,6 +371,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "owners": {
         "type": "nested",
         "properties": {
@@ -473,6 +476,13 @@
       "updatedAt": {
         "type": "date",
         "format": "epoch_second"
+      },
+      "createdAt": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "createdBy": {
+        "type": "keyword"
       },
       "updatedBy": {
         "type": "text"

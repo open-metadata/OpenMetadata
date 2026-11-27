@@ -7,10 +7,12 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
@@ -29,6 +31,8 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -37,6 +41,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.MultiInstanceLoopCharacteristicsBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.util.TimezoneUtil;
 import org.quartz.CronTrigger;
 
 @Slf4j
@@ -49,14 +54,35 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   public static String CARDINALITY_VARIABLE = "numberOfEntities";
   public static String COLLECTION_VARIABLE = "entityList";
 
+  /**
+   * Upper bound on the entities fetched per loop iteration in single execution mode. Each iteration
+   * hands its whole list to one run of the main workflow, processed inside one async job; the
+   * bound keeps the work of that one job bounded, and the trigger's {@code searchAfter}
+   * cursor, committed between iterations, records how far the run has progressed.
+   */
+  static final int MAX_SINGLE_EXECUTION_BATCH_SIZE = 5000;
+
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
       PeriodicBatchEntityTriggerDefinition triggerDefinition,
       boolean singleExecutionMode) {
+    this(mainWorkflowName, triggerWorkflowId, triggerDefinition, singleExecutionMode, Set.of());
+  }
+
+  /** {@code excludedEntityTypes} are configured entity types that get no trigger process. */
+  public PeriodicBatchEntityTrigger(
+      String mainWorkflowName,
+      String triggerWorkflowId,
+      PeriodicBatchEntityTriggerDefinition triggerDefinition,
+      boolean singleExecutionMode,
+      Set<String> excludedEntityTypes) {
     this.triggerWorkflowId = triggerWorkflowId;
     this.singleExecutionMode = singleExecutionMode;
-    List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+    List<String> entityTypes =
+        getEntityTypesFromConfig(triggerDefinition.getConfig()).stream()
+            .filter(entityType -> !excludedEntityTypes.contains(entityType))
+            .toList();
 
     if (singleExecutionMode) {
       LOG.info(
@@ -65,7 +91,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     }
 
     for (String entityType : entityTypes) {
-      String processId = String.format("%s-%s", triggerWorkflowId, entityType);
+      String processId = getTriggerProcessKey(triggerWorkflowId, entityType);
       Process process = new Process();
       process.setId(processId);
       process.setName(processId);
@@ -109,12 +135,52 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
       processes.add(process);
     }
+    if (processes.isEmpty()) {
+      processes.add(idleProcess(triggerWorkflowId));
+    }
+  }
+
+  /**
+   * The process of a trigger left with no entity type to fetch, as a Git-sink workflow listing only
+   * query is: Flowable refuses a deployment without an executable process, and this one only starts
+   * and ends.
+   */
+  private static Process idleProcess(String triggerWorkflowId) {
+    Process process = new Process();
+    process.setId(triggerWorkflowId);
+    process.setName(triggerWorkflowId);
+    StartEvent startEvent =
+        new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
+    EndEvent endEvent =
+        new EndEventBuilder().id(getFlowableElementId(triggerWorkflowId, "endEvent")).build();
+    process.addFlowElement(startEvent);
+    process.addFlowElement(endEvent);
+    process.addFlowElement(new SequenceFlow(startEvent.getId(), endEvent.getId()));
+    return process;
+  }
+
+  /** Key of the trigger process that fetches the entities of {@code entityType}. */
+  public static String getTriggerProcessKey(String triggerWorkflowId, String entityType) {
+    return "%s-%s".formatted(triggerWorkflowId, entityType);
+  }
+
+  /**
+   * Whether a deployed model is a periodic-batch trigger. Its fetch task reads the WorkflowInstance's
+   * stop request before every batch, and a batch sink, which runs only beneath this trigger, before
+   * every sub-batch, so a running process of this model ends on its own once asked to stop.
+   */
+  public static boolean isPeriodicBatchTrigger(BpmnModel model) {
+    return model.getProcesses().stream()
+        .flatMap(process -> process.findFlowElementsOfType(ServiceTask.class).stream())
+        .anyMatch(task -> FetchEntitiesImpl.class.getName().equals(task.getImplementation()));
   }
 
   private TimerEventDefinition getTimerEventDefinition(AppSchedule schedule) {
     if (schedule.getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
       return null;
     }
+
+    requireServerTimezone(schedule);
 
     // TODO: Using the AppScheduler logic to craft a Flowable compatible Cron Expression. Eventually
     // we should probably avoid this to be dependent that code.
@@ -123,6 +189,28 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     TimerEventDefinition timerDefinition = new TimerEventDefinition();
     timerDefinition.setTimeCycle(cronTrigger.getCronExpression());
     return timerDefinition;
+  }
+
+  // Flowable's TimerEventDefinition carries no zone: CycleBusinessCalendar resolves the cron with
+  // the engine clock's zone. Only the cron text crosses over, so a zone that differs from the
+  // server's would be dropped silently. WorkflowDefinitionRepository.prepare calls this before the
+  // definition is stored; this constructor only runs after the write.
+  // ADR:2026-10-27-schedules-carry-an-iana-timezone
+  public static void requireServerTimezone(AppSchedule schedule) {
+    if (schedule == null) {
+      return;
+    }
+    ZoneId server = ZoneId.systemDefault();
+    TimezoneUtil.zoneOf(schedule.getTimezone())
+        .filter(requested -> !requested.getRules().equals(server.getRules()))
+        .ifPresent(
+            requested -> {
+              throw new BadRequestException(
+                  String.format(
+                      "Periodic workflow triggers run in the server timezone (%s); timezone '%s'"
+                          + " is not supported for workflow schedules.",
+                      server.getId(), requested.getId()));
+            });
   }
 
   private CallActivity getWorkflowTriggerCallActivity(
@@ -161,7 +249,9 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     outputParameter.setTarget(EXCEPTION_VARIABLE);
 
     workflowTrigger.setInParameters(List.of(inputParameter, entityListParameter));
-    workflowTrigger.setOutParameters(List.of(outputParameter));
+    workflowTrigger.setOutParameters(
+        List.of(outputParameter, SubWorkflowFailureListener.outParameter()));
+    workflowTrigger.getExecutionListeners().add(SubWorkflowFailureListener.endListener());
     workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
@@ -187,7 +277,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     FieldExtension batchSizeExpr =
         new FieldExtensionBuilder()
             .fieldName("batchSizeExpr")
-            .fieldValue(String.valueOf(triggerDefinition.getConfig().getBatchSize()))
+            .fieldValue(String.valueOf(effectiveBatchSize(triggerDefinition)))
             .build();
 
     ServiceTask serviceTask =
@@ -202,6 +292,20 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
+  }
+
+  private int effectiveBatchSize(PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+    int configured = triggerDefinition.getConfig().getBatchSize();
+    int effective =
+        singleExecutionMode ? Math.min(configured, MAX_SINGLE_EXECUTION_BATCH_SIZE) : configured;
+    if (effective != configured) {
+      LOG.info(
+          "Trigger {} fetches {} entities per iteration instead of the configured {} (single execution mode)",
+          triggerWorkflowId,
+          effective,
+          configured);
+    }
+    return effective;
   }
 
   private String extractEntitySpecificFilter(Object filtersObj, String entityType) {

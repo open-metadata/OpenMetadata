@@ -35,6 +35,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+        with:
+          persist-credentials: false
       - name: Validate OpenMetadata Docker Compose
         uses: ./.github/actions/validate-omd-docker-compose
         with:

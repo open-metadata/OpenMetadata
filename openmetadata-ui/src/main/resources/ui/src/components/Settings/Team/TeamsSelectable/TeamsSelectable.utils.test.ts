@@ -25,13 +25,13 @@ const groupTeam = (id: string, isJoinable = true): TeamHierarchy => ({
 });
 
 describe('buildTeamsSelectableTree', () => {
-  it('should mark Group teams as selectable', () => {
+  it('should mark Group teams as allowSelection', () => {
     const tree = buildTeamsSelectableTree([groupTeam('group-1')]);
 
     expect(tree).toHaveLength(1);
     expect(tree[0]).toMatchObject({
       value: 'group-1',
-      selectable: true,
+      allowSelection: true,
       disabled: false,
     });
   });
@@ -60,7 +60,7 @@ describe('buildTeamsSelectableTree', () => {
     expect(tree).toHaveLength(0);
   });
 
-  it('should keep non-Group branches leading to Group teams as non-selectable', () => {
+  it('should keep non-Group branches leading to Group teams as non-allowSelection', () => {
     const tree = buildTeamsSelectableTree([
       {
         id: 'division-1',
@@ -83,15 +83,15 @@ describe('buildTeamsSelectableTree', () => {
     ]);
 
     expect(tree).toHaveLength(1);
-    expect(tree[0].selectable).toBe(false);
+    expect(tree[0].allowSelection).toBe(false);
     expect(tree[0].children).toHaveLength(1);
     expect(tree[0].children?.[0]).toMatchObject({
       value: 'department-1',
-      selectable: false,
+      allowSelection: false,
     });
     expect(tree[0].children?.[0].children?.[0]).toMatchObject({
       value: 'group-1',
-      selectable: true,
+      allowSelection: true,
     });
   });
 

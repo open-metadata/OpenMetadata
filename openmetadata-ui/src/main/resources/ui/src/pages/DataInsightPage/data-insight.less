@@ -15,111 +15,23 @@
 
 @left-panel-border-color: var(--om-color-gray-neutral-200);
 @box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
-@icon-color: var(--om-legacy-color-515151);
 @group-title-color: var(--om-legacy-color-76746f);
 @target-blue-color: var(--om-legacy-color-1890ff);
 
 .data-insight-select-dropdown {
   min-width: 136px;
-  .ant-select-arrow {
-    color: @text-color !important;
-  }
-}
-
-.data-insight-left-panel.ant-menu-root.ant-menu-inline {
-  background: var(--tw-color-bg-primary);
-  border: 0px;
-  padding-top: @size-md;
-  border-radius: @border-rad-sm;
-
-  .side-panel-icons {
-    width: 14px;
-  }
-
-  .ant-menu-item::after {
-    left: 0;
-    right: unset;
-  }
-
-  .ant-menu-item-group:not(:first-child) {
-    border-top: 1px solid @box-shadow-color;
-  }
-
-  .ant-menu-item-group-title {
-    font-size: var(--om-font-size-xs);
-    padding: var(--om-space-12) var(--om-space-16);
-    color: @group-title-color;
-  }
-
-  .ant-menu-item-icon + span {
-    margin-left: var(--om-space-16);
-  }
-
-  .ant-menu-item {
-    width: 100%;
-    height: 30px;
-    line-height: 30px;
-    margin-top: var(--om-space-2);
-    padding: 0 var(--om-space-16) !important;
-  }
-
-  .ant-menu-item:hover,
-  .ant-menu-item-selected {
-    .side-panel-icons {
-      color: @primary-color;
-    }
-  }
-
-  .ant-menu-item-selected {
-    .ant-menu-title-content {
-      font-weight: var(--om-font-weight-semibold);
-    }
-  }
-
-  .ant-menu-item:not(:last-child) {
-    margin-bottom: 0;
-  }
-
-  .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
-    border-right: 1px solid @left-panel-border-color;
-  }
-}
-
-.side-panel-icons {
-  color: @icon-color;
 }
 
 .data-insight-progress-bar {
-  .ant-progress-outer {
-    margin-right: 0;
-    padding-right: 0;
-  }
-  .ant-progress-inner,
-  .ant-progress-bg,
-  .ant-progress-success-bg {
-    border-radius: var(--om-radius-sm);
-  }
-  .ant-progress-text {
-    display: flex;
-    margin: 0;
-    position: absolute;
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
-    top: 0px;
-    right: 2px;
-    left: 2px;
-    padding: 0 var(--om-space-16) 0 var(--om-space-8);
-    font-size: var(--om-font-size-xs);
-    color: @text-color;
-  }
   .data-insight-kpi-target {
     position: absolute;
+    top: 0;
+    height: 100%;
     left: 0;
     border-right: 2px solid @target-blue-color;
 
     .target-text {
+      color: var(--om-color-text-primary);
       position: relative;
       right: -12px;
       top: -14px;

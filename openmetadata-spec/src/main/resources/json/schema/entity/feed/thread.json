@@ -5,128 +5,14 @@
   "description": "This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.",
   "type": "object",
   "definitions": {
-    "taskType": {
-      "javaType": "org.openmetadata.schema.type.TaskType",
-      "description": "Type of a task.",
-      "type": "string",
-      "enum": [
-        "RequestDescription",
-        "UpdateDescription",
-        "RequestTag",
-        "UpdateTag",
-        "RequestApproval",
-        "RequestTestCaseFailureResolution",
-        "RecognizerFeedbackApproval",
-        "Generic"
-      ],
-      "javaEnums": [
-        {
-          "name": "RequestDescription"
-        },
-        {
-          "name": "UpdateDescription"
-        },
-        {
-          "name": "RequestTag"
-        },
-        {
-          "name": "UpdateTag"
-        },
-        {
-          "name": "RequestApproval"
-        },
-        {
-          "name": "RequestTestCaseFailureResolution"
-        },
-        {
-          "name": "RecognizerFeedbackApproval"
-        },
-        {
-          "name": "Generic"
-        }
-      ]
-    },
-    "taskDetails": {
-      "javaType": "org.openmetadata.schema.type.TaskDetails",
-      "description": "Details about the task. This is only applicable if thread is of type task.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique identifier that identifies the task.",
-          "type": "integer"
-        },
-        "type": {
-          "$ref": "#/definitions/taskType"
-        },
-        "assignees": {
-          "description": "List of users or teams the task is assigned to",
-          "$ref": "../../type/entityReferenceList.json"
-        },
-        "status": {
-          "$ref": "#/definitions/threadTaskStatus"
-        },
-        "closedBy": {
-          "description": "The user that closed the task.",
-          "type": "string"
-        },
-        "closedAt": {
-          "description": "Timestamp when the task was closed in Unix epoch time milliseconds.",
-          "$ref": "../../type/basic.json#/definitions/timestamp"
-        },
-        "oldValue": {
-          "description": "The value of old object for which the task is created.",
-          "type": "string"
-        },
-        "suggestion": {
-          "description": "The suggestion object to replace the old value for which the task is created.",
-          "type": "string"
-        },
-        "newValue": {
-          "description": "The new value object that was accepted to complete the task.",
-          "type": "string"
-        },
-        "testCaseResolutionStatusId": {
-          "description": "The test case resolution status id for which the task is created.",
-          "$ref": "../../type/basic.json#/definitions/uuid"
-        },
-        "feedback": {
-          "description": "The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by this task",
-          "$ref": "../../type/recognizerFeedback.json"
-        },
-        "recognizer": {
-          "description": "Metadata about the recognizer that applied the tag being reviewed",
-          "$ref": "../../type/tagLabelRecognizerMetadata.json"
-        }
-      },
-      "required": ["id", "assignees", "type"],
-      "additionalProperties": false
-    },
-    "threadTaskStatus": {
-      "javaType": "org.openmetadata.schema.type.TaskStatus",
-      "type": "string",
-      "description": "Status of a task.",
-      "enum": ["Open", "Closed"],
-      "javaEnums": [
-        {
-          "name": "Open"
-        },
-        {
-          "name": "Closed"
-        }
-      ],
-      "default": "Open"
-    },
     "threadType": {
       "javaType": "org.openmetadata.schema.type.ThreadType",
       "type": "string",
       "description": "Type of thread.",
-      "enum": ["Conversation", "Task", "Announcement", "Chatbot"],
+      "enum": ["Conversation", "Announcement", "Chatbot"],
       "javaEnums": [
         {
           "name": "Conversation"
-        },
-        {
-          "name": "Task"
         },
         {
           "name": "Announcement"
@@ -353,10 +239,6 @@
     "reactions": {
       "description": "Reactions for the thread.",
       "$ref": "../../type/reaction.json#/definitions/reactionList"
-    },
-    "task": {
-      "description": "Details about the task. This is only applicable if thread is of type task.",
-      "$ref": "#/definitions/taskDetails"
     },
     "announcement": {
       "description": "Details about the announcement. This is only applicable if thread is of type announcement.",

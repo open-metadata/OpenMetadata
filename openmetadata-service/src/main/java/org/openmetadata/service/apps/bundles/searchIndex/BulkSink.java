@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 
 public interface BulkSink {
   void write(List<?> entities, Map<String, Object> contextData) throws Exception;
@@ -66,6 +67,13 @@ public interface BulkSink {
   }
 
   /**
+   * Retries once the embeddings and chunk documents this sink missed for the partition tracked by
+   * {@code partition}, and counts each in the vector stats. Called once that partition's writes are
+   * flushed and before it completes.
+   */
+  default void retryMissedChunks(StageStatsTracker partition) {}
+
+  /**
    * Returns the process stage statistics. This tracks document building/transformation
    * separately from the actual sink (bulk indexing) stats.
    *
@@ -104,21 +112,6 @@ public interface BulkSink {
    */
   default int getActiveBulkRequestCount() {
     return 0;
-  }
-
-  /**
-   * Wait for vector embedding tasks to complete and return detailed result including timing.
-   *
-   * @param timeoutSeconds Maximum time to wait
-   * @return VectorCompletionResult with completion status, pending count, and wait time
-   */
-  default VectorCompletionResult awaitVectorCompletionWithDetails(int timeoutSeconds) {
-    long start = System.currentTimeMillis();
-    boolean ok = awaitVectorCompletion(timeoutSeconds);
-    long waited = System.currentTimeMillis() - start;
-    return ok
-        ? VectorCompletionResult.success(waited)
-        : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
   }
 
   /**

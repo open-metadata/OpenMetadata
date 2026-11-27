@@ -33,10 +33,9 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
@@ -44,8 +43,6 @@ class McpUsageRecorderTest {
 
   private CollectionDAO.AppExtensionTimeSeries dao;
   private MockedStatic<Entity> entityStatic;
-  private MockedStatic<ApplicationContext> appContextStatic;
-  private ApplicationContext appContext;
 
   @BeforeEach
   void setUp() {
@@ -55,16 +52,11 @@ class McpUsageRecorderTest {
 
     entityStatic = Mockito.mockStatic(Entity.class);
     entityStatic.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
-    appContext = mock(ApplicationContext.class);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(appContext);
   }
 
   @AfterEach
   void tearDown() {
     entityStatic.close();
-    appContextStatic.close();
   }
 
   @Test
@@ -73,7 +65,7 @@ class McpUsageRecorderTest {
     stubMcpApp(appId, McpAppConstants.MCP_APP_NAME);
 
     long before = System.currentTimeMillis();
-    McpUsageRecorder.record("search_metadata", "alice", true);
+    McpUsageRecorder.record("search_metadata", "alice", true, null, null, null);
     long after = System.currentTimeMillis();
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
@@ -102,7 +94,7 @@ class McpUsageRecorderTest {
   void serializedJsonContainsGeneratedColumnFieldNames() {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
 
-    McpUsageRecorder.record("any_tool", "alice", true);
+    McpUsageRecorder.record("any_tool", "alice", true, null, null, null);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     verify(dao).insert(json.capture(), eq("limits"));
@@ -115,9 +107,9 @@ class McpUsageRecorderTest {
 
   @Test
   void recordSkipsWhenMcpApplicationNotInitialized() {
-    when(appContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(null);
+    stubMcpAppLookup(null);
 
-    McpUsageRecorder.record("any_tool", "alice", true);
+    McpUsageRecorder.record("any_tool", "alice", true, null, null, null);
 
     verify(dao, never()).insert(anyString(), anyString());
   }
@@ -127,7 +119,7 @@ class McpUsageRecorderTest {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
     doThrow(new RuntimeException("db down")).when(dao).insert(anyString(), eq("limits"));
 
-    McpUsageRecorder.record("create_entity", "alice", false);
+    McpUsageRecorder.record("create_entity", "alice", false, null, null, null);
 
     verify(dao, times(1)).insert(anyString(), eq("limits"));
   }
@@ -136,7 +128,7 @@ class McpUsageRecorderTest {
   void recordCapturesFailureFlag() {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
 
-    McpUsageRecorder.record("patch_entity", "bob", false);
+    McpUsageRecorder.record("patch_entity", "bob", false, null, null, null);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     verify(dao).insert(json.capture(), eq("limits"));
@@ -159,24 +151,16 @@ class McpUsageRecorderTest {
     assertThat(decoded.getClientName()).isEqualTo("Claude Desktop");
   }
 
-  @Test
-  void legacy3ArgOverloadOmitsPhase3Fields() {
-    stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
-
-    McpUsageRecorder.record("search_metadata", "alice", true);
-
-    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    verify(dao).insert(json.capture(), eq("limits"));
-    McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
-    assertThat(decoded.getLatencyMs()).isNull();
-    assertThat(decoded.getErrorCategory()).isNull();
-    assertThat(decoded.getClientName()).isNull();
+  private void stubMcpApp(UUID appId, String appName) {
+    stubMcpAppLookup(new App().withId(appId).withName(appName));
   }
 
-  private void stubMcpApp(UUID appId, String appName) {
-    AbstractNativeApplication nativeApp = mock(AbstractNativeApplication.class);
-    App app = new App().withId(appId).withName(appName);
-    when(nativeApp.getApp()).thenReturn(app);
-    when(appContext.getAppIfExists(appName)).thenReturn(nativeApp);
+  private void stubMcpAppLookup(App app) {
+    entityStatic
+        .when(
+            () ->
+                Entity.findEntityByNameOrNull(
+                    Entity.APPLICATION, McpAppConstants.MCP_APP_NAME, Include.ALL))
+        .thenReturn(app);
   }
 }

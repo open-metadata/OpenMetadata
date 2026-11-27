@@ -122,9 +122,7 @@ test.describe('Classification Import Export', { tag: '@import-export' }, () => {
       waitUntil: 'domcontentloaded',
     });
 
-    await expect(
-      page.getByText('Drag & Drop or Browse CSV file here')
-    ).toBeVisible();
+    await expect(page.getByTestId('upload-file-widget')).toBeVisible();
   });
 
   test.afterAll(

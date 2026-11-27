@@ -14,9 +14,10 @@
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import i18n from '../i18next/LocalUtil';
+import { getOwnHandler } from '../RecordUtils';
 
 export const getTabLabelFromId = (tab: EntityTabs): string => {
-  const labelKey = TAB_LABEL_MAP[tab];
+  const labelKey = getOwnHandler(TAB_LABEL_MAP, tab);
 
   return labelKey ? i18n.t(labelKey) : tab;
 };

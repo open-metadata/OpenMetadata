@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
@@ -65,21 +66,24 @@ import {
   clickEditContractButton,
   deleteContract,
   exportContractYaml,
+  fillContractName,
   importOdcsViaDropdown,
   importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   saveContractAndWait,
   saveSecurityAndSLADetails,
+  selectContractOwners,
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
   waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
+import { selectTestType } from '../../utils/dataQuality';
 import {
   addOwner,
-  addOwnerWithoutValidation,
   assignGlossaryTerm,
   assignTag,
   assignTier,
@@ -188,24 +192,20 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill Contract Details form', async () => {
-        await page.getByTestId('contract-name').fill(contractName);
+        await fillContractName(page, contractName);
         await page.fill(
           '.om-block-editor[contenteditable="true"]',
           DATA_CONTRACT_DETAILS.description
         );
 
         // Add owner using created user to verify displayName is shown in UserTag
-        await addOwnerWithoutValidation({
-          page,
-          owner: user.getUserDisplayName(),
-          type: 'Users',
-          initiatorId: 'select-owners',
-        });
+        await selectContractOwners(page, [user.getUserDisplayName()]);
 
-        // Verify the UserTag shows the user's displayName (not name)
-        await expect(page.getByTestId('user-tag')).toBeVisible();
+        // The owner tag shows the user's displayName (not name)
         await expect(
-          page.getByTestId('user-tag').getByText(user.getUserDisplayName())
+          page
+            .getByTestId('contract-owners')
+            .getByText(user.getUserDisplayName())
         ).toBeVisible();
       });
 
@@ -398,9 +398,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
-
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -423,16 +421,7 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.name
           );
 
-          await page.locator('[id="root\\/testType"]').click();
-
-          const testTypeOption = page
-            .getByRole('option')
-            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
-            .first();
-
-          await expect(testTypeOption).toBeVisible();
-
-          await testTypeOption.click();
+          await selectTestType(page, NEW_TABLE_TEST_CASE.label);
 
           await page.fill(
             '#testCaseFormV1_params_columnCount',
@@ -613,23 +602,12 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
 
         // Change the Contract Details
-        await page
-          .getByTestId('contract-name')
-          .fill(DATA_CONTRACT_DETAILS.displayName);
+        await fillContractName(page, DATA_CONTRACT_DETAILS.displayName);
         await page.click('.om-block-editor[contenteditable="true"]');
         await page.keyboard.press('Control+A');
         await page.keyboard.type(DATA_CONTRACT_DETAILS.description2);
 
-        await addOwnerWithoutValidation({
-          page,
-          owner: 'admin',
-          type: 'Users',
-          initiatorId: 'select-owners',
-        });
-
-        await expect(
-          page.getByTestId('user-tag').getByText('admin')
-        ).toBeVisible();
+        await selectContractOwners(page, ['admin']);
 
         if (entitySupportsSchema(entityType)) {
           // Move to Schema Tab
@@ -787,9 +765,7 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill Contract Details form', async () => {
-        await page
-          .getByTestId('contract-name')
-          .fill(DATA_CONTRACT_DETAILS.name);
+        await fillContractName(page, DATA_CONTRACT_DETAILS.name);
       });
 
       await test.step('Fill Contract Schema form', async () => {
@@ -1047,7 +1023,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1199,9 +1175,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1241,7 +1215,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1393,9 +1367,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1289);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1425,7 +1397,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
@@ -1501,7 +1473,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+    await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
     await page.getByRole('tab', { name: 'Schema' }).click();
 
@@ -1557,9 +1529,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')
@@ -1851,7 +1821,7 @@ test.describe('Data Contracts', () => {
     // Edit semantic
     await page
       .getByTestId('contract-semantics-card-0')
-      .locator('.edit-expand-button')
+      .getByTestId('edit-semantic-0')
       .click();
     await page.fill('#semantics_0_name', 'Edited Semantic Name');
     await page.getByTestId('save-semantic-button').click();
@@ -1958,7 +1928,7 @@ test.describe('Data Contracts', () => {
 
       await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-      await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+      await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 
       await saveSecurityAndSLADetails(
         page,
@@ -2001,7 +1971,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           }`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2026,7 +1996,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
@@ -2077,7 +2047,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           },${filter.values[2]},${filter.values[3]}`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2104,7 +2074,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await clickEditContractButton(page);
       await validateSecurityAndSLADetails(
@@ -2396,21 +2366,13 @@ dataContractEntities.forEach((EntityClass) => {
               await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
               // Fill Contract Details form
-              await page
-                .getByTestId('contract-name')
-                .fill(DATA_CONTRACT_DETAILS.name);
+              await fillContractName(page, DATA_CONTRACT_DETAILS.name);
               await page.fill(
                 '.om-block-editor[contenteditable="true"]',
                 DATA_CONTRACT_DETAILS.description
               );
 
-              await page.getByTestId('select-owners').click();
-              await page
-                .locator('.rc-virtual-list-holder-inner li')
-                .first()
-                .click();
-
-              await expect(page.getByTestId('user-tag')).toBeVisible();
+              await selectContractOwners(page, ['admin']);
 
               // Fill Contract Semantics form
               await page.getByRole('tab', { name: 'Semantics' }).click();
@@ -2565,6 +2527,7 @@ dataContractEntities.forEach((EntityClass) => {
                 .getByText('Data Assets')
                 .click();
               await page
+                .getByTestId('customize-ui-options')
                 .getByText(entityName[entityType] ?? entityType, {
                   exact: true,
                 })

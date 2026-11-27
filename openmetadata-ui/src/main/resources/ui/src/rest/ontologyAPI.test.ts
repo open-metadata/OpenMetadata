@@ -11,26 +11,53 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
+import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
+import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
+import {
+  Format,
+  type NativeOntologyImportSummary,
+} from '../generated/api/data/nativeOntologyImportSummary';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { Direction } from '../generated/api/data/ontologyConceptQuery';
+import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
 import {
+  activateOntologyRelease,
+  captureOntologyRelease,
+  createOntology,
+  createOntologyConcept,
+  deleteOntologyConceptBinding,
+  exportOntologyRelease,
+  generateOntologyConceptQuery,
   generateOntologyDomainDraft,
   generateOntologySparql,
-  getMemoryOntologyProposalStatus,
+  getNativeOntologyDataGraphPage,
   getOntologyBulkTemplate,
+  getOntologyByName,
   getOntologyChangeSet,
+  getOntologyConceptBindings,
+  getOntologyRelease,
+  getOntologyReleaseReview,
+  getOntologyReleaseReviews,
+  getOntologyReleaseValidation,
   getRdfEntityDiff,
   installOntologyPack,
   listInferenceRules,
+  listOntologies,
   listOntologyBulkJobs,
   listOntologyChangeSets,
+  listOntologyConcepts,
   listOntologyPacks,
+  listOntologyReleases,
   listRelationshipTypes,
   materializeInferenceRules,
-  proposeTermFromMemory,
+  patchOntologyConcept,
+  putOntologyConceptBinding,
   releaseOntologyEditLock,
+  reviewNativeOntologyPack,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
   suggestOntologyRelationships,
@@ -50,7 +77,348 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
 describe('ontologyAPI', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
+
+  it('reads the bounded library summary without requesting draft operations', async () => {
+    const response: NativeOntologyImportSummary = {
+      detectedFormat: Format.Turtle,
+      counts: {
+        newConcepts: 1,
+        updatedConcepts: 0,
+        newProperties: 0,
+        updatedProperties: 0,
+        newRelations: 0,
+        newMappings: 0,
+        skippedDefinitions: 0,
+        skippedRelations: 0,
+      },
+      items: [],
+    };
+    const request = { moduleIds: ['ssn'] };
+    mockedApiClient.post.mockResolvedValue({ data: response });
+
+    await expect(
+      reviewNativeOntologyPack('ontology-id', 'sosa-ssn', request)
+    ).resolves.toEqual(response);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/library/sosa-ssn/summary',
+      request
+    );
+  });
+
+  it.each([
+    ['review', getOntologyReleaseReview],
+    ['validation', getOntologyReleaseValidation],
+  ] as const)(
+    'reads the selected captured %s with cancellation and encoded identity',
+    async (endpoint, read) => {
+      const response = { releaseId: 'release/id', marker: endpoint };
+      mockedApiClient.get.mockResolvedValue({ data: response });
+      const controller = new AbortController();
+
+      expect(await read('release/id', controller.signal)).toEqual(response);
+      expect(mockedApiClient.get.mock.calls.map(([url]) => url)).toEqual([
+        '/ontologyReleases/release%2Fid/' + endpoint,
+      ]);
+      expect(mockedApiClient.get.mock.calls[0][1]?.signal).toBe(
+        controller.signal
+      );
+
+      mockedApiClient.get.mockRejectedValue(new Error('Read denied'));
+
+      await expect(read('release/id')).rejects.toThrow('Read denied');
+    }
+  );
+
+  const boundTable = {
+    assetId: 'late-table',
+    assetType: 'table',
+    asset: { id: 'late-table', type: 'table', name: 'customers' },
+    columns: [
+      { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
+    ],
+  };
+
+  it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
+    const signal = new AbortController().signal;
+    const hops = [
+      {
+        property: 'part-of',
+        target: 'customer',
+        direction: Direction.Outgoing,
+      },
+    ];
+    const body = {
+      hops: [{ ...hops[0], label: 'part of' }],
+      sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
+    };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(await generateOntologyConceptQuery('concept/id', hops, signal)).toBe(
+      body
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid/query',
+      { hops },
+      { signal }
+    );
+  });
+
+  it('posts one graph page selection to the ontology and returns the page body', async () => {
+    const signal = new AbortController().signal;
+    const request = {
+      loaded: [],
+      page: { kind: Kind.Clusters, limit: 12, offset: 0 },
+    };
+    const body = { clusters: [], contextFull: false, loaded: [] };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(
+      await getNativeOntologyDataGraphPage('ontology/id', request, signal)
+    ).toBe(body);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology%2Fid/dataGraph/pages',
+      request,
+      { signal }
+    );
+  });
+
+  it('collects bindings through empty pages and preserves the starting revision', async () => {
+    const signal = new AbortController().signal;
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { revision: 4, assets: [], after: 'first' },
+      })
+      .mockResolvedValueOnce({
+        data: { revision: 5, assets: [], after: 'second' },
+      })
+      .mockResolvedValueOnce({ data: { revision: 5, assets: [boundTable] } });
+
+    expect(await getOntologyConceptBindings('concept/id', signal)).toEqual({
+      kind: 'complete',
+      revision: 4,
+      assets: [boundTable],
+    });
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith(
+      '/ontologyConcepts/concept%2Fid/bindings',
+      { params: { after: 'second', limit: 100 }, signal }
+    );
+  });
+
+  it.each(['put', 'delete'] as const)(
+    'confirms a successful %s independently of an unavailable continuation read',
+    async (method) => {
+      mockedApiClient[method].mockResolvedValueOnce({
+        data: { revision: 6, assets: [], after: 'next' },
+      });
+      mockedApiClient.get.mockRejectedValue(
+        new Error('later page unavailable')
+      );
+      const write =
+        method === 'put'
+          ? putOntologyConceptBinding('concept', {
+              expectedRevision: 5,
+              asset: {
+                assetId: 'topic',
+                assetType: AssetType.Topic,
+                columns: [],
+              },
+            })
+          : deleteOntologyConceptBinding('concept', {
+              assetType: AssetType.Topic,
+              assetId: 'topic',
+              expectedRevision: 5,
+            });
+
+      await expect(write).resolves.toBeUndefined();
+      expect(mockedApiClient.get).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['put', 'delete'] as const)(
+    'discards the %s response page and revision',
+    async (method) => {
+      mockedApiClient[method].mockResolvedValueOnce({
+        data: { revision: 6, assets: [], after: 'next' },
+      });
+      mockedApiClient.get.mockResolvedValueOnce({
+        data: { revision: 6, assets: [boundTable] },
+      });
+      const result =
+        method === 'put'
+          ? await putOntologyConceptBinding('concept', {
+              expectedRevision: 5,
+              asset: {
+                assetId: 'topic',
+                assetType: AssetType.Topic,
+                columns: [],
+              },
+            })
+          : await deleteOntologyConceptBinding('concept', {
+              assetType: AssetType.Topic,
+              assetId: 'topic',
+              expectedRevision: 5,
+            });
+
+      expect(result).toBeUndefined();
+      expect(mockedApiClient.get).not.toHaveBeenCalled();
+    }
+  );
+
+  it('rejects an incomplete binding read when a later page fails', async () => {
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { revision: 4, assets: [], after: 'next' },
+      })
+      .mockRejectedValueOnce(new Error('later page unavailable'));
+
+    await expect(getOntologyConceptBindings('concept')).rejects.toThrow(
+      'later page unavailable'
+    );
+  });
+
+  it('recovers a native ontology by its frozen encoded name', async () => {
+    const ontology = {
+      id: 'ontology-id',
+      name: 'library name',
+      iri: 'urn:library',
+    };
+    mockedApiClient.get.mockResolvedValue({ data: ontology });
+
+    expect(await getOntologyByName('library name')).toEqual(ontology);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontologies/name/library%20name'
+    );
+  });
+
+  it('creates native ontology definitions and patches by identity', async () => {
+    const ontology = {
+      name: 'Sales',
+      iri: 'urn:sales',
+      namespace: 'urn:sales:',
+    };
+    const concept = {
+      name: 'Customer',
+      ontology: 'Sales',
+      conceptType: OntologyConceptType.OwlClass,
+    };
+    mockedApiClient.post.mockResolvedValue({ data: { id: 'created' } });
+    mockedApiClient.patch.mockResolvedValue({ data: { id: 'updated' } });
+
+    expect(await createOntology(ontology)).toEqual({ id: 'created' });
+    expect(mockedApiClient.post).toHaveBeenLastCalledWith(
+      '/ontologies',
+      ontology
+    );
+    expect(await createOntologyConcept(concept)).toEqual({ id: 'created' });
+    expect(mockedApiClient.post).toHaveBeenLastCalledWith(
+      '/ontologyConcepts',
+      concept
+    );
+
+    const patch = [{ op: 'test' as const, path: '/version', value: 0.1 }];
+
+    expect(await patchOntologyConcept('concept/id', patch)).toEqual({
+      id: 'updated',
+    });
+    expect(mockedApiClient.patch).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid',
+      patch,
+      {
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+  });
+
+  it('browses sealed releases by native owner and reads a selected release', async () => {
+    const release = { id: 'release-id', ontology: { id: 'ontology-id' } };
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { data: [release], paging: { total: 1 } },
+      })
+      .mockResolvedValueOnce({ data: release });
+    const signal = new AbortController().signal;
+
+    await listOntologyReleases(
+      'ontology-id',
+      { limit: 25, after: 'cursor' },
+      signal
+    );
+
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologyReleases', {
+      params: { ontologyId: 'ontology-id', limit: 25, after: 'cursor' },
+      signal,
+    });
+    expect(await getOntologyRelease('release-id', signal)).toEqual(release);
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith(
+      '/ontologyReleases/release-id',
+      { signal }
+    );
+  });
+
+  it('uses dedicated ontology collections and preserves cursor paging', async () => {
+    const response = {
+      data: { data: [], paging: { total: 150, after: 'next' } },
+    };
+    mockedApiClient.get.mockResolvedValue(response);
+    const signal = new AbortController().signal;
+
+    expect(await listOntologies({ limit: 25, after: 'first' }, signal)).toEqual(
+      response.data
+    );
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologies', {
+      params: { limit: 25, after: 'first' },
+      signal,
+    });
+
+    await listOntologyConcepts(
+      { ontology: 'Sales', fields: 'superClasses,subClasses', limit: 25 },
+      signal
+    );
+
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologyConcepts', {
+      params: {
+        ontology: 'Sales',
+        fields: 'superClasses,subClasses',
+        limit: 25,
+      },
+      signal,
+    });
+  });
+
+  it('captures the selected working revision', async () => {
+    const request = {
+      expectedWorkingRevision: 7,
+    };
+    const release = { id: 'candidate', contentDigest: 'sealed' };
+    mockedApiClient.post.mockResolvedValue({ data: release });
+
+    expect(await captureOntologyRelease('ontology-id', request)).toEqual(
+      release
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/releases',
+      request
+    );
+  });
+
+  it('preserves activation conflicts for a reload instead of retrying with a newer revision', async () => {
+    const conflict = new Error('Activation changed');
+    const request = {
+      releaseId: 'approved-release',
+      expectedActivationRevision: 2,
+    };
+    mockedApiClient.put.mockRejectedValue(conflict);
+
+    await expect(activateOntologyRelease('ontology-id', request)).rejects.toBe(
+      conflict
+    );
+    expect(mockedApiClient.put).toHaveBeenCalledTimes(1);
+    expect(mockedApiClient.put).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/activation',
+      request
+    );
   });
 
   it('lists governed relationship types with paging parameters', async () => {
@@ -63,16 +431,6 @@ describe('ontologyAPI', () => {
       params: { limit: 25 },
     });
     expect(result).toEqual(response.data);
-  });
-
-  it('reads the proposal status for a memory', async () => {
-    const status = { enabled: true, proposals: [], queued: true };
-    mockedApiClient.get.mockResolvedValue({ data: status });
-
-    expect(await getMemoryOntologyProposalStatus('memory-id')).toEqual(status);
-    expect(mockedApiClient.get).toHaveBeenCalledWith(
-      '/ontology/ai/memories/memory-id/proposals'
-    );
   });
 
   it('lists memory drafts across several states in one request', async () => {
@@ -102,19 +460,6 @@ describe('ontologyAPI', () => {
       '/ontologyChangeSets/draft-id',
       { params: { fields: 'operations' } }
     );
-  });
-
-  it('queues an ontology proposal from a memory', async () => {
-    const response = { data: { id: 42, status: 'PENDING' } };
-    mockedApiClient.post.mockResolvedValue(response);
-
-    const result = await proposeTermFromMemory('memory-id');
-
-    expect(mockedApiClient.post).toHaveBeenCalledWith(
-      '/ontology/ai/memories/jobs',
-      { memoryIds: ['memory-id'] }
-    );
-    expect(result).toEqual(response.data);
   });
 
   it('routes typed draft commands to the requested change set', async () => {
@@ -163,14 +508,14 @@ describe('ontologyAPI', () => {
     mockedApiClient.get.mockResolvedValue(jobs);
 
     const submitResult = await submitOntologyBulkOperation(request);
-    const jobsResult = await listOntologyBulkJobs(25);
+    const jobsResult = await listOntologyBulkJobs('glossary-id', 25);
 
     expect(mockedApiClient.post).toHaveBeenCalledWith(
       '/ontology/bulk',
       request
     );
     expect(mockedApiClient.get).toHaveBeenCalledWith('/ontology/bulk/jobs', {
-      params: { limit: 25 },
+      params: { glossaryId: 'glossary-id', limit: 25 },
     });
     expect(submitResult).toEqual(submission.data);
     expect(jobsResult).toEqual(jobs.data);
@@ -386,5 +731,38 @@ describe('ontologyAPI', () => {
       request
     );
     expect(result).toEqual(response.data);
+  });
+});
+
+it('hands a gated export refusal back with its JSON report parsed from the text body', async () => {
+  const report = { valid: false, shacl: { violationCount: 1 } };
+  (APIClient.get as jest.Mock).mockRejectedValueOnce(
+    new AxiosError('blocked', 'ERR_BAD_REQUEST', undefined, undefined, {
+      data: JSON.stringify(report),
+      status: 422,
+    } as AxiosResponse)
+  );
+
+  const refusal = await exportOntologyRelease('release-id', 'turtle', {
+    shaclGate: true,
+  }).catch((error: AxiosError) => error);
+
+  expect((refusal as AxiosError).response?.data).toEqual(report);
+});
+
+it('reads a bounded review page with the server total and after cursor', async () => {
+  const response = { data: [], paging: { total: 42, after: 'next' } };
+  (APIClient.get as jest.Mock).mockResolvedValueOnce({ data: response });
+  const signal = new AbortController().signal;
+
+  await expect(
+    getOntologyReleaseReviews(
+      { view: 'pending', limit: 1, after: 'current' },
+      signal
+    )
+  ).resolves.toEqual(response);
+  expect(APIClient.get).toHaveBeenLastCalledWith('/ontologies/reviews', {
+    params: { view: 'pending', limit: 1, after: 'current' },
+    signal,
   });
 });

@@ -109,7 +109,7 @@ public class RdfBulkSink implements AutoCloseable {
 
   private record SubmittedBatch(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       CompletableFuture<TranslatedBatch> translation,
       CompletableFuture<BatchProcessingResult> ack) {}
 
@@ -132,7 +132,7 @@ public class RdfBulkSink implements AutoCloseable {
    * thread. After {@link #close()}, or once the writer has stopped, it completes exceptionally.
    */
   public CompletableFuture<BatchProcessingResult> submit(
-      String entityType, List<? extends EntityInterface> entities) throws InterruptedException {
+      String entityType, List<? extends EntityInterface<?>> entities) throws InterruptedException {
     requireOpen();
     CompletableFuture<TranslatedBatch> translation =
         CompletableFuture.supplyAsync(

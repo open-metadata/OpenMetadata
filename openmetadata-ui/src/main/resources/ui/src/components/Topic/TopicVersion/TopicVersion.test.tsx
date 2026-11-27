@@ -12,10 +12,17 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 const mockPush = jest.fn();
 
@@ -40,10 +47,6 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
-);
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -76,6 +79,10 @@ jest.mock(
     })),
   })
 );
+
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'topics' });
+});
 
 describe('TopicVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -149,7 +156,34 @@ describe('TopicVersion tests', () => {
     );
   });
 
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(<TopicVersion {...topicVersionMockProps} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'topics' });
+    rerender(<TopicVersion {...topicVersionMockProps} />);
+
+    expect(screen.getByRole('tab', { name: 'label.schema' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByText('TopicSchema')).toBeInTheDocument();
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
+
   describe('ViewCustomFields Permission Tests', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockReturnValue({
+        tab: EntityTabs.CUSTOM_PROPERTIES,
+      });
+    });
+
     const mockCustomPropertyTable = jest.requireMock(
       '../../common/CustomPropertyTable/CustomPropertyTable'
     ).CustomPropertyTable;
@@ -165,12 +199,6 @@ describe('TopicVersion tests', () => {
           entityPermissions={{ ...ENTITY_PERMISSIONS, ViewCustomFields: true }}
         />
       );
-
-      const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
-      );
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(mockCustomPropertyTable).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -190,12 +218,6 @@ describe('TopicVersion tests', () => {
           }}
         />
       );
-
-      const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
-      );
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(mockCustomPropertyTable).toHaveBeenCalledWith(
         expect.objectContaining({

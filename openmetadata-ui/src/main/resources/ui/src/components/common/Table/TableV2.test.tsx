@@ -26,9 +26,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Table = ({
     children,
     onSelectionChange,
+    'aria-label': ariaLabel,
   }: {
     children: ReactNode;
     onSelectionChange: (selection: 'all' | Set<string>) => void;
+    'aria-label'?: string;
   }) => {
     const tableContextValue = React.useMemo(
       () => ({ onSelectionChange }),
@@ -42,7 +44,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           onClick={() => onSelectionChange('all')}>
           select all
         </button>
-        <table>{children}</table>
+        <table aria-label={ariaLabel}>{children}</table>
       </TableContext.Provider>
     );
   };
@@ -58,19 +60,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TableRow = ({
     children,
     id,
+    hideSelectionCell,
     ...props
-  }: HTMLAttributes<HTMLTableRowElement> & { id: string }) => {
+  }: HTMLAttributes<HTMLTableRowElement> & {
+    id: string;
+    hideSelectionCell?: boolean;
+  }) => {
     const { onSelectionChange } = React.useContext(TableContext);
 
     return (
       <tr {...props}>
-        <td>
-          <button
-            data-testid={`select-row-${id}`}
-            onClick={() => onSelectionChange(new Set([id]))}>
-            select {id}
-          </button>
-        </td>
+        {!hideSelectionCell && (
+          <td>
+            <button
+              data-testid={`select-row-${id}`}
+              onClick={() => onSelectionChange(new Set([id]))}>
+              select {id}
+            </button>
+          </td>
+        )}
         {children as ReactNode}
       </tr>
     );
@@ -95,7 +103,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    MUTED_TABLE_SURFACE_CLASSES: jest.requireActual(
+      '@openmetadata/ui-core-components'
+    ).MUTED_TABLE_SURFACE_CLASSES,
     Button,
+    ButtonUtility: ({
+      icon: _icon,
+      size: _size,
+      ...props
+    }: HTMLAttributes<HTMLButtonElement> & {
+      icon?: unknown;
+      size?: string;
+    }) => <button {...props} />,
     Dropdown: {
       Root: ({ children }: { children: ReactNode }) => <>{children}</>,
       Popover: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -124,6 +143,9 @@ jest.mock('../Loader/Loader', () => () => <div>loading</div>);
 jest.mock('../NextPrevious/NextPrevious', () => () => null);
 jest.mock('../SearchBarComponent/SearchBar.component', () => () => null);
 jest.mock('./DraggableMenu/DraggableMenuItemV2.component', () => () => null);
+jest.mock('./ColumnCustomizeDropdown/ColumnCustomizeDropdown', () => () => (
+  <div data-testid="column-dropdown" />
+));
 
 interface TreeRow {
   id: string;
@@ -234,5 +256,115 @@ describe('TableV2 tree regressions', () => {
 
     expect(wrapper).toHaveClass('tw:border-subtle');
     expect(wrapper).not.toHaveClass('tw:border-utility-gray-200');
+  });
+
+  it('keeps the row hover fill off the empty-state row', () => {
+    const { container } = render(
+      <TableV2
+        columns={columns}
+        dataSource={[]}
+        pagination={false}
+        rowKey="id"
+      />
+    );
+
+    const wrapper = container.querySelector('.table-container');
+
+    expect(wrapper).toHaveClass(
+      'tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary'
+    );
+    expect(wrapper).not.toHaveClass('tw:[&_tbody_tr:hover_td]:bg-secondary');
+  });
+
+  it('swaps the default border and hover for the muted surface', () => {
+    const { container } = render(
+      <TableV2
+        columns={columns}
+        dataSource={[sibling]}
+        pagination={false}
+        rowKey="id"
+        variant="muted"
+      />
+    );
+
+    const wrapper = container.querySelector('.table-container');
+
+    expect(wrapper).toHaveClass(
+      'tw:bg-primary_alt!',
+      'tw:dark:border-primary',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
+    );
+    expect(wrapper).not.toHaveClass('tw:border-utility-gray-200');
+    expect(wrapper).not.toHaveClass(
+      'tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary'
+    );
+  });
+});
+
+describe('TableV2 extension props', () => {
+  it('hands the customize control to a custom toolbar instead of the default row', () => {
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[sibling]}
+        defaultVisibleColumns={['value']}
+        pagination={false}
+        renderToolbar={(columnCustomize) => (
+          <div data-testid="custom-toolbar">{columnCustomize}</div>
+        )}
+        rowKey="id"
+        staticVisibleColumns={['name']}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('custom-toolbar')).getByTestId(
+        'column-dropdown'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId('column-dropdown')).toHaveLength(1);
+  });
+
+  it('passes no customize control when column customization is off', () => {
+    const renderToolbar = jest.fn(() => <div data-testid="custom-toolbar" />);
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[sibling]}
+        pagination={false}
+        renderToolbar={renderToolbar}
+        rowKey="id"
+      />
+    );
+
+    expect(renderToolbar).toHaveBeenLastCalledWith(null);
+    expect(screen.getByTestId('custom-toolbar')).toBeInTheDocument();
+  });
+
+  it('renders full-width rows across every column without a selection cell', () => {
+    render(
+      <TableV2
+        aria-label="Metrics"
+        columns={columns}
+        dataSource={[sibling, { id: 'section', name: '', value: '' }]}
+        fullWidthRowRender={(record) =>
+          record.id === 'section' ? 'Section header' : null
+        }
+        pagination={false}
+        rowKey="id"
+        rowSelection={{}}
+      />
+    );
+
+    const sectionCell = screen.getByText('Section header').closest('td');
+
+    expect(screen.getByRole('table', { name: 'Metrics' })).toBeInTheDocument();
+    expect(sectionCell).toHaveAttribute('colspan', '3');
+    expect(sectionCell?.closest('tr')).toHaveAttribute(
+      'data-row-key',
+      'section'
+    );
+    expect(screen.queryByTestId('select-row-section')).not.toBeInTheDocument();
+    expect(screen.getByTestId('select-row-sibling')).toBeInTheDocument();
   });
 });

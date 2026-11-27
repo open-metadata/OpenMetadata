@@ -128,7 +128,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
-  public EntityInterface getParentEntity(APICollection entity, String fields) {
+  public EntityInterface<?> getParentEntity(APICollection entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

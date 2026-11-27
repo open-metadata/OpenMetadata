@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import enUS from '../../../locale/languages/en-us.json';
 import {
   classifyMergedRelation,
   classifyRelation,
@@ -19,6 +20,7 @@ import {
   normalizeRelationKey,
   RelationCategory,
   RELATION_CATEGORIES,
+  RELATION_LABEL_KEYS,
   toSentenceCase,
 } from './KnowledgeGraph.relations';
 
@@ -186,7 +188,10 @@ describe('KnowledgeGraph.relations', () => {
       RELATION_CATEGORIES.forEach((category) => {
         const style = getRelationStyle(category);
 
-        expect(style.color).toMatch(/^#[0-9a-f]{6}$/i);
+        // `color` is a BadgeColor identifier (e.g. "blue-dark", "purple") the
+        // BadgeWithDot component maps to its palette, not a raw CSS colour.
+        expect(typeof style.color).toBe('string');
+        expect(style.color.length).toBeGreaterThan(0);
         expect(style.labelKey).toMatch(/^label\./);
         expect(Array.isArray(style.lineDash)).toBe(true);
       });
@@ -216,6 +221,26 @@ describe('KnowledgeGraph.relations', () => {
       );
 
       expect(new Set(dashes).size).toBe(RELATION_CATEGORIES.length);
+    });
+  });
+
+  describe('RELATION_LABEL_KEYS', () => {
+    it('points every predicate at an existing en-us label', () => {
+      const labels: Record<string, string> = enUS.label;
+      const missing = Object.values(RELATION_LABEL_KEYS).filter(
+        (key) => !labels[key.replace(/^label\./, '')]
+      );
+
+      expect(missing).toEqual([]);
+    });
+
+    it('reads every predicate label in sentence case, as the edges did before translation', () => {
+      const labels: Record<string, string> = enUS.label;
+      const titleCased = Object.values(RELATION_LABEL_KEYS)
+        .map((key) => labels[key.replace(/^label\./, '')])
+        .filter((text) => text !== toSentenceCase(text));
+
+      expect(titleCased).toEqual([]);
     });
   });
 

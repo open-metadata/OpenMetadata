@@ -13,6 +13,7 @@
 import { isString, isUndefined, omit, parseInt } from 'lodash';
 import QueryString from 'qs';
 import { useMemo } from 'react';
+import { PAGING_URL_PARAMS } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -26,14 +27,11 @@ import { useIncidentRowPermissions } from './useIncidentRowPermissions';
 export interface UseIncidentManagerListPageProps {
   isIncidentPage?: boolean;
   tableDetails?: Table;
-  /** Fired after a row mutation went through — see {@link useIncidentActions}. */
-  onIncidentChange?: () => void;
 }
 
 export const useIncidentManagerListPage = ({
   isIncidentPage = true,
   tableDetails,
-  onIncidentChange,
 }: UseIncidentManagerListPageProps) => {
   const location = useCustomLocation();
   const allParams = useMemo(() => {
@@ -45,12 +43,8 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
-  // The grouped view shares this query string, so key the filters on a string
-  // without its `groupBy`: switching the dimension must not refetch this table,
-  // and `groupBy` must never reach the incident listing endpoint. `allParams`
-  // itself keeps the param so `updateFilters` writes the dimension back.
   const filterSearch = QueryString.stringify(
-    omit(allParams, ['key', 'title', 'groupBy'])
+    omit(allParams, ['key', 'title', ...PAGING_URL_PARAMS])
   );
 
   const filters = useMemo(() => {
@@ -82,9 +76,6 @@ export const useIncidentManagerListPage = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
   } = useIncidentFilterOptions({ filters });
 
   const { testCaseListData, setTestCaseListData, pagingData, showPagination } =
@@ -109,24 +100,15 @@ export const useIncidentManagerListPage = ({
     selectedDateFilterKey,
     selectedDateFilterOption,
     updateFilters,
+    clearFilters,
     handleAssigneeChange,
     handleDateRangeChange,
     handleDateFieldChange,
     handleDateRangeClear,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
-  } = useIncidentFilters({
-    filters,
-    allParams,
-    testCaseListData,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
-  });
+  } = useIncidentFilters({ filters, allParams });
 
   const { handleSeveritySubmit, handleAssigneeUpdate, handleStatusSubmit } =
-    useIncidentActions({ setTestCaseListData, onIncidentChange });
+    useIncidentActions({ setTestCaseListData });
 
   return {
     isIncidentPage,
@@ -150,14 +132,12 @@ export const useIncidentManagerListPage = ({
     handleAssigneeUpdate,
     fetchUserFilterOptions,
     updateFilters,
+    clearFilters,
     handleAssigneeChange,
     handleDateRangeChange,
     handleDateFieldChange,
     handleDateRangeClear,
     handleStatusSubmit,
     searchTestCases,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
   };
 };

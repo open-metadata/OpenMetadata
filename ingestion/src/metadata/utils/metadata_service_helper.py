@@ -7,9 +7,10 @@ SERVICE_TYPE_MAPPER = {
         "service_name": "Hive",
         "connection": {"config": {"hostPort": "http://nohost:6000", "type": "Hive"}},
     },
+    # No connector reads Amundsen's delta databases any more, so their tables live under a Custom Database
     "delta": {
-        "service_name": "DeltaLake",
-        "connection": {"config": {"configSource": {"connection": {"metastoreHostPort": "http://localhost:9083"}}}},
+        "service_name": "CustomDatabase",
+        "connection": {"config": {"type": "CustomDatabase"}},
     },
     "dynamo": {
         "service_name": "DynamoDB",

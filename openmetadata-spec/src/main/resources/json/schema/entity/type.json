@@ -5,7 +5,7 @@
   "description": "This schema defines a type as an entity. Types includes property types and entity types. Custom types can also be defined by the users to extend the metadata system.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.Type",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "entityName": {
       "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",

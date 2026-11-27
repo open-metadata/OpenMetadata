@@ -67,6 +67,7 @@ import {
 } from '../../../utils/CustomProperty.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TableTypePropertyEditTable from '../../common/CustomPropertyTable/TableTypeProperty/TableTypePropertyEditTable';
 import type { TableTypePropertyEditTableProps } from '../../common/CustomPropertyTable/TableTypeProperty/TableTypePropertyEditTable.interface';
 import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
@@ -713,6 +714,10 @@ const TableExtensionInput = ({
     initialRows.map((row) => ({ ...row }))
   );
   const gridColumns = useMemo(() => getTableColumns(columns), [columns]);
+  const handleClipboardError = useCallback(
+    () => showErrorToast(t('message.clipboard-not-available')),
+    [t]
+  );
   const {
     handleAddRow,
     handleCopy,
@@ -722,6 +727,7 @@ const TableExtensionInput = ({
   } = useGridEditController({
     columns: gridColumns,
     dataSource,
+    onClipboardError: handleClipboardError,
     rowIdKey: null,
     setDataSource,
   });

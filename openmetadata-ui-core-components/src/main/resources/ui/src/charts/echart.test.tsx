@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
+import { hideChartTooltips } from './tooltip-events';
 import type { ChartOption, ChartTheme } from './types';
 import { EChart } from './echart';
 
@@ -132,6 +133,12 @@ describe('EChart', () => {
     expect(lastHost().opts).toEqual({ renderer: 'svg' });
   });
 
+  it('applies updates in the same frame, so a hover never reads a half-swapped series', () => {
+    render(<EChart ariaLabel="Chart" option={{ series: [] }} />);
+
+    expect(lastHost().lazyUpdate).toBeFalsy();
+  });
+
   it('passes the modular echarts core and the event handlers through', () => {
     const onClick = vi.fn();
     render(
@@ -239,6 +246,26 @@ describe('EChart', () => {
     );
 
     expect(onZoom).toHaveBeenCalledWith(event);
+  });
+
+  it('hides its tooltip on hideChartTooltips and passes the instance on', () => {
+    const onChartReady = vi.fn();
+    const chart = { dispatchAction: vi.fn() };
+    const { unmount } = render(
+      <EChart ariaLabel="Chart" option={{}} onChartReady={onChartReady} />
+    );
+    const ready = lastHost().onChartReady as (instance: unknown) => void;
+    act(() => ready(chart));
+
+    hideChartTooltips();
+
+    expect(onChartReady).toHaveBeenCalledWith(chart);
+    expect(chart.dispatchAction).toHaveBeenCalledWith({ type: 'hideTip' });
+
+    unmount();
+    hideChartTooltips();
+
+    expect(chart.dispatchAction).toHaveBeenCalledTimes(1);
   });
 
   it('sizes the chart to 300px tall and full width by default', () => {

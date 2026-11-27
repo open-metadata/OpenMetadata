@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Card } from '@openmetadata/ui-core-components';
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
@@ -40,6 +41,22 @@ jest.mock('../../../rest/queries/pipelineQuery', () => ({
 jest.mock('../../../rest/queries/topicQuery', () => ({
   prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
 }));
+
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest.fn(({ children, to, state, ...rest }) => (
+      <a
+        {...rest}
+        data-state={JSON.stringify(state)}
+        href={typeof to === 'string' ? to : to?.pathname}>
+        {children}
+      </a>
+    )),
+  };
+});
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
@@ -116,6 +133,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     // StatusBadge renders the core Badge; keep the real one (a plain span).
     Badge: actual.Badge,
+    Box: actual.Box,
     Divider: actual.Divider,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
@@ -228,6 +246,38 @@ describe('ExploreSearchCard - Domain section', () => {
   });
 });
 
+describe('ExploreSearchCard - navigation breadcrumb state', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes the full breadcrumb trail including the current entity, without dropping any crumb', () => {
+    const fullTrail = [
+      { name: 'svc', url: '/service/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/schema/schema' },
+      { name: 'table', url: '' },
+    ];
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue(
+      fullTrail
+    );
+
+    renderCard({ fullyQualifiedName: 'svc.db.schema.table' });
+
+    expect(searchClassBase.getEntityBreadcrumbs).toHaveBeenCalledWith(
+      expect.anything(),
+      'table',
+      true
+    );
+
+    const state = JSON.parse(
+      screen.getByTestId('entity-link').getAttribute('data-state') ?? '{}'
+    );
+
+    expect(state.breadcrumbData).toEqual(fullTrail);
+  });
+});
+
 describe('ExploreSearchCard - Card container', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -256,6 +306,32 @@ describe('ExploreSearchCard - Card container', () => {
 
     expect(card).toHaveClass('explore-search-card');
     expect(card).toHaveClass('highlight-card');
+  });
+
+  it('paints the core Card variant it is given, so a card inside a surface panel can take the muted step', () => {
+    const { Card: ActualCard } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const cardMock = Card as unknown as jest.Mock;
+    const stubImplementation = cardMock.getMockImplementation();
+    cardMock.mockImplementation((props) => <ActualCard {...props} />);
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          source={{ ...baseSource, fullyQualifiedName: 'svc.db.schema.users' }}
+          variant="muted"
+        />
+      </MemoryRouter>
+    );
+
+    const card = screen.getByTestId('table-data-card_svc.db.schema.users');
+
+    expect(card).toHaveClass('tw:bg-primary_alt');
+    expect(card).not.toHaveClass('tw:bg-surface');
+
+    cardMock.mockImplementation(stubImplementation);
   });
 
   it('renders human-readable ranking explanations from matched query names and score explanation', () => {

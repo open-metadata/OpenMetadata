@@ -174,10 +174,24 @@ final class ODCSRuleOperators {
     boolean hasBound = range.min() != null || range.max() != null;
     boolean ordered = range.min() == null || range.max() == null || range.min() <= range.max();
     boolean strictBoundLost =
-        !wholeNumbers && (rule.getMustBeGreaterThan() != null || rule.getMustBeLessThan() != null);
+        !wholeNumbers && (lowerStrictIsBinding(range, rule) || upperStrictIsBinding(range, rule));
     boolean wholeWhenRequired =
         !wholeNumbers || (isWholeOrNull(range.min()) && isWholeOrNull(range.max()));
     return hasBound && ordered && !strictBoundLost && wholeWhenRequired && rule.getMustBe() == null;
+  }
+
+  private static boolean lowerStrictIsBinding(Range range, ODCSQualityRule rule) {
+    if (rule.getMustBeGreaterThan() == null) {
+      return false;
+    }
+    return range.min() == null || range.min() <= rule.getMustBeGreaterThan();
+  }
+
+  private static boolean upperStrictIsBinding(Range range, ODCSQualityRule rule) {
+    if (rule.getMustBeLessThan() == null) {
+      return false;
+    }
+    return range.max() == null || range.max() >= rule.getMustBeLessThan();
   }
 
   private static boolean isWholeOrNull(Double value) {

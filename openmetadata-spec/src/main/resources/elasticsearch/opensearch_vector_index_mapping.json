@@ -1,0 +1,8 @@
+{
+  "settings": {
+    "index": {
+      "knn": true,
+      "knn.derived_source.enabled": false
+    }
+  }
+}

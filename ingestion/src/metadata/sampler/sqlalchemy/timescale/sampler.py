@@ -19,11 +19,9 @@ from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy import Column, select, text
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -69,7 +67,6 @@ class TimescaleSampler(PostgresSampler):
         sample_config: SampleConfig | None = None,
         partition_details: dict | None = None,
         sample_query: str | None = None,
-        storage_config: DataStorageConfig = None,
         sample_data_count: int | None = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
@@ -80,7 +77,6 @@ class TimescaleSampler(PostgresSampler):
             sample_config=sample_config,
             partition_details=partition_details,
             sample_query=sample_query,
-            storage_config=storage_config,
             sample_data_count=sample_data_count,
             **kwargs,
         )
@@ -173,7 +169,7 @@ class TimescaleSampler(PostgresSampler):
         )
         return stmt.cte(f"{self.get_sampler_table_name()}_uncompressed")
 
-    def get_dataset(self, column=None, **kwargs) -> type | AliasedClass:
+    def get_dataset(self, column=None, **kwargs) -> type | AliasedClass | CTE:
         """Return the effective dataset, substituting raw_dataset with the
         uncompressed-only CTE when the hypertable has compressed chunks.
 

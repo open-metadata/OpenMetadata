@@ -91,6 +91,7 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -107,7 +108,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "/v1/tables/";
   public static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+      "tableConstraints,tablePartition,tableSharding,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
@@ -1465,6 +1466,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
@@ -1559,7 +1563,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addDataModel(id, dataModel);
+    Table table =
+        repository.addDataModel(id, dataModel, securityContext.getUserPrincipal().getName());
     return addHref(uriInfo, table);
   }
 
@@ -1616,9 +1621,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1784,7 +1787,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             id,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -1873,7 +1876,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -1932,6 +1935,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationship(
@@ -1997,6 +2001,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationshipWithDirection(
@@ -2010,6 +2015,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withLayerFrom(from)
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  private void authorizeEntityRelationshipRoot(
+      SecurityContext securityContext, String fqn, boolean includeDeleted) {
+    Include include = includeDeleted ? Include.ALL : Include.NON_DELETED;
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn, include));
   }
 
   @GET
@@ -2092,14 +2106,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResourceContext<Table> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     ResultList<Column> result =
         repository.searchTableColumnsById(
             id,
             query,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnSearchFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2194,14 +2209,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    ResourceContext<Table> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
             fqn,
             query,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnSearchFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2212,6 +2228,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
     return tableColumnList;
+  }
+
+  private String readableColumnFields(
+      SecurityContext securityContext, ResourceContext<Table> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter, securityContext, table, fieldsParam);
+  }
+
+  private String readableColumnSearchFields(
+      SecurityContext securityContext, ResourceContext<Table> table, String fieldsParam) {
+    return ColumnFieldAccess.readableSearchFields(
+        viewPermissionFilter, securityContext, table, fieldsParam);
   }
 
   private ColumnTagFilter parseColumnTagFilters(String tags, String glossaryTerms) {

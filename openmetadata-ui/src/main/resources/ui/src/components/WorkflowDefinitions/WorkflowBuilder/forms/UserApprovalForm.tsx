@@ -15,6 +15,8 @@ import {
   Button,
   Checkbox,
   Input,
+  Select,
+  Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -25,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityReference } from '../../../../generated/entity/teams/user';
+import { EmptyAssigneeStrategy } from '../../../../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { AssigneeCandidate } from '../../../../interface/WorkflowTypes.interface';
@@ -37,12 +40,18 @@ import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
+import {
+  EMPTY_ASSIGNEE_STRATEGY_OPTIONS,
+  NONE_IN_TASK_WORKFLOW_OPTION,
+  SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES,
+} from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
   node: Node;
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
+  isEnforceMode?: boolean;
 }
 
 const DEFAULT_USER_APPROVAL_TRANSITIONS = [
@@ -67,7 +76,7 @@ const DEFAULT_USER_APPROVAL_TRANSITIONS = [
 interface AssigneesConfigSlice {
   addReviewers?: boolean;
   addOwners?: boolean;
-  emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy?: EmptyAssigneeStrategy;
   candidates?: AssigneeCandidate[];
 }
 
@@ -78,14 +87,16 @@ interface UserApprovalInitialState {
   rejectionThreshold: number;
   addReviewers: boolean;
   addOwners: boolean;
-  emptyAssigneeStrategy: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy: EmptyAssigneeStrategy;
   candidates: EntityReference[];
+  allowPartialDecisions: boolean;
 }
 
 const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
   addReviewers: assignees.addReviewers ?? true,
   addOwners: assignees.addOwners ?? false,
-  emptyAssigneeStrategy: assignees.emptyAssigneeStrategy ?? 'none',
+  emptyAssigneeStrategy:
+    assignees.emptyAssigneeStrategy ?? EmptyAssigneeStrategy.None,
   candidates: Array.isArray(assignees.candidates) ? assignees.candidates : [],
 });
 
@@ -96,6 +107,7 @@ const buildInitialState = (
     approvalThreshold?: number;
     rejectionThreshold?: number;
     assignees?: AssigneesConfigSlice;
+    allowPartialDecisions?: boolean;
   };
   const displayName = node?.data?.displayName ?? node?.data?.label ?? '';
 
@@ -105,6 +117,7 @@ const buildInitialState = (
     approvalThreshold: nodeConfig.approvalThreshold ?? 1,
     rejectionThreshold: nodeConfig.rejectionThreshold ?? 1,
     ...buildAssigneesState(nodeConfig.assignees ?? {}),
+    allowPartialDecisions: nodeConfig.allowPartialDecisions ?? false,
   };
 };
 
@@ -113,6 +126,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   onSave,
   onClose,
   onDelete,
+  isEnforceMode = false,
 }) => {
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -120,12 +134,21 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [rejectionThreshold, setRejectionThreshold] = useState(1);
   const [addReviewers, setAddReviewers] = useState(true);
   const [addOwners, setAddOwners] = useState(false);
-  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState<
-    'none' | 'assignAdmins'
-  >('none');
+  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState(
+    EmptyAssigneeStrategy.None
+  );
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
+  const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
-  const { isFormDisabled } = useWorkflowModeContext();
+  const { isFormDisabled, isNoOp } = useWorkflowModeContext();
+  const strategyChoices =
+    buildInitialState(node).emptyAssigneeStrategy === EmptyAssigneeStrategy.Wait
+      ? [...SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES, EmptyAssigneeStrategy.Wait]
+      : SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES;
+  const strategyOption = (strategy: EmptyAssigneeStrategy) =>
+    isNoOp && strategy === EmptyAssigneeStrategy.None
+      ? NONE_IN_TASK_WORKFLOW_OPTION
+      : EMPTY_ASSIGNEE_STRATEGY_OPTIONS[strategy];
 
   useEffect(() => {
     if (!node?.data) {
@@ -140,6 +163,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
     setAddOwners(initial.addOwners);
     setEmptyAssigneeStrategy(initial.emptyAssigneeStrategy);
     setCandidates(initial.candidates);
+    setAllowPartialDecisions(initial.allowPartialDecisions);
   }, [node]);
 
   const handleSave = () => {
@@ -163,15 +187,22 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         ? existingTransitionMetadata
         : DEFAULT_USER_APPROVAL_TRANSITIONS;
 
+    // Settings this form does not edit, such as domain-owner approvers or the task status, keep
+    // their saved values.
+    const savedConfig = (node?.data?.config ?? {}) as Record<string, unknown>;
     const config = createNodeConfig({
       displayName,
       description,
       type: NodeType.UserTask,
       subType: NodeSubType.UserApprovalTask,
       config: {
+        ...savedConfig,
+        // Only a workflow that holds changes can decide them one by one.
+        allowPartialDecisions: isEnforceMode && allowPartialDecisions,
         approvalThreshold,
         rejectionThreshold,
         assignees: {
+          ...(savedConfig.assignees as AssigneesConfigSlice | undefined),
           addReviewers,
           addOwners,
           emptyAssigneeStrategy,
@@ -262,7 +293,22 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
           />
         </div>
 
-        <div className="tw:mb-6">
+        {isEnforceMode && (
+          <div className="tw:mb-6">
+            <Toggle
+              data-testid="user-approval-allow-partial-decisions"
+              hint={t('message.allow-partial-decisions-hint')}
+              isDisabled={isFormDisabled}
+              isSelected={allowPartialDecisions}
+              label={t('label.allow-partial-decisions')}
+              size="sm"
+              onChange={setAllowPartialDecisions}
+            />
+          </div>
+        )}
+
+        {/* No bottom margin: the Additional approvers FormField below already ends with one. */}
+        <div>
           <div className="tw:flex tw:flex-col tw:gap-4">
             <div className="tw:flex tw:items-center tw:gap-2">
               <Typography
@@ -311,10 +357,6 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
                   listHeight={200}
                   multiple={{ user: true, team: true }}
                   owner={candidates}
-                  popoverProps={{
-                    placement: 'bottomLeft',
-                    overlayStyle: { zIndex: 10000 },
-                  }}
                   onUpdate={(updated) => setCandidates(updated ?? [])}>
                   <Button
                     className="tw:h-10 tw:w-full tw:min-w-0 tw:justify-start tw:overflow-hidden"
@@ -331,6 +373,34 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
               </ModeAwareFormField>
             </FormField>
           </div>
+        </div>
+
+        <div className="tw:mb-6">
+          <Select
+            data-testid="user-approval-empty-assignee-strategy-select"
+            hint={t(strategyOption(emptyAssigneeStrategy).hintKey)}
+            isDisabled={isFormDisabled}
+            label={t('label.if-no-one-else-can-approve')}
+            value={emptyAssigneeStrategy}
+            onChange={(key) =>
+              setEmptyAssigneeStrategy(key as EmptyAssigneeStrategy)
+            }>
+            {strategyChoices.map((strategy) => (
+              <Select.Item
+                data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
+                id={strategy}
+                key={strategy}
+                label={t(strategyOption(strategy).labelKey)}
+              />
+            ))}
+          </Select>
+          <Typography
+            as="p"
+            className="tw:mt-2"
+            color="secondary"
+            size="text-sm">
+            {t('message.empty-assignee-strategy-description')}
+          </Typography>
         </div>
       </div>
 

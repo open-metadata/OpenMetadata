@@ -37,6 +37,7 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
+import { isEdgeOnDraggedNode } from '../utils/EdgeMidpointUtils';
 import {
   computeEdgeStyle,
   computeEdgeVisualState,
@@ -140,18 +141,12 @@ const drawEdgeArrow = (
 
 const getPathPaint = (
   style: ReturnType<typeof computeEdgeStyle>,
-  weight: number,
   colors: LineageEdgeColors,
   isPathHighlightActive: boolean,
   isPathHighlighted: boolean
 ) => {
-  const strokeWidth =
-    weight > 1
-      ? Math.max(
-          style.strokeWidth,
-          Math.min(7, style.strokeWidth + Math.log2(weight + 1))
-        )
-      : style.strokeWidth;
+  // A rollup keeps the base stroke; its count badge carries the weight.
+  const strokeWidth = style.strokeWidth;
   if (!isPathHighlightActive) {
     return { ...style, strokeWidth };
   }
@@ -173,16 +168,16 @@ const drawRollupLabel = (
   stroke: string,
   opacity: number
 ) => {
-  const paddingX = 6;
+  const paddingX = 7;
   const labelHeight = 18;
   ctx.save();
-  ctx.font = '600 11px Inter, sans-serif';
+  ctx.font = '500 11px Inter, sans-serif';
   const labelWidth = ctx.measureText(label).width + paddingX * 2;
   const x = pathData.edgeCenterX - labelWidth / 2;
   const y = pathData.edgeCenterY - labelHeight / 2;
   ctx.globalAlpha = opacity;
   ctx.fillStyle = colors.labelBackground;
-  ctx.strokeStyle = stroke;
+  ctx.strokeStyle = colors.labelBorder ?? stroke;
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (typeof ctx.roundRect === 'function') {
@@ -297,7 +292,6 @@ export function useCanvasEdgeRenderer({
     columnsInCurrentPages,
     isRepositioning,
     setIsCanvasReady,
-    isEditMode,
     isDQEnabled,
   } = useLineageStore();
 
@@ -332,7 +326,6 @@ export function useCanvasEdgeRenderer({
       const isPathHighlighted = pathHighlightedEdgeIds?.has(edge.id) ?? false;
       const paint = getPathPaint(
         style,
-        weight,
         colors,
         isPathHighlightActive,
         isPathHighlighted
@@ -435,6 +428,7 @@ export function useCanvasEdgeRenderer({
     const visibleEdges = edges.filter(
       (edge) =>
         computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        !isEdgeOnDraggedNode(edge, getNode) &&
         (isEdgeTraced(edge, tracedColumns) ||
           isEdgeInViewport(
             edge,
@@ -492,6 +486,7 @@ export function useCanvasEdgeRenderer({
       isCanvasReadyRef.current = true;
       setIsCanvasReady(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes triggers redraw; getNode reads them imperatively
   }, [
     canvasRef,
     edges,
@@ -506,7 +501,6 @@ export function useCanvasEdgeRenderer({
     isRepositioning,
     setIsCanvasReady,
     isDQEnabled,
-    isEditMode,
     getNode,
   ]);
 
@@ -590,15 +584,22 @@ export function useCanvasEdgeRenderer({
     edgePathCacheRef.current = new WeakMap();
   }, [edges, nodes, columnsInCurrentPages, isRepositioning]);
 
-  useEffect(() => {
-    scheduleRedraw();
-
-    return () => {
+  // A scheduled frame draws the latest state through drawAllEdgesRef, so a
+  // dependency change must not cancel it. React Flow's auto-pan changes the
+  // viewport from its own animation frame, just before ours: cancelling and
+  // rescheduling there would postpone the draw for as long as the pan runs.
+  useEffect(
+    () => () => {
       if (rafIdRef.current) {
         isDirtyRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
       }
-    };
+    },
+    []
+  );
+
+  useEffect(() => {
+    scheduleRedraw();
   }, [
     edges,
     nodes,
@@ -618,7 +619,6 @@ export function useCanvasEdgeRenderer({
     colors,
     hoveredButton,
     isDQEnabled,
-    isEditMode,
     scheduleRedraw,
     theme,
   ]);

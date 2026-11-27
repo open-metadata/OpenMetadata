@@ -78,6 +78,13 @@ PANDAS_DTYPE_MAP = {
 }
 
 
+def _guess_mime_type(filename: str) -> str | None:
+    mime_type, _ = mimetypes.guess_type(filename)
+    if mime_type is None and filename.lower().endswith((".md", ".markdown")):
+        return "text/markdown"
+    return mime_type
+
+
 class SftpSource(DriveServiceSource):
     """
     SFTP Source implementation
@@ -216,7 +223,7 @@ class SftpSource(DriveServiceSource):
                             else:
                                 file_path = f"{full_path}/{entry.filename}"
 
-                            mime_type, _ = mimetypes.guess_type(entry.filename)
+                            mime_type = _guess_mime_type(entry.filename)
 
                             file_info = SftpFileInfo(
                                 name=entry.filename,
@@ -247,7 +254,7 @@ class SftpSource(DriveServiceSource):
                             else:
                                 file_path = f"{normalized_root}/{entry.filename}"
 
-                            mime_type, _ = mimetypes.guess_type(entry.filename)
+                            mime_type = _guess_mime_type(entry.filename)
 
                             file_info = SftpFileInfo(
                                 name=entry.filename,

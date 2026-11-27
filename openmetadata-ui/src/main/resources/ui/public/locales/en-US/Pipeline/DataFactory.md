@@ -5,7 +5,7 @@ In this section, we provide guides and references to use the DataFactory connect
 
 The Ingestion framework uses <a href="https://learn.microsoft.com/en-us/rest/api/datafactory/v2" target="_blank">Azure Data Factory APIs</a> to connect to the Data Factory and fetch metadata.
 
-You can find further information on the Azure Data Factory connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/datafactory" target="_blank">docs</a>.
+You can find further information on the Azure Data Factory connector in the <a href="https://docs.getcollate.io/connectors/pipeline/datafactory" target="_blank">docs</a>.
 
 
 ## Permissions

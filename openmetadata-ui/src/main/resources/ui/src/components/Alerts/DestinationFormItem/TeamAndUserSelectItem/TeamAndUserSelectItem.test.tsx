@@ -80,7 +80,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => (
     <input
       aria-label="Search"
-      // eslint-disable-next-line jsx-a11y/no-autofocus -- mock forwards the autofocus prop under test
       autoFocus={autoFocus}
       data-testid={inputDataTestId ?? tid}
       placeholder={placeholder}
@@ -158,7 +157,7 @@ function renderValidationHarness() {
 
 describe('TeamAndUserSelectItem', () => {
   beforeEach(() => {
-    jest.useFakeTimers('modern');
+    jest.useFakeTimers();
     jest.clearAllMocks();
   });
 

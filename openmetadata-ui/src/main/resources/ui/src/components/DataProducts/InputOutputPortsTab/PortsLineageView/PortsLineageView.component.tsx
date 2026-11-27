@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactFlow, {
   Background,
@@ -31,10 +26,8 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
 import PortNode from './PortNode.component';
@@ -43,7 +36,7 @@ import { PortsLineageViewProps } from './PortsLineageView.types';
 
 const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
 
-const PORTS_EDGE_COLOR = 'var(--om-color-border-primary)';
+const PORTS_EDGE_COLOR = 'var(--tw-border-color-primary)';
 
 const getPortHandleId = (port: SourceType): string => {
   return port.fullyQualifiedName ?? port.id ?? '';
@@ -71,18 +64,7 @@ const PortsLineageView = ({
   const { t } = useTranslation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
   const reactFlowInstance = useReactFlow();
-
-  const handleToggleFullScreen = useCallback(() => {
-    if (onToggleFullScreen) {
-      onToggleFullScreen();
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 });
-        reactFlowInstance.zoomTo(0.4);
-      }, 100);
-    }
-  }, [onToggleFullScreen, reactFlowInstance]);
 
   const hasAnyPorts =
     dataProduct && (inputPortsData.length > 0 || outputPortsData.length > 0);
@@ -199,15 +181,21 @@ const PortsLineageView = ({
     }
   }, [buildNodesAndEdges, hasAnyPorts]);
 
+  const hasNodes = nodes.length > 0;
+
+  // React Flow keeps the old viewport transform when its container resizes, so
+  // refit on every fullscreen change — the parent's Escape handler included.
   useEffect(() => {
-    if (nodes.length > 0 && !isInitialized && reactFlowInstance) {
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 });
-        reactFlowInstance.zoomTo(0.4);
-        setIsInitialized(true);
-      }, 100);
+    if (!hasNodes) {
+      return;
     }
-  }, [nodes, isInitialized, reactFlowInstance]);
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+      reactFlowInstance.zoomTo(0.4);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [hasNodes, isFullScreen, reactFlowInstance]);
 
   const containerHeight = useMemo(() => {
     if (isFullScreen) {
@@ -220,22 +208,14 @@ const PortsLineageView = ({
   if (!hasAnyPorts) {
     return (
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
-        <ErrorPlaceHolder
-          className="m-t-0"
-          icon={
-            <AddPlaceHolderIcon
-              className="tw:w-16 tw:h-16"
-              data-testid="no-ports-placeholder"
-            />
-          }
-          size={SIZE.SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="p" className="text-center">
-            {assetCount === 0
-              ? t('message.no-assets-for-ports-lineage')
-              : t('message.no-ports-to-display-lineage')}
-          </Typography>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-ports-placeholder"
+            {...(assetCount === 0
+              ? { description: t('message.no-assets-for-ports-lineage') }
+              : { title: t('message.no-ports-to-display-lineage') })}
+          />
+        </div>
       </div>
     );
   }
@@ -245,41 +225,23 @@ const PortsLineageView = ({
       className={`ports-lineage-view w-full bg-gray-50 ${
         isFullScreen
           ? 'tw:fixed tw:top-0 tw:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
-          : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
+          : 'tw:relative tw:rounded-lg tw:border tw:border-secondary'
       }`}
       data-testid="ports-lineage-view"
       style={{ height: containerHeight }}>
       {onToggleFullScreen && (
         <div className="tw:absolute tw:top-2 tw:right-2 tw:z-10">
-          <Tooltip
-            title={
+          <ButtonUtility
+            data-testid="toggle-fullscreen-btn"
+            icon={isFullScreen ? Minimize01 : Maximize01}
+            size="lg"
+            tooltip={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
-            }>
-            <TooltipTrigger>
-              <Button
-                color="secondary"
-                data-testid="toggle-fullscreen-btn"
-                iconLeading={
-                  isFullScreen ? (
-                    <Minimize01
-                      fill="var(--om-color-text-secondary)"
-                      height={18}
-                      width={18}
-                    />
-                  ) : (
-                    <Maximize01
-                      fill="var(--om-color-text-secondary)"
-                      height={18}
-                      width={18}
-                    />
-                  )
-                }
-                onClick={handleToggleFullScreen}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+            }
+            onClick={onToggleFullScreen}
+          />
         </div>
       )}
 
@@ -294,7 +256,7 @@ const PortsLineageView = ({
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}>
-        <Background color="var(--om-color-border-subtle)" gap={16} size={1} />
+        <Background color="var(--tw-border-color-subtle)" gap={16} size={1} />
         <Controls
           showFitView
           showZoom

@@ -12,10 +12,13 @@
  */
 
 import { Button, NavList, Typography } from '@openmetadata/ui-core-components';
-import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Glossary as GlossaryIcon,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { DomainFilterChip } from '../../../components/common/DomainFilterChip/DomainFilterChip.component';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -93,10 +96,10 @@ const GlossaryLeftPanel = ({
           {createGlossaryPermission && (
             <div className="tw:px-3">
               <Button
-                className="tw:w-full"
+                className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                iconLeading={Plus}
                 size="sm"
                 onPress={onAddGlossary}>
                 <Typography className="tw:text-brand-tertiary" weight="regular">
@@ -105,6 +108,8 @@ const GlossaryLeftPanel = ({
               </Button>
             </div>
           )}
+
+          <DomainFilterChip className="tw:px-3" />
 
           <nav aria-label={t('label.glossary-plural')} ref={navRef}>
             <NavList

@@ -10,9 +10,11 @@
 #  limitations under the License.
 """Integration tests for GCS archive support (archive.py + gcs/metadata.py)."""
 
+import json
 import tarfile
 import uuid
 import zipfile
+from copy import deepcopy
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -347,3 +349,59 @@ class TestGCSArchiveIntegration:
             call_kwargs.get("structure_format", mock_open.call_args[0][1] if len(mock_open.call_args[0]) > 1 else None)
             or True
         )
+
+
+class TestGCSArchiveSchemaInferenceLimits:
+    """Issue #29832: the children inferred from an archive's first JSON entry are bounded before
+    every inner container reuses them, with one status warning for the archive.
+    """
+
+    _JSON_CONTENT = json.dumps([{"payload": {"c": 1, "a": 1, "d": 1, "b": 1}}]).encode()
+
+    @pytest.fixture
+    def source(self):
+        config = deepcopy(MOCK_GCS_CONFIG)
+        config["source"]["sourceConfig"]["config"]["maxChildrenPerColumn"] = 2
+        with (
+            patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
+            patch(
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+                return_value=None,
+            ),
+            patch(
+                "metadata.ingestion.source.storage.storage_service.create_connection",
+                return_value=MagicMock(),
+            ),
+        ):
+            source = GcsSource.create(config["source"], MagicMock())
+        source.context = MagicMock()
+        source.context.get.return_value.objectstore_service = "test_svc"
+        source.metadata.get_by_name = MagicMock(return_value=MagicMock(id=MagicMock(root=str(uuid.uuid4()))))
+        return source
+
+    def test_inner_containers_share_bounded_columns(self, source):
+        zip_bytes = _make_zip({"a.json": self._JSON_CONTENT, "b.json": self._JSON_CONTENT})
+        source.get_size = MagicMock(return_value=len(zip_bytes))
+
+        with patch(
+            "metadata.ingestion.source.storage.gcs.metadata.open_archive_reader",
+            return_value=ZipArchiveReader(zip_bytes),
+        ):
+            results = list(
+                source._generate_archive_containers(
+                    bucket_response=GCSBucketResponse(name="my-bucket", project_id="proj", creation_date=None),
+                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                )
+            )
+
+        children = [result for result in results if result.parent is not None]
+        assert len(children) == 2
+        for child in children:
+            payload = child.data_model.columns[0]
+            assert [column.name.root for column in payload.children] == ["a", "b"]
+        assert source.status.warnings == [
+            {
+                "my-bucket/archive.zip": "Schema inference limits dropped nested columns. "
+                "maxChildrenPerColumn=2 cut the children of 1 column(s): payload."
+            }
+        ]

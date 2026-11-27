@@ -13,12 +13,17 @@
 
 package org.openmetadata.service.rdf.storage;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.UUID;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
@@ -33,6 +38,43 @@ class InferenceInvalidatingRdfStorageTest {
     new InferenceInvalidatingRdfStorage(delegate, dirtyMarker).executeSparqlUpdate(UPDATE);
 
     verify(delegate).executeSparqlUpdate(UPDATE);
+    verify(dirtyMarker).markAllDirty();
+  }
+
+  @Test
+  void anEntityWriteThatChangedNothingLeavesRulesClean() {
+    final RdfStorageInterface delegate = mock(RdfStorageInterface.class);
+    final InferenceDirtyMarker dirtyMarker = mock(InferenceDirtyMarker.class);
+    final InferenceInvalidatingRdfStorage storage =
+        new InferenceInvalidatingRdfStorage(delegate, dirtyMarker);
+    final UUID id = UUID.randomUUID();
+    final Model model = ModelFactory.createDefaultModel();
+    when(delegate.storeEntity("table", id, model, RdfEntityWriteStrategy.DIFFERENCE))
+        .thenReturn(RdfEntityWriteResult.UNCHANGED)
+        .thenReturn(RdfEntityWriteResult.changedTriples(1, 1));
+
+    assertEquals(RdfEntityWriteResult.UNCHANGED, storage.storeEntity("table", id, model));
+    verify(dirtyMarker, never()).markAllDirty();
+
+    storage.storeEntity("table", id, model);
+    verify(dirtyMarker).markAllDirty();
+  }
+
+  @Test
+  void anEntityWriteThatFailedMayHaveChangedTheGraphSoRulesAreDirty() {
+    final RdfStorageInterface delegate = mock(RdfStorageInterface.class);
+    final InferenceDirtyMarker dirtyMarker = mock(InferenceDirtyMarker.class);
+    final UUID id = UUID.randomUUID();
+    final Model model = ModelFactory.createDefaultModel();
+    when(delegate.storeEntity("table", id, model, RdfEntityWriteStrategy.DIFFERENCE))
+        .thenThrow(new IllegalStateException("read-back timed out after the update committed"))
+        .thenReturn(RdfEntityWriteResult.UNCHANGED);
+    final InferenceInvalidatingRdfStorage storage =
+        new InferenceInvalidatingRdfStorage(delegate, dirtyMarker);
+
+    assertThrows(IllegalStateException.class, () -> storage.storeEntity("table", id, model));
+    assertEquals(RdfEntityWriteResult.UNCHANGED, storage.storeEntity("table", id, model));
+
     verify(dirtyMarker).markAllDirty();
   }
 

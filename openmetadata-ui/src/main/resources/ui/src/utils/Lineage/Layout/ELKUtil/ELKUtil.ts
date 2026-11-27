@@ -17,6 +17,20 @@ import ELKGraph, {
   LayoutOptions,
 } from 'elkjs/lib/elk.bundled.js';
 
+const collapseParallelEdges = (edges: ElkExtendedEdge[]) => {
+  const seen = new Set<string>();
+
+  return edges.filter((edge) => {
+    const key = `${edge.sources.join(',')}->${edge.targets.join(',')}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+
+    return true;
+  });
+};
+
 class ELKLayout {
   static elk: ELK;
   static layoutOptions: LayoutOptions = {
@@ -48,6 +62,16 @@ class ELKLayout {
     return this.elk;
   }
 
+  /**
+   * Lays out `nodes` with at most one ELK edge per source/target pair.
+   *
+   * Column-level lineage arrives as one edge per column mapping, so two wide
+   * tables can share hundreds of parallel edges. Node placement only needs to
+   * know that the two nodes are connected, while ELK routes every parallel
+   * edge separately: 151 tables with 50 mapped columns per link exhausted a
+   * 4 GB heap (#34904). Callers read node positions only, so the returned
+   * graph's `edges` are the collapsed set.
+   */
   static async layoutGraph(
     nodes: ElkNode[],
     edges: ElkExtendedEdge[],
@@ -59,7 +83,7 @@ class ELKLayout {
         ? { ...this.layoutOptions, ...layoutOptions }
         : this.layoutOptions,
       children: nodes,
-      edges: edges,
+      edges: collapseParallelEdges(edges),
     });
   }
 }

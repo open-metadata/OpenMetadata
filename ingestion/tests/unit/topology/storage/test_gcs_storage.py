@@ -163,8 +163,7 @@ class StorageUnitTest(TestCase):
         return_value=None,
     )
     @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
-    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
-        super().__init__(method_name)
+    def setUp(self, test_connection, _get_manifest_file) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
 
@@ -298,7 +297,9 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None, limits=None, report=None: (
+                columns
+            )
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")
@@ -307,8 +308,8 @@ class StorageUnitTest(TestCase):
             GCSContainerDetails(
                 name="transactions",
                 prefix="/transactions",
-                number_of_objects=100,
-                size=100,
+                number_of_objects=None,
+                size=None,
                 file_formats=[FileFormat.csv],
                 data_model=ContainerDataModel(isPartitioned=False, columns=columns),
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
@@ -332,6 +333,37 @@ class StorageUnitTest(TestCase):
                 parent=entity_ref,
             ),
         )
+
+        client = self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"]
+        with patch.object(
+            client,
+            "list_blobs",
+            return_value=[MockObjectFilePath(name="transactions/child/file.csv")],
+        ):
+            children = list(
+                self.object_store_source._generate_structured_containers(
+                    bucket_response=GCSBucketResponse(
+                        name="test_bucket",
+                        project_id="my-gcp-project",
+                        creation_date=datetime.datetime(2000, 1, 1),
+                    ),
+                    entries=[MetadataEntry(dataPath="transactions", structureFormat="csv", depth=1)],
+                    parent=entity_ref,
+                )
+            )
+
+        assert len(children) == 1
+        child = children[0]
+        assert child.name == "transactions/child"
+        assert child.number_of_objects is None
+        assert child.size is None
+        assert child.parent == entity_ref
+        assert child.data_model.columns == columns
+
+        self.object_store_source.context.get().objectstore_service = "test_service"
+        request = next(self.object_store_source.yield_create_container_requests(child)).right
+        assert request.numberOfObjects is None
+        assert request.size is None
 
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):
@@ -488,3 +520,48 @@ class StorageUnitTest(TestCase):
     def return_metadata_entry(self):
         container_config = StorageContainerConfig.model_validate(MOCK_METADATA_FILE_RESPONSE)
         return container_config.entries
+
+
+class TestFetchMetric(TestCase):
+    """Unit tests for GcsSource._fetch_metric value-type dispatch."""
+
+    def setUp(self):
+        from metadata.ingestion.source.storage.gcs.metadata import GCSMetric
+
+        self.GCSMetric = GCSMetric
+
+        self.source = Mock(spec=GcsSource)
+        self.source.gcs_clients = Mock()
+
+        self.source._fetch_metric = GcsSource._fetch_metric.__get__(self.source, GcsSource)
+        self.source._get_time_interval = Mock(return_value=Mock())
+
+    def _make_timeseries(self, double_value=0.0, int64_value=0):
+        point_value = Mock()
+        point_value.double_value = double_value
+        point_value.int64_value = int64_value
+        point = Mock()
+        point.value = point_value
+        ts = Mock()
+        ts.points = [point]
+        return [ts]
+
+    def test_bucket_size_bytes_uses_double_value(self):
+        self.source.gcs_clients.metrics_client.list_time_series.return_value = self._make_timeseries(
+            double_value=1234.5, int64_value=0
+        )
+        bucket = Mock()
+        bucket.name = "my-bucket"
+        bucket.project_id = "my-project"
+        result = self.source._fetch_metric(bucket, self.GCSMetric.BUCKET_SIZE_BYTES)
+        self.assertEqual(result, 1234.5)
+
+    def test_number_of_objects_uses_int64_value(self):
+        self.source.gcs_clients.metrics_client.list_time_series.return_value = self._make_timeseries(
+            double_value=0.0, int64_value=42
+        )
+        bucket = Mock()
+        bucket.name = "my-bucket"
+        bucket.project_id = "my-project"
+        result = self.source._fetch_metric(bucket, self.GCSMetric.NUMBER_OF_OBJECTS)
+        self.assertEqual(result, 42)

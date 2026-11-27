@@ -14,18 +14,18 @@
 // Keeping CSS variables intact lets React Flow repaint its SVG edges when the
 // root theme changes without rebuilding workflow nodes, edges, or layout state.
 export const WORKFLOW_EDGE_THEME = {
-  customBackground: 'var(--om-color-bg-brand, #EFF8FF)',
-  customLabel: 'var(--om-color-fg-brand, #1570EF)',
+  customBackground: 'var(--tw-color-utility-brand-50)',
+  customLabel: 'var(--tw-color-utility-brand-600)',
   // React Flow embeds marker colors in SVG URL ids, so fallback delimiters
   // would make the generated marker reference browser-dependent.
   edge: 'var(--om-color-border-hover)',
-  labelBorder: 'var(--om-color-bg-primary, #FFFFFF)',
-  negativeBackground: 'var(--om-color-bg-error, #FEF3F2)',
-  negativeLabel: 'var(--om-color-fg-error, #D92D20)',
-  positiveBackground: 'var(--om-color-bg-success, #ECFDF3)',
-  positiveLabel: 'var(--om-color-fg-success, #079455)',
-  warningBackground: 'var(--om-color-bg-warning, #FFFAEB)',
-  warningLabel: 'var(--om-color-fg-warning, #DC6803)',
+  labelBorder: 'var(--tw-background-color-primary)',
+  negativeBackground: 'var(--tw-color-utility-error-50)',
+  negativeLabel: 'var(--tw-color-utility-error-600)',
+  positiveBackground: 'var(--tw-color-utility-success-50)',
+  positiveLabel: 'var(--tw-color-utility-success-600)',
+  warningBackground: 'var(--tw-color-utility-warning-50)',
+  warningLabel: 'var(--tw-color-utility-warning-600)',
 } as const;
 
 export const getWorkflowConditionTheme = (condition: string) => {

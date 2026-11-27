@@ -60,29 +60,29 @@ export type CanvasButtonColors = Record<
 
 const CANVAS_BUTTON_COLOR_TOKENS: CanvasButtonColors = {
   DEFAULT: {
-    background: 'var(--om-color-bg-primary)',
-    border: 'var(--om-color-border-secondary)',
-    icon: 'var(--om-color-text-primary)',
+    background: 'var(--tw-background-color-primary)',
+    border: 'var(--tw-border-color-secondary)',
+    icon: 'var(--tw-text-color-primary)',
   },
   FAILED: {
-    background: 'var(--om-color-bg-error)',
-    border: 'var(--om-color-border-error)',
-    icon: 'var(--om-color-fg-error)',
+    background: 'var(--tw-background-color-error-primary)',
+    border: 'var(--tw-border-color-error)',
+    icon: 'var(--tw-color-fg-error-primary)',
   },
   HOVER: {
-    background: 'var(--om-color-bg-primary)',
-    border: 'var(--om-color-border-brand)',
-    icon: 'var(--om-color-fg-brand)',
+    background: 'var(--tw-background-color-primary)',
+    border: 'var(--tw-border-color-brand)',
+    icon: 'var(--tw-color-fg-brand-primary)',
   },
   PENDING: {
-    background: 'var(--om-color-bg-warning)',
-    border: 'var(--om-color-fg-warning)',
-    icon: 'var(--om-color-fg-warning)',
+    background: 'var(--tw-background-color-warning-primary)',
+    border: 'var(--tw-color-fg-warning-primary)',
+    icon: 'var(--tw-color-fg-warning-primary)',
   },
   SUCCESS: {
-    background: 'var(--om-color-bg-success)',
-    border: 'var(--om-color-fg-success)',
-    icon: 'var(--om-color-fg-success)',
+    background: 'var(--tw-background-color-success-primary)',
+    border: 'var(--tw-color-fg-success-primary)',
+    icon: 'var(--tw-color-fg-success-primary)',
   },
 };
 

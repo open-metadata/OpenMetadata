@@ -6,7 +6,7 @@
   "description": "A directory container for organizing files in the Context Center Drive. Folders can nest other folders. Access is determined by owners.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Folder",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "properties": {
     "id": {
       "description": "Unique identifier of the folder.",

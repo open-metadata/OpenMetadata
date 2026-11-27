@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  LineageDownstream,
+  LineageUpstream,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
-import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import { LineagePagingInfo } from '../../../interface/lineage.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
@@ -39,7 +41,7 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       className="tw:gap-2.5"
       color="link-color"
       data-testid={`${type}-lineage`}
-      iconLeading={<Icon height={14} width={14} />}
+      iconLeading={Icon}
       size="sm"
       onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">
@@ -128,16 +130,16 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     }
 
     return (
-      <div className="tw:flex tw:flex-row tw:gap-4">
+      <div className="tw:flex tw:flex-row tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2">
         <LineageItem
-          Icon={UpstreamIcon}
+          Icon={LineageUpstream}
           count={upstreamCount}
           type="upstream"
           onClick={handleClick}
         />
         <Divider className="tw:self-center tw:h-5" orientation="vertical" />
         <LineageItem
-          Icon={DownstreamIcon}
+          Icon={LineageDownstream}
           count={downstreamCount}
           type="downstream"
           onClick={handleClick}

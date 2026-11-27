@@ -183,9 +183,10 @@ test.describe('Context Center - Document File Preview', () => {
     const modal = await openFilePreviewModal(page, row, document.id);
 
     await expect(
-      modal.getByRole('heading', { name: MARKDOWN_HEADING })
+      modal
+        .getByTestId('markdown-preview')
+        .getByRole('heading', { name: MARKDOWN_HEADING })
     ).toBeVisible();
-    await expect(modal.locator('[class*="tw:prose"]')).toBeVisible();
   });
 
   test('plain text file renders inside a pre block in the preview modal', async ({

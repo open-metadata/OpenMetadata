@@ -772,9 +772,7 @@ public class DatabaseSchemaResource
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1036,9 +1034,18 @@ public class DatabaseSchemaResource
           @DefaultValue("false")
           boolean deleted)
       throws IOException {
-
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn, deleted ? Include.ALL : Include.NON_DELETED));
     return Entity.getSearchRepository()
         .getSchemaEntityRelationship(
             fqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  protected List<ReferenceListField<DatabaseSchema>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>("tables", DatabaseSchema::getTables, DatabaseSchema::setTables));
   }
 }

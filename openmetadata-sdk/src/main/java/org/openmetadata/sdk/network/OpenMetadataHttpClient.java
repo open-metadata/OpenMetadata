@@ -46,6 +46,10 @@ public class OpenMetadataHttpClient implements HttpClient {
             .connectTimeout(config.getConnectTimeout(), TimeUnit.MILLISECONDS)
             .readTimeout(config.getReadTimeout(), TimeUnit.MILLISECONDS)
             .writeTimeout(config.getWriteTimeout(), TimeUnit.MILLISECONDS);
+    if (!config.getRequestListeners().isEmpty()) {
+      builder.eventListenerFactory(
+          call -> new RequestTimingEventListener(config.getRequestListeners()));
+    }
 
     this.okHttpClient = builder.build();
   }

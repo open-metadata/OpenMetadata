@@ -117,7 +117,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         self.mock_metadata.es_search_from_fqn.side_effect = [None, [self.mock_table2]]
 
         # Mock fqn.build to return empty list for first service, list with FQN for second service
-        with patch("metadata.ingestion.lineage.sql_lineage.fqn.build") as mock_fqn_build:
+        with patch("metadata.entity_resolution.table_binding.fqn.build") as mock_fqn_build:
             mock_fqn_build.side_effect = [[], ["service2.db2.schema2.test_table"]]
 
             # Mock metadata.get_by_name to return the table for second service
@@ -144,7 +144,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         self.mock_metadata.es_search_from_fqn.return_value = None
 
         # Mock fqn.build to return empty list
-        with patch("metadata.ingestion.lineage.sql_lineage.fqn.build") as mock_fqn_build:
+        with patch("metadata.entity_resolution.table_binding.fqn.build") as mock_fqn_build:
             mock_fqn_build.return_value = []
 
             # Test with multiple service names

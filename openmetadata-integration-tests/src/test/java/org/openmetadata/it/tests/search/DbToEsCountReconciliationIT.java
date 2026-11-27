@@ -19,6 +19,7 @@ import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.TopicTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.search.DbCountQuerier;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
@@ -32,12 +33,13 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.fluent.Apps;
 
 /**
  * The umbrella correctness invariant: for every entity type that has both a
  * REST list endpoint and a search index alias, the post-reindex doc count in
- * the index must equal the DB count.
+ * the index must equal the DB count, including soft-deleted entities on both sides.
  *
  * <p>This is the canonical gate. If a regression breaks any indexer
  * (relationship resolution, tag join, custom property serialization,
@@ -118,7 +120,7 @@ class DbToEsCountReconciliationIT {
       if (inspector.indicesForAlias(alias).isEmpty()) {
         continue;
       }
-      final long dbCount = db.count(entityType);
+      final long dbCount = db.count(entityType, true);
       final long esCount = search.countByEntityType(alias, entityType);
       if (dbCount != esCount) {
         mismatches.add(
@@ -135,5 +137,8 @@ class DbToEsCountReconciliationIT {
     TopicTestFactory.createSimple(ns);
     final Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTermTestFactory.createSimple(ns, glossary);
+    final User deletedUser = UserTestFactory.createUser(ns, ns.shortPrefix("deleted_user"));
+    SdkClients.adminClient().users().delete(deletedUser.getId());
+    assertThat(db.count("user", true)).isGreaterThan(db.count("user"));
   }
 }

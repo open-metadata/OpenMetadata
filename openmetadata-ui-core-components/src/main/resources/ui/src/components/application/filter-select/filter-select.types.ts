@@ -21,6 +21,13 @@ export interface FilterSelectOption {
   textValue?: string;
   /** Result count shown as a trailing badge on the row. */
   count?: number;
+  /** Secondary line under the label; the row then aligns to the label line. */
+  description?: ReactNode;
+  /**
+   * Extra content under the row, shown and hidden by a chevron (or
+   * ArrowRight / ArrowLeft) without selecting the row.
+   */
+  details?: ReactNode;
   /**
    * Leading icon (service logo, domain color chip, entity icon, …) — an icon
    * component, or an already-rendered node.
@@ -57,6 +64,12 @@ export interface FilterSelectProps {
    * to a borderless text button — the quick-filter look.
    */
   bordered?: boolean;
+  /**
+   * Size of the input-variant trigger, on the core Select scale: `sm` (default)
+   * or `md`, as tall as a Select, Input or Button of that size.
+   */
+  size?: 'sm' | 'md';
+  /** Classes for the trigger — the built-in one, or the wrapper of a custom one. */
   className?: string;
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;
@@ -64,8 +77,12 @@ export interface FilterSelectProps {
   /** Muted helper line rendered under the search box. */
   helperText?: ReactNode;
   hideCounts?: boolean;
+  /** Disables the built-in trigger, e.g. in a read-only form. */
+  isDisabled?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
+  /** Merged over the option list's classes, e.g. to raise its `max-h-64` cap. */
+  menuClassName?: string;
   /**
    * Pinned row above the value rows (e.g. "No Owner"). Rendered through the
    * same row component as value rows, so it cannot drift visually.
@@ -83,6 +100,17 @@ export interface FilterSelectProps {
   searchable?: boolean;
   selectionMode?: FilterSelectSelectionMode;
   /**
+   * Single select: mark rows with a radio instead of the brand-tinted selected
+   * row, plus a footer with the selection count and a Clear action. A picked
+   * radio row can't be unpicked by clicking it, so the footer is how it clears.
+   */
+  showRadio?: boolean;
+  /**
+   * `false` drops the selection-count footer and its Clear action, for a
+   * value that is required once set (e.g. a radio picker). Defaults to `true`.
+   */
+  isClearable?: boolean;
+  /**
    * Tri-state header row that toggles every currently displayed value row
    * (the filtered list). The null option is an explicit choice and is not
    * included.
@@ -93,6 +121,14 @@ export interface FilterSelectProps {
    * always render regular.
    */
   typography?: 'regular' | 'medium';
+  /**
+   * Caller-supplied trigger (an edit button, a value pill, …) used in place of
+   * the built-in one; the popover anchors to it. It is not a menu trigger:
+   * clicking it opens the popover. `null` or `undefined` keeps the built-in one.
+   */
+  trigger?: ReactNode;
+  /** Labels the built-in trigger, e.g. by a form field's visible label. */
+  'aria-labelledby'?: string;
   /** Multi-selection echo on the input-variant trigger; default 'count'. */
   triggerDisplay?: FilterSelectTriggerDisplay;
   /** Leading icon on the button-variant trigger. */
@@ -101,4 +137,11 @@ export interface FilterSelectProps {
   onOpenChange?: (open: boolean) => void;
   /** Async search — when set the parent filters `options`; otherwise local. */
   onSearch?: (text: string) => void;
+  /**
+   * Called when the option list is scrolled to its end, to append the next
+   * page. The parent tracks whether there is one and whether it is loading.
+   */
+  onLoadMore?: () => void;
+  /** Shows a loading row under the options while the next page loads. */
+  isLoadingMore?: boolean;
 }

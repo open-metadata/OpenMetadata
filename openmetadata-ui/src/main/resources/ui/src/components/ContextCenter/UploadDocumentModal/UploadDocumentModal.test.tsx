@@ -18,6 +18,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { uploadDriveFile } from '../../../rest/assetAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import UploadDocumentModal from './UploadDocumentModal.component';
@@ -289,6 +291,24 @@ describe('UploadDocumentModal', () => {
     await waitFor(() =>
       expect(defaultProps.onUploaded).toHaveBeenCalledWith([mockAsset])
     );
+  });
+
+  it('uploads under the picked domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Alpha' });
+    (uploadDriveFile as jest.Mock).mockResolvedValue({ id: 'asset-1' });
+
+    render(<UploadDocumentModal {...defaultProps} />);
+
+    act(() => {
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
+    });
+
+    fireEvent.click(screen.getByText(/attach-file-plural/i));
+
+    await waitFor(() =>
+      expect((uploadDriveFile as jest.Mock).mock.calls[0][2]).toBe('Alpha')
+    );
+    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
   });
 
   it('shows the failed state for a file that exceeds the size limit', () => {

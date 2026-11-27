@@ -134,7 +134,7 @@ public class EntityProfileResource
 
     ResourceContext<?> resourceContext = new ResourceContext<>(entityType, null, entityFQN);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    EntityInterface entity = Entity.getEntityByName(entityType, entityFQN, "owners", ALL);
+    EntityInterface<?> entity = Entity.getEntityByName(entityType, entityFQN, "owners", ALL);
     Boolean authorizePII = authorizer.authorizePII(securityContext, entity.getOwners());
     return repository.listProfileData(filter, startTs, endTs, authorizePII);
   }
@@ -170,7 +170,7 @@ public class EntityProfileResource
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     ResourceContext<Table> resourceContext = new ResourceContext<>(entityType, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    EntityInterface entity = Entity.getEntity(entityType, id, "", ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityType, id, "", ALL);
     return repository.addProfileData(uriInfo, entity, create);
   }
 
@@ -205,7 +205,7 @@ public class EntityProfileResource
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     ResourceContext<Table> resourceContext = new ResourceContext<>(entityType, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    EntityInterface entity = Entity.getEntityByName(entityType, fqn, "", ALL);
+    EntityInterface<?> entity = Entity.getEntityByName(entityType, fqn, "", ALL);
     return repository.addProfileData(uriInfo, entity, create);
   }
 
@@ -263,7 +263,7 @@ public class EntityProfileResource
     filter.addQueryParam("entityProfileFQN", fqn);
     filter.addQueryParam("entityProfileEntityType", entityType);
 
-    repository.deleteEntityProfile(filter, timestamp);
+    repository.deleteEntityProfile(entityType, fqn, filter, timestamp);
     return Response.ok().build();
   }
 
@@ -313,7 +313,7 @@ public class EntityProfileResource
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     ResourceContext<Table> resourceContext = new ResourceContext<>(entityType, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    EntityInterface entity = Entity.getEntity(entityType, id, "", ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityType, id, "", ALL);
 
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityProfileColumnName", columnName);
@@ -321,7 +321,7 @@ public class EntityProfileResource
     filter.addQueryParam("entityProfileFQN", entity.getFullyQualifiedName());
     filter.addQueryParam("entityProfileEntityType", entityType);
 
-    repository.deleteEntityProfile(filter, timestamp);
+    repository.deleteEntityProfile(entityType, entity.getFullyQualifiedName(), filter, timestamp);
     return Response.ok().build();
   }
 

@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyPatternDraftFactory.Draft;
+import org.openmetadata.service.security.ImpersonationContext;
 
 public final class OntologyPatternInstantiationService {
   private final OntologyPatternDraftFactory draftFactory;
@@ -39,11 +40,7 @@ public final class OntologyPatternInstantiationService {
     final OntologyPatternCatalog catalog = new OntologyPatternCatalog();
     final OntologyPatternDraftFactory factory =
         new OntologyPatternDraftFactory(
-            catalog,
-            new OntologyPatternRequestValidator(),
-            new OntologyIriMinter(),
-            relationshipTypes::require,
-            clock);
+            catalog, new OntologyPatternRequestValidator(), relationshipTypes::require, clock);
     return new OntologyPatternInstantiationService(factory, repository);
   }
 
@@ -52,7 +49,8 @@ public final class OntologyPatternInstantiationService {
       final OntologyChangeSetRepository repository) {
     this(
         draftFactory,
-        (uriInfo, changeSet, user) -> repository.create(uriInfo, changeSet, user, null));
+        (uriInfo, changeSet, user) ->
+            repository.create(uriInfo, changeSet, user, ImpersonationContext.getImpersonatedBy()));
   }
 
   OntologyPatternInstantiationService(

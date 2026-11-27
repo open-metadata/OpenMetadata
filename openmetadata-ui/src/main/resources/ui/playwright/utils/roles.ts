@@ -21,7 +21,7 @@ export const removePolicyFromRole = async (
   // Clicking on remove action for added policy
   await page.locator(`[data-testid="remove-action-${policyName}"]`).click();
 
-  await expect(page.locator('.ant-modal-body')).toHaveText(
+  await expect(page.getByRole('dialog')).toContainText(
     `Are you sure you want to remove the ${policyName} from ${roleName}?`
   );
 
@@ -39,7 +39,8 @@ export const getElementWithPagination = async (
   paginationContainer?: Locator
 ) => {
   const scope = paginationContainer ?? page;
-  const previousBtn = scope.locator('[data-testid="previous"]');
+  // Cached inactive routes retain pagination controls in the DOM.
+  const previousBtn = scope.getByTestId('previous').filter({ visible: true });
   if (await previousBtn.isVisible()) {
     while (await previousBtn.isEnabled()) {
       await previousBtn.click();
@@ -61,7 +62,7 @@ export const getElementWithPagination = async (
       // Element not visible on this page — paginate forward.
     }
 
-    const nextBtn = scope.locator('[data-testid="next"]');
+    const nextBtn = scope.getByTestId('next').filter({ visible: true });
     if (!(await nextBtn.isVisible())) {
       break;
     }

@@ -39,6 +39,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.EntityReindexContextMapper;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -49,6 +50,7 @@ import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 /**
  * Executor for distributed search index jobs.
@@ -115,11 +117,16 @@ public class DistributedSearchIndexExecutor {
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
   private final JobRecoveryManager recoveryManager;
+  // Set by a stop of the run and by this executor's own shutdown (e.g. a job that ended on another
+  // server), so it is not the run's stop signal itself.
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+  // Makes "check stopped, then start the job" atomic against stop() setting the flag.
+  private final Object startLock = new Object();
   private final String serverId;
   private final CompositeProgressListener listeners = new CompositeProgressListener();
 
-  @Getter private SearchIndexJob currentJob;
+  // Written by the reindex thread, read by stop() on the request thread that asked for the stop.
+  @Getter private volatile SearchIndexJob currentJob;
   private DistributedJobStatsAggregator statsAggregator;
   private ExecutorService workerExecutor;
   private final Set<UUID> activePartitions = ConcurrentHashMap.newKeySet();
@@ -130,6 +137,9 @@ public class DistributedSearchIndexExecutor {
 
   /** Re-check cadence for {@link #awaitWorkers}; overridable in tests to keep them fast. */
   private long latchPollIntervalSeconds = DEFAULT_LATCH_POLL_INTERVAL_SECONDS;
+
+  /** Cadence of {@link #runLockRefreshLoop}; overridable in tests to keep them fast. */
+  private long lockRefreshIntervalMs = LOCK_REFRESH_INTERVAL_MS;
 
   // App context for WebSocket broadcasts
   private UUID appId;
@@ -158,15 +168,18 @@ public class DistributedSearchIndexExecutor {
   private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
-    this(collectionDAO, 10000); // Default partition size
+    this(collectionDAO, 10000, new ReindexStopSignal()); // Default partition size
   }
 
-  public DistributedSearchIndexExecutor(CollectionDAO collectionDAO, int partitionSize) {
+  public DistributedSearchIndexExecutor(
+      CollectionDAO collectionDAO, int partitionSize, ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     PartitionCalculator calculator = new PartitionCalculator(partitionSize, MAX_WORKER_THREADS);
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
     this.recoveryManager = new JobRecoveryManager(collectionDAO, partitionSize);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
+    // Last, once every field is set: if the run was already stopped, stop() runs right here.
+    stopSignal.onStop(this::stop);
   }
 
   /**
@@ -266,23 +279,16 @@ public class DistributedSearchIndexExecutor {
           "Failed to acquire reindex lock - another operation may be in progress");
     }
 
+    UUID lockHolderId = tempJobId;
     try {
       // Create the job (pass reindexConfig so time-series date filtering is applied to totals)
       SearchIndexJob job =
           coordinator.createJob(entities, jobConfiguration, createdBy, reindexConfig);
+      claimReindexLock(tempJobId, job.getId());
+      lockHolderId = job.getId();
 
       // Initialize partitions (with date filtering for time series entities)
-      currentJob = coordinator.initializePartitions(job.getId(), reindexConfig);
-
-      // Atomically transfer lock to real job ID
-      boolean transferred = coordinator.transferReindexLock(tempJobId, currentJob.getId());
-      if (!transferred) {
-        // Lock was lost - another server may have started a job
-        // Mark our job as failed since we can't safely proceed without the lock
-        markJobAsFailed(currentJob.getId(), "Failed to acquire lock - another job may be running");
-        throw new IllegalStateException(
-            "Failed to transfer reindex lock - another server may have started a conflicting job");
-      }
+      currentJob = initializePartitionsHoldingLock(job.getId(), reindexConfig);
 
       LOG.info(
           "Created job {} with {} total records across {} entity types",
@@ -293,8 +299,76 @@ public class DistributedSearchIndexExecutor {
       return currentJob;
 
     } catch (Exception e) {
-      coordinator.releaseReindexLock(tempJobId);
+      coordinator.releaseReindexLock(lockHolderId);
       throw e;
+    }
+  }
+
+  /**
+   * Moves the reindex lock from its placeholder id onto the job as soon as the job row exists. The
+   * orphan sweep only counts a lock held under the job's own id as proof of a live coordinator, so a
+   * job initialized under the placeholder looked abandoned and was failed mid-initialization. See
+   * ADR:2026-11-18-the-reindex-orphan-sweep-fails-a-job-only-under-its-lock-and-unchanged.
+   */
+  private void claimReindexLock(UUID tempJobId, UUID jobId) {
+    if (!coordinator.transferReindexLock(tempJobId, jobId)) {
+      // Lock was lost - another server may have started a job
+      markJobAsFailed(jobId, "Failed to acquire lock - another job may be running");
+      throw new IllegalStateException(
+          "Failed to transfer reindex lock - another server may have started a conflicting job");
+    }
+  }
+
+  /**
+   * Builds the job's partitions while renewing the reindex lock and the job's updatedAt. Building
+   * them walks every entity table and can outlast both the lock TTL and the orphan sweep's staleness
+   * threshold. The renewal stops when this returns: {@link #execute} starts its own, and a run that
+   * fails before reaching it must not keep the lock alive.
+   */
+  private SearchIndexJob initializePartitionsHoldingLock(
+      UUID jobId, ReindexingConfiguration reindexConfig) {
+    try {
+      return initializePartitionsWithLockRenewal(jobId, reindexConfig);
+    } catch (RuntimeException e) {
+      failJobStillInitializing(jobId, e);
+      throw e;
+    }
+  }
+
+  private SearchIndexJob initializePartitionsWithLockRenewal(
+      UUID jobId, ReindexingConfiguration reindexConfig) {
+    Thread lockRenewal =
+        Thread.ofVirtual()
+            .name("reindex-init-lock-refresh-" + jobId.toString().substring(0, 8))
+            .start(() -> runLockRefreshLoop(jobId));
+    try {
+      return coordinator.initializePartitions(jobId, reindexConfig);
+    } finally {
+      interruptAndJoin(lockRenewal, "init-lock-refresh");
+    }
+  }
+
+  /**
+   * The renewal kept the job's updatedAt fresh, so a job left INITIALIZING after its partitions
+   * failed to build would look alive and block every new run for ten minutes, until the orphan sweep
+   * failed it as abandoned. Record the real failure now, unless something else already ended the job.
+   */
+  private void failJobStillInitializing(UUID jobId, RuntimeException failure) {
+    try {
+      boolean stillInitializing =
+          coordinator
+              .getJob(jobId)
+              .map(job -> job.getStatus() == IndexJobStatus.INITIALIZING)
+              .orElse(false);
+      if (stillInitializing) {
+        String reason =
+            failure.getMessage() != null
+                ? failure.getMessage()
+                : failure.getClass().getSimpleName();
+        markJobAsFailed(jobId, "Failed to build partitions: " + reason);
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Could not mark job {} failed after its partitions failed to build", jobId, e);
     }
   }
 
@@ -344,14 +418,13 @@ public class DistributedSearchIndexExecutor {
     }
 
     UUID jobId = currentJob.getId();
-    LOG.info("Server {} starting execution of job {}", serverId, jobId);
-    boolean startedJob = false;
-
-    // Start the job if in READY state
-    if (currentJob.getStatus() == IndexJobStatus.READY) {
-      coordinator.startJob(jobId);
-      currentJob = coordinator.getJob(jobId).orElseThrow();
-      startedJob = true;
+    boolean startedJob;
+    synchronized (startLock) {
+      if (stopped.get()) {
+        return endJobStoppedBeforeStart(jobId);
+      }
+      LOG.info("Server {} starting execution of job {}", serverId, jobId);
+      startedJob = startJobIfReady(jobId);
     }
 
     if (currentJob.getStatus() != IndexJobStatus.RUNNING) {
@@ -626,9 +699,35 @@ public class DistributedSearchIndexExecutor {
       LOG.debug("Removed job {} from coordinated jobs set", jobId);
     }
 
-    // Get final job state
-    currentJob = coordinator.getJobWithAggregatedStats(jobId);
+    return finalResult(jobId);
+  }
 
+  private boolean startJobIfReady(UUID jobId) {
+    boolean ready = currentJob.getStatus() == IndexJobStatus.READY;
+    if (ready) {
+      coordinator.startJob(jobId);
+      currentJob = coordinator.getJob(jobId).orElseThrow();
+    }
+    return ready;
+  }
+
+  /**
+   * The run was stopped before this job started, possibly before {@link #createJob} had a job to
+   * request a stop for. Starting it anyway would flip it to RUNNING with none of our workers on it:
+   * peer servers then adopt it as an orphan and reindex what was just stopped, and nothing ever
+   * finishes the app run. Stop it before it starts instead.
+   */
+  private ExecutionResult endJobStoppedBeforeStart(UUID jobId) {
+    LOG.info("Stop was requested before job {} started; not starting it", jobId);
+    if (!isJobTerminalOrStopping(jobId)) {
+      coordinator.requestStop(jobId);
+    }
+    coordinator.releaseReindexLock(jobId);
+    return finalResult(jobId);
+  }
+
+  private ExecutionResult finalResult(UUID jobId) {
+    currentJob = coordinator.getJobWithAggregatedStats(jobId);
     return new ExecutionResult(
         currentJob.getStatus(),
         currentJob.getTotalRecords(),
@@ -913,7 +1012,7 @@ public class DistributedSearchIndexExecutor {
   private void runLockRefreshLoop(UUID jobId) {
     while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
       try {
-        Thread.sleep(LOCK_REFRESH_INTERVAL_MS);
+        Thread.sleep(lockRefreshIntervalMs);
 
         SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
         if (job == null || job.isTerminal()) {
@@ -1137,7 +1236,7 @@ public class DistributedSearchIndexExecutor {
    * Request to stop the current job execution.
    */
   public void stop() {
-    if (stopped.compareAndSet(false, true)) {
+    if (markStopped()) {
       LOG.info("Stop requested for distributed executor");
 
       // Interrupt lock-refresh and heartbeat threads first so they cannot flip
@@ -1167,6 +1266,13 @@ public class DistributedSearchIndexExecutor {
       if (workerExecutor != null && !workerExecutor.isShutdown()) {
         workerExecutor.shutdownNow();
       }
+    }
+  }
+
+  /** Returns whether this call is the one that stopped the executor. */
+  private boolean markStopped() {
+    synchronized (startLock) {
+      return stopped.compareAndSet(false, true);
     }
   }
 
@@ -1287,6 +1393,7 @@ public class DistributedSearchIndexExecutor {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return true;
     }
+    entityContext.setStagedChunkDeleteUnrecorded(lostAStagedChunkDelete(entityType));
 
     boolean promoted = false;
     try {
@@ -1307,6 +1414,25 @@ public class DistributedSearchIndexExecutor {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
     return promoted;
+  }
+
+  /**
+   * Whether a node failed a partition of {@code entityType} because it missed a delete from the
+   * run's staged chunk generation and could not record it on the cluster. That partition fails
+   * for good without a retry, and nothing rewrites a FAILED row, so its error stays readable here
+   * whatever the type's other partitions did.
+   */
+  private boolean lostAStagedChunkDelete(String entityType) {
+    SearchIndexJob job = currentJob;
+    return job != null
+        && coordinator.getPartitions(job.getId(), PartitionStatus.FAILED).stream()
+            .anyMatch(
+                partition ->
+                    entityType.equals(partition.getEntityType())
+                        && partition.getLastError() != null
+                        && partition
+                            .getLastError()
+                            .startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
   }
 
   /**

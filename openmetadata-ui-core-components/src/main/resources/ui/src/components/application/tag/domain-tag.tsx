@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { Globe01 } from '../../../icons/Globe01';
@@ -47,6 +48,7 @@ export const DomainTag: FC<EntityTagProps> = ({
   inheritedLabel,
   ...otherProps
 }) => {
+  const { t } = useCoreTranslation();
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
@@ -90,6 +92,10 @@ export const DomainTag: FC<EntityTagProps> = ({
     ...otherProps,
     className: cx(
       'tag-accent',
+      // Cap the chip at its flex parent's width and let it shrink, so a caller
+      // passing maxWidth="100%" fills the container and ellipsizes. No effect in
+      // wide containers where the content is narrower than the parent.
+      'tw:max-w-full tw:min-w-0',
       disabled && 'tw:cursor-not-allowed tw:opacity-50',
       className
     ),
@@ -103,6 +109,7 @@ export const DomainTag: FC<EntityTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonLabel={t('label.remove-entity', { entity: label })}
         buttonTestId={closeButtonTestId}
         className={cx(sharedProps.className, 'tag-accent__close-icon')}
         isDisabled={disabled}

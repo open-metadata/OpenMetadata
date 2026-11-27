@@ -20,7 +20,7 @@ from unittest.mock import Mock, patch
 import jsonpatch
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
     ARRAY_ENTITY_FIELDS,
@@ -379,6 +379,29 @@ class BuildPatchEntityReferenceListTest(TestCase):
 
         result = build_patch(source=source, destination=dest, skip_on_failure=False)
         self.assertIsNotNone(result)
+
+
+def test_build_patch_extends_immutable_operations_with_column_replacements():
+    source = Table(id=str(uuid.uuid4()), name="my_table", columns=[Column(name="my_column", dataType="INT")])
+    destination = source.model_copy(deep=True)
+    destination.description = "updated"
+    destination.columns.append(Column(name="new_column", dataType="INT"))
+    operations = ({"op": "add", "path": "/description", "value": "updated"},)
+    original_patch = jsonpatch.JsonPatch(operations)
+
+    with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch", return_value=original_patch):
+        result = build_patch(
+            source=source, destination=destination, array_entity_fields=ARRAY_ENTITY_FIELDS, skip_on_failure=False
+        )
+
+    assert result is not None
+    updated = result.apply(source.model_dump(mode="json", exclude_unset=True, exclude_none=True))
+    assert updated["description"] == "updated"
+    assert updated["columns"] == [
+        {"name": "my_column", "dataType": "INT", "ordinalPosition": 1},
+        {"name": "new_column", "dataType": "INT", "ordinalPosition": 2},
+    ]
+    assert operations == ({"op": "add", "path": "/description", "value": "updated"},)
 
 
 class TestBuildPatchTableAliases:

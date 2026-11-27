@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -32,6 +33,7 @@ import { DatabaseServiceType } from '../../../generated/entity/services/database
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
@@ -41,12 +43,36 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: jest.fn(),
+}));
+
+beforeEach(() => {
+  (useEntityPermissions as jest.Mock).mockReturnValue({
+    ...getDerivedPermissionFlags({
+      ...DEFAULT_ENTITY_PERMISSION,
+      Trigger: true,
+    }),
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  });
+});
 
 const mockProps = {
   dataAsset: {
@@ -121,17 +147,14 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  isRecordedLifeCycleTimestamp: jest.requireActual(
+    '../../../utils/DataAssetsHeader.utils'
+  ).isRecordedLifeCycleTimestamp,
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
-  ExtraInfoLabel: jest
-    .fn()
-    .mockImplementation(({ label, value, dataTestId }) => (
-      <div data-testid={dataTestId}>
-        {label && <span>{label}</span>}
-        <div>{value}</div>
-      </div>
-    )),
+  ExtraInfoLabel: jest.requireActual('../../../utils/DataAssetsHeader.utils')
+    .ExtraInfoLabel,
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,
@@ -174,8 +197,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
   ClassificationTag: jest
     .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    .mockImplementation(({ label, href, 'data-testid': testId }) => (
+      <a data-testid={testId ?? 'classification-tag'} href={href}>
+        {label}
+      </a>
     )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
@@ -212,18 +237,19 @@ jest.mock(
         )
       )
 );
-// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// `onItemClick` exposed as a clickable trigger (not just an opaque div) so tests can drive the
 // drawer open through the *widget* path — the reachable path for a deleted entity, since
 // ManageButton's announcement menu item is independently gated on `!deleted` inside
 // ManageButton itself (ManageButton.tsx), regardless of the `onAnnouncementClick` value
-// DataAssetsHeader passes in.
+// DataAssetsHeader passes in. The widget lost its View all button when the banner replaced
+// the list, so the announcement itself is now what opens the drawer.
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
-        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+      .mockImplementation(({ onItemClick }: { onItemClick?: () => void }) => (
+        <button data-testid="announcements-widget-item" onClick={onItemClick}>
           AnnouncementsWidgetV3Body.component
         </button>
       ))
@@ -390,6 +416,70 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByTestId('metric-header-info')).not.toBeInTheDocument();
   });
 
+  it('shows when the asset was last updated at its source', async () => {
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: twoHoursAgo } },
+        }}
+      />
+    );
+
+    const metadataRow = within(
+      screen.getByTestId('data-asset-header-metadata')
+    );
+    const sourceUpdated = metadataRow.getByTestId('source-updated-at');
+
+    expect(
+      metadataRow.getByText('label.updated-at-source')
+    ).toBeInTheDocument();
+    expect(sourceUpdated).toHaveTextContent('2 hours ago');
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    fireEvent.mouseMove(document);
+    await user.hover(sourceUpdated);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      formatDateTime(twoHoursAgo)
+    );
+  });
+
+  it('hides the source update time when the source never reported one', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { created: { timestamp: 1743724800000 } },
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByText('label.updated-at-source')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
+  });
+
+  it('hides the year-0001 placeholder older ingestion clients stored as the update time', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: -62135596800000 } },
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
+  });
+
   it('should render an explicitly supplied breadcrumb trail', () => {
     const tableHeaderProps = {
       ...mockProps,
@@ -426,6 +516,34 @@ describe('DataAssetsHeader component', () => {
       within(screen.getByTestId('breadcrumb')).getByText('orders')
     ).not.toHaveAttribute('href');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  it('shows "Deleted" instead of the lifecycle status on a soft-deleted metric', () => {
+    const metric = {
+      id: 'metric-id',
+      name: 'revenue',
+      fullyQualifiedName: 'revenue',
+      entityStatus: 'Approved',
+    };
+    const { rerender } = render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={metric as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.getByText('Approved')).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{ ...metric, deleted: true } as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.queryByText('Approved')).not.toBeInTheDocument();
   });
 
   it('should call getContainerAncestors API on Page load for container assets', () => {
@@ -543,6 +661,26 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByTestId('Tier')).toBeInTheDocument();
   });
 
+  it('should show the Tier description tooltip on the Tier chip', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    act(() => {
+      screen.getByTestId('Tier').focus();
+    });
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      MOCK_TIER_DATA.tagFQN
+    );
+  });
+
   it('should not render the Tier data if not  present', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
@@ -596,12 +734,16 @@ describe('DataAssetsHeader component', () => {
       entity: {
         id: 'current-entity',
         type: EntityType.TABLE,
+        columns: [],
+        entityType: EntityType.TABLE,
         fullyQualifiedName: 'fullyQualifiedName',
       },
       nodes: [
         {
           id: 'upstream-entity',
           type: EntityType.TABLE,
+          columns: [],
+          entityType: EntityType.TABLE,
           fullyQualifiedName: 'upstreamFullyQualifiedName',
         },
       ],
@@ -650,6 +792,20 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
+  });
+
+  it('should not render source URL button when sourceUrl is not http(s)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'javascript:alert(1)',
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
   });
 
   it('should show the source URL tooltip when the link receives focus', async () => {
@@ -957,6 +1113,59 @@ describe('DataAssetsHeader component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    {
+      serviceTrigger: false,
+      appTrigger: true,
+      serviceEdit: true,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: false,
+      serviceEdit: false,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: true,
+      serviceEdit: false,
+      visible: true,
+    },
+  ])(
+    'shows AutoPilot for serviceTrigger=$serviceTrigger and appTrigger=$appTrigger',
+    ({ serviceTrigger, appTrigger, serviceEdit, visible }) => {
+      (useEntityPermissions as jest.Mock).mockReturnValue({
+        ...getDerivedPermissionFlags({
+          ...DEFAULT_ENTITY_PERMISSION,
+          Trigger: appTrigger,
+        }),
+        isLoading: false,
+        error: null,
+        refresh: jest.fn(),
+      });
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            serviceType: DatabaseServiceType.BigQuery,
+          }}
+          entityType={EntityType.DATABASE_SERVICE}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: serviceEdit,
+            Trigger: serviceTrigger,
+          }}
+        />
+      );
+
+      expect(
+        Boolean(screen.queryByTestId('trigger-auto-pilot-application-button'))
+      ).toBe(visible);
+    }
+  );
+
   it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
@@ -1072,12 +1281,12 @@ describe('DataAssetsHeader component', () => {
 
   // Behavior parity with base commit 9cf866cd23: `createPermission={permissions?.EditAll}`
   // is unconditional — never gated by `deleted`. Driven through the AnnouncementsWidgetV3Body
-  // "view all" click rather than ManageButton — that's the reachable path for a *deleted*
+  // banner click rather than ManageButton — that's the reachable path for a *deleted*
   // entity, since ManageButton's own `onAnnouncementClick` menu item is independently gated
   // on `!deleted` inside ManageButton itself and would never surface the drawer for a
   // deleted entity in the first place.
   describe('AnnouncementDrawer.createPermission wiring', () => {
-    it('grants createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, when EditAll is granted', async () => {
+    it('grants createPermission for a soft-deleted entity reached by clicking the announcement banner, when EditAll is granted', async () => {
       (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
         data: [{ id: 'announcement-1' }],
       });
@@ -1090,9 +1299,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1113,9 +1320,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1218,12 +1423,15 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('data-contract-latest-result-button');
-      expect(button).toHaveClass('failed');
+      expect(button).toHaveTextContent('label.entity-failed');
+      // Badge error palette on the button: meets contrast in both themes.
+      expect(button).toHaveClass(
+        'tw:bg-utility-error-50!',
+        'tw:text-utility-error-700!'
+      );
     });
 
-    it('should tint the aborted contract button via legacy tokens that flip in dark', async () => {
+    it('should tint the aborted contract badge with the orange badge palette on the button', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
@@ -1240,10 +1448,8 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(screen.getByTestId('data-contract-latest-result-btn')).toHaveClass(
-        'tw:text-(--om-legacy-color-b93815)!',
-        'tw:bg-(--om-legacy-color-fef6ee)!',
-        'tw:dark:text-utility-orange-700!',
-        'tw:dark:bg-utility-orange-50!'
+        'tw:bg-utility-orange-50!',
+        'tw:text-utility-orange-700!'
       );
     });
 
@@ -1267,12 +1473,14 @@ describe('DataAssetsHeader component', () => {
       ).toBeInTheDocument();
     });
 
-    it('should navigate to contract tab when button is clicked', async () => {
+    it('should link to the contract tab', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
         },
       });
+
+      mockGetEntityDetailsPath.mockReturnValue('/contract-tab');
 
       const mockDataContract = {
         ...MOCK_DATA_CONTRACT,
@@ -1289,15 +1497,14 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
-      fireEvent.click(button);
-
       expect(mockGetEntityDetailsPath).toHaveBeenCalledWith(
         EntityType.CONTAINER,
         'fullyQualifiedName',
         EntityTabs.CONTRACT
       );
-      expect(mockNavigate).toHaveBeenCalled();
+      expect(
+        screen.getByTestId('data-contract-latest-result-btn')
+      ).toHaveAttribute('href', '/contract-tab');
     });
 
     it('should not render data contract button when contract tab is not visible', async () => {
@@ -1414,7 +1621,9 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+      expect(
+        within(button).getByTestId('contract-status-icon')
+      ).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

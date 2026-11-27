@@ -16,11 +16,20 @@ import { settingClick } from './sidebar';
 
 const AUDIT_LOG_POLL_TIMEOUT = 120000;
 
+export const selectTodayExportRange = async (page: Page) => {
+  const modal = page.getByTestId('export-audit-logs-modal');
+  await modal
+    .getByTestId('export-date-range-picker')
+    .getByRole('button', { name: 'Calendar Date range picker' })
+    .click();
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply' }).click();
+};
+
 export const navigateToAuditLogsPage = async (page: Page) => {
   const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
   await logRequest;
-  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
   await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
 };
 

@@ -164,6 +164,8 @@ class EntityRepositoryRestoreTest {
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
+    when(daoCollection.customPropertyReferenceDAO())
+        .thenReturn(mock(CollectionDAO.CustomPropertyReferenceDAO.class));
     Entity.setCollectionDAO(daoCollection);
   }
 
@@ -589,6 +591,8 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
@@ -651,6 +655,8 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(ids, "user");
     }
 
@@ -705,13 +711,14 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
     // Per-entity FQN-keyed cleanup is skipped (covered by the ancestor's prefix cascade).
-    verify(fieldRelationshipDAO, never()).deleteAllByPrefix(any());
+    verify(fieldRelationshipDAO, never()).deleteAllByPrefix(any(), any());
     verify(tagUsageDAO, never()).deleteTagLabelsByTargetPrefix(any());
-    verify(tagUsageDAO, never()).deleteTagLabelsByFqn(any());
     // usage is id-keyed: cleared once, batched, never per-entity.
     verify(usageDAO, never()).delete(any(UUID.class));
     verify(usageDAO, times(1)).deleteByIds(anyList());
