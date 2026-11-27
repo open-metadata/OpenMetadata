@@ -16,7 +16,7 @@ Read files from Azure Data Lake Storage Gen2 / Blob Storage.
 from __future__ import annotations
 
 import traceback
-from asyncio import to_thread
+from asyncio import get_running_loop, to_thread
 from contextlib import ExitStack
 from dataclasses import dataclass
 from functools import partial
@@ -57,9 +57,15 @@ class _AsyncAzureCredential:
         # SDK's optional get_token_info check working for both implementations.
         return partial(to_thread, self.sync_credential.get_token_info)
 
-    def close(self) -> None:
+    async def close(self) -> None:
         if self.owned:
-            self.sync_credential.close()
+            try:
+                close_task = get_running_loop().run_in_executor(None, self.sync_credential.close)
+            except RuntimeError:
+                # adlfs also finalizes credentials after Python shuts down the executor.
+                self.sync_credential.close()
+            else:
+                await close_task
 
 
 def build_azure_abfs_path(

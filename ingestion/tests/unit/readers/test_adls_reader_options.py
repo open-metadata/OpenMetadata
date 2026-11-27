@@ -13,6 +13,7 @@ Unit tests for ADLS reader path builder, storage options, and ADLSReader methods
 """
 
 import io
+from asyncio import get_running_loop, run
 from pathlib import Path
 from threading import get_ident
 from types import SimpleNamespace
@@ -27,6 +28,7 @@ from azure.identity import ClientSecretCredential
 from azure.storage.blob import BlobClient
 from requests.structures import CaseInsensitiveDict
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -280,6 +282,37 @@ class TestADLSFileReader:
 
 
 class TestConnectionScopedAzureFilesystem:
+    @pytest.mark.parametrize(
+        ("owned", "executor_stopped"),
+        [
+            pytest.param(True, False, id="owned"),
+            pytest.param(False, False, id="borrowed"),
+            pytest.param(True, True, id="stopped-executor"),
+        ],
+    )
+    def test_adlfs_credential_close_can_be_awaited(self, monkeypatch, owned, executor_stopped):
+        config = AzureConfig(
+            securityConfig=AzureCredentials(accountName="govacct", endpointSuffix="core.usgovcloudapi.net")
+        )
+        close_threads = []
+        credential = SimpleNamespace(close=lambda: close_threads.append(get_ident()))
+        monkeypatch.setattr(AzureClient, "create_client", lambda _client: credential)
+        client = None if owned else SimpleNamespace(credential=credential)
+        adapter = return_azure_storage_options(config, client)["credential"]
+
+        async def close_as_adlfs_does():
+            if executor_stopped:
+                await get_running_loop().shutdown_default_executor()
+            await adapter.close()
+
+        loop_thread = get_ident()
+        run(close_as_adlfs_does())
+        if owned:
+            [close_thread] = close_threads
+            assert (close_thread == loop_thread) is executor_stopped
+        else:
+            assert close_threads == []
+
     @pytest.mark.parametrize(
         ("endpoint_suffix", "authority", "client_secret"),
         [
