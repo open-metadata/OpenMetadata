@@ -205,13 +205,12 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
-  @DisplayName("a refused readiness makes the next ontology graph write probe again and refuse")
-  void refusedReadinessForgetsWhatAnEarlierStoreAdvertised() {
+  @DisplayName("each ontology graph write asks the store, not what readiness saw earlier")
+  void everyOntologyGraphWriteAsksTheStoreAgain() {
     final Model release = ModelFactory.createDefaultModel();
     try (JenaFusekiStorage storage = storage()) {
       assertDoesNotThrow(storage::ensureStorageReady);
       optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
-      assertThrows(RdfStorageUnsupportedException.class, storage::ensureStorageReady);
       requests.clear();
       assertThrows(
           RdfStorageUnsupportedException.class,

@@ -281,8 +281,6 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void ensureStorageReady() {
-    // A refusal must not leave what an earlier, healthier store advertised for graph writes to use.
-    writeCapabilities = null;
     writeCapabilities = verifyDataset(endpoint);
     if (!testConnection()) {
       throw new IllegalStateException("RDF dataset is not accessible at " + maskUserInfo(endpoint));
@@ -1729,7 +1727,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       // A release can hold a literal over stock Fuseki's 100 KB Thrift row cap; refuse before the
       // upload so activation names the missing extension instead of failing on Fuseki's 500.
-      writeCapabilities();
+      // Graph writes are rare, so each asks the store rather than trusting what it said earlier.
+      verifyDataset(endpoint);
       new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();
     } catch (RuntimeException failure) {

@@ -56,7 +56,7 @@ run downloaded Fuseki from `archive.apache.org`.
 
 ## Amendment: the image no longer carries a reasoner (v2, 2026-11-23)
 
-Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
+Reasoning moved out of the `openmetadata/fuseki` image, and from 2.2 a `ReasoningProvider` runs it
 (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The reasoner
 worker is no longer a reason to run this image, and the v1 consequence that the RDF lane tests the
 image reasoning runs in no longer applies. The image is still the only one OpenMetadata runs,
@@ -83,10 +83,9 @@ The extension reads Thrift uploads with its upload bound as the row cap (open-me
   capabilities before it uploads, so a release fails with the same message instead of Fuseki's
   HTTP 500. The check does not depend on what the graph holds: on a store without the extension,
   OpenMetadata writes no ontology graph at all, rather than judging each payload against the row
-  cap. A server keeps the capabilities it negotiated until readiness runs again: every
-  `RdfIndexApp` run re-probes, and a refused readiness forgets them, so the next graph write probes
-  again and is refused. Until then, a Fuseki restarted without the extension under a running server
-  is still treated as the store it was. The refusal is an `RdfStorageUnsupportedException`: the live-write queue dead-letters it on
+  cap. Each graph write probes the store itself rather than reusing what readiness saw, because
+  graph writes are rare and a Fuseki restarted without the extension under a running server must
+  have its next one refused. The refusal is an `RdfStorageUnsupportedException`: the live-write queue dead-letters it on
   the first attempt and marks the projection degraded, instead of retrying it for minutes ahead of
   every later write. Dead letters are not replayed; an `RdfIndexApp` run after the extension is on
   restores the ontology graphs.
