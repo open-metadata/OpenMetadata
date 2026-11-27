@@ -84,9 +84,10 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
-import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
-import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.adjustDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.dataProductPairs;
+import static org.openmetadata.service.util.LineageUtil.recountDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
@@ -4733,10 +4734,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private Set<Pair<UUID, UUID>> importDataProductPairs(List<T> originals, List<T> updates) {
     Set<Pair<UUID, UUID>> pairs = new HashSet<>();
     for (int i = 0; i < originals.size(); i++) {
-      Set<UUID> moved = movedDataProducts(originals.get(i), updates.get(i));
-      if (!moved.isEmpty()) {
-        pairs.addAll(dataProductPairs(originals.get(i).getId(), moved));
-      }
+      Set<UUID> moved =
+          movedDataProducts(originals.get(i).getDataProducts(), updates.get(i).getDataProducts());
+      pairs.addAll(dataProductPairs(originals.get(i).getId(), entityType, moved));
     }
     return pairs;
   }
@@ -4745,36 +4745,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       Set<Pair<UUID, UUID>> pairsBefore, List<T> originals, List<T> updates) {
     Set<Pair<UUID, UUID>> pairs = new HashSet<>(pairsBefore);
     pairs.addAll(importDataProductPairs(originals, updates));
-    LineageUtil.recountDataProductsLineage(pairs);
+    recountDataProductsLineage(pairs);
+  }
+
+  private static Set<UUID> missingFrom(Set<UUID> ids, Set<UUID> others) {
+    Set<UUID> missing = new HashSet<>(ids);
+    missing.removeAll(others);
+    return missing;
   }
 
   // A product the entity keeps changes no pair of its own: a changed neighbour's entry covers it.
-  private Set<UUID> movedDataProducts(T original, T update) {
-    Set<UUID> before = referenceIds(listOrEmpty(original.getDataProducts()));
-    Set<UUID> after = referenceIds(listOrEmpty(update.getDataProducts()));
+  private static Set<UUID> movedDataProducts(
+      List<EntityReference> beforeRefs, List<EntityReference> afterRefs) {
+    Set<UUID> before = referenceIds(listOrEmpty(beforeRefs));
+    Set<UUID> after = referenceIds(listOrEmpty(afterRefs));
     Set<UUID> moved = new HashSet<>(before);
     moved.addAll(after);
     moved.removeIf(product -> before.contains(product) && after.contains(product));
     return moved;
-  }
-
-  private Set<Pair<UUID, UUID>> dataProductPairs(UUID entityId, Set<UUID> dataProductIds) {
-    Set<UUID> downstream =
-        heldDataProducts(
-            daoCollection.relationshipDAO().findDownstreamDataProducts(entityId, entityType));
-    Set<UUID> upstream =
-        heldDataProducts(
-            daoCollection.relationshipDAO().findUpstreamDataProducts(entityId, entityType));
-    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
-    for (UUID dataProductId : dataProductIds) {
-      downstream.forEach(neighbour -> pairs.add(Pair.of(dataProductId, neighbour)));
-      upstream.forEach(neighbour -> pairs.add(Pair.of(neighbour, dataProductId)));
-    }
-    return pairs;
-  }
-
-  private static Set<UUID> heldDataProducts(List<CollectionDAO.EntityRelationshipObject> has) {
-    return has.stream().map(row -> UUID.fromString(row.getFromId())).collect(Collectors.toSet());
   }
 
   @SuppressWarnings("unused")
@@ -12588,21 +12576,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void updateDataProducts() {
-      if (!supportsDataProducts) {
-        return;
+      if (supportsDataProducts) {
+        validateDataProducts(listOrEmpty(updated.getDataProducts()));
+        if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+          // Revert change to non-empty DataProduct if it is being updated by a bot
+          // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+          // updated with a PATCH request
+          updated.setDataProducts(original.getDataProducts());
+        } else {
+          storeDataProductChange();
+        }
       }
+    }
+
+    private void storeDataProductChange() {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
-      validateDataProducts(updatedDataProducts);
-
-      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
-        // Revert change to non-empty DataProduct if it is being updated by a bot
-        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
-        // updated with a PATCH request
-        updated.setDataProducts(original.getDataProducts());
-        return;
-      }
-
       if (!nullOrEmpty(updatedDataProducts) && belongsToNoDomain(updated)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -12645,10 +12634,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           original.getId());
       // The rollups follow the persisted entity; consolidation replays this diff against reverted
       // baselines they never saw.
-      if (isIndexBaselinePass()
-          && !referenceIds(origDataProducts).equals(referenceIds(updatedDataProducts))) {
-        removeDataProductsLineage(original.getId(), entityType, origDataProducts);
-        addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      if (isIndexBaselinePass()) {
+        Set<UUID> before = referenceIds(origDataProducts);
+        Set<UUID> after = referenceIds(updatedDataProducts);
+        adjustDataProductsLineage(
+            original.getId(), entityType, missingFrom(after, before), missingFrom(before, after));
       }
     }
 
