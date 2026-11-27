@@ -150,5 +150,13 @@ Consequences of v3:
   provider call per chunk, on both engines, the cost of embedding the whole catalog once. After
   that, a reindex embeds only entities whose text or model changed.
 - **A switch of model costs one full embedding of the catalog**, at the next reindex or
-  `reembed` (ontology terms at the next reindex). Until then, entities not edited since the switch keep the old model's vectors and
-  are compared with the new model's queries.
+  `reembed` (ontology terms at the next reindex). Until then, an index whose `_meta` records the
+  old model is left out of vector search and vector writes
+  (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model), so its
+  entities are missing from semantic results rather than ranked against the wrong model. The new
+  model's queries still meet the old model's vectors only where `_meta` does not name the old
+  model: an index that records no model, which is judged by its dimension alone; an index into
+  which a recreate on an earlier release copied the old model's vectors under the new model's
+  `_meta`, until the first reindex after the upgrade embeds it again; and, during a rolling
+  switch, vectors a node still running the old model writes, until the next reindex of their
+  types.
