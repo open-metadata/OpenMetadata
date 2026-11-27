@@ -12,7 +12,8 @@
  */
 
 import { act, render, waitFor } from '@testing-library/react';
-import { Edge, Node, ReactFlowProvider } from 'reactflow';
+import { MouseEvent } from 'react';
+import { Edge, Node, NodeMouseHandler, ReactFlowProvider } from 'reactflow';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
@@ -29,6 +30,7 @@ import { DataProductNodeProps, PortNodeProps } from './PortsLineageView.types';
 // and to keep the post-fit setTimeout effects inert under fake timers.
 let mockCapturedNodes: Node[] = [];
 let mockCapturedEdges: Edge[] = [];
+let mockCapturedOnNodeClick: NodeMouseHandler | undefined;
 const mockFitView = jest.fn();
 const mockZoomTo = jest.fn();
 
@@ -43,9 +45,18 @@ jest.mock('reactflow', () => {
     // invalid".
     __esModule: true,
     useReactFlow: () => ({ fitView: mockFitView, zoomTo: mockZoomTo }),
-    default: ({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
+    default: ({
+      nodes,
+      edges,
+      onNodeClick,
+    }: {
+      nodes: Node[];
+      edges: Edge[];
+      onNodeClick?: NodeMouseHandler;
+    }) => {
       mockCapturedNodes = nodes;
       mockCapturedEdges = edges;
+      mockCapturedOnNodeClick = onNodeClick;
 
       return null;
     },
@@ -293,6 +304,60 @@ describe('PortsLineageView handle-id wiring', () => {
           expect(handleId).not.toBe(portId);
         });
       });
+  });
+});
+
+describe('PortsLineageView node click', () => {
+  const onPortClick = jest.fn();
+
+  const clickNode = (id: string) => {
+    const node = mockCapturedNodes.find((n) => n.id === id) as Node;
+    act(() => {
+      mockCapturedOnNodeClick?.({} as MouseEvent, node);
+    });
+  };
+
+  beforeEach(() => {
+    mockCapturedNodes = [];
+    mockCapturedOnNodeClick = undefined;
+    onPortClick.mockClear();
+    render(
+      <PortsLineageView
+        assetCount={2}
+        dataProduct={dataProduct}
+        inputPortsData={inputPortsData}
+        outputPortsData={outputPortsData}
+        onPortClick={onPortClick}
+      />
+    );
+  });
+
+  it('hands the clicked input port to onPortClick', async () => {
+    await waitForCapturedGraph();
+
+    expect(mockCapturedOnNodeClick).toBeDefined();
+
+    clickNode(`input-${inputPort.fullyQualifiedName}`);
+
+    expect(onPortClick).toHaveBeenCalledTimes(1);
+    expect(onPortClick).toHaveBeenCalledWith(inputPort);
+  });
+
+  it('hands the clicked output port to onPortClick', async () => {
+    await waitForCapturedGraph();
+
+    clickNode(`output-${outputPort.fullyQualifiedName}`);
+
+    expect(onPortClick).toHaveBeenCalledTimes(1);
+    expect(onPortClick).toHaveBeenCalledWith(outputPort);
+  });
+
+  it('ignores clicks on the center data product node', async () => {
+    await waitForCapturedGraph();
+
+    clickNode('data-product-center');
+
+    expect(onPortClick).not.toHaveBeenCalled();
   });
 });
 

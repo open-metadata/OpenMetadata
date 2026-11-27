@@ -21,6 +21,7 @@ import ReactFlow, {
   Edge,
   MarkerType,
   Node,
+  NodeMouseHandler,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -60,6 +61,7 @@ const PortsLineageView = ({
   isFullScreen = false,
   height = 350,
   onToggleFullScreen,
+  onPortClick,
 }: PortsLineageViewProps) => {
   const { t } = useTranslation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -181,6 +183,15 @@ const PortsLineageView = ({
     }
   }, [buildNodesAndEdges, hasAnyPorts]);
 
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (_event, node) => {
+      if (node.type === 'portNode') {
+        onPortClick?.(node.data.port);
+      }
+    },
+    [onPortClick]
+  );
+
   const hasNodes = nodes.length > 0;
 
   // React Flow keeps the old viewport transform when its container resizes, so
@@ -255,6 +266,7 @@ const PortsLineageView = ({
         nodesConnectable={false}
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         onNodesChange={onNodesChange}>
         <Background color="var(--tw-border-color-subtle)" gap={16} size={1} />
         <Controls
