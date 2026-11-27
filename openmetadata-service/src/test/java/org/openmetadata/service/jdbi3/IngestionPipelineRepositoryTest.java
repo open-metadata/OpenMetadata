@@ -37,19 +37,24 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -228,7 +233,7 @@ class IngestionPipelineRepositoryTest {
 
   /** A pipeline of another service, named so Airflow would send it to the deployed one's DAG. */
   private static IngestionPipeline namesakeOfTheDeployedPipeline() {
-    return pipelineWithConfig(new HashMap<>(Map.of("type", "TestSuite")))
+    return pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")))
         .withId(UUID.randomUUID())
         .withName("warehouse_metadata")
         .withFullyQualifiedName("shop.public.scratch.testSuite.warehouse_metadata");
@@ -668,6 +673,121 @@ class IngestionPipelineRepositoryTest {
     verifyNoInteractions(pipelineServiceClient);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"deploy", "run", "toggle"})
+  void testSuiteRunnerRequiresMatchingTable(String action) {
+    final TestSuite suite = tableSuite("warehouse.db.schema.orders");
+    final IngestionPipeline pipeline =
+        pipelineWithConfig(
+                new TestSuitePipeline().withEntityFullyQualifiedName("warehouse.db.schema.items"))
+            .withPipelineType(PipelineType.TEST_SUITE);
+    final PipelineServiceClientInterface runnerClient = mock(PipelineServiceClientInterface.class);
+    final IngestionPipelineRepository runnerRepository = repositoryWithClient(runnerClient);
+
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> {
+              switch (action) {
+                case "deploy" -> runnerRepository.deployIngestionPipeline(pipeline, suite);
+                case "run" -> runnerRepository.runIngestionPipeline(
+                    null, pipeline, suite, RunOptions.NONE);
+                case "toggle" -> runnerRepository.toggleIngestionPipeline(pipeline, suite);
+                default -> throw new IllegalArgumentException("Unexpected action: " + action);
+              }
+            });
+    assertEquals("TestSuite pipeline table must match its test suite", exception.getMessage());
+    verifyNoInteractions(runnerClient);
+  }
+
+  private static TestSuite tableSuite(String tableFqn) {
+    return new TestSuite()
+        .withBasic(true)
+        .withBasicEntityReference(
+            new EntityReference().withType(Entity.TABLE).withFullyQualifiedName(tableFqn));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("testSuiteConfigurations")
+  void validatesTestSuiteConfiguration(
+      String name, EntityInterface<?> parent, IngestionPipeline pipeline, boolean valid) {
+    if (valid) {
+      assertDoesNotThrow(
+          () -> IngestionPipelineRepository.validateTestSuiteConfig(pipeline, parent));
+    } else {
+      assertThrows(
+          BadRequestException.class,
+          () -> IngestionPipelineRepository.validateTestSuiteConfig(pipeline, parent));
+    }
+  }
+
+  private static Stream<Arguments> testSuiteConfigurations() {
+    final String tableFqn = "warehouse.db.\"schema.name\".orders";
+    final TestSuite suite = tableSuite(tableFqn);
+    final TestSuite logical = new TestSuite().withBasic(false);
+    final TestSuitePipeline matching =
+        new TestSuitePipeline().withEntityFullyQualifiedName(tableFqn);
+    return Stream.of(
+        Arguments.of("matching table", suite, suitePipeline(matching), true),
+        Arguments.of(
+            "matching raw config",
+            suite,
+            suitePipeline(Map.of("type", "TestSuite", "entityFullyQualifiedName", tableFqn)),
+            true),
+        Arguments.of("omitted table", suite, suitePipeline(new TestSuitePipeline()), true),
+        Arguments.of("logical suite", logical, suitePipeline(new TestSuitePipeline()), true),
+        Arguments.of("logical suite with table", logical, suitePipeline(matching), false),
+        Arguments.of(
+            "missing table reference",
+            new TestSuite().withBasic(true),
+            suitePipeline(new TestSuitePipeline()),
+            false),
+        Arguments.of("missing table name", tableSuite(null), suitePipeline(matching), false),
+        Arguments.of(
+            "blank table",
+            suite,
+            suitePipeline(new TestSuitePipeline().withEntityFullyQualifiedName(" ")),
+            false),
+        Arguments.of(
+            "different table",
+            suite,
+            suitePipeline(
+                new TestSuitePipeline().withEntityFullyQualifiedName("other.db.schema.table")),
+            false),
+        Arguments.of(
+            "non-string table",
+            suite,
+            suitePipeline(Map.of("type", "TestSuite", "entityFullyQualifiedName", 42)),
+            false),
+        Arguments.of("database parent", new DatabaseService(), suitePipeline(matching), false),
+        Arguments.of("missing parent", null, suitePipeline(matching), false),
+        Arguments.of(
+            "different source type",
+            suite,
+            suitePipeline(new DatabaseServiceMetadataPipeline()),
+            false),
+        Arguments.of(
+            "other pipeline type with suite parent",
+            suite,
+            suitePipeline(matching).withPipelineType(PipelineType.METADATA),
+            true),
+        Arguments.of(
+            "other pipeline type with suite config",
+            new DatabaseService(),
+            suitePipeline(matching).withPipelineType(PipelineType.METADATA),
+            true),
+        Arguments.of(
+            "metadata pipeline",
+            new DatabaseService(),
+            pipelineWithConfig(new DatabaseServiceMetadataPipeline())
+                .withPipelineType(PipelineType.METADATA),
+            true));
+  }
+
+  private static IngestionPipeline suitePipeline(Object config) {
+    return pipelineWithConfig(config).withPipelineType(PipelineType.TEST_SUITE);
+  }
+
   @Test
   void deployPipelineRejectsMalformedSourceConfigBeforeCallingRunner() {
     IngestionPipeline pipeline = pipelineWithConfig("not-an-object");
@@ -794,6 +914,18 @@ class IngestionPipelineRepositoryTest {
     boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertFalse(requiresRedeployment, "Same schedule should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should detect a timezone-only change")
+  void testRequiresRedeployment_TimezoneChange_ShouldReturnTrue() {
+    IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
+    IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
+    updated.getAirflowConfig().setPipelineTimezone("Europe/Tallinn");
+
+    assertTrue(
+        repository.hasScheduleChanged(original, updated),
+        "A new timezone moves every run, so the CronJob must be redeployed");
   }
 
   @Test

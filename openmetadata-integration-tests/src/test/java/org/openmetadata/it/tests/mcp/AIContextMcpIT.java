@@ -367,16 +367,23 @@ class AIContextMcpIT extends McpTestBase {
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();
-    assertThat(text).contains("# Schema");
-    assertThat(text).contains("# Foreign Keys");
-    assertThat(text).contains(customersTable.getFullyQualifiedName() + ".id");
-    assertThat(text).contains("MANY_TO_ONE");
-    assertThat(text).contains("# Business Definitions");
-    assertThat(text).contains(TERM_DEFINITION);
-    assertThat(text).contains("# Knowledge Articles");
-    assertThat(text).contains(ARTICLE_BODY);
-    assertThat(text).contains("# Metrics");
-    assertThat(text).contains(METRIC_CODE);
+    String markdown = OBJECT_MAPPER.readTree(text).path("context").path("content").asText();
+    assertThat(markdown).contains("# Schema");
+    assertThat(markdown).contains("# Foreign Keys");
+    assertThat(markdown).contains(customersTable.getFullyQualifiedName() + ".id");
+    assertThat(markdown).contains("MANY_TO_ONE");
+    assertThat(markdown).contains("# Business Definitions");
+    assertThat(markdown).contains(TERM_DEFINITION);
+    assertThat(markdown).contains("# Knowledge Articles");
+    assertThat(markdown).contains(ARTICLE_BODY);
+    assertThat(markdown)
+        .contains(
+            "get_entity_details(entityType=`page`, fqn=`"
+                + longArticleFqn
+                + "`, include=[\"content\"])");
+    assertThat(markdown).doesNotContain("get_knowledge_content");
+    assertThat(markdown).contains("# Metrics");
+    assertThat(markdown).contains(METRIC_CODE);
   }
 
   @Test
@@ -451,6 +458,85 @@ class AIContextMcpIT extends McpTestBase {
     String text = response.get("result").get("content").get(0).get("text").asText();
     assertThat(text).contains(LONG_ARTICLE_LEAD);
     assertThat(text).contains(LONG_ARTICLE_TAIL);
+  }
+
+  @Test
+  void getEntityDetails_stripsInlineImagesBeforeReadingAndBudgetingArticles() throws Exception {
+    Table linkedTable = createServiceDatabaseSchemaTable("aicontext_image_anchor_" + suffix);
+    String base64Payload = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(4_000) + "ErkJggg==";
+    String htmlBody =
+        "<p><img src=\"data:image/png;base64,"
+            + base64Payload
+            + "\" alt=\"Architecture\"></p>\n\n"
+            + "<p>Architecture summary for revenue reporting.</p>"
+            + "<p>Keep x &gt;&#61; 1 and label &#39;a&#39;.</p>";
+    Map<String, Object> createPage =
+        Map.of(
+            "name",
+            "aicontext_image_article_" + suffix,
+            "displayName",
+            "Revenue Architecture With Image",
+            "description",
+            htmlBody,
+            "pageType",
+            "Article",
+            "page",
+            Map.of(),
+            "relatedEntities",
+            List.of(Map.of("id", linkedTable.getId().toString(), "type", "table")));
+    JsonNode page = post("contextCenter/pages", createPage, JsonNode.class);
+    String imageArticleFqn = page.get("fullyQualifiedName").asText();
+
+    for (String format : List.of("markdown", "json")) {
+      Map<String, Object> toolCall =
+          McpTestUtils.createToolCallRequest(
+              "get_entity_details",
+              Map.of(
+                  "entityType",
+                  "page",
+                  "fqn",
+                  imageArticleFqn,
+                  "include",
+                  List.of("content"),
+                  "format",
+                  format));
+      JsonNode response = executeMcpRequest(toolCall);
+      String rawResponse = response.get("result").get("content").get(0).get("text").asText();
+      String content = OBJECT_MAPPER.readTree(rawResponse).path("content").path("content").asText();
+
+      assertThat(content)
+          .contains("Architecture summary for revenue reporting.")
+          .contains("Keep x >= 1 and label 'a'.")
+          .doesNotContain("base64")
+          .doesNotContain("<img")
+          .doesNotContain(base64Payload);
+      assertThat(content.length()).isLessThan(500);
+    }
+
+    Map<String, Object> contextCall =
+        McpTestUtils.createToolCallRequest(
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                linkedTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
+                "format",
+                "json"));
+    JsonNode response = executeMcpRequest(contextCall);
+    JsonNode context =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
+    JsonNode linkedArticle = findArticle(context.path("articles"), imageArticleFqn);
+    assertThat(linkedArticle).isNotNull();
+    assertThat(linkedArticle.path("contentTruncated").asBoolean()).isFalse();
+    assertThat(linkedArticle.path("content").asText())
+        .startsWith("<p>Architecture summary for revenue reporting.</p>")
+        .contains("Keep x >= 1 and label 'a'.")
+        .doesNotContain("base64", "<img", base64Payload);
   }
 
   private static JsonNode findArticle(JsonNode articles, String fqn) {

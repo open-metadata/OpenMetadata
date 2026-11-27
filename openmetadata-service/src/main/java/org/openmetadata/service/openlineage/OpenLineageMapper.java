@@ -22,16 +22,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.openlineage.ColumnLineageFacet;
 import org.openmetadata.schema.api.lineage.openlineage.ColumnLineageField;
 import org.openmetadata.schema.api.lineage.openlineage.EventType;
 import org.openmetadata.schema.api.lineage.openlineage.Fields;
 import org.openmetadata.schema.api.lineage.openlineage.InputField;
+import org.openmetadata.schema.api.lineage.openlineage.InputFieldTransformation;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageInputDataset;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageJob;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageOutputDataset;
@@ -356,7 +359,7 @@ public class OpenLineageMapper {
         continue;
       }
 
-      List<String> fromColumns = new ArrayList<>();
+      Map<String, List<String>> columnsByFunction = new LinkedHashMap<>();
       for (InputField inputField : fieldInfo.getInputFields()) {
         String inputOlName =
             buildOpenLineageDatasetName(inputField.getNamespace(), inputField.getName());
@@ -364,21 +367,54 @@ public class OpenLineageMapper {
         if (inputRef != null) {
           DatasetColumns input =
               inputColumns.computeIfAbsent(inputOlName, name -> readColumns(inputRef));
-          fromColumns.add(input.columnFqn(inputField.getField()));
+          columnsByFunction
+              .computeIfAbsent(columnFunction(inputField, fieldInfo), ignored -> new ArrayList<>())
+              .add(input.columnFqn(inputField.getField()));
         }
       }
 
-      if (!fromColumns.isEmpty()) {
-        ColumnLineage columnLineage =
-            new ColumnLineage()
-                .withFromColumns(fromColumns)
-                .withToColumn(outputColumns.columnFqn(outputColumnName))
-                .withFunction(fieldInfo.getTransformationDescription());
-        columnLineages.add(columnLineage);
-      }
+      String toColumn = outputColumns.columnFqn(outputColumnName);
+      columnsByFunction.forEach(
+          (function, columns) ->
+              columnLineages.add(
+                  new ColumnLineage()
+                      .withToColumn(toColumn)
+                      .withFromColumns(columns)
+                      .withFunction(function)));
     }
 
     return columnLineages;
+  }
+
+  private static String columnFunction(InputField inputField, ColumnLineageField fieldInfo) {
+    if (!nullOrEmpty(inputField.getTransformations())) {
+      String function =
+          inputField.getTransformations().stream()
+              .filter(Objects::nonNull)
+              .filter(transformation -> StringUtils.isNotBlank(transformation.getType()))
+              .map(OpenLineageMapper::describeTransformation)
+              .collect(Collectors.joining(", "));
+      if (!function.isEmpty()) {
+        return function;
+      }
+    }
+    return StringUtils.isNotBlank(fieldInfo.getTransformationDescription())
+        ? fieldInfo.getTransformationDescription()
+        : StringUtils.defaultIfBlank(fieldInfo.getTransformationType(), null);
+  }
+
+  private static String describeTransformation(InputFieldTransformation transformation) {
+    StringBuilder function = new StringBuilder(transformation.getType().strip());
+    if (StringUtils.isNotBlank(transformation.getSubtype())) {
+      function.append('/').append(transformation.getSubtype().strip());
+    }
+    if (StringUtils.isNotBlank(transformation.getDescription())) {
+      function.append(" (").append(transformation.getDescription().strip()).append(')');
+    }
+    if (Boolean.TRUE.equals(transformation.getMasking())) {
+      function.append(" [masked]");
+    }
+    return function.toString();
   }
 
   private List<ColumnLineage> filterColumnLineageForInput(

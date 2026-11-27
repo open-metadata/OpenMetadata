@@ -10,7 +10,10 @@
 #  limitations under the License.
 """Unit tests for Doris connection handling."""
 
+import json
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydoris.sqlalchemy.dialect import DorisDialect
@@ -24,7 +27,14 @@ from metadata.generated.schema.entity.services.connections.database.dorisConnect
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.doris.connection import DorisConnection
+from metadata.ingestion.source.database.doris.queries import DORIS_TEST_GET_QUERIES
 from metadata.utils.sqa_utils import dispatch_to_date_or_datetime
+
+_SEED = (
+    Path(__file__).parents[6]
+    / "openmetadata-service/src/main/resources/json/data"
+    / "testConnections/database/doris.json"
+)
 
 
 @pytest.fixture
@@ -95,3 +105,16 @@ def test_doris_engine_does_not_need_mysqlclient(
     with DorisConnection(doris_connection_config) as owned:
         assert owned.client.dialect.driver == "pymysql"
         assert isinstance(owned.client.dialect, DorisDialect)
+
+
+def test_test_connection_runs_the_steps_of_its_definition(doris_connection_config: DorisConnectionConfig):
+    with (
+        patch("metadata.ingestion.connections.test_connections.test_connection_steps") as run_steps,
+        patch("metadata.ingestion.connections.test_connections.kill_active_connections"),
+        DorisConnection(doris_connection_config) as owned,
+    ):
+        owned.test_connection(MagicMock())
+
+    test_fn = run_steps.call_args.kwargs["test_fn"]
+    assert set(test_fn) == {step["name"] for step in json.loads(_SEED.read_text())["steps"]}
+    assert test_fn["GetQueries"].keywords["statement"] == DORIS_TEST_GET_QUERIES

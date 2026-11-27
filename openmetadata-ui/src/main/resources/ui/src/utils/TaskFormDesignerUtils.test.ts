@@ -24,17 +24,72 @@
  *  limitations under the License.
  */
 
+import { JsonSchemaObject } from '../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
   buildStageMappings,
   buildTransitionForms,
+  createEmptyDesignerField,
   getDesignerPreviewPayload,
   parseSchemaToDesignerFields,
   parseStageMappings,
   parseTransitionForms,
+  withFieldType,
 } from './TaskFormDesignerUtils';
 
 describe('TaskFormDesignerUtils', () => {
+  const reloadField = (property: JsonSchemaObject) =>
+    parseSchemaToDesignerFields({
+      type: 'object',
+      properties: { payload: property },
+    })[0];
+
+  it.each([
+    ['a new field', createEmptyDesignerField(), 'object'],
+    ['a reloaded text field', reloadField({ type: 'string' }), 'object'],
+    [
+      'a reloaded multi-select',
+      reloadField({ type: 'array', items: { type: 'string', enum: ['a'] } }),
+      'array',
+    ],
+  ])(
+    'saves %s switched to JSON and reloads it as JSON',
+    (_, field, expectedType) => {
+      const jsonField = withFieldType({ ...field, name: 'payload' }, 'json');
+      const { formSchema, uiSchema } = buildDesignerSchema([jsonField]);
+      const saved = (formSchema.properties as Record<string, unknown>).payload;
+
+      expect(jsonField.schemaType).toBe(expectedType);
+      expect(saved).toEqual(
+        expectedType === 'array'
+          ? expect.objectContaining({
+              type: 'array',
+              items: { type: 'string' },
+            })
+          : expect.objectContaining({
+              type: 'object',
+              additionalProperties: true,
+            })
+      );
+      expect(parseSchemaToDesignerFields(formSchema, uiSchema)[0].type).toBe(
+        'json'
+      );
+    }
+  );
+
+  it('saves a JSON field as an object even when it arrives with a string schema type', () => {
+    const { formSchema } = buildDesignerSchema([
+      { ...createEmptyDesignerField(), name: 'payload', type: 'json' },
+    ]);
+
+    expect(formSchema.properties).toEqual({
+      payload: expect.objectContaining({
+        type: 'object',
+        additionalProperties: true,
+      }),
+    });
+  });
+
   it('builds schemas from designer fields while preserving ui metadata', () => {
     const { formSchema, uiSchema } = buildDesignerSchema(
       [

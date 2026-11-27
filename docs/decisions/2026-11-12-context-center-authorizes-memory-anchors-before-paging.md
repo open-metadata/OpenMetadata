@@ -1,7 +1,7 @@
 # Context Center authorizes memory anchors before pagination
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (evaluate only matching anchors)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (evaluate only matching anchors); v3 2026-11-25 (memory-only searches too)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryAnchorIT`, `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`
 - **Related:** ADR:2026-10-09-search-admits-memories-of-pinned-anchors;
@@ -43,3 +43,25 @@ unfiltered listing still needs every matching anchor to produce exact visibility
 selective requests no longer evaluate unrelated anchors. Access is evaluated for the current request,
 so a role, policy, or file-sharing change applies immediately. Database read failures fail the listing
 instead of returning an empty authorized set.
+
+## Amendment — 2026-11-25: memory-only searches evaluate matching anchors too
+
+An MCP agent searching memories with `search_metadata(entityType='contextMemory')` could not find a
+memory anchored to a glossary term, tag or asset it may read, because it cannot know which anchor to
+pin (#36435). A keyword search of the memory index alone now builds its visibility filter the way
+the listing does: it collects the anchors of the memories the full query matches (text query and
+`queryFilter`), keeps those the caller may read, and admits Entity and Public memories anchored to
+them. "Alone" is decided on the resolved name, so `contextMemory` and
+`context_memory_search_index` count, and a list of indexes never does. This covers
+`/v1/search/query`, its NLQ variant (so the NLQ answer and its fallback agree), `/v1/search/preview`,
+`/v1/search/export` and its async form, and `/v1/search/entityTypeCounts` when it counts the memory
+index alone, so counts and hits agree.
+A search over several indexes keeps the pinned-anchor rule, and so does the memory bucket of a count
+over several indexes, so an Explore total matches what that search lists. Hybrid, vector,
+chat-grounding, direct-query and aggregation searches keep the pinned-anchor rule too.
+
+Each non-admin memory-only search pages a composite aggregation of its matching anchors (100 per
+page) and checks the caller's access to each distinct one, once per query stage: a count with a
+fuzzy stage and an exact-identifier search run two stages. It fails, like a listing, when the
+aggregation is incomplete. Guard:
+`ContextMemoryAnchorIT#aSearchPinnedToAnAnchor_agreesWithRestOnItsMemories`.

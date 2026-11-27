@@ -207,7 +207,10 @@ class OMetaLineageMixin(Generic[T]):
         """Union of the stored and incoming column lineage, keyed by (fromColumns, toColumn).
 
         The incoming ``function`` wins for a pair both sides carry; an incoming pair without one
-        keeps the stored ``function``.
+        keeps the stored ``function``. A stored line without a ``function`` is dropped when every
+        one of its (fromColumn, toColumn) pairs arrives in an incoming line that has one: a source
+        that now splits a column's inputs by function would otherwise leave the old unlabelled
+        line first on the edge, and readers that take the first matching line never see the labels.
         """
         original_data: list[dict[str, Any]] = [
             column.model_dump() if isinstance(column, ColumnLineage) else column for column in original or []
@@ -219,11 +222,19 @@ class OMetaLineageMixin(Generic[T]):
                 if column.get("toColumn") and column.get("fromColumns"):
                     original_result[(*column.get("fromColumns", []), column.get("toColumn"))] = column.get("function")
             merged_result.update(original_result)
+            labelled_pairs: set[tuple] = set()
             for column in updated or []:
                 data = column.model_dump() if isinstance(column, ColumnLineage) else column
                 if data.get("toColumn") and data.get("fromColumns"):
                     key = (*data.get("fromColumns", []), data.get("toColumn"))
                     merged_result[key] = data.get("function") or merged_result.get(key)
+                    if data.get("function"):
+                        labelled_pairs.update((from_column, key[-1]) for from_column in key[:-1])
+            for key in original_result:
+                if not merged_result.get(key) and all(
+                    (from_column, key[-1]) in labelled_pairs for from_column in key[:-1]
+                ):
+                    merged_result.pop(key, None)
         except Exception as exc:
             logger.debug(f"Error while merging column lineage: {exc}")
             logger.debug(traceback.format_exc())

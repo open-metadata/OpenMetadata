@@ -25,7 +25,10 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { MAX_NAME_LENGTH } from '../../../constants/constants';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
+import {
+  DEFAULT_PIPELINE_TIMEZONE,
+  DEFAULT_SCHEDULE_CRON_DAILY,
+} from '../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
@@ -292,6 +295,7 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
                         defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                         entity={t('label.test-suite')}
                         includePeriodOptions={schedulerOptions}
+                        timezone={DEFAULT_PIPELINE_TIMEZONE}
                         value={field.value || undefined}
                         onChange={(cron) => field.onChange(cron ?? '')}
                       />
