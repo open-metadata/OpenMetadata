@@ -45,9 +45,8 @@ from `ImpersonationContext` on REST, where Jersey wraps the context.
 
 ## Amendment: user CSV import applies the closed-team rule (v3)
 
-User CSV import, direct and `importAsync`, let a non-admin with `EditAll` on users put a user into,
-or take one out of, a team that is not open to everyone, while `POST`, `PUT` and `PATCH` refused
-it. A row writes the user's whole team list, so it is judged on the teams it leaves the user in,
-as a `PATCH` is. The check lives in `UserRepository.changesClosedTeamMembership`, which
+User CSV import, direct and `importAsync`, applies the same closed-team check as `POST`, `PUT` and
+`PATCH`. A row writes the user's whole team list, so it is judged on the teams it leaves the user
+in, as a `PATCH` is. The check lives in `UserRepository.changesClosedTeamMembership`, which
 `UserResource` and the user importer both call, so the two cannot drift. A dry run reports the
 same rejection as a real run.
