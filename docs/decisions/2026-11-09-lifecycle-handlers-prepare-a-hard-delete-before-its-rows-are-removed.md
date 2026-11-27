@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-09 (initial); v2 2026-11-26 (a handler can prepare the entities of
   one type together)
 - **Deciders:** Adrià Manero
-- **Guard:** `EntityLifecycleHardDeleteTest`
+- **Guard:** `EntityLifecycleHardDeleteTest`, `TestSuiteRepositoryTest` (a logical test suite's
+  hard delete)
 - **Related:** PR #37431; `EntityRepository.preparePostDeleteCleanup`, the repository-side pattern
   this extends
 
