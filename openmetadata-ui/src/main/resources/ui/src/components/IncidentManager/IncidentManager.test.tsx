@@ -942,27 +942,31 @@ describe('IncidentManagerPage', () => {
       mockHandlePageSizeChange.mockClear();
     });
 
-    it('should fetch next page when Next is clicked', async () => {
+    // usePaging is mocked, so a click cannot move `currentPage`; the click must
+    // only hand the page to usePaging, whose change drives the single fetch
+    // (covered with the real usePaging in useIncidentManagerListPage.integration.test).
+    const clickAndCountListRequests = async (testId: string) => {
+      const listMock = getListTestCaseIncidentStatusFromSearch as jest.Mock;
+      const button = await screen.findByTestId(testId);
+      const callsBefore = listMock.mock.calls.length;
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      return listMock.mock.calls.length - callsBefore;
+    };
+
+    it('should move to the next page when Next is clicked', async () => {
       const { mockHandlePageChange } = require('../../hooks/paging/usePaging');
       await act(async () => {
         render(<IncidentManager />);
       });
 
-      const nextButton = await screen.findByTestId('pagination-next');
-      await act(async () => {
-        fireEvent.click(nextButton);
-      });
-
-      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          limit: 10,
-          offset: 10,
-        })
-      );
+      expect(await clickAndCountListRequests('pagination-next')).toBe(0);
       expect(mockHandlePageChange).toHaveBeenCalledWith(2);
     });
 
-    it('should fetch previous page when Previous is clicked', async () => {
+    it('should move to the previous page when Previous is clicked', async () => {
       const usePagingModule = require('../../hooks/paging/usePaging');
       const { usePaging, mockHandlePageChange } = usePagingModule;
       usePaging.mockReturnValue({
@@ -979,50 +983,23 @@ describe('IncidentManagerPage', () => {
         render(<IncidentManager />);
       });
 
-      const previousButton = await screen.findByTestId('pagination-previous');
-      await act(async () => {
-        fireEvent.click(previousButton);
-      });
-
       expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          limit: 10,
-          offset: 0,
-        })
+        expect.objectContaining({ limit: 10, offset: 10 })
       );
+      expect(await clickAndCountListRequests('pagination-previous')).toBe(0);
       expect(mockHandlePageChange).toHaveBeenCalledWith(1);
     });
 
-    it('should fetch correct page when page number is clicked', async () => {
+    it('should move to the clicked page number', async () => {
       const { mockHandlePageChange } = require('../../hooks/paging/usePaging');
       await act(async () => {
         render(<IncidentManager />);
       });
 
-      const page2Button = await screen.findByTestId('pagination-page-2');
-      await act(async () => {
-        fireEvent.click(page2Button);
-      });
-
-      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          limit: 10,
-          offset: 10,
-        })
-      );
+      expect(await clickAndCountListRequests('pagination-page-2')).toBe(0);
       expect(mockHandlePageChange).toHaveBeenCalledWith(2);
 
-      const page3Button = await screen.findByTestId('pagination-page-3');
-      await act(async () => {
-        fireEvent.click(page3Button);
-      });
-
-      expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          limit: 10,
-          offset: 20,
-        })
-      );
+      expect(await clickAndCountListRequests('pagination-page-3')).toBe(0);
       expect(mockHandlePageChange).toHaveBeenCalledWith(3);
     });
 
