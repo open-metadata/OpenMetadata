@@ -50,6 +50,14 @@ An install whose project directory is read-only (the sandboxed CI container) als
 `YARN_INSTALL_STATE_PATH` to a writable path, passed with `docker --env` like the others, because
 Yarn 4 writes `.yarn/install-state.gz` into the project.
 
+`dependenciesMeta` sets `built: false` for `tree-sitter` and `tree-sitter-json`. Nothing in the UI
+loads them, they come in through swagger's `apidom` parser adapters, and building either from
+source needs a C toolchain. On linux arm64 neither has a working prebuild: `tree-sitter@0.21.1`
+ships none, and `tree-sitter-json@0.24.8`'s `linux-arm64` binary is x86-64. Yarn 1 reached both
+through optional dependencies and logged the failed build as a warning. Yarn 4 does not carry that
+optional flag to the `tree-sitter-json` instance it creates for its peer dependency, so the failed
+build fails the install on an arm64 runner without `make`, such as `openmetadata-collate`'s.
+
 ## Consequences
 
 CI can move all installs to a mirror by configuration alone. The cost is a 3.8 MB release file in

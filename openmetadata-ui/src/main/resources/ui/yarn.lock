@@ -14980,6 +14980,11 @@ __metadata:
     vitest: "npm:4.1.12"
     vitest-browser-react: "npm:2.3.0"
     zustand: "npm:^5.1.0"
+  dependenciesMeta:
+    tree-sitter-json:
+      built: false
+    tree-sitter@0.21.1:
+      built: false
   languageName: unknown
   linkType: soft
 

@@ -313,6 +313,14 @@
     "vitest": "4.1.12",
     "vitest-browser-react": "2.3.0"
   },
+  "dependenciesMeta": {
+    "tree-sitter@0.21.1": {
+      "built": false
+    },
+    "tree-sitter-json": {
+      "built": false
+    }
+  },
   "resolutions": {
     "broadcast-channel/@babel/runtime": "7.29.14",
     "@swagger-api/apidom-reference/minimatch": "11.0.9",
