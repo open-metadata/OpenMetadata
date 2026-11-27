@@ -42,13 +42,17 @@ const DBT_WORKFLOW_DATA = {
   catalogMapping: { bq_catalog: 'my-gcp-project' },
 } as unknown as IngestionWorkflowData;
 
-const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
+const renderDbtForm = (
+  onChange = jest.fn(),
+  onSubmit = jest.fn(),
+  workflowData = DBT_WORKFLOW_DATA
+) =>
   render(
     <IngestionWorkflowForm
       okText="Submit"
       pipeLineType={PipelineType.Dbt}
       serviceCategory={ServiceCategory.DATABASE_SERVICES}
-      workflowData={DBT_WORKFLOW_DATA}
+      workflowData={workflowData}
       onCancel={jest.fn()}
       onChange={onChange}
       onFocus={jest.fn()}
@@ -187,6 +191,41 @@ describe('IngestionWorkflowForm processing-engine extension', () => {
     );
 
     expect(screen.queryByText('Processing Engine')).not.toBeInTheDocument();
+  });
+});
+
+describe('IngestionWorkflowForm dbt schema metadata', () => {
+  it('defaults to off and preserves the enabled option when reopened', async () => {
+    const onSubmit = jest.fn();
+    const { container, unmount } = renderDbtForm(jest.fn(), onSubmit);
+    const toggleName = 'Include dbt Source Schema Metadata';
+    const toggle = await screen.findByRole('switch', { name: toggleName });
+
+    expect(toggle).not.toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    const [savedWorkflow] = onSubmit.mock.calls[0];
+
+    expect(savedWorkflow).toMatchObject({
+      catalogMapping: DBT_WORKFLOW_DATA.catalogMapping,
+      dbtConfigSource: DBT_WORKFLOW_DATA.dbtConfigSource,
+      includeSchemaMetadata: true,
+    });
+
+    unmount();
+    renderDbtForm(jest.fn(), jest.fn(), savedWorkflow);
+
+    expect(
+      await screen.findByRole('switch', { name: toggleName })
+    ).toBeChecked();
+    expect(screen.getByDisplayValue('my-gcp-project')).toBeInTheDocument();
   });
 });
 
