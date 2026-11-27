@@ -1,10 +1,10 @@
 # The German UI calls a data asset "Daten-Asset" and an asset "Asset"
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung")
+- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung") · v3 2026-11-26 (domain is "Domäne")
 - **Deciders:** Sascha Halm (proposal), the reviewers of the linked PR
 - **Guard:** reviewer
-- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843
+- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843, open-metadata/OpenMetadata#38869
 
 ## Context
 `de-de.json` rendered the English "data asset" with seven different words: "Daten-Asset",
@@ -42,3 +42,16 @@ Second term from the glossary in #38630, tracked in #38843. `de-de.json` mixed "
   "Erfassung von Metadaten aus …".
 - Exception: `message.field-ca-certs-description` keeps "Ingestion-Container", because it names the
   technical component (the ingestion container), not the activity.
+
+## Amendment — 2026-11-26: domain is "Domäne"
+
+Third term from the glossary in #38630, tracked in #38869. Most `de-de` strings already said
+"Domäne", but the label keys behind the navigation and the domain pages said "Bereich", and others
+said "Domain", "Datenbereich", "Datendomain" or "Geschäftsbereich". "Bereich" also renders "range"
+and "scope" elsewhere in the file, so it is ambiguous.
+
+- English "domain" (the catalog entity) is "Domäne", feminine: "die Domäne", plural "Domänen".
+  Compounds are closed: "Domänentyp", "Domänenebene", "Datendomäne". "Sub domain" is "Subdomäne".
+- Not affected: "domain" in other senses keeps its own word — the domain of an ontology property
+  (`label.property-domain`), an internet domain (`message.marketplace-verify-msg`, "Domain") and a
+  subject area in general prose (glossary help texts, "business domain" → "Geschäftsbereich").
