@@ -2112,7 +2112,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     boolean reembedded;
     try {
       reembedded = vecService.reembedEntity(entity, entityIndexName);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Could not re-embed entity {} in {}", entity.getId(), entityIndexName, e);
       reembedded = false;
     }
