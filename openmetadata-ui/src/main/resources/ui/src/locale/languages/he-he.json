@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "חבר את השירות הראשון שלך",
     "empty-api-services-description": "חברו שירותי REST או OpenAPI כדי לייבא סכמות והגדרות של נקודות קצה, כך שממשקי ה-API שלכם יהיו מתועדים וניתנים לגילוי לצד שאר הנתונים.",
     "empty-api-services-title": "חברו את שירות ה-API הראשון שלכם",
-    "empty-assignee-strategy-assign-admins-hint": "המשימה עוברת למנהלים, מלבד מי שביצע את השינוי.",
+    "empty-assignee-strategy-assign-admins-hint": "המשימה עוברת למנהלים, מלבד מי שביצע את השינוי. אם אין כאלה, היא עוברת לבעלי הנכס.",
     "empty-assignee-strategy-description": "חל כאשר שלב זה לא מוצא מאשר, או כאשר המאשר היחיד הוא מי שביצע את השינוי.",
     "empty-assignee-strategy-none-hint": "השינוי מאושר אוטומטית, ללא משימה.",
     "empty-assignee-strategy-none-task-workflow-hint": "המשימה נשארת פתוחה ועוברת לבעלי הנכס, אם יש כאלה.",

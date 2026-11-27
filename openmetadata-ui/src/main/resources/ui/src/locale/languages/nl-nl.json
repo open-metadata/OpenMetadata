@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Verbind je eerste service",
     "empty-api-services-description": "Koppel REST- of OpenAPI-services om endpointschema's en -definities te ingesten, zodat uw API's samen met de rest van uw data gedocumenteerd en vindbaar zijn.",
     "empty-api-services-title": "Verbind uw eerste API-service",
-    "empty-assignee-strategy-assign-admins-hint": "De taak gaat naar de beheerders, behalve de persoon die de wijziging heeft aangebracht.",
+    "empty-assignee-strategy-assign-admins-hint": "De taak gaat naar de beheerders, behalve de persoon die de wijziging heeft aangebracht. Zijn die er niet, dan gaat de taak naar de eigenaren van het asset.",
     "empty-assignee-strategy-description": "Geldt wanneer deze stap geen goedkeurder vindt, of wanneer de enige goedkeurder de persoon is die de wijziging heeft aangebracht.",
     "empty-assignee-strategy-none-hint": "De wijziging wordt automatisch goedgekeurd, zonder taak.",
     "empty-assignee-strategy-none-task-workflow-hint": "De taak blijft open en gaat naar de eigenaren van het asset, als die er zijn.",

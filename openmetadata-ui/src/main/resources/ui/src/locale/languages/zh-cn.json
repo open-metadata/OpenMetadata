@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "连接您的第一个服务",
     "empty-api-services-description": "接入 REST 或 OpenAPI 服务以采集端点结构和定义，让您的 API 与其他数据一样被记录和检索。",
     "empty-api-services-title": "连接您的第一个 API 服务",
-    "empty-assignee-strategy-assign-admins-hint": "任务分配给除做出更改者以外的管理员。",
+    "empty-assignee-strategy-assign-admins-hint": "任务分配给除做出更改者以外的管理员。如果没有这样的管理员，则分配给资产所有者。",
     "empty-assignee-strategy-description": "当此步骤找不到审批人，或唯一的审批人就是做出更改的人时适用。",
     "empty-assignee-strategy-none-hint": "更改将自动批准，不创建任务。",
     "empty-assignee-strategy-none-task-workflow-hint": "任务保持打开状态，并分配给资产所有者（如有）。",

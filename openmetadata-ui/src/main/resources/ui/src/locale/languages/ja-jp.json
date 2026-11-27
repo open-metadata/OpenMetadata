@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "最初のサービスを接続する",
     "empty-api-services-description": "RESTやOpenAPIのサービスを連携してエンドポイントのスキーマと定義を取り込むと、APIも他のデータと同じようにドキュメント化され、検索できるようになります。",
     "empty-api-services-title": "最初のAPIサービスを接続しましょう",
-    "empty-assignee-strategy-assign-admins-hint": "タスクは、変更を行った本人を除く管理者に割り当てられます。",
+    "empty-assignee-strategy-assign-admins-hint": "タスクは、変更を行った本人を除く管理者に割り当てられます。該当する管理者がいない場合は、アセットの所有者に割り当てられます。",
     "empty-assignee-strategy-description": "このステップで承認者が見つからない場合、または唯一の承認者が変更を行った本人である場合に適用されます。",
     "empty-assignee-strategy-none-hint": "変更はタスクなしで自動的に承認されます。",
     "empty-assignee-strategy-none-task-workflow-hint": "タスクは開いたままとなり、アセットの所有者がいれば割り当てられます。",

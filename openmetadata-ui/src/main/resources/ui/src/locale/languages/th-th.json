@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "เชื่อมต่อบริการแรกของคุณ",
     "empty-api-services-description": "เชื่อมต่อบริการ REST หรือ OpenAPI เพื่อดึงสคีมาและนิยามของเอนด์พอยต์ เพื่อให้ API ของคุณถูกจัดทำเอกสารและค้นหาได้เช่นเดียวกับข้อมูลอื่น ๆ",
     "empty-api-services-title": "เชื่อมต่อบริการ API แรกของคุณ",
-    "empty-assignee-strategy-assign-admins-hint": "งานจะส่งไปยังผู้ดูแลระบบ ยกเว้นผู้ที่ทำการเปลี่ยนแปลง",
+    "empty-assignee-strategy-assign-admins-hint": "งานจะส่งไปยังผู้ดูแลระบบ ยกเว้นผู้ที่ทำการเปลี่ยนแปลง หากไม่มี งานจะส่งไปยังเจ้าของสินทรัพย์",
     "empty-assignee-strategy-description": "ใช้เมื่อขั้นตอนนี้ไม่พบผู้อนุมัติ หรือเมื่อผู้อนุมัติเพียงคนเดียวคือผู้ที่ทำการเปลี่ยนแปลง",
     "empty-assignee-strategy-none-hint": "การเปลี่ยนแปลงจะได้รับการอนุมัติโดยอัตโนมัติโดยไม่มีงาน",
     "empty-assignee-strategy-none-task-workflow-hint": "งานจะยังเปิดอยู่และส่งไปยังเจ้าของสินทรัพย์ หากมี",

@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Collega il tuo primo servizio",
     "empty-api-services-description": "Collega servizi REST o OpenAPI per importare schemi e definizioni degli endpoint, così le tue API saranno documentate e individuabili insieme al resto dei tuoi dati.",
     "empty-api-services-title": "Collega il tuo primo servizio API",
-    "empty-assignee-strategy-assign-admins-hint": "L'attività va agli amministratori, esclusa la persona che ha apportato la modifica.",
+    "empty-assignee-strategy-assign-admins-hint": "L'attività va agli amministratori, esclusa la persona che ha apportato la modifica. Se non ce ne sono, va ai proprietari dell'asset.",
     "empty-assignee-strategy-description": "Si applica quando questo passaggio non trova alcun approvatore o quando il suo unico approvatore è la persona che ha apportato la modifica.",
     "empty-assignee-strategy-none-hint": "La modifica viene approvata automaticamente, senza attività.",
     "empty-assignee-strategy-none-task-workflow-hint": "L'attività resta aperta e va ai proprietari dell'asset, se presenti.",

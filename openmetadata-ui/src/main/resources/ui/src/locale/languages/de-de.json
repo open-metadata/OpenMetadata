@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Verbinden Sie Ihren ersten Dienst",
     "empty-api-services-description": "Binden Sie REST- oder OpenAPI-Dienste ein, um Endpunkt-Schemas und -Definitionen zu erfassen, damit Ihre APIs zusammen mit Ihren übrigen Daten dokumentiert und auffindbar sind.",
     "empty-api-services-title": "Verbinden Sie Ihren ersten API-Dienst",
-    "empty-assignee-strategy-assign-admins-hint": "Die Aufgabe geht an die Administratoren außer der Person, die die Änderung vorgenommen hat.",
+    "empty-assignee-strategy-assign-admins-hint": "Die Aufgabe geht an die Administratoren außer der Person, die die Änderung vorgenommen hat. Gibt es keine, geht sie an die Besitzer des Assets.",
     "empty-assignee-strategy-description": "Gilt, wenn dieser Schritt keinen Genehmiger findet oder der einzige Genehmiger die Person ist, die die Änderung vorgenommen hat.",
     "empty-assignee-strategy-none-hint": "Die Änderung wird automatisch ohne Aufgabe genehmigt.",
     "empty-assignee-strategy-none-task-workflow-hint": "Die Aufgabe bleibt offen und geht an die Besitzer des Assets, falls vorhanden.",

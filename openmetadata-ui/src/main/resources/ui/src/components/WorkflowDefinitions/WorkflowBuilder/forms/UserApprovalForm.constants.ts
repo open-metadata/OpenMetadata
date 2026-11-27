@@ -38,9 +38,9 @@ export const NONE_IN_TASK_WORKFLOW_OPTION = {
   hintKey: 'message.empty-assignee-strategy-none-task-workflow-hint',
 };
 
-// The default comes first; the generated enum is alphabetical.
-export const EMPTY_ASSIGNEE_STRATEGY_ORDER: EmptyAssigneeStrategy[] = [
+// The builder offers these, the default first. `wait` is not offered: a task nobody is asked to act
+// on helps no one. A step that already stores it still shows it, so its value never goes blank.
+export const SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES: EmptyAssigneeStrategy[] = [
   EmptyAssigneeStrategy.None,
   EmptyAssigneeStrategy.AssignAdmins,
-  EmptyAssigneeStrategy.Wait,
 ];

@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "連線您的第一個服務",
     "empty-api-services-description": "接入 REST 或 OpenAPI 服務以擷取端點結構與定義，讓您的 API 與其他資料一樣被記錄且可搜尋。",
     "empty-api-services-title": "連接您的第一個 API 服務",
-    "empty-assignee-strategy-assign-admins-hint": "任務會指派給做出變更者以外的管理員。",
+    "empty-assignee-strategy-assign-admins-hint": "任務會指派給做出變更者以外的管理員。如果沒有這樣的管理員，則指派給資產擁有者。",
     "empty-assignee-strategy-description": "當此步驟找不到核准者，或唯一的核准者就是做出變更的人時適用。",
     "empty-assignee-strategy-none-hint": "變更將自動核准，不建立任務。",
     "empty-assignee-strategy-none-task-workflow-hint": "任務保持開啟，並指派給資產擁有者（如有）。",

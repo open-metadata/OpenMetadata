@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Connect your first service",
     "empty-api-services-description": "Link REST or OpenAPI services to ingest endpoint schemas and definitions, so your APIs are documented and discoverable alongside the rest of your data.",
     "empty-api-services-title": "Connect your first API service",
-    "empty-assignee-strategy-assign-admins-hint": "The task goes to the admins other than the person who made the change.",
+    "empty-assignee-strategy-assign-admins-hint": "The task goes to the admins other than the person who made the change. If there are none, it goes to the asset's owners.",
     "empty-assignee-strategy-description": "Applies when this step finds no approver, or when its only approver is the person who made the change.",
     "empty-assignee-strategy-none-hint": "The change is approved automatically, with no task.",
     "empty-assignee-strategy-none-task-workflow-hint": "The task stays open and goes to the asset's owners, if any.",

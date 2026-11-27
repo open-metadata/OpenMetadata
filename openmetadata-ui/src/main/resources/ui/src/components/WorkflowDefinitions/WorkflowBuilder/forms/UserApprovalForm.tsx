@@ -42,8 +42,8 @@ import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
 import {
   EMPTY_ASSIGNEE_STRATEGY_OPTIONS,
-  EMPTY_ASSIGNEE_STRATEGY_ORDER,
   NONE_IN_TASK_WORKFLOW_OPTION,
+  SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES,
 } from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
@@ -141,6 +141,10 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
   const { isFormDisabled, isNoOp } = useWorkflowModeContext();
+  const strategyChoices =
+    buildInitialState(node).emptyAssigneeStrategy === EmptyAssigneeStrategy.Wait
+      ? [...SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES, EmptyAssigneeStrategy.Wait]
+      : SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES;
   const strategyOption = (strategy: EmptyAssigneeStrategy) =>
     isNoOp && strategy === EmptyAssigneeStrategy.None
       ? NONE_IN_TASK_WORKFLOW_OPTION
@@ -303,7 +307,8 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
           </div>
         )}
 
-        <div className="tw:mb-6">
+        {/* No bottom margin: the Additional approvers FormField below already ends with one. */}
+        <div>
           <div className="tw:flex tw:flex-col tw:gap-4">
             <div className="tw:flex tw:items-center tw:gap-2">
               <Typography
@@ -380,7 +385,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
             onChange={(key) =>
               setEmptyAssigneeStrategy(key as EmptyAssigneeStrategy)
             }>
-            {EMPTY_ASSIGNEE_STRATEGY_ORDER.map((strategy) => (
+            {strategyChoices.map((strategy) => (
               <Select.Item
                 data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
                 id={strategy}

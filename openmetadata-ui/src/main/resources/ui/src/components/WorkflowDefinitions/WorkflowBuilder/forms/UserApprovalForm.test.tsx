@@ -159,8 +159,19 @@ describe('UserApprovalForm', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('lists the default option first', async () => {
-    renderForm(node);
+  it('offers approve automatically first and assign to admins, not keep open', async () => {
+    renderForm(nodeWithStrategy(EmptyAssigneeStrategy.None));
+
+    fireEvent.click(strategyTrigger());
+    await screen.findAllByRole('option');
+
+    expect(
+      screen.getAllByRole('option').map((option) => option.textContent)
+    ).toEqual(['label.approve-automatically', 'label.assign-to-admins']);
+  });
+
+  it('still offers keep open on a step that already stores it', async () => {
+    renderForm(nodeWithStrategy(EmptyAssigneeStrategy.Wait));
 
     fireEvent.click(strategyTrigger());
     await screen.findAllByRole('option');

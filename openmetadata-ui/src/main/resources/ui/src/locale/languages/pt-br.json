@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Conecte seu primeiro serviço",
     "empty-api-services-description": "Vincule serviços REST ou OpenAPI para ingerir esquemas e definições de endpoints, assim suas APIs ficam documentadas e localizáveis junto com o restante dos seus dados.",
     "empty-api-services-title": "Conecte seu primeiro serviço de API",
-    "empty-assignee-strategy-assign-admins-hint": "A tarefa vai para os administradores, exceto a pessoa que fez a alteração.",
+    "empty-assignee-strategy-assign-admins-hint": "A tarefa vai para os administradores, exceto a pessoa que fez a alteração. Se não houver nenhum, vai para os proprietários do ativo.",
     "empty-assignee-strategy-description": "Aplica-se quando esta etapa não encontra nenhum aprovador ou quando o único aprovador é a pessoa que fez a alteração.",
     "empty-assignee-strategy-none-hint": "A alteração é aprovada automaticamente, sem tarefa.",
     "empty-assignee-strategy-none-task-workflow-hint": "A tarefa fica aberta e vai para os proprietários do ativo, se houver.",

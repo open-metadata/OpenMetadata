@@ -5139,7 +5139,7 @@
     "empty-all-connections-title": "Anslut din första tjänst",
     "empty-api-services-description": "Koppla REST- eller OpenAPI-tjänster för att hämta in endpoint-scheman och definitioner, så att dina API:er dokumenteras och går att hitta tillsammans med övriga data.",
     "empty-api-services-title": "Anslut din första API-tjänst",
-    "empty-assignee-strategy-assign-admins-hint": "Uppgiften går till administratörerna utom den som gjorde ändringen.",
+    "empty-assignee-strategy-assign-admins-hint": "Uppgiften går till administratörerna utom den som gjorde ändringen. Finns det inga, går den till tillgångens ägare.",
     "empty-assignee-strategy-description": "Gäller när det här steget inte hittar någon godkännare, eller när den enda godkännaren är den som gjorde ändringen.",
     "empty-assignee-strategy-none-hint": "Ändringen godkänns automatiskt, utan uppgift.",
     "empty-assignee-strategy-none-task-workflow-hint": "Uppgiften förblir öppen och går till tillgångens ägare, om det finns några.",
