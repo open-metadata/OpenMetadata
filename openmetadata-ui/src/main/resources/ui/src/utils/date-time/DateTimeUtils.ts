@@ -589,7 +589,10 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   return sevenDaysStartGMTArrayInMillis;
 };
 
-export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+export const getScheduleDescriptionTexts = (
+  scheduleInterval: string,
+  timezone?: string
+) => {
   if (!cronstrueModule) {
     loadCronstrue();
 
@@ -605,9 +608,11 @@ export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
       }
     );
     const firstSentenceEndIndex = scheduleDescription.indexOf(',');
-    const descriptionFirstPart = scheduleDescription
+    const scheduleTime = scheduleDescription
       .slice(0, firstSentenceEndIndex)
       .trim();
+    const descriptionFirstPart =
+      scheduleTime && timezone ? `${scheduleTime} (${timezone})` : scheduleTime;
     const descriptionSecondPart = capitalize(
       scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
     );

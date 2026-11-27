@@ -76,7 +76,7 @@ interface AgentIdentityProps {
 const AgentIdentity: FC<AgentIdentityProps> = ({ agent, isRunning }) => {
   const { t } = useTranslation();
   const { descriptionFirstPart, descriptionSecondPart } =
-    useScheduleDescriptionTexts(agent.schedule);
+    useScheduleDescriptionTexts(agent.schedule, agent.scheduleTimezone);
   const scheduleText = [descriptionFirstPart, descriptionSecondPart]
     .filter(Boolean)
     .join(', ');
