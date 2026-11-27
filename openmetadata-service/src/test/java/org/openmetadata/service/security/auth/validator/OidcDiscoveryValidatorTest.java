@@ -10,7 +10,9 @@ import static org.mockito.Mockito.mockStatic;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.util.List;
+import javax.net.ssl.SSLHandshakeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -677,7 +679,12 @@ public class OidcDiscoveryValidatorTest {
 
       assertNotNull(error);
       assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, error.getField());
-      assertTrue(error.getError().contains("Failed to validate against discovery document"));
+      assertEquals(
+          "Failed to validate against discovery document: the discovery URL did not return a"
+              + " valid JSON document ("
+              + discoveryUri
+              + ")",
+          error.getError());
     }
   }
 
@@ -693,5 +700,46 @@ public class OidcDiscoveryValidatorTest {
         OidcDiscoveryValidator.class.getDeclaredMethod("determineFieldPathFromErrors", List.class);
     fieldMethod.setAccessible(true);
     return (String) fieldMethod.invoke(validator, errors);
+  }
+
+  /** A TLS failure keeps its own message, which points the admin at the truststore. */
+  @Test
+  void anUntrustedCertificateKeepsItsTlsMessage() {
+    String pkix =
+        "PKIX path building failed: unable to find valid certification path to requested target";
+    try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenThrow(new SSLHandshakeException(pkix));
+
+      FieldError error =
+          validator.validateAgainstDiscovery(
+              "https://self-signed.badssl.com/.well-known/openid-configuration",
+              new AuthenticationConfiguration(),
+              new OidcClientConfig());
+
+      assertNotNull(error);
+      assertEquals("Failed to validate against discovery document: " + pkix, error.getError());
+    }
+  }
+
+  /** An unreachable discovery URL is reported as such, not as "null". */
+  @Test
+  void anUnreachableDiscoveryUrlGivesAReadableError() {
+    String discoveryUri = "https://unreachable.example/.well-known/openid-configuration";
+    try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(anyString())).thenThrow(new ConnectException());
+
+      FieldError error =
+          validator.validateAgainstDiscovery(
+              discoveryUri, new AuthenticationConfiguration(), new OidcClientConfig());
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, error.getField());
+      assertEquals(
+          "Failed to validate against discovery document: the discovery URL could not be reached ("
+              + discoveryUri
+              + ")",
+          error.getError());
+    }
   }
 }

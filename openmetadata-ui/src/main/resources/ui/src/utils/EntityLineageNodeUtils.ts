@@ -465,7 +465,7 @@ const flatItems = <T extends { children?: T[]; dataType: string }>(
 ) => columns.flatMap((column) => flattenColumn(column as T, 0));
 
 const getTableFlattenChildren = (entity: EntityReference): EntityChildren =>
-  flatItems((entity as unknown as Table).columns);
+  flatItems((entity as unknown as Table).columns ?? []);
 
 const getContainerFlattenChildren = (entity: EntityReference): EntityChildren =>
   flatItems((entity as unknown as Container).dataModel?.columns ?? []);

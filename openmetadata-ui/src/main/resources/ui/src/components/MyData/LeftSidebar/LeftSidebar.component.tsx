@@ -40,6 +40,7 @@ import {
   getSidebarActiveKeys,
   getSidebarPathname,
 } from '../../../utils/LeftSidebarUtils';
+import AppModeSwitcher from '../../AppModeSwitcher/AppModeSwitcher';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -302,6 +303,12 @@ const LeftSidebar = () => {
                 <li key={item.key}>{renderLeaf(item)}</li>
               ))}
             </ul>
+            <AppModeSwitcher
+              className={classNames('tw:mt-2 tw:mb-4', {
+                'tw:flex tw:justify-center': isSidebarCollapsed,
+              })}
+              variant={isSidebarCollapsed ? 'icon' : 'card'}
+            />
           </nav>
         </Box>
       </div>

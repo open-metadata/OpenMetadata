@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { useTranslation } from 'react-i18next';
 import {
   DataContract,
   MaxLatencyUnit,
@@ -30,6 +37,11 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 
 const mockOnChange = jest.fn();
 const mockOnPrev = jest.fn();
+const mockOnRefreshValidityChange = jest.fn();
+const minuteRefresh = {
+  interval: 15,
+  unit: RefreshFrequencyUnit.Minute,
+};
 
 const mockContract: Partial<DataContract> = {
   sla: {
@@ -47,11 +59,15 @@ const renderForm = (initialValues?: Partial<DataContract>) =>
       initialValues={initialValues}
       onChange={mockOnChange}
       onPrev={mockOnPrev}
+      onRefreshValidityChange={mockOnRefreshValidityChange}
     />
   );
 
 const getNumberInput = (label: string) =>
   screen.getByRole('spinbutton', { name: label });
+
+const getRefreshIntervalInput = () =>
+  screen.getByRole('textbox', { name: 'label.interval' });
 
 describe('ContractSLAFormTab', () => {
   beforeEach(() => {
@@ -76,11 +92,255 @@ describe('ContractSLAFormTab', () => {
   it('prefills the values of an existing SLA', () => {
     renderForm(mockContract);
 
-    expect(getNumberInput('label.interval')).toHaveValue(1);
+    expect(getRefreshIntervalInput()).toHaveValue('1');
+    expect(getRefreshIntervalInput()).toHaveAttribute('inputmode', 'numeric');
     expect(getNumberInput('label.value')).toHaveValue(2);
     expect(getNumberInput('label.period')).toHaveValue(30);
     expect(screen.getAllByText('label.day').length).toBeGreaterThan(0);
     expect(screen.getAllByText('label.hour').length).toBeGreaterThan(0);
+  });
+
+  it('offers minutes and preserves a loaded minute interval during other SLA edits', () => {
+    renderForm({
+      sla: { ...mockContract.sla, refreshFrequency: minuteRefresh },
+    });
+
+    expect(
+      screen.getByTestId('refresh-frequency-unit-select')
+    ).toHaveTextContent('label.minute');
+
+    fireEvent.change(getNumberInput('label.period'), {
+      target: { value: '45' },
+    });
+
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      sla: {
+        ...mockContract.sla,
+        refreshFrequency: minuteRefresh,
+        retention: { period: 45, unit: RetentionUnit.Day },
+      },
+    });
+  });
+
+  it.each(['0', '15e', '15.5', '1.0', '2147483648', '-1'])(
+    'keeps the last valid refresh interval when the minute draft is %s',
+    async (interval) => {
+      renderForm({
+        sla: { ...mockContract.sla, refreshFrequency: minuteRefresh },
+      });
+
+      fireEvent.change(getRefreshIntervalInput(), {
+        target: { value: interval },
+      });
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      expect(getRefreshIntervalInput()).toHaveValue(interval);
+      expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(false);
+      expect(mockOnChange).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText('message.integer-value-out-of-range')
+      ).toBeInTheDocument();
+
+      fireEvent.change(getRefreshIntervalInput(), {
+        target: { value: '1' },
+      });
+
+      expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(true);
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        sla: {
+          ...mockContract.sla,
+          refreshFrequency: { ...minuteRefresh, interval: 1 },
+          retention: { period: 45, unit: RetentionUnit.Day },
+        },
+      });
+    }
+  );
+
+  it('reports a minimum of 1 in the validation message when 0 is entered for Minute', async () => {
+    const defaultTranslation = useTranslation();
+    const mockT = jest.fn((key: string, options?: Record<string, unknown>) =>
+      options ? `${key}:${JSON.stringify(options)}` : key
+    );
+    jest.mocked(useTranslation).mockReturnValue({
+      ...defaultTranslation,
+      t: mockT as unknown as typeof defaultTranslation.t,
+    });
+
+    try {
+      renderForm({
+        sla: { ...mockContract.sla, refreshFrequency: minuteRefresh },
+      });
+
+      fireEvent.change(getRefreshIntervalInput(), {
+        target: { value: '0' },
+      });
+
+      expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(false);
+      expect(mockOnChange).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText(
+          'message.integer-value-out-of-range:{"min":1,"max":2147483647}'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      jest.mocked(useTranslation).mockReturnValue(defaultTranslation);
+    }
+  });
+
+  it.each([
+    '0',
+    '0.25',
+    '2.5',
+    '2.5e1',
+    '1.0',
+    '15e',
+    '0x2',
+    '1e309',
+    '-1',
+    '2147483648',
+  ])(
+    'rejects %s for non-minute refresh units and requires a positive whole number',
+    async (interval) => {
+      renderForm({
+        sla: {
+          ...mockContract.sla,
+          refreshFrequency: { interval: 1, unit: RefreshFrequencyUnit.Hour },
+        },
+      });
+
+      fireEvent.change(getRefreshIntervalInput(), {
+        target: { value: interval },
+      });
+
+      expect(getRefreshIntervalInput()).toHaveValue(interval);
+      expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(false);
+      expect(mockOnChange).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText('message.integer-value-out-of-range')
+      ).toBeInTheDocument();
+
+      fireEvent.change(getRefreshIntervalInput(), {
+        target: { value: '2' },
+      });
+
+      expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(true);
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        sla: {
+          ...mockContract.sla,
+          refreshFrequency: { interval: 2, unit: RefreshFrequencyUnit.Hour },
+        },
+      });
+    }
+  );
+
+  it('clears the validation error and pair when an invalid refresh interval is cleared', async () => {
+    renderForm({
+      sla: { ...mockContract.sla, refreshFrequency: minuteRefresh },
+    });
+
+    fireEvent.change(getRefreshIntervalInput(), {
+      target: { value: '0' },
+    });
+
+    expect(
+      await screen.findByText('message.integer-value-out-of-range')
+    ).toBeInTheDocument();
+
+    fireEvent.change(getRefreshIntervalInput(), {
+      target: { value: '' },
+    });
+
+    expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(true);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('message.integer-value-out-of-range')
+      ).not.toBeInTheDocument();
+    });
+
+    const { refreshFrequency: _refreshFrequency, ...remainingSla } =
+      mockContract.sla ?? {};
+
+    expect(mockOnChange).toHaveBeenLastCalledWith({ sla: remainingSla });
+  });
+
+  it('preserves an untouched stored zero interval when editing another SLA field', () => {
+    const legacyZeroRefresh = {
+      interval: 0,
+      unit: RefreshFrequencyUnit.Hour,
+    };
+
+    renderForm({
+      sla: { ...mockContract.sla, refreshFrequency: legacyZeroRefresh },
+    });
+
+    fireEvent.change(getNumberInput('label.period'), {
+      target: { value: '45' },
+    });
+
+    expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(true);
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      sla: {
+        ...mockContract.sla,
+        refreshFrequency: legacyZeroRefresh,
+        retention: { period: 45, unit: RetentionUnit.Day },
+      },
+    });
+  });
+
+  it('requires both interval and unit when creating a refresh frequency', async () => {
+    renderForm();
+
+    fireEvent.change(getRefreshIntervalInput(), {
+      target: { value: '15' },
+    });
+
+    expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(false);
+    expect(mockOnChange).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    const unitTrigger = within(
+      screen.getByTestId('refresh-frequency-unit-select')
+    ).getByRole('button');
+    fireEvent.pointerDown(unitTrigger);
+    fireEvent.click(unitTrigger);
+    const minuteOption = await screen.findByRole('option', {
+      name: 'label.minute',
+    });
+    fireEvent.pointerDown(minuteOption);
+    fireEvent.click(minuteOption);
+
+    expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(true);
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      sla: {
+        refreshFrequency: minuteRefresh,
+      },
+    });
+  });
+
+  it('requires an interval when only a refresh unit is selected', async () => {
+    renderForm();
+
+    const unitTrigger = within(
+      screen.getByTestId('refresh-frequency-unit-select')
+    ).getByRole('button');
+    fireEvent.pointerDown(unitTrigger);
+    fireEvent.click(unitTrigger);
+    const hourOption = await screen.findByRole('option', {
+      name: 'label.hour',
+    });
+    fireEvent.pointerDown(hourOption);
+    fireEvent.click(hourOption);
+
+    expect(mockOnRefreshValidityChange).toHaveBeenLastCalledWith(false);
+    expect(mockOnChange).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
   });
 
   it('does not report changes when it seeds the form', () => {
@@ -92,7 +352,7 @@ describe('ContractSLAFormTab', () => {
   it('reports the whole SLA when one value changes', () => {
     renderForm(mockContract);
 
-    fireEvent.change(getNumberInput('label.interval'), {
+    fireEvent.change(getRefreshIntervalInput(), {
       target: { value: '6' },
     });
 

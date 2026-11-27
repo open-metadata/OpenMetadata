@@ -55,7 +55,9 @@ in the PR template for you. You will check the CI and bot items below on the PR 
    maintainer will help.
 3. **Get the PR checks green.** Which checks run depends on the paths you touched:
    - **Backend:** `backend-checks` (spotless formatting and the Java unit tests).
-   - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
+   - **Python:** `py-tests-status` is the required check for the selected Python workloads, including on fork PRs.
+     Same-repository PRs also report static checks as `py-checkstyle` (Ruff lint and formatting, plus basedpyright
+     when the `python` path filter matches).
    - **UI:** `ui-tests-status`, which needs the `ui` job: `ui / lint` (ESLint, Prettier,
      organize-imports and the other UI checks) and, once that passes, `ui / unit` (Jest, four
      shards) and `ui / browser` (the browser tests your change affects). A lint failure skips the
@@ -85,8 +87,7 @@ A quick list to run through before you ask for a review:
 - [ ] Alternatives you considered, and the trade-off you chose, are in the description
 - [ ] One change per PR, rebased on `main`
 - [ ] Linked issue with a description, in the **Shipping** project with its fields set
-- [ ] PR checks green for the paths you touched — `backend-checks`, `py-checkstyle` /
-      `py-tests-status`, `ui-tests-status`,
+- [ ] PR checks green for the paths you touched — `backend-checks`, `py-tests-status`, `ui-tests-status`,
       `validate-json-yaml`, `generate-types`, `docker-image-smoke-test`
 - [ ] Impacted integration tests and Playwright specs run locally and recorded in the PR
 - [ ] Every Gitar / Greptile / Copilot thread resolved or answered
