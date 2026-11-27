@@ -64,6 +64,7 @@ const entity = { id: 'topic-id', extension: { steward: 'Karan' } };
 
 describe('useHeaderCustomProperties', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     mockUseEntityTypeCustomProperties.mockReturnValue({ customProperties });
     mockUseGenericContext.mockReturnValue({ onUpdate: jest.fn() });
   });
@@ -176,8 +177,56 @@ describe('useHeaderCustomProperties', () => {
     await onSave('Anika');
 
     expect(mockPatchEntity).toHaveBeenCalledWith('topic-id', [
-      { op: 'add', path: '/extension', value: { steward: 'Anika' } },
+      { op: 'replace', path: '/extension/steward', value: 'Anika' },
     ]);
     expect(onEntityUpdated).toHaveBeenCalledWith(updatedTopic);
+  });
+
+  it('adds the extension when the entity had none', async () => {
+    mockUseGenericContext.mockReturnValue({});
+    mockPatchEntity.mockResolvedValue({ id: entity.id });
+
+    const { result } = renderHook(() =>
+      useHeaderCustomProperties({
+        entityType: 'topic',
+        entity: { id: entity.id },
+        listAll: true,
+        canEdit: true,
+        onEntityUpdated: jest.fn(),
+      })
+    );
+    render(result.current[0].renderEditor?.(<button />) as ReactElement);
+    const { onSave } = (HeaderCustomPropertyEditor as jest.Mock).mock
+      .calls[0][0];
+
+    await onSave('Anika');
+
+    expect(mockPatchEntity).toHaveBeenCalledWith('topic-id', [
+      { op: 'add', path: '/extension', value: { steward: 'Anika' } },
+    ]);
+  });
+
+  it('removes the extension when its last value is cleared outside the GenericProvider', async () => {
+    mockUseGenericContext.mockReturnValue({});
+    mockPatchEntity.mockResolvedValue({ id: entity.id });
+
+    const { result } = renderHook(() =>
+      useHeaderCustomProperties({
+        entityType: 'topic',
+        entity,
+        listAll: true,
+        canEdit: true,
+        onEntityUpdated: jest.fn(),
+      })
+    );
+    render(result.current[0].renderEditor?.(<button />) as ReactElement);
+    const { onSave } = (HeaderCustomPropertyEditor as jest.Mock).mock
+      .calls[0][0];
+
+    await onSave(undefined);
+
+    expect(mockPatchEntity).toHaveBeenCalledWith('topic-id', [
+      { op: 'remove', path: '/extension' },
+    ]);
   });
 });

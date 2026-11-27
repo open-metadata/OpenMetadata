@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { CUSTOM_PROPERTY_HEADER_ID_PREFIX } from '../../../constants/EntityHeaderProperties.constants';
@@ -27,6 +28,9 @@ import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interfa
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { HeaderProperty } from './EntityHeaderProperties.types';
 import HeaderCustomPropertyEditor from './HeaderCustomPropertyEditor';
+
+const extensionDocument = (extension?: EntityWithExtension['extension']) =>
+  isUndefined(extension) ? {} : { extension };
 
 interface UseHeaderCustomPropertiesArgs {
   entityType: string;
@@ -63,11 +67,14 @@ export const useHeaderCustomProperties = ({
     async (updated: EntityWithExtension) => {
       const response = await getAPIfromSource(entityType as AssetsUnion)(
         entity.id,
-        [{ op: 'add', path: '/extension', value: updated.extension }]
+        compare(
+          extensionDocument(entity.extension),
+          extensionDocument(updated.extension)
+        )
       );
       onEntityUpdated?.(response as DataAssetWithDomains);
     },
-    [entityType, entity.id, onEntityUpdated]
+    [entityType, entity.id, entity.extension, onEntityUpdated]
   );
   const onUpdate =
     providerUpdate ?? (onEntityUpdated ? patchExtension : undefined);
