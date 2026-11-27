@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mockStatic;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -677,7 +678,12 @@ public class OidcDiscoveryValidatorTest {
 
       assertNotNull(error);
       assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, error.getField());
-      assertTrue(error.getError().contains("Failed to validate against discovery document"));
+      assertEquals(
+          "Failed to validate against discovery document: the discovery URL did not return a"
+              + " valid JSON document ("
+              + discoveryUri
+              + ")",
+          error.getError());
     }
   }
 
@@ -700,8 +706,7 @@ public class OidcDiscoveryValidatorTest {
   void anUnreachableDiscoveryUrlGivesAReadableError() {
     String discoveryUri = "https://unreachable.example/.well-known/openid-configuration";
     try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
-      http.when(() -> ValidationHttpUtil.safeGet(anyString()))
-          .thenThrow(new java.net.ConnectException());
+      http.when(() -> ValidationHttpUtil.safeGet(anyString())).thenThrow(new ConnectException());
 
       FieldError error =
           validator.validateAgainstDiscovery(
