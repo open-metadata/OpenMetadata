@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { createInstance } from 'i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
+import enUs from '../../locale/languages/en-us.json';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTagByFqn } from '../../rest/tagAPI';
+import { deleteTag, getTagByFqn } from '../../rest/tagAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import tagClassBase from '../../utils/TagClassBase';
@@ -77,12 +86,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </nav>
       )
     ),
-  Dropdown: {
-    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Popover: jest.fn().mockImplementation(() => null),
-    Menu: jest.fn().mockImplementation(() => null),
-    Item: jest.fn().mockImplementation(() => null),
-  },
+  Dropdown: jest.requireActual('@openmetadata/ui-core-components').Dropdown,
+  Grid: jest.requireActual('@openmetadata/ui-core-components').Grid,
   PageHeader: jest
     .fn()
     .mockImplementation(
@@ -97,21 +102,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
     .mockImplementation(
-      ({ children, onClick, onPress, 'data-testid': testId }) => (
-        <button data-testid={testId} onClick={onClick ?? onPress}>
+      ({ children, isDisabled, onClick, onPress, 'data-testid': testId }) => (
+        <button
+          data-testid={testId}
+          disabled={isDisabled}
+          onClick={onClick ?? onPress}>
           {children}
         </button>
       )
     ),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({ icon, onClick, className, 'data-testid': testId }) => (
-        <button className={className} data-testid={testId} onClick={onClick}>
-          {icon}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Dialog: Object.assign(
     jest.fn().mockImplementation(({ children, title }) => (
       <div role="dialog">
@@ -123,6 +124,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Content: jest
         .fn()
         .mockImplementation(({ children }) => <div>{children}</div>),
+      Header: jest
+        .fn()
+        .mockImplementation(({ children }) => <div>{children}</div>),
       Footer: jest
         .fn()
         .mockImplementation(({ children }) => <div>{children}</div>),
@@ -132,8 +136,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   ModalOverlay: jest
     .fn()
-    .mockImplementation(({ children, isOpen }) =>
-      isOpen ? <div>{children}</div> : null
+    .mockImplementation(({ children, isOpen, 'data-testid': testId }) =>
+      isOpen ? <div data-testid={testId}>{children}</div> : null
     ),
   Skeleton: jest.fn().mockImplementation(() => <span />),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
@@ -174,6 +178,7 @@ jest.mock('../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../rest/tagAPI', () => ({
+  deleteTag: jest.fn(),
   getTagByFqn: jest.fn().mockResolvedValue({
     name: 'NonSensitive',
     fullyQualifiedName: 'PII.NonSensitive',
@@ -287,9 +292,10 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
-  return jest.fn().mockImplementation(() => <div>DeleteModal</div>);
-});
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock(
   '../../components/Modals/EntityNameModal/EntityNameModal.component',
@@ -365,6 +371,78 @@ describe('TagPage', () => {
     expect(header).toContainElement(breadcrumb);
     expect(breadcrumb).toHaveTextContent('label.classification-plural');
     expect(breadcrumb).toHaveTextContent('NonSensitive');
+  });
+
+  it('warns about permanently deleting descendants and confirms a pending delete only once', async () => {
+    const tag = {
+      id: 'tag-id',
+      name: 'NonSensitive',
+      description: 'A tag with descendants',
+      fullyQualifiedName: 'PII.NonSensitive',
+      classification: {
+        id: 'classification-id',
+        type: 'classification',
+        fullyQualifiedName: 'PII',
+      },
+    };
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'en-US',
+      resources: { 'en-US': { translation: enUs } },
+    });
+    jest.mocked(useFqn).mockReturnValue({
+      entityFqn: tag.fullyQualifiedName,
+      fqn: tag.fullyQualifiedName,
+      ingestionFQN: '',
+      ruleName: '',
+    });
+    jest.mocked(getTagByFqn).mockResolvedValueOnce(tag);
+
+    let finishDelete = () => undefined as void;
+    jest.mocked(deleteTag).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishDelete = resolve;
+      })
+    );
+
+    const { useTranslation: realUseTranslation } =
+      jest.requireActual<typeof import('react-i18next')>('react-i18next');
+    await jest
+      .mocked(useTranslation)
+      .withImplementation(realUseTranslation, async () => {
+        render(
+          <I18nextProvider i18n={i18n}>
+            <TagPage />
+          </I18nextProvider>
+        );
+
+        fireEvent.click(await screen.findByTestId('manage-button'));
+        fireEvent.click(await screen.findByTestId('delete-button'));
+
+        const modal = await screen.findByTestId('delete-modal');
+        expect(modal).toHaveTextContent(
+          'This permanently deletes NonSensitive and all its descendant tags.'
+        );
+        const confirm = within(modal).getByRole('button', { name: 'Delete' });
+
+        act(() => {
+          confirm.click();
+          confirm.click();
+        });
+
+        expect(deleteTag).toHaveBeenCalledTimes(1);
+        expect(deleteTag).toHaveBeenCalledWith(tag.id);
+        expect(confirm).toBeDisabled();
+        expect(
+          within(modal).getByRole('button', { name: 'Cancel' })
+        ).toBeDisabled();
+        expect(mockNavigate).not.toHaveBeenCalled();
+
+        await act(async () => finishDelete());
+
+        expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenCalledWith('/tags/PII');
+      });
   });
 
   it('should call getTagData and fetchClassificationTagAssets when tagFqn changes', async () => {
