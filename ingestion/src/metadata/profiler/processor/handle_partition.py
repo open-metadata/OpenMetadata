@@ -38,14 +38,19 @@ def build_partition_predicate(
     partition_details: PartitionProfilerConfig,
     columns: list[Column],
 ):
-    """_summary_
+    """Build the SQL filter restricting a query to the configured partition
 
     Args:
-        partition_details (dict): _description_
-        col (Column): _description_
+        partition_details (PartitionProfilerConfig): partition configuration
+            (column name, interval type and its interval/values/range settings)
+        columns (List[Column]): table columns, used to resolve the type of the
+            partition column for time-based partitions
 
     Returns:
-        _type_: _description_
+        Optional[BinaryExpression]: the partition filter. COLUMN-VALUE and
+            INTEGER-RANGE partitions filter on the configured values or range;
+            time-based partitions filter on rows within the last
+            `partitionInterval` `partitionIntervalUnit`
     """
     partition_field = partition_details.partitionColumnName
     if partition_details.partitionIntervalType == PartitionIntervalTypes.COLUMN_VALUE:
