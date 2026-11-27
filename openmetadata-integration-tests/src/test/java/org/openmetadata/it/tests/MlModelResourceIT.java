@@ -45,7 +45,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

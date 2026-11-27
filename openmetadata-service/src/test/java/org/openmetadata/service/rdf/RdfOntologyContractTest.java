@@ -260,7 +260,7 @@ class RdfOntologyContractTest {
     return predicates;
   }
 
-  private static Set<String> declarations(final Model model) {
+  static Set<String> declarations(final Model model) {
     final Set<String> declarations = new TreeSet<>();
     for (Resource type : List.of(RDF.Property, OWL.ObjectProperty, OWL.DatatypeProperty)) {
       model

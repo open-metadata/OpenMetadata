@@ -219,6 +219,7 @@ const TestSuitePipelineFormDrawer = ({
             // A table's basic suite is scoped by the table; a bundle suite by
             // its own id.
             testSuiteId={tableFqn ? undefined : testSuiteId}
+            timezone={ingestionPipeline?.airflowConfig.pipelineTimezone}
             onSchedulerValidityChange={setIsSchedulerValid}
           />
         </Grid>

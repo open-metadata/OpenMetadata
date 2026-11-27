@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
@@ -45,6 +46,7 @@ public class BulkSourceHashFastPathIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+  private static final String VIEW_DDL = "CREATE VIEW fp_view AS SELECT c1 FROM fp_source";
 
   @Test
   void test_identicalBatch_isAllSuccess_withNoVersionBump(TestNamespace ns) throws Exception {
@@ -97,6 +99,21 @@ public class BulkSourceHashFastPathIT {
         after.getDescription(),
         "matching sourceHash must short-circuit before any field diff");
     assertEquals(versionAfterCreate, after.getVersion(), "no version bump on fast-path skip");
+  }
+
+  @Test
+  void test_matchingSourceHash_storesSchemaDefinitionTheRowLacks(TestNamespace ns)
+      throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable withoutDefinition = view(ns, schemaFqn, "fp_lost_ddl", null);
+    BulkApi.upsert("tables", List.of(withoutDefinition));
+
+    // The stored row lacks a definition its sourceHash covers: the state a write that dropped
+    // the definition leaves behind. Re-sending it under the same hash must still store it.
+    BulkApi.upsert("tables", List.of(view(ns, schemaFqn, "fp_lost_ddl", VIEW_DDL)));
+
+    Table after = getTable(tableFqn(schemaFqn, withoutDefinition.getName()), "schemaDefinition");
+    assertEquals(VIEW_DDL, after.getSchemaDefinition());
   }
 
   @Test
@@ -183,11 +200,22 @@ public class BulkSourceHashFastPathIT {
     return createTable;
   }
 
+  private CreateTable view(
+      TestNamespace ns, String schemaFqn, String baseName, String schemaDefinition) {
+    return table(ns, schemaFqn, baseName, "view", "view-hash")
+        .withTableType(TableType.View)
+        .withSchemaDefinition(schemaDefinition);
+  }
+
   private String tableFqn(String schemaFqn, String tableName) {
     return schemaFqn + "." + tableName;
   }
 
   private Table getTable(String fqn) throws Exception {
+    return getTable(fqn, "sourceHash");
+  }
+
+  private Table getTable(String fqn, String fields) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(
@@ -195,7 +223,9 @@ public class BulkSourceHashFastPathIT {
                     SdkClients.getServerUrl()
                         + "/v1/tables/name/"
                         + fqn
-                        + "?fields=sourceHash&include=all"))
+                        + "?fields="
+                        + fields
+                        + "&include=all"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();

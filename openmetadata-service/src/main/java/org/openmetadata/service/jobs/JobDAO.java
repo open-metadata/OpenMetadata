@@ -30,24 +30,19 @@ public interface JobDAO {
 
   Logger LOG = LoggerFactory.getLogger(JobDAO.class);
 
-  default long insertJob(
-      BackgroundJob.JobType jobType, JobHandler handler, String jobArgs, String createdBy) {
+  default long insertJob(String jobType, JobHandler handler, String jobArgs, String createdBy) {
     return insertJob(jobType, handler, jobArgs, createdBy, null);
   }
 
   default long insertJob(
-      BackgroundJob.JobType jobType,
-      JobHandler handler,
-      String jobArgs,
-      String createdBy,
-      Long runAt) {
+      String jobType, JobHandler handler, String jobArgs, String createdBy, Long runAt) {
     try {
       JsonUtils.readTree(jobArgs);
     } catch (Exception e) {
       throw new IllegalArgumentException("jobArgs must be a valid JSON string");
     }
     return insertJobInternal(
-        jobType.name(), handler.getClass().getSimpleName(), jobArgs, createdBy, runAt);
+        jobType, handler.getClass().getSimpleName(), jobArgs, createdBy, runAt);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -78,7 +73,7 @@ public interface JobDAO {
     Long pendingId = findPendingMemoryJobId(jobKey);
     if (pendingId == null || reschedulePendingMemoryJob(pendingId, runAt, updatedAt) == 0) {
       insertJobInternal(
-          BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+          BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
           "ContextMemoryExtractionJobHandler",
           jobArgs,
           createdBy,
@@ -114,7 +109,7 @@ public interface JobDAO {
       return;
     }
     insertJobInternal(
-        BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+        BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
         "ContextMemoryExtractionJobHandler",
         jobArgs,
         createdBy,
@@ -164,7 +159,6 @@ public interface JobDAO {
       @Bind("memoryId") String memoryId, @Bind("includeRunning") boolean includeRunning);
 
   String MEMORY_GLOSSARY_DERIVATION_HANDLER = "MemoryGlossaryDerivationJobHandler";
-  String MEMORY_GLOSSARY_DERIVATION_JOB_TYPE = "MEMORY_GLOSSARY_DERIVATION";
   int MEMORY_GLOSSARY_BATCH_LIMIT = 20;
   // A batch only grows while its start is still this far away, so no worker can have read it yet.
   long MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS = 5_000L;
@@ -182,7 +176,7 @@ public interface JobDAO {
     }
     return Optional.of(
         insertJobInternal(
-            MEMORY_GLOSSARY_DERIVATION_JOB_TYPE,
+            BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION,
             MEMORY_GLOSSARY_DERIVATION_HANDLER,
             jobArgs,
             createdBy,
@@ -206,7 +200,7 @@ public interface JobDAO {
     }
     return Optional.of(
         insertJobInternal(
-            MEMORY_GLOSSARY_DERIVATION_JOB_TYPE,
+            BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION,
             MEMORY_GLOSSARY_DERIVATION_HANDLER,
             jobArgs,
             createdBy,
@@ -470,7 +464,7 @@ public interface JobDAO {
     }
     return new OntologyPackInstallEnqueue(
         insertTrackedJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            BackgroundJobTypes.ONTOLOGY_PACK_INSTALL,
             methodName,
             jobArgs,
             createdBy,
@@ -677,7 +671,7 @@ public interface JobDAO {
       try {
         BackgroundJob job = new BackgroundJob();
         job.setId(jobId);
-        job.setJobType(BackgroundJob.JobType.fromValue(rs.getString("jobType")));
+        job.setJobType(rs.getString("jobType"));
         job.setMethodName(rs.getString("methodName"));
 
         String jobArgsJson = rs.getString("jobArgs");

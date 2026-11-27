@@ -77,6 +77,7 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
+      <span data-testid="form-enabled">{String(value.enabled)}</span>
       <button
         data-testid="change-form"
         onClick={() => onChange({ ...value, name: 'updated-alert' })}>
@@ -256,6 +257,19 @@ describe('AlertEditModal', () => {
         resources: ['table'],
       })
     );
+  });
+
+  it('starts a new alert enabled', () => {
+    render(
+      <AlertEditModal
+        isOpen
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('form-enabled')).toHaveTextContent('true');
   });
 
   it('renders add form with empty alert values', () => {

@@ -35,10 +35,18 @@ import org.openmetadata.service.jdbi3.PipelineRepository;
 public sealed interface RdfLiveWrite {
   void apply(RdfRepository repository);
 
+  /**
+   * Replaces the ontology's active release graph, then queues an entity update for each asset bound
+   * to its concepts, since which of their bindings the graph states depends on that release. Each
+   * asset is its own write with its own retries and dead letter, so one that cannot be projected
+   * blocks neither the release nor the other assets. Enqueueing takes the queue's enqueue lock,
+   * which is independent of the writer fence this write holds.
+   */
   record OntologyGraph(UUID ontologyId) implements RdfLiveWrite {
     @Override
     public void apply(final RdfRepository repository) {
       repository.refreshOntologyGraph(ontologyId);
+      repository.forEachBoundAssetPage(ontologyId, RdfUpdater::refreshEntities);
     }
   }
 

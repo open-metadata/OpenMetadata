@@ -38,6 +38,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.api.data.NativeOntologyLoadedPrefix;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 
 public interface OntologyDAO {
   String SCOPE_TERM =
@@ -65,10 +66,14 @@ public interface OntologyDAO {
           + SCOPE_TO
           + " AND EXISTS (SELECT 1 FROM tag_usage sourceUsage "
           + "WHERE sourceUsage.tagFQNHash = sourceTerm.fqnHash "
-          + "AND sourceUsage.source = :tagSource) "
+          + "AND sourceUsage.source = :tagSource AND sourceUsage."
+          + TagUsageDAO.NOT_PENDING
+          + ") "
           + "AND EXISTS (SELECT 1 FROM tag_usage targetUsage "
           + "WHERE targetUsage.tagFQNHash = targetTerm.fqnHash "
-          + "AND targetUsage.source = :tagSource) "
+          + "AND targetUsage.source = :tagSource AND targetUsage."
+          + TagUsageDAO.NOT_PENDING
+          + ") "
           + "ORDER BY relation.fromId ASC, relation.toId ASC, relation.relation ASC "
           + "LIMIT :relationLimit";
 
@@ -76,7 +81,9 @@ public interface OntologyDAO {
       "SELECT term.json AS termJson, COUNT(DISTINCT tagUsage.targetFQNHash) AS assetCount "
           + "FROM glossary_term_entity term "
           + "JOIN tag_usage tagUsage ON tagUsage.tagFQNHash = term.fqnHash "
-          + "AND tagUsage.source = :tagSource "
+          + "AND tagUsage.source = :tagSource AND tagUsage."
+          + TagUsageDAO.NOT_PENDING
+          + " "
           + "WHERE term.deleted = FALSE AND "
           + SCOPE_TERM
           + " GROUP BY term.id, term.name "
@@ -243,7 +250,9 @@ public interface OntologyDAO {
   @SqlQuery(
       "SELECT COUNT(DISTINCT term.id) FROM glossary_term_entity term "
           + "JOIN tag_usage tagUsage ON tagUsage.tagFQNHash = term.fqnHash "
-          + "AND tagUsage.source = :tagSource "
+          + "AND tagUsage.source = :tagSource AND tagUsage."
+          + TagUsageDAO.NOT_PENDING
+          + " "
           + "WHERE term.deleted = FALSE AND "
           + SCOPE_TERM)
   int countAssetTerms(@BindBean OntologyQueryParameters parameters);

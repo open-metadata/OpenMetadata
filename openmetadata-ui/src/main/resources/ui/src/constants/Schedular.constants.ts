@@ -87,6 +87,8 @@ export const DEFAULT_SCHEDULE_CRON_DAILY = '0 0 * * *';
 export const DEFAULT_SCHEDULE_CRON_WEEKLY = '0 0 * * 1';
 export const DEFAULT_SCHEDULE_CRON_MONTHLY = '0 0 1 * *';
 
+export const DEFAULT_PIPELINE_TIMEZONE = 'UTC';
+
 // MINUTE: 0-59
 export const MINUTE_PATTERN =
   /^(\*|\*\/\d+|([0-5]?\d)(-([0-5]?\d))?(\/\d+)?(,([0-5]?\d)(-([0-5]?\d))?(\/\d+)?)*)$/;

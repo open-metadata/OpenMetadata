@@ -24,7 +24,10 @@ import {
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_PIPELINE_TIMEZONE,
+  DEFAULT_SCHEDULE_CRON_DAILY,
+} from '../../../../constants/Schedular.constants';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
@@ -214,6 +217,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                     defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                     entity={t('label.test-case')}
                     includePeriodOptions={schedulerOptions}
+                    timezone={DEFAULT_PIPELINE_TIMEZONE}
                     value={field.value || undefined}
                     onChange={(cron) => field.onChange(cron ?? '')}
                   />

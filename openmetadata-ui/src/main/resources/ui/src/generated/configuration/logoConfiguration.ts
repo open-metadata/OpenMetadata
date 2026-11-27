@@ -19,9 +19,18 @@ export interface LogoConfiguration {
      */
     customFaviconUrlPath?: string;
     /**
+     * Logo Image Url used when the dark theme is active. Falls back to customLogoUrlPath.
+     */
+    customLogoDarkUrlPath?: string;
+    /**
      * Login Page Logo Image Url
      */
     customLogoUrlPath?: string;
+    /**
+     * Navigation Bar Logo Image Url used when the dark theme is active. Falls back to
+     * customMonogramUrlPath.
+     */
+    customMonogramDarkUrlPath?: string;
     /**
      * Navigation Bar Logo Image Url
      */

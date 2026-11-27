@@ -679,3 +679,26 @@ class TestOMetaCustomPropertiesAPI:
                     )
                     assert custom_property["propertyType"]["name"] == expected_custom_property["propertyType"]["name"]
         assert len(actual_custom_properties) == len(EXPECTED_CUSTOM_PROPERTIES)
+
+    def test_patch_custom_properties_keeps_existing_values(self, metadata, cp_schema):
+        """
+        patch_custom_properties merges by default and replaces only when forced
+        """
+        _create_custom_properties(metadata)
+
+        table = _create_table(
+            metadata,
+            cp_schema.fullyQualifiedName,
+            name=generate_name().root,
+            extensions={"TableSize": "250 MB", "Rating": ["Good"]},
+        )
+
+        metadata.patch_custom_properties(entity=Table, entity_id=table.id, custom_properties={"Department": ["D1"]})
+        res = metadata.get_by_id(entity=Table, entity_id=table.id, fields=["extension"])
+        assert res.extension.root == {"TableSize": "250 MB", "Rating": ["Good"], "Department": ["D1"]}
+
+        metadata.patch_custom_properties(
+            entity=Table, entity_id=table.id, custom_properties={"Rating": ["Bad"]}, force=True
+        )
+        res = metadata.get_by_id(entity=Table, entity_id=table.id, fields=["extension"])
+        assert res.extension.root == {"Rating": ["Bad"]}

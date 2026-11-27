@@ -23,7 +23,7 @@ import {
 import validator from '@rjsf/validator-ajv8';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -223,17 +223,19 @@ export const useSsoConfiguration = ({
       setHasExistingConfig(true);
       setCurrentProvider(config.authenticationConfiguration.provider);
 
-      const configData = {
+      const configData = cloneDeep({
         authenticationConfiguration: config.authenticationConfiguration,
         authorizerConfiguration: config.authorizerConfiguration,
-      };
+      });
 
       if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
         applySamlConfiguration(configData);
       }
 
+      // The saved snapshot is what a save compares against, so the form gets
+      // its own copy and nothing done to the form can change the snapshot.
       setSavedData(configData);
-      setInternalData(configData);
+      setInternalData(cloneDeep(configData));
       setShowForm(true);
 
       if (forceEditMode) {

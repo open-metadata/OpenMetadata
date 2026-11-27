@@ -26,6 +26,14 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+  /**
+   * The limit resource that raised the banner. A within-limit
+   * `getResourceLimit(resource)` refresh clears only a banner whose `resource`
+   * matches, so a banner set without it is never cleared that way, only by its
+   * close button or a `LimitWrapper` unmount. Optional so external callers of
+   * `setBannerDetails` keep compiling.
+   */
+  resource?: string;
 };
 
 const buildDisabledResourceLimit = (
@@ -62,6 +70,7 @@ const maybeShowLimitBanner = (
   resource: string,
   plan: string,
   showBanner: boolean,
+  bannerDetails: BannerDetails | null,
   setBannerDetails: (details: BannerDetails | null) => void
 ): void => {
   const {
@@ -76,7 +85,17 @@ const maybeShowLimitBanner = (
     limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
-  if (!isAnyLimitExceeded || !showBanner) {
+  if (!showBanner) {
+    return;
+  }
+
+  if (!isAnyLimitExceeded) {
+    // The banner is global, so only retract it when it was raised for this
+    // resource; a within-limit check on another resource must not hide it.
+    if (bannerDetails?.resource === resource) {
+      setBannerDetails(null);
+    }
+
     return;
   }
 
@@ -93,6 +112,7 @@ const maybeShowLimitBanner = (
     } (${plan}, ${getLimitThresholdPercentage(limits, hardLimitExceed)}%)`,
     softLimitExceed,
     hardLimitExceed,
+    resource,
   });
 };
 
@@ -167,6 +187,7 @@ export const useLimitStore = create<{
         resource,
         plan,
         showBanner,
+        get().bannerDetails,
         setBannerDetails
       );
     }

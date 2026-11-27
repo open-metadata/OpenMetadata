@@ -38,6 +38,10 @@ _METHOD_BY_ACTION = {
     "can_delete": "DELETE",
 }
 _DAG_RESOURCE = "DAGs"
+# FAB's DAGs resource has no can_create (only read/edit/delete), so authorizing POST on it
+# denies every user, Admin included. Creating a DAG through these routes is an edit of
+# the DAGs resource, which every auth manager grants to the roles allowed to write.
+_DAG_METHOD_BY_ACTION = {**_METHOD_BY_ACTION, "can_create": "PUT"}
 
 
 def get_security_module():
@@ -293,11 +297,12 @@ def _is_authorized(user: Any, permissions_list: Sequence[tuple[str, str]]) -> bo
 
 
 def _is_authorized_for(auth_manager, user: Any, action: str, resource: str) -> bool:
+    if resource == _DAG_RESOURCE:
+        method = _DAG_METHOD_BY_ACTION.get(action)
+        return method is not None and bool(auth_manager.is_authorized_dag(method=method, user=user))
     method = _METHOD_BY_ACTION.get(action)
     if method is None:
         return False
-    if resource == _DAG_RESOURCE:
-        return bool(auth_manager.is_authorized_dag(method=method, user=user))
     return bool(auth_manager.is_authorized_custom_view(method=method, resource_name=resource, user=user))
 
 

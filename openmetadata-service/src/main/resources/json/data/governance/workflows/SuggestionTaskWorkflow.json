@@ -27,6 +27,8 @@
         "assignees": {
           "addReviewers": true,
           "addOwners": false,
+          "cascadeOwners": true,
+          "emptyAssigneeStrategy": "assignAdmins",
           "candidates": []
         },
         "approvalThreshold": 1,

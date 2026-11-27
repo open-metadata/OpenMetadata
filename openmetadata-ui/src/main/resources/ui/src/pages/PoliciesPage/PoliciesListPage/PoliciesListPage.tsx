@@ -301,10 +301,6 @@ const PoliciesListPage = () => {
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
     if (cursorType && paging) {
-      fetchPolicies({
-        [cursorType]: paging[cursorType],
-        total: paging?.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },

@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -29,7 +30,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -103,6 +106,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -147,13 +151,17 @@ import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -1810,6 +1818,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
+    if (!nullOrEmpty(request.getAssets()) && !nullOrEmpty(glossary.getTags())) {
+      checkMutuallyExclusiveForUserAppliedTags(mergeOwnTags(term.getTags(), glossary.getTags()));
+    }
 
     BulkOperationResult result =
         AssetTagLabelService.addGlossaryTermToAssets(
@@ -1825,18 +1836,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       AddGlossaryToAssetsRequest request,
       BulkOperationResult result) {
     if (!Boolean.TRUE.equals(request.getDryRun())
-        && !CommonUtil.nullOrEmpty(request.getAssets())
-        && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && (!(term.getTags().isEmpty() && glossary.getTags().isEmpty()))) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-      applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+        && !nullOrEmpty(request.getAssets())
+        && nullOrEmpty(result.getFailedRequest())
+        && !nullOrEmpty(glossary.getTags())) {
+      List<TagLabel> merged = mergeOwnTags(term.getTags(), glossary.getTags());
+      deleteTagsPreservingCertification(term.getFullyQualifiedName());
+      applyTags(merged, term.getFullyQualifiedName());
       invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
     }
+  }
+
+  // Term labels take precedence over glossary labels and DERIVED labels are excluded so a derived
+  // label on the glossary cannot shadow the term's own applied label before applyTags skips it.
+  static List<TagLabel> mergeOwnTags(List<TagLabel> termTags, List<TagLabel> glossaryTags) {
+    List<TagLabel> merged = new ArrayList<>(ownUniqueTags(termTags));
+    EntityUtil.mergeTags(merged, ownUniqueTags(glossaryTags));
+    return merged;
+  }
+
+  private static List<TagLabel> ownUniqueTags(List<TagLabel> tags) {
+    return getUniqueTags(
+        listOrEmpty(tags).stream().filter(tag -> !isSystemGenerated(tag)).toList());
   }
 
   private static AssetTagLabelService.Request assetsRequest(
@@ -2099,7 +2122,77 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request, PatchRequester requester) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id"));
-    return AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    BulkOperationResult result =
+        AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    if (!Boolean.TRUE.equals(request.getDryRun())) {
+      dropPendingOnRemovedAssets(term, result, requester);
+    }
+    return result;
+  }
+
+  /**
+   * Drops the term's pending labels on the assets it was removed from, held ones included: a
+   * pending label is not shown, so taking it back is not a change a reviewer sees. A pending-only
+   * removal patches nothing, so the asset is not authorized by the patch; the caller must be allowed
+   * to edit the asset's glossary terms, and an asset they may not edit is reported as failed.
+   */
+  private void dropPendingOnRemovedAssets(
+      GlossaryTerm term, BulkOperationResult result, PatchRequester requester) {
+    List<BulkResponse> passed = new ArrayList<>();
+    List<BulkResponse> denied = new ArrayList<>();
+    for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
+      if (response.getRequest() instanceof EntityReference asset && isAddressed(asset)) {
+        try {
+          requester
+              .authorizer()
+              .authorize(
+                  requester.securityContext(),
+                  new OperationContext(owningType(asset), MetadataOperation.EDIT_GLOSSARY_TERMS),
+                  new ResourceContext<>(owningType(asset), owningId(asset), null));
+          GlossaryTermPendingLabels.dropPendingOn(term, asset);
+          passed.add(response);
+        } catch (AuthorizationException e) {
+          denied.add(
+              response
+                  .withStatus(Response.Status.FORBIDDEN.getStatusCode())
+                  .withMessage(e.getMessage()));
+        }
+      } else {
+        passed.add(response);
+      }
+    }
+    if (!denied.isEmpty()) {
+      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
+      failed.addAll(denied);
+      result
+          .withSuccessRequest(passed)
+          .withFailedRequest(failed)
+          .withNumberOfRowsPassed(passed.size())
+          .withNumberOfRowsFailed(failed.size())
+          .withStatus(passed.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
+    }
+  }
+
+  // A column is addressed by its FQN, any other asset by its id.
+  private static boolean isAddressed(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? asset.getFullyQualifiedName() != null
+        : asset.getId() != null;
+  }
+
+  // A column is authorized as its table.
+  private static String owningType(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType()) ? Entity.TABLE : asset.getType();
+  }
+
+  private static UUID owningId(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? Entity.getEntityReferenceByName(
+                Entity.TABLE,
+                ChildFieldResolver.parentFqnOf(asset.getFullyQualifiedName(), Entity.TABLE),
+                Include.NON_DELETED)
+            .getId()
+        : asset.getId();
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
@@ -2138,6 +2231,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postCreate(GlossaryTerm entity) {
     super.postCreate(entity);
+  }
+
+  /**
+   * Labels applied while the term waited for approval are shown once it is approved and dropped
+   * once it is rejected. This runs after the term is stored, on every update path, bulk included,
+   * so neither happens for a status change that was never saved.
+   */
+  @Override
+  protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    super.postUpdate(original, updated);
+    EntityStatus to = updated.getEntityStatus();
+    if (to != null && (to != original.getEntityStatus() || changesStatus(updated))) {
+      if (to == EntityStatus.APPROVED) {
+        PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
+      } else if (to == EntityStatus.REJECTED) {
+        GlossaryTermPendingLabels.dropRejected(updated);
+      }
+    }
+  }
+
+  // Edits by one user within a session are consolidated into one version, and `original` is then
+  // the version before the session: a term deprecated and approved again in that session looks
+  // unchanged against it. The request's own change still records the status it moved from.
+  private static boolean changesStatus(GlossaryTerm updated) {
+    ChangeDescription requestChange = updated.getIncrementalChangeDescription();
+    return requestChange != null
+        && Stream.concat(
+                listOrEmpty(requestChange.getFieldsUpdated()).stream(),
+                listOrEmpty(requestChange.getFieldsAdded()).stream())
+            .anyMatch(field -> FIELD_ENTITY_STATUS.equals(field.getName()));
   }
 
   @Override
@@ -3250,7 +3373,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
     placeUnder(updated, moveRequest.getParent());
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
@@ -3265,6 +3388,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 .withEntityId(updated.getId())
                 .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
                 .withUserName(updated.getUpdatedBy())
+                .withImpersonatedBy(updated.getImpersonatedBy())
                 .withPreviousVersion(original.getVersion())
                 .withCurrentVersion(updated.getVersion())
                 .withTimestamp(System.currentTimeMillis())
