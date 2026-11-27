@@ -1,7 +1,7 @@
 # The hybrid RRF search pipeline leaves OpenMetadata
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-23 (initial)
+- **Revisions:** v1 2026-11-23 (initial); v2 2026-11-26 (the deletion has landed)
 - **Deciders:** Platform team
 - **Guard:** `SearchRepositoryBehaviorTest.getHybridWeightsReadsTheAdminWeightsOfTheSearchSettings`
   (the weights a caller fuses with); `reviewer` for new code that creates or reads a search
@@ -51,3 +51,14 @@ cluster-scoped write still happens on start, on Search Indexing runs and on sear
 After it lands, a cluster that already holds a stored `hybrid-rrf` pipeline keeps it; nothing reads
 or updates it, and an operator may delete it. Removing the `searchPipeline` key itself needs a
 deprecation period in which configuration files drop it first.
+
+## Amendment (v2, 2026-11-26)
+
+The deletion landed in PR #38565, after the downstream caller moved to the building blocks. Every
+member listed under Decision is gone, with its tests, the pipeline scenarios of
+`VectorEmbeddingIntegrationIT`, the Search Indexing preflight step, the refresh on search settings
+save and the pipeline check of the deployment status. The embeddings step of the deployment status
+now only reports whether embeddings work, the same way on both engines. The configuration schema
+documents `searchPipeline` as ignored, and the descriptions of `paginationDepth` and of the keyword
+and semantic weights no longer mention a pipeline. The first paragraph of Consequences describes
+the state before this amendment.

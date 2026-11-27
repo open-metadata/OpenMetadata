@@ -1,0 +1,92 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/entityGraph.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "entityGraph",
+  "description": "Graph returned when exploring relationships around an entity.",
+  "$ref": "#/definitions/entityGraph",
+  "definitions": {
+    "entityGraph": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.EntityGraph",
+      "properties": {
+        "nodes": {"type": "array", "items": {"$ref": "#/definitions/graphNode"}},
+        "edges": {"type": "array", "items": {"$ref": "#/definitions/graphEdge"}},
+        "totalNodes": {"type": "integer", "minimum": 0},
+        "totalEdges": {"type": "integer", "minimum": 0},
+        "truncated": {
+          "description": "True when traversal or binding links reach a limit and the graph is partial.",
+          "type": "boolean"
+        },
+        "source": {"type": "string", "enum": ["rdf"]},
+        "filterOptions": {"$ref": "#/definitions/graphFilterOptions"}
+      },
+      "required": ["nodes", "edges", "totalNodes", "totalEdges", "truncated", "source", "filterOptions"],
+      "additionalProperties": false
+    },
+    "graphNode": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.GraphNode",
+      "properties": {
+        "id": {"description": "Entity IRI used as the node identifier.", "type": "string"},
+        "entityId": {"description": "Entity identifier extracted from the IRI.", "type": "string"},
+        "type": {"type": "string"},
+        "group": {"description": "Lowercase entity type.", "type": "string"},
+        "label": {
+          "description": "Display label, omitted when the entity has no display name or name.",
+          "type": "string"
+        },
+        "name": {"type": "string"},
+        "fullyQualifiedName": {"type": "string"},
+        "description": {"type": "string"},
+        "tags": {"type": "array", "items": {"$ref": "#/definitions/graphTag"}}
+      },
+      "required": ["id", "entityId", "type", "group"],
+      "additionalProperties": false
+    },
+    "graphTag": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.GraphTag",
+      "properties": {
+        "tagFQN": {"type": "string"},
+        "name": {"description": "Tag label type followed by the tag FQN.", "type": "string"}
+      },
+      "required": ["tagFQN", "name"],
+      "additionalProperties": false
+    },
+    "graphEdge": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.GraphEdge",
+      "properties": {
+        "from": {"description": "Source node IRI.", "type": "string"},
+        "to": {"description": "Target node IRI.", "type": "string"},
+        "label": {"type": "string"},
+        "relationType": {"description": "Relationship identifier, including custom predicates.", "type": "string"},
+        "arrows": {"type": "string", "enum": ["to"]}
+      },
+      "required": ["from", "to", "label", "relationType", "arrows"],
+      "additionalProperties": false
+    },
+    "graphFilterOption": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.GraphFilterOption",
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "count": {"type": "integer", "minimum": 0}
+      },
+      "required": ["id", "label", "count"],
+      "additionalProperties": false
+    },
+    "graphFilterOptions": {
+      "description": "Available entity and relationship types counted before filters are applied.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.GraphFilterOptions",
+      "properties": {
+        "entityTypes": {"type": "array", "items": {"$ref": "#/definitions/graphFilterOption"}},
+        "relationshipTypes": {"type": "array", "items": {"$ref": "#/definitions/graphFilterOption"}}
+      },
+      "required": ["entityTypes", "relationshipTypes"],
+      "additionalProperties": false
+    }
+  }
+}
