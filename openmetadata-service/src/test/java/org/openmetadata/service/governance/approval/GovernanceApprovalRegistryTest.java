@@ -779,6 +779,21 @@ class GovernanceApprovalRegistryTest {
     }
 
     @Test
+    void workflowAutomationWritingForAListedBotIsNotHeld() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("set by the workflow for the bot");
+      assertTrue(
+          admit(
+                  List.of(ruleListing(WORKFLOW_A, List.of("description"), Set.of("scraperbot"))),
+                  original,
+                  updated,
+                  "scraperbot",
+                  "governance-bot",
+                  true)
+              .isEmpty());
+    }
+
+    @Test
     void workflowAutomationIsNotHeld() {
       Glossary original = published();
       Glossary updated = edited(original).withDescription("by workflow");

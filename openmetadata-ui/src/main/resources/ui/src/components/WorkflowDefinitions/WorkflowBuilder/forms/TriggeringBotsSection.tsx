@@ -61,34 +61,18 @@ interface ApplicationBots {
 const toApplicationBotName = (applicationName: string) =>
   `${applicationName}Bot`;
 
-const fetchNamesSafely = async (
-  fetchPage: (
-    after?: string
-  ) => Promise<{ data: { name: string }[]; paging: Paging }>
-): Promise<string[]> => {
-  try {
-    return (await fetchAllPages(fetchPage)).map((app) => app.name);
-  } catch {
-    return [];
-  }
-};
-
 // The server refuses an application's bot anyway; a user who cannot list applications still
 // gets the picker, without that filter.
-const fetchInstalledApplications = async (): Promise<App[]> => {
-  try {
-    return await fetchAllPages<App>((after) =>
-      getApplicationList({ fields: 'bot', limit: PAGE_SIZE, after })
-    );
-  } catch {
-    return [];
-  }
-};
+const fetchAllPagesOrEmpty = async <T,>(
+  fetchPage: (after?: string) => Promise<{ data: T[]; paging: Paging }>
+): Promise<T[]> => fetchAllPages(fetchPage).catch(() => []);
 
 const fetchApplicationBots = async (): Promise<ApplicationBots> => {
-  const [installed, marketplaceNames] = await Promise.all([
-    fetchInstalledApplications(),
-    fetchNamesSafely((after) =>
+  const [installed, marketplace] = await Promise.all([
+    fetchAllPagesOrEmpty<App>((after) =>
+      getApplicationList({ fields: 'bot', limit: PAGE_SIZE, after })
+    ),
+    fetchAllPagesOrEmpty((after) =>
       getMarketPlaceApplicationList({ limit: PAGE_SIZE, after })
     ),
   ]);
@@ -96,8 +80,8 @@ const fetchApplicationBots = async (): Promise<ApplicationBots> => {
   return {
     ids: new Set(installed.flatMap((app) => (app.bot?.id ? [app.bot.id] : []))),
     names: new Set(
-      [...installed.map((app) => app.name), ...marketplaceNames].map(
-        toApplicationBotName
+      [...installed, ...marketplace].map((app) =>
+        toApplicationBotName(app.name)
       )
     ),
   };
