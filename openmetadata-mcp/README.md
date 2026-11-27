@@ -31,6 +31,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
 - **Read-only Mode** - Turn on Read-only Mode in the MCP Server app settings to expose only tools annotated `readOnlyHint`, for every user including admins. A change applies at once to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again. Through the API, send the full configuration: `PUT /api/v1/system/mcp/config` replaces every field.
 - **Disabled Tools** - Pick tools under Disabled Tools in the MCP Server app settings to turn them off for every user including admins. A change applies at once to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again. `GET /api/v1/system/mcp/tools` lists the tool names the server registered.
+- **Offered Tools** - List tools under Offered Tools in the MCP Server app settings to offer only those tools for every user including admins. An empty list offers every registered tool; Disabled Tools and Read-only Mode still apply. A change applies at once to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again.
 
 ### Database-Driven Configuration
 - **Runtime Configuration** - Update MCP settings without server restart via REST API
