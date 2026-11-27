@@ -216,21 +216,16 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.9",
+    "collate-sqllineage==2.1.10",  # imports collate_sqlfluff, which coexists with upstream sqlfluff
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=83",  # CVE-2026-59890: MANIFEST.in exclusion bypass through Unicode normalization
     "shapely",
-    # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError. 0.11.19 moved dbt-core behind the
-    # [dbt] extra; keep it so dbt-core (and the dbt-extractor floor below) still install.
-    "collate-data-diff[dbt]>=0.11.17",
-    "pytz",  # imported directly by metadata.utils.time_utils
-    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
-    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
-    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
-    "dbt-extractor>=0.5.0",
+    # 0.11.19 moves dbt-core to an extra so dbt 2 (`dbt`/`dbt-oss`) can share the environment
+    "collate-data-diff>=0.11.19",
+    "pytz",  # imported directly by metadata.utils.time_utils; dbt-core used to pull it in
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",

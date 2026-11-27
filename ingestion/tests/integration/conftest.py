@@ -22,7 +22,7 @@ from metadata.workflow.ingestion import IngestionWorkflow
 
 @pytest.fixture(scope="session", autouse=True)
 def configure_logging():
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+    logging.getLogger("collate_sqlfluff").setLevel(logging.CRITICAL)
     logging.getLogger("pytds").setLevel(logging.CRITICAL)
 
 
