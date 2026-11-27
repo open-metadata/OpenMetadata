@@ -301,15 +301,25 @@ export const useIncidentFilters = ({
 
   const clearAllFilters = useCallback(() => {
     setAssigneeOwnerRefs([]);
-    updateFilters({
-      testCaseFQN: undefined,
-      testCaseResolutionStatusType: undefined,
-      assignee: undefined,
-      startTs: undefined,
-      endTs: undefined,
-      dateField: undefined,
-    });
-  }, [updateFilters]);
+    navigate(
+      {
+        search: QueryString.stringify(
+          omit(allParams, [
+            'testCaseFQN',
+            'testCaseResolutionStatusType',
+            'assignee',
+            'startTs',
+            'endTs',
+            'dateField',
+            'currentPage',
+            'cursorType',
+            'cursorValue',
+          ])
+        ),
+      },
+      { replace: true }
+    );
+  }, [allParams, navigate]);
 
   return {
     dateRangeKey,
