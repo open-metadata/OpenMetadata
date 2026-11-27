@@ -439,7 +439,10 @@ const CustomizeEntityHeaderPanel = ({
               id={property.id}
               textValue={property.label}>
               <div
-                className={classNames(ROW_CLASS_NAME, 'tw:bg-primary tw:px-2')}>
+                className={classNames(
+                  ROW_CLASS_NAME,
+                  'tw:bg-primary_alt tw:px-2'
+                )}>
                 <AriaButton
                   aria-label={t('label.move-the-entity', {
                     entity: property.label,
