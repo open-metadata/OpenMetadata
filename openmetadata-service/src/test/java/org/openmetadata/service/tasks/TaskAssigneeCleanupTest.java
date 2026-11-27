@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -51,7 +50,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 class TaskAssigneeCleanupTest {
 
   private static final String EXPECTED_CLEANUP_FIELDS =
-      "assignees,about,createdBy,reviewers,watchers,domains";
+      "assignees,about,createdBy,reviewers,watchers";
+  private static final String LOCKED_JSON = "{}";
 
   private TaskRepository repository;
   private EntityDAO<Task> taskDao;
@@ -63,31 +63,56 @@ class TaskAssigneeCleanupTest {
     repository = mock(TaskRepository.class);
     taskDao = mock(EntityDAO.class);
     when(repository.getDao()).thenReturn(taskDao);
-    when(taskDao.findJsonByIdForUpdate(any(), eq(Include.NON_DELETED))).thenReturn("{}");
     when(repository.executeInTransaction(any()))
         .thenAnswer(invocation -> invocation.<Supplier<?>>getArgument(0).get());
-    cleanupFields =
-        new Fields(Set.of("assignees", "about", "createdBy", "reviewers", "watchers", "domains"));
+    cleanupFields = new Fields(Set.of("assignees", "about", "createdBy", "reviewers", "watchers"));
     when(repository.getFields(EXPECTED_CLEANUP_FIELDS)).thenReturn(cleanupFields);
   }
 
   @Test
-  void keepsTaskDeletedWhenSoftDeletedAfterCleanupLoadedIt() {
+  void skipsSoftDeletedTaskReferences() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference deletedTaskRef = taskRef(UUID.randomUUID(), true);
+    stubAssignedTasks(userId, Entity.USER, List.of(deletedTaskRef));
+
+    try (final MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(repository);
+      TaskAssigneeCleanup.removeAssignee(userId, Entity.USER);
+    }
+
+    verify(taskDao, never()).findJsonByIdForUpdate(any(), any());
+    verify(repository, never()).update(any(), any(), any(), any(), any(), any());
+    verify(repository, never()).deleteRelationship(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void writesNothingWhenTheTaskIsGoneOnceLocked() {
     final UUID userId = UUID.randomUUID();
     final EntityReference racedRef = taskRef(UUID.randomUUID(), false);
     stubAssignedTasks(userId, Entity.USER, List.of(racedRef));
-    stubLiveTask(
-        racedRef.getId(),
-        taskWithAssignees(racedRef.getId(), entityRef(userId, Entity.USER, "alice")),
-        new Task().withId(racedRef.getId()));
     when(taskDao.findJsonByIdForUpdate(racedRef.getId(), Include.NON_DELETED)).thenReturn(null);
 
     TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
 
     verify(repository, never()).update(any(), any(), any(), any(), any(), any());
-    verify(repository)
-        .deleteRelationship(
-            userId, Entity.USER, racedRef.getId(), Entity.TASK, Relationship.ASSIGNED_TO);
+    verify(repository, never()).createOrUpdate(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void continuesWithTheNextTaskWhenOneIsGoneOnceLocked() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference vanishedRef = taskRef(UUID.randomUUID(), false);
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final EntityReference survivor = entityRef(UUID.randomUUID(), Entity.USER, "bob");
+    final Task lockedTask =
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"), survivor);
+    stubAssignedTasks(userId, Entity.USER, List.of(vanishedRef, liveRef));
+    when(taskDao.findJsonByIdForUpdate(vanishedRef.getId(), Include.NON_DELETED)).thenReturn(null);
+    stubLockedTask(liveRef.getId(), lockedTask);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    assertSavedAssignees(lockedTask, List.of(survivor));
   }
 
   @Test
@@ -95,10 +120,9 @@ class TaskAssigneeCleanupTest {
     final UUID userId = UUID.randomUUID();
     final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
     stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
-    stubLiveTask(
+    stubLockedTask(
         liveRef.getId(),
-        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice")),
-        new Task().withId(liveRef.getId()));
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice")));
     final boolean[] inTransaction = {false};
     doAnswer(
             invocation -> {
@@ -127,66 +151,21 @@ class TaskAssigneeCleanupTest {
   }
 
   @Test
-  void skipsLoadAndDeletesEdgeWhenTaskReferenceIsSoftDeleted() {
+  void rewritesTheLockedRowNotAnEarlierRead() {
     final UUID userId = UUID.randomUUID();
-    final EntityReference deletedTaskRef = taskRef(UUID.randomUUID(), true);
-    stubAssignedTasks(userId, Entity.USER, List.of(deletedTaskRef));
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask =
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"));
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
 
-    try (final MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(repository);
-      TaskAssigneeCleanup.removeAssignee(userId, Entity.USER);
-    }
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
 
-    verify(repository)
-        .deleteRelationship(
-            userId, Entity.USER, deletedTaskRef.getId(), Entity.TASK, Relationship.ASSIGNED_TO);
+    verify(taskDao).jsonToEntity(LOCKED_JSON, liveRef.getId());
     verify(repository, never())
         .get(any(), any(UUID.class), any(), any(Include.class), anyBoolean());
-    verify(repository, never()).update(any(), any(), any(), any(), any(), any());
-    verify(repository, never()).createOrUpdate(any(), any(), any(), any(), any());
-  }
-
-  @Test
-  void deletesEdgeAndContinuesBatchWhenLiveTaskDeletedBeforeLoad() {
-    final UUID userId = UUID.randomUUID();
-    final EntityReference vanishedRef = taskRef(UUID.randomUUID(), false);
-    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
-    final EntityReference survivor = entityRef(UUID.randomUUID(), Entity.USER, "bob");
-    final Task liveTask =
-        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"), survivor);
-    final Task originalLiveTask = new Task().withId(liveRef.getId());
-    stubAssignedTasks(userId, Entity.USER, List.of(vanishedRef, liveRef));
-    stubGetTaskThrowsNotFound(vanishedRef.getId());
-    stubLiveTask(liveRef.getId(), liveTask, originalLiveTask);
-
-    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
-
-    verify(repository)
-        .deleteRelationship(
-            userId, Entity.USER, vanishedRef.getId(), Entity.TASK, Relationship.ASSIGNED_TO);
-    assertSavedAssignees(originalLiveTask, List.of(survivor));
-  }
-
-  @Test
-  void deletesEdgeWithoutResurrectingWhenTaskDeletedBetweenGetAndFind() {
-    final UUID userId = UUID.randomUUID();
-    final EntityReference racedRef = taskRef(UUID.randomUUID(), false);
-    final Task loadedTask =
-        taskWithAssignees(racedRef.getId(), entityRef(userId, Entity.USER, "alice"));
-    stubAssignedTasks(userId, Entity.USER, List.of(racedRef));
-    when(repository.get(
-            isNull(), eq(racedRef.getId()), eq(cleanupFields), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(loadedTask);
-    when(repository.find(racedRef.getId(), Include.NON_DELETED, false))
-        .thenThrow(EntityNotFoundException.byMessage("deleted before update"));
-
-    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
-
-    verify(repository)
-        .deleteRelationship(
-            userId, Entity.USER, racedRef.getId(), Entity.TASK, Relationship.ASSIGNED_TO);
-    verify(repository, never()).update(any(), any(), any(), any(), any(), any());
-    verify(repository, never()).createOrUpdate(any(), any(), any(), any(), any());
+    verify(repository, never()).find(any(), any(), anyBoolean());
+    verify(repository).setFieldsInternal(lockedTask, cleanupFields);
   }
 
   @Test
@@ -196,14 +175,13 @@ class TaskAssigneeCleanupTest {
     final EntityReference target = entityRef(userId, Entity.USER, "middle");
     final EntityReference alice = entityRef(UUID.randomUUID(), Entity.USER, "alice");
     final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
-    final Task liveTask = taskWithAssignees(liveRef.getId(), zara, target, alice);
-    final Task originalTask = new Task().withId(liveRef.getId());
+    final Task lockedTask = taskWithAssignees(liveRef.getId(), zara, target, alice);
     stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
-    stubLiveTask(liveRef.getId(), liveTask, originalTask);
+    stubLockedTask(liveRef.getId(), lockedTask);
 
     TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
 
-    assertSavedAssignees(originalTask, List.of(alice, zara));
+    assertSavedAssignees(lockedTask, List.of(alice, zara));
   }
 
   @Test
@@ -211,14 +189,13 @@ class TaskAssigneeCleanupTest {
     final UUID teamId = UUID.randomUUID();
     final EntityReference targetTeam = entityRef(teamId, Entity.TEAM, "analytics");
     final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
-    final Task liveTask = taskWithAssignees(liveRef.getId(), targetTeam);
-    final Task originalTask = new Task().withId(liveRef.getId());
+    final Task lockedTask = taskWithAssignees(liveRef.getId(), targetTeam);
     stubAssignedTasks(teamId, Entity.TEAM, List.of(liveRef));
-    stubLiveTask(liveRef.getId(), liveTask, originalTask);
+    stubLockedTask(liveRef.getId(), lockedTask);
 
     TaskAssigneeCleanup.removeAssignee(repository, teamId, Entity.TEAM);
 
-    final Task saved = captureSavedTask(originalTask);
+    final Task saved = captureSavedTask(lockedTask);
     assertNotNull(saved.getAssignees());
     assertTrue(saved.getAssignees().isEmpty());
   }
@@ -228,15 +205,13 @@ class TaskAssigneeCleanupTest {
     final UUID sharedId = UUID.randomUUID();
     final EntityReference teamAssignee = entityRef(sharedId, Entity.TEAM, "platform");
     final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
-    final Task liveTask = taskWithAssignees(liveRef.getId(), teamAssignee);
+    final Task lockedTask = taskWithAssignees(liveRef.getId(), teamAssignee);
     stubAssignedTasks(sharedId, Entity.USER, List.of(liveRef));
-    when(repository.get(
-            isNull(), eq(liveRef.getId()), eq(cleanupFields), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(liveTask);
+    stubLockedTask(liveRef.getId(), lockedTask);
 
     TaskAssigneeCleanup.removeAssignee(repository, sharedId, Entity.USER);
 
-    assertEquals(List.of(teamAssignee), liveTask.getAssignees());
+    assertEquals(List.of(teamAssignee), lockedTask.getAssignees());
     verify(repository, never()).update(any(), any(), any(), any(), any(), any());
   }
 
@@ -244,11 +219,8 @@ class TaskAssigneeCleanupTest {
   void skipsUpdateWhenLiveTaskHasNoAssignees() {
     final UUID userId = UUID.randomUUID();
     final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
-    final Task liveTask = new Task().withId(liveRef.getId()).withAssignees(null);
     stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
-    when(repository.get(
-            isNull(), eq(liveRef.getId()), eq(cleanupFields), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(liveTask);
+    stubLockedTask(liveRef.getId(), new Task().withId(liveRef.getId()).withAssignees(null));
 
     TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
 
@@ -262,17 +234,9 @@ class TaskAssigneeCleanupTest {
         .thenReturn(refs);
   }
 
-  private void stubLiveTask(final UUID taskId, final Task loadedTask, final Task originalTask) {
-    when(repository.get(
-            isNull(), eq(taskId), eq(cleanupFields), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(loadedTask);
-    when(repository.find(taskId, Include.NON_DELETED, false)).thenReturn(originalTask);
-  }
-
-  private void stubGetTaskThrowsNotFound(final UUID taskId) {
-    when(repository.get(
-            isNull(), eq(taskId), eq(cleanupFields), eq(Include.NON_DELETED), eq(false)))
-        .thenThrow(EntityNotFoundException.byMessage("concurrently deleted"));
+  private void stubLockedTask(final UUID taskId, final Task lockedTask) {
+    when(taskDao.findJsonByIdForUpdate(taskId, Include.NON_DELETED)).thenReturn(LOCKED_JSON);
+    when(taskDao.jsonToEntity(LOCKED_JSON, taskId)).thenReturn(lockedTask);
   }
 
   private void assertSavedAssignees(

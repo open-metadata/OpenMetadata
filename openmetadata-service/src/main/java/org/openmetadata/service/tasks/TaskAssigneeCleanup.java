@@ -13,8 +13,9 @@
 
 package org.openmetadata.service.tasks;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -23,16 +24,15 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public final class TaskAssigneeCleanup {
-  private static final String TASK_CLEANUP_FIELDS =
-      "assignees,about,createdBy,reviewers,watchers,domains";
+  private static final String TASK_CLEANUP_FIELDS = "assignees,about,createdBy,reviewers,watchers";
   private static final Set<String> ASSIGNEE_PATCH_FIELDS = Set.of(TaskRepository.FIELD_ASSIGNEES);
 
   private TaskAssigneeCleanup() {}
@@ -48,78 +48,63 @@ public final class TaskAssigneeCleanup {
         repository.findTo(entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK, Include.ALL);
     final Fields fields = repository.getFields(TASK_CLEANUP_FIELDS);
     for (final EntityReference taskReference : taskReferences) {
-      cleanupTaskReference(repository, taskReference, fields, entityId, entityType);
-    }
-  }
-
-  private static void cleanupTaskReference(
-      final TaskRepository repository,
-      final EntityReference taskReference,
-      final Fields fields,
-      final UUID entityId,
-      final String entityType) {
-    // Soft-deleted tasks stay deleted: drop the ASSIGNED_TO edge directly instead of running a
-    // repository update, so a later restore will not resurrect the deleted assignee.
-    if (Boolean.TRUE.equals(taskReference.getDeleted())) {
-      deleteAssigneeEdge(repository, entityId, entityType, taskReference.getId());
-      return;
-    }
-    try {
-      final Task task =
-          repository.get(null, taskReference.getId(), fields, Include.NON_DELETED, false);
-      removeAssigneeFromLiveTask(repository, task, entityId, entityType);
-    } catch (final EntityNotFoundException ex) {
-      LOG.debug(
-          "Task {} was deleted before assignee cleanup for {} {}",
-          taskReference.getId(),
-          entityType,
-          entityId);
-      deleteAssigneeEdge(repository, entityId, entityType, taskReference.getId());
-    }
-  }
-
-  private static void deleteAssigneeEdge(
-      final TaskRepository repository,
-      final UUID entityId,
-      final String entityType,
-      final UUID taskId) {
-    repository.deleteRelationship(
-        entityId, entityType, taskId, Entity.TASK, Relationship.ASSIGNED_TO);
-  }
-
-  private static void removeAssigneeFromLiveTask(
-      final TaskRepository repository,
-      final Task task,
-      final UUID entityId,
-      final String entityType) {
-    final List<EntityReference> assignees = task.getAssignees();
-    if (nullOrEmpty(assignees)) {
-      return;
-    }
-    final boolean changed =
-        assignees.removeIf(ref -> entityId.equals(ref.getId()) && entityType.equals(ref.getType()));
-    if (changed) {
-      assignees.sort(EntityUtil.compareEntityReference);
-      task.setAssignees(assignees);
-      final boolean saved = repository.executeInTransaction(() -> saveIfLive(repository, task));
-      if (!saved) {
-        LOG.debug("Task {} was deleted during assignee cleanup", task.getId());
-        deleteAssigneeEdge(repository, entityId, entityType, task.getId());
+      // A soft-deleted task stays deleted. Its ASSIGNED_TO edge goes with the rest of the deleted
+      // entity's relationships once the hard delete finishes.
+      if (!Boolean.TRUE.equals(taskReference.getDeleted())) {
+        removeFromLiveTask(repository, taskReference.getId(), fields, entityId, entityType);
       }
     }
   }
 
+  private static void removeFromLiveTask(
+      final TaskRepository repository,
+      final UUID taskId,
+      final Fields fields,
+      final UUID entityId,
+      final String entityType) {
+    final boolean live =
+        repository.executeInTransaction(
+            () -> removeFromLockedTask(repository, taskId, fields, entityId, entityType));
+    if (!live) {
+      LOG.debug(
+          "Task {} was deleted before assignee cleanup of {} {}", taskId, entityType, entityId);
+    }
+  }
+
   /**
-   * The row lock makes the live check and the write one step. A soft delete that commits first
-   * leaves no live row to lock, and one that comes later waits for this write, so the stored task
-   * never goes back from deleted to live.
+   * Reads, changes and writes the task under its row lock. The task is built from the locked row,
+   * not from an earlier read, so a concurrent edit that committed in between is kept instead of
+   * overwritten. A soft delete that commits first leaves no live row to lock, and one that comes
+   * later waits for this write, so the task never goes back from deleted to live.
    */
-  private static boolean saveIfLive(final TaskRepository repository, final Task task) {
-    if (repository.getDao().findJsonByIdForUpdate(task.getId(), Include.NON_DELETED) == null) {
+  private static boolean removeFromLockedTask(
+      final TaskRepository repository,
+      final UUID taskId,
+      final Fields fields,
+      final UUID entityId,
+      final String entityType) {
+    final String lockedJson =
+        repository.getDao().findJsonByIdForUpdate(taskId, Include.NON_DELETED);
+    if (lockedJson == null) {
       return false;
     }
-    final Task original = repository.find(task.getId(), Include.NON_DELETED, false);
-    repository.update(null, original, task, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
+    final Task original = repository.getDao().jsonToEntity(lockedJson, taskId);
+    repository.setFieldsInternal(original, fields);
+    final List<EntityReference> remaining = withoutAssignee(original, entityId, entityType);
+    if (remaining.size() != listOrEmpty(original.getAssignees()).size()) {
+      final Task updated = JsonUtils.deepCopy(original, Task.class);
+      updated.setAssignees(remaining);
+      repository.update(
+          null, original, updated, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
+    }
     return true;
+  }
+
+  private static List<EntityReference> withoutAssignee(
+      final Task task, final UUID entityId, final String entityType) {
+    final List<EntityReference> remaining = new ArrayList<>(listOrEmpty(task.getAssignees()));
+    remaining.removeIf(ref -> entityId.equals(ref.getId()) && entityType.equals(ref.getType()));
+    remaining.sort(EntityUtil.compareEntityReference);
+    return remaining;
   }
 }

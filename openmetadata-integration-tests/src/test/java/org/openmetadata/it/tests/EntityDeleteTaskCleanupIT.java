@@ -55,8 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
- * Hard-deleting an entity must clean up Task 2.0 artifacts about it and assignee references on
- * both live and soft-deleted tasks.
+ * Hard-deleting an entity must also remove the Task 2.0 artifacts that are about it.
  *
  * <p>In the pre-2.0 thread model a task was a {@code thread_entity} row, so the entity delete path's
  * {@code FeedRepository.deleteByAbout} removed it. Task 2.0 moved tasks into {@code task_entity} but
@@ -72,12 +71,12 @@ public class EntityDeleteTaskCleanupIT {
   private static final int HTTP_NOT_FOUND = 404;
 
   @Test
-  void hardDelete_removesOpenTasksAboutTheEntity(final TestNamespace ns) {
-    final Glossary glossary = createGlossary(ns);
-    final GlossaryTerm term = createTermWithReviewer(glossary, "orphan_task_target");
-    final String termFqn = term.getFullyQualifiedName();
+  void hardDelete_removesOpenTasksAboutTheEntity(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns);
+    GlossaryTerm term = createTermWithReviewer(glossary, "orphan_task_target");
+    String termFqn = term.getFullyQualifiedName();
 
-    final Task approvalTask = waitForOpenTaskAbout(termFqn);
+    Task approvalTask = waitForOpenTaskAbout(termFqn);
     assertNotNull(approvalTask.getId(), "Expected an open approval task about " + termFqn);
 
     SdkClients.adminClient()
@@ -97,12 +96,12 @@ public class EntityDeleteTaskCleanupIT {
   }
 
   @Test
-  void softDelete_keepsTasksAboutTheEntity(final TestNamespace ns) {
-    final Glossary glossary = createGlossary(ns);
-    final GlossaryTerm term = createTermWithReviewer(glossary, "soft_delete_task_target");
-    final String termFqn = term.getFullyQualifiedName();
+  void softDelete_keepsTasksAboutTheEntity(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns);
+    GlossaryTerm term = createTermWithReviewer(glossary, "soft_delete_task_target");
+    String termFqn = term.getFullyQualifiedName();
 
-    final Task approvalTask = waitForOpenTaskAbout(termFqn);
+    Task approvalTask = waitForOpenTaskAbout(termFqn);
     assertNotNull(approvalTask.getId(), "Expected an open approval task about " + termFqn);
 
     SdkClients.adminClient()
@@ -110,86 +109,58 @@ public class EntityDeleteTaskCleanupIT {
         .delete(term.getId().toString(), Map.of("hardDelete", "false", "recursive", "true"));
 
     // A soft delete keeps the row and its relationships, so the task stays recoverable.
-    final Task afterSoftDelete =
-        SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
+    Task afterSoftDelete = SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
     assertNotNull(afterSoftDelete, "A soft delete must not remove the task about the entity");
   }
 
   @Test
-  void hardDeleteUser_assignedToSoftDeletedTask_succeedsAndRestoredTaskDropsDeletedUser(
-      final TestNamespace ns) {
-    final User deletedUser = createTrackedUser(ns, "delu");
-    final User survivingUser = createTrackedUser(ns, "keepu");
-    final Glossary glossary = createGlossary(ns);
-    final Task softDeletedTask =
-        createTaskAssignedTo(
-            ns,
-            glossary,
-            "soft_deleted_task",
-            List.of(deletedUser.getFullyQualifiedName(), survivingUser.getFullyQualifiedName()));
-    softDeleteTask(softDeletedTask.getId());
-
-    hardDeleteUser(deletedUser.getId());
-
-    restoreTask(softDeletedTask.getId());
-    final Task restored =
-        SdkClients.adminClient()
-            .tasks()
-            .get(softDeletedTask.getId().toString(), TaskRepository.FIELD_ASSIGNEES);
-    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
-    assertEquals(List.of(survivingUser.getId()), extractIds(restored.getAssignees()));
-  }
-
-  @Test
-  void hardDeleteUser_assignedToBothLiveAndSoftDeletedTasks_updatesLiveAndKeepsSoftDeleted(
-      final TestNamespace ns) {
-    final User deletedUser = createTrackedUser(ns, "delboth");
-    final User survivingUser = createTrackedUser(ns, "keepboth");
-    final Glossary glossary = createGlossary(ns);
-    final List<String> assignees =
+  void hardDeleteUser_assignedToLiveAndSoftDeletedTasks_updatesLiveAndKeepsSoftDeleted(
+      TestNamespace ns) {
+    User deletedUser = createUser(ns, "delboth");
+    User survivingUser = createUser(ns, "keepboth");
+    Glossary glossary = createGlossary(ns);
+    List<String> assignees =
         List.of(deletedUser.getFullyQualifiedName(), survivingUser.getFullyQualifiedName());
-    final Task liveTask = createTaskAssignedTo(ns, glossary, "live_user_task", assignees);
-    final Task deletedTask = createTaskAssignedTo(ns, glossary, "del_user_task", assignees);
+    Task liveTask = createTask(ns, glossary, "live_user_task", assignees, null);
+    Task deletedTask = createTask(ns, glossary, "del_user_task", assignees, null);
     softDeleteTask(deletedTask.getId());
 
-    hardDeleteUser(deletedUser.getId());
+    hardDelete("users", deletedUser.getId());
 
     assertLiveTaskUpdatedWithAssignees(liveTask, List.of(survivingUser.getId()));
     assertSoftDeletedTaskKeepsAssignees(deletedTask.getId(), List.of(survivingUser.getId()));
   }
 
   @Test
-  void hardDeleteTeam_assignedToLiveAndSoftDeletedTasks_cleansUpAssigneesWithout404(
-      final TestNamespace ns) {
-    final Team deletedTeam = createTrackedGroupTeam(ns, "delteam");
-    final Team reviewerTeam = createTrackedGroupTeam(ns, "revteam");
-    final User survivingUser = createTrackedUser(ns, "keepteamco");
-    final Glossary glossary = createGlossary(ns);
-    final List<String> assignees =
+  void hardDeleteTeam_assignedToLiveAndSoftDeletedTasks_cleansUpAssignees(TestNamespace ns) {
+    Team deletedTeam = createGroupTeam(ns, "delteam");
+    Team reviewerTeam = createGroupTeam(ns, "revteam");
+    User survivingUser = createUser(ns, "keepteamco");
+    Glossary glossary = createGlossary(ns);
+    List<String> assignees =
         List.of(deletedTeam.getFullyQualifiedName(), survivingUser.getFullyQualifiedName());
-    final List<String> mixedReviewers =
+    List<String> mixedReviewers =
         List.of(reviewerTeam.getFullyQualifiedName(), survivingUser.getFullyQualifiedName());
-    final Task liveTask =
-        createTaskWithReviewers(ns, glossary, "live_team_task", assignees, mixedReviewers);
-    final Task deletedTask = createTaskAssignedTo(ns, glossary, "del_team_task", assignees);
+    Task liveTask = createTask(ns, glossary, "live_team_task", assignees, mixedReviewers);
+    Task deletedTask = createTask(ns, glossary, "del_team_task", assignees, null);
     softDeleteTask(deletedTask.getId());
 
-    hardDeleteTeam(deletedTeam.getId());
+    hardDelete("teams", deletedTeam.getId());
 
     assertLiveTaskUpdatedWithAssignees(liveTask, List.of(survivingUser.getId()));
     assertSoftDeletedTaskKeepsAssignees(deletedTask.getId(), List.of(survivingUser.getId()));
   }
 
-  private Glossary createGlossary(final TestNamespace ns) {
-    final CreateGlossary create =
+  private Glossary createGlossary(TestNamespace ns) {
+    CreateGlossary create =
         new CreateGlossary()
             .withName(ns.shortPrefix("edtc"))
             .withDescription("Glossary for entity-delete task cleanup test");
     return ns.trackRoot(Entity.GLOSSARY, SdkClients.adminClient().glossaries().create(create));
   }
 
-  private GlossaryTerm createTermWithReviewer(final Glossary glossary, final String name) {
-    final CreateGlossaryTerm create =
+  private GlossaryTerm createTermWithReviewer(Glossary glossary, String name) {
+    CreateGlossaryTerm create =
         new CreateGlossaryTerm()
             .withName(name)
             .withGlossary(glossary.getFullyQualifiedName())
@@ -198,35 +169,25 @@ public class EntityDeleteTaskCleanupIT {
     return SdkClients.adminClient().glossaryTerms().create(create);
   }
 
-  private User createTrackedUser(final TestNamespace ns, final String label) {
-    final String name = label + ns.uniqueShortId();
-    final CreateUser create = new CreateUser().withName(name).withEmail(name + "@test.om.org");
+  private User createUser(TestNamespace ns, String label) {
+    String name = label + ns.uniqueShortId();
+    CreateUser create = new CreateUser().withName(name).withEmail(name + "@test.om.org");
     return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(create));
   }
 
-  private Team createTrackedGroupTeam(final TestNamespace ns, final String label) {
-    final CreateTeam create =
-        new CreateTeam().withName(ns.prefix(label)).withTeamType(TeamType.GROUP);
+  private Team createGroupTeam(TestNamespace ns, String label) {
+    CreateTeam create = new CreateTeam().withName(ns.prefix(label)).withTeamType(TeamType.GROUP);
     return ns.trackRoot(Entity.TEAM, SdkClients.adminClient().teams().create(create));
   }
 
-  private Task createTaskAssignedTo(
-      final TestNamespace ns,
-      final Glossary glossary,
-      final String label,
-      final List<String> assigneeFqns) {
-    return createTaskWithReviewers(ns, glossary, label, assigneeFqns, null);
-  }
-
-  private Task createTaskWithReviewers(
-      final TestNamespace ns,
-      final Glossary glossary,
-      final String label,
-      final List<String> assigneeFqns,
-      final List<String> reviewerFqns) {
-    final String about =
-        String.format("<#E::%s::%s>", Entity.GLOSSARY, glossary.getFullyQualifiedName());
-    final CreateTask create =
+  private Task createTask(
+      TestNamespace ns,
+      Glossary glossary,
+      String label,
+      List<String> assigneeFqns,
+      List<String> reviewerFqns) {
+    String about = String.format("<#E::%s::%s>", Entity.GLOSSARY, glossary.getFullyQualifiedName());
+    CreateTask create =
         new CreateTask()
             .withName(ns.prefix(label))
             .withDescription("Task for assignee hard-delete cleanup test")
@@ -235,37 +196,28 @@ public class EntityDeleteTaskCleanupIT {
             .withAbout(about)
             .withAssignees(assigneeFqns)
             .withReviewers(reviewerFqns);
-    final Task created = SdkClients.adminClient().tasks().create(create);
-    // Re-fetch persisted state so version reflects synchronous postCreate workflow initialization.
+    Task created = SdkClients.adminClient().tasks().create(create);
+    // Re-fetch so the version reflects the synchronous postCreate workflow initialization.
     return SdkClients.adminClient()
         .tasks()
         .get(created.getId().toString(), TaskRepository.FIELD_ASSIGNEES);
   }
 
-  private void softDeleteTask(final UUID taskId) {
+  private void softDeleteTask(UUID taskId) {
     SdkClients.adminClient().tasks().delete(taskId.toString(), Map.of("hardDelete", "false"));
   }
 
-  private void restoreTask(final UUID taskId) {
-    final TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    repository.restoreEntity(Entity.ADMIN_USER_NAME, taskId);
+  private void hardDelete(String collection, UUID id) {
+    Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
+    if ("users".equals(collection)) {
+      SdkClients.adminClient().users().delete(id.toString(), params);
+    } else {
+      SdkClients.adminClient().teams().delete(id.toString(), params);
+    }
   }
 
-  private void hardDeleteUser(final UUID userId) {
-    SdkClients.adminClient()
-        .users()
-        .delete(userId.toString(), Map.of("hardDelete", "true", "recursive", "true"));
-  }
-
-  private void hardDeleteTeam(final UUID teamId) {
-    SdkClients.adminClient()
-        .teams()
-        .delete(teamId.toString(), Map.of("hardDelete", "true", "recursive", "true"));
-  }
-
-  private void assertLiveTaskUpdatedWithAssignees(
-      final Task initialTask, final List<UUID> expectedIds) {
-    final Task live =
+  private void assertLiveTaskUpdatedWithAssignees(Task initialTask, List<UUID> expectedIds) {
+    Task live =
         SdkClients.adminClient()
             .tasks()
             .get(initialTask.getId().toString(), TaskRepository.FIELD_ASSIGNEES);
@@ -273,29 +225,28 @@ public class EntityDeleteTaskCleanupIT {
     assertFalse(Boolean.TRUE.equals(live.getDeleted()));
     assertTrue(
         live.getVersion() > initialTask.getVersion(),
-        "TaskAssigneeCleanup must update the live task version when stripping a deleted assignee");
+        "Stripping a deleted assignee must bump the live task version");
     assertAssigneesChangeRecorded(live.getChangeDescription(), initialTask.getVersion());
     assertEquals(expectedIds, extractIds(live.getAssignees()));
   }
 
   private void assertAssigneesChangeRecorded(
-      final ChangeDescription changeDescription, final Double expectedPreviousVersion) {
-    assertNotNull(changeDescription, "Expected changeDescription from TaskAssigneeCleanup update");
+      ChangeDescription changeDescription, Double expectedPreviousVersion) {
+    assertNotNull(changeDescription, "Expected a changeDescription for the assignee removal");
     assertEquals(expectedPreviousVersion, changeDescription.getPreviousVersion());
-    final boolean assigneesUpdated =
+    boolean assigneesUpdated =
         changeDescription.getFieldsUpdated().stream()
             .map(FieldChange::getName)
             .anyMatch(TaskRepository.FIELD_ASSIGNEES::equals);
-    assertTrue(assigneesUpdated, "Expected fieldsUpdated to record assignees removal");
+    assertTrue(assigneesUpdated, "Expected fieldsUpdated to record the assignees removal");
   }
 
-  private void assertSoftDeletedTaskKeepsAssignees(
-      final UUID taskId, final List<UUID> expectedIds) {
-    final ApiException notFound =
+  private void assertSoftDeletedTaskKeepsAssignees(UUID taskId, List<UUID> expectedIds) {
+    ApiException notFound =
         assertThrows(
             ApiException.class, () -> SdkClients.adminClient().tasks().get(taskId.toString()));
     assertEquals(HTTP_NOT_FOUND, notFound.getStatusCode());
-    final Task deleted =
+    Task deleted =
         SdkClients.adminClient()
             .tasks()
             .get(taskId.toString(), TaskRepository.FIELD_ASSIGNEES, "all");
@@ -303,11 +254,11 @@ public class EntityDeleteTaskCleanupIT {
     assertEquals(expectedIds, extractIds(deleted.getAssignees()));
   }
 
-  private static List<UUID> extractIds(final List<EntityReference> refs) {
+  private static List<UUID> extractIds(List<EntityReference> refs) {
     return refs == null ? List.of() : refs.stream().map(EntityReference::getId).toList();
   }
 
-  private Task waitForOpenTaskAbout(final String aboutFqn) {
+  private Task waitForOpenTaskAbout(String aboutFqn) {
     Awaitility.await("wait for the open approval task about " + aboutFqn)
         .atMost(TASK_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
@@ -317,13 +268,13 @@ public class EntityDeleteTaskCleanupIT {
                 assertFalse(
                     listOpenTasksAbout(aboutFqn).isEmpty(),
                     "No open approval task was created for " + aboutFqn));
-    return listOpenTasksAbout(aboutFqn).getFirst();
+    return listOpenTasksAbout(aboutFqn).get(0);
   }
 
-  private List<Task> listOpenTasksAbout(final String aboutFqn) {
-    final Map<String, String> filters =
+  private List<Task> listOpenTasksAbout(String aboutFqn) {
+    Map<String, String> filters =
         Map.of("limit", "100", "status", TaskEntityStatus.Open.value(), "aboutEntity", aboutFqn);
-    final ListResponse<Task> response = SdkClients.adminClient().tasks().listWithFilters(filters);
+    ListResponse<Task> response = SdkClients.adminClient().tasks().listWithFilters(filters);
     return response.getData() == null ? List.of() : response.getData();
   }
 }
