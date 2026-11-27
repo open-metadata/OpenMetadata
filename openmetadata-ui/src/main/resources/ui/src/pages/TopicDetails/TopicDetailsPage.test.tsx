@@ -48,31 +48,33 @@ jest.mock('../../hooks/useFqn', () => ({
   }),
 }));
 
+const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
+  Create: true,
+  Delete: true,
+  EditAll: true,
+  EditCustomFields: true,
+  EditDataProfile: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditLineage: true,
+  EditOwners: true,
+  EditQueries: true,
+  EditSampleData: true,
+  EditTags: true,
+  EditTests: true,
+  EditTier: true,
+  ViewAll: true,
+  ViewDataProfile: true,
+  ViewQueries: true,
+  ViewSampleData: true,
+  ViewTests: true,
+  ViewUsage: true,
+});
+
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: true,
-      EditCustomFields: true,
-      EditDataProfile: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditLineage: true,
-      EditOwners: true,
-      EditQueries: true,
-      EditSampleData: true,
-      EditTags: true,
-      EditTests: true,
-      EditTier: true,
-      ViewAll: true,
-      ViewDataProfile: true,
-      ViewQueries: true,
-      ViewSampleData: true,
-      ViewTests: true,
-      ViewUsage: true,
-    }),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
 }));
 
@@ -100,7 +102,9 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     ViewUsage: true,
   },
   getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.requireActual(
+    '../../utils/PermissionsUtils'
+  ).getPrioritizedViewPermission,
 }));
 
 describe('Test TopicDetailsPage component', () => {
@@ -115,6 +119,23 @@ describe('Test TopicDetailsPage component', () => {
       expect(screen.getByText(/TopicDetails.component/i)).toBeInTheDocument()
     );
   });
+
+  it.each([
+    { ViewAll: false, ViewBasic: false },
+    { ViewAll: true, ViewBasic: false },
+  ])(
+    'shows the permission placeholder, not a stuck loader, for %o',
+    async (permissions) => {
+      mockGetEntityPermissionByFqn.mockResolvedValueOnce(permissions);
+
+      renderWithQueryClient(<TopicDetailsPageComponent />);
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(getTopicByFqn).not.toHaveBeenCalled();
+    }
+  );
 
   it('Should extract topic FQN from field-level deep link URL', async () => {
     (getTopicByFqn as jest.Mock).mockImplementation((fqn) => {

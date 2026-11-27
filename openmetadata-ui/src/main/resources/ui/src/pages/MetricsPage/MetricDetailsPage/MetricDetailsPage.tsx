@@ -355,7 +355,7 @@ const MetricDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
+  if (!canViewMetric) {
     return (
       <ErrorPlaceHolder
         className="border-none"

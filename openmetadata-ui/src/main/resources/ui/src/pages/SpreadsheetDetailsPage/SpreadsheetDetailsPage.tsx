@@ -296,7 +296,12 @@ const SpreadsheetDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!spreadsheetPermissions.ViewAll && !spreadsheetPermissions.ViewBasic) {
+  if (
+    !getPrioritizedViewPermission(
+      spreadsheetPermissions,
+      PermissionOperation.ViewBasic
+    )
+  ) {
     return (
       <ErrorPlaceHolder
         className="border-none"

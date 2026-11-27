@@ -292,7 +292,12 @@ const DirectoryDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!directoryPermissions.ViewAll && !directoryPermissions.ViewBasic) {
+  if (
+    !getPrioritizedViewPermission(
+      directoryPermissions,
+      PermissionOperation.ViewBasic
+    )
+  ) {
     return (
       <ErrorPlaceHolder
         className="border-none"
