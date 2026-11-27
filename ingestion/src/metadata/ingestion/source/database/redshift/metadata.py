@@ -551,7 +551,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         table_name: str,
         *args,
         **kwargs,
-    ) -> tuple[list[str], list[str], list[str]]:
+    ) -> tuple[list[str], list[list[str]], list[dict]]:
         """Fetch constraint for a specific schema and table
 
         Args:
@@ -559,7 +559,8 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             table_name (str): table name
 
         Returns:
-            tuple[list, list, list]: list of primary, unique and foreign columns
+            tuple[list, list, list]: primary key columns, one column list per unique
+            constraint, and foreign key definitions
         """
         constraints = self.constraint_details.get(f"{schema_name}.{table_name}", {})
         if not constraints:
