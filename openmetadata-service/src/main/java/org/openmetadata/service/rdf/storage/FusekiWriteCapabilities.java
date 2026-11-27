@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import org.apache.jena.atlas.web.HttpException;
 
 /**
  * What a Fuseki dataset guarantees for indexing, read from its {@code OPTIONS /<dataset>/data}
@@ -110,7 +111,9 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
   private static void requireUsableStatus(
       final int status, final String server, final String dataset) {
     if (status / 100 != 2) {
-      throw new IllegalStateException(unusableStatusMessage(status, server, dataset));
+      final String message = unusableStatusMessage(status, server, dataset);
+      // The status lets the storage's circuit breaker count a gateway reporting Fuseki down.
+      throw new IllegalStateException(message, new HttpException(status, message));
     }
   }
 
