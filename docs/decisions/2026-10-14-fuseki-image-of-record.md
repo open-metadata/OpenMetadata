@@ -89,9 +89,11 @@ The extension reads Thrift uploads with its upload bound as the row cap (open-me
 - An operator's own Fuseki must put the extension jar on its classpath and start through a main
   class that loads Fuseki modules, such as `FusekiServerPlainCmd`. `FusekiMainCmd` loads none, so
   the jar does nothing there. Apache's Fuseki distribution alone is no longer a supported store.
-- The free-space record's consequence for a store without the extension
+- Readiness gates only `RdfIndexApp`, and the capability check runs only before uploads. A
+  deployment that has not turned the extension on keeps serving live writes, reads and maintenance
+  until it does, so the free-space record's consequence for a store without the extension
   (ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume)
-  no longer arises, because such a store does not pass readiness.
+  still applies to it: no urgent compaction and no write guard.
 
 Alternatives considered:
 - **Upload N-Triples to a server without the extension.** N-Triples has no row cap, so stock

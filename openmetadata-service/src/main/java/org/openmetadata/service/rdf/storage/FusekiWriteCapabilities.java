@@ -52,7 +52,8 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
           + " with fuseki:serviceReadWriteGraphStore, or start Fuseki with --update";
   private static final String EXTENSION_REQUIRED =
       "Fuseki dataset '%s' at %s does not run the OpenMetadata Graph Store extension: run the"
-          + " openmetadata/fuseki image with OPENMETADATA_EXTENSION_ENABLED=true. Without it,"
+          + " openmetadata/fuseki image with OPENMETADATA_EXTENSION_ENABLED=true, or put the"
+          + " extension jar on the classpath of a Fuseki started with FusekiServerPlainCmd. Without it,"
           + " Fuseki 6.3 refuses an RDF Thrift row over 100 KB, so a rebuild would drop every"
           + " entity with a longer description or query";
   private static final String APPEND_METHOD = "POST";

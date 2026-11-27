@@ -95,7 +95,8 @@ class FusekiWriteCapabilitiesTest {
     assertEquals(
         "Fuseki dataset 'openmetadata' at http://fuseki:3030 does not run the OpenMetadata Graph"
             + " Store extension: run the openmetadata/fuseki image with"
-            + " OPENMETADATA_EXTENSION_ENABLED=true. Without it, Fuseki 6.3 refuses an RDF Thrift"
+            + " OPENMETADATA_EXTENSION_ENABLED=true, or put the extension jar on the classpath of a"
+            + " Fuseki started with FusekiServerPlainCmd. Without it, Fuseki 6.3 refuses an RDF Thrift"
             + " row over 100 KB, so a rebuild would drop every entity with a longer description or"
             + " query",
         failure.getMessage());

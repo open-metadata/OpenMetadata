@@ -279,25 +279,29 @@ public final class RdfLiveWriteStore {
       final Handle handle, final Entry entry, final RuntimeException failure) {
     final Optional<RdfStorageMaintenanceException> maintenance =
         RdfStorageMaintenanceException.find(failure);
+    final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
+    final boolean retired =
+        maintenance.isEmpty()
+            && (attempts >= MAX_DELIVERY_ATTEMPTS
+                || RdfStorageUnsupportedException.find(failure).isPresent());
     if (maintenance.isPresent()) {
       deferForMaintenance(handle, entry, maintenance.get());
-      return false;
-    }
-    final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
-    if (attempts >= MAX_DELIVERY_ATTEMPTS
-        || RdfStorageUnsupportedException.find(failure).isPresent()) {
+    } else if (retired) {
       deadLetter(handle, entry, attempts, failure);
-      return true;
+    } else {
+      handle.execute(
+          "UPDATE rdf_live_write_queue SET attempts = ?, nextAttemptAt = ?, lastError = ? WHERE id = ?",
+          attempts,
+          clock.millis() + retryDelayMillis(attempts),
+          failureReason(failure),
+          entry.id());
+      LOG.warn(
+          "Live RDF write {} failed (attempt {}); retained for retry",
+          entry.id(),
+          attempts,
+          failure);
     }
-    handle.execute(
-        "UPDATE rdf_live_write_queue SET attempts = ?, nextAttemptAt = ?, lastError = ? WHERE id = ?",
-        attempts,
-        clock.millis() + retryDelayMillis(attempts),
-        failureReason(failure),
-        entry.id());
-    LOG.warn(
-        "Live RDF write {} failed (attempt {}); retained for retry", entry.id(), attempts, failure);
-    return false;
+    return retired;
   }
 
   /** Nothing reached the store, so the write waits for maintenance without using an attempt. */
