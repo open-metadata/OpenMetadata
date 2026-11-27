@@ -94,8 +94,10 @@ Passing through a reference unchanged keeps its id.
 
 A key owned by a service or ingestion pipeline may also be referenced by another service, pipeline,
 or automation workflow. When the last known local reference disappears, check their current rows,
-including soft-deleted rows, under the existing database lock. Read bounded pages and stop as
-soon as every candidate has a reference. This also covers configurations written before the ownership ledger and references
+including soft-deleted rows, under the existing database lock. Collect candidates from the current
+namespace and each owner it releases, then inspect persisted configurations once for that set.
+Skip the scan if the set is empty. Read bounded pages and stop as soon as every candidate has
+a reference. This also covers configurations written before the ownership ledger and references
 wrapped in Fernet. The check reads local references without fetching provider values. If a key
 is still in use, keep its ownership and record its namespace against the normalized key. When
 another config releases the key, revisit the recorded owner after commit. Workflow writes share

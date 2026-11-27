@@ -2,6 +2,7 @@ package org.openmetadata.service.secrets;
 
 import com.fasterxml.jackson.databind.util.TokenBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -337,14 +338,39 @@ public final class SecretMapOwnership {
 
   private void cleanNamespace(String root) {
     State state = load(root);
+    List<Cleanup> cleanups = new ArrayList<>();
     for (String retiredRoot : state.cleanupRoots()) {
-      cleanOwned(retiredRoot, load(retiredRoot));
+      cleanups.add(pendingCleanup(retiredRoot, load(retiredRoot)));
     }
     state.cleanupRoots().clear();
-    cleanOwned(root, state);
+    cleanups.add(pendingCleanup(root, state));
+
+    // All of these namespaces share the same ownership lock and transaction.
+    Set<String> candidates = new HashSet<>();
+    cleanups.forEach(cleanup -> candidates.addAll(cleanup.candidates()));
+    Set<String> unreferenced =
+        candidates.isEmpty() ? Set.of() : references.unreferenced(candidates);
+    for (Cleanup cleanup : cleanups) {
+      for (String name : cleanup.candidates()) {
+        String canonical = manager.canonicalSecretName(name);
+        if (unreferenced.contains(canonical)) {
+          manager.deleteStoredSecret(name);
+          cleanup.state().owned().remove(name);
+          references.forget(canonical);
+        } else {
+          references.defer(canonical, cleanup.root());
+        }
+      }
+      save(cleanup.root(), cleanup.state());
+    }
   }
 
-  private void cleanOwned(String root, State state) {
+  private record Cleanup(String root, State state, Set<String> candidates) {}
+
+  private Cleanup pendingCleanup(String root, State state) {
+    if (state.owned().isEmpty()) {
+      return new Cleanup(root, state, Set.of());
+    }
     Set<String> liveReferences = new HashSet<>();
     state
         .owners()
@@ -354,26 +380,13 @@ public final class SecretMapOwnership {
                 owner
                     .references()
                     .forEach(ref -> liveReferences.add(manager.canonicalSecretName(ref))));
-    Set<String> removed = new HashSet<>();
+    Set<String> candidates = new HashSet<>();
     for (String owned : state.owned()) {
       if (!liveReferences.contains(manager.canonicalSecretName(owned))) {
-        removed.add(owned);
+        candidates.add(owned);
       }
     }
-    if (!removed.isEmpty()) {
-      Set<String> unreferenced = references.unreferenced(removed);
-      for (String name : removed) {
-        String canonical = manager.canonicalSecretName(name);
-        if (unreferenced.contains(canonical)) {
-          manager.deleteStoredSecret(name);
-          state.owned().remove(name);
-          references.forget(canonical);
-        } else {
-          references.defer(canonical, root);
-        }
-      }
-    }
-    save(root, state);
+    return new Cleanup(root, state, candidates);
   }
 
   private State load(String root) {

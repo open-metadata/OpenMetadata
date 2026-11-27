@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -89,6 +90,7 @@ import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -1513,6 +1515,110 @@ public class SecretsManagerNullSecretIT {
         String root = entitySecretRoot("workflow", name);
         extensions.delete(ownershipId(root), marker);
         extensions.delete(ownershipId(root), "secrets.mapOwnership");
+      }
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 4})
+  void cleanupScansPersistedConfigsOnceAcrossReleasedOwners(int releasedOwners, TestNamespace ns) {
+    String sentinel = ns.shortPrefix("scanSentinel");
+    AtomicInteger sentinelVisits = new AtomicInteger();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          public SecretInventory secretInventory(Workflow workflow) {
+            if (sentinel.equals(workflow.getName())) {
+              sentinelVisits.incrementAndGet();
+            }
+            return super.secretInventory(workflow);
+          }
+        };
+    List<String> roots =
+        IntStream.rangeClosed(0, releasedOwners)
+            .mapToObj(i -> entitySecretRoot("mcp", ns.shortPrefix("cleanupOwner" + i)))
+            .toList();
+    String current = roots.getFirst();
+    String serviceKey = current + "/service-alias";
+    String workflowKey = roots.getLast() + "/workflow-alias";
+    String empty = current + "/empty";
+    var collection = Entity.getCollectionDAO();
+    var extensions = collection.entityExtensionDAO();
+    final String ledger = "secrets.mapOwnership";
+    SecretsManagerFactory.setSecretsManager(provider);
+    try {
+      MessagingService service =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(
+                  kafkaRequest(
+                      ns.shortPrefix("scanReader"), Map.of("credential", "secret:" + serviceKey)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, service);
+      Workflow workflow = createWorkflow(sentinel, "secret:" + workflowKey);
+      ns.trackRoot(Entity.WORKFLOW, workflow);
+      var repository = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      // Seed the durable state left by the last holder releasing keys owned by several configs.
+      repository.executeInTransaction(
+          () -> {
+            for (String root : roots) {
+              Set<String> owned = new HashSet<>(Set.of(root + "/unreferenced"));
+              Set<String> released = new HashSet<>();
+              if (root.equals(current)) {
+                owned.add(serviceKey);
+                released.addAll(roots.subList(1, roots.size()));
+                released.add(empty);
+              }
+              if (root.equals(roots.getLast())) {
+                owned.add(workflowKey);
+              }
+              owned.forEach(key -> provider.upsertSecret(key, "test-value"));
+              extensions.insert(
+                  ownershipId(root),
+                  ledger,
+                  ledger,
+                  JsonUtils.pojoToJson(
+                      Map.of("owned", owned, "owners", Map.of(), "cleanupRoots", released)));
+            }
+            return null;
+          });
+      SecretMapOwnership ownership = new SecretMapOwnership(extensions, provider);
+      sentinelVisits.set(0);
+      repository.executeInTransaction(
+          () -> {
+            ownership.lock();
+            ownership.clean(empty);
+            return null;
+          });
+      assertEquals(0, sentinelVisits.get());
+      long start = System.nanoTime();
+      repository.executeInTransaction(
+          () -> {
+            ownership.lock();
+            ownership.clean(current);
+            return null;
+          });
+      int walks = sentinelVisits.get();
+      System.out.printf(
+          "Credential cleanup: %d owner namespaces, %d candidates, %d full scans, %d ms%n",
+          roots.size(),
+          roots.size() + 2,
+          walks,
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+      for (String root : roots) {
+        assertFalse(provider.getSecretsMap().containsKey(root + "/unreferenced"));
+      }
+      assertEquals("test-value", provider.getSecretValue("secret:" + serviceKey));
+      assertEquals("test-value", provider.getSecretValue("secret:" + workflowKey));
+      // Every owner has an unreferenced key, so its scan must reach the distinctive workflow row.
+      assertEquals(1, walks);
+    } finally {
+      roots.forEach(root -> extensions.delete(ownershipId(root), ledger));
+      for (String key : List.of(serviceKey, workflowKey)) {
+        String marker = "secrets.pendingSharedKey";
+        extensions.delete(
+            UUID.nameUUIDFromBytes((marker + ":" + key).getBytes(StandardCharsets.UTF_8)), marker);
       }
       SecretsManagerFactory.setSecretsManager(vault);
     }
