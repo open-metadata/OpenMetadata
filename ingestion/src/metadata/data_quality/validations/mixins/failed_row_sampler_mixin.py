@@ -26,6 +26,7 @@ from sqlalchemy.engine.default import DefaultDialect
 from sqlglot import exp
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
+from metadata.generated.schema.entity.data.table import ColumnName, TableData
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
@@ -124,8 +125,9 @@ def _source_columns_only(sql: str, table_reference: str, dialect: Dialect, colum
     # SQLGlot ignores MySQL/MariaDB executable comments, which can hide renamed projections.
     if "/*!" in sql or "/*m!" in sql.lower():
         return False
-    # MySQL's NO_BACKSLASH_ESCAPES changes literal boundaries independently of the parser's dialect.
-    if dialect.name in {"mysql", "mariadb"} and "\\" in sql:
+    # MySQL/MariaDB modes can change literal boundaries, and SQLGlot may read a
+    # double dash as a comment where the server reads it as part of an expression.
+    if dialect.name in {"mysql", "mariadb"} and ("\\" in sql or "--" in sql):
         return False
     try:
         name = {"postgresql": "postgres", "mssql": "tsql"}.get(dialect.name, dialect.name)
@@ -185,6 +187,27 @@ def _unchanged_projection(projection: exp.Expression, qualifiers: list[list[str]
     if isinstance(projection.this, exp.Star):
         return not any(projection.this.args.values())
     return isinstance(projection.this, exp.Identifier) and projection.name.lower() in columns
+
+
+class PandasRuleLibrarySample:
+    """Keep a bounded sample of raw matching rows for deferred conversion."""
+
+    def __init__(self) -> None:
+        self._frames: list[DataFrame] = []
+        self._remaining = FAILED_ROW_SAMPLE_SIZE
+
+    def add(self, frame: "DataFrame") -> None:
+        if self._remaining and not frame.empty:
+            sample = frame.head(self._remaining).copy()
+            self._frames.append(sample)
+            self._remaining -= len(sample)
+
+    def to_table_data(self) -> TableData | None:
+        if not self._frames:
+            return None
+        columns = self._frames[0].columns.tolist()
+        rows = [row for frame in self._frames for row in frame_sample_rows(frame, columns, len(frame))]
+        return TableData.model_validate({"columns": [ColumnName(column) for column in columns], "rows": rows})
 
 
 def frame_sample_rows(frame: "DataFrame", columns: list[str], limit: int) -> list[list[Any]]:

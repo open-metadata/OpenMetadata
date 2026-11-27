@@ -11,11 +11,10 @@
 
 """Pandas validator for table rule library SQL expression tests"""
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
-    FAILED_ROW_SAMPLE_SIZE,
-    frame_sample_rows,
+    PandasRuleLibrarySample,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -25,6 +24,9 @@ from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionV
 )
 from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import TableData
 
 logger = test_suite_logger()
 
@@ -43,15 +45,16 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
     # Rows read while evaluating the expression, so the denominator does not cost a second pass
     # over the dataset.
     _evaluated_rows: int = 0
+    _sample: PandasRuleLibrarySample | None = None
 
     def _run_results(self, sql_expression: str) -> int:
         """Execute the pandas query expression and return matching row count."""
+        self._sample = None
         if not is_safe_pandas_query(sql_expression):
             raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         total_count = 0
         evaluated_rows = 0
-        columns: list[str] = []
-        sample: list[list[Any]] = []
+        sample = PandasRuleLibrarySample() if self.test_case.computePassedFailedRowCount else None
         for df in self.runner:
             evaluated_rows += len(df)
             try:
@@ -60,12 +63,14 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
             except Exception as exc:
                 logger.exception(f"Error executing pandas query expression on chunk: {exc}")  # noqa: TRY401
                 raise exc  # noqa: TRY201
-            if len(sample) < FAILED_ROW_SAMPLE_SIZE and not matching_rows.empty:
-                columns = columns or matching_rows.columns.tolist()
-                sample.extend(frame_sample_rows(matching_rows, columns, FAILED_ROW_SAMPLE_SIZE - len(sample)))
+            if sample is not None:
+                sample.add(matching_rows)
         self._evaluated_rows = evaluated_rows
-        self._failed_rows = (columns, sample) if sample else None
+        self._sample = sample
         return total_count
+
+    def fetch_failed_rows_sample(self) -> "TableData | None":
+        return self._sample.to_table_data() if self._sample is not None else None
 
     def _run_row_count(self) -> int:
         return self._evaluated_rows

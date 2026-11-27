@@ -166,11 +166,12 @@ def build_test_case(
     )  # type: ignore
 
 
-def run_with_samples(validator_class, runner, test_case: TestCase) -> TestCaseResultResponse:
-    """What the test suite interface does: run the validation, then collect its failed rows sample"""
+def run_with_samples(validator_class, runner, test_case: TestCase, *, collect_samples=True) -> TestCaseResultResponse:
+    """Run the validation, then collect failed rows when sample storage is enabled."""
     validator = validator_class(runner, test_case, EXECUTION_DATE)
     response = TestCaseResultResponse(testCaseResult=validator.run_validation(), testCase=test_case)
-    validator.result_with_failed_samples(response)
+    if collect_samples:
+        validator.result_with_failed_samples(response)
     return response
 
 
@@ -749,6 +750,8 @@ def test_mysql_mode_dependent_backslash_cannot_hide_a_union(backslash_escapes):
         (PGDialect_psycopg2(), '"main"."orders"', 'SELECT "amount" FROM "main"."orders"', True),
         (PGDialect_psycopg2(), '"main"."orders"', 'SELECT amount AS "Amount" FROM main.orders', False),
         (MySQLDialect_pymysql(), "`main`.`orders`", "SELECT o.`amount` FROM `main`.`orders` o", True),
+        (MySQLDialect_pymysql(), "main.orders", "SELECT amount FROM main.orders WHERE amount < 3--1", False),
+        (PGDialect_psycopg2(), "main.orders", "SELECT amount FROM main.orders -- exercise regular comment", True),
         (SQLiteDialect_pysqlite(), "main.orders", "SELECT amount FROM orders", False),
     ],
 )
@@ -760,6 +763,30 @@ def test_source_matching_respects_execution_dialect(dialect, reference, sql, saf
 
 
 class TestPandasRuleLibraryFailedRowsSample:
+    @pytest.mark.parametrize(VARIANT_PARAMS, PANDAS_VARIANTS)
+    @pytest.mark.parametrize("mode", ["counts-off", "samples-off", "conversion-error"])
+    def test_conversion_cannot_change_verdict(self, validator_class, entity_link, expression, entity_type, mode):
+        case = build_test_case(entity_link, expression, entity_type, compute_row_count=mode != "counts-off")
+        with patch(
+            "metadata.data_quality.validations.mixins.failed_row_sampler_mixin._sample_value",
+            side_effect=ValueError("sample value conversion failed"),
+        ) as convert:
+            response = run_with_samples(
+                validator_class,
+                pandas_runner([pd.DataFrame(order_rows())]),
+                case,
+                collect_samples=mode != "samples-off",
+            )
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+        assert response.failedRowsSample is None
+        assert not response.clearFailedRowsSample
+        if mode == "conversion-error":
+            assert response.testCaseResult.failedRows == NEGATIVE_ROWS
+            assert response.testCaseResult.passedRows == TOTAL_ROWS - NEGATIVE_ROWS
+            assert convert.call_count == 1
+        else:
+            convert.assert_not_called()
+
     @pytest.mark.parametrize(VARIANT_PARAMS, PANDAS_VARIANTS)
     def test_sample_spans_chunks_and_is_capped(self, validator_class, entity_link, expression, entity_type):
         negative = FAILED_ROW_SAMPLE_SIZE + 10

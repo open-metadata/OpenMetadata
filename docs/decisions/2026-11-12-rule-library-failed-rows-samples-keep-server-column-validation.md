@@ -22,14 +22,15 @@ the linked physical table, with unchanged direct source columns or plain stars. 
 identity column aliases are accepted. Renamed outputs, expressions, joins, CTEs, derived tables,
 set operations, modified stars, executable SQL comments, and uncertain parsing or source identity are omitted.
 Executable-comment markers are rejected before parsing because SQLGlot discards content that MySQL or
-MariaDB may execute. MySQL/MariaDB queries containing backslashes are also omitted because SQL modes
-can change literal boundaries and expose SQL that the parser sees as string content. This supersedes
+MariaDB may execute. MySQL/MariaDB queries containing backslashes or a double dash are also omitted.
+SQL modes can change literal boundaries, and SQLGlot can interpret a double dash differently from
+the server. This supersedes
 v1's unsafe output-name membership rule: `SELECT ssn AS status` must not inherit `status`'s tags.
 Classification and conversion happen during sample collection so they cannot invalidate counts or
 verdicts. The inspection query is the executed SQL with its
 bind parameters rendered as literals, and it is stored even when the sample is not. Pandas
-expressions return the frame's own columns, so they are always sampled, and they have no
-inspection query.
+validators keep up to 50 raw matching rows and convert them only when the enabled sample hook
+runs. Pandas has no inspection query.
 
 When the enabled sample hook completes successfully and returns no sample, an internal clear flag
 instructs the REST sink to delete the preceding sample through the existing endpoint. A missing
