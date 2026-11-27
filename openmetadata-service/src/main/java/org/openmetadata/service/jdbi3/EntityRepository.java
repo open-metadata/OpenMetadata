@@ -9233,6 +9233,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return false;
     }
 
+    /**
+     * Blocks downgrading a system entity's provider to user, which would strip its delete/rename
+     * protection (#29974). Both update paths prevent it, only the response differs: a PATCH change is
+     * deliberate and rejected with a 400; a PUT's provider defaults to user when omitted (ambiguous),
+     * so the system provider is kept silently rather than break PUTs that never meant to change it.
+     */
+    protected final void restrictSystemProviderChange(Consumer<ProviderType> providerSetter) {
+      if (!ProviderType.SYSTEM.equals(original.getProvider())) {
+        return;
+      }
+      if (operation.isPatch()) {
+        if (!ProviderType.SYSTEM.equals(updated.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityModifyNotAllowed(original.getName(), entityType));
+        }
+        return;
+      }
+      providerSetter.accept(original.getProvider());
+    }
+
+    /**
+     * Keeps a system entity that may not be deleted undeletable. No create request carries
+     * allowDelete, so a PUT keeps the stored value; a PATCH that lifts a stored false on a system
+     * entity is rejected with a 400.
+     */
+    protected final void restrictAllowDeleteChange(
+        Boolean originalAllowDelete,
+        Boolean updatedAllowDelete,
+        Consumer<Boolean> allowDeleteSetter) {
+      boolean liftsSystemDeleteProtection =
+          ProviderType.SYSTEM.equals(original.getProvider())
+              && Boolean.FALSE.equals(originalAllowDelete)
+              && !Boolean.FALSE.equals(updatedAllowDelete);
+      if (operation.isPut()) {
+        allowDeleteSetter.accept(originalAllowDelete);
+      } else if (operation.isPatch() && liftsSystemDeleteProtection) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.systemEntityModifyNotAllowed(original.getName(), entityType));
+      }
+    }
+
     protected final void compareAndUpdate(String fieldName, Runnable updater) {
       if (shouldCompare(fieldName)) {
         updater.run();

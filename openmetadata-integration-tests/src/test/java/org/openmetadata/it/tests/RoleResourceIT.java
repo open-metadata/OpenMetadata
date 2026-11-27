@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -48,6 +51,8 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
+
+  private static final String DEFAULT_ROLE = "ScimBotRole";
 
   public RoleResourceIT() {
     supportsFollowers = false;
@@ -215,6 +220,83 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
         Exception.class,
         () -> deleteEntity(dataConsumer.getId().toString()),
         "Deleting system role DataConsumer should not be allowed");
+  }
+
+  @Test
+  void put_defaultRole_keepsSystemMarks(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Role role = client.roles().getByName(DEFAULT_ROLE, "policies");
+    assertEquals(ProviderType.SYSTEM, role.getProvider());
+    assertEquals(Boolean.FALSE, role.getAllowDelete());
+
+    CreateRole putBody =
+        new CreateRole()
+            .withName(role.getName())
+            .withDisplayName(role.getDisplayName())
+            .withDescription(ns.prefix("replaced"))
+            .withPolicies(
+                role.getPolicies().stream().map(EntityReference::getFullyQualifiedName).toList());
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/roles", putBody, Role.class);
+
+    Role reloaded = client.roles().getByName(DEFAULT_ROLE);
+    assertEquals(ns.prefix("replaced"), reloaded.getDescription());
+    assertEquals(ProviderType.SYSTEM, reloaded.getProvider());
+    assertEquals(Boolean.FALSE, reloaded.getAllowDelete());
+    String roleId = reloaded.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(roleId));
+    assertEquals(400, deleteError.getStatusCode());
+  }
+
+  @Test
+  void patch_defaultRoleProvider_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Role role = client.roles().getByName(DEFAULT_ROLE);
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH, "/v1/roles/" + role.getId(), providerToUser, Role.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(ProviderType.SYSTEM, client.roles().getByName(DEFAULT_ROLE).getProvider());
+  }
+
+  @Test
+  void patch_defaultRoleAllowDelete_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Role role = client.roles().getByName(DEFAULT_ROLE);
+    JsonNode allowDeleteToTrue =
+        new ObjectMapper()
+            .readTree(
+                "[{\"op\":\"replace\",\"path\":\"/allowDelete\",\"value\":true},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + ns.prefix("lifted")
+                    + "\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/roles/" + role.getId(),
+                        allowDeleteToTrue,
+                        Role.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(Boolean.FALSE, client.roles().getByName(DEFAULT_ROLE).getAllowDelete());
+    String roleId = role.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(roleId));
+    assertEquals(400, deleteError.getStatusCode());
   }
 
   @Test
