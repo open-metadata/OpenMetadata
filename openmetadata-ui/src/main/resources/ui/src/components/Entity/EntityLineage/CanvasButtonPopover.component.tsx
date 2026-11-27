@@ -10,82 +10,62 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import React, { MutableRefObject, useCallback } from 'react';
-import { Edge, Viewport } from 'reactflow';
+import { Badge, HoverCard } from '@openmetadata/ui-core-components';
+import type { Viewport } from 'reactflow';
 import { PIPELINE_STATUS_BADGE_COLOR } from '../../../constants/Lineage.constants';
-import { CanvasButton } from '../../../utils/CanvasButtonUtils';
+import { CanvasPipelinePreview } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
-import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
+import { PopoverContent } from '../../common/PopOverCard/EntityPopOverCard';
 
 export interface CanvasButtonPopoverProps {
-  hoveredButton: CanvasButton;
-  hoveredEdge: Edge;
+  isHovered: boolean;
+  preview: CanvasPipelinePreview;
   viewport: Viewport;
-  isOverPopoverRef: MutableRefObject<boolean>;
-  hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
-  onMouseLeave: () => void;
+  onCloseComplete: () => void;
 }
 
-export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
-  hoveredButton,
-  hoveredEdge,
+export const CanvasButtonPopover = ({
+  isHovered,
+  preview,
   viewport,
-  isOverPopoverRef,
-  hoverTimeoutRef,
-  onMouseLeave,
-}) => {
-  const position = getAbsolutePosition(
-    hoveredButton.x - hoveredButton.width / 2,
-    hoveredButton.y - hoveredButton.height / 2,
-    viewport
-  );
-
-  const handleMouseEnter = useCallback(() => {
-    isOverPopoverRef.current = true;
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-  }, []);
-
-  const pipelineData = hoveredEdge.data?.edge?.pipeline;
-  const pipelineStatus = pipelineData?.pipelineStatus;
-  const pipelineStatusClass = getPipelineStatusClass(
-    pipelineStatus?.executionStatus
-  );
+  onCloseComplete,
+}: CanvasButtonPopoverProps) => {
+  const { button, entityFQN, entityType, executionStatus } = preview;
+  const position = getAbsolutePosition(button.x, button.y, viewport);
+  const triggerSize = {
+    width: button.width * viewport.zoom,
+    height: button.height * viewport.zoom,
+  };
+  const pipelineStatusClass = getPipelineStatusClass(executionStatus);
 
   return (
-    <button
-      aria-label={pipelineData?.fullyQualifiedName}
-      key={`popover-${hoveredButton.edgeId}`}
-      style={{
-        ...position,
-        pointerEvents: 'all',
-        zIndex: 1000,
-        background: 'none',
-        border: 'none',
-        padding: 0,
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={onMouseLeave}>
-      <EntityPopOverCard
-        entityFQN={pipelineData?.fullyQualifiedName ?? ''}
-        entityType={hoveredEdge.data?.edge?.pipelineEntityType ?? ''}
-        extraInfo={
-          pipelineStatus && (
-            <Badge
-              color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass]}
-              data-testid="pipeline-status-badge"
-              size="sm"
-              type="pill-color">
-              {pipelineStatus.executionStatus}
-            </Badge>
-          )
-        }>
-        <div style={{ width: '36px', height: '36px' }} />
-      </EntityPopOverCard>
-    </button>
+    <span
+      className="tw:pointer-events-none tw:-translate-x-1/2 tw:-translate-y-1/2"
+      style={position}>
+      <HoverCard
+        className="entity-popover-card"
+        content={
+          <PopoverContent
+            entityFQN={entityFQN}
+            entityType={entityType}
+            extraInfo={
+              executionStatus && (
+                <Badge
+                  color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass]}
+                  data-testid="pipeline-status-badge"
+                  size="sm"
+                  type="pill-color">
+                  {executionStatus}
+                </Badge>
+              )
+            }
+          />
+        }
+        isExternalTriggerHovered={isHovered}
+        onCloseComplete={onCloseComplete}>
+        <span aria-hidden className="tw:block" style={triggerSize} />
+      </HoverCard>
+    </span>
   );
 };

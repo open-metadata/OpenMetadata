@@ -168,10 +168,13 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCanvasEdgeRenderer.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCanvasMouseEvents*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/CanvasButtonUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EdgeMidpointUtils*"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
+        "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
         "playwright/e2e/Pages/Lineage/**/*.spec.ts",
         "playwright/e2e/Flow/*Lineage*.spec.ts"
       ]

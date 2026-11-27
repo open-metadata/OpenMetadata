@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { MutableRefObject, RefObject } from 'react';
+import { RefObject } from 'react';
 import { Edge } from 'reactflow';
-import { CanvasButton, ECanvasButtonType } from '../utils/CanvasButtonUtils';
+import {
+  CanvasButton,
+  CanvasButtonHitData,
+  ECanvasButtonType,
+} from '../utils/CanvasButtonUtils';
 import { useCanvasMouseEvents } from './useCanvasMouseEvents';
 
 describe('useCanvasMouseEvents', () => {
@@ -22,27 +26,17 @@ describe('useCanvasMouseEvents', () => {
     ((x: number, y: number, rect: DOMRect) => Edge | null) | null
   >;
   let getButtonAtPointRef: RefObject<
-    | ((
-        x: number,
-        y: number,
-        rect: DOMRect
-      ) => { button: CanvasButton; edge: Edge } | null)
-    | null
-  >;
-  let setHoveredButtonRef: RefObject<
-    ((button: CanvasButton | null) => void) | null
+    ((x: number, y: number, rect: DOMRect) => CanvasButtonHitData | null) | null
   >;
   let onEdgeClickRef: RefObject<
     ((edge: Edge, event: MouseEvent) => void) | undefined
   >;
   let onEdgeHoverRef: RefObject<((edge: Edge | null) => void) | undefined>;
-  let hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
-  let isOverPopoverRef: MutableRefObject<boolean>;
 
   let mockContainer: HTMLDivElement;
   let mockGetEdgeAtPoint: jest.Mock;
   let mockGetButtonAtPoint: jest.Mock;
-  let mockSetHoveredButton: jest.Mock;
+  let mockOnButtonHover: jest.Mock;
   let mockOnEdgeClick: jest.Mock;
   let mockOnEdgeHover: jest.Mock;
 
@@ -62,8 +56,6 @@ describe('useCanvasMouseEvents', () => {
   };
 
   beforeEach(() => {
-    jest.useFakeTimers();
-
     mockContainer = document.createElement('div');
     mockContainer.getBoundingClientRect = jest.fn(() => ({
       x: 0,
@@ -79,22 +71,18 @@ describe('useCanvasMouseEvents', () => {
 
     mockGetEdgeAtPoint = jest.fn();
     mockGetButtonAtPoint = jest.fn();
-    mockSetHoveredButton = jest.fn();
+    mockOnButtonHover = jest.fn();
     mockOnEdgeClick = jest.fn();
     mockOnEdgeHover = jest.fn();
 
     containerRef = { current: mockContainer };
     getEdgeAtPointRef = { current: mockGetEdgeAtPoint };
     getButtonAtPointRef = { current: mockGetButtonAtPoint };
-    setHoveredButtonRef = { current: mockSetHoveredButton };
     onEdgeClickRef = { current: mockOnEdgeClick };
     onEdgeHoverRef = { current: mockOnEdgeHover };
-    hoverTimeoutRef = { current: null };
-    isOverPopoverRef = { current: false };
   });
 
   afterEach(() => {
-    jest.useRealTimers();
     jest.clearAllMocks();
   });
 
@@ -109,11 +97,9 @@ describe('useCanvasMouseEvents', () => {
         containerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
     );
 
@@ -144,11 +130,9 @@ describe('useCanvasMouseEvents', () => {
         containerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
     );
 
@@ -176,11 +160,9 @@ describe('useCanvasMouseEvents', () => {
         containerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
     );
     const flowRoot = document.createElement('div');
@@ -211,11 +193,9 @@ describe('useCanvasMouseEvents', () => {
         containerRef: nullContainerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
     );
 
@@ -230,220 +210,66 @@ describe('useCanvasMouseEvents', () => {
     expect(mockOnEdgeClick).not.toHaveBeenCalled();
   });
 
-  it('sets hovered button on mouse move', () => {
-    mockGetButtonAtPoint.mockReturnValue({
-      button: mockButton,
-      edge: mockEdge,
-    });
-
-    const { result } = renderHook(() =>
+  const renderPointerHandlers = () =>
+    renderHook(() =>
       useCanvasMouseEvents({
         containerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
-    );
+    ).result.current;
 
-    const mockMouseEvent = new MouseEvent('mousemove', {
-      clientX: 100,
-      clientY: 100,
-    });
+  const move = (pointerType = 'mouse', buttons = 0) =>
+    Object.assign(
+      new MouseEvent('pointermove', { clientX: 50, clientY: 50, buttons }),
+      { pointerType }
+    ) as PointerEvent;
 
-    result.current.handleMouseMove(mockMouseEvent);
+  it('passes a midpoint hit and clears the edge hover', () => {
+    const hit = { button: mockButton, edge: mockEdge };
+    mockGetButtonAtPoint.mockReturnValue(hit);
+    const { handlePointerMove } = renderPointerHandlers();
 
-    expect(mockSetHoveredButton).toHaveBeenCalledWith(mockButton);
+    handlePointerMove(move());
+
+    expect(mockOnButtonHover).toHaveBeenCalledWith(hit);
     expect(mockOnEdgeHover).toHaveBeenCalledWith(null);
   });
 
-  it('clears timeout when button is hovered', () => {
-    const mockTimeout = setTimeout(() => {}, 100);
-    hoverTimeoutRef.current = mockTimeout;
-
-    mockGetButtonAtPoint.mockReturnValue({
-      button: mockButton,
-      edge: mockEdge,
-    });
-
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
-
-    const mockMouseEvent = new MouseEvent('mousemove', {
-      clientX: 100,
-      clientY: 100,
-    });
-
-    result.current.handleMouseMove(mockMouseEvent);
-
-    expect(hoverTimeoutRef.current).toBeNull();
-  });
-
-  it('sets timeout to clear hover when no button is found', () => {
-    mockGetButtonAtPoint.mockReturnValue(null);
-    mockGetEdgeAtPoint.mockReturnValue(null);
-    isOverPopoverRef.current = false;
-
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
-
-    const mockMouseEvent = new MouseEvent('mousemove', {
-      clientX: 100,
-      clientY: 100,
-    });
-
-    result.current.handleMouseMove(mockMouseEvent);
-
-    expect(hoverTimeoutRef.current).not.toBeNull();
-
-    jest.advanceTimersByTime(100);
-
-    expect(mockSetHoveredButton).toHaveBeenCalledWith(null);
-  });
-
-  it('does not set timeout when mouse is over popover', () => {
-    mockGetButtonAtPoint.mockReturnValue(null);
-    mockGetEdgeAtPoint.mockReturnValue(null);
-    isOverPopoverRef.current = true;
-
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
-
-    const mockMouseEvent = new MouseEvent('mousemove', {
-      clientX: 100,
-      clientY: 100,
-    });
-
-    result.current.handleMouseMove(mockMouseEvent);
-
-    expect(hoverTimeoutRef.current).toBeNull();
-  });
-
-  it('sets hovered edge on mouse move when no button is found', () => {
+  it('clears the midpoint immediately when hovering the edge stroke', () => {
     mockGetButtonAtPoint.mockReturnValue(null);
     mockGetEdgeAtPoint.mockReturnValue(mockEdge);
+    const { handlePointerMove } = renderPointerHandlers();
 
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
+    handlePointerMove(move());
 
-    const mockMouseEvent = new MouseEvent('mousemove', {
-      clientX: 100,
-      clientY: 100,
-    });
-
-    result.current.handleMouseMove(mockMouseEvent);
-
+    expect(mockOnButtonHover).toHaveBeenCalledWith(null);
     expect(mockOnEdgeHover).toHaveBeenCalledWith(mockEdge);
   });
 
-  it('clears hover state on mouse leave', () => {
-    isOverPopoverRef.current = false;
+  it('clears both hover hits immediately when the pointer leaves the pane', () => {
+    const { handlePointerLeave } = renderPointerHandlers();
 
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
+    handlePointerLeave();
 
-    result.current.handleMouseLeave();
-
+    expect(mockOnButtonHover).toHaveBeenCalledWith(null);
     expect(mockOnEdgeHover).toHaveBeenCalledWith(null);
-    expect(mockSetHoveredButton).toHaveBeenCalledWith(null);
   });
 
-  it('does not clear hover state when mouse is over popover', () => {
-    isOverPopoverRef.current = true;
+  it.each([
+    ['touch', 0],
+    ['mouse', 1],
+  ])('does not hit-test %s movement with buttons=%i', (type, buttons) => {
+    const { handlePointerMove } = renderPointerHandlers();
 
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
+    handlePointerMove(move(type, buttons));
 
-    result.current.handleMouseLeave();
-
-    expect(mockOnEdgeHover).not.toHaveBeenCalled();
-    expect(mockSetHoveredButton).not.toHaveBeenCalled();
-  });
-
-  it('clears timeout on mouse leave', () => {
-    const mockTimeout = setTimeout(() => {}, 100);
-    hoverTimeoutRef.current = mockTimeout;
-    isOverPopoverRef.current = false;
-
-    const { result } = renderHook(() =>
-      useCanvasMouseEvents({
-        containerRef,
-        getEdgeAtPointRef,
-        getButtonAtPointRef,
-        setHoveredButtonRef,
-        onEdgeClickRef,
-        onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
-      })
-    );
-
-    result.current.handleMouseLeave();
-
-    expect(hoverTimeoutRef.current).toBeNull();
+    expect(mockGetButtonAtPoint).not.toHaveBeenCalled();
+    expect(mockOnButtonHover).toHaveBeenCalledWith(null);
+    expect(mockOnEdgeHover).toHaveBeenCalledWith(null);
   });
 
   it('does not call handlers when currentTarget does not match target', () => {
@@ -457,11 +283,9 @@ describe('useCanvasMouseEvents', () => {
         containerRef,
         getEdgeAtPointRef,
         getButtonAtPointRef,
-        setHoveredButtonRef,
+        onButtonHover: mockOnButtonHover,
         onEdgeClickRef,
         onEdgeHoverRef,
-        hoverTimeoutRef,
-        isOverPopoverRef,
       })
     );
 

@@ -24,6 +24,7 @@ import { Theme } from '../context/UntitledUIThemeProvider/theme-provider.interfa
 import {
   CanvasButton,
   CanvasButtonColors,
+  CanvasButtonHitData,
   createCanvasButton,
   drawCanvasButton,
   ECanvasButtonType,
@@ -59,6 +60,7 @@ interface UseCanvasEdgeRendererProps {
   containerWidth: number;
   containerHeight: number;
   theme: Theme;
+  onButtonsDrawn?: (buttons: CanvasButtonHitData[]) => void;
 }
 
 interface EdgeHitEntry {
@@ -75,11 +77,6 @@ interface CanvasEdgePath {
   targetX: number;
   targetY: number;
   path: Path2D;
-}
-
-export interface CanvasButtonHitData {
-  button: CanvasButton;
-  edge: Edge;
 }
 
 const getCanvasEdgePath = (
@@ -270,6 +267,7 @@ export function useCanvasEdgeRenderer({
   containerWidth,
   containerHeight,
   theme,
+  onButtonsDrawn,
 }: UseCanvasEdgeRendererProps) {
   const rafIdRef = useRef<number>();
   const isDirtyRef = useRef(false);
@@ -404,6 +402,7 @@ export function useCanvasEdgeRenderer({
       visibleEdgesRef.current = [];
       edgeHitPathsRef.current = [];
       canvasButtonsRef.current = [];
+      onButtonsDrawn?.([]);
 
       if (isCanvasReadyRef.current) {
         isCanvasReadyRef.current = false;
@@ -479,6 +478,7 @@ export function useCanvasEdgeRenderer({
 
     edgeHitPathsRef.current = hitPaths;
     canvasButtonsRef.current = canvasButtons;
+    onButtonsDrawn?.(canvasButtons);
 
     ctx.restore();
 
@@ -501,6 +501,7 @@ export function useCanvasEdgeRenderer({
     isRepositioning,
     setIsCanvasReady,
     isDQEnabled,
+    onButtonsDrawn,
     getNode,
   ]);
 
@@ -635,6 +636,5 @@ export function useCanvasEdgeRenderer({
     getEdgeAtPoint,
     getButtonAtPoint,
     setHoveredButton: onSetHoveredButton,
-    hoveredButton,
   };
 }

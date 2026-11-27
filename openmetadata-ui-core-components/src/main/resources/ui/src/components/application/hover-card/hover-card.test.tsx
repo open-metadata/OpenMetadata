@@ -14,12 +14,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HoverCard } from './hover-card';
 
-const renderCard = (props: Partial<Parameters<typeof HoverCard>[0]> = {}) =>
-  render(
-    <HoverCard content={<a href="/profile">Profile</a>} {...props}>
-      <a href="/user">Jane</a>
-    </HoverCard>
-  );
+const card = (props: Partial<Parameters<typeof HoverCard>[0]> = {}) => (
+  <HoverCard content={<a href="/profile">Profile</a>} {...props}>
+    <a href="/user">Jane</a>
+  </HoverCard>
+);
+
+const renderCard = (props?: Parameters<typeof card>[0]) => render(card(props));
 
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
 
@@ -105,6 +106,86 @@ describe('HoverCard', () => {
     advance(500);
 
     expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('opens from an external hover and closes after pointer and focus leave', () => {
+    const onCloseComplete = vi.fn();
+    const { rerender } = renderCard({
+      isExternalTriggerHovered: true,
+      onCloseComplete,
+    });
+
+    advance(299);
+    expect(screen.queryByText('Profile')).toBeNull();
+
+    advance(1);
+    const link = screen.getByText('Profile');
+    rerender(card({ isExternalTriggerHovered: false, onCloseComplete }));
+    advance(100);
+    fireEvent.mouseEnter(link.parentElement as HTMLElement, {
+      pointerType: 'mouse',
+    });
+    act(() => link.focus());
+    fireEvent.mouseLeave(link.parentElement as HTMLElement, {
+      pointerType: 'mouse',
+    });
+    advance(500);
+
+    expect(link).toHaveFocus();
+    expect(onCloseComplete).not.toHaveBeenCalled();
+
+    act(() => link.blur());
+    advance(200);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+    expect(onCloseComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a pending external hover when the trigger is left', () => {
+    const onCloseComplete = vi.fn();
+    const { rerender } = renderCard({
+      isExternalTriggerHovered: true,
+      onCloseComplete,
+    });
+    advance(100);
+    rerender(card({ isExternalTriggerHovered: false, onCloseComplete }));
+    advance(500);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+    expect(onCloseComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('dismisses a pending or open external hover on Escape until re-entry', () => {
+    const { rerender } = renderCard({ isExternalTriggerHovered: true });
+    advance(100);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    advance(500);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+
+    rerender(card({ isExternalTriggerHovered: false }));
+    rerender(card({ isExternalTriggerHovered: true }));
+    advance(300);
+
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    advance(500);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
+  it('cancels an external hover timer on unmount', () => {
+    const onCloseComplete = vi.fn();
+    const { rerender, unmount } = renderCard({
+      isExternalTriggerHovered: true,
+      onCloseComplete,
+    });
+    rerender(card({ isExternalTriggerHovered: false, onCloseComplete }));
+    unmount();
+    advance(500);
+
+    expect(onCloseComplete).not.toHaveBeenCalled();
   });
 
   it('never opens when disabled', () => {

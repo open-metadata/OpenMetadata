@@ -37,6 +37,10 @@ export interface HoverCardProps {
   /** Milliseconds before the card closes, giving the pointer time to move into it. @default 200 */
   closeDelay?: number;
   isDisabled?: boolean;
+  /** When supplied, the caller detects hover instead of the DOM trigger. */
+  isExternalTriggerHovered?: boolean;
+  /** Releases an external anchor once it is no longer needed. */
+  onCloseComplete?: () => void;
   /** Distance in px between the trigger and the card. @default 8 */
   offset?: number;
   /** Whether to show an arrow pointing toward the trigger. @default false */
@@ -52,72 +56,114 @@ export const HoverCard = ({
   openDelay = 300,
   closeDelay = 200,
   isDisabled,
+  isExternalTriggerHovered,
+  onCloseComplete,
   offset = 8,
   arrow = false,
   className,
 }: HoverCardProps) => {
   const triggerRef = useRef<HTMLSpanElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const dismissed = useRef(false);
+  const hasExternalAnchor = useRef(false);
+  const onCloseCompleteRef = useRef(onCloseComplete);
   const [isOpen, setIsOpen] = useState(false);
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false);
+  const [isTriggerFocused, setIsTriggerFocused] = useState(false);
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const [isCardFocused, setIsCardFocused] = useState(false);
   const { isFocusVisible } = useFocusVisible();
 
-  const schedule = useCallback(
-    (open: boolean) => {
-      clearTimeout(timer.current);
-      timer.current = setTimeout(
-        () => setIsOpen(open),
-        open ? openDelay : closeDelay
-      );
-    },
-    [openDelay, closeDelay]
-  );
+  const isExternal = isExternalTriggerHovered !== undefined;
+  const isTriggerActive =
+    isExternalTriggerHovered ?? (isTriggerHovered || isTriggerFocused);
+  const shouldStayOpen = isOpen && (isCardHovered || isCardFocused);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setIsCardHovered(false);
+    setIsCardFocused(false);
+  }, []);
 
-  // Listen on the document so Escape dismisses a hover-opened card too, where
-  // focus is not on the trigger (WCAG 1.4.13: dismissable without moving the pointer).
   useEffect(() => {
-    if (!isOpen) {
+    onCloseCompleteRef.current = onCloseComplete;
+  }, [onCloseComplete]);
+
+  useEffect(() => {
+    if (isExternalTriggerHovered) {
+      hasExternalAnchor.current = true;
+    }
+    if (!isTriggerActive) {
+      dismissed.current = false;
+    }
+    if (isDisabled) {
+      close();
+    } else if (isTriggerActive || shouldStayOpen) {
+      if (!isOpen && !dismissed.current) {
+        timer.current = setTimeout(() => setIsOpen(true), openDelay);
+      }
+    } else if (isOpen || hasExternalAnchor.current) {
+      timer.current = setTimeout(
+        () => {
+          close();
+          if (hasExternalAnchor.current) {
+            hasExternalAnchor.current = false;
+            onCloseCompleteRef.current?.();
+          }
+        },
+        isOpen ? closeDelay : 0
+      );
+    }
+
+    return () => clearTimeout(timer.current);
+  }, [
+    close,
+    closeDelay,
+    isDisabled,
+    isExternalTriggerHovered,
+    isOpen,
+    isTriggerActive,
+    openDelay,
+    shouldStayOpen,
+  ]);
+
+  const dismiss = useCallback(() => {
+    clearTimeout(timer.current);
+    dismissed.current = true;
+    close();
+  }, [close]);
+
+  // Focus may still be outside the card when a keyboard dismissal is needed.
+  useEffect(() => {
+    if (isDisabled || (!isTriggerActive && !isOpen)) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        clearTimeout(timer.current);
-        setIsOpen(false);
+        dismiss();
       }
     };
     document.addEventListener('keydown', onKeyDown);
 
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isOpen]);
+  }, [dismiss, isDisabled, isOpen, isTriggerActive]);
 
   const { hoverProps: triggerHoverProps } = useHover({
-    isDisabled,
-    onHoverStart: () => schedule(true),
-    onHoverEnd: () => schedule(false),
+    isDisabled: isDisabled || isExternal,
+    onHoverChange: setIsTriggerHovered,
   });
   const { hoverProps: cardHoverProps } = useHover({
     isDisabled,
-    onHoverStart: () => schedule(true),
-    onHoverEnd: () => schedule(false),
+    onHoverChange: setIsCardHovered,
   });
-  // Focus moving from the trigger into the card (e.g. to a link inside it) must
-  // keep the card open; otherwise the trigger's blur closes it under the user.
   const { focusWithinProps: cardFocusWithinProps } = useFocusWithin({
     isDisabled,
-    onFocusWithinChange: (isFocused) => schedule(isFocused),
+    onFocusWithinChange: setIsCardFocused,
   });
-  // Only keyboard focus opens the card; a mouse click that focuses the trigger
-  // is already covered by hover.
   const { focusWithinProps } = useFocusWithin({
-    isDisabled,
-    onFocusWithinChange: (isFocused) => {
-      if (!isFocused) {
-        schedule(false);
-      } else if (isFocusVisible) {
-        schedule(true);
-      }
-    },
+    isDisabled: isDisabled || isExternal,
+    onFocusWithinChange: (isFocused) =>
+      setIsTriggerFocused(isFocused && isFocusVisible),
   });
 
   return (
@@ -135,8 +181,13 @@ export const HoverCard = ({
         isOpen={isOpen && !isDisabled}
         offset={offset}
         placement={placement}
+        shouldCloseOnInteractOutside={() => false}
         triggerRef={triggerRef}
-        onOpenChange={setIsOpen}>
+        onOpenChange={(open) => {
+          if (!open) {
+            dismiss();
+          }
+        }}>
         {arrow && (
           <AriaOverlayArrow>
             <svg
