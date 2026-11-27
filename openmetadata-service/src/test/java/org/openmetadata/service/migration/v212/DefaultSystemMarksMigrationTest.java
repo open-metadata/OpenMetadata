@@ -15,6 +15,7 @@ package org.openmetadata.service.migration.v212;
 
 import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,11 +37,54 @@ class DefaultSystemMarksMigrationTest {
   private static final String MIGRATION_DIR = "bootstrap/sql/migrations/native/2.1.2";
   private static final String SEED_DIR = "openmetadata-service/src/main/resources/json/data";
   private static final String SYSTEM_PROVIDER = "system";
+  // The repair names the defaults seeded with the marks when the bug was fixed. A default seeded
+  // later is never stripped, so these lists stay as they are and are not compared to the seeds.
+  private static final Set<String> DEFAULT_POLICIES =
+      Set.of(
+          "ApplicationBotImpersonationPolicy",
+          "ApplicationBotPolicy",
+          "AutoClassificationBotPolicy",
+          "BotImpersonationPolicy",
+          "BotNonAdminImpersonationPolicy",
+          "DataConsumerPolicy",
+          "DataStewardPolicy",
+          "DefaultBotPolicy",
+          "IngestionBotPolicy",
+          "LineageBotPolicy",
+          "OntologyAuthorPolicy",
+          "OntologyReviewerPolicy",
+          "OrganizationPolicy",
+          "ProfilerBotPolicy",
+          "QualityBotPolicy",
+          "ScimBotPolicy",
+          "TaskAuthorPolicy",
+          "TeamOnlyPolicy",
+          "UsageBotPolicy");
+  private static final Set<String> DEFAULT_ROLES =
+      Set.of(
+          "ApplicationBotImpersonationRole",
+          "ApplicationBotRole",
+          "AutoClassificationBotRole",
+          "BotImpersonationRole",
+          "BotNonAdminImpersonationRole",
+          "DataConsumer",
+          "DataQualityBotRole",
+          "DataSteward",
+          "DefaultBotRole",
+          "GovernanceBotRole",
+          "IngestionBotRole",
+          "LineageBotRole",
+          "OntologyAuthor",
+          "OntologyReviewer",
+          "ProfilerBotRole",
+          "QualityBotRole",
+          "ScimBotRole",
+          "UsageBotRole");
 
-  @ParameterizedTest(name = "{0} restores the marks on every protected {2} seed")
+  @ParameterizedTest(name = "{0} restores the marks on the {2} defaults")
   @MethodSource("cases")
-  void migrationCoversEveryProtectedSeed(String dialect, String table, String seedFolder)
-      throws IOException {
+  void migrationRestoresTheProtectedDefaults(
+      String dialect, String table, String seedFolder, Set<String> defaults) throws IOException {
     String sql =
         Files.readString(
             repositoryRoot()
@@ -48,7 +92,10 @@ class DefaultSystemMarksMigrationTest {
                 .resolve(dialect)
                 .resolve("postDataMigrationSQLScript.sql"));
 
-    assertEquals(protectedSeedNames(seedFolder), migratedNames(sql, table));
+    assertEquals(defaults, migratedNames(sql, table));
+    assertTrue(
+        protectedSeedNames(seedFolder).containsAll(defaults),
+        "every name the migration restores must be a " + seedFolder + " seeded with the marks");
   }
 
   private static Stream<Arguments> cases() {
@@ -56,8 +103,8 @@ class DefaultSystemMarksMigrationTest {
         .flatMap(
             dialect ->
                 Stream.of(
-                    Arguments.of(dialect, "policy_entity", "policy"),
-                    Arguments.of(dialect, "role_entity", "role")));
+                    Arguments.of(dialect, "policy_entity", "policy", DEFAULT_POLICIES),
+                    Arguments.of(dialect, "role_entity", "role", DEFAULT_ROLES)));
   }
 
   private static Set<String> migratedNames(String sql, String table) {
