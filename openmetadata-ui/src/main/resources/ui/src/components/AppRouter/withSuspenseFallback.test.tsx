@@ -22,8 +22,6 @@ const LoadedComponent = () => <div>Loaded component</div>;
 
 describe('withSuspenseFallback', () => {
   const getLazyComponent = () =>
-    // The wrapper itself is the subject under test, so each case owns the fallback.
-    // eslint-disable-next-line openmetadata-performance/require-suspense-fallback
     lazy(
       () =>
         new Promise<{ default: () => JSX.Element }>((resolve) => {

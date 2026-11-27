@@ -44,6 +44,7 @@ import org.openmetadata.sdk.services.drives.WorksheetService;
 public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSpreadsheet> {
 
   {
+    supportsLineage = true;
     supportsFollowers = false;
     supportsDomains = false;
     supportsDataProducts = false;

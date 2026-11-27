@@ -12,6 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import { meanBy } from 'lodash';
 import Qs from 'qs';
 import type { Viewport } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
@@ -969,6 +970,28 @@ export const getBoxNearestPoint = <T extends Point & Size>(
     },
     { distance: Number.POSITIVE_INFINITY }
   ).box;
+
+/**
+ * Screen point a zoom gesture aims at: the pointer for a wheel or mouse event,
+ * the midpoint of the fingers for a pinch, or undefined when there is none.
+ */
+export const getZoomGesturePoint = (
+  event?: MouseEvent | TouchEvent | null
+): Point | undefined => {
+  if (!event) {
+    return undefined;
+  }
+  if ('clientX' in event) {
+    return { x: event.clientX, y: event.clientY };
+  }
+  const touches = Array.from(
+    event.touches.length ? event.touches : event.changedTouches
+  );
+
+  return touches.length
+    ? { x: meanBy(touches, 'clientX'), y: meanBy(touches, 'clientY') }
+    : undefined;
+};
 
 /** Largest share of the screen's width or height that `size` covers at `zoom`. */
 export const getScreenFill = (size: Size, zoom: number, screen: Size) =>

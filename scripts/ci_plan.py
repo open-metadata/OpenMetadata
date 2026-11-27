@@ -34,6 +34,7 @@ def select(
     draft = event == "pull_request" and payload["pull_request"]["draft"]
     pr_update = event == "pull_request" and payload["action"] != "ready_for_review"
     java_unit = not draft and (manual_java or "java-unit" in matched)
+    ui_unit = not draft and (manual_all or manual == "ui" or "ui-unit" in matched)
     python = not draft and (
         manual_python
         or (event == "pull_request" and "python" in matched)
@@ -56,6 +57,8 @@ def select(
         "java-it-redis": java_it,
         "python": python,
         "airflow-apis": airflow,
+        "ui": ui_unit or (not draft and "ui" in matched),
+        "ui-unit": ui_unit,
         "static": python
         or airflow
         or (not draft and "python-static" in matched),

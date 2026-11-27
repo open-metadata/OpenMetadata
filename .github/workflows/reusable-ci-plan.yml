@@ -41,6 +41,10 @@ on:
         value: ${{ jobs.select.outputs.python }}
       airflow-apis:
         value: ${{ jobs.select.outputs.airflow-apis }}
+      ui:
+        value: ${{ jobs.select.outputs.ui }}
+      ui-unit:
+        value: ${{ jobs.select.outputs.ui-unit }}
       static:
         value: ${{ jobs.select.outputs.static }}
       json-yaml:
@@ -62,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      ref: ${{ github.sha }}
       python-lowest: ${{ steps.versions.outputs.lowest }}
       python-highest: ${{ steps.versions.outputs.highest }}
       checkstyle: ${{ steps.workloads.outputs.checkstyle }}
@@ -73,6 +77,8 @@ jobs:
       java-it-redis: ${{ steps.workloads.outputs.java-it-redis }}
       python: ${{ steps.workloads.outputs.python }}
       airflow-apis: ${{ steps.workloads.outputs.airflow-apis }}
+      ui: ${{ steps.workloads.outputs.ui }}
+      ui-unit: ${{ steps.workloads.outputs.ui-unit }}
       static: ${{ steps.workloads.outputs.static }}
       json-yaml: ${{ steps.workloads.outputs.json-yaml }}
       ci-rules: ${{ steps.workloads.outputs.ci-rules }}
@@ -80,8 +86,8 @@ jobs:
       dar: ${{ steps.workloads.outputs.dar }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        # Use the PR merge commit so the planner files exist even on older branches.
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
           sparse-checkout: |

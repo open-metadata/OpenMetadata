@@ -36,6 +36,7 @@ import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPublicationStatusResolver;
 import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
@@ -344,7 +345,7 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
     final Ontology updated = JsonUtils.deepCopy(original, Ontology.class);
     updated.setInstalledPacks(
         OntologyPackInstallations.record(original.getInstalledPacks(), installation, moduleOrder));
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(installation.getInstalledAt());
     new PackInstallationUpdater(original, updated).update();
     return updated;

@@ -63,7 +63,13 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge-queue",
             "merge_group",
             {},
-            ["java-checkstyle", "java-unit", "java-integration", "python-backend"],
+            [
+                "java-checkstyle",
+                "java-unit",
+                "java-integration",
+                "python-backend",
+                "ui-unit",
+            ],
             {
                 "checkstyle",
                 "java-unit",
@@ -71,6 +77,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "java-it-redis",
                 "python",
                 "static",
+                "ui",
+                "ui-unit",
             },
         ),
         (
@@ -88,6 +96,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "java-unit",
                 "python",
                 "airflow-apis",
+                "ui",
+                "ui-unit",
                 "json-yaml",
                 "ci-rules",
                 "quickstart-compose",
@@ -98,8 +108,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "pr",
             "pull_request",
             {"action": "ready_for_review", "pull_request": {"draft": False}},
-            ["airflow-apis", "json-yaml", "ci-rules", "quickstart-compose"],
-            {"airflow-apis", "static"},
+            ["airflow-apis", "ui-unit", "json-yaml", "ci-rules", "quickstart-compose"],
+            {"airflow-apis", "static", "ui", "ui-unit"},
         ),
         (
             "merge-queue",
@@ -137,6 +147,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "python",
                 "airflow-apis",
                 "static",
+                "ui",
+                "ui-unit",
                 "json-yaml",
                 "ci-rules",
             },
@@ -177,6 +189,33 @@ def test_workloads_selected_for_event(
     assert selected_workloads(tmp_path, entrypoint, event, payload, matches) == expected
 
 
+@pytest.mark.parametrize("entrypoint", ["pr", "merge-queue"])
+def test_manual_ui_workload_selects_only_ui(tmp_path, entrypoint):
+    selected = selected_workloads(
+        tmp_path, entrypoint, "workflow_dispatch", {"inputs": {"workload": "ui"}}, []
+    )
+    assert selected == {"ui", "ui-unit"}
+
+
+def test_planner_uses_event_checkout_and_exports_ui():
+    workflow = yaml.load(
+        (WORKFLOWS / "reusable-ci-plan.yml").read_text(), Loader=yaml.BaseLoader
+    )
+    select = workflow["jobs"]["select"]
+    checkout = next(
+        step
+        for step in select["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+
+    assert "ref" not in checkout["with"]
+    assert select["outputs"]["ref"] == "${{ github.sha }}"
+    outputs = workflow["on"]["workflow_call"]["outputs"]
+    for name in ("ui", "ui-unit"):
+        assert outputs[name]["value"] == "${{ jobs.select.outputs." + name + " }}"
+        assert select["outputs"][name] == "${{ steps.workloads.outputs." + name + " }}"
+
+
 @pytest.fixture(scope="module")
 def path_filters():
     planner = yaml.safe_load((WORKFLOWS / "reusable-ci-plan.yml").read_text())
@@ -199,8 +238,13 @@ def path_filters():
         ),
         (
             "openmetadata-ui/src/main/resources/ui/package.json",
-            {"json-yaml"},
-            {"json-yaml"},
+            {"json-yaml", "ui", "ui-unit"},
+            {"json-yaml", "ui", "ui-unit"},
+        ),
+        (
+            "openmetadata-ui/src/main/resources/ui/playwright/e2e/Glossary.spec.ts",
+            {"ui"},
+            {"ui"},
         ),
         (
             ".github/scripts/validate_ci_rules.sh",
@@ -229,7 +273,7 @@ def path_filters():
         ),
         (
             "openmetadata-spec/src/main/resources/json/schema/governance/workflows/workflowDefinition.json",
-            {"checkstyle", "java-unit", "python", "static", "json-yaml"},
+            {"checkstyle", "java-unit", "python", "static", "json-yaml", "ui"},
             {
                 "checkstyle",
                 "java-unit",
@@ -239,6 +283,7 @@ def path_filters():
                 "static",
                 "json-yaml",
                 "dar",
+                "ui",
             },
         ),
         (
@@ -261,6 +306,8 @@ def path_filters():
                 "static",
                 "json-yaml",
                 "ci-rules",
+                "ui",
+                "ui-unit",
             },
             {
                 "checkstyle",
@@ -272,6 +319,8 @@ def path_filters():
                 "static",
                 "json-yaml",
                 "ci-rules",
+                "ui",
+                "ui-unit",
             },
         ),
     ],

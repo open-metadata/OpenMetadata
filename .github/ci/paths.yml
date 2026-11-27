@@ -154,6 +154,44 @@ python-static:
   - scripts/update_version.py
   - .github/scripts/tests/test_python_ci.py
 
+ui:
+  - openmetadata-ui/src/main/resources/ui/**
+  - openmetadata-ui-core-components/src/main/resources/ui/**
+  - openmetadata-spec/src/main/resources/json/schema/**
+  - .github/ci/paths.yml
+  - .github/actions/ci-status-gate/**
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-*/**
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/reusable-ci-plan.yml
+  - .github/workflows/ui-ci.yml
+  - .github/workflows/ui-browser-tests.yml
+  - scripts/ci_plan.py
+
+# Jest waits for checkstyle, so the planner also selects ui when ui-unit matches.
+ui-unit:
+  - openmetadata-ui/src/main/resources/ui/src/**
+  - openmetadata-ui/src/main/resources/ui/scripts/sso-dev-server*
+  - openmetadata-ui/src/main/resources/ui/jest.config.js
+  - openmetadata-ui/src/main/resources/ui/package.json
+  - openmetadata-ui/src/main/resources/ui/yarn.lock
+  - openmetadata-ui/src/main/resources/ui/tsconfig.json
+  - openmetadata-ui/src/main/resources/ui/babel.config.json
+  - openmetadata-ui/src/main/resources/ui/.nvmrc
+  - openmetadata-ui-core-components/src/main/resources/ui/src/**
+  - openmetadata-ui-core-components/src/main/resources/ui/package.json
+  - openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+  - openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts
+  - .github/ci/paths.yml
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/reusable-ci-plan.yml
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-unit/**
+  - .github/workflows/ui-ci.yml
+  - scripts/ci_plan.py
+
 dar:
   - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
   - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
