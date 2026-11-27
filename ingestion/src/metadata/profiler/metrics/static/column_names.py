@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Table Column Count Metric definition
+Table Column Names Metric definition
 """
 # pylint: disable=duplicate-code
 
@@ -90,7 +90,9 @@ class ColumnNames(StaticMetric):
     @_label
     def fn(self):
         if not hasattr(self, "table"):
-            raise AttributeError("Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)")
+            raise AttributeError(
+                "Column Names requires a table to be set: add_props(table=...)(Metrics.columnNames)"
+            )
 
         col_names = ",".join(col.name for col in inspect(self.table).c)
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
