@@ -20,8 +20,9 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_LABELS,
@@ -91,12 +92,13 @@ export const ContractQualityFormTab: React.FC<{
     selectedQuality ?? []
   );
 
-  // Stored quality-expectation references keyed by id, seeded from the saved
-  // contract. The test-case list is server-paged and filterable, so a seeded
-  // expectation whose test case lives on a later page (or is excluded by the
-  // testType filter, or was deleted) is never in `allTestCases`. Without this
-  // fallback, rebuilding `qualityExpectations` from `allTestCases` alone would
-  // silently drop those off-page selections whenever the user toggles any row.
+  // The test-case list is server-paged, searchable and filterable, so a
+  // selected test case is often not in `allTestCases`. Its reference is
+  // resolved from what was already known about it: first the references
+  // emitted for the current selection (picked on another page or before a
+  // search), then the saved contract (off-page, filtered-out or deleted test
+  // cases). Rebuilding from `allTestCases` alone would strip those selections
+  // down to a bare `{ id, type }` or drop them.
   const storedRefsById = useMemo(
     () =>
       new Map(
@@ -104,6 +106,7 @@ export const ContractQualityFormTab: React.FC<{
       ),
     [initialValues?.qualityExpectations]
   );
+  const selectedRefsById = useRef<Map<string, EntityReference>>(new Map());
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] =
     useState<boolean>(false);
   const {
@@ -125,6 +128,7 @@ export const ContractQualityFormTab: React.FC<{
     try {
       const { data, paging } = await getListTestCaseBySearch({
         ...DEFAULT_SORT_ORDER,
+        ...(searchValue && { q: searchValue }),
         ...params,
         testCaseType: testType,
         fields: [TabSpecificField.TEST_CASE_RESULT],
@@ -164,8 +168,9 @@ export const ContractQualityFormTab: React.FC<{
 
   const handleTestCaseSubmit = useCallback(() => {
     handleCloseTestCaseDrawer();
+    handlePageChange(INITIAL_PAGING_VALUE);
     fetchAllTests();
-  }, [handleCloseTestCaseDrawer, fetchAllTests]);
+  }, [handleCloseTestCaseDrawer, handlePageChange, fetchAllTests]);
 
   const columns: ColumnsType<TestCase> = useMemo(
     () => [
@@ -205,7 +210,7 @@ export const ContractQualityFormTab: React.FC<{
       currentPage,
       showPagination,
       isLoading: isTestsLoading,
-      isNumberBased: false,
+      isNumberBased: true,
       pageSize,
       paging,
       pagingHandler: handleTestPageChange,
@@ -223,26 +228,26 @@ export const ContractQualityFormTab: React.FC<{
   );
 
   const handleSelection = (selectedRowKeys: string[]) => {
-    const qualityExpectations = selectedRowKeys.map((id) => {
-      const testCase = allTestCases.find((test) => test.id === id);
+    const pageTestCasesById = new Map(
+      allTestCases.map((testCase) => [testCase.id ?? '', testCase])
+    );
+    const qualityExpectations: EntityReference[] = selectedRowKeys.map((id) => {
+      const testCase = pageTestCasesById.get(id);
 
-      // When the test case is in the currently fetched (paged/filtered) list,
-      // resolve the full reference from it. Otherwise fall back to the stored
-      // reference seeded from the saved contract so off-page, filtered-out, or
-      // deleted test cases are preserved rather than silently dropped.
       return testCase
         ? {
             description: testCase.description,
             name: testCase.name,
-            id: testCase.id,
-            type: EntityType.TEST_CASE,
-          }
-        : storedRefsById.get(id) ?? {
             id,
             type: EntityType.TEST_CASE,
-          };
-    }) as EntityReference[];
+          }
+        : selectedRefsById.current.get(id) ??
+            storedRefsById.get(id) ?? { id, type: EntityType.TEST_CASE };
+    });
 
+    selectedRefsById.current = new Map(
+      qualityExpectations.map((reference) => [reference.id, reference])
+    );
     onChange({
       qualityExpectations,
     });
@@ -250,7 +255,7 @@ export const ContractQualityFormTab: React.FC<{
 
   useEffect(() => {
     fetchAllTests();
-  }, [testType]);
+  }, [testType, pageSize]);
 
   return (
     <ContractFormStep
@@ -289,7 +294,10 @@ export const ContractQualityFormTab: React.FC<{
                 <Dropdown.Menu
                   aria-label={t('label.filter-plural')}
                   selectedKeys={[testType]}
-                  onAction={(key) => setTestType(key as TestCaseType)}>
+                  onAction={(key) => {
+                    handlePageChange(INITIAL_PAGING_VALUE);
+                    setTestType(key as TestCaseType);
+                  }}>
                   {Object.entries(ContractTestTypeLabelMap).map(
                     ([key, label]) => (
                       <Dropdown.Item id={key} key={key} label={label} />
@@ -332,9 +340,9 @@ export const ContractQualityFormTab: React.FC<{
             }),
             onSearch: (value) => {
               setSearchValue(value);
+              handlePageChange(INITIAL_PAGING_VALUE);
               fetchAllTests({
                 offset: 0,
-                limit: pageSize,
                 q: value,
               });
             },

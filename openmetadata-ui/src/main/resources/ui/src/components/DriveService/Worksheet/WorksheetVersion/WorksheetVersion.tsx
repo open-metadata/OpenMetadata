@@ -276,7 +276,7 @@ const WorksheetVersion = ({
               <div className="entity-version-page-tabs">
                 <Tabs
                   className="tw:gap-3"
-                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  selectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
                   <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (
