@@ -248,6 +248,21 @@ public class JWTTokenGenerator {
       ServiceTokenType tokenType,
       List<String> scopes,
       String clientId) {
+    return generateJWTToken(
+        userName, roles, isAdmin, email, expiryInSeconds, isBot, tokenType, scopes, clientId, null);
+  }
+
+  public JWTAuthMechanism generateJWTToken(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      List<String> scopes,
+      String clientId,
+      String audience) {
     return getJwtAuthMechanism(
         userName,
         roles,
@@ -259,7 +274,8 @@ public class JWTTokenGenerator {
         null,
         scopes,
         null,
-        clientId);
+        clientId,
+        audience);
   }
 
   public JWTAuthMechanism generateJWTTokenForSession(
@@ -338,6 +354,24 @@ public class JWTTokenGenerator {
       List<String> scopes,
       String sessionId,
       String clientId) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, scopes, sessionId,
+        clientId, null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes,
+      String sessionId,
+      String clientId,
+      String audience) {
     try {
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
@@ -371,6 +405,9 @@ public class JWTTokenGenerator {
       }
       if (!nullOrEmpty(clientId)) {
         tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId);
+      }
+      if (!nullOrEmpty(audience) && !audience.isBlank()) {
+        tokenBuilder.withAudience(audience);
       }
 
       String token = tokenBuilder.sign(algorithm);
