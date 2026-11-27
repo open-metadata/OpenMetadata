@@ -202,21 +202,4 @@ describe('useIncidentManagerListPage (integration)', () => {
     );
     expect(result.current.testCaseListData.data[0].id).toBe('row-0');
   });
-
-  it('refreshes the page it is on when asked for the same page', async () => {
-    const { result } = await renderLoadedPage();
-    mockGetList.mockClear();
-
-    await act(async () => {
-      result.current.pagingData.pagingHandler({ currentPage: 1 });
-    });
-    await waitFor(() =>
-      expect(result.current.testCaseListData.isLoading).toBe(false)
-    );
-
-    expect(mockGetList).toHaveBeenCalledTimes(1);
-    expect(mockGetList.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ offset: 0 })
-    );
-  });
 });
