@@ -1,10 +1,10 @@
 # The German UI calls a data asset "Daten-Asset" and an asset "Asset"
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung") · v3 2026-11-26 (domain is "Domäne")
+- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung") · v3 2026-11-26 (domain is "Domäne") · v4 2026-11-27 (service is "Dienst")
 - **Deciders:** Sascha Halm (proposal), the reviewers of the linked PR
 - **Guard:** reviewer
-- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843, open-metadata/OpenMetadata#38869
+- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843, open-metadata/OpenMetadata#38869, open-metadata/OpenMetadata#38934
 
 ## Context
 `de-de.json` rendered the English "data asset" with seven different words: "Daten-Asset",
@@ -55,3 +55,22 @@ and "scope" elsewhere in the file, so it is ambiguous.
 - Not affected: "domain" in other senses keeps its own word — the domain of an ontology property
   (`label.property-domain`), an internet domain (`message.marketplace-verify-msg`, "Domain") and a
   subject area in general prose (glossary help texts, "business domain" → "Geschäftsbereich").
+
+## Amendment — 2026-11-27: service is "Dienst"
+
+Fourth term from the glossary in #38630, tracked in #38934. Most `de-de` strings already said
+"Dienst", but the service creation form, the lineage table columns and the service insights widgets
+said "Service" ("Servicename", "Servicetyp", "Quellservices").
+
+- English "service" (the connected source system) is "Dienst", masculine: "der Dienst", plural
+  "Dienste". Compounds are closed for German words ("Dienstname", "Diensttyp", "Dienstkonto",
+  "Dienstverbindung", "Dienstkonnektoren") and hyphenated with a product or English term
+  ("Pipeline-Dienst", "Dienstkonto-E-Mail"). Exception: a label in a series keeps the form of its
+  siblings, so the lineage level label stays "Dienst-Ebene" next to "Datenbank-Ebene" and
+  "Datei-Ebene".
+- "Service account" is "Dienstkonto", as in the German Google Cloud documentation.
+- Outside the service page sub-headers (see the ingestion amendment), the verb "ingest" is
+  "erfassen": "erfassen Sie Metadaten", "Was sollen wir erfassen?". `de-de` has no "ingestieren".
+- Not affected: fixed terms and component names keep their own words — "Terms of Service"
+  ("Nutzungsbedingungen"), "Service Level Agreement" (SLA), the "Pipeline Service Client" /
+  "Platform Service Client" component and the SPARQL `SERVICE` keyword.

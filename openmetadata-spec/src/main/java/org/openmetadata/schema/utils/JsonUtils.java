@@ -141,6 +141,7 @@ public final class JsonUtils {
     // java.util.Date fields keeps deserialization tolerant while serialization stays on the
     // microsecond format above.
     OBJECT_MAPPER.registerModule(lenientDateModule());
+    OBJECT_MAPPER.registerModule(RefreshFrequencyDeserializer.module());
 
     JSONP_MAPPER = OBJECT_MAPPER.copy().registerModule(new JSONPModule());
 
