@@ -170,10 +170,10 @@ def _trust_any_certificate_context():
 
         @jpype.JOverride
         def getAcceptedIssuers(self):  # noqa: N802
-            return jpype.JArray(jpype.JClass("java.security.cert.X509Certificate"))(0)
+            return jpype.JClass("java.security.cert.X509Certificate[]")(0)
 
     context = jpype.JClass("javax.net.ssl.SSLContext").getInstance("TLS")
-    context.init(None, jpype.JArray(jpype.JClass("javax.net.ssl.TrustManager"))([TrustAnyCertificate()]), None)
+    context.init(None, jpype.JClass("javax.net.ssl.TrustManager[]")([TrustAnyCertificate()]), None)
     return context
 
 
