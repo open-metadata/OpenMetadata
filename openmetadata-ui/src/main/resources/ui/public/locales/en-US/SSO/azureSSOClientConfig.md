@@ -53,6 +53,13 @@ $$section
 - **Note:**
   - Must be registered in Azure AD → App registrations → Authentication → Redirect URIs
   - Always use HTTPS in production
+  - The web callback defaults to `{your-domain}/callback`. Register the exact URL shown in this field.
+
+**MCP sign-in**
+
+- Allow the authorization code grant (`code`) for this client. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Add `<om-url>/mcp/callback` to the redirect URIs in your Entra app registration. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
+- In **App registrations → your application → Authentication**, choose **Mobile and desktop applications** for an OpenMetadata **Public** client (S256 PKCE, no client secret), or **Web** for a **Confidential** client. A **Single-page application** redirect requires a browser token exchange. OpenMetadata redeems the MCP code on the server. [Microsoft redirect URI setup](https://learn.microsoft.com/en-us/entra/identity-platform/how-to-add-redirect-uri)
 $$
 
 $$section
@@ -73,6 +80,7 @@ $$section
 - **Example:** ["https://login.microsoftonline.com/YOUR-TENANT-ID/discovery/v2.0/keys"]
 - **Why it matters:** Used to verify JWT token signatures from Azure AD.
 - **Note:** Usually auto-discovered from the discovery URI, rarely needs manual configuration
+- **Multi-tenant MCP sign-in:** Use the `jwks_uri` from your authority’s v2.0 discovery document, for example `https://login.microsoftonline.com/common/discovery/v2.0/keys`. MCP checks the issuer on each signing key. With a tenant-independent authority, the legacy `/common/discovery/keys` endpoint supplies keys without an issuer and MCP rejects them. A fixed-tenant authority can still use those legacy keys. [Microsoft signing-key guidance](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens#validate-the-signing-key-issuer)
 $$
 
 $$section
@@ -266,19 +274,6 @@ $$section
 - **Example:** your-tenant-id or company.onmicrosoft.com
 - **Why it matters:** Specifies which Azure AD tenant to authenticate against.
 - **Note:** Can be tenant ID, domain name, or "common" for multi-tenant
-$$
-
-$$section
-### OIDC Callback URL / Redirect URI $(id="callbackUrl")
-
-- **Definition:** URL where Azure AD redirects after authentication.
-- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
-- **Example:** https://openmetadata.company.com/callback
-- **Why it matters:** Must be registered in your Azure AD app configuration.
-- **Note:**
-  - **This field is read-only** - it cannot be edited
-  - **Copy this exact URL** and add it to Azure AD → App registrations → Authentication → Redirect URIs
-  - Format is always: `{your-domain}/callback`
 $$
 
 $$section
