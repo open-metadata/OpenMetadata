@@ -81,7 +81,8 @@ class RdfStorageReadinessIT {
 
   private static GenericContainer<?> shipped;
   private static GenericContainer<?> scoped;
-  private static GenericContainer<?> stock;
+  private static GenericContainer<?> assembled;
+  private static GenericContainer<?> withoutExtension;
 
   @BeforeAll
   static void start() throws Exception {
@@ -92,28 +93,36 @@ class RdfStorageReadinessIT {
             .withEnv("FUSEKI_DATASETS", SCOPED_DATASET + "," + OUTSIDE_SCOPE_DATASET)
             .withCopyToContainer(
                 Transferable.of(SCOPED_SHIRO), FusekiTestImage.FUSEKI_BASE + "/shiro.ini");
-    // The same Fuseki distribution launched directly, so the extension is never on the classpath.
-    stock =
+    // Fuseki launched directly from an operator's own assembler, with only the extension added.
+    // FusekiServerPlainCmd loads Fuseki modules from the classpath; FusekiMainCmd does not.
+    assembled =
         FusekiTestImage.bare()
             .withCopyToContainer(Transferable.of(stockConfig()), STOCK_CONFIG_PATH)
             .withCreateContainerCmdModifier(command -> command.withEntrypoint("java"))
             .withCommand(
                 "-Xmx512m",
                 "-cp",
-                FusekiTestImage.FUSEKI_SERVER_JAR,
-                "org.apache.jena.fuseki.main.cmds.FusekiMainCmd",
+                FusekiTestImage.FUSEKI_SERVER_JAR + ":" + FusekiTestImage.EXTENSION_JAR,
+                "org.apache.jena.fuseki.main.cmds.FusekiServerPlainCmd",
                 "--config=" + STOCK_CONFIG_PATH)
             .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)));
+    // The image's stock launch: the extension's classes are never loaded.
+    withoutExtension =
+        FusekiTestImage.forOpenMetadata("-Xms256m -Xmx256m")
+            .withEnv("OPENMETADATA_EXTENSION_ENABLED", "false");
     shipped.start();
     scoped.start();
-    stock.start();
+    assembled.start();
+    withoutExtension.start();
     createDatasetThroughAdminApi(ADMIN_CREATED_DATASET);
   }
 
   @AfterAll
   static void stop() {
-    if (stock != null) {
-      stock.close();
+    for (GenericContainer<?> fuseki : new GenericContainer<?>[] {assembled, withoutExtension}) {
+      if (fuseki != null) {
+        fuseki.close();
+      }
     }
     if (shipped != null) {
       shipped.close();
@@ -133,10 +142,20 @@ class RdfStorageReadinessIT {
   }
 
   @Test
-  void fusekiWithoutTheExtensionIsReadyAndAcceptsBulkAppends() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_DATASET, null, null)) {
+  void operatorAssemblerWithTheExtensionIsReadyAndAcceptsBulkAppends() {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_DATASET, null, null)) {
       assertReadyLeavingNoTrace(storage);
       assertBulkAppendIsReadable(storage);
+    }
+  }
+
+  @Test
+  void fusekiWithoutTheExtensionFailsNamingIt() {
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, SCOPED_DATASET, "admin", ADMIN_PASSWORD)) {
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(failure.contains("does not run the OpenMetadata Graph Store extension"), failure);
+      assertTrue(failure.contains("OPENMETADATA_EXTENSION_ENABLED=true"), failure);
     }
   }
 
@@ -152,7 +171,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void fusekiWithoutUnionDefaultGraphFailsNamingIt() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UNION, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_WITHOUT_UNION, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(failure.contains(UNION_DISABLED), failure);
       assertTrue(failure.contains("'" + STOCK_WITHOUT_UNION + "'"), failure);
@@ -161,7 +180,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void readOnlyDatasetFailsNamingTheMethodsItAllows() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_READ_ONLY, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_READ_ONLY, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(
           failure.contains("is read-only (its Graph Store allows GET,HEAD,OPTIONS)"), failure);
@@ -170,7 +189,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void datasetWithoutSparqlUpdateFailsNamingTheRejection() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UPDATE, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_WITHOUT_UPDATE, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(failure.contains("did not accept a SPARQL update (HTTP 400)"), failure);
     }
@@ -187,8 +206,9 @@ class RdfStorageReadinessIT {
   }
 
   @Test
-  void unknownDatasetOnStockFusekiFailsNamingTheDataset() {
-    try (JenaFusekiStorage storage = storage(stock, "no_such_dataset", null, null)) {
+  void unknownDatasetWithoutTheExtensionFailsNamingTheDatasetNotTheExtension() {
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, "no_such_dataset", "admin", ADMIN_PASSWORD)) {
       final IllegalStateException failure =
           assertThrows(IllegalStateException.class, storage::ensureStorageReady);
       assertTrue(

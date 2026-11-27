@@ -1,8 +1,8 @@
 # The OpenMetadata Fuseki image
 
 OpenMetadata's triple store is the published **`openmetadata/fuseki`** image: the released Apache
-Jena Fuseki distribution plus an optional OpenMetadata Graph Store extension. It is the image of
-record for tests, Compose files, Kubernetes manifests and deployments
+Jena Fuseki distribution plus the OpenMetadata Graph Store extension, which OpenMetadata requires.
+It is the image of record for tests, Compose files, Kubernetes manifests and deployments
 ([decision record](decisions/2026-10-14-fuseki-image-of-record.md)). This repository no longer
 builds a Fuseki image; the former `docker/rdf-store/` build is retired.
 
@@ -61,8 +61,9 @@ FUSEKI_HEAP=4g                                         # or JVM_ARGS, which then
   their writer hold time (`OPENMETADATA_WRITE_TIMEOUT_MS`, default 50000), and advertises the
   settings to readiness. It also reads RDF Thrift uploads with that same bound per row. Jena 6.3.0
   caps one Thrift row at 100 KB (open-metadata/jena#24). OpenMetadata uploads rebuilds and ontology
-  releases as RDF Thrift, so without the extension a rebuild loses every entity with a description
-  or query over that size, and activating a release with such a literal fails. Reasoning does not
+  releases as RDF Thrift, which is why OpenMetadata requires the extension: without it a rebuild
+  would lose every entity with a description or query over that size, and activating a release
+  with such a literal would fail. Readiness refuses a dataset without it. Reasoning does not
   run in this image; a reasoning provider runs it and writes its results into Fuseki
   (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 - **Access.** The rendered `shiro.ini` has one account, `admin`; only `/$/ping` is anonymous. To
@@ -98,19 +99,22 @@ extension adds five headers to the response:
 | `X-OpenMetadata-Max-Upload-Bytes` | `> 0` | `OPENMETADATA_MAX_UPLOAD_BYTES` (default 64 MiB) |
 | `X-OpenMetadata-Union-Default-Graph` | not judged from the header; see step 2 | `FUSEKI_UNION_DEFAULT_GRAPH` |
 
-The extension is optional. Without it, or when one of the first four guarantees is unmet, indexing
-continues with the client's own upload budget and deadline and logs
+The extension is required. A response with none of these headers fails readiness (see the table
+below): from Jena 6.3.0 stock Fuseki refuses an RDF Thrift row over 100 KB, and OpenMetadata uploads
+rebuilds and ontology releases as Thrift. Stock Fuseki also holds TDB2's writer while a Graph Store
+upload transfers, so a small update issued during a 4.4 MB upload at 200 KB/s waited 20 s, against
+0.23 s with the extension. When one of the first four guarantees is unmet, indexing continues with
+the client's own upload budget and deadline and logs
 `RDF dataset <endpoint> lacks guarantees OpenMetadata relies on at scale; indexing continues: ...`,
-naming each gap. What is lost is real: stock Fuseki holds TDB2's writer while a Graph Store upload
-transfers, so a small update issued during a 4.4 MB upload at 200 KB/s waited 20 s, against 0.23 s
-with the extension. `arq:updateTimeout` does not cover Graph Store uploads.
+naming each gap. `arq:updateTimeout` does not cover Graph Store uploads.
 
 **2. A union probe** (`UnionDefaultGraphProbe`), run on every Fuseki. Readiness writes one triple
 into a named graph with SPARQL Update, asks for it without a `GRAPH` clause, and deletes it
 whatever the answer. The write also proves the dataset accepts SPARQL updates. Each probe uses its
 own subject, so servers probing at the same time never see or delete each other's triple.
 
-Readiness fails the run, before any data is cleared, only when the dataset cannot be used:
+Readiness fails the run, before any data is cleared, when the dataset cannot be used or lacks the
+extension:
 
 | Check | Response | Failure |
 |---|---|---|
@@ -119,6 +123,7 @@ Readiness fails the run, before any data is cleared, only when the dataset canno
 | `OPTIONS` | `404`, or `2xx` with neither extension headers nor `Fuseki-Request-Id` | `Fuseki dataset '<name>' does not exist at <server> (...)` |
 | `OPTIONS` | `2xx` with an `Allow` that omits `POST` | `Fuseki dataset '<name>' at <server> is read-only (its Graph Store allows GET,HEAD,OPTIONS) ...` |
 | `OPTIONS` | any other error status | `Fuseki dataset endpoint <endpoint> is not usable (HTTP <status>)` |
+| `OPTIONS` | `2xx` with `Fuseki-Request-Id` and no extension header | `Fuseki dataset '<name>' at <server> does not run the OpenMetadata Graph Store extension: run the openmetadata/fuseki image with OPENMETADATA_EXTENSION_ENABLED=true ...` |
 | probe | the update is refused, e.g. `400 No operation for request` from a dataset without an update service | `Fuseki dataset '<name>' at <server> did not accept a SPARQL update (HTTP <status>) ...` |
 | probe | the triple is not visible without `GRAPH` | `Fuseki dataset '<name>' at <server> does not enable tdb2:unionDefaultGraph ...` |
 
@@ -127,8 +132,8 @@ handling the request adds `Fuseki-Request-Id`, and Fuseki's read-only Graph Stor
 `Allow: GET,HEAD,OPTIONS`.
 
 [RdfStorageReadinessIT](../openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/RdfStorageReadinessIT.java)
-runs these cases against the pinned image and against the same image's Fuseki launched without the
-extension.
+runs these cases against the pinned image, against the same image's Fuseki launched from a custom
+assembler with the extension, and against the image with `OPENMETADATA_EXTENSION_ENABLED=false`.
 
 ## Deploy
 

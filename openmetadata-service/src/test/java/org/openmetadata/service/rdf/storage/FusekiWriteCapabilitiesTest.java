@@ -88,15 +88,17 @@ class FusekiWriteCapabilitiesTest {
   }
 
   @Test
-  void stockFusekiIsUsableWithTheClientsOwnBudgetAndDeadline() {
-    final FusekiWriteCapabilities capabilities = negotiate(200, STOCK_FUSEKI);
+  void stockFusekiFailsNamingTheExtensionAndHowToEnableIt() {
+    final IllegalStateException failure =
+        assertThrows(IllegalStateException.class, () -> negotiate(200, STOCK_FUSEKI));
 
-    assertEquals(CLIENT_BUDGET, Math.min(CLIENT_BUDGET, capabilities.maxBytes()));
-    assertEquals(CLIENT_DEADLINE, Math.min(capabilities.timeoutMillis(), CLIENT_DEADLINE));
-    assertEquals(1, capabilities.missingGuarantees().size());
-    assertTrue(
-        capabilities.missingGuarantees().getFirst().contains("Graph Store extension"),
-        capabilities.missingGuarantees().toString());
+    assertEquals(
+        "Fuseki dataset 'openmetadata' at http://fuseki:3030 does not run the OpenMetadata Graph"
+            + " Store extension: run the openmetadata/fuseki image with"
+            + " OPENMETADATA_EXTENSION_ENABLED=true. Without it, Fuseki 6.3 refuses an RDF Thrift"
+            + " row over 100 KB, so a rebuild would drop every entity with a longer description or"
+            + " query",
+        failure.getMessage());
   }
 
   @Test
@@ -122,18 +124,18 @@ class FusekiWriteCapabilitiesTest {
 
   @Test
   void writableGraphStoreIsRecognisedWhateverTheListSpacing() {
-    final Map<String, List<String>> headers = new HashMap<>(STOCK_FUSEKI);
+    final Map<String, List<String>> headers = new HashMap<>(PROVISIONED);
     headers.put(ALLOW, List.of("GET, HEAD, OPTIONS, PUT, POST"));
 
-    assertEquals(1, negotiate(200, headers).missingGuarantees().size());
+    assertEquals(List.of(), negotiate(200, headers).missingGuarantees());
   }
 
   @Test
   void graphStoreWithoutAnAllowHeaderIsNotJudgedReadOnly() {
-    final Map<String, List<String>> headers = new HashMap<>(STOCK_FUSEKI);
+    final Map<String, List<String>> headers = new HashMap<>(PROVISIONED);
     headers.remove(ALLOW);
 
-    assertEquals(1, negotiate(200, headers).missingGuarantees().size());
+    assertEquals(List.of(), negotiate(200, headers).missingGuarantees());
   }
 
   @Test

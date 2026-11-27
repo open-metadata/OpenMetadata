@@ -58,6 +58,8 @@ public final class FusekiTestImage {
 
   public static final String FUSEKI_BASE = "/fuseki";
   public static final String FUSEKI_SERVER_JAR = "/jena-fuseki/fuseki-server.jar";
+  public static final String EXTENSION_JAR =
+      "/jena-fuseki/extensions/openmetadata-fuseki-extensions.jar";
 
   // Below OpenMetadata's 60-second client deadline: releasing an OpenMetadata thread does not
   // cancel server work holding TDB2's writer, so Fuseki must stop it first.

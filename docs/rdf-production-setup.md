@@ -288,21 +288,21 @@ update takes (about 5 s for a 62 MB graph). The copy holds every triple of the g
 heap: a 512 MiB heap failed on 1.78 million triples, and a graph near the 256 MiB activation limit
 needs at least 1,500 MiB. The server refuses to activate a release whose graph exceeds
 256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
-Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
-used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
-read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
+Indexing preflights the dataset before clearing data, and fails when the dataset cannot be used:
+it does not exist, the credentials are rejected, the user is not authorized, the dataset is
+read-only, it does not run the Graph Store extension, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
 Fuseki: readiness writes one triple into a named graph, asks for it without a `GRAPH` clause, and
 removes it. OpenMetadata writes every entity into a named graph, so without union the SPARQL
-playground, the MCP tools, SHACL validation and inference see none of them. The extension and the
-`arq:*Timeout` settings are optional on Fuseki 6.2.0. On Apache Jena Fuseki without them, indexing
-proceeds with the client's own upload budget and deadline and logs each missing guarantee. From
-Fuseki 6.3.0 the extension is required: stock Fuseki refuses an RDF Thrift row over 100 KB, and
-OpenMetadata uploads rebuilds and ontology releases as Thrift. Without the extension a rebuild
-loses every entity with a description or query over that size, and an ontology release holding
-such a literal fails to activate. Without the extension
-a Graph Store upload holds TDB2's writer while it transfers, so other writes wait behind it: a small
-update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki 6.0.0 and 0.23 s with
-the extension. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
+playground, the MCP tools, SHACL validation and inference see none of them. The extension is
+required, and readiness names `OPENMETADATA_EXTENSION_ENABLED` when it is missing. From Fuseki 6.3.0
+stock Fuseki refuses an RDF Thrift row over 100 KB, and OpenMetadata uploads rebuilds and ontology
+releases as Thrift, so without the extension a rebuild would lose every entity with a description
+or query over that size, and an ontology release holding such a literal would fail to activate.
+Stock Fuseki also holds TDB2's writer while a Graph Store upload transfers, so other writes wait
+behind it: a small update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki
+6.0.0 and 0.23 s with the extension. The `arq:*Timeout` settings stay optional: without them
+indexing proceeds and logs each missing guarantee. `arq:updateTimeout` alone does not protect Graph
+Store POST/PUT.
 
 These are cooperative deadlines: checks abort expired parsing and roll back the transaction;
 blocked storage I/O or a TDB2 commit itself cannot be forcibly interrupted safely. Client timeout,

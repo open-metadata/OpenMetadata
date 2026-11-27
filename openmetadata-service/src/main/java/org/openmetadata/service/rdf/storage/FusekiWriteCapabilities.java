@@ -24,12 +24,12 @@ import java.util.regex.Pattern;
 
 /**
  * What a Fuseki dataset guarantees for indexing, read from its {@code OPTIONS /<dataset>/data}
- * response. The OpenMetadata Graph Store extension advertises these guarantees, but it is
- * optional: without it the dataset stays usable and each unmet guarantee is reported instead. A
- * bound of {@link Long#MAX_VALUE} means the server advertised none, so the client's own upload
- * budget and write deadline apply. The extension also advertises {@code tdb2:unionDefaultGraph},
- * but indexing cannot run without it, so {@link UnionDefaultGraphProbe} observes it directly on
- * every Fuseki instead.
+ * response. The OpenMetadata Graph Store extension advertises these guarantees, and a dataset
+ * without it is refused: from Jena 6.3.0 stock Fuseki rejects an RDF Thrift row over 100 KB, and
+ * indexing uploads entities as RDF Thrift. A guarantee the extension leaves unmet is reported
+ * instead. A bound of {@link Long#MAX_VALUE} means the server advertised none, so the client's own
+ * upload budget and write deadline apply. The extension also advertises {@code
+ * tdb2:unionDefaultGraph}, but {@link UnionDefaultGraphProbe} observes it directly instead.
  */
 record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> missingGuarantees) {
   static final String REQUEST_ID = "Fuseki-Request-Id";
@@ -50,6 +50,11 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
   private static final String READ_ONLY_GRAPH_STORE =
       "Fuseki dataset '%s' at %s is read-only (its Graph Store allows %s): serve its data endpoint"
           + " with fuseki:serviceReadWriteGraphStore, or start Fuseki with --update";
+  private static final String EXTENSION_REQUIRED =
+      "Fuseki dataset '%s' at %s does not run the OpenMetadata Graph Store extension: run the"
+          + " openmetadata/fuseki image with OPENMETADATA_EXTENSION_ENABLED=true. Without it,"
+          + " Fuseki 6.3 refuses an RDF Thrift row over 100 KB, so a rebuild would drop every"
+          + " entity with a longer description or query";
   private static final String APPEND_METHOD = "POST";
 
   private static final long NOT_ADVERTISED = Long.MAX_VALUE;
@@ -81,29 +86,24 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
   private static final List<String> EXTENSION_HEADERS =
       List.of(DEADLINE, LIMIT, UNION, QUERY, UPDATE);
 
-  private static final FusekiWriteCapabilities WITHOUT_EXTENSION =
-      new FusekiWriteCapabilities(
-          NOT_ADVERTISED,
-          NOT_ADVERTISED,
-          List.of(
-              "the OpenMetadata Graph Store extension is not installed: uploads hold Fuseki's write"
-                  + " lock while they transfer and have no server-side deadline, and the arq"
-                  + " timeouts cannot be verified"));
-
   FusekiWriteCapabilities {
     missingGuarantees = List.copyOf(missingGuarantees);
   }
 
   /**
-   * Interprets the probe of {@code dataset} on {@code server}. Throws only when the dataset cannot
-   * be used at all; an absent or partially configured extension becomes {@link #missingGuarantees}.
+   * Interprets the probe of {@code dataset} on {@code server}. Throws when the dataset cannot be
+   * used or lacks the extension; a partially configured extension becomes {@link
+   * #missingGuarantees}.
    */
   static FusekiWriteCapabilities negotiate(
       final int status, final HttpHeaders headers, final String server, final String dataset) {
     requireUsableStatus(status, server, dataset);
     requireRegisteredDataset(headers, server, dataset);
     requireWritableGraphStore(headers, server, dataset);
-    return hasExtension(headers) ? advertisedBy(headers) : WITHOUT_EXTENSION;
+    if (!hasExtension(headers)) {
+      throw new IllegalStateException(EXTENSION_REQUIRED.formatted(dataset, server));
+    }
+    return advertisedBy(headers);
   }
 
   private static void requireUsableStatus(
