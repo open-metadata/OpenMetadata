@@ -38,10 +38,6 @@
       "specs": ["playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"]
     },
     {
-      "projects": ["SearchRBAC"],
-      "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
-    },
-    {
       "projects": ["DomainIsolation"],
       "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
     },
@@ -89,6 +85,18 @@
   ],
   "mappings": [
     {
+      "_comment": "Task Form designer: field builder, schema round-trip, and the custom forms a task workflow renders from it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/TaskFormSettingsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TaskFormDesignerUtils*"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts"
+      ]
+    },
+    {
       "_comment": "MCP administrator controls and client revocation.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/mcp/**",
@@ -113,14 +121,6 @@
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts"
       ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
-        "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
-      ],
-      "projects": ["SearchRBAC"],
-      "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
     },
     {
       "_comment": "The Data Insight page, its provider, tabs and chart cards.",
@@ -206,8 +206,7 @@
         "ImportExport",
         "search-nightly",
         "Reindex",
-        "GlobalSettings",
-        "SearchRBAC"
+        "GlobalSettings"
       ],
       "specs": [
         "playwright/e2e/**/Explore*.spec.ts",
@@ -235,6 +234,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ObservabilityAlertsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AddObservabilityPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AlertDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/NotificationListPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/testAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/incidentManagerAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityDashboardAPI.ts",
@@ -480,11 +480,10 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "Ingestion", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
-        "playwright/e2e/Auth/Login*.spec.ts",
-        "playwright/e2e/Flow/SearchRBAC.spec.ts"
+        "playwright/e2e/Auth/Login*.spec.ts"
       ]
     },
     {
@@ -776,6 +775,14 @@
       ],
       "projects": ["Basic"],
       "specs": ["playwright/e2e/Flow/TestConnectionModal.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConnectionDetails/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceConnectionDetailsUtils*"
+      ],
+      "projects": ["Ingestion"],
+      "specs": ["playwright/e2e/Flow/ServiceForm.spec.ts"]
     },
     {
       "sources": [
@@ -1091,6 +1098,19 @@
       ]
     },
     {
+      "_comment": "AI-mode global search (Cmd/Ctrl+K): the modal, its results hook, tabs, filters and summary panel, plus the Explore quick filters and sort dropdown it embeds. The generated map only links the few files the spec's imports reach, so a change to the results hook or the modal would otherwise skip this spec.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/SidebarSearchButton.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreQuickFilters.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreSortDropdown/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
+      ]
+    },
+    {
       "_comment": "System announcements: Settings > Notifications > Announcements (list, form, routed pages) and its AI-mode settings-modal section.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/**",
@@ -1379,6 +1399,18 @@
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
       ]
+    },
+    {
+      "_comment": "The limits store backs every LimitWrapper-gated create button and the post-delete limit refresh. Limits are off outside Collate, so the banner it raises cannot show here, but Bots exercises the disabled path end to end: the gated Add Bot button and the forced bot-limit refresh after a delete.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/context/LimitsProvider/**"],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Pages/Bots.spec.ts"]
+    },
+    {
+      "_comment": "The Bots settings page route and its browser tests; Bots.spec.ts is the end-to-end journey through the same page.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/pages/BotsPageV1/**"],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Pages/Bots.spec.ts"]
     },
     {
       "_comment": "The limit banner shows only once a resource limit is reached, and only Collate enables the limits config that sets one, so no spec in this suite can display it. Mapped to no specs rather than left unmapped, so a change to it does not escalate to a full-suite run.",
@@ -1736,6 +1768,19 @@
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermMoveApproval.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
+      ]
+    },
+    {
+      "_comment": "ChildFieldPageReader serves every paginated child endpoint (table columns, data model columns, topic fields, ...): these specs page, sort and search those children through the server. Dashboards.spec.ts, which opens the data model Model tab, is already in the smoke set.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChildFieldPageReader.java"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
+        "playwright/e2e/Features/ColumnSorting.spec.ts"
       ]
     }
   ]

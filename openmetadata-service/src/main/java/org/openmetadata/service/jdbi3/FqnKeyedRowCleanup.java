@@ -15,6 +15,7 @@ import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -187,7 +188,7 @@ final class FqnKeyedRowCleanup {
         .filter(FqnKeyedRowCleanup::hasTable)
         .filter(include)
         .map(repository -> repository.getDao())
-        .map(dao -> new EntityTable(dao.getTableName(), dao.getNameHashColumn()))
+        .map(dao -> new EntityTable(dao.getTableName(), dao.getNameHashColumn(), onMySql()))
         .distinct()
         .toList();
   }
@@ -279,9 +280,22 @@ final class FqnKeyedRowCleanup {
     return List.copyOf(outermost);
   }
 
-  record EntityTable(String name, String hashColumn) {
+  private static boolean onMySql() {
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
+  }
+
+  /**
+   * One entity table's hash column, selected as {@code hash}. MySQL rejects a UNION over columns of
+   * different collations, and an install's hash columns do not share one: most are ascii_bin, some
+   * tables declare utf8mb4_0900_ai_ci, and query_entity.fqnHash takes the server's default. So on
+   * MySQL each probe selects its hash as binary utf8mb4; the WHERE clause still reads the bare
+   * column, so the lookup keeps its index.
+   */
+  record EntityTable(String name, String hashColumn, boolean onMySql) {
     String select() {
-      return "SELECT " + hashColumn + " AS hash FROM " + name;
+      String hash =
+          onMySql ? "CONVERT(" + hashColumn + " USING utf8mb4) COLLATE utf8mb4_bin" : hashColumn;
+      return "SELECT " + hash + " AS hash FROM " + name;
     }
   }
 

@@ -166,6 +166,9 @@ export const useIncidentFilters = ({
             'dateField',
             'key',
             'title',
+            'currentPage',
+            'cursorType',
+            'cursorValue',
           ])
         ),
       },

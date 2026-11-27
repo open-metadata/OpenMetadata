@@ -252,6 +252,99 @@ public class SearchAggregateRbacIT {
     }
   }
 
+  /**
+   * E.1 end-to-end proof for the Lucene regexp metacharacter fix: a direct REST consumer posting a
+   * {@code fieldValue} containing Lucene regexp metacharacters that the server permits in entity
+   * names (parentheses, {@code &}, {@code ++}, {@code |}, {@code []}) must NOT get an HTTP 500 and
+   * must receive the literal bucket, not over/under-match. Before the fix only {@code .} was escaped
+   * and the contains sub-agg was passed raw, so {@code (…)} was a group, {@code &} an intersection,
+   * {@code ++} a quantifier, and a trailing {@code \} rejected the whole {@code _search} request.
+   */
+  @Test
+  void test_aggregate_fieldValueWithRegexpMetacharactersMatchesLiteralTerm(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_own", cleanup);
+      Glossary glossary = createGlossary(admin, p + "_g", domain, cleanup);
+      // Display names containing the bug report's metacharacter cases. The keyword bucket key
+      // is lowercased by the index normalizer, so the fieldValue uses the lowercased form.
+      String parensDisplay = p + " Phone (mobile)";
+      String ampDisplay = p + " R&D Team";
+      String plusDisplay = p + " C++";
+      String bracketDisplay = p + " Revenue (net) [US]";
+      createTerm(admin, glossary, p + "_t_parens", parensDisplay);
+      createTerm(admin, glossary, p + "_t_amp", ampDisplay);
+      createTerm(admin, glossary, p + "_t_plus", plusDisplay);
+      createTerm(admin, glossary, p + "_t_bracket", bracketDisplay);
+
+      String parensKey = parensDisplay.toLowerCase();
+      String ampKey = ampDisplay.toLowerCase();
+      String plusKey = plusDisplay.toLowerCase();
+      String bracketKey = bracketDisplay.toLowerCase();
+
+      Awaitility.await("metacharacter-bearing glossary terms are indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                // Each POST must return HTTP 200 (aggregatePost throws on non-2xx) and a bucket
+                // whose key is the literal term. Before the fix these either 500'd (the whole
+                // _search request rejected) or silently mis-matched (operators interpreted).
+                assertEquals(
+                    List.of(parensKey),
+                    bucketKeysFor(admin, ".*" + escapeForFieldValue(parensKey) + ".*"),
+                    "parens must match the literal term, not be a group");
+                assertEquals(
+                    List.of(ampKey),
+                    bucketKeysFor(admin, ".*" + escapeForFieldValue(ampKey) + ".*"),
+                    "& must match the literal term, not be an intersection");
+                assertEquals(
+                    List.of(plusKey),
+                    bucketKeysFor(admin, ".*" + escapeForFieldValue(plusKey) + ".*"),
+                    "++ must match the literal term, not over-match C/CCC");
+                assertEquals(
+                    List.of(bracketKey),
+                    bucketKeysFor(admin, ".*" + escapeForFieldValue(bracketKey) + ".*"),
+                    "[US] must match the literal, not a char class");
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Returns the bucket keys from a POST /v1/search/aggregate on the glossary_term displayName field
+   * for the given fieldValue (already wrapped in .*….*). Throws on non-2xx, proving no HTTP 500.
+   */
+  private List<String> bucketKeysFor(OpenMetadataClient client, String fieldValue)
+      throws Exception {
+    JsonNode agg = aggregatePost(client, "glossary_term_search_index", "displayName", fieldValue);
+    List<String> keys = new java.util.ArrayList<>();
+    JsonNode aggs = agg.path("aggregations");
+    for (String aggName : (Iterable<String>) aggs::fieldNames) {
+      JsonNode buckets = aggs.path(aggName).path("buckets");
+      for (JsonNode bucket : buckets) {
+        if (bucket.hasNonNull("key")) {
+          keys.add(bucket.get("key").asText());
+        }
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * The fieldValue is sent verbatim to the server, which owns Lucene regexp escaping. The caller
+   * only wraps the literal term in {@code .*….*}. So no client-side escaping is applied here —
+   * this is the direct-REST-consumer population the bug report isolates.
+   */
+  private static String escapeForFieldValue(String literal) {
+    // No escaping: the server's SearchUtils.escapeLuceneRegexp owns it. The value is sent raw.
+    return literal;
+  }
+
   private Set<String> searchListingFqns(OpenMetadataClient client, String prefix) throws Exception {
     String response = client.search().query(prefix + "*").index(TABLE_INDEX).size(1000).execute();
     JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
@@ -285,11 +378,16 @@ public class SearchAggregateRbacIT {
 
   private JsonNode aggregatePost(OpenMetadataClient client, String index, String field)
       throws Exception {
+    return aggregatePost(client, index, field, MATCH_ALL_VALUE);
+  }
+
+  private JsonNode aggregatePost(
+      OpenMetadataClient client, String index, String field, String fieldValue) throws Exception {
     AggregationRequest request =
         new AggregationRequest()
             .withIndex(index)
             .withFieldName(field)
-            .withFieldValue(MATCH_ALL_VALUE)
+            .withFieldValue(fieldValue)
             .withQuery("*")
             .withSize(BUCKET_SIZE)
             .withSourceFields(SOURCE_FIELDS)

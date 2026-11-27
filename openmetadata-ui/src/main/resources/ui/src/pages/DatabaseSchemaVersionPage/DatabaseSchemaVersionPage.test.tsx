@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
@@ -167,12 +169,13 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
 }));
 
 const mockLocationPathname = '/mock-path';
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => MOCK_PARAMS),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -187,6 +190,10 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>description</div>)
 );
+
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue(MOCK_PARAMS);
+});
 
 describe('DatabaseSchemaVersionPage', () => {
   beforeEach(() => {
@@ -203,6 +210,41 @@ describe('DatabaseSchemaVersionPage', () => {
     expect(screen.getByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
     expect(screen.getByText(DATA_PRODUCT_CONTAINER)).toBeInTheDocument();
     expect(screen.getAllByText(TAGS_CONTAINER_V2)).toHaveLength(2);
+  });
+
+  it('should follow the tab route param when it changes without a remount', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      ...MOCK_PARAMS,
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(<DatabaseSchemaVersionPage />);
+
+    expect(await screen.findByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue(MOCK_PARAMS);
+    rerender(<DatabaseSchemaVersionPage />);
+
+    expect(await screen.findByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
+    expect(screen.queryByText(CUSTOM_PROPERTY_TABLE)).not.toBeInTheDocument();
+  });
+
+  it('should keep the current tab when switching versions', async () => {
+    const { rerender } = render(<DatabaseSchemaVersionPage />);
+
+    expect(await screen.findByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      ...MOCK_PARAMS,
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(<DatabaseSchemaVersionPage />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: ENTITY_VERSION_TIMELINE })
+    );
+
+    expect(mockNavigate).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/custom_properties$/)
+    );
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

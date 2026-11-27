@@ -6,7 +6,7 @@
 variables for sensitive information in case of external resources. On each test, the YAML file will be modified by the `build_yaml` method which will create
 a copy of the file and prepare it for the tests. This way, we avoid adding (and maintaining) an extra YAML for each test.
 
-2. The `{connector}` name must be added in the list of connectors in the GH Action: `.github/workflows/py-cli-e2e-tests.yml`
+2. The `{connector}` name must be added to the default connector list in `.github/workflows/ci-nightly.yml`
 
 ```yaml
 

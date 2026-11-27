@@ -21,12 +21,17 @@ import {
   openApplicationDetails,
 } from '../../utils/applications';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
+import {
+  selectOnDemandSchedule,
+  selectScheduleTimezone,
+  selectScheduleType,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -277,6 +282,32 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(configDialog).not.toBeVisible();
     });
 
+    await test.step('Schedule the application in a timezone', async () => {
+      await page.click('[data-testid="edit-button"]');
+      await selectScheduleType(page);
+      await selectScheduleTimezone(page, 'Asia/Tokyo');
+
+      const deployResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/apps') &&
+          !response.url().includes('/status') &&
+          response.request().method() !== 'GET'
+      );
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
+      const savedApp = await (await deployResponse).json();
+
+      expect(savedApp.appSchedule.timezone).toBe('Asia/Tokyo');
+
+      await toastNotification(page, 'Schedule saved successfully');
+
+      await expect(page.getByTestId('schedule-timezone')).toHaveText(
+        'Asia/Tokyo'
+      );
+    });
+
     await test.step('Edit application', async () => {
       await page.click('[data-testid="edit-button"]');
       await selectOnDemandSchedule(page);
@@ -332,13 +363,15 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await clickOutside(page);
       await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0);
 
-      await page
+      const languageTrigger = page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
-        .click();
+        .getByRole('button');
 
-      await expect(page.getByTestId('select-option-JP')).toBeVisible();
-
-      await page.getByTestId('select-option-JP').click();
+      await chooseSelectOption(
+        languageTrigger,
+        page.getByTestId('select-option-JP'),
+        languageTrigger.filter({ hasText: 'JP' })
+      );
 
       const responseAfterSubmit = page.waitForResponse(
         (response) =>

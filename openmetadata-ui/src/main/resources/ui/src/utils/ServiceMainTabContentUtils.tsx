@@ -13,6 +13,7 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { Operation } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import { ColumnsType } from '../components/common/Table/Table.interface';
@@ -38,7 +39,7 @@ import {
   highlightSearchText,
   renderHighlightedText,
 } from './EntitySearchUtils';
-import { getColumnSorter } from './EntitySortUtils';
+import { columnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import {
@@ -59,14 +60,26 @@ export const getServiceMainTabColumns = (
     entityData: EntityName,
     id?: string
   ) => Promise<void>,
-  searchValue?: string
+  searchValue?: string,
+  // Whether the current user can view usage data. Matched against the
+  // DATABASE_SERVICES branch below so that — like DatabaseSchemaTable's
+  // `viewUsagePermission`-gated column — the Usage column is hidden entirely
+  // for users without ViewUsage, instead of rendering fabricated values from
+  // the rows whose `usageSummary` the REST layer deliberately withheld
+  // (ServiceDetailsPage.fetchDatabases) or that the ES `_source` path never
+  // populated. Defaults to true so unpermissioned callers (the version-page
+  // tab) keep showing the column; the live ServiceMainTabContent caller
+  // passes the derived flag.
+  viewUsagePermission = true
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
     dataIndex: TABLE_COLUMNS_KEYS.NAME,
     key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
-    sorter: getColumnSorter<ServicePageData, 'name'>('name'),
+    // Sort by the label a user reads: displayName, falling back to name.
+    // For connectors such as Power BI, name is a source ID (a GUID).
+    sorter: columnSorter,
     render: (_, record: ServicePageData) => (
       <DisplayName
         displayName={renderHighlightedText(
@@ -110,20 +123,24 @@ export const getServiceMainTabColumns = (
   ...tagTableObject<ServicePageData>(),
   ...tierTableObject<ServicePageData>(),
   ...certificationTableObject<ServicePageData>(),
-  ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
+  ...(viewUsagePermission &&
+  ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {
           title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,
-          render: (usageSummary: Database['usageSummary']) => (
-            <Typography className="tw:text-primary">
-              {getUsagePercentile(
-                usageSummary?.weeklyStats?.percentileRank ?? 0
-              )}
-            </Typography>
-          ),
+          render: (usageSummary: Database['usageSummary']) =>
+            isNil(usageSummary?.weeklyStats?.percentileRank) ? (
+              <Typography className="tw:text-primary">
+                {NO_DATA_PLACEHOLDER}
+              </Typography>
+            ) : (
+              <Typography className="tw:text-primary">
+                {getUsagePercentile(usageSummary.weeklyStats.percentileRank)}
+              </Typography>
+            ),
         },
       ]
     : []),

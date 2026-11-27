@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.tasks.IncidentWorkflowStages.RESOLVED_STAGE_ID;
@@ -46,14 +47,17 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -62,8 +66,10 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -143,6 +149,81 @@ public class IncidentTaskIntegrationIT {
   }
 
   @Test
+  void testAppendingCommentKeepsEditsMadeAfterTaskWasLoaded(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "incident-comment-stale-task");
+    createFailedTestResult(client, testCase);
+    Task staleTask = awaitIncidentTaskForTestCase(client, testCase);
+    String taskId = staleTask.getId().toString();
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+
+    client.tasks().addComment(taskId, "Concurrent note");
+    client
+        .tasks()
+        .patch(
+            taskId,
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated description\"}]"));
+    repository.addComment(
+        staleTask,
+        new TaskComment()
+            .withId(UUID.randomUUID())
+            .withAuthor(staleTask.getCreatedBy())
+            .withCreatedAt(System.currentTimeMillis())
+            .withMessage("Resolution note"));
+
+    Task stored = client.tasks().get(taskId, "comments");
+    assertEquals("Updated description", stored.getDescription());
+    assertEquals(2, stored.getCommentCount());
+    assertEquals(
+        List.of("Concurrent note", "Resolution note"),
+        stored.getComments().stream().map(TaskComment::getMessage).toList());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"edit", "delete"})
+  void testCommentMutationKeepsResolutionSavedAfterTaskWasLoaded(
+      String operation, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "incident-resolve-comment-" + operation);
+    createFailedTestResult(client, testCase);
+    Task incident = awaitIncidentTaskForTestCase(client, testCase);
+    String taskId = incident.getId().toString();
+    client.tasks().addComment(taskId, "Investigation note");
+    Task staleTask = client.tasks().get(taskId, "comments");
+    TaskComment note = staleTask.getComments().getFirst();
+
+    client
+        .tasks()
+        .resolve(
+            taskId,
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("Resolution note")
+                .withPayload(
+                    resolutionPayload(
+                        "Other", "Resolution note", TestCaseFailureReasonType.Other)));
+
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    if (operation.equals("edit")) {
+      repository.editComment(staleTask, note.getId(), "Edited note", note.getAuthor().getName());
+    } else {
+      repository.deleteComment(staleTask, note.getId(), note.getAuthor().getName(), false);
+    }
+
+    Task stored = client.tasks().get(taskId, "comments,resolution");
+    assertEquals(TaskEntityStatus.Completed, stored.getStatus());
+    assertEquals("Resolution note", stored.getResolution().getComment());
+    List<String> expected =
+        operation.equals("edit")
+            ? List.of("Edited note", "Resolution note")
+            : List.of("Resolution note");
+    assertEquals(expected.size(), stored.getCommentCount());
+    assertEquals(expected, stored.getComments().stream().map(TaskComment::getMessage).toList());
+  }
+
+  @Test
   void testFullIncidentWorkflow_TaskTransitionsMirrorTcrs(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     SharedEntities shared = SharedEntities.get();
@@ -188,7 +269,29 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
     assertNotNull(completedTask.getResolution());
-    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved, null);
+    assertEquals(
+        assignedTask.getAssignees().stream().map(EntityReference::getId).toList(),
+        completedTask.getAssignees().stream().map(EntityReference::getId).toList());
+    assertEquals(List.of(shared.USER1.getName()), assignedAssigneeNames(client, stateId));
+    await()
+        .atMost(TASK_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              TestCaseResolutionStatus latest = tcrsTimeline(client, stateId).getLast();
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Resolved, latest.getTestCaseResolutionStatusType());
+              Resolved details =
+                  JsonUtils.convertValue(
+                      latest.getTestCaseResolutionStatusDetails(), Resolved.class);
+              assertEquals(shared.USER1.getId(), details.getAssignee().getId());
+              assertEquals(
+                  completedTask.getResolution().getResolvedBy().getId(),
+                  details.getResolvedBy().getId());
+            });
+    Task withComments = client.tasks().get(stateId.toString(), "comments");
+    assertEquals(1, withComments.getComments().size());
+    assertEquals(
+        "Resolved via integration test", withComments.getComments().getFirst().getMessage());
   }
 
   @Test
@@ -323,6 +426,98 @@ public class IncidentTaskIntegrationIT {
         recordsAfterResolve,
         tcrsTimeline(client, stateId).size(),
         "commenting on a resolved incident must not duplicate the Resolved record");
+
+    JsonNode reassignment =
+        JsonUtils.valueToTree(
+            List.of(
+                Map.of("op", "replace", "path", "/assignees", "value", List.of(shared.USER2_REF))));
+    client.tasks().patch(stateId.toString(), reassignment);
+    Task reassigned = client.tasks().get(stateId.toString(), "assignees");
+    assertEquals(shared.USER2.getId(), reassigned.getAssignees().getFirst().getId());
+
+    List<TestCaseResolutionStatus> history = tcrsTimeline(client, stateId);
+    assertEquals(recordsAfterResolve, history.size(), "the resolution is a historical snapshot");
+    Resolved details =
+        JsonUtils.convertValue(
+            history.getLast().getTestCaseResolutionStatusDetails(), Resolved.class);
+    assertEquals(shared.USER1.getId(), details.getAssignee().getId());
+  }
+
+  @Test
+  void testResolutionCommentFailure_RollsBackResolution(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "resolution-comment-rollback");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    // The lifecycle JSON accepts the note; the comment's mention write rejects its invalid FQN.
+    String invalidMention = "<#E::table::broken..name>";
+    TaskResolution resolution =
+        new TaskResolution()
+            .withType(TaskResolutionType.Completed)
+            .withComment(invalidMention)
+            .withResolvedBy(task.getCreatedBy())
+            .withResolvedAt(System.currentTimeMillis());
+
+    assertThrows(
+        IllegalArgumentException.class, () -> repository.resolveTask(task, resolution, "admin"));
+
+    Task unchanged = client.tasks().get(task.getId().toString(), "resolution,comments");
+    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+    assertNull(unchanged.getResolution());
+    assertEquals(task.getVersion(), unchanged.getVersion());
+    resolution.setComment("Resolution note");
+    Task retried = repository.resolveTask(unchanged, resolution, "admin");
+    assertEquals(TaskEntityStatus.Completed, retried.getStatus());
+    assertEquals("Resolution note", retried.getComments().getLast().getMessage());
+  }
+
+  @Test
+  void testDeletingResolvedAssignee_DoesNotChangeNewIncident(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String name = ns.shortPrefix("former-assignee");
+    User assignee =
+        client.users().create(new CreateUser().withName(name).withEmail(name + "@example.com"));
+    TestCase testCase = createTestCase(client, ns, "deleted-resolved-assignee");
+    createFailedTestResult(client, testCase);
+    Task first = awaitIncidentTaskForTestCase(client, testCase);
+    client
+        .tasks()
+        .resolve(
+            first.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("assign")
+                .withPayload(assigneePayload(assignee.getEntityReference())));
+    awaitIncidentTask(client, first.getId(), TaskEntityStatus.InProgress, "assigned", name);
+    client
+        .tasks()
+        .resolve(
+            first.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("Fixed")
+                .withPayload(
+                    resolutionPayload("Fixed", "Fixed", TestCaseFailureReasonType.FalsePositive)));
+    awaitIncidentTask(client, first.getId(), TaskEntityStatus.Completed, "resolved", null);
+    assertLatestTcrsEventually(client, first.getId(), TestCaseResolutionStatusTypes.Resolved, null);
+    createFailedTestResult(client, testCase);
+    Task second = awaitIncidentTaskForTestCase(client, testCase);
+    assertNotEquals(first.getId(), second.getId());
+    List<TestCaseResolutionStatus> before = tcrsTimeline(client, second.getId());
+
+    client.users().delete(assignee.getId().toString());
+
+    Task stillOpen = client.tasks().get(second.getId().toString());
+    assertEquals(TaskEntityStatus.Open, stillOpen.getStatus());
+    assertEquals("new", stillOpen.getWorkflowStageId());
+    assertEquals(
+        second.getId(),
+        client.testCases().get(testCase.getId().toString(), "incidentId").getIncidentId());
+    assertEquals(before, tcrsTimeline(client, second.getId()));
+    assertEquals(
+        TestCaseResolutionStatusTypes.Resolved,
+        tcrsTimeline(client, first.getId()).getLast().getTestCaseResolutionStatusType());
   }
 
   @Test
@@ -351,7 +546,15 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, task.getId(), TaskEntityStatus.Completed, "resolved", null);
     assertEquals(task.getId(), completedTask.getId());
+    assertTrue(completedTask.getAssignees() == null || completedTask.getAssignees().isEmpty());
     assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.Resolved, null);
+    Resolved details =
+        JsonUtils.convertValue(
+            tcrsTimeline(client, task.getId()).getLast().getTestCaseResolutionStatusDetails(),
+            Resolved.class);
+    assertNull(details.getAssignee());
+    assertNotNull(details.getResolvedBy());
+    assertTrue(assignedAssigneeNames(client, task.getId()).isEmpty());
   }
 
   @Test

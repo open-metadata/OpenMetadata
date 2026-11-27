@@ -27,6 +27,12 @@ module.exports = {
 
   // Test files
   testMatch: ['<rootDir>/src/**/*.test.{ts,tsx,js,jsx}'], // All test files in subdirectories under /src
+  // UI integration tests run in a real browser under Vitest (vitest.browser.config.ts).
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '\\.browser\\.test\\.',
+    '<rootDir>/src/test/browser/',
+  ],
 
   // Test coverage
   coverageDirectory: '<rootDir>/src/test/unit/coverage',

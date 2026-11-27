@@ -43,6 +43,7 @@ export type TaskDetailRowIcon =
 
 export type TaskDetailRowValue =
   | { kind: 'text'; text: string }
+  | { kind: 'richText'; text: string }
   | { kind: 'date'; timestamp?: number }
   // `title` heads the "+N" overflow, plural where the row's label is not.
   | { kind: 'users'; refs: EntityReference[]; title?: string }
@@ -128,6 +129,8 @@ export interface TaskAboutEntity {
   tier?: TagLabel;
   columnCount?: number;
   piiColumnCount?: number;
+  /** PII.Sensitive on the entity itself or on any of its columns. */
+  isPii?: boolean;
   downstreamCount?: number;
   /** Rolling seven-day usage count as of the last usage ingestion. */
   weeklyQueryCount?: number;

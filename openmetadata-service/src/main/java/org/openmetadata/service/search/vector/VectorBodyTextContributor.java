@@ -33,7 +33,7 @@ public interface VectorBodyTextContributor {
    * Entity type key as used in the entity reference (for example {@code "table"},
    * {@code "contextMemory"}). Must match the value returned by {@code getEntityReference().getType()}
    * on instances of the contributed entity class and the key used in
-   * {@code AvailableEntityTypes.LIST} — mismatches silently disable the custom extractor.
+   * {@code EmbeddedEntityTypes.ALL} — mismatches silently disable the custom extractor.
    */
   String entityType();
 

@@ -22,16 +22,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.openlineage.ColumnLineageFacet;
 import org.openmetadata.schema.api.lineage.openlineage.ColumnLineageField;
 import org.openmetadata.schema.api.lineage.openlineage.EventType;
 import org.openmetadata.schema.api.lineage.openlineage.Fields;
 import org.openmetadata.schema.api.lineage.openlineage.InputField;
+import org.openmetadata.schema.api.lineage.openlineage.InputFieldTransformation;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageInputDataset;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageJob;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageOutputDataset;
@@ -60,6 +63,19 @@ public class OpenLineageMapper {
   /** What every edge of one event shares. */
   private record EdgeDetails(
       String description, EntityReference pipeline, String sqlQuery, long eventTimeMs) {}
+
+  /**
+   * The stored columns of one dataset, which say how a field is written in a column FQN. A field
+   * with no stored column keeps its spelling, and the lineage write drops it.
+   */
+  private record DatasetColumns(String datasetFqn, Map<String, String> fqnsByFieldPath) {
+    String columnFqn(String field) {
+      String storedFqn =
+          fqnsByFieldPath.getOrDefault(
+              field, fqnsByFieldPath.get(OpenLineageColumnMapper.toStoredName(field)));
+      return storedFqn != null ? storedFqn : datasetFqn + "." + field;
+    }
+  }
 
   private final OpenLineageEntityResolver entityResolver;
   private final Set<String> allowedEventTypes;
@@ -149,12 +165,13 @@ public class OpenLineageMapper {
       EdgeDetails details,
       Map<OpenLineageInputDataset, EntityReference> inputs,
       Map<OpenLineageOutputDataset, EntityReference> outputs) {
-    Map<String, String> inputNameToFqnMap = buildInputFqnMap(inputs);
+    Map<String, EntityReference> inputsByName = indexInputsByName(inputs);
+    Map<String, DatasetColumns> inputColumns = new HashMap<>();
     List<AddLineage> lineageRequests = new ArrayList<>();
     outputs.forEach(
         (output, outputRef) -> {
           List<ColumnLineage> columnLineages =
-              extractColumnLineage(output, inputNameToFqnMap, outputRef.getFullyQualifiedName());
+              extractColumnLineage(output, inputsByName, inputColumns, outputRef);
           for (EntityReference inputRef : inputs.values()) {
             List<ColumnLineage> relevantColumnLineage =
                 filterColumnLineageForInput(columnLineages, inputRef.getFullyQualifiedName());
@@ -240,15 +257,19 @@ public class OpenLineageMapper {
     return resolved;
   }
 
-  private Map<String, String> buildInputFqnMap(
+  private Map<String, EntityReference> indexInputsByName(
       Map<OpenLineageInputDataset, EntityReference> inputs) {
-    Map<String, String> map = new HashMap<>();
+    Map<String, EntityReference> map = new HashMap<>();
     inputs.forEach(
         (input, ref) ->
-            map.put(
-                buildOpenLineageDatasetName(input.getNamespace(), input.getName()),
-                ref.getFullyQualifiedName()));
+            map.put(buildOpenLineageDatasetName(input.getNamespace(), input.getName()), ref));
     return map;
+  }
+
+  private DatasetColumns readColumns(EntityReference dataset) {
+    return new DatasetColumns(
+        dataset.getFullyQualifiedName(),
+        OpenLineageColumnMapper.fqnsByFieldPath(entityResolver.storedColumns(dataset)));
   }
 
   private EntityReference resolvePipeline(
@@ -306,7 +327,10 @@ public class OpenLineageMapper {
   }
 
   private List<ColumnLineage> extractColumnLineage(
-      OpenLineageOutputDataset output, Map<String, String> inputNameToFqnMap, String outputFqn) {
+      OpenLineageOutputDataset output,
+      Map<String, EntityReference> inputsByName,
+      Map<String, DatasetColumns> inputColumns,
+      EntityReference outputRef) {
 
     List<ColumnLineage> columnLineages = new ArrayList<>();
 
@@ -323,6 +347,8 @@ public class OpenLineageMapper {
       return columnLineages;
     }
 
+    DatasetColumns outputColumns = readColumns(outputRef);
+
     Fields fieldsWrapper = columnLineageFacet.getFields();
     Map<String, ColumnLineageField> fields = fieldsWrapper.getAdditionalProperties();
     for (Map.Entry<String, ColumnLineageField> entry : fields.entrySet()) {
@@ -333,29 +359,62 @@ public class OpenLineageMapper {
         continue;
       }
 
-      List<String> fromColumns = new ArrayList<>();
+      Map<String, List<String>> columnsByFunction = new LinkedHashMap<>();
       for (InputField inputField : fieldInfo.getInputFields()) {
         String inputOlName =
             buildOpenLineageDatasetName(inputField.getNamespace(), inputField.getName());
-        String inputFqn = inputNameToFqnMap.get(inputOlName);
-        if (inputFqn != null) {
-          String columnFqn = inputFqn + "." + inputField.getField();
-          fromColumns.add(columnFqn);
+        EntityReference inputRef = inputsByName.get(inputOlName);
+        if (inputRef != null) {
+          DatasetColumns input =
+              inputColumns.computeIfAbsent(inputOlName, name -> readColumns(inputRef));
+          columnsByFunction
+              .computeIfAbsent(columnFunction(inputField, fieldInfo), ignored -> new ArrayList<>())
+              .add(input.columnFqn(inputField.getField()));
         }
       }
 
-      if (!fromColumns.isEmpty()) {
-        String toColumn = outputFqn + "." + outputColumnName;
-        ColumnLineage columnLineage =
-            new ColumnLineage()
-                .withFromColumns(fromColumns)
-                .withToColumn(toColumn)
-                .withFunction(fieldInfo.getTransformationDescription());
-        columnLineages.add(columnLineage);
-      }
+      String toColumn = outputColumns.columnFqn(outputColumnName);
+      columnsByFunction.forEach(
+          (function, columns) ->
+              columnLineages.add(
+                  new ColumnLineage()
+                      .withToColumn(toColumn)
+                      .withFromColumns(columns)
+                      .withFunction(function)));
     }
 
     return columnLineages;
+  }
+
+  private static String columnFunction(InputField inputField, ColumnLineageField fieldInfo) {
+    if (!nullOrEmpty(inputField.getTransformations())) {
+      String function =
+          inputField.getTransformations().stream()
+              .filter(Objects::nonNull)
+              .filter(transformation -> StringUtils.isNotBlank(transformation.getType()))
+              .map(OpenLineageMapper::describeTransformation)
+              .collect(Collectors.joining(", "));
+      if (!function.isEmpty()) {
+        return function;
+      }
+    }
+    return StringUtils.isNotBlank(fieldInfo.getTransformationDescription())
+        ? fieldInfo.getTransformationDescription()
+        : StringUtils.defaultIfBlank(fieldInfo.getTransformationType(), null);
+  }
+
+  private static String describeTransformation(InputFieldTransformation transformation) {
+    StringBuilder function = new StringBuilder(transformation.getType().strip());
+    if (StringUtils.isNotBlank(transformation.getSubtype())) {
+      function.append('/').append(transformation.getSubtype().strip());
+    }
+    if (StringUtils.isNotBlank(transformation.getDescription())) {
+      function.append(" (").append(transformation.getDescription().strip()).append(')');
+    }
+    if (Boolean.TRUE.equals(transformation.getMasking())) {
+      function.append(" [masked]");
+    }
+    return function.toString();
   }
 
   private List<ColumnLineage> filterColumnLineageForInput(

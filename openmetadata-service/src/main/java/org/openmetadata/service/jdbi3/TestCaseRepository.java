@@ -48,6 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -1324,46 +1325,107 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected Runnable preparePostDeleteCleanup(List<TestCase> testCases) {
-    final List<String> ids =
-        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
-    final List<UUID> childIds =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
-            .stream()
-            .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
-            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
-            .map(child -> UUID.fromString(child.getToId()))
-            .distinct()
-            .toList();
     final List<String> testCaseFQNs =
         testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
+    final var statusDAO = daoCollection.testCaseResolutionStatusTimeSeriesDao();
+    // Parent links retain stable ownership after a test moves; the summary's latestRecordId
+    // still links pruned incidents whose audit rows have already expired.
+    final Set<UUID> childIds = new HashSet<>(resolutionStatusChildren(testCases));
+    final Set<String> incidentIds =
+        new HashSet<>(
+            EntityDAO.queryInChunks(
+                testCases.stream().map(testCase -> testCase.getId().toString()).toList(),
+                statusDAO::listIncidentIdsForTestCaseIds));
+    // Legacy rows without parent links fall back to the FQN, unless a surviving owner claims them.
+    if (!testCaseFQNs.isEmpty()) {
+      childIds.addAll(EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listStatusIdsForTestCases));
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listIncidentIdsForTestCases));
+    }
+    // Historical links can identify older incidents that no longer have the test's current FQN.
+    if (!childIds.isEmpty()) {
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(
+              childIds.stream().map(UUID::toString).toList(),
+              statusDAO::listIncidentIdsForStatusRecords));
+    }
+    // Capture identities before deletion: asynchronous cleanup must not touch a recreated FQN.
     return () -> {
-      scheduleResolutionStatusCleanup(childIds);
+      scheduleResolutionStatusCleanup(List.copyOf(childIds), List.copyOf(incidentIds));
       deleteAllTestCaseResults(testCaseFQNs);
     };
   }
 
-  private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
-    if (!nullOrEmpty(childIds)) {
+  private List<UUID> resolutionStatusChildren(List<TestCase> testCases) {
+    final List<String> ids =
+        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
+    return daoCollection
+        .relationshipDAO()
+        .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
+        .stream()
+        .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
+        .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
+        .map(child -> UUID.fromString(child.getToId()))
+        .distinct()
+        .toList();
+  }
+
+  private void scheduleResolutionStatusCleanup(List<UUID> childIds, List<String> incidentIds) {
+    if (!nullOrEmpty(childIds) || !nullOrEmpty(incidentIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + childIds.getFirst(),
-              () -> deleteResolutionStatusChildren(childIds));
+              "resolution-status:"
+                  + (childIds.isEmpty() ? incidentIds.getFirst() : childIds.getFirst()),
+              () -> deleteResolutionStatusChildren(childIds, incidentIds));
     }
   }
 
-  private void deleteResolutionStatusChildren(List<UUID> childIds) {
-    final TestCaseResolutionStatusRepository statusRepository =
-        (TestCaseResolutionStatusRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    for (UUID childId : childIds) {
-      try {
-        statusRepository.deleteById(childId, true);
-      } catch (RuntimeException e) {
-        LOG.error("Error hard deleting test case resolution status {}", childId, e);
-      }
+  private void deleteResolutionStatusChildren(List<UUID> childIds, List<String> incidentIds) {
+    deleteIncidentHistory(
+        daoCollection,
+        childIds,
+        incidentIds,
+        removedIds -> {
+          for (UUID id : removedIds) {
+            searchRepository.deleteTimeSeriesEntityById(new TestCaseResolutionStatus().withId(id));
+          }
+        });
+  }
+
+  static void deleteIncidentHistory(
+      CollectionDAO collection,
+      List<UUID> childIds,
+      List<String> incidentIds,
+      Consumer<Set<UUID>> onBatchDeleted) {
+    for (List<String> batch : Lists.partition(incidentIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      Set<UUID> removed =
+          collection.inTransaction(
+              transaction -> {
+                var statusDAO = transaction.testCaseResolutionStatusTimeSeriesDao();
+                Set<UUID> statusIds = new HashSet<>(statusDAO.listStatusIdsForIncidents(batch));
+                transaction
+                    .relationshipDAO()
+                    .batchDeleteRelationships(
+                        List.copyOf(statusIds), Entity.TEST_CASE_RESOLUTION_STATUS);
+                statusDAO.deleteIncidentsByStateIds(batch);
+                return Set.copyOf(statusIds);
+              });
+      onBatchDeleted.accept(removed);
+    }
+    // Captured links may outlive pruned audit rows, and legacy records may have no incident ID.
+    for (List<UUID> batch : Lists.partition(childIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      collection.inTransaction(
+          transaction -> {
+            transaction
+                .relationshipDAO()
+                .batchDeleteRelationships(batch, Entity.TEST_CASE_RESOLUTION_STATUS);
+            transaction
+                .testCaseResolutionStatusTimeSeriesDao()
+                .deleteStatusRecordsWithoutIncident(batch.stream().map(UUID::toString).toList());
+            return null;
+          });
+      onBatchDeleted.accept(Set.copyOf(batch));
     }
   }
 

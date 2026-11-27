@@ -9,12 +9,18 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.rdf.EntityGraph;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAssetConceptLink;
 import org.openmetadata.schema.type.OntologyAssetConceptLinks;
@@ -34,7 +40,7 @@ class OntologyBindingGraphLinksTest {
   private final OntologyBindingGraphLinks links = new OntologyBindingGraphLinks(bindings);
 
   @Test
-  void aTableGraphGainsEachBoundConceptWithAnEdgeFromTheConcept() {
+  void aTableGraphGainsEachBoundConceptWithAnEdgeFromTheConcept() throws Exception {
     final UUID table = UUID.randomUUID();
     final EntityReference patient = concept("Patient");
     when(bindings.linksForAsset(ACCESS, "table", table))
@@ -54,6 +60,23 @@ class OntologyBindingGraphLinksTest {
     assertEquals(OntologyBindingGraphLinks.BOUND_ASSET, edge.path("relationType").asText());
     assertEquals(2, graph.path("totalNodes").asInt());
     assertEquals(1, graph.path("totalEdges").asInt());
+    assertConformsToExploreContract(graph);
+  }
+
+  @Test
+  void aBoundNodeOmitsUnavailableText() throws Exception {
+    final UUID table = UUID.randomUUID();
+    final EntityReference unnamed =
+        new EntityReference().withId(UUID.randomUUID()).withType("ontologyConcept");
+    when(bindings.linksForAsset(ACCESS, "table", table))
+        .thenReturn(
+            new OntologyAssetConceptLinks()
+                .withLinks(List.of(new OntologyAssetConceptLink().withConcept(unnamed))));
+
+    final JsonNode graph = merge(rootGraph("table", table), request(table, "table", 2, Set.of()));
+
+    assertEquals(4, node(graph, iri("ontologyConcept", unnamed.getId())).size());
+    assertConformsToExploreContract(graph);
   }
 
   @Test
@@ -66,13 +89,7 @@ class OntologyBindingGraphLinksTest {
                     List.of(
                         new OntologyAssetConceptLink().withConcept(concept("Patient")),
                         new OntologyAssetConceptLink().withConcept(concept("Visit")))));
-    final String rdfGraph =
-        rootGraph("table", table)
-            .replace(
-                "\"truncated\":false}",
-                "\"truncated\":false,\"filterOptions\":{\"entityTypes\":"
-                    + "[{\"id\":\"table\",\"label\":\"Table\",\"count\":1}],"
-                    + "\"relationshipTypes\":[]}}");
+    final String rdfGraph = rootGraph("table", table);
 
     final JsonNode filters =
         merge(rdfGraph, request(table, "table", 2, Set.of())).path("filterOptions");
@@ -204,13 +221,28 @@ class OntologyBindingGraphLinksTest {
   }
 
   private static String rootGraph(final String type, final UUID id) {
-    return "{\"nodes\":[{\"id\":\""
-        + iri(type, id)
-        + "\",\"entityId\":\""
-        + id
-        + "\",\"type\":\""
-        + type
-        + "\"}],\"edges\":[],\"totalNodes\":1,\"totalEdges\":0,\"truncated\":false}";
+    return """
+        {
+          "nodes":[{"id":"%s","entityId":"%s","type":"%s","group":"%s","label":"Root"}],
+          "edges":[],"totalNodes":1,"totalEdges":0,"truncated":false,"source":"rdf",
+          "filterOptions":{"entityTypes":[{"id":"%s","label":"%s","count":1}],"relationshipTypes":[]}
+        }
+        """
+        .formatted(iri(type, id), id, type, type.toLowerCase(Locale.ROOT), type, type);
+  }
+
+  private static void assertConformsToExploreContract(final JsonNode graph) throws Exception {
+    final var schema =
+        SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+            .getSchema(SchemaLocation.of("classpath:json/schema/api/rdf/entityGraph.json"));
+    assertEquals(List.of(), schema.validate(graph));
+    final EntityGraph response =
+        JsonUtils.getObjectMapper()
+            .readerFor(EntityGraph.class)
+            .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .readValue(graph.traverse());
+    assertEquals(
+        OntologyBindingGraphLinks.BOUND_ASSET, response.getEdges().getFirst().getRelationType());
   }
 
   private static String iri(final String type, final UUID id) {
