@@ -78,12 +78,12 @@ safely, or if a store needs per-engine rather than per-operation availability.
 
 ## Amendment: a reasoning provider reports capabilities (v2, 2026-11-23)
 
-Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
-(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider reports these capabilities, not the store's `/reasoning` API, and the
-operation, availability, problem-code and limit rules above apply to it unchanged.
+Reasoning moved out of the `openmetadata/fuseki` image, and from 2.2 a `ReasoningProvider` runs it
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider, not the store's `/reasoning` API, will report these capabilities, and the
+operation, availability, problem-code and limit rules above will apply to it unchanged.
 
-- A provider reports `QUERY` as `NOT_IMPLEMENTED`, because Fuseki answers reads over the graphs
+- A provider will report `QUERY` as `NOT_IMPLEMENTED`, because Fuseki answers reads over the graphs
   the provider publishes.
-- With no provider installed, as in OSS, readiness is `DISABLED`.
+- With no provider installed, as in OSS, readiness will be `DISABLED`.
 - The store's copy of the schemas in open-metadata/jena and its `JobServiceTest` leave the fork
   with the reasoner, so a new operation no longer refreshes that copy.

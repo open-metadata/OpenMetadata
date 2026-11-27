@@ -57,7 +57,7 @@ them with Native Memory Tracking on the published `openmetadata/fuseki:6.2.0-600
 
 ## Amendment: the worker half is withdrawn (v2, 2026-11-23)
 
-Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
+Reasoning moved out of the `openmetadata/fuseki` image, and from 2.2 a `ReasoningProvider` runs it
 (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena), so no reasoner worker runs in the Fuseki container. The worker terms of the budget
 (`H_w`, `O_w`), the worker's admission limits and its guards (`ReasoningSettingsTest`,
 `ReadinessTest`, `LimitsTest`, `WorkerProcessIT`) are withdrawn. The Fuseki decision stays.

@@ -1,8 +1,8 @@
 # Reasoning inside the OpenMetadata Fuseki image
 
-**Superseded 2026-11-23 by ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena.** Reasoning no longer runs in the Fuseki image or in
-OpenMetadata. A `ReasoningProvider` runs it and publishes derived facts into Fuseki, OSS ships no
-provider, and Collate provides one. The [alternatives table](#rollout-and-alternatives) below
+**Superseded 2026-11-23 by ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena.** Reasoning no longer runs in the Fuseki image. In
+this release OpenMetadata still runs its rules in process; from 2.2 a `ReasoningProvider` runs
+reasoning and publishes derived facts into Fuseki, OSS ships no provider, and Collate provides one. The [alternatives table](#rollout-and-alternatives) below
 rejected "Reasoner sidecar or separate service" because it would add a deployable to every
 installation. That reason no longer holds, because only an installation that uses reasoning runs
 a provider. Building the in-image worker also showed its costs: a shared container memory budget,

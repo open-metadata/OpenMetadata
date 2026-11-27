@@ -65,7 +65,8 @@ FUSEKI_HEAP=4g                                         # or JVM_ARGS, which then
   releases as RDF Thrift, which is why OpenMetadata requires the extension: without it a rebuild
   would lose every entity with a description or query over that size, and activating a release
   with such a literal would fail. Readiness refuses a dataset without it. Reasoning does not
-  run in this image; a reasoning provider runs it and writes its results into Fuseki
+  run in this image. OpenMetadata still runs its rules in process in this release; from 2.2 a
+  reasoning provider runs reasoning and writes its results into Fuseki
   (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 - **Access.** The rendered `shiro.ini` has one account, `admin`; only `/$/ping` is anonymous. To
   add scoped accounts, set `FUSEKI_MANAGE_SHIRO=false` and provide `/fuseki/shiro.ini`.

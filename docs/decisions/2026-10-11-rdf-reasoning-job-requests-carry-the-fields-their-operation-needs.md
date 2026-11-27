@@ -50,8 +50,8 @@ required limits to `rdfReasoningCapabilities.json` in the same change.
 
 ## Amendment: a reasoning provider validates requests (v3, 2026-11-23)
 
-Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
-(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider, not the RDF store's job API, now receives and validates job requests, and
-the per-operation rules above apply to it unchanged. A REFRESH request also names its target
+Reasoning moved out of the `openmetadata/fuseki` image, and from 2.2 a `ReasoningProvider` runs it
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider, not the RDF store's job API, will receive and validate job requests, and
+the per-operation rules above will apply to it unchanged. A REFRESH request will also name its target
 dataset. The store's copy of the schema in open-metadata/jena and its `JobRequestTest` leave the
 fork with the reasoner, so a new operation or check kind no longer refreshes that copy.
