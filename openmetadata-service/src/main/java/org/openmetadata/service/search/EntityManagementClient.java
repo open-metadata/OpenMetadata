@@ -1,5 +1,7 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.HashMap;
@@ -285,6 +287,25 @@ public interface EntityManagementClient {
    */
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
+
+  /** Updates lineage for a required destination and reports a missing or incomplete projection. */
+  default void updateLineageChecked(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData)
+      throws IOException {
+    throw new IOException("Checked lineage updates are unavailable for this search client");
+  }
+
+  static void requireCompleteLineageUpdate(UpdateByQueryOutcome outcome) throws IOException {
+    int failureCount = nullOrEmpty(outcome.failureReasons()) ? 0 : outcome.failureReasons().size();
+    if (outcome.versionConflicts() > 0 || failureCount > 0) {
+      throw new IOException(
+          "Lineage projection left %d version conflicts and %d failures"
+              .formatted(outcome.versionConflicts(), failureCount));
+    }
+    if (outcome.updatedDocuments() == 0) {
+      throw new IOException("Lineage projection did not update a destination document");
+    }
+  }
 
   /**
    * Deletes entities matching a range query on a specific field.

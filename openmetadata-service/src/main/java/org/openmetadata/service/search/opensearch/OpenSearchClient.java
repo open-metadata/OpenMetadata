@@ -850,6 +850,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateLineageChecked(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData)
+      throws IOException {
+    if (!isClientAvailable()) {
+      throw new IOException("OpenSearch is unavailable for lineage projection");
+    }
+    entityManager.updateLineageChecked(indexName, fieldAndValue, lineageData);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,

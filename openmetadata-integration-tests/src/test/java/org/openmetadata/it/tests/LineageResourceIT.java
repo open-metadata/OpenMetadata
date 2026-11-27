@@ -189,6 +189,7 @@ public class LineageResourceIT {
         writeDashboardChartBatch(client, fixture, fixture.member()).get(0).path("status").asText());
     assertEquals(details, getDashboardChartDetails(client, fixture));
     assertOneDashboardChartCreateEvent(client, fixture, start);
+    awaitDashboardInChartSearchLineage(client, fixture);
   }
 
   @ParameterizedTest
@@ -240,6 +241,12 @@ public class LineageResourceIT {
   private OpenMetadataClient createDashboardChartRestrictedClient(
       OpenMetadataClient admin, String entityType, MetadataOperation operation) throws Exception {
     TestNamespace namespace = new TestNamespace("DashboardChartPermissions");
+    Rule allow =
+        new Rule()
+            .withName("allow_lineage")
+            .withEffect(Rule.Effect.ALLOW)
+            .withResources(List.of(Entity.DASHBOARD, Entity.CHART))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.EDIT_LINEAGE));
     Rule deny =
         new Rule()
             .withName("deny_end")
@@ -250,7 +257,9 @@ public class LineageResourceIT {
         admin
             .policies()
             .create(
-                new CreatePolicy().withName(namespace.prefix("policy")).withRules(List.of(deny)));
+                new CreatePolicy()
+                    .withName(namespace.prefix("policy"))
+                    .withRules(List.of(deny, allow)));
     Role role =
         admin
             .roles()
@@ -288,6 +297,33 @@ public class LineageResourceIT {
             .filter(event -> edgeFqn.equals(event.path("entityFQN").asText()))
             .count();
     assertEquals(1, count);
+  }
+
+  private void awaitDashboardInChartSearchLineage(
+      OpenMetadataClient client, DashboardChartFixture fixture) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fqn", fixture.member().getFullyQualifiedName())
+            .queryParam("type", Entity.CHART)
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0")
+            .build();
+    Awaitility.await("Dashboard is projected into the chart's upstream search lineage")
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .until(
+            () ->
+                readChartSearchLineage(client, options)
+                    .has(fixture.dashboard().getFullyQualifiedName()));
+  }
+
+  private JsonNode readChartSearchLineage(OpenMetadataClient client, RequestOptions options)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, LINEAGE_PATH + "/getLineage", null, options);
+    return OBJECT_MAPPER.readTree(response).path("nodes");
   }
 
   private JsonNode getDashboardChartDetails(

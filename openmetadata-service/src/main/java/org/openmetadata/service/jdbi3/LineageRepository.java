@@ -394,45 +394,55 @@ public class LineageRepository {
     List<Runnable> projections = new ArrayList<>();
     if (created) {
       emitLineageChangeEvent(EventType.ENTITY_LINEAGE_ADDED, dashboard, chart, details, updatedBy);
-      projections.add(() -> projectCommittedDashboardChart(dashboard, chart));
+      projections.add(() -> projectCommittedLineage(dashboard, chart));
       projections.add(() -> invalidateCachedLineage(dashboard, chart));
       buildExtendedLineage(
-          dashboard, chart, new LineageChildWrite(details, null, false, projections::add));
+          dashboard,
+          chart,
+          new LineageChildWrite(
+              details,
+              null,
+              false,
+              (from, to, ignored) -> projections.add(() -> projectCommittedLineage(from, to))));
     }
     return new DashboardChartInsert(
         created ? DashboardChartWrite.CREATED : DashboardChartWrite.PRESENT,
         List.copyOf(projections));
   }
 
-  private void projectCommittedDashboardChart(EntityReference dashboard, EntityReference chart) {
+  private void projectCommittedLineage(EntityReference from, EntityReference to) {
     try {
-      // A later ordinary lineage write may already have decorated or removed the committed edge.
-      dao.useTransaction(
-          transaction ->
-              transaction
-                  .relationshipDAO()
-                  .lockRelationshipDetails(
-                      dashboard.getId(), chart.getId(), Relationship.UPSTREAM.ordinal())
-                  .ifPresent(json -> projectDashboardChart(dashboard, chart, json)));
-    } catch (RuntimeException exception) {
+      // Another writer may have updated the edge or its rollup since this transaction committed.
+      dao.<IOException>useTransaction(
+          transaction -> {
+            Optional<String> json =
+                transaction
+                    .relationshipDAO()
+                    .lockRelationshipDetails(
+                        from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+            if (json.isPresent()) {
+              projectCommittedLineage(from, to, json.get());
+            }
+          });
+    } catch (IOException | RuntimeException exception) {
       SearchIndexRetryQueue.enqueue(
-          chart.getId().toString(),
-          chart.getFullyQualifiedName(),
-          chart.getType(),
-          SearchIndexRetryQueue.failureReason("projectDashboardChartLineage", exception));
-      throw exception;
+          to.getId().toString(),
+          to.getFullyQualifiedName(),
+          to.getType(),
+          SearchIndexRetryQueue.failureReason("projectCommittedLineage", exception));
+      throw new IllegalStateException("Could not project committed lineage", exception);
     }
   }
 
-  private void projectDashboardChart(
-      EntityReference dashboard, EntityReference chart, String json) {
+  private void projectCommittedLineage(EntityReference from, EntityReference to, String json)
+      throws IOException {
     try {
-      if (!searchClient.isClientAvailable()) {
-        throw new IllegalStateException("Search is unavailable for dashboard chart lineage");
-      }
-      addLineageToSearch(dashboard, chart, JsonUtils.readValue(json, LineageDetails.class));
+      LineageSearchUpdate update =
+          buildLineageSearchUpdate(from, to, JsonUtils.readValue(json, LineageDetails.class));
+      searchClient.updateLineageChecked(update.index(), update.target(), update.data());
+      invalidateLineageCacheForEdge(from, to);
     } finally {
-      addLineageToRdf(dashboard, chart);
+      addLineageToRdf(from, to);
     }
   }
 
@@ -483,11 +493,16 @@ public class LineageRepository {
         updatedBy);
   }
 
+  @FunctionalInterface
+  private interface LineageProjection {
+    void apply(EntityReference from, EntityReference to, LineageDetails details);
+  }
+
   private record LineageChildWrite(
       LineageDetails details,
       LineageDetails priorDetails,
       boolean childRelationExists,
-      Consumer<Runnable> project) {}
+      LineageProjection project) {}
 
   private void buildExtendedLineage(
       EntityReference from,
@@ -496,7 +511,9 @@ public class LineageRepository {
       LineageDetails priorDetails,
       boolean childRelationExists) {
     buildExtendedLineage(
-        from, to, new LineageChildWrite(details, priorDetails, childRelationExists, Runnable::run));
+        from,
+        to,
+        new LineageChildWrite(details, priorDetails, childRelationExists, this::projectLineage));
   }
 
   private void buildExtendedLineage(
@@ -763,7 +780,7 @@ public class LineageRepository {
       EntityReference from,
       EntityReference to,
       LineageDetails lineageDetails,
-      Consumer<Runnable> project) {
+      LineageProjection project) {
     dao.relationshipDAO()
         .insert(
             from.getId(),
@@ -772,8 +789,12 @@ public class LineageRepository {
             to.getType(),
             Relationship.UPSTREAM.ordinal(),
             JsonUtils.pojoToJson(lineageDetails));
-    project.accept(() -> addLineageToSearch(from, to, lineageDetails));
-    project.accept(() -> addLineageToRdf(from, to));
+    project.apply(from, to, lineageDetails);
+  }
+
+  private void projectLineage(EntityReference from, EntityReference to, LineageDetails details) {
+    addLineageToSearch(from, to, details);
+    addLineageToRdf(from, to);
   }
 
   private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {
@@ -795,6 +816,16 @@ public class LineageRepository {
 
   private void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    LineageSearchUpdate update = buildLineageSearchUpdate(fromEntity, toEntity, lineageDetails);
+    searchClient.updateLineage(update.index(), update.target(), update.data());
+    invalidateLineageCacheForEdge(fromEntity, toEntity);
+  }
+
+  private record LineageSearchUpdate(
+      String index, Pair<String, String> target, EsLineageData data) {}
+
+  private LineageSearchUpdate buildLineageSearchUpdate(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
@@ -803,8 +834,7 @@ public class LineageRepository {
     EsLineageData lineageData =
         buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
     Pair<String, String> to = new ImmutablePair<>("_id", toEntity.getId().toString());
-    searchClient.updateLineage(destinationIndexName, to, lineageData);
-    invalidateLineageCacheForEdge(fromEntity, toEntity);
+    return new LineageSearchUpdate(destinationIndexName, to, lineageData);
   }
 
   private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
