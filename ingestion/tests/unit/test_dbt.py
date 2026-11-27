@@ -4642,7 +4642,7 @@ class TestAddDbtTestResultFailureReporting:
 class TestDbtTestOnMissingColumn:
     """A schema.yml test on a column the table does not have is a warning, not a failed record (#38812)."""
 
-    TABLE_FQN = "svc.db.sch.product_eng"
+    TABLE_FQN = "svc.db.sch.orders"
 
     def _source(self, table):
         from metadata.ingestion.api.status import Status
@@ -4653,16 +4653,16 @@ class TestDbtTestOnMissingColumn:
         # The test case does not exist yet; only the table is found
         source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: table if entity is Table else None
         source.context = MagicMock()
-        source.context.get.return_value.run_results_generate_time = datetime(2026, 11, 24, 2, 30, 0)
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 1, 1, 0, 0, 0)
         return source
 
     def _table(self):
         return Table(
             id=uuid.uuid4(),
-            name="product_eng",
+            name="orders",
             fullyQualifiedName=self.TABLE_FQN,
             columns=[
-                Column(name="TOTAL_PARTS", dataType=DataType.INT),
+                Column(name="ORDER_TOTAL", dataType=DataType.INT),
                 Column(
                     name="ADDRESS",
                     dataType=DataType.STRUCT,
@@ -4673,14 +4673,14 @@ class TestDbtTestOnMissingColumn:
 
     def _dbt_test(self, column_name):
         manifest_node = MagicMock()
-        manifest_node.name = f"not_null_product_eng_{column_name}"
+        manifest_node.name = f"not_null_orders_{column_name}"
         manifest_node.description = None
         manifest_node.meta = None
         manifest_node.column_name = column_name
         manifest_node.test_metadata.name = "not_null"
         manifest_node.test_metadata.kwargs = {
             "column_name": column_name,
-            "model": "{{ get_where_subquery(ref('product_eng')) }}",
+            "model": "{{ get_where_subquery(ref('orders')) }}",
         }
         result = MagicMock()
         result.message = "Got 3 results, configured to fail if != 0"
@@ -4695,7 +4695,7 @@ class TestDbtTestOnMissingColumn:
 
     def test_missing_column_is_skipped_with_an_actionable_warning(self):
         source = self._source(self._table())
-        dbt_test = self._dbt_test("TOTAL_REQUEST")
+        dbt_test = self._dbt_test("ORDER_AMOUNT")
 
         assert list(source.create_dbt_test_case(dbt_test)) == []
         source.add_dbt_test_result(dbt_test)
@@ -4703,12 +4703,12 @@ class TestDbtTestOnMissingColumn:
         assert source.status.failures == []
         assert len(source.status.warnings) == 1
         reason = next(iter(source.status.warnings[0].values()))
-        assert "TOTAL_REQUEST" in reason
+        assert "ORDER_AMOUNT" in reason
         assert self.TABLE_FQN in reason
         assert "schema.yml" in reason
         source.metadata.add_test_case_results.assert_not_called()
 
-    @pytest.mark.parametrize("column_name", ["total_parts", "TOTAL_PARTS", "address.city"])
+    @pytest.mark.parametrize("column_name", ["order_total", "ORDER_TOTAL", "address.city"])
     def test_existing_column_is_created(self, column_name):
         source = self._source(self._table())
 
@@ -4720,10 +4720,10 @@ class TestDbtTestOnMissingColumn:
 
     @pytest.mark.parametrize("columns_known", [False, True], ids=["unknown_table", "table_without_columns"])
     def test_unverifiable_column_is_left_to_the_server(self, columns_known):
-        table = Table(id=uuid.uuid4(), name="product_eng", fullyQualifiedName=self.TABLE_FQN, columns=[])
+        table = Table(id=uuid.uuid4(), name="orders", fullyQualifiedName=self.TABLE_FQN, columns=[])
         source = self._source(table if columns_known else None)
 
-        results = list(source.create_dbt_test_case(self._dbt_test("TOTAL_REQUEST")))
+        results = list(source.create_dbt_test_case(self._dbt_test("ORDER_AMOUNT")))
 
         assert len(results) == 1
         assert results[0].right is not None, results[0].left
