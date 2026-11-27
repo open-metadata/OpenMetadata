@@ -86,6 +86,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -94,6 +95,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 public class EntityCsvTest {
+  private static final String IMPORTING_BOT = "caip-bot";
   private static final List<CsvHeader> CSV_HEADERS;
   private static final String HEADER_STRING = "h1*,h2,h3" + LINE_SEPARATOR;
   // The stray character after the closing quote makes Commons CSV fail while iterating records.
@@ -1194,11 +1196,13 @@ public class EntityCsvTest {
       Mockito.when(repository.findMatchForImport(createdEntity)).thenReturn(null);
       Mockito.<EntityInterface<?>>when(repository.findMatchForImport(updatedEntity))
           .thenReturn(originalEntity);
-      Mockito.when(repository.createManyEntitiesForImport(List.of(createdEntity), "admin"))
+      // The batch writes name the bot importing for the user, never the importer itself.
+      ImpersonationContext.setImpersonatedBy(IMPORTING_BOT);
+      Mockito.when(repository.createManyEntitiesForImport(List.of(createdEntity), IMPORTING_BOT))
           .thenReturn(List.of(createdEntity));
       Mockito.when(
               repository.updateManyEntitiesForImport(
-                  List.of(originalEntity), List.of(updatedEntity), "admin", "admin"))
+                  List.of(originalEntity), List.of(updatedEntity), "admin", IMPORTING_BOT))
           .thenReturn(List.of(updatedEntity));
 
       testCsv.queueEntity(createRecord, createdEntity);
@@ -1210,6 +1214,8 @@ public class EntityCsvTest {
       assertEquals(2, testCsv.pendingChangeEvents.size());
       assertTrue(testCsv.pendingEntityOperations.isEmpty());
       assertTrue(testCsv.pendingEntityFQNs.isEmpty());
+    } finally {
+      ImpersonationContext.clear();
     }
   }
 
@@ -1248,7 +1254,7 @@ public class EntityCsvTest {
       Mockito.when(repository.findMatchForImport(failingEntity)).thenReturn(null);
       Mockito.when(
               repository.createManyEntitiesForImport(
-                  List.of(successfulEntity, failingEntity), "admin"))
+                  List.of(successfulEntity, failingEntity), null))
           .thenThrow(new IllegalStateException("batch insert failed"));
       Mockito.when(repository.createOrUpdate(null, successfulEntity, "admin"))
           .thenReturn(
@@ -1355,7 +1361,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
       Mockito.when(repository.findMatchForImport(dependentEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.eq("admin")))
+      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.isNull()))
           .thenReturn(List.of(firstEntity));
       Mockito.doNothing().when(repository).prepareInternal(firstEntity, false);
       Mockito.doThrow(
@@ -1519,7 +1525,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
       Mockito.when(repository.findMatchForImport(dependentEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.eq("admin")))
+      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.isNull()))
           .thenReturn(List.of(firstEntity));
       Mockito.doNothing().when(repository).prepareInternal(firstEntity, false);
       Mockito.doThrow(
@@ -1905,7 +1911,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
 
       Mockito.when(repository.findMatchForImport(pendingEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(List.of(pendingEntity), "admin"))
+      Mockito.when(repository.createManyEntitiesForImport(List.of(pendingEntity), null))
           .thenReturn(List.of(pendingEntity));
 
       testCsv.queueEntity(record, pendingEntity);

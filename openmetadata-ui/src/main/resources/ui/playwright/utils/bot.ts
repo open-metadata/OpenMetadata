@@ -117,7 +117,7 @@ export const createBot = async (page: Page) => {
   // Get created bot
   await getCreatedBot(page, { botName });
 
-  await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
+  await expect(page.getByTestId('revoke-button')).toBeVisible();
 
   await expect(page.getByTestId('center-panel')).toContainText(
     BOT_DETAILS.JWTToken

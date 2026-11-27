@@ -1,5 +1,7 @@
 package org.openmetadata.service.security.session;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.Locale;
 import java.util.Set;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -20,6 +22,20 @@ public final class SessionProviders {
     return sessionProvider.equalsIgnoreCase(configuredProvider)
         || (isNativePasswordProvider(sessionProvider)
             && isNativePasswordProvider(configuredProvider));
+  }
+
+  /**
+   * The one provider-currency check: REST, refresh, the push-feed handshake, its sweep and the
+   * reload that closes sockets on a switch all decide through it. Both values are always present
+   * in practice (every session creator stamps the provider, and the configuration schema requires
+   * one); the guards only keep {@link #isSameProvider} from throwing.
+   * ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  public static boolean isFromAnotherProvider(
+      String sessionProvider, AuthProvider configuredProvider) {
+    return !nullOrEmpty(sessionProvider)
+        && configuredProvider != null
+        && !isSameProvider(sessionProvider, configuredProvider.value());
   }
 
   private static boolean isNativePasswordProvider(String provider) {

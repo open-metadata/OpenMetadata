@@ -179,6 +179,37 @@ class DataInsightTestCaseCoverageIT {
   }
 
   @Test
+  void coverageIsUnknownBeforeAnyCaptureCreatesTheCheckpointIndex(TestNamespace ns)
+      throws Exception {
+    final Table table = ShortStackFactory.table(ns);
+    final long day = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
+    final TestCaseSnapshotStore neverCaptured =
+        new TestCaseSnapshotStore(search, ns.uniqueShortId());
+    assertTrue(neverCaptured.loadCoverage(List.of(table), day, day).counts().isEmpty());
+  }
+
+  @Test
+  void unreadableCheckpointsFailTheTableSourceWithTheirCause(TestNamespace ns) throws Exception {
+    final Table table = ShortStackFactory.table(ns);
+    final long day = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
+    run(table, day, Optional.empty());
+    final String checkpoints = TestCaseSnapshotStore.checkpointIndex(repository.getClusterAlias());
+    final String date = TimestampUtils.timestampToString(day, "yyyy-MM-dd");
+    request("POST", "/" + checkpoints + "/_close", null);
+    try {
+      final DataAssetsWorkflow backfill =
+          workflow(table, day, Optional.of(new DataInsightsApp.Backfill(date, date)));
+      backfill.process();
+      assertTrue(
+          backfill.getWorkflowStats().getFailures().stream()
+              .anyMatch(failure -> failure.contains("index_closed_exception")),
+          JsonUtils.pojoToJson(backfill.getWorkflowStats()));
+    } finally {
+      request("POST", "/" + checkpoints + "/_open", null);
+    }
+  }
+
+  @Test
   void upgradingDetachesOnlyTheAliasAndLeavesLiveDefinitionsIntact(TestNamespace ns)
       throws Exception {
     final Table table = ShortStackFactory.table(ns);
@@ -283,6 +314,15 @@ class DataInsightTestCaseCoverageIT {
 
   private void run(Table table, long day, Optional<DataInsightsApp.Backfill> backfill)
       throws Exception {
+    final DataAssetsWorkflow workflow = workflow(table, day, backfill);
+    workflow.process();
+    assertFalse(
+        workflow.getWorkflowStats().hasFailed(), JsonUtils.pojoToJson(workflow.getWorkflowStats()));
+    request("POST", "/" + stream(Entity.TABLE) + "/_refresh", null);
+  }
+
+  private static DataAssetsWorkflow workflow(
+      Table table, long day, Optional<DataInsightsApp.Backfill> backfill) {
     final DataAssetsConfig config =
         new DataAssetsConfig()
             .withEntities(Set.of(Entity.TABLE))
@@ -290,20 +330,15 @@ class DataInsightTestCaseCoverageIT {
                 new ServiceFilter()
                     .withServiceType(Entity.DATABASE_SERVICE)
                     .withServiceName(table.getService().getName()));
-    final DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(
-            config,
-            day + 1000,
-            100,
-            backfill,
-            Set.of(Entity.TABLE, Entity.TEST_CASE),
-            Entity.getCollectionDAO(),
-            repository,
-            insights);
-    workflow.process();
-    assertFalse(
-        workflow.getWorkflowStats().hasFailed(), JsonUtils.pojoToJson(workflow.getWorkflowStats()));
-    request("POST", "/" + stream(Entity.TABLE) + "/_refresh", null);
+    return new DataAssetsWorkflow(
+        config,
+        day + 1000,
+        100,
+        backfill,
+        Set.of(Entity.TABLE, Entity.TEST_CASE),
+        Entity.getCollectionDAO(),
+        repository,
+        insights);
   }
 
   private TestCase testCase(TestNamespace ns, Table table, boolean column) {

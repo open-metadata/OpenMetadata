@@ -16,6 +16,7 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -98,10 +99,11 @@ final class RelationshipTypeRdfWriter {
       final Resource property,
       final RelationshipType type,
       final EntityReference reference) {
-    final String disjointPredicate = predicateIri(reference);
-    if (isProjectable(type, disjointPredicate, "disjoint property")) {
-      property.addProperty(OWL2.propertyDisjointWith, objectProperty(model, disjointPredicate));
-    }
+    predicateIri(type, reference, "disjoint property")
+        .filter(disjoint -> isProjectable(type, disjoint, "disjoint property"))
+        .ifPresent(
+            disjoint ->
+                property.addProperty(OWL2.propertyDisjointWith, objectProperty(model, disjoint)));
   }
 
   /**
@@ -109,20 +111,22 @@ final class RelationshipTypeRdfWriter {
    * onto reserved vocabulary (superClassOf's inverse is {@code rdfs:subClassOf}) loses nothing.
    */
   private void addInverse(final Model model, final Resource property, final RelationshipType type) {
-    if (type.getInverse() != null) {
-      final String inversePredicate = predicateIri(type.getInverse());
-      if (!OwlEntityDeclarations.isReservedVocabulary(inversePredicate)) {
-        property.addProperty(OWL2.inverseOf, objectProperty(model, inversePredicate));
-      }
-    }
+    Optional.ofNullable(type.getInverse())
+        .flatMap(inverse -> predicateIri(type, inverse, "inverse"))
+        .filter(inverse -> !OwlEntityDeclarations.isReservedVocabulary(inverse))
+        .ifPresent(inverse -> property.addProperty(OWL2.inverseOf, objectProperty(model, inverse)));
   }
 
   private void addPropertyChain(
       final Model model, final Resource property, final RelationshipType type) {
-    final List<String> chain =
-        listOrEmpty(type.getPropertyChain()).stream().map(this::predicateIri).toList();
+    final List<Optional<String>> resolved =
+        listOrEmpty(type.getPropertyChain()).stream()
+            .map(link -> predicateIri(type, link, "property chain link"))
+            .toList();
+    final List<String> chain = resolved.stream().flatMap(Optional::stream).toList();
     final boolean isProjectable =
         !chain.isEmpty()
+            && chain.size() == resolved.size()
             && chain.stream().allMatch(link -> isProjectable(type, link, "property chain link"));
     if (isProjectable) {
       final List<RDFNode> links =
@@ -150,12 +154,14 @@ final class RelationshipTypeRdfWriter {
     if (type.getEntityStatus() == EntityStatus.DEPRECATED) {
       property.addLiteral(OWL2.deprecated, true);
     }
-    if (type.getReplacedBy() != null) {
-      OwlEntityDeclarations.declare(
-          model, DCTerms.isReplacedBy.getURI(), EntityKind.ANNOTATION_PROPERTY);
-      property.addProperty(
-          DCTerms.isReplacedBy, model.createResource(predicateIri(type.getReplacedBy())));
-    }
+    Optional.ofNullable(type.getReplacedBy())
+        .flatMap(replacement -> predicateIri(type, replacement, "replacement"))
+        .ifPresent(
+            replacement -> {
+              OwlEntityDeclarations.declare(
+                  model, DCTerms.isReplacedBy.getURI(), EntityKind.ANNOTATION_PROPERTY);
+              property.addProperty(DCTerms.isReplacedBy, model.createResource(replacement));
+            });
   }
 
   private static Resource objectProperty(final Model model, final String predicate) {
@@ -163,22 +169,36 @@ final class RelationshipTypeRdfWriter {
     return model.createResource(predicate);
   }
 
-  private String predicateIri(final EntityReference reference) {
+  /**
+   * A reference written by FQN before its target existed (the UI creates an inverse pair that way)
+   * has no id and may still name nothing; the projection omits that axiom. A reference with an id
+   * names a type that existed, so a missing target is an inconsistency and fails the export.
+   */
+  private Optional<String> predicateIri(
+      final RelationshipType owner, final EntityReference reference, final String role) {
     final String referenceFqn = reference.getFullyQualifiedName();
-    return allTypes.stream()
-        .filter(
-            type ->
-                (reference.getId() != null && type.getId().equals(reference.getId()))
-                    || (referenceFqn != null && referenceFqn.equals(type.getFullyQualifiedName())))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "Relationship type '"
-                        + (reference.getId() != null ? reference.getId() : referenceFqn)
-                        + "' is not registered"))
-        .getRdfPredicate()
-        .toString();
+    final Optional<String> predicate =
+        allTypes.stream()
+            .filter(
+                type ->
+                    (reference.getId() != null && type.getId().equals(reference.getId()))
+                        || (referenceFqn != null
+                            && referenceFqn.equals(type.getFullyQualifiedName())))
+            .findFirst()
+            .map(type -> type.getRdfPredicate().toString());
+    if (predicate.isEmpty() && reference.getId() != null) {
+      throw new IllegalArgumentException(
+          "Relationship type '" + reference.getId() + "' is not registered");
+    }
+    if (predicate.isEmpty()) {
+      LOG.warn(
+          "Relationship type '{}' names '{}' as its {}, which does not exist yet; the ontology"
+              + " projection omits that axiom",
+          owner.getName(),
+          referenceFqn,
+          role);
+    }
+    return predicate;
   }
 
   private static <T> Set<T> setOrEmpty(final Set<T> values) {

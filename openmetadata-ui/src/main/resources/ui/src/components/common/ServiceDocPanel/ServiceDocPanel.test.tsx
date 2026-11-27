@@ -68,7 +68,6 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
     ({ markdown, className }: { markdown: string; className?: string }) => (
       <div
         className={className ?? 'service-doc-content'}
-        // eslint-disable-next-line react/no-danger -- test mock rendering controlled markdown fixture
         dangerouslySetInnerHTML={{ __html: markdown }}
       />
     )
@@ -1117,6 +1116,27 @@ describe('ServiceDocPanel Component', () => {
       ).toBeUndefined();
     });
 
+    it('should highlight without scrolling while a field listbox is open', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="host"></section><section data-id="name"></section>'
+      );
+
+      const { container } = render(
+        <>
+          <button aria-expanded="true" aria-haspopup="listbox" type="button">
+            Language
+          </button>
+          <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+        </>
+      );
+
+      await waitFor(() => {
+        expect(getSection(container, 'name')?.dataset.highlighted).toBe('true');
+      });
+
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
+    });
+
     it('should align the selected entity summary to the top of the panel', async () => {
       const { container } = render(
         <ServiceDocPanel
@@ -1642,15 +1662,6 @@ describe('CodeBlockComponent', () => {
     expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
   });
 
-  it('should set data-copied to false initially', () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
-      'false'
-    );
-  });
-
   it('should copy node text content to clipboard on click', async () => {
     render(<CodeBlockComponent {...mockNodeViewProps} />);
 
@@ -1661,21 +1672,20 @@ describe('CodeBlockComponent', () => {
     });
   });
 
-  it('should set data-copied to true after clicking copy', async () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+  it('should show the copied state after clicking copy', async () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
     await waitFor(() => {
-      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-        'data-copied',
-        'true'
+      expect(screen.getByTestId('code-block-copy-icon').className).toContain(
+        'tw:bg-success-solid'
       );
     });
   });
 
   it('should remain in copied state after rapid clicks', async () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
@@ -1689,9 +1699,8 @@ describe('CodeBlockComponent', () => {
       expect(mockWriteText).toHaveBeenCalledTimes(2);
     });
 
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
-      'true'
+    expect(screen.getByTestId('code-block-copy-icon').className).toContain(
+      'tw:bg-success-solid'
     );
   });
 });

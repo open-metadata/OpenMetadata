@@ -206,6 +206,100 @@ export const searchQuery = async <
   return formatSearchQueryResponse<SI, TIncludeFields>(res.data);
 };
 
+/**
+ * Search-response data type returned by {@link rawSearchQueryPost}. Pulled into a type
+ * alias so the call site uses at most two `>` after `APIClient.post<...>`; SWC's TSX-mode
+ * parser mis-reads a triple `>>>` after a method-call generic as comparison operators.
+ */
+type RawSearchPostData<
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+> = SearchResponse<SearchIndexValue<SI>, TIncludeFields>;
+
+/**
+ * Executes a POST-body request to /search/query. Same inputs and same response shape as
+ * {@link rawSearchQuery}, but carries the `queryFilter` / `postFilter` in the JSON body
+ * instead of the request line. Use this whenever the serialized filter could overflow the
+ * server's request-header limit — e.g. the metric Assets tab and Add-Assets modal, whose
+ * `ids` filter enumerates every linked asset id of a metric that can hold thousands of assets.
+ * A GET with that filter fails with HTTP 414 / 400 / 431 once the URL exceeds the 8 KiB
+ * request-line limit (about 140-170 UUIDs). The POST endpoint accepts the same SearchRequest
+ * payload in its body, which the server never sizes against the request line.
+ *
+ * @param req Request object
+ */
+export const rawSearchQueryPost = <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  req: SearchRequest<SI, TIncludeFields>
+): Promise<AxiosResponse<RawSearchPostData<SI, TIncludeFields>>> => {
+  const {
+    query,
+    pageNumber = 1,
+    pageSize = 10,
+    queryFilter,
+    sortField,
+    sortOrder,
+    searchIndex,
+    trackTotalHits,
+    postFilter,
+    fetchSource,
+    explain,
+    excludeSourceFields,
+  } = req;
+
+  const includeDeletedParam =
+    'includeDeleted' in req ? req.includeDeleted : false;
+  const queryWithSlash = getQueryWithSlash(query || '');
+  const apiQuery = query && query !== '**' ? queryWithSlash : '';
+
+  // The SearchRequest pojo stores queryFilter / postFilter as Strings (the JSON-serialized
+  // filter), matching the GET path which round-trips the same strings through query params.
+  return APIClient.post<RawSearchPostData<SI, TIncludeFields>>(
+    '/search/query',
+    {
+      query: apiQuery,
+      index: getSearchIndexParam(searchIndex),
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
+      size: pageSize,
+      deleted: includeDeletedParam,
+      queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
+      postFilter: postFilter ? JSON.stringify(postFilter) : undefined,
+      sortFieldParam: sortField,
+      sortOrder,
+      trackTotalHits,
+      explain,
+      fetchSource,
+      includeSourceFields: req.fetchSource ? req.includeFields : undefined,
+      excludeSourceFields,
+    },
+    {
+      signal: req.signal,
+      ...(req.skipDomainFilter && {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+      }),
+    }
+  );
+};
+
+/**
+ * POST-body variant of {@link searchQuery}. Calls {@link rawSearchQueryPost} and applies
+ * {@link formatSearchQueryResponse} so both paths return the same shape.
+ *
+ * @param req Request object
+ */
+export const searchQueryPost = async <
+  SI extends SearchIndex | SearchIndex[],
+  TIncludeFields extends SearchSourceFields<SI>
+>(
+  req: SearchRequest<SI, TIncludeFields>
+): Promise<SearchResponse<SearchIndexValue<SI>, TIncludeFields>> => {
+  const res = await rawSearchQueryPost<SI, TIncludeFields>(req);
+
+  return formatSearchQueryResponse<SI, TIncludeFields>(res.data);
+};
+
 export const searchPreview = async (payload: PreviewSearchRequest) => {
   const response = await APIClient.post<SearchResponse<SearchIndex>>(
     '/search/preview',
@@ -219,11 +313,12 @@ export const searchEntityTypeCounts = async (
   request: Pick<
     SearchRequest<SearchIndex[]>,
     'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
-  > & { includeTopHit?: boolean }
+  > & { includeTopHit?: boolean; signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/search/entityTypeCounts',
     {
+      signal: request.signal,
       params: {
         q: request.query,
         index: request.searchIndex?.join(','),

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.exception;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -117,6 +118,48 @@ class CatalogGenericExceptionMapperTest {
     assertEquals(409, body.path("code").asInt());
     assertEquals("SETTINGS_MANAGED_BY_ENVIRONMENT", body.path("errorType").asText());
     assertTrue(body.path("message").asText().contains("EMAIL_CONFIG_SOURCE=ENV"));
+  }
+
+  /**
+   * A {@link CustomExceptionMessage} raised with a non-enum HTTP status (424, what the basic-auth
+   * email-failure paths throw with {@code FAILED_SEND_EMAIL}) used to crash the mapper: the SDK
+   * {@code WebServiceException} stored a null {@link Response.Status} and {@code getResponse()}
+   * threw {@link IllegalArgumentException} from inside the mapper, surfacing as a generic 500. It
+   * must now render the intended 424 with the typed {@code FAILED_SEND_EMAIL} body (regression
+   * introduced by bb1395fc72 / PR #23239).
+   */
+  @Test
+  void aNonEnumStatusCodeIsRenderedWithItsTypedErrorBody() {
+    Response response =
+        assertDoesNotThrow(
+            () ->
+                new CatalogGenericExceptionMapper()
+                    .toResponse(
+                        new CustomExceptionMessage(
+                            424, "FAILED_SEND_EMAIL", "Email sending issue")));
+
+    assertEquals(424, response.getStatus());
+    assertEquals(Response.Status.Family.CLIENT_ERROR, response.getStatusInfo().getFamily());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(424, body.path("code").asInt(), "body.code");
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText(), "body.errorType");
+    assertEquals("Email sending issue", body.path("message").asText(), "body.message");
+  }
+
+  /** What {@code BasicAuthenticator.sendEmailVerification}/{@code sendPasswordResetLink}/ {@code
+   * resetUserPasswordWithToken} throw on a {@code TemplateException} — the exact constants the
+   * client contract expects. */
+  @Test
+  void basicAuthEmailFailureConstantsRenderAs424FailedSendEmail() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new CustomExceptionMessage(424, "FAILED_SEND_EMAIL", "Email sending issue"));
+
+    assertEquals(424, response.getStatus());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText());
+    assertEquals("Email sending issue", body.path("message").asText());
   }
 
   @Test

@@ -787,6 +787,9 @@ export const getEntityDetailsPath = (
   return path;
 };
 
+export const getEntityDetailsUrl = (entityType: EntityType, fqn: string) =>
+  `${window.location.origin}${getEntityDetailsPath(entityType, fqn)}`;
+
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
   tab?: string,

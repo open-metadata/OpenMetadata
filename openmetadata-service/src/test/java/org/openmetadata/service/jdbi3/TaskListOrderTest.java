@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.exception.BadRequestException;
-import org.openmetadata.service.jdbi3.TaskListOrder.CreatedAtPage;
+import org.openmetadata.service.jdbi3.TaskListOrder.TimestampPage;
 
 class TaskListOrderTest {
 
@@ -30,6 +30,29 @@ class TaskListOrderTest {
     assertEquals(TaskListOrder.NEWEST_FIRST, TaskListOrder.fromParam(""));
     assertEquals(TaskListOrder.NEWEST_FIRST, TaskListOrder.fromParam("DESC"));
     assertEquals(TaskListOrder.OLDEST_FIRST, TaskListOrder.fromParam("asc"));
+  }
+
+  @Test
+  void acceptsOnlyTheSupportedTimestampFields() {
+    ListFilter filter = TaskListOrder.NEWEST_FIRST.applyTo(new ListFilter(), "updatedAt");
+
+    assertTrue(TaskListOrder.isRequestedBy(filter));
+    assertTrue(TaskListOrder.usesUpdatedAt(filter));
+    assertThrows(
+        BadRequestException.class,
+        () -> TaskListOrder.NEWEST_FIRST.applyTo(new ListFilter(), "name"));
+  }
+
+  @Test
+  void updatedAtPagesCarryTheSelectedColumnBothWays() {
+    assertEquals(
+        TaskListOrder.UPDATED_AT,
+        TaskListOrder.NEWEST_FIRST.after("100", "id", TaskListOrder.UPDATED_AT).column());
+    assertEquals(
+        TaskListOrder.UPDATED_AT,
+        TaskListOrder.NEWEST_FIRST.before("100", "id", TaskListOrder.UPDATED_AT).column());
+    assertThrows(
+        BadRequestException.class, () -> TaskListOrder.NEWEST_FIRST.after("100", "id", "unknown"));
   }
 
   @Test
@@ -49,28 +72,35 @@ class TaskListOrderTest {
 
   @Test
   void firstNewestPageAdmitsEveryRow() {
-    final CreatedAtPage page = TaskListOrder.NEWEST_FIRST.after("", "");
+    final TimestampPage page = TaskListOrder.NEWEST_FIRST.after("", "", TaskListOrder.SORT_FIELD);
 
-    assertEquals(new CreatedAtPage(Long.MAX_VALUE, "", "<", "DESC", "DESC"), page);
+    assertEquals(
+        new TimestampPage(Long.MAX_VALUE, "", "<", "DESC", "DESC", TaskListOrder.SORT_FIELD), page);
   }
 
   @Test
   void firstOldestPageAdmitsEveryRow() {
-    final CreatedAtPage page = TaskListOrder.OLDEST_FIRST.after(null, null);
+    final TimestampPage page =
+        TaskListOrder.OLDEST_FIRST.after(null, null, TaskListOrder.SORT_FIELD);
 
-    assertEquals(new CreatedAtPage(Long.MIN_VALUE, "", ">", "ASC", "ASC"), page);
+    assertEquals(
+        new TimestampPage(Long.MIN_VALUE, "", ">", "ASC", "ASC", TaskListOrder.SORT_FIELD), page);
   }
 
   @Test
   void previousNewestPageWalksBackTowardTheNewerRows() {
-    final CreatedAtPage page = TaskListOrder.NEWEST_FIRST.before("1793107007319", "id-1");
+    final TimestampPage page =
+        TaskListOrder.NEWEST_FIRST.before("1793107007319", "id-1", TaskListOrder.SORT_FIELD);
 
-    assertEquals(new CreatedAtPage(1793107007319L, "id-1", ">", "ASC", "DESC"), page);
+    assertEquals(
+        new TimestampPage(1793107007319L, "id-1", ">", "ASC", "DESC", TaskListOrder.SORT_FIELD),
+        page);
   }
 
   @Test
   void nameCursorFromBeforeCreationTimePagingIsRejected() {
     assertThrows(
-        BadRequestException.class, () -> TaskListOrder.NEWEST_FIRST.after("TASK-00012", "id-1"));
+        BadRequestException.class,
+        () -> TaskListOrder.NEWEST_FIRST.after("TASK-00012", "id-1", TaskListOrder.SORT_FIELD));
   }
 }

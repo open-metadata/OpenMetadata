@@ -75,7 +75,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
     init_empty_connection_options,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr  # noqa: TC001
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr, _CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 from metadata.utils.secure_tempfile import (
@@ -84,6 +84,41 @@ from metadata.utils.secure_tempfile import (
 )
 
 logger = utils_logger()
+
+_PYMYSQL_SSL_OPTIONS = ("ssl_ca", "ssl_cert", "ssl_key", "ssl_verify_cert", "ssl_verify_identity")
+_PYMYSQL_SSL_PATHS = (("ssl_ca", "ca"), ("ssl_cert", "cert"), ("ssl_key", "key"))
+
+
+def _nest_pymysql_ssl_options(args: dict, ssl_args: dict) -> None:
+    """
+    Move PyMySQL's top-level SSL options into the ``ssl`` dict.
+
+    PyMySQL replaces the whole ``ssl`` dict when any top-level SSL option is truthy, which would
+    drop the sslConfig certificates. Values are resolved here because secrets are only resolved
+    for top-level connection arguments.
+    """
+    options = {
+        key: _CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
+        for key in (*_PYMYSQL_SSL_OPTIONS, "ssl_key_password")
+        if key in args
+    }
+    args.pop("ssl_key_password", None)
+    if options.get("ssl_key_password") is not None:
+        ssl_args["password"] = options["ssl_key_password"]
+    if not any(options.get(key) for key in _PYMYSQL_SSL_OPTIONS):
+        return
+    for key in _PYMYSQL_SSL_OPTIONS:
+        args.pop(key, None)
+    for top_level, nested in _PYMYSQL_SSL_PATHS:
+        if options.get(top_level) is not None:
+            ssl_args[nested] = options[top_level]
+    verify_cert = options.get("ssl_verify_cert")
+    verify_identity = options.get("ssl_verify_identity")
+    if verify_cert is not None:
+        ssl_args["verify_mode"] = verify_cert
+        ssl_args["check_hostname"] = False
+    if verify_identity is not None:
+        ssl_args["check_hostname"] = bool(verify_identity)
 
 
 class SSLManager:
@@ -137,6 +172,9 @@ class SSLManager:
         # exist as URL query params and top-level kwargs; inside the dict they are ignored, which
         # leaves TLS on but the server certificate unverified.
         connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection)  # noqa: TC006
+        # Work on a copy: top-level SSL options are moved into ``ssl`` below, and callers such as
+        # get_ssl_connection set up the same config more than once.
+        connection = connection.model_copy(deep=True)
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
@@ -146,6 +184,7 @@ class SSLManager:
         if connection.sslConfig.root.sslKey:
             ssl_args["key"] = self.key_file_path
         connection.connectionArguments.root["ssl"] = ssl_args
+        _nest_pymysql_ssl_options(connection.connectionArguments.root, ssl_args)
         return connection
 
     @setup_ssl.register(MatillionConnection)

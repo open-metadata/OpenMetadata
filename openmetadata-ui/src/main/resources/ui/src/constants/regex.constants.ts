@@ -59,8 +59,14 @@ export const TAG_NAME_REGEX = /^((?!::)[^>"\u0000-\u001f])+$/;
 // Exported for openmetadata-collate callers; see the ADR above before removing it.
 export const NAME_LENGTH_REGEX = /^.{2,64}$/;
 
-export const passwordRegex =
-  /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,56}$/g;
+// Mirrors Passay 1.6.6 `EnglishCharacterData.Special`, enforced by the server's
+// `PasswordUtil`. The UI and Java tests pin the exact character list.
+export const PASSWORD_SPECIAL_CHAR_REGEX =
+  /[!-/:-@[-`{-~¡-¿×÷–-―‗-„†-•…‰′″‹›‼‾⁄⁊₠-₾]/;
+
+export const passwordRegex = new RegExp(
+  `^(?=.*\\d)(?=.*[A-Z])(?=.*[a-z])(?=.*${PASSWORD_SPECIAL_CHAR_REGEX.source})\\S{8,56}$`
+);
 
 export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 

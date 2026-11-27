@@ -227,6 +227,10 @@ export function useObservabilityAlerts({
         name: t('label.name'),
       },
       {
+        id: ALERT_TABLE_COLUMN_IDS.STATUS,
+        name: t('label.status'),
+      },
+      {
         id: ALERT_TABLE_COLUMN_IDS.TRIGGER,
         name: t('label.trigger'),
       },

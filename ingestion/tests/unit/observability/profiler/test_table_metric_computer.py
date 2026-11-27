@@ -983,3 +983,95 @@ class TestDatabricksTableMetricComputer:
 
     def test_databricks_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer
+
+
+class TestMySQLTableMetricComputer:
+    @staticmethod
+    def _run_doris_metric_computer(table_rows, table_type=TableType.Regular, actual_rows=5, include_catalog_row=True):
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        try:
+            with engine.begin() as connection:
+                connection.execute(text("ATTACH ':memory:' AS information_schema"))
+                connection.execute(text("ATTACH ':memory:' AS test_schema"))
+                connection.execute(
+                    text(
+                        "CREATE TABLE information_schema.tables ("
+                        "TABLE_SCHEMA VARCHAR(256), "
+                        "TABLE_NAME VARCHAR(256), "
+                        "TABLE_ROWS INTEGER, "
+                        "data_length INTEGER, "
+                        "index_length INTEGER, "
+                        "CREATE_TIME VARCHAR(64))"
+                    )
+                )
+                if include_catalog_row:
+                    connection.execute(
+                        text(
+                            "INSERT INTO information_schema.tables "
+                            "(TABLE_SCHEMA, TABLE_NAME, TABLE_ROWS, data_length, index_length, CREATE_TIME) "
+                            "VALUES (:schema, :table, :rows, 100, 200, '2026-01-01 00:00:00')"
+                        ),
+                        {"schema": "test_schema", "table": "test_table", "rows": table_rows},
+                    )
+                if table_type == TableType.View:
+                    connection.execute(text("CREATE TABLE test_schema.source_rows (id INTEGER, name VARCHAR(256))"))
+                    connection.execute(
+                        text("CREATE VIEW test_schema.test_table AS SELECT * FROM test_schema.source_rows")
+                    )
+                    source = "source_rows"
+                else:
+                    MockModel.__table__.create(connection)
+                    source = "test_table"
+                if actual_rows:
+                    connection.execute(
+                        text(f"INSERT INTO test_schema.{source} (id, name) VALUES (:id, :name)"),
+                        [{"id": idx, "name": f"row-{idx}"} for idx in range(actual_rows)],
+                    )
+
+            with Session(engine) as session:
+                runner = QueryRunner(session=session, dataset=MockModel, raw_dataset=MockModel)
+                computer = table_metric_computer_factory.construct(
+                    Dialects.Doris,
+                    runner=runner,
+                    metrics=[RowCount],
+                    conn_config=None,
+                    entity=Mock(tableType=table_type),
+                )
+                return computer.compute()
+        finally:
+            engine.dispose()
+
+    @pytest.mark.parametrize(
+        "table_type",
+        [TableType.View, TableType.MaterializedView, TableType.Regular],
+        ids=["view", "materialized-view", "regular-table"],
+    )
+    def test_negative_table_rows_falls_back_to_count(self, table_type):
+        result = self._run_doris_metric_computer(table_rows=-1, table_type=table_type, actual_rows=5)
+        assert result is not None
+        assert result.rowCount == 5
+
+    def test_zero_table_rows_on_view_falls_back_to_count(self):
+        result = self._run_doris_metric_computer(table_rows=0, table_type=TableType.View, actual_rows=5)
+        assert result is not None
+        assert result.rowCount == 5
+
+    def test_zero_table_rows_on_regular_table_keeps_catalog_value(self):
+        result = self._run_doris_metric_computer(table_rows=0, table_type=TableType.Regular, actual_rows=5)
+        assert result is not None
+        assert result.rowCount == 0
+
+    def test_positive_table_rows_on_regular_table_uses_catalog_value(self):
+        result = self._run_doris_metric_computer(table_rows=42, table_type=TableType.Regular, actual_rows=5)
+        assert result is not None
+        assert result.rowCount == 42
+        assert result.sizeInBytes == 300
+
+    def test_none_table_rows_falls_back_to_count(self):
+        result = self._run_doris_metric_computer(table_rows=None, table_type=TableType.Regular, actual_rows=5)
+        assert result is not None
+        assert result.rowCount == 5
+
+    def test_missing_catalog_row_returns_none(self):
+        result = self._run_doris_metric_computer(table_rows=None, include_catalog_row=False)
+        assert result is None

@@ -258,8 +258,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const [selectedTab, setSelectedTab] = useState<Key>();
   const [showHint, setShowHint] = useState(false);
   const [subPage, setSubPage] = useState<AppSubPage>();
-  // Bumped by Cancel to remount the configuration form with the saved values.
-  const [configFormKey, setConfigFormKey] = useState(0);
   const { canEditAll, canDelete, can } = useEntityPermissions(
     ResourceEntity.APPLICATION,
     fqn,
@@ -341,7 +339,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     }
   };
 
-  const handleScheduleSave = async (cron: string) => {
+  const handleScheduleSave = async (cron: string, timezone?: string) => {
     if (!appData) {
       return;
     }
@@ -355,6 +353,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               ? ScheduleTimeline.None
               : ScheduleTimeline.Custom,
             ...(cron ? { cronExpression: cron } : {}),
+            ...(timezone ? { timezone } : {}),
           },
         },
         t('label.schedule')
@@ -436,7 +435,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       getResourceLimit('app', true, true).catch(noop);
     }
     setAction(undefined);
-    onNavigate({ type: 'list' });
+    // An uninstalled app's detail no longer resolves, so Back must skip it.
+    onNavigate({ type: 'list' }, { replace: action === 'uninstall' });
 
     return true;
   };
@@ -505,9 +505,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             <McpConfigForm
               appData={appData}
               jsonSchema={jsonSchema as RJSFSchema}
-              key={configFormKey}
               showHint={showHint}
-              onCancel={() => setConfigFormKey((key) => key + 1)}
+              onCancel={() => onNavigate({ type: 'list' })}
             />
           ) : (
             <ConfigurationComponent
@@ -515,10 +514,9 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               isReadOnly={!canEditAll}
               isSaving={Boolean(loading.save)}
               jsonSchema={jsonSchema as RJSFSchema}
-              key={configFormKey}
               showHint={showHint}
               submitLabel={t('label.save')}
-              onCancel={() => setConfigFormKey((key) => key + 1)}
+              onCancel={() => onNavigate({ type: 'list' })}
               onSave={handleConfigSave}
             />
           )),

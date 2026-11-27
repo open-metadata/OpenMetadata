@@ -1,7 +1,7 @@
 # MCP turns off at request time, when its app is disabled or its setting is off
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-18 (app state read in the background, not per request); v3 2026-11-25 (a setting saved through the settings API applies through the watcher on every server)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpAvailabilityIT`
 - **Related:** #37687, #29201, #30041
@@ -29,16 +29,28 @@ kept answering, and an uninstalled app is re-seeded at the next start. Setting
   follows at once, other servers when the settings watcher picks the change up
   (`watchIntervalSeconds`, 10 by default). `SettingsCache` was not used because it does not cache
   a missing value, so an install that never saved the setting would query on every request.
-- The app is read through the entity cache: the server that took the click follows at once,
-  other servers when their entry expires (30 seconds by default).
+- The app's state is kept in memory and re-read through the entity cache every 2 seconds in the
+  background, starting when MCP is mounted. A request never reads the database for it: v1 read it
+  per request, so once the cached entry expired, a database outage made every `/mcp` request hang
+  on that read instead of reaching the auth check that answers 503 with `Retry-After`. A failed
+  re-read keeps the last state. The server that took the click follows within about 2 seconds,
+  other servers when their entity cache entry expires (30 seconds by default) plus up to 2 seconds.
 
 ## Consequences
 
 Disable stops MCP and Enable brings it back, with no restart. Uninstall stops MCP until the next
-start re-seeds the app; until then each refused request runs one indexed lookup, because a
-missing app is not cached for `Include.ALL`. A refusal is a bare 404 status, not `sendError`, because the server maps
+start re-seeds the app. A refusal is a bare 404 status, not `sendError`, because the server maps
 404 errors to the UI page. A deployment that disabled the app but kept using MCP, which worked
 while the app state was ignored, loses MCP on upgrade until the app is enabled. A new MCP route
 must sit under `/mcp/` or check `McpAvailabilityFilter.isMcpAvailable()` itself, or it keeps
 answering while MCP is off. A server that started with MCP off only answers once it restarts with
 it on, unless its startup gate mounts MCP regardless.
+
+## Amendment
+
+v3 2026-11-25: only `/system/mcp/config` applies the setting on the saving server at once. A save
+through `PUT` or `PATCH /system/settings` applies on every server, the saving one included, when
+its settings watcher picks it up (`watchIntervalSeconds`), and a failed reload is retried and
+reported there. `MCP_CONFIGURATION` is therefore not acknowledged as a local write: before this,
+the saving server never applied it until a restart (#38674). Guard:
+`McpAvailabilityIT#readOnlySavedThroughTheSettingsApiAppliesOnThisServer`.

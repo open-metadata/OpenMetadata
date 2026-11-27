@@ -364,6 +364,7 @@ When secure websocket connections are enabled:
    - require not expired
    - require session username to match the token principal
    - require cookie session ID to match token `sessionId` when both are present
+   - require the session's provider to be the configured one (`SessionService.isFromAnotherProvider`)
 
 If no `OM_SESSION` cookie is present:
 
@@ -424,11 +425,20 @@ Each run calls `WebSocketManager.disconnectInactiveSessions(sessionService, inte
 1. Iterates local sockets with known `sessionId`.
 2. Reloads a socket's session fresh through `SessionService.getFreshSessionById` only when that
    socket's revalidation interval is due.
-3. Disconnects sockets whose session is missing, not `ACTIVE`, expired, or owned by a different
-   user.
+3. Disconnects sockets whose session is missing, not `ACTIVE`, expired, issued by a provider other
+   than the one the push-feed handshake filter validates under, or owned by a different user.
 
 This is the fallback when there is no cross-pod pub/sub. With JDBC and no pub/sub, a socket on a
 remote node is closed within the validator interval instead of immediately.
+
+A security reload that changes the configured provider closes every socket on that server, with or
+without a session (`closeSocketsOnProviderSwitch`). A socket whose handshake was validated just
+before the switch can register after that close; registration compares the provider stamped at the
+handshake (`AuthProvider` header) with the one the handshake filter validates under now
+(`SocketAddressFilter.validatingProvider`) and closes the socket on a mismatch. Registration and the
+sweep read the filter rather than the published configuration because a reload publishes before it
+initializes the new authenticator and rolls back if that fails; only a reload that succeeded
+rebuilds the filter, so a failed reload closes no socket.
 
 ## 9. End-to-End Flow
 

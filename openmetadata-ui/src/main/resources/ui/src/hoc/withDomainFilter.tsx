@@ -174,22 +174,20 @@ const domainClause = (
     },
   } as QueryFieldInterface);
 
-const withDomainOnSearch = (
-  config: InternalAxiosRequestConfig,
+const scopeSearchFilter = (
+  index: string | string[] | undefined,
+  queryFilter: string | undefined,
   activeDomain: string
-): InternalAxiosRequestConfig => {
-  const index = config.params?.index;
+): string | undefined => {
   if (isUnscopedSearch(index)) {
-    return config;
+    return queryFilter;
   }
 
   const field =
     index === SearchIndex.DOMAIN
       ? 'fullyQualifiedName'
       : 'domains.fullyQualifiedName';
-  const filter = parseExistingFilter(
-    config.params?.query_filter as string | undefined
-  );
+  const filter = parseExistingFilter(queryFilter);
   filter.query = {
     bool: {
       ...filter.query?.bool,
@@ -199,7 +197,58 @@ const withDomainOnSearch = (
       ],
     },
   };
-  config.params = { ...config.params, query_filter: JSON.stringify(filter) };
+
+  return JSON.stringify(filter);
+};
+
+const withDomainOnSearch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  config.params = {
+    ...config.params,
+    query_filter: scopeSearchFilter(
+      config.params?.index,
+      config.params?.query_filter as string | undefined,
+      activeDomain
+    ),
+  };
+
+  return config;
+};
+
+// Searches whose filter is too large for a URL (e.g. a metric's linked asset ids) are POSTed
+// with the same inputs in the body; they follow the pick exactly as the GET does.
+const withDomainOnSearchBody = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  // A request replayed after a token refresh carries the body axios already serialized.
+  const body = (
+    typeof config.data === 'string' ? JSON.parse(config.data) : config.data
+  ) as { index?: string | string[]; queryFilter?: string } | undefined;
+  config.data = {
+    ...body,
+    queryFilter: scopeSearchFilter(
+      body?.index,
+      body?.queryFilter,
+      activeDomain
+    ),
+  };
+
+  return config;
+};
+
+const withDomainOnPostBody = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  if (config.url?.includes(DQ_REPORT_BATCH_PATH)) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
+  if (config.url?.includes('/search/query')) {
+    return withDomainOnSearchBody(config, activeDomain);
+  }
 
   return config;
 };
@@ -215,12 +264,8 @@ export const withDomainFilter = (
 
   const activeDomain = getRequestDomain();
 
-  if (
-    activeDomain &&
-    config.method === 'post' &&
-    config.url?.includes(DQ_REPORT_BATCH_PATH)
-  ) {
-    return withDomainOnReportBatch(config, activeDomain);
+  if (activeDomain && config.method === 'post') {
+    return withDomainOnPostBody(config, activeDomain);
   }
 
   if (isAboutOneAsset(config)) {

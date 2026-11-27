@@ -219,6 +219,7 @@ describe('LineageTable', () => {
         upstreamDepth: 2,
       } as LineageConfig,
       setLineageConfig: jest.fn(),
+      timeFilter: {},
     });
 
     mockUsePaging.mockReturnValue({
@@ -397,6 +398,50 @@ describe('LineageTable', () => {
         size: 25,
         include_pagination_info: true,
       });
+    });
+  });
+
+  it('should forward the selected time range and refetch when it changes', async () => {
+    const storeState = {
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: jest.fn(),
+      lineageConfig: {
+        downstreamDepth: 2,
+        upstreamDepth: 2,
+      } as LineageConfig,
+      setLineageConfig: jest.fn(),
+      timeFilter: { startTime: 100, endTime: 200 },
+    };
+    mockUseLineageStore.mockReturnValue(storeState);
+
+    const { rerender } = render(<LineageTable entity={mockEntity} />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(mockGetLineageByEntityCount).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          startTime: 100,
+          endTime: 200,
+          include_pagination_info: true,
+        })
+      );
+    });
+
+    mockUseLineageStore.mockReturnValue({
+      ...storeState,
+      timeFilter: { startTime: 300, endTime: 400 },
+    });
+    rerender(<LineageTable entity={mockEntity} />);
+
+    await waitFor(() => {
+      expect(mockGetLineageByEntityCount).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          startTime: 300,
+          endTime: 400,
+          include_pagination_info: true,
+        })
+      );
     });
   });
 
@@ -678,6 +723,32 @@ describe('LineageTable', () => {
           direction: LineageDirection.Downstream,
           queryFilter: undefined,
         });
+      });
+    });
+
+    it('should forward the selected time range to the column-level fetch', async () => {
+      mockUseLineageStore.mockReturnValue({
+        selectedQuickFilters: [],
+        setSelectedQuickFilters: jest.fn(),
+        lineageConfig: {
+          downstreamDepth: 2,
+          upstreamDepth: 2,
+        } as LineageConfig,
+        setLineageConfig: jest.fn(),
+        timeFilter: { startTime: 100, endTime: 200 },
+      });
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.ColumnLevel,
+        setColumnLineageNodes: jest.fn(),
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetLineageDataByFQN).toHaveBeenCalledWith(
+          expect.objectContaining({ startTime: 100, endTime: 200 })
+        );
       });
     });
 
@@ -1057,6 +1128,7 @@ describe('LineageTable', () => {
           upstreamDepth: 2,
         } as LineageConfig,
         setLineageConfig: jest.fn(),
+        timeFilter: {},
       });
 
       mockUseLineageTableState.mockReturnValue({
@@ -1121,6 +1193,7 @@ describe('LineageTable', () => {
           upstreamDepth: 2,
         } as LineageConfig,
         setLineageConfig: jest.fn(),
+        timeFilter: {},
       });
 
       mockUseLineageTableState.mockReturnValue({

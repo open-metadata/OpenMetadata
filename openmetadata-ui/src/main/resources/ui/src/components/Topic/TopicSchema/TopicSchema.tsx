@@ -68,6 +68,7 @@ import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -86,7 +87,7 @@ import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -480,9 +481,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           </span>
         </Tooltip>
         {!isVersionView && record.fullyQualifiedName && (
-          <CopyLinkButton
-            entityType={EntityType.TOPIC}
-            fieldFqn={record.fullyQualifiedName}
+          <CopyButton
+            className="hover-cell-icon"
+            isDisabled={!record.fullyQualifiedName}
+            size="xs"
+            testId="copy-field-link-button"
+            value={getEntityDetailsUrl(
+              EntityType.TOPIC,
+              record.fullyQualifiedName ?? ''
+            )}
           />
         )}
       </div>

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import type { TFunction } from 'i18next';
 import {
   CERTIFICATION_CATEGORY,
   MAX_NAME_LENGTH,
@@ -496,3 +496,23 @@ export const getClassificationTags = (
   tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => tag;
+
+/**
+ * A label the server derives on read -- implied by a glossary term, or inherited from a parent such
+ * as the service. It is never stored on the asset, so a tag picker cannot take it off.
+ */
+export const isDerivedTag = (tag: TagLabel): boolean =>
+  tag.labelType === LabelType.Derived;
+
+/** `selected` plus the `derived` labels it left out, since a picker cannot remove them. */
+export const withDerivedTags = <T extends TagLabel>(
+  selected: T[],
+  derived: T[]
+): T[] => {
+  const selectedFqns = new Set(selected.map((tag) => tag.tagFQN));
+
+  return [
+    ...selected,
+    ...derived.filter((tag) => !selectedFqns.has(tag.tagFQN)),
+  ];
+};

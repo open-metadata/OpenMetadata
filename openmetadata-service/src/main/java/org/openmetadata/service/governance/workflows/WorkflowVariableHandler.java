@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -18,6 +19,7 @@ import org.flowable.task.service.delegate.DelegateTask;
 import org.flowable.variable.api.delegate.VariableScope;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -72,6 +74,24 @@ public class WorkflowVariableHandler {
       return String.format("%s_%s", namespace, varName);
     } else {
       return null;
+    }
+  }
+
+  /**
+   * Throws a descriptive {@link IllegalArgumentException} when the deserialized {@code
+   * recognizerFeedback} variable is missing, so the three recognizer-feedback delegates
+   * (apply/reject/check-submitter) share one guard and one error message rather than copying the
+   * null-check and format string. The caller's catch block wraps it as a {@code BpmnError}.
+   */
+  public static void requireRecognizerFeedback(
+      RecognizerFeedback feedback, DelegateExecution execution) {
+    if (feedback == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "'%s' workflow variable is missing or could not be deserialized for node '%s'; "
+                  + "ensure the workflow trigger or an upstream node sets the "
+                  + "inputNamespaceMap-provided '%s' variable",
+              RECOGNIZER_FEEDBACK, execution.getCurrentActivityId(), RECOGNIZER_FEEDBACK));
     }
   }
 

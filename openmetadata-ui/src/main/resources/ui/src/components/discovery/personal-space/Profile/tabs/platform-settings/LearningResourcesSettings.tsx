@@ -33,7 +33,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { DateTime } from 'luxon';
 import {
   CSSProperties,
   useCallback,
@@ -43,6 +42,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import {
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
@@ -62,6 +62,7 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../../../../rest/learningResourceAPI';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
@@ -321,8 +322,8 @@ const LearningResourcesSettings = ({
         return (
           <Typography as="span" className="tw:text-tertiary" size="text-sm">
             {record.updatedAt
-              ? DateTime.fromMillis(record.updatedAt).toFormat('LLL d, yyyy')
-              : '-'}
+              ? formatDateTimeLong(record.updatedAt)
+              : NO_DATA_PLACEHOLDER}
           </Typography>
         );
       default:

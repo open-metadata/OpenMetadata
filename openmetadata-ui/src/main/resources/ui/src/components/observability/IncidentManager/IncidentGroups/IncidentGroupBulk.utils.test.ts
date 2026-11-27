@@ -74,16 +74,32 @@ describe('buildBulkIncidentEntries', () => {
     });
   });
 
-  it('should acknowledge only the incidents still new', () => {
+  it('should acknowledge new and assigned incidents, skipping acknowledged and resolved incidents', () => {
     expect(
-      buildBulkIncidentEntries([fresh, acked, assignedToAaron], {
-        kind: 'status',
-        status: CreateStatusTypes.ACK,
-      })
+      buildBulkIncidentEntries(
+        [
+          fresh,
+          acked,
+          assignedToAaron,
+          incident('resolved', {
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Resolved,
+          }),
+        ],
+        {
+          kind: 'status',
+          status: CreateStatusTypes.ACK,
+        }
+      )
     ).toEqual({
       entries: [
         {
           testCaseReference: 'svc.db.shop.orders.fresh',
+          testCaseResolutionStatusType: CreateStatusTypes.ACK,
+          testCaseResolutionStatusDetails: undefined,
+        },
+        {
+          testCaseReference: 'svc.db.shop.orders.assigned',
           testCaseResolutionStatusType: CreateStatusTypes.ACK,
           testCaseResolutionStatusDetails: undefined,
         },
@@ -92,13 +108,25 @@ describe('buildBulkIncidentEntries', () => {
     });
   });
 
-  it('should leave out assigned incidents, which the workflow cannot acknowledge', () => {
+  it('should acknowledge assigned incidents without carrying the previous assignee', () => {
     expect(
       buildBulkIncidentEntries([assignedToAaron], {
         kind: 'status',
         status: CreateStatusTypes.ACK,
       })
-    ).toEqual({ entries: [], unchanged: 1 });
+    ).toEqual({
+      entries: [
+        {
+          testCaseReference: 'svc.db.shop.orders.assigned',
+          testCaseResolutionStatusType: CreateStatusTypes.ACK,
+          testCaseResolutionStatusDetails: undefined,
+        },
+      ],
+      unchanged: 0,
+    });
+    expect(assignedToAaron.testCaseResolutionStatusDetails).toEqual({
+      assignee: aaron,
+    });
   });
 
   it('should carry the assignee, and skip incidents already assigned to them', () => {

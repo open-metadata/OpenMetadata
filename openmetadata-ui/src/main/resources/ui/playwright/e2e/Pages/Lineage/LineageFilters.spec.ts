@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect } from '@playwright/test';
 import { get } from 'lodash';
+import { migratedTo } from '../../../constant/migration';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import {
   LineageDataClass,
@@ -412,109 +413,127 @@ test.describe('Lineage Filters', () => {
     await expect(page.getByTestId('search-dropdown-Tier')).not.toBeVisible();
   });
 
-  test('Verify Impact Analysis service filter selection', async ({ page }) => {
-    // The last of this file's four service-filter tests to get a longer slot,
-    // and the only reason it stands out is that it was missed: its three
-    // siblings already call slow() and all three landed at 62.5s/71.0s/76.6s
-    // in the same run where this one timed out at 64.5s. Same shape of work,
-    // same band -- the 60s default simply does not fit any of the four.
-    test.slow();
-    await openImpactAnalysisTab(page);
-    await page.locator('[aria-label="Filters"]').click();
+  test(
+    'Verify Impact Analysis service filter selection',
+    migratedTo.split(
+      'src/components/LineageTable/LineageTable.browser.test.tsx',
+      'LineageFilterIT#impactAnalysis_serviceFilter_returnsOnlyMatches'
+    ),
+    async ({ page }) => {
+      // The last of this file's four service-filter tests to get a longer slot,
+      // and the only reason it stands out is that it was missed: its three
+      // siblings already call slow() and all three landed at 62.5s/71.0s/76.6s
+      // in the same run where this one timed out at 64.5s. Same shape of work,
+      // same band -- the 60s default simply does not fit any of the four.
+      test.slow();
+      await openImpactAnalysisTab(page);
+      await page.locator('[aria-label="Filters"]').click();
 
-    for (let index = 0; index < depth2ndEntities.length; index++) {
-      const entity = depth2ndEntities[index];
+      for (let index = 0; index < depth2ndEntities.length; index++) {
+        const entity = depth2ndEntities[index];
 
-      if (entity.type === 'Metric') {
-        continue;
+        if (entity.type === 'Metric') {
+          continue;
+        }
+        await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
+          await page.getByTestId('search-dropdown-Service').click();
+          await waitForAllLoadersToDisappear(
+            page.getByTestId('drop-down-menu')
+          );
+          const serviceName = get(
+            entity,
+            entity.type === 'Metric'
+              ? 'entityResponseData.name'
+              : 'entityResponseData.service.name',
+            ''
+          );
+
+          const searchResponse = waitForAggregation(page, {
+            field: 'service.displayName.keyword',
+            value: serviceName,
+          });
+
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId('search-input')
+            .fill(serviceName);
+          await searchResponse;
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(serviceName)
+            .waitFor();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(serviceName)
+            .click();
+
+          const entitiesToShow = [entity];
+
+          // service entity and base entity will be visible
+          // rest of them will be hidden
+          const entitiesToHide = depth2ndEntities.filter(
+            (_, idx) => idx !== index
+          );
+
+          const lineageResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname.endsWith(
+                '/api/v1/lineage/getLineageByEntityCount'
+              ) &&
+              response.request().method() === 'GET' &&
+              url.searchParams.get('fqn') ===
+                lineageEntity.entityResponseData.fullyQualifiedName &&
+              (url.searchParams.get('query_filter') ?? '').includes(serviceName)
+            );
+          });
+
+          await page.getByTestId('update-btn').click();
+          expect((await lineageResponse).status()).toBe(200);
+
+          for (const entity of entitiesToShow) {
+            await expect(
+              page.locator(
+                `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
+              )
+            ).toBeVisible();
+          }
+
+          for (const entity of entitiesToHide) {
+            await expect(
+              page.locator(
+                `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
+              )
+            ).not.toBeVisible();
+          }
+
+          // clear the filter after validation
+          const clearAllBtn = page.getByRole('button', { name: /clear/i });
+          await expect(clearAllBtn).toBeEnabled();
+
+          const clearLineageResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname.endsWith(
+                '/api/v1/lineage/getLineageByEntityCount'
+              ) &&
+              response.request().method() === 'GET' &&
+              url.searchParams.get('fqn') ===
+                lineageEntity.entityResponseData.fullyQualifiedName &&
+              !(url.searchParams.get('query_filter') ?? '').includes(
+                serviceName
+              )
+            );
+          });
+
+          await clearAllBtn.click();
+          expect((await clearLineageResponse).status()).toBe(200);
+        });
       }
-      await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
-        await page.getByTestId('search-dropdown-Service').click();
-        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
-        const serviceName = get(
-          entity,
-          entity.type === 'Metric'
-            ? 'entityResponseData.name'
-            : 'entityResponseData.service.name',
-          ''
-        );
-
-        const searchResponse = waitForAggregation(page, {
-          field: 'service.displayName.keyword',
-          value: serviceName,
-        });
-
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId('search-input')
-          .fill(serviceName);
-        await searchResponse;
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceName)
-          .waitFor();
-        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
-
-        const entitiesToShow = [entity];
-
-        // service entity and base entity will be visible
-        // rest of them will be hidden
-        const entitiesToHide = depth2ndEntities.filter(
-          (_, idx) => idx !== index
-        );
-
-        const lineageResponse = page.waitForResponse((response) => {
-          const url = new URL(response.url());
-
-          return (
-            url.pathname.endsWith('/api/v1/lineage/getLineageByEntityCount') &&
-            response.request().method() === 'GET' &&
-            url.searchParams.get('fqn') ===
-              lineageEntity.entityResponseData.fullyQualifiedName &&
-            (url.searchParams.get('query_filter') ?? '').includes(serviceName)
-          );
-        });
-
-        await page.getByTestId('update-btn').click();
-        expect((await lineageResponse).status()).toBe(200);
-
-        for (const entity of entitiesToShow) {
-          await expect(
-            page.locator(
-              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
-            )
-          ).toBeVisible();
-        }
-
-        for (const entity of entitiesToHide) {
-          await expect(
-            page.locator(
-              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
-            )
-          ).not.toBeVisible();
-        }
-
-        // clear the filter after validation
-        const clearAllBtn = page.getByRole('button', { name: /clear/i });
-        await expect(clearAllBtn).toBeEnabled();
-
-        const clearLineageResponse = page.waitForResponse((response) => {
-          const url = new URL(response.url());
-
-          return (
-            url.pathname.endsWith('/api/v1/lineage/getLineageByEntityCount') &&
-            response.request().method() === 'GET' &&
-            url.searchParams.get('fqn') ===
-              lineageEntity.entityResponseData.fullyQualifiedName &&
-            !(url.searchParams.get('query_filter') ?? '').includes(serviceName)
-          );
-        });
-
-        await clearAllBtn.click();
-        expect((await clearLineageResponse).status()).toBe(200);
-      });
     }
-  });
+  );
 
   test('Verify lineage service filter selection', async ({ page }) => {
     test.slow();
@@ -593,91 +612,99 @@ test.describe('Lineage Filters', () => {
     }
   });
 
-  test('Verify Impact Analysis service type filter selection', async ({
-    page,
-  }) => {
-    // Measured from a failing run's trace: the beforeEach costs 17.8s and each
-    // of the 13 service-type selections ~3.2s, so the body alone is 41.8s --
-    // 59.6s against a 60s budget, which is why this times out while its
-    // siblings (57.6s) squeak through. The work is inherent to asserting every
-    // entity type, so give this one test the longer slot rather than trimming
-    // coverage. Scoped to the test, not the hook: a `beforeEach` slow() would
-    // hand every test in the file a budget it has not earned.
-    test.slow();
+  test(
+    'Verify Impact Analysis service type filter selection',
+    migratedTo.split(
+      'src/components/LineageTable/LineageTable.browser.test.tsx',
+      'LineageFilterIT#impactAnalysis_serviceTypeFilter_returnsOnlyMatches'
+    ),
+    async ({ page }) => {
+      // Measured from a failing run's trace: the beforeEach costs 17.8s and each
+      // of the 13 service-type selections ~3.2s, so the body alone is 41.8s --
+      // 59.6s against a 60s budget, which is why this times out while its
+      // siblings (57.6s) squeak through. The work is inherent to asserting every
+      // entity type, so give this one test the longer slot rather than trimming
+      // coverage. Scoped to the test, not the hook: a `beforeEach` slow() would
+      // hand every test in the file a budget it has not earned.
+      test.slow();
 
-    await openImpactAnalysisTab(page);
-    await page.locator('[aria-label="Filters"]').click();
+      await openImpactAnalysisTab(page);
+      await page.locator('[aria-label="Filters"]').click();
 
-    for (const entity of depth2ndEntities) {
-      if (entity.type === 'Metric') {
-        continue;
-      }
+      for (const entity of depth2ndEntities) {
+        if (entity.type === 'Metric') {
+          continue;
+        }
 
-      await test.step(`Select service type for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
-        await page.getByTestId('search-dropdown-Service Type').click();
-        const serviceType = get(
-          entity,
-          'entityResponseData.serviceType',
-          ''
-        ).toLowerCase();
+        await test.step(`Select service type for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
+          await page.getByTestId('search-dropdown-Service Type').click();
+          const serviceType = get(
+            entity,
+            'entityResponseData.serviceType',
+            ''
+          ).toLowerCase();
 
-        const searchResponse = waitForAggregation(page, {
-          field: 'serviceType',
-          value: serviceType,
+          const searchResponse = waitForAggregation(page, {
+            field: 'serviceType',
+            value: serviceType,
+          });
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId('search-input')
+            .fill(serviceType);
+          await searchResponse;
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(serviceType)
+            .waitFor();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(serviceType)
+            .click();
+
+          const entitiesToShow = [entity];
+
+          // service entity and base entity will be visible
+          // rest of them will be hidden
+          const entitiesToHide = depth2ndEntities.filter(
+            (record) =>
+              serviceType !==
+              get(record, 'entityResponseData.serviceType', '').toLowerCase()
+          );
+
+          const lineageRes = page.waitForResponse(
+            '/api/v1/lineage/getLineageByEntityCount?*'
+          );
+          await page.getByTestId('update-btn').click();
+          await lineageRes;
+
+          for (const entity of entitiesToShow) {
+            await expect(
+              page.locator(
+                `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
+              )
+            ).toBeVisible();
+          }
+
+          for (const entity of entitiesToHide) {
+            await expect(
+              page.locator(
+                `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
+              )
+            ).not.toBeVisible();
+          }
+
+          // clear the filter after validation
+          const clearAllBtn = page.getByRole('button', { name: /clear/i });
+          await expect(clearAllBtn).toBeEnabled();
+
+          await clearAllBtn.click();
+
+          await waitForAllLoadersToDisappear(page);
         });
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId('search-input')
-          .fill(serviceType);
-        await searchResponse;
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceType)
-          .waitFor();
-        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
-
-        const entitiesToShow = [entity];
-
-        // service entity and base entity will be visible
-        // rest of them will be hidden
-        const entitiesToHide = depth2ndEntities.filter(
-          (record) =>
-            serviceType !==
-            get(record, 'entityResponseData.serviceType', '').toLowerCase()
-        );
-
-        const lineageRes = page.waitForResponse(
-          '/api/v1/lineage/getLineageByEntityCount?*'
-        );
-        await page.getByTestId('update-btn').click();
-        await lineageRes;
-
-        for (const entity of entitiesToShow) {
-          await expect(
-            page.locator(
-              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
-            )
-          ).toBeVisible();
-        }
-
-        for (const entity of entitiesToHide) {
-          await expect(
-            page.locator(
-              `[data-row-key="${entity.entityResponseData.fullyQualifiedName}"]`
-            )
-          ).not.toBeVisible();
-        }
-
-        // clear the filter after validation
-        const clearAllBtn = page.getByRole('button', { name: /clear/i });
-        await expect(clearAllBtn).toBeEnabled();
-
-        await clearAllBtn.click();
-
-        await waitForAllLoadersToDisappear(page);
-      });
+      }
     }
-  });
+  );
 
   test('Verify lineage service type filter selection', async ({ page }) => {
     test.slow();
@@ -969,89 +996,103 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('verify downstream count for all the entities', async ({ page }) => {
-      // Visits one instance of every entity type sequentially, each a full
-      // page navigation, so the default slow (3x = 180s) budget is too tight.
-      test.setTimeout(300_000);
+    test(
+      'verify downstream count for all the entities',
+      migratedTo.split(
+        'src/components/LineageTable/LineageTable.browser.test.tsx',
+        'LineageFilterIT#entityCount_totalsForRootMidAndLeafOfMixedTypes'
+      ),
+      async ({ page }) => {
+        // Visits one instance of every entity type sequentially, each a full
+        // page navigation, so the default slow (3x = 180s) budget is too tight.
+        test.setTimeout(300_000);
 
-      // validate main entity count
-      const count = entities.length;
-      await expect(
-        page.getByRole('radio', { name: `Downstream ${count}` })
-      ).toBeVisible();
+        // validate main entity count
+        const count = entities.length;
+        await expect(
+          page.getByRole('radio', { name: `Downstream ${count}` })
+        ).toBeVisible();
 
-      await depth1Entity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByRole('radio', { name: `Downstream ${count - 1}` })
-      ).toBeVisible();
-
-      for (const entity of depth2ndEntities) {
-        await entity.visitEntityPage(page);
+        await depth1Entity.visitEntityPage(page);
         await visitLineageTab(page);
-        await waitForAllLoadersToDisappear(page);
-        await setLineageDepthAndVerify(page, 2, 2);
         await page.getByRole('tab', { name: 'Impact Analysis' }).click();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('radio', { name: `Downstream 0` })
+          page.getByRole('radio', { name: `Downstream ${count - 1}` })
         ).toBeVisible();
+
+        for (const entity of depth2ndEntities) {
+          await entity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await waitForAllLoadersToDisappear(page);
+          await setLineageDepthAndVerify(page, 2, 2);
+          await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(
+            page.getByRole('radio', { name: `Downstream 0` })
+          ).toBeVisible();
+        }
       }
-    });
+    );
 
-    test('verify upstream count for all the entities', async ({ page }) => {
-      // Each iteration visits an entity, opens the lineage tab, tweaks
-      // depth via a modal, switches to Impact Analysis, then toggles the
-      // Upstream radio — two more waits per iteration than the sibling
-      // Downstream test — so 360s is too tight under CI load (observed
-      // initial run stuck on the lineage-config dialog and hitting budget,
-      // retry finishing in ~2m).
-      test.setTimeout(600_000);
+    test(
+      'verify upstream count for all the entities',
+      migratedTo.split(
+        'src/components/LineageTable/LineageTable.browser.test.tsx',
+        'LineageFilterIT#entityCount_totalsForRootMidAndLeafOfMixedTypes'
+      ),
+      async ({ page }) => {
+        // Each iteration visits an entity, opens the lineage tab, tweaks
+        // depth via a modal, switches to Impact Analysis, then toggles the
+        // Upstream radio — two more waits per iteration than the sibling
+        // Downstream test — so 360s is too tight under CI load (observed
+        // initial run stuck on the lineage-config dialog and hitting budget,
+        // retry finishing in ~2m).
+        test.setTimeout(600_000);
 
-      // Verify Dashboard is visible in Impact Analysis for Upstream
-      await page.getByRole('radio', { name: 'Upstream' }).click();
-      await waitForAllLoadersToDisappear(page);
+        // Verify Dashboard is visible in Impact Analysis for Upstream
+        await page.getByRole('radio', { name: 'Upstream' }).click();
+        await waitForAllLoadersToDisappear(page);
 
-      // validate main entity count
-      const upstreamCount = 0;
+        // validate main entity count
+        const upstreamCount = 0;
 
-      await expect(
-        page.getByRole('radio', { name: `Upstream ${upstreamCount}` })
-      ).toBeVisible();
+        await expect(
+          page.getByRole('radio', { name: `Upstream ${upstreamCount}` })
+        ).toBeVisible();
 
-      await depth1Entity.visitEntityPage(page);
-      await visitLineageTab(page);
-      await page.getByRole('tab', { name: 'Impact Analysis' }).click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify Dashboard is visible in Impact Analysis for Upstream
-      await page.getByRole('radio', { name: 'Upstream' }).click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.getByRole('radio', { name: `Upstream ${upstreamCount + 1}` })
-      ).toBeVisible();
-
-      for (const entity of depth2ndEntities) {
-        await entity.visitEntityPage(page);
+        await depth1Entity.visitEntityPage(page);
         await visitLineageTab(page);
-        await waitForAllLoadersToDisappear(page);
-        await setLineageDepthAndVerify(page, 2, 2);
         await page.getByRole('tab', { name: 'Impact Analysis' }).click();
-
         await waitForAllLoadersToDisappear(page);
+
         // Verify Dashboard is visible in Impact Analysis for Upstream
         await page.getByRole('radio', { name: 'Upstream' }).click();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('radio', { name: `Upstream 2` })
+          page.getByRole('radio', { name: `Upstream ${upstreamCount + 1}` })
         ).toBeVisible();
+
+        for (const entity of depth2ndEntities) {
+          await entity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await waitForAllLoadersToDisappear(page);
+          await setLineageDepthAndVerify(page, 2, 2);
+          await page.getByRole('tab', { name: 'Impact Analysis' }).click();
+
+          await waitForAllLoadersToDisappear(page);
+          // Verify Dashboard is visible in Impact Analysis for Upstream
+          await page.getByRole('radio', { name: 'Upstream' }).click();
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(
+            page.getByRole('radio', { name: `Upstream 2` })
+          ).toBeVisible();
+        }
       }
-    });
+    );
   });
 });

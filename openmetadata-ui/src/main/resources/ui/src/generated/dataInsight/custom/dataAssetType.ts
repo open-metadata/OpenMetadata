@@ -18,6 +18,7 @@
  * snapshots; backfills do not reconstruct definitions from before collection started.
  */
 export enum DataAssetType {
+    AIApplication = "aiApplication",
     APIEndpoint = "apiEndpoint",
     Chart = "chart",
     Container = "container",
@@ -27,6 +28,8 @@ export enum DataAssetType {
     Database = "database",
     DatabaseSchema = "databaseSchema",
     GlossaryTerm = "glossaryTerm",
+    LlmModel = "llmModel",
+    MCPServer = "mcpServer",
     Metric = "metric",
     Mlmodel = "mlmodel",
     Pipeline = "pipeline",

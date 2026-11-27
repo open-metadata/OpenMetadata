@@ -177,6 +177,9 @@ test.describe(
       await fillInput(page, 'name-input', relationName);
 
       await page.getByTestId('glossary-form-cancel').click();
+      // The typed name makes the form dirty, so Cancel asks before discarding.
+      await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('relation-types-table')).toBeVisible();
       await expect(

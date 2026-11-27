@@ -142,7 +142,7 @@ const test = base.extend<{
 });
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
+  test.setTimeout(test.info().timeout * 3);
 
   adminUser = new UserClass();
   dataConsumerUser = new UserClass();

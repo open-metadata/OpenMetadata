@@ -24,7 +24,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
-from xml.etree.ElementTree import ParseError
+from xml.etree.ElementTree import ParseError, fromstring
 
 import pytest
 import requests
@@ -40,6 +40,7 @@ from tableauserverclient.server.endpoint.exceptions import (
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
 )
+from metadata.ingestion.source.dashboard.tableau.connection import build_server_config
 from metadata.ingestion.source.pipeline.tableaupipeline import client as client_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauFlowRecordError,
@@ -48,6 +49,8 @@ from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauSiteAdminRequiredError,
 )
 from metadata.utils.ssl_manager import SSLManager
+
+from ....utils.tableau_connected_app import CONNECTED_APP  # noqa: TID252
 
 HOST = "https://tableau.example.com"
 SITE_ID = "site-luid"
@@ -924,6 +927,19 @@ class TestLifecycle:
         assert [flow.id for flow in flows] == ["flow-1", "flow-2"]
         assert len(tableau.calls_to("/auth/signin")) == 2
         assert tableau.calls_to("/flows")[-1].headers["X-Tableau-Auth"] == "token-2"
+
+    def test_a_connected_app_signs_in_again_with_a_fresh_token(self, tableau):
+        """The first JWT expires five minutes after it is signed, so re-sending it cannot renew a session."""
+        config = TableauPipelineConnection(
+            hostPort=HOST, authType=CONNECTED_APP, siteName="MarketingTeam", includeExtractRefreshes=False
+        )
+        client = TableauPipelineClient(tableau_server_auth=build_server_config(config), config=config, verify_ssl=True)
+        tableau.end_session_on = "/flows"
+
+        list(client.get_pipelines())
+
+        first, second = (fromstring(r.body).find("credentials").get("jwt") for r in tableau.calls_to("/auth/signin"))
+        assert first and second and first != second
 
     def test_a_refused_sign_in_is_not_repeated(self, tableau):
         client = _client(include_extract_refreshes=False)

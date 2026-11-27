@@ -93,6 +93,7 @@ export const AssetSelectionDrawer = ({
             handleCardClick={state.handleCardClick}
             handleQuickFiltersValueSelect={state.handleQuickFiltersValueSelect}
             infoBannerText={infoBannerText}
+            isExactName={state.isExactName}
             isLoading={state.isLoading}
             isSaveLoading={state.isSaveLoading}
             items={state.items}
@@ -101,6 +102,7 @@ export const AssetSelectionDrawer = ({
             selectedItems={state.selectedItems}
             setSearch={state.setSearch}
             totalCount={state.totalCount}
+            onExactNameChange={state.onExactNameChange}
             onScroll={state.onScroll}
             onSelectAll={state.onSelectAll}
           />

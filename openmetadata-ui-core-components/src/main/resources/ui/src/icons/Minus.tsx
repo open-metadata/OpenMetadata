@@ -32,7 +32,7 @@ export const Minus: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M16 10H4" stroke="currentColor" strokeWidth={1.8} />
+    <path d="M15 10H5" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 Minus.displayName = 'Minus';

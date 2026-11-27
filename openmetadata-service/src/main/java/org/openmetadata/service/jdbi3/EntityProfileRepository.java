@@ -8,17 +8,20 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityProfile;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.entityProfiles.EntityProfileMapper;
 import org.openmetadata.service.resources.entityProfiles.EntityProfileResource;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -80,13 +83,27 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
         fqn = entity.getFullyQualifiedName();
       }
       timeSeriesDao.insert(fqn, extension, jsonSchema, JsonUtils.pojoToJson(entityProfile));
+      // Profiles are time-series rows that no entity hook sees; the graph carries the latest one.
+      RdfUpdater.updateEntity(entity);
     }
     return Response.created(uriInfo.getRequestUri()).entity(entityProfile).build();
   }
 
-  public void deleteEntityProfile(ListFilter filter, Long timestamp) {
+  public void deleteEntityProfile(
+      String entityType, String entityFqn, ListFilter filter, Long timestamp) {
     ((TimeSeriesDAOs.ProfilerDataTimeSeriesDAO) timeSeriesDao)
         .deleteEntityProfileData(filter, timestamp);
+    refreshProfiledEntity(entityType, entityFqn);
+  }
+
+  /** A deleted profile may have been the latest one, which the graph then has to replace. */
+  private static void refreshProfiledEntity(String entityType, String entityFqn) {
+    if (RdfUpdater.isEnabled()) {
+      Optional.ofNullable(
+              Entity.getEntityRepository(entityType)
+                  .findByNameOrNull(entityFqn, Include.NON_DELETED))
+          .ifPresent(RdfUpdater::updateEntity);
+    }
   }
 
   private void insertSystemProfile(

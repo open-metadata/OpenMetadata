@@ -16,6 +16,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CoreArrayField from './CoreArrayField';
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Check: () => <span>check-icon</span>,
   Copy01: () => <span>copy-icon</span>,
   XClose: () => <span>x-icon</span>,
 }));

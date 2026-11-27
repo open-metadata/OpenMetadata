@@ -162,6 +162,12 @@ public class MetricRepository extends EntityRepository<Metric> {
     fieldFetchers.put(FIELD_METRIC_GROUP, this::fetchAndSetMetricGroups);
   }
 
+  /** A metric's FQN is its bare name, so "sales.revenue" nests under the FQN "sales". */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(Metric metric) {
     metric.setFullyQualifiedName(metric.getName());

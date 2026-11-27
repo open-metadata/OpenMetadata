@@ -159,7 +159,8 @@ public class TagRepository extends EntityRepository<Tag> {
     return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
-  public Map<String, Integer> getAllTagsWithAssetsCount() {
+  /** Each tag's asset count, leaving out assets {@code caller}'s search access policies deny. */
+  public Map<String, Integer> getAllTagsWithAssetsCount(SubjectContext caller) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for tag asset counts");
       return new HashMap<>();
@@ -169,7 +170,8 @@ public class TagRepository extends EntityRepository<Tag> {
     Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
 
     for (Tag tag : allTags) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0).forCaller(caller);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(

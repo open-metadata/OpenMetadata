@@ -144,6 +144,11 @@ class PersonaContextSourceCacheTest {
         assertTrue(loading.await(5, TimeUnit.SECONDS));
         cache.invalidate(persona.getId());
         var freshScope = cache.scope(persona);
+        // Caffeine may serialize distinct keys in the same hash bucket. Finish the old
+        // load before reading the new generation, without moving it before invalidation.
+        finish.countDown();
+        assertEquals(
+            "old", oldRead.get(5, TimeUnit.SECONDS).getResults().getFirst().get("description"));
         assertEquals(
             "fresh",
             cache
@@ -151,9 +156,6 @@ class PersonaContextSourceCacheTest {
                 .getResults()
                 .getFirst()
                 .get("description"));
-        finish.countDown();
-        assertEquals(
-            "old", oldRead.get(5, TimeUnit.SECONDS).getResults().getFirst().get("description"));
         assertEquals(
             "fresh",
             cache

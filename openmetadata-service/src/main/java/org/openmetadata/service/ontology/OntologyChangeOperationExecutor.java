@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.security.ImpersonationContext;
 
 public final class OntologyChangeOperationExecutor {
   private static final String TERM_EDIT_FIELDS = "conceptMappings";
@@ -259,7 +260,10 @@ public final class OntologyChangeOperationExecutor {
     termRepository.prepareInternal(term, true);
     // A field-scoped update preserves relationships that this mapping edit did not load.
     return outcome(
-        termRepository.createOrUpdate(uriInfo, term, user, null, patchedFields).getEntity());
+        termRepository
+            .createOrUpdate(
+                uriInfo, term, user, ImpersonationContext.getImpersonatedBy(), patchedFields)
+            .getEntity());
   }
 
   private void prepareTerm(final GlossaryTerm term, final String user) {

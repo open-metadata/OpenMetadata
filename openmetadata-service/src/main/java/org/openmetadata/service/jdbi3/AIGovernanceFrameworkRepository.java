@@ -28,8 +28,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.ai.AIGovernanceAssetReader;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -76,7 +78,8 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     // Relationships stored as part of the JSON
   }
 
-  public FrameworkCoverageResponse getCoverage(UriInfo uriInfo, AIGovernanceFramework framework) {
+  public FrameworkCoverageResponse getCoverage(
+      UriInfo uriInfo, AIGovernanceFramework framework, final AIGovernanceAssetReader reader) {
     AIFrameworkControlRepository controlRepo = controlRepository();
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
@@ -89,7 +92,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       }
     }
 
-    return FrameworkCoverageComputer.compute(framework, controls);
+    return FrameworkCoverageComputer.compute(framework, controls, reader);
   }
 
   public ForkAIGovernanceFrameworkResponse fork(
@@ -100,21 +103,16 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     AIGovernanceFramework created =
         create(uriInfo, forkedFramework(source, request, user), user, null);
     AIFrameworkControlRepository controlRepo = controlRepository();
-    ListFilter controlFilter = new ListFilter(Include.NON_DELETED);
-    if (source.getFullyQualifiedName() != null) {
-      controlFilter.addQueryParam("framework", source.getFullyQualifiedName());
-    }
-
     List<CopiedAIFrameworkControl> copiedControls = new ArrayList<>();
     long now = System.currentTimeMillis();
-    for (AIFrameworkControl control : listControls(uriInfo, controlRepo, FIELDS, controlFilter)) {
+    for (AIFrameworkControl control : controlsOf(uriInfo, controlRepo, source)) {
       control.setId(UUID.randomUUID());
       control.setFullyQualifiedName(null);
       control.setVersion(null);
       control.setFramework(created.getEntityReference());
       control.setUpdatedAt(now);
       control.setUpdatedBy(user);
-      controlRepo.create(uriInfo, control, user, null);
+      controlRepo.create(uriInfo, control, user, ImpersonationContext.getImpersonatedBy());
       copiedControls.add(
           new CopiedAIFrameworkControl().withCode(control.getCode()).withName(control.getName()));
     }
@@ -150,6 +148,22 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     copy.setUpdatedAt(System.currentTimeMillis());
     copy.setUpdatedBy(user);
     return copy;
+  }
+
+  /**
+   * The controls of {@code framework}. The control listing does not filter by framework, so they
+   * are picked out of the full listing, which carries every control field in its stored JSON.
+   */
+  private List<AIFrameworkControl> controlsOf(
+      UriInfo uriInfo, AIFrameworkControlRepository controlRepo, AIGovernanceFramework framework) {
+    return listControls(uriInfo, controlRepo, "", new ListFilter(Include.NON_DELETED)).stream()
+        .filter(control -> belongsTo(control, framework))
+        .toList();
+  }
+
+  private static boolean belongsTo(AIFrameworkControl control, AIGovernanceFramework framework) {
+    return control.getFramework() != null
+        && framework.getId().equals(control.getFramework().getId());
   }
 
   private List<AIFrameworkControl> listControls(

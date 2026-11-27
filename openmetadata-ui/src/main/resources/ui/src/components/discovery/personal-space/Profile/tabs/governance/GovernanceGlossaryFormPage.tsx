@@ -14,9 +14,11 @@
 /* eslint-disable openmetadata-imports/no-lower-layer-page-imports -- shared settings widget reused here */
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEqual } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import RelationshipTypeForm from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeForm';
 import {
   DEFAULT_RELATIONSHIP_TYPE_FORM,
@@ -34,6 +36,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { GovernanceView } from './Governance.types';
 
 interface GovernanceGlossaryFormPageProps {
@@ -58,6 +61,15 @@ const GovernanceGlossaryFormPage: FC<GovernanceGlossaryFormPageProps> = ({
     DEFAULT_RELATIONSHIP_TYPE_FORM
   );
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Compared with what the form opened with: the saved type, or the defaults.
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    !isEqual(
+      formValues,
+      existing
+        ? toRelationshipTypeForm(existing)
+        : DEFAULT_RELATIONSHIP_TYPE_FORM
+    )
+  );
 
   useEffect(() => {
     if (!editName) {
@@ -152,9 +164,12 @@ const GovernanceGlossaryFormPage: FC<GovernanceGlossaryFormPageProps> = ({
           data-testid="glossary-form-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={() => onNavigate({ type: VIEW_GLOSSARY_LIST })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: VIEW_GLOSSARY_LIST }))
+          }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="glossary-form-save"

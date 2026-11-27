@@ -566,6 +566,9 @@ export interface OpenMetadataJWTClientConfig {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
@@ -614,6 +617,11 @@ export enum OpenmetadataType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Client SSL verification.
+ *
+ * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+ * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+ * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+ * Config.
  *
  * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
  * validation, 'validate' to verify against a CA certificate.
@@ -2300,6 +2308,11 @@ export interface AirflowConnectionObject {
      */
     configSource?: DataLakeConfigurationSource;
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
@@ -2907,7 +2920,7 @@ export interface AirflowConnectionObject {
      */
     uiHostPort?: string;
     /**
-     * Event broker configuration. Choose between Kafka and Kinesis.
+     * Event broker configuration. Choose between Kafka, Kinesis and NATS.
      */
     brokerConfig?: BrokerConfiguration;
     /**
@@ -3422,6 +3435,9 @@ export enum AuthMechanismEnum {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -3504,6 +3520,8 @@ export interface AuthenticationType {
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      *
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
@@ -3568,10 +3586,18 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+     * is 'validate'.
+     */
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
      *
      * Username to access the service.
+     *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
      *
      * Username to authenticate with SAP S/4HANA.
      *
@@ -3584,6 +3610,13 @@ export interface AuthenticationType {
      * SFTP username
      */
     username?: string;
+    /**
+     * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+     * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+     * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+     * Config.
+     */
+    verifySSL?: VerifySSL;
     /**
      * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
      * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
@@ -3612,6 +3645,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
     /**
      * Authentication type identifier.
      */
@@ -4053,11 +4094,13 @@ export enum AuthenticationEnum {
 }
 
 /**
- * Event broker configuration. Choose between Kafka and Kinesis.
+ * Event broker configuration. Choose between Kafka, Kinesis and NATS.
  *
  * Kafka broker configuration for OpenLineage events.
  *
  * AWS Kinesis Data Streams configuration for OpenLineage events.
+ *
+ * NATS JetStream configuration for OpenLineage events.
  */
 export interface BrokerConfiguration {
     /**
@@ -4072,12 +4115,17 @@ export interface BrokerConfiguration {
      * Initial Kafka consumer offset.
      *
      * Initial Kinesis shard iterator type.
+     *
+     * Where a new durable consumer starts reading.
      */
     consumerOffsets?: InitialConsumerOffsets;
     /**
      * Max allowed wait time.
      *
      * Poll interval in seconds.
+     *
+     * Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once
+     * it has waited out sessionTimeout, and a zero wait would never advance that.
      */
     poolTimeout?: number;
     /**
@@ -4092,6 +4140,8 @@ export interface BrokerConfiguration {
      * Max allowed inactivity time.
      *
      * Max inactivity timeout in seconds.
+     *
+     * Max allowed inactivity time before the run ends, in seconds.
      */
     sessionTimeout?: number;
     /**
@@ -4108,19 +4158,97 @@ export interface BrokerConfiguration {
     awsConfig?: AWSCredentials;
     /**
      * Kinesis Data Stream name.
+     *
+     * JetStream stream holding the OpenLineage events.
      */
     streamName?: string;
+    /**
+     * How long JetStream waits for an acknowledgement before redelivering an event, in seconds.
+     */
+    ackWait?: number;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: BrokerConfigurationAuthenticationType;
+    /**
+     * Number of events fetched per request.
+     */
+    batchSize?: number;
+    /**
+     * Durable JetStream consumer name. Reusing it resumes where the previous run stopped.
+     */
+    durableConsumerName?: string;
+    /**
+     * How many times JetStream redelivers an event that is never acknowledged, before it gives
+     * up. Keeps an event that ingestion cannot process from being retried on every run.
+     */
+    maxDeliver?: number;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Subject to consume from the stream. Defaults to all subjects of the stream.
+     */
+    subject?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
+ * Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey
+ * seed).
+ */
+export interface BrokerConfigurationAuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
+    /**
+     * Contents of the .creds file, including the user JWT and the NKey seed.
+     */
+    credentials?: string;
 }
 
 /**
  * Initial Kafka consumer offset.
  *
  * Initial Kinesis shard iterator type.
+ *
+ * Where a new durable consumer starts reading.
  */
 export enum InitialConsumerOffsets {
+    All = "all",
     Earliest = "earliest",
     InitialConsumerOffsetsLATEST = "LATEST",
     Latest = "latest",
+    New = "new",
     TrimHorizon = "TRIM_HORIZON",
 }
 
@@ -4739,6 +4867,9 @@ export enum ConnectionScheme {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
@@ -5586,6 +5717,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
