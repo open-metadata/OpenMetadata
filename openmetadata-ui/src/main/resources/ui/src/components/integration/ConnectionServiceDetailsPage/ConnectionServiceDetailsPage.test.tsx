@@ -667,7 +667,7 @@ describe('ConnectionServiceDetailsPage', () => {
     );
   });
 
-  it('defaults to the insights tab, as classic, when nothing is contributed and there is no tab param', async () => {
+  it('defaults to the data assets tab when nothing is contributed and there is no tab param', async () => {
     mockTabParam = undefined;
 
     await act(async () => {
@@ -675,10 +675,10 @@ describe('ConnectionServiceDetailsPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument();
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId('data-assets-tab')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('service-insights-tab')).not.toBeInTheDocument();
   });
 
   it('falls back to the default tab for an invalid tab param', async () => {
@@ -689,7 +689,7 @@ describe('ConnectionServiceDetailsPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument();
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
     });
   });
 
@@ -786,27 +786,31 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     };
 
-    it('offers a dashboard service its data models, between its dashboards and its connection', async () => {
+    it('offers a dashboard service its data models, right after its dashboards', async () => {
       mockServiceCategory = 'dashboardServices';
       await renderPage();
 
       const labels = tabLabels();
 
-      expect(labels).toContain('label.data-model-plural');
-      expect(labels.indexOf('label.data-model-plural')).toBe(
-        labels.indexOf('label.connection') - 1
-      );
+      expect(labels.slice(1)).toEqual([
+        'label.data-model-plural',
+        'label.insight-plural',
+        'label.agent-plural',
+        'label.connection',
+      ]);
     });
 
-    it('offers a drive service its files and spreadsheets, before its connection', async () => {
+    it('offers a drive service its files and spreadsheets, right after its primary assets', async () => {
       mockServiceCategory = 'driveServices';
       await renderPage();
 
       const labels = tabLabels();
 
-      expect(labels.slice(-3)).toEqual([
+      expect(labels.slice(1)).toEqual([
         'label.file-plural',
         'label.spreadsheet-plural',
+        'label.insight-plural',
+        'label.agent-plural',
         'label.connection',
       ]);
     });
@@ -876,7 +880,7 @@ describe('ConnectionServiceDetailsPage', () => {
         });
 
         await waitFor(() =>
-          expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+          expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
         );
 
         expect(tabComponent).not.toHaveBeenCalled();
@@ -1080,7 +1084,7 @@ describe('ConnectionServiceDetailsPage', () => {
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
       );
 
       expect(
@@ -1591,7 +1595,7 @@ describe('ConnectionServiceDetailsPage', () => {
     });
 
     it('sorts a low-order contribution ahead of the dataAssets built-in and makes it the default', async () => {
-      // dataAssets is order 40; a contribution ordered 10 (as Collate's future summary tab will be)
+      // dataAssets is order 20; a contribution ordered 10 (as Collate's future summary tab will be)
       // must land first and become the tab shown when there is no tab param.
       contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_TABS] = [
         { ...CONTRIBUTED_TAB, order: 10 },
@@ -1707,19 +1711,19 @@ describe('ConnectionServiceDetailsPage', () => {
       mockAgentCounts = { metadata: 0, collateAI: 0 };
     });
 
-    it('orders insights and agents ahead of the data assets, as the AI layout does', async () => {
+    it('leads with the data assets, then insights and agents, then the connection', async () => {
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
       );
 
       expect(tabLabels()).toEqual([
+        'label.database-plural',
         'label.insight-plural',
         'label.agent-plural',
-        'label.database-plural',
         'label.connection',
       ]);
     });
@@ -1732,7 +1736,7 @@ describe('ConnectionServiceDetailsPage', () => {
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
       );
 
       expect(tabLabels()).not.toContain('label.agent-plural');
@@ -1803,7 +1807,7 @@ describe('ConnectionServiceDetailsPage', () => {
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
       );
 
       expect(screen.queryByText('Plugin Agents')).not.toBeInTheDocument();

@@ -1,7 +1,7 @@
 # The AI-mode service page owns its Insights tab, Agents tab and AutoPilot trigger
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-27 (initial)
+- **Revisions:** v1 2026-11-27 (initial); v2 2026-11-27 (data assets lead the tabs)
 - **Deciders:** karanh37
 - **Guard:** `ConnectionServiceDetailsPage.test.tsx` (`insights, agents and AutoPilot` describe
   block), `ServiceAgentsTab.test.tsx`
@@ -15,10 +15,12 @@ way to view, edit, run or read the logs of a service's agents, no Insights tab a
 trigger. Classic mode has all three in OSS.
 
 ## Decision
-- The page renders built-in `insights` (order 20) and `agents` (order 30) tabs, ahead of the data
-  assets (40) and the connection (50). Insights is skipped where classic skips it, for metadata and
-  security services; Agents, as classic, only for admins and the service's owners (or their
-  teams) and never for security services. Insights reuses the classic `ServiceInsightsTab`.
+- The page renders built-in `insights` (order 30) and `agents` (order 40) tabs, after the data
+  assets (20, their secondary asset tabs 21+) and ahead of the connection (50), so the service's
+  assets stay the first tab and the default. Insights is skipped where classic skips it, for
+  metadata and security services; Agents, as classic, only for admins and the service's owners
+  (or their teams) and never for security services. Insights reuses the classic
+  `ServiceInsightsTab`.
 - The page renders the AutoPilot trigger in its header, gated as classic `DataAssetsHeader` gates
   it, and hides it on a soft-deleted service.
 - One page-level hook, `useServiceAgents`, owns the agent lists, the AutoPilot workflow state and

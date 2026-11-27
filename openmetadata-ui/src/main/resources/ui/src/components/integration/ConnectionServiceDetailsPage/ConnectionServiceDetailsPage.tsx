@@ -148,9 +148,9 @@ interface DetailsTab {
 // OSS built-in tabs. A plugin (e.g. Collate's summary) contributes the rest via
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
 // contribution land before or after these without either side knowing about the other.
-const INSIGHTS_TAB_ORDER = 20;
-const AGENTS_TAB_ORDER = 30;
-const DATA_ASSETS_TAB_ORDER = 40;
+const DATA_ASSETS_TAB_ORDER = 20;
+const INSIGHTS_TAB_ORDER = 30;
+const AGENTS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
 
 // This page renders the Insights and Agents tabs and the AutoPilot trigger itself, so a plugin
