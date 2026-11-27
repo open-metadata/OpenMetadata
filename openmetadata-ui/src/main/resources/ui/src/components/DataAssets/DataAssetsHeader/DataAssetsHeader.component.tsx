@@ -67,6 +67,7 @@ import {
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityHeader } from '../../../generated/system/ui/page';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LifeCycle } from '../../../generated/type/lifeCycle';
 import { Style } from '../../../generated/type/schema';
@@ -127,6 +128,7 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
 import EntityHeaderProperties from '../EntityHeaderProperties/EntityHeaderProperties';
 import { HeaderProperty } from '../EntityHeaderProperties/EntityHeaderProperties.types';
+import { useHeaderCustomProperties } from '../EntityHeaderProperties/useHeaderCustomProperties';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -136,6 +138,12 @@ import {
 } from './DataAssetsHeader.interface';
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
+
+const resolveEntityHeader = (
+  isCustomizedView: boolean,
+  draftHeader?: EntityHeader,
+  savedHeader?: EntityHeader
+) => (isCustomizedView ? draftHeader : savedHeader);
 
 const computeCanShowFollowStat = (
   excludeEntityService: boolean,
@@ -178,6 +186,9 @@ export const DataAssetsHeader = ({
   onStyleUpdate,
   disableRunAgentsButtonMessage,
   breadcrumbData,
+  entityHeader,
+  personaName,
+  onEntityHeaderChange,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -534,6 +545,18 @@ export const DataAssetsHeader = ({
     can,
   } = flags;
   const editCertificationPermission = can(Operation.EditCertification);
+  const headerConfig = resolveEntityHeader(
+    isCustomizedView,
+    entityHeader,
+    customizedPage?.entityHeader
+  );
+  const customHeaderProperties = useHeaderCustomProperties({
+    entityType,
+    extension: (dataAsset as { extension?: Record<string, unknown> }).extension,
+    entityHeader: headerConfig,
+    listAll: isCustomizedView,
+    canEdit: flags.canEditCustomFields,
+  });
   const { can: canAutoPilot } = useEntityPermissions(
     ResourceEntity.APPLICATION,
     AUTO_PILOT_APP_NAME,
@@ -1068,6 +1091,7 @@ export const DataAssetsHeader = ({
     getSourceUpdatedAtProperty(
       (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle?.updated?.timestamp
     ),
+    ...customHeaderProperties,
   ];
 
   const renderFooterOverlays = () => (
@@ -1166,7 +1190,13 @@ export const DataAssetsHeader = ({
           </div>
         </div>
 
-        <EntityHeaderProperties properties={headerProperties} />
+        <EntityHeaderProperties
+          entityHeader={headerConfig}
+          entityType={entityType}
+          personaName={personaName}
+          properties={headerProperties}
+          onEntityHeaderChange={onEntityHeaderChange}
+        />
       </div>
 
       {renderFooterOverlays()}

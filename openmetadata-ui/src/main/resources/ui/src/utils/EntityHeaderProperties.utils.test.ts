@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 import { HeaderProperty } from '../components/DataAssets/EntityHeaderProperties/EntityHeaderProperties.types';
-import { HeaderPropertyId } from '../constants/EntityHeaderProperties.constants';
-import { getShownHeaderProperties } from './EntityHeaderProperties.utils';
+import { HeaderPropertyFilter } from '../constants/EntityHeaderProperties.constants';
+import {
+  getCustomPropertyHeaderId,
+  getDefaultEntityHeader,
+  getPinnedHeaderProperties,
+  getShownHeaderProperties,
+  matchesHeaderPropertyFilter,
+  moveHeaderProperties,
+  toggleHeaderProperty,
+} from './EntityHeaderProperties.utils';
 
 const property = (
-  id: HeaderPropertyId,
+  id: string,
   overrides: Partial<HeaderProperty> = {}
 ): HeaderProperty => ({
-  id,
+  id: id as HeaderProperty['id'],
   label: id,
   isEmpty: false,
   isReadOnly: false,
@@ -26,15 +34,101 @@ const property = (
   ...overrides,
 });
 
-describe('EntityHeaderProperties utils', () => {
-  it('never shows an empty read-only property but keeps an empty editable one', () => {
-    const shown = getShownHeaderProperties([
-      property(HeaderPropertyId.Owners),
-      property(HeaderPropertyId.Tier, { isEmpty: true }),
-      property(HeaderPropertyId.Usage, { isEmpty: true, isReadOnly: true }),
-      property(HeaderPropertyId.Type, { isReadOnly: true }),
-    ]);
+const owners = property('owners', { label: 'Owners' });
+const tier = property('tier', { label: 'Tier', isEmpty: true });
+const usage = property('usage', {
+  label: 'Usage',
+  isEmpty: true,
+  isReadOnly: true,
+});
+const steward = property('extension.steward', {
+  label: 'Data Steward',
+  customPropertyType: 'User',
+});
+const properties = [owners, tier, usage, steward];
 
-    expect(shown.map(({ id }) => id)).toEqual(['owners', 'tier', 'type']);
+const ids = (list: HeaderProperty[]) => list.map(({ id }) => id);
+
+describe('EntityHeaderProperties utils', () => {
+  it('prefixes a custom property id so it cannot clash with a standard one', () => {
+    expect(getCustomPropertyHeaderId('owners')).toBe('extension.owners');
   });
+
+  it('defaults to the standard properties in their built-in order', () => {
+    expect(getDefaultEntityHeader(properties)).toEqual({
+      properties: ['owners', 'tier', 'usage'],
+      showEmptyProperties: true,
+    });
+  });
+
+  it('pins in saved order, once each, skipping ids the entity type lacks', () => {
+    const pinned = getPinnedHeaderProperties(properties, {
+      properties: ['extension.steward', 'deleted', 'owners', 'owners'],
+    });
+
+    expect(ids(pinned)).toEqual(['extension.steward', 'owners']);
+  });
+
+  it('never shows an empty read-only property but keeps an empty editable one', () => {
+    const shown = getShownHeaderProperties(properties, {
+      properties: ['usage', 'tier', 'owners'],
+    });
+
+    expect(ids(shown)).toEqual(['tier', 'owners']);
+  });
+
+  it('drops empty editable properties when the header hides empty ones', () => {
+    const shown = getShownHeaderProperties(properties, {
+      properties: ['usage', 'tier', 'owners'],
+      showEmptyProperties: false,
+    });
+
+    expect(ids(shown)).toEqual(['owners']);
+  });
+
+  it('appends a property when pinned and removes it when unpinned', () => {
+    const header = { properties: ['owners'], showEmptyProperties: false };
+
+    expect(toggleHeaderProperty(header, 'tier')).toEqual({
+      properties: ['owners', 'tier'],
+      showEmptyProperties: false,
+    });
+    expect(toggleHeaderProperty(header, 'owners').properties).toEqual([]);
+  });
+
+  it.each([
+    ['before', ['owners', 'usage', 'tier', 'domains']],
+    ['after', ['owners', 'tier', 'usage', 'domains']],
+  ] as const)('moves a property %s the drop target', (position, expected) => {
+    const header = { properties: ['owners', 'tier', 'domains', 'usage'] };
+
+    expect(
+      moveHeaderProperties(header, ['usage'], 'tier', position).properties
+    ).toEqual(expected);
+  });
+
+  it('leaves the order alone when the drop target is not pinned', () => {
+    const header = { properties: ['owners', 'tier'] };
+
+    expect(moveHeaderProperties(header, ['tier'], 'usage', 'before')).toBe(
+      header
+    );
+  });
+
+  it.each([
+    [HeaderPropertyFilter.All, '', true, true],
+    [HeaderPropertyFilter.Standard, '', true, false],
+    [HeaderPropertyFilter.Custom, '', false, true],
+    [HeaderPropertyFilter.All, '  STEW ', false, true],
+  ])(
+    'matches filter %s with query "%s"',
+    (filter, query, matchesOwners, matchesSteward) => {
+      expect(matchesHeaderPropertyFilter(owners, filter, query)).toBe(
+        matchesOwners
+      );
+      expect(matchesHeaderPropertyFilter(steward, filter, query)).toBe(
+        matchesSteward
+      );
+    }
+  );
 });

@@ -13,7 +13,7 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
-import { kebabCase } from 'lodash';
+import { kebabCase, omit } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
@@ -25,7 +25,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { EntityHeader, Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
@@ -40,11 +40,24 @@ export const CustomizeDetailsPage = ({
   onSaveLayout,
 }: CustomizeMyDataProps) => {
   const { t } = useTranslation();
-  const { currentPage, currentPageType, getPage } = useCustomizeStore();
+  const { currentPage, currentPageType, getPage, updateCurrentPage } =
+    useCustomizeStore();
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
   }, [onSaveLayout]);
+
+  const handleEntityHeaderChange = useCallback(
+    (entityHeader?: EntityHeader) => {
+      const page = omit(
+        currentPage ?? ({ pageType: currentPageType } as Page),
+        'entityHeader'
+      );
+
+      updateCurrentPage(entityHeader ? { ...page, entityHeader } : page);
+    },
+    [currentPage, currentPageType, updateCurrentPage]
+  );
 
   const handleSave = async () => {
     await onSaveLayout(currentPage ?? ({ pageType: currentPageType } as Page));
@@ -97,14 +110,18 @@ export const CustomizeDetailsPage = ({
             <DataAssetsHeader
               isCustomizedView
               dataAsset={entityDummyData as Table}
+              entityHeader={currentPage?.entityHeader}
               entityType={
                 PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
               }
               permissions={{} as OperationPermission}
+              personaName={getEntityName(personaDetails)}
               onDisplayNameUpdate={asyncNoop}
+              onEntityHeaderChange={handleEntityHeaderChange}
               onOwnerUpdate={asyncNoop}
               onRestoreDataAsset={async () => true}
               onTierUpdate={asyncNoop}
+              onUpdateRetentionPeriod={asyncNoop}
             />
           </Grid.Item>
           {/* It will render cols inside the row */}

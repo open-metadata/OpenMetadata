@@ -64,4 +64,14 @@ describe('HeaderPropertyField', () => {
     expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
     expect(screen.queryByTestId('edit-owners')).not.toBeInTheDocument();
   });
+
+  it('marks a custom property with a dot', () => {
+    const { container } = render(
+      <HeaderPropertyField
+        property={property({ customPropertyType: 'String' })}
+      />
+    );
+
+    expect(container.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
 });
