@@ -185,29 +185,12 @@ jobs:
       # the exact files in the summary below.
       - name: "1/2: Java checkstyle"
         id: checkstyle
-        shell: bash
-        run: |
-          mvn -B -T 1C spotless:apply
-          git diff --name-only > "$RUNNER_TEMP/checkstyle-failed-files.txt"
-          if [[ -s "$RUNNER_TEMP/checkstyle-failed-files.txt" ]]; then
-            echo "Java checkstyle found unformatted files:"
-            cat "$RUNNER_TEMP/checkstyle-failed-files.txt"
-            exit 1
-          fi
+        uses: ./.github/actions/java-checkstyle
 
-      # No -Pstatic-code-analysis: its JaCoCo agent slowed every test, yet `package`
-      # never builds the report and nothing uploads it. No apt/ANTLR install either:
-      # nothing here uses them (openmetadata-spec's prepare_model_schemas.py needs
-      # only stdlib python3).
       - name: "2/2: Service unit tests"
         id: unit-tests
         if: ${{ steps.checkstyle.outcome == 'success' && needs.plan.outputs.java-unit == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          mvn -B -T 1C clean package -pl openmetadata-service -am \
-            -DfailIfNoTests=false
+        uses: ./.github/actions/java-service-unit-tests
 
       - name: Summarize backend checks
         if: ${{ always() && steps.checkout.outcome == 'success' }}

@@ -1,0 +1,18 @@
+name: Java service unit tests
+description: >-
+  Build openmetadata-service with the modules it depends on and run its unit tests.
+  The caller checks out the repository, hydrates Maven and sets up JDK 21 first.
+runs:
+  using: composite
+  steps:
+    # No -Pstatic-code-analysis: its JaCoCo agent slowed every test, yet `package`
+    # never builds the report and nothing uploads it. No apt/ANTLR install either:
+    # nothing here uses them (openmetadata-spec's prepare_model_schemas.py needs
+    # only stdlib python3).
+    - name: Run service unit tests
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        mvn -B -T 1C clean package -pl openmetadata-service -am \
+          -DfailIfNoTests=false

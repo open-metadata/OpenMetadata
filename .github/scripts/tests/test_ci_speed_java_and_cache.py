@@ -485,7 +485,16 @@ def steps_of(workflow: str, job: str) -> list[dict]:
 
 def java_steps(workflow: str, job: str) -> list[dict]:
     if job == "backend-checks":
-        return steps_of(workflow, job)
+        # Each stage is a composite; expand them in place to see their commands.
+        return [
+            stage
+            for step in steps_of(workflow, job)
+            for stage in (
+                load(ROOT / step["uses"][2:] / "action.yml")["runs"]["steps"]
+                if step.get("uses", "").startswith("./.github/actions/java-")
+                else [step]
+            )
+        ]
     [action] = [
         step["uses"]
         for step in steps_of(workflow, job)
@@ -504,10 +513,11 @@ MAVEN_JOBS = [
 ]
 
 
+# ci-pr.yml and ci-merge-queue.yml share these jobs, and
+# test_ci_speed_status_gates.py keeps them identical, so they are tested once.
 @pytest.mark.parametrize("job", MAVEN_JOBS)
-@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
-def test_java_jobs_restore_maven_before_build(workflow: str, job: str) -> None:
-    steps = java_steps(workflow, job)
+def test_java_jobs_restore_maven_before_build(job: str) -> None:
+    steps = java_steps("ci-pr.yml", job)
     hydrate = index_of(
         steps, lambda s: s.get("uses") == "./.github/actions/hydrate-maven-cache"
     )
@@ -607,9 +617,8 @@ def mvn_command(steps: list[dict]) -> list[str]:
     return shlex.split(script.replace("\\\n", " "))
 
 
-@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
-def test_service_unit_tests_use_pom_forks_without_jacoco(workflow: str) -> None:
-    steps = java_steps(workflow, "backend-checks")
+def test_service_unit_tests_use_pom_forks_without_jacoco() -> None:
+    steps = java_steps("ci-pr.yml", "backend-checks")
     command = mvn_command(steps)
     assert not any(
         arg.startswith(("-DforkCount", "-DunitTests.forkCount")) for arg in command
@@ -624,11 +633,8 @@ def test_service_unit_tests_use_pom_forks_without_jacoco(workflow: str) -> None:
     )
 
 
-@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
-def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs(
-    workflow: str,
-) -> None:
-    steps = java_steps(workflow, "backend-checks")
+def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
+    steps = java_steps("ci-pr.yml", "backend-checks")
     scripts = " ".join(s.get("run", "") for s in steps)
     assert "apt-get" not in scripts
     assert "install_antlr_cli" not in scripts
@@ -639,21 +645,31 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
-def test_java_checkstyle_is_unified_fail_fast_in_backend_job(workflow: str) -> None:
-    jobs = load(WORKFLOWS / workflow)["jobs"]
-    assert "backend-checks" in jobs["backend-checks-status"]["needs"]
+def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
+    for workflow in ("ci-pr.yml", "ci-merge-queue.yml"):
+        jobs = load(WORKFLOWS / workflow)["jobs"]
+        assert "backend-checks" in jobs["backend-checks-status"]["needs"]
 
-    steps = steps_of(workflow, "backend-checks")
+    # Both entrypoints share the job, so its stages are checked once.
+    steps = steps_of("ci-pr.yml", "backend-checks")
     checkstyle = index_of(steps, lambda s: s.get("id") == "checkstyle")
     unit_tests = index_of(steps, lambda s: s.get("id") == "unit-tests")
     report_action = "./.github/actions/java-backend-report"
     summarize = index_of(steps, lambda s: s.get("uses") == report_action)
     assert checkstyle < unit_tests < summarize
-    assert "spotless:apply" in steps[checkstyle]["run"]
+    # Each stage is its own composite step, so each fails natively.
+    assert steps[checkstyle]["uses"] == "./.github/actions/java-checkstyle"
+    assert steps[unit_tests]["uses"] == "./.github/actions/java-service-unit-tests"
+    stages = {
+        index: load(ROOT / steps[index]["uses"][2:] / "action.yml")["runs"]["steps"]
+        for index in (checkstyle, unit_tests)
+    }
+    assert any("spotless:apply" in s.get("run", "") for s in stages[checkstyle])
     assert "steps.checkstyle.outcome == 'success'" in steps[unit_tests]["if"]
     for index in (checkstyle, unit_tests):
         assert steps[index].get("continue-on-error", "false") == "false"
+        for stage in stages[index]:
+            assert not stage.get("continue-on-error", False)
     assert "always()" in steps[summarize]["if"]
     assert steps[summarize]["with"] == {
         "checkstyle-outcome": "${{ steps.checkstyle.outcome }}",

@@ -7,6 +7,7 @@ java-checkstyle:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
+  - '.github/actions/java-checkstyle/**'
   - '.github/actions/java-backend-report/**'
   - '.github/scripts/summarize_surefire.py'
 java-unit:
@@ -15,6 +16,7 @@ java-unit:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
+  - '.github/actions/java-service-unit-tests/**'
   - '.github/actions/java-backend-report/**'
   - '.github/actions/hydrate-maven-cache/**'
   - '.github/scripts/summarize_surefire.py'
