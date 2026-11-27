@@ -90,9 +90,7 @@ class ColumnNames(StaticMetric):
     @_label
     def fn(self):
         if not hasattr(self, "table"):
-            raise AttributeError(
-                "Column Names requires a table to be set: add_props(table=...)(Metrics.columnNames)"
-            )
+            raise AttributeError("Column Names requires a table to be set: add_props(table=...)(Metrics.columnNames)")
 
         col_names = ",".join(col.name for col in inspect(self.table).c)
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
