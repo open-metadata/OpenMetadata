@@ -1189,9 +1189,9 @@ describe('TaskTabNew Component', () => {
             payload: {
               proposedChanges: {
                 'columns.customer_id.description': {
-                  removed: ['Customer **id**'],
+                  removed: ['Customer **id** of the buyer account'],
                   added: [
-                    '<p>Customer <strong>id</strong> of the buyer&#39;s account</p>',
+                    '<p>Customer <strong>id</strong> of the buyer&#39;s main account</p>',
                   ],
                 },
               },
@@ -1206,9 +1206,54 @@ describe('TaskTabNew Component', () => {
       'proposed-changes-columns.customer_id.description-diff'
     );
 
-    expect(diff).toHaveTextContent("Customer id of the buyer's account");
+    expect(diff).toHaveTextContent("Customer id of the buyer's main account");
     expect(diff).not.toHaveTextContent('<strong>');
     expect(screen.queryByTestId('diff-removed')).not.toBeInTheDocument();
+  });
+
+  it('shows a rewritten description as whole removed and added blocks of readable text', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                description: {
+                  removed: [
+                    'The **interest rate** a lender charges on a loan, as an annual percentage.',
+                  ],
+                  added: [
+                    '<p>The annual cost of borrowing on a loan&#39;s outstanding principal.</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('proposed-changes-description-diff')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The interest rate a lender charges on a loan, as an annual percentage.'
+      )
+    ).toHaveClass('task-proposed-changes-chip--removed');
+    expect(
+      screen.getByText(
+        "The annual cost of borrowing on a loan's outstanding principal."
+      )
+    ).toHaveClass('task-proposed-changes-chip--added');
   });
 
   it('renders schema-driven payload details for custom tasks', async () => {

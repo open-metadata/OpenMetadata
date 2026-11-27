@@ -185,6 +185,7 @@ import {
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
   getTaskCreatorLink,
+  isMostlyRewritten,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -1887,7 +1888,11 @@ export const TaskTabNew = ({
                 const isTextEdit =
                   TEXT_DIFF_FIELDS.has(fieldLeaf(field)) &&
                   removed.length === 1 &&
-                  added.length === 1;
+                  added.length === 1 &&
+                  !isMostlyRewritten(
+                    toProposedChangeText(field, removed[0]),
+                    toProposedChangeText(field, added[0])
+                  );
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
