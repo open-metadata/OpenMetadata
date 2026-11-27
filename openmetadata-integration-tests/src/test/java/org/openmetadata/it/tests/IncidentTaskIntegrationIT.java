@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TestCaseResolutionPayload;
@@ -361,6 +363,66 @@ public class IncidentTaskIntegrationIT {
         List.of(shared.USER1.getName(), shared.USER2.getName()),
         assignedAssigneeNames(client, task.getId()),
         "every assignment appends its own record");
+  }
+
+  @Test
+  void testPriorityRaisedOnTheTaskSurvivesAssignment(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    TestCase testCase = createTestCase(client, ns, "incident-priority");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    assertEquals(TaskPriority.Medium, task.getPriority());
+
+    client
+        .tasks()
+        .patch(
+            task.getId().toString(),
+            JsonUtils.readTree("[{\"op\":\"replace\",\"path\":\"/priority\",\"value\":\"High\"}]"));
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("assign")
+                .withPayload(assigneePayload(shared.USER1_REF)));
+
+    Task assigned =
+        awaitIncidentTask(
+            client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+    assertEquals(TaskPriority.High, assigned.getPriority());
+  }
+
+  @Test
+  void testDescriptionAndDisplayNameEditedOnTheTaskSurviveAssignment(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    TestCase testCase = createTestCase(client, ns, "incident-edited-text");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+
+    client
+        .tasks()
+        .patch(
+            task.getId().toString(),
+            JsonUtils.valueToTree(
+                List.of(
+                    Map.of("op", "replace", "path", "/description", "value", "investigating"),
+                    Map.of("op", "add", "path", "/displayName", "value", "Renamed incident"))));
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("assign")
+                .withPayload(assigneePayload(shared.USER1_REF)));
+
+    Task assigned =
+        awaitIncidentTask(
+            client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+    assertAll(
+        () -> assertEquals("investigating", assigned.getDescription()),
+        () -> assertEquals("Renamed incident", assigned.getDisplayName()));
   }
 
   @Test

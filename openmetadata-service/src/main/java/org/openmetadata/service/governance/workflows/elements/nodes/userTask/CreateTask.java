@@ -612,15 +612,8 @@ public class CreateTask implements TaskListener {
       if (taskName != null && !taskName.isBlank()) {
         updatedTask.setName(taskName);
       }
-      if (taskDisplayName != null && !taskDisplayName.isBlank()) {
-        updatedTask.setDisplayName(taskDisplayName);
-      }
-      if (taskDescription != null && !taskDescription.isBlank()) {
-        updatedTask.setDescription(taskDescription);
-      }
-      if (requestedPriority != null) {
-        updatedTask.setPriority(requestedPriority);
-      }
+      // Display name, description and priority stay as stored: the start variables are a snapshot
+      // of the draft, so applying them on a stage advance would undo edits made since the start.
       Long effectiveDueDate =
           resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
       if (effectiveDueDate != null) {
