@@ -179,7 +179,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
   let dataContract: { id: string; name: string; fullyQualifiedName: string };
 
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await table.create(apiContext);

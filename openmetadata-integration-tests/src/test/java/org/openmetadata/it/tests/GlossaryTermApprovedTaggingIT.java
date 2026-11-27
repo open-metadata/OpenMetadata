@@ -661,6 +661,29 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   /**
+   * One user's edits within a session are consolidated into one version, so a term deprecated and
+   * approved again by the same user looks unchanged against the version before the session. Its
+   * approval still shows what was held while it was deprecated.
+   */
+  @Test
+  void approvingAgainInTheSameSessionShowsWhatWasHeldMeanwhile(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "same_session");
+    request.setTags(List.of(label(term)));
+    Table table = client.tables().create(request);
+    assertHeld(term, 1, reread(client, table));
+
+    setStatus(client, term, EntityStatus.APPROVED);
+
+    Awaitility.await("held term shown once approved again in the same session")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> hasTerm(reread(client, table).getTags(), term));
+    assertTrue(pendingTargets(term).isEmpty());
+  }
+
+  /**
    * A target that refuses the approved term, here a column showing a term of the same mutually
    * exclusive glossary, keeps it pending without keeping it from the asset's other targets.
    */

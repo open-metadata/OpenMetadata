@@ -24,6 +24,7 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import AlertStatusBadge from '../../components/Alerts/AlertStatusBadge/AlertStatusBadge';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
@@ -287,6 +288,15 @@ const NotificationListPage = () => {
             )
           );
         },
+      },
+      {
+        title: t('label.status').toString(),
+        dataIndex: 'enabled',
+        width: '120px',
+        key: 'status',
+        render: (_: boolean, record: EventSubscription) => (
+          <AlertStatusBadge enabled={record.enabled} />
+        ),
       },
       {
         title: t('label.trigger').toString(),

@@ -14,6 +14,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
+from sqlalchemy import text
 from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -327,14 +329,17 @@ class TestTrinoTableCommentsFilter:
         return dialect
 
     def test_query_restricted_to_recorded_tables(self):
-        dialect = self._dialect({"test_schema": {"orders", "o'neil"}})
+        dialect = self._dialect({"test_schema": {"orders", "o'neil", "my :tbl"}})
 
         comment = get_table_comment(dialect, Mock(), "orders", "test_schema")
 
         assert comment == {"text": "Orders"}
         assert len(dialect.queries) == 1
-        assert "\"schema_name\" = 'test_schema'" in dialect.queries[0]
-        assert "and \"table_name\" IN ('o''neil', 'orders')" in dialect.queries[0]
+        # get_all_table_comments runs the query through text(), where an unescaped ":tbl" is a bind parameter
+        compiled = text(dialect.queries[0]).compile(dialect=TrinoDialect())
+        assert compiled.binds == {}
+        assert "\"schema_name\" = 'test_schema'" in str(compiled)
+        assert "and \"table_name\" IN ('my :tbl', 'o''neil', 'orders')" in str(compiled)
 
     def test_query_unrestricted_without_recorded_tables(self):
         dialect = self._dialect({})
@@ -356,18 +361,23 @@ class TestTrinoTableCommentsFilter:
 
     def test_get_tables_name_and_type_records_filtered_tables(self):
         source = self._source(FilterPattern(includes=["orders", "customers_v"]))
+        # Another schema worker's entry on the shared dialect must survive this one.
+        source.engine.dialect.comment_table_names = {"other_schema": {"x"}}
         kept = [("orders", TableType.Iceberg), ("customers_v", TableType.View)]
 
         with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
             tables = source.get_tables_name_and_type()
             first = next(tables)
             # Recorded while the schema's tables are being processed...
-            assert source.engine.dialect.comment_table_names == {"test_schema": {"orders", "customers_v"}}
+            assert source.engine.dialect.comment_table_names == {
+                "other_schema": {"x"},
+                "test_schema": {"orders", "customers_v"},
+            }
             rest = list(tables)
 
         assert [first, *rest] == kept
         # ...and dropped once the schema is done.
-        assert source.engine.dialect.comment_table_names == {}
+        assert source.engine.dialect.comment_table_names == {"other_schema": {"x"}}
 
     def test_get_tables_name_and_type_cleans_up_on_early_close(self):
         source = self._source(FilterPattern(includes=["orders"]))
@@ -380,8 +390,9 @@ class TestTrinoTableCommentsFilter:
 
         assert source.engine.dialect.comment_table_names == {}
 
-    def test_get_tables_name_and_type_records_nothing_without_filter(self):
-        source = self._source(None)
+    @pytest.mark.parametrize("table_filter", [None, FilterPattern(), FilterPattern(includes=[], excludes=[])])
+    def test_get_tables_name_and_type_records_nothing_without_filter(self, table_filter):
+        source = self._source(table_filter)
         kept = [("orders", TableType.Iceberg)]
 
         with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
@@ -389,6 +400,15 @@ class TestTrinoTableCommentsFilter:
             assert next(tables) == kept[0]
             assert not hasattr(source.engine.dialect, "comment_table_names")
             assert list(tables) == []
+
+    def test_get_tables_name_and_type_records_exactly_the_cap(self):
+        source = self._source(FilterPattern(excludes=["^tmp_"]))
+        kept = [(f"t{i}", TableType.Iceberg) for i in range(MAX_COMMENT_TABLE_NAMES)]
+
+        with patch.object(CommonDbSourceService, "get_tables_name_and_type", return_value=iter(kept)):
+            tables = source.get_tables_name_and_type()
+            next(tables)
+            assert len(source.engine.dialect.comment_table_names["test_schema"]) == MAX_COMMENT_TABLE_NAMES
 
     def test_get_tables_name_and_type_records_nothing_above_cap(self):
         source = self._source(FilterPattern(excludes=["^tmp_"]))

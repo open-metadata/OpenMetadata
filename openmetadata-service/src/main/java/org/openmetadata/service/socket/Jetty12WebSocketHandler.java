@@ -42,6 +42,7 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
   private static final String USER_ID_HEADER = "UserId";
   private static final String SESSION_ID_HEADER = "SessionId";
+  private static final String PROVIDER_HEADER = "AuthProvider";
 
   private final EngineIoServer server;
   private final HandshakeIdentity handshakeIdentity;
@@ -136,12 +137,17 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
         .keySet()
         .removeIf(
             name ->
-                USER_ID_HEADER.equalsIgnoreCase(name) || SESSION_ID_HEADER.equalsIgnoreCase(name));
+                USER_ID_HEADER.equalsIgnoreCase(name)
+                    || SESSION_ID_HEADER.equalsIgnoreCase(name)
+                    || PROVIDER_HEADER.equalsIgnoreCase(name));
     if (handshakeIdentity.userId() != null && !handshakeIdentity.userId().isBlank()) {
       headers.put(USER_ID_HEADER, List.of(handshakeIdentity.userId()));
     }
     if (handshakeIdentity.sessionId() != null && !handshakeIdentity.sessionId().isBlank()) {
       headers.put(SESSION_ID_HEADER, List.of(handshakeIdentity.sessionId()));
+    }
+    if (handshakeIdentity.provider() != null && !handshakeIdentity.provider().isBlank()) {
+      headers.put(PROVIDER_HEADER, List.of(handshakeIdentity.provider()));
     }
   }
 

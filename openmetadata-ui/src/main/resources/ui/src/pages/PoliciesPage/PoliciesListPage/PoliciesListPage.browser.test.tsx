@@ -25,8 +25,4 @@ describePaginatedList({
   listPath: '/api/v1/policies',
   items: policies,
   itemLabel: (p) => p.displayName ?? p.name,
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'PoliciesListPage.handlePaging fetches the page and then the URL effect fetches it again',
-  },
 });

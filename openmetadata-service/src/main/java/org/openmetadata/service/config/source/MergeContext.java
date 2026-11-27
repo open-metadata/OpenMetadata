@@ -26,6 +26,16 @@ final class MergeContext {
   private final MergeInput input;
   private final ObjectNode originalStored;
   private final ObjectNode stored;
+
+  /**
+   * The deployment value the next reconciliation should compare against. Starts as a copy of the
+   * deployment; when a nested secret is preserved over a blank deployment value, the preserved
+   * value is written back here too, so the next reconciliation sees the stored secret as the
+   * deployment's own last-applied value rather than as a UI edit (which would falsely report a
+   * conflict on a later sibling change to the enclosing object).
+   */
+  private final ObjectNode lastApplied;
+
   private final MergeReport report = new MergeReport();
   private final List<MergeUnit> units;
   private final ProviderChange providerChange;
@@ -34,6 +44,7 @@ final class MergeContext {
     this.input = input;
     this.originalStored = objectOrEmpty(input.stored());
     this.stored = originalStored.deepCopy();
+    this.lastApplied = objectOrEmpty(input.deployment());
     this.units = input.policy().unitsFor(fieldPointers());
     this.providerChange =
         input.policy().hasIdentityProvider()
@@ -87,6 +98,17 @@ final class MergeContext {
 
   boolean deploymentChanged(MergeUnit unit) {
     return !SettingValues.same(deploymentValue(unit), lastAppliedValue(unit));
+  }
+
+  /**
+   * Whether applying {@code unit} from the deployment actually changed the stored value. A
+   * preserved nested secret over a blank deployment value writes the same value back, so without
+   * this check an unchanged start after a password was preserved would report {@link
+   * MergeOutcome#APPLIED} or {@link MergeOutcome#DEFAULT_CHANGED} even though {@code stored} is
+   * identical to what it was before the reconciliation.
+   */
+  boolean storedChangedByApply(MergeUnit unit) {
+    return !SettingValues.same(storedValue(unit), valueOf(originalStored, unit));
   }
 
   /** Whether the stored value was changed, through the UI or an API, since it was last applied. */
@@ -151,26 +173,82 @@ final class MergeContext {
 
   /** Copies the unit from the deployment; false when nothing could be written. */
   boolean applyFromDeployment(MergeUnit unit) {
+    return applyFromDeployment(unit, false);
+  }
+
+  /**
+   * Copies the unit from the deployment; false when nothing could be written. When {@code
+   * keepBlankNestedSecrets} is set, a secret nested under a single-value object (such as the trust
+   * store password inside {@code /ldapConfiguration/trustStoreConfig}) is restored from the stored
+   * value when the deployment left it blank or missing, so a missing Kubernetes secret cannot wipe
+   * a working password while the rest of the object is still applied.
+   */
+  boolean applyFromDeployment(MergeUnit unit, boolean keepBlankNestedSecrets) {
     List<String> writable =
         unit.pointers().stream()
             .filter(pointer -> !isInAbsentInactiveProviderBlock(pointer))
             .toList();
     writable.forEach(
         pointer -> writeValue(pointer, JsonPointers.valueAt(input.deployment(), pointer)));
+    if (keepBlankNestedSecrets && !writable.isEmpty() && isSecret(unit)) {
+      restoreBlankNestedSecrets(unit);
+    }
     return !writable.isEmpty();
   }
 
+  /**
+   * A unit is secret when it is one of the policy's secret leaves, or when a single-value object
+   * unit encloses one. The trust store password lives at
+   * {@code /ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword}
+   * but its enclosing object
+   * {@code /ldapConfiguration/trustStoreConfig} is its own merge unit, so the second clause is what
+   * makes the secret-over-blank guard reach it.
+   */
   boolean isSecret(MergeUnit unit) {
-    return input.policy().secrets().containsAll(unit.pointers());
+    return input.policy().secrets().containsAll(unit.pointers())
+        || input.policy().secrets().stream()
+            .anyMatch(
+                secret ->
+                    unit.pointers().stream()
+                        .anyMatch(pointer -> JsonPointers.isUnder(secret, pointer)));
   }
 
   void applyValue(String pointer, JsonNode value) {
     writeValue(pointer, value);
   }
 
+  /**
+   * Restores, for every secret leaf nested under one of the unit's pointers, the value the stored
+   * setting held before this apply when the deployment left that leaf blank or missing. A
+   * single-value object is applied as a whole, so without this a missing trust-store password
+   * environment variable (resolved by the substituting source provider to an empty string) would
+   * wipe a password the operator saved before. Only called from the same-provider apply path: a
+   * provider switch that brings its own object replaces the old provider's secret with the new
+   * one's, and the wholesale-blank case is already guarded by {@code keepsSecretOverBlank}.
+   */
+  private void restoreBlankNestedSecrets(MergeUnit unit) {
+    for (String pointer : unit.pointers()) {
+      for (String secret : secretsUnder(pointer)) {
+        JsonNode originalSecret = JsonPointers.valueAt(originalStored, secret);
+        if (SettingValues.isBlank(JsonPointers.valueAt(input.deployment(), secret))
+            && !SettingValues.isBlank(originalSecret)) {
+          JsonPointers.setValue(stored, secret, originalSecret.deepCopy());
+          JsonPointers.setValue(lastApplied, secret, originalSecret.deepCopy());
+        }
+      }
+    }
+  }
+
+  /** The policy secret pointers at or under {@code pointer}, sorted for stable iteration. */
+  private List<String> secretsUnder(String pointer) {
+    return input.policy().secrets().stream()
+        .filter(secret -> JsonPointers.isUnder(secret, pointer))
+        .sorted()
+        .toList();
+  }
+
   MergeResult result() {
-    return new MergeResult(
-        stored, input.deployment().deepCopy(), report, !stored.equals(originalStored));
+    return new MergeResult(stored, lastApplied, report, !stored.equals(originalStored));
   }
 
   private JsonNode storedAt(String pointer) {

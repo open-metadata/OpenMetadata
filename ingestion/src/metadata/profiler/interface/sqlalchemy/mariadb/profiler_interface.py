@@ -35,6 +35,10 @@ from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
+MARIADB_WINDOW_METRICS = {
+    metric.name(): metric for metric in (MariaDBFirstQuartile, MariaDBMedian, MariaDBThirdQuartile)
+}
+
 
 class MariaDBProfilerInterface(SQAProfilerInterface):
     """
@@ -67,7 +71,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
         try:
             # we patch the metrics at runtime to use the MariaDB specific functions
             # as we can't compile the query based on the dialect as it return `mysql`
-            metrics = [MariaDBFirstQuartile, MariaDBMedian, MariaDBThirdQuartile]  # type: ignore
+            metrics = [MARIADB_WINDOW_METRICS.get(metric.name(), metric) for metric in metrics]  # pyright: ignore[reportAssignmentType, reportCallIssue]
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
             )

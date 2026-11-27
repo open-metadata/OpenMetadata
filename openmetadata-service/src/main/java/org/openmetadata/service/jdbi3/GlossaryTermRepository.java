@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -29,7 +30,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -1815,6 +1818,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
+    if (!nullOrEmpty(request.getAssets()) && !nullOrEmpty(glossary.getTags())) {
+      checkMutuallyExclusiveForUserAppliedTags(mergeOwnTags(term.getTags(), glossary.getTags()));
+    }
 
     BulkOperationResult result =
         AssetTagLabelService.addGlossaryTermToAssets(
@@ -1830,18 +1836,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       AddGlossaryToAssetsRequest request,
       BulkOperationResult result) {
     if (!Boolean.TRUE.equals(request.getDryRun())
-        && !CommonUtil.nullOrEmpty(request.getAssets())
-        && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && (!(term.getTags().isEmpty() && glossary.getTags().isEmpty()))) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-      applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+        && !nullOrEmpty(request.getAssets())
+        && nullOrEmpty(result.getFailedRequest())
+        && !nullOrEmpty(glossary.getTags())) {
+      List<TagLabel> merged = mergeOwnTags(term.getTags(), glossary.getTags());
+      deleteTagsPreservingCertification(term.getFullyQualifiedName());
+      applyTags(merged, term.getFullyQualifiedName());
       invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
     }
+  }
+
+  // Term labels take precedence over glossary labels and DERIVED labels are excluded so a derived
+  // label on the glossary cannot shadow the term's own applied label before applyTags skips it.
+  static List<TagLabel> mergeOwnTags(List<TagLabel> termTags, List<TagLabel> glossaryTags) {
+    List<TagLabel> merged = new ArrayList<>(ownUniqueTags(termTags));
+    EntityUtil.mergeTags(merged, ownUniqueTags(glossaryTags));
+    return merged;
+  }
+
+  private static List<TagLabel> ownUniqueTags(List<TagLabel> tags) {
+    return getUniqueTags(
+        listOrEmpty(tags).stream().filter(tag -> !isSystemGenerated(tag)).toList());
   }
 
   private static AssetTagLabelService.Request assetsRequest(
@@ -2224,13 +2242,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
     EntityStatus to = updated.getEntityStatus();
-    if (to != null && to != original.getEntityStatus()) {
+    if (to != null && (to != original.getEntityStatus() || changesStatus(updated))) {
       if (to == EntityStatus.APPROVED) {
         PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
       } else if (to == EntityStatus.REJECTED) {
         GlossaryTermPendingLabels.dropRejected(updated);
       }
     }
+  }
+
+  // Edits by one user within a session are consolidated into one version, and `original` is then
+  // the version before the session: a term deprecated and approved again in that session looks
+  // unchanged against it. The request's own change still records the status it moved from.
+  private static boolean changesStatus(GlossaryTerm updated) {
+    ChangeDescription requestChange = updated.getIncrementalChangeDescription();
+    return requestChange != null
+        && Stream.concat(
+                listOrEmpty(requestChange.getFieldsUpdated()).stream(),
+                listOrEmpty(requestChange.getFieldsAdded()).stream())
+            .anyMatch(field -> FIELD_ENTITY_STATUS.equals(field.getName()));
   }
 
   @Override
@@ -3343,7 +3373,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
     placeUnder(updated, moveRequest.getParent());
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
@@ -3358,6 +3388,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 .withEntityId(updated.getId())
                 .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
                 .withUserName(updated.getUpdatedBy())
+                .withImpersonatedBy(updated.getImpersonatedBy())
                 .withPreviousVersion(original.getVersion())
                 .withCurrentVersion(updated.getVersion())
                 .withTimestamp(System.currentTimeMillis())

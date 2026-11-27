@@ -30,13 +30,13 @@ const suggestions = [
 
 const suggestionByUser = new Map([
   [
-    'Avatar 1',
+    '1',
     {
       combinedData: [suggestions[0]],
     },
   ],
   [
-    'Avatar 2',
+    '2',
     {
       combinedData: [suggestions[1]],
     },

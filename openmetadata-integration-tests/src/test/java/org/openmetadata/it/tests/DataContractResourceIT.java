@@ -3952,6 +3952,95 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testODCSImportAndReimportPreservesAndUpdatesReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    EntityReference user1 = shared().USER1_REF;
+    EntityReference user2 = shared().USER2_REF;
+
+    String initialYaml =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.0
+            status: draft
+            team:
+              members:
+                - username: %s
+                  role: owner
+                - username: %s
+                  role: reviewer
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            UUID.randomUUID(),
+            ns.prefix("reviewer_odcs"),
+            user1.getName(),
+            user2.getName(),
+            table.getName());
+
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(initialYaml, table.getId(), "table", false);
+    assertEquals(
+        List.of(user1.getId()), imported.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        imported.getReviewers().stream().map(EntityReference::getId).toList());
+
+    DataContract fetched =
+        client.dataContracts().getByEntityId(table.getId(), "table", "owners,reviewers");
+    assertEquals(
+        List.of(user2.getId()),
+        fetched.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Re-import in merge mode without reviewers: existing reviewers and owners must be preserved
+    String reimportWithoutTeam =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.1
+            status: active
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            imported.getId(), ns.prefix("reviewer_odcs"), table.getName());
+
+    DataContract merged =
+        client
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                reimportWithoutTeam, table.getId(), "table", "merge", false);
+    assertEquals(
+        List.of(user1.getId()), merged.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        merged.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Export back to ODCS and verify reviewer role is emitted
+    ODCSDataContract exported = client.dataContracts().exportToODCS(merged.getId());
+    assertTrue(
+        exported.getTeam().getMembers().stream()
+            .anyMatch(
+                member ->
+                    user2.getName().equals(member.getUsername())
+                        && "reviewer".equals(member.getRole())));
+  }
+
+  @Test
   void testImportedContractExportsAcrossVersionsWithRenamedTargetAndDescriptions(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

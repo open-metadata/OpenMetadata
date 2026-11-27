@@ -1015,12 +1015,20 @@ public final class SearchIndexUtils {
   }
 
   private static String getPropertyTypeSafe(String entityType, String propertyName) {
+    return findPropertyType(entityType, propertyName).orElse("unknown");
+  }
+
+  /**
+   * The property's current type name, or empty when it is not defined. Empty is kept apart from any
+   * name because a user-created field type may itself be called "unknown".
+   */
+  public static Optional<String> findPropertyType(
+      final String entityType, final String propertyName) {
     try {
-      return TypeRegistry.getCustomPropertyType(entityType, propertyName);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not find property type for {}.{}, using 'unknown'", entityType, propertyName);
-      return "unknown";
+      return Optional.ofNullable(TypeRegistry.getCustomPropertyType(entityType, propertyName));
+    } catch (final Exception e) {
+      LOG.debug("Could not find property type for {}.{}", entityType, propertyName);
+      return Optional.empty();
     }
   }
 

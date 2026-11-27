@@ -94,6 +94,16 @@
         }
       }
     },
+    "inputFieldTransformation": {
+      "description": "How an input column contributes to an output column.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "description": "The transformation type, such as DIRECT or INDIRECT." },
+        "subtype": { "type": "string", "description": "The transformation subtype, such as AGGREGATION or FILTER." },
+        "description": { "type": "string", "description": "A description of the transformation." },
+        "masking": { "type": "boolean", "description": "Whether the transformation masks data." }
+      }
+    },
     "inputField": {
       "description": "A reference to an input column in column lineage.",
       "type": "object",
@@ -109,6 +119,11 @@
         "field": {
           "description": "The name of the input field/column.",
           "type": "string"
+        },
+        "transformations": {
+          "description": "Transformations applied to this input field.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/inputFieldTransformation" }
         }
       },
       "required": ["namespace", "name", "field"]

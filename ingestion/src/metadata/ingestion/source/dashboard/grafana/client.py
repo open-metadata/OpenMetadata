@@ -18,7 +18,6 @@ from requests import Session
 from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
     GrafanaDatasource,
-    GrafanaFolder,
     GrafanaSearchResult,
 )
 from metadata.utils.logger import ingestion_logger
@@ -88,34 +87,6 @@ class GrafanaApiClient:
             logger.error(f"Error making request to {endpoint}: {err}")
             return None
 
-    def get_folders(self) -> list[GrafanaFolder]:
-        """Get all folders with pagination"""
-
-        try:
-            folders = []
-            page = 1
-            while True:
-                response = self._make_request("GET", "/folders", params={"page": page, "limit": self.page_size})
-
-                if not response:
-                    break
-
-                page_data = response.json()
-                if not page_data:
-                    break
-
-                folders.extend([GrafanaFolder(**folder) for folder in page_data])
-
-                # Check if we need to fetch more pages
-                if len(page_data) < self.page_size:
-                    break
-
-                page += 1
-            return folders  # noqa: TRY300
-
-        except Exception as err:
-            logger.error(f"Error fetching folders from Grafana: {err}")
-
     def search_dashboards(self, folder_id: int | None = None) -> list[GrafanaSearchResult]:
         """Search for dashboards with optional folder filter"""
         try:
@@ -174,23 +145,6 @@ class GrafanaApiClient:
         except Exception as err:
             logger.error(f"Error fetching datasources from Grafana: {err}")
             return []
-
-    def get_datasource(self, datasource_id: int | str) -> GrafanaDatasource | None:
-        """Get datasource by ID or UID"""
-        try:
-            # Try by ID first if it's numeric
-            if isinstance(datasource_id, int) or datasource_id.isdigit():
-                response = self._make_request("GET", f"/datasources/{datasource_id}")
-            else:
-                # Try by UID
-                response = self._make_request("GET", f"/datasources/uid/{datasource_id}")
-
-            if response:
-                return GrafanaDatasource(**response.json())
-
-        except Exception as err:
-            logger.error(f"Error fetching datasource from Grafana: {err}")
-            return None
 
     def test_connection(self) -> bool:
         """Test connection to Grafana API"""
