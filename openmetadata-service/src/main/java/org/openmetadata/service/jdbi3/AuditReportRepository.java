@@ -62,6 +62,12 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
   }
 
   @Override
+  protected void restorePatchAttributes(final AuditReport original, final AuditReport updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.setRequestedBy(original.getRequestedBy());
+  }
+
+  @Override
   public EntityRepository<AuditReport>.EntityUpdater getUpdater(
       AuditReport original, AuditReport updated, Operation operation, ChangeSource changeSource) {
     return new AuditReportUpdater(original, updated, operation);
@@ -74,6 +80,7 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updated.setRequestedBy(original.getRequestedBy());
       compareAndUpdate(
           "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
       compareAndUpdate(

@@ -26,7 +26,7 @@ from metadata.profiler.metrics.core import StaticMetric, T, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import CustomTypes, is_concatenable, is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 # pylint: disable=duplicate-code
@@ -57,8 +57,14 @@ class Sum(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
+        if self.col is None:
+            return None
+
         if is_quantifiable(self.col.type):
-            return SumFn(column(self.col.name, self.col.type))
+            col_expr = column(self.col.name, self.col.type)
+            if isinstance(self.col.type, CustomTypes.LARGEINT.value):
+                return SumFn(col_expr, type_=self.col.type)
+            return SumFn(col_expr)
 
         if is_concatenable(self.col.type):
             return SumFn(LenFn(column(self.col.name, self.col.type)))

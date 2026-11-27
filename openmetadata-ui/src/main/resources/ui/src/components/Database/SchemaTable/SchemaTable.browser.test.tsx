@@ -19,7 +19,7 @@
  * ("should test pagination on Table columns", "...complete flow with
  * search") checks after seeding 20+ entities through the API.
  */
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, server, userEvent } from 'vitest/browser';
 import { EntityType } from '../../../enums/entity.enum';
@@ -31,6 +31,7 @@ import {
   TABLE_FQN,
 } from '../../../test/browser/fixtures/table';
 import { worker } from '../../../test/browser/msw';
+import { networkIdle } from '../../../test/browser/network';
 import { currentUrl, renderWithApp } from '../../../test/browser/renderWithApp';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -180,6 +181,41 @@ describe('Table page › Schema tab (UI integration)', () => {
     expect(last.params.get('offset')).toBe('0');
     await expect.poll(currentUrl).toContain('columnSearch=order_col_11');
     expect(rows()).toHaveLength(10); // order_col_110..119
+  });
+
+  test('a slow page-1 list that lands after the search does not replace the hits', async () => {
+    const calls = mockColumnsApi();
+    renderSchemaTab('?pageSize=25&currentPage=2');
+
+    await expect.element(page.getByText('order_col_026')).toBeVisible();
+
+    // Searching also resets to page 1; hold any plain page-1 list back so it
+    // answers after the search does.
+    worker.use(
+      http.get('/api/v1/tables/name/:fqn/columns', async ({ request }) => {
+        await delay(500);
+
+        return HttpResponse.json(
+          pageOf(ALL_COLUMNS, {
+            offset: Number(new URL(request.url).searchParams.get('offset')),
+            limit: 25,
+          })
+        );
+      })
+    );
+    await userEvent.fill(
+      page.getByPlaceholder(/find in table/i),
+      'order_col_11'
+    );
+    await userEvent.keyboard('{Enter}');
+
+    await expect.element(page.getByText('order_col_110')).toBeVisible();
+
+    await networkIdle();
+
+    expect(calls.at(-1)?.path).toMatch(/\/columns\/search$/);
+    await expect.element(page.getByText('order_col_110')).toBeVisible();
+    expect(rows()).toHaveLength(10);
   });
 
   test('empty search result shows the placeholder, not a stale page', async () => {

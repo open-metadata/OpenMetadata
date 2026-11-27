@@ -203,7 +203,7 @@ jobs:
           python-version: ${{ steps.versions.outputs.highest }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -308,7 +308,7 @@ jobs:
     steps:
       - name: Download Snyk artifact
         if: needs.security-scan.result != 'skipped'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: security-report
           path: security-report
@@ -316,7 +316,7 @@ jobs:
 
       - name: Download Retire.js Slack artifact
         if: needs.vulnerability-scan.result != 'skipped'
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: retire-slack
           path: retire-report

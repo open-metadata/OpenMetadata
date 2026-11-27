@@ -24,6 +24,8 @@ from uuid import uuid4
 import pytest
 
 from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.engine import EntityResolver
+from metadata.entity_resolution.table import TableResolver
 from metadata.entity_resolution.table_binding import TableLookup, alias_resolution_cache, load_table_binding_resolution
 from metadata.generated.schema.entity.data.table import Column, DataType, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import DorisConnection
@@ -379,6 +381,22 @@ def test_unreadable_service_leaves_internal_references_unresolved(caplog):
     # The failure is not cached
     transport.error = None
     assert resolution.resolve(reference, service_name=SERVICE, lookup=TableLookup.LINEAGE) == (orders,)
+
+
+@pytest.mark.parametrize("table", ["orders", "sales.orders", "internal.sales.orders"])
+@pytest.mark.parametrize(("database_name", "database"), [(None, "default"), ("doris_prod", "doris_prod")])
+def test_usage_resolves_the_internal_catalog_of_the_query_log(table, database_name, database):
+    """The usage sink, as UsageWorkflow sets it up, loads this resolution from the service's type: the
+    query log's `internal` catalog names the service's database, whatever the query wrote"""
+    orders = doris_table(f"{SERVICE}.{database}.sales.orders")
+    metadata, _ = connect(doris_service(database_name), orders)
+    resolver = TableResolver(EntityResolver(metadata), {SERVICE: DatabaseServiceType.Doris.value})
+
+    found = resolver.resolve(
+        service_names=(SERVICE,), database_name="internal", database_schema="sales", table_name=table
+    )
+
+    assert found == (orders,)
 
 
 @pytest.mark.parametrize(("database_name", "database"), [(None, "default"), ("doris_prod", "doris_prod")])

@@ -116,6 +116,12 @@ export const selectScheduleTimezone = async (page: Page, zone: string) => {
   const input = page.getByTestId('timezone-select').getByRole('combobox');
   const option = page.getByRole('option', { name: zone, exact: true });
 
+  // Typing the already-selected zone shows the full list by design, so the
+  // option would never narrow into view (e.g. on a retry after it was saved).
+  if ((await input.inputValue()) === zone) {
+    return;
+  }
+
   await expect(async () => {
     await input.fill('');
     await input.fill(zone);

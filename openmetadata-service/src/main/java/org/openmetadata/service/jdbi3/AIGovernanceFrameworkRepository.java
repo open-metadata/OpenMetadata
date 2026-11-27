@@ -28,8 +28,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.ai.AIGovernanceAssetReader;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -76,7 +78,8 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     // Relationships stored as part of the JSON
   }
 
-  public FrameworkCoverageResponse getCoverage(UriInfo uriInfo, AIGovernanceFramework framework) {
+  public FrameworkCoverageResponse getCoverage(
+      UriInfo uriInfo, AIGovernanceFramework framework, final AIGovernanceAssetReader reader) {
     AIFrameworkControlRepository controlRepo = controlRepository();
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
@@ -89,7 +92,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       }
     }
 
-    return FrameworkCoverageComputer.compute(framework, controls);
+    return FrameworkCoverageComputer.compute(framework, controls, reader);
   }
 
   public ForkAIGovernanceFrameworkResponse fork(
@@ -109,7 +112,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       control.setFramework(created.getEntityReference());
       control.setUpdatedAt(now);
       control.setUpdatedBy(user);
-      controlRepo.create(uriInfo, control, user, null);
+      controlRepo.create(uriInfo, control, user, ImpersonationContext.getImpersonatedBy());
       copiedControls.add(
           new CopiedAIFrameworkControl().withCode(control.getCode()).withName(control.getName()));
     }
