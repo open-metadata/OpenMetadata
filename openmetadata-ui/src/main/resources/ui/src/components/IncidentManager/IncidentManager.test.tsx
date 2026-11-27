@@ -870,6 +870,9 @@ describe('IncidentManagerPage', () => {
         dateField: 'updatedAt',
         key: 'last7days',
         title: 'Last 7 days',
+        currentPage: 5,
+        cursorType: 'after',
+        cursorValue: 'foo',
         domain: 'Finance',
       }),
     });

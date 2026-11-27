@@ -422,4 +422,43 @@ describe('useIncidentFilters', () => {
     expect(parsed.startTs).toBeUndefined();
     expect(parsed.dateField).toBeUndefined();
   });
+
+  it('should drop the page and cursor params via clearFilters', () => {
+    const { result } = renderWithUrl({
+      testCaseFQN: 'svc.tbl.tc',
+      assignee: 'bob',
+      testCaseResolutionStatusType: 'Assigned',
+      startTs: '1',
+      endTs: '2',
+      key: 'k',
+      title: 't',
+      dateField: 'updatedAt',
+      currentPage: '5',
+      cursorType: 'after',
+      cursorValue: 'foo',
+      other: 'z',
+      pageSize: '15',
+    });
+
+    act(() => {
+      result.current.clearFilters();
+    });
+
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.testCaseFQN).toBeUndefined();
+    expect(parsed.assignee).toBeUndefined();
+    expect(parsed.testCaseResolutionStatusType).toBeUndefined();
+    expect(parsed.startTs).toBeUndefined();
+    expect(parsed.endTs).toBeUndefined();
+    expect(parsed.dateField).toBeUndefined();
+    expect(parsed.key).toBeUndefined();
+    expect(parsed.title).toBeUndefined();
+    expect(parsed.currentPage).toBeUndefined();
+    expect(parsed.cursorType).toBeUndefined();
+    expect(parsed.cursorValue).toBeUndefined();
+    expect(parsed.other).toBe('z');
+    expect(parsed.pageSize).toBe('15');
+  });
 });
