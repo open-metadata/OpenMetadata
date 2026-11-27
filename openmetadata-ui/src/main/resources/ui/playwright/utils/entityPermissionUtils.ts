@@ -378,7 +378,12 @@ const checkHeaderUsage = async (
 
   if (isHeaderCollapsed) {
     await expandHeaderProperties(testUserPage);
+  } else {
+    await expect(
+      testUserPage.getByTestId('header-properties-toggle')
+    ).toHaveCount(0);
   }
+
   const usage = testUserPage
     .getByTestId('data-asset-header-metadata')
     .getByTestId('header-property-usage');

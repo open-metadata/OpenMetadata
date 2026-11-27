@@ -586,6 +586,20 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     // contains extra data
     expect(shownInfo(assetWithNoExtraData)).not.toContain('label.language');
 
+    const assetWithCodeButNoLanguage = getDataAssetsHeaderInfo(
+      EntityType.STORED_PROCEDURE,
+      {
+        ...mockStoredProcedureData[0],
+        storedProcedureCode: { code: 'select 1' },
+      },
+      'update_dim_address_table',
+      []
+    );
+
+    expect(shownInfo(assetWithCodeButNoLanguage)).not.toContain(
+      'label.language'
+    );
+
     expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
     );

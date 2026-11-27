@@ -106,7 +106,6 @@ const RetentionPeriod = ({
       {children}
       <ModalOverlay isKeyboardDismissDisabled={isLoading}>
         <Modal>
-          {/* Overrides reproduce the antd Modal (modal.less) this replaced. */}
           <Dialog
             data-testid="retention-period-modal"
             panelClassName="tw:rounded-lg"

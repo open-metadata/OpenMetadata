@@ -454,7 +454,7 @@ const getStoredProcedureHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
       readOnlyProperty(
         HeaderPropertyId.Language,
         t('label.language'),
-        code && (code.language ?? NO_DATA_PLACEHOLDER)
+        code?.language
       ),
     ],
   };
