@@ -15,6 +15,10 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
@@ -59,6 +63,7 @@ class RdfStorageReadinessIT {
       "fuseki:serviceQuery \"sparql\" ; fuseki:serviceReadWriteGraphStore \"data\"";
   private static final String UNION_DISABLED = "does not enable tdb2:unionDefaultGraph";
   private static final int FUSEKI_PORT = FusekiTestImage.PORT;
+  private static final int LONG_LITERAL_LENGTH = 150_000;
   // An operator-managed shiro.ini (FUSEKI_MANAGE_SHIRO=false) with a writer limited to one dataset,
   // since the image's own rendering creates only the admin account.
   private static final String SCOPED_SHIRO =
@@ -179,6 +184,36 @@ class RdfStorageReadinessIT {
           failure.getMessage().contains("does not run the OpenMetadata Graph Store extension"),
           failure.getMessage());
       assertEquals(before, storage.getTripleCount(), "a refused activation must write nothing");
+    } finally {
+      release.close();
+    }
+  }
+
+  /** Activation uploads with Graph Store PUT, a different extension path from the bulk append. */
+  @Test
+  void ontologyActivationKeepsALiteralOverOneHundredKilobytes() {
+    final String graph = BASE + "graph/ontology/" + UUID.randomUUID();
+    final Model release = ModelFactory.createDefaultModel();
+    // openmetadata_a: no other test writes there, and these methods run concurrently.
+    try (JenaFusekiStorage storage = storage(shipped, "openmetadata_a", "admin", ADMIN_PASSWORD)) {
+      release
+          .createResource(BASE + "concept/" + UUID.randomUUID())
+          .addProperty(release.createProperty(NAME), "x".repeat(LONG_LITERAL_LENGTH));
+      storage.replaceGraph(graph, UUID.randomUUID(), release);
+      final AtomicLong longest = new AtomicLong(-1);
+      storage.readQuery(
+          QueryFactory.create(
+              "SELECT (MAX(STRLEN(STR(?o))) AS ?length) WHERE { GRAPH <"
+                  + graph
+                  + "> { ?s ?p ?o FILTER(isLiteral(?o)) } }"),
+          30_000,
+          execution -> {
+            final ResultSet rows = execution.execSelect();
+            if (rows.hasNext() && rows.next().getLiteral("length") instanceof Literal length) {
+              longest.set(length.getLong());
+            }
+          });
+      assertEquals(LONG_LITERAL_LENGTH, longest.get(), "-1 means the graph holds no literal");
     } finally {
       release.close();
     }

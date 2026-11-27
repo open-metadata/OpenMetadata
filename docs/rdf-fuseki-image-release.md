@@ -220,6 +220,13 @@ re-probes on every run.
 
 ## Cutting over an existing deployment
 
+**Before any of these, turn the extension on.** OpenMetadata requires the Graph Store extension
+from this release on. A deployment that runs this image without
+`OPENMETADATA_EXTENSION_ENABLED=true`, or runs upstream Apache Jena Fuseki, keeps serving live
+writes and reads after the upgrade, but its next `RdfIndexApp` run fails readiness and every
+ontology activation fails, both naming the extension. Set the variable (it needs only a restart,
+on the same volume) or move to this image as described below.
+
 **From an earlier `openmetadata/fuseki` tag.** Change the tag and restart on the same volume.
 Every `6.2.0-<commit>` tag ships the same Fuseki 6.2.0. TDB2 written and compacted under the
 previous pin, `6.2.0-91a23ac`, opens under `6.3.0-9e53975`, and TDB2 written and compacted under
