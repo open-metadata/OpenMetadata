@@ -1852,7 +1852,9 @@ export const TaskTabNew = ({
 
   const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
 
-  const renderProposedChangesSection = () => {
+  // Memoised: each description is parsed and word-diffed, and the comment editor re-renders this
+  // component on every keystroke.
+  const proposedChangesSection = useMemo(() => {
     if (changeRequestId) {
       return (
         <div>
@@ -1947,7 +1949,7 @@ export const TaskTabNew = ({
         </div>
       </div>
     );
-  };
+  }, [changeRequestId, proposedChanges, task, t]);
 
   const renderFeedbackOrTaskPayload = () => {
     if (isOntologyReviewTask(task) && ReviewPanel) {
@@ -2224,7 +2226,7 @@ export const TaskTabNew = ({
       {lifecycleMove ? (
         <LifecycleApprovalCard move={lifecycleMove} />
       ) : (
-        renderProposedChangesSection()
+        proposedChangesSection
       )}
       <TaskReviewVotes currentUserId={currentUser?.id} task={task} />
       <div>
