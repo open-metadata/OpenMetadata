@@ -301,13 +301,16 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
     def _filter_key(self, procedure_name: str) -> str:
         if not self.source_config.useFqnForFiltering:  # pyright: ignore[reportAttributeAccessIssue]
             return procedure_name
-        return fqn.build(
-            self.metadata,
-            entity_type=StoredProcedure,
-            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-            schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
-            procedure_name=procedure_name,
+        return (
+            fqn.build(
+                self.metadata,
+                entity_type=StoredProcedure,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                procedure_name=procedure_name,
+            )
+            or procedure_name
         )
 
     def _stored_procedure_code(self, proc_id: int) -> str | None:

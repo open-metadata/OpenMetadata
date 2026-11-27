@@ -60,5 +60,5 @@ class InformixQueryParserSource(QueryParserSource, ABC):
             start_time=calendar.timegm(start_time.utctimetuple()),
             end_time=calendar.timegm(end_time.utctimetuple()),
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
         )
