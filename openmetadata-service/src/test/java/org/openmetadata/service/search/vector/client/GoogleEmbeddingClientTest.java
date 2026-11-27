@@ -12,6 +12,7 @@ package org.openmetadata.service.search.vector.client;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,6 +38,7 @@ import java.util.function.Supplier;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -684,19 +686,62 @@ class GoogleEmbeddingClientTest {
             .contains("dimension"));
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        """
+      {"error":{"code":403,"status":"PERMISSION_DENIED","message":"private-catalog-text, Bearer fixture-token"}}
+      """,
+        "<html>private-catalog-text, Bearer fixture-token</html>",
+        ""
+      })
+  void vertexPermissionFailureExplainsWhatToCheckWithoutEchoingProviderText(String body) {
+    IllegalStateException error = vertexFailure(403, body);
+    assertTrue(error.getMessage().contains("HTTP 403"));
+    assertTrue(error.getMessage().contains("aiplatform.endpoints.predict"));
+    assertTrue(error.getMessage().contains("Vertex AI API"));
+    assertFalse(error.getMessage().contains("private-catalog-text"));
+    assertFalse(error.getMessage().contains("fixture-token"));
+    assertNull(error.getCause());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "400,GOOGLE_EMBEDDING_DIMENSION",
+    "401,Application Default Credentials",
+    "404,LLM_GOOGLE_VERTEX_LOCATION",
+    "429,quota",
+    "503,retry"
+  })
+  void vertexProvidesOperatorGuidanceForCommonFailures(int status, String hint) {
+    String message = vertexFailure(status, "").getMessage();
+    assertTrue(message.contains("HTTP " + status));
+    assertTrue(message.contains(hint));
+  }
+
   @Test
-  void vertexReportsProviderFailure() {
+  void vertexUnknownStatusRetainsTheCodeAndOmitsTheBody() {
+    assertEquals(
+        "Vertex AI embedding request failed with HTTP 418",
+        vertexFailure(418, "private-catalog-text").getMessage());
+  }
+
+  @Test
+  void vertexRejectsMalformedSuccessWithoutLoggingParserInput() {
+    IllegalStateException error = vertexFailure(200, "private-catalog-text fixture-token");
+    assertTrue(error.getMessage().contains("invalid JSON"));
+    assertNull(error.getCause());
+  }
+
+  private IllegalStateException vertexFailure(int status, String body) {
     LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 2);
     config.getGoogle().withVertexProject("test-project");
     VertexAIEmbeddingClient client =
         new VertexAIEmbeddingClient(
             config,
-            new StubHttpClient("unavailable", 503),
+            new StubHttpClient(body, status),
             GoogleEmbeddingClientTest::fixtureCredentials);
-    assertTrue(
-        assertThrows(IllegalStateException.class, () -> client.embed("source"))
-            .getMessage()
-            .contains("503"));
+    return assertThrows(IllegalStateException.class, () -> client.embed("private-catalog-text"));
   }
 
   private static GoogleCredentials fixtureCredentials() {

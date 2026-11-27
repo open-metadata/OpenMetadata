@@ -10,6 +10,7 @@
  */
 package org.openmetadata.service.search.vector.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,6 +30,9 @@ import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 
 public final class VertexAIEmbeddingClient extends EmbeddingClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String GLOBAL_LOCATION = "global";
+  private static final String RETRIEVAL_QUERY_TASK = "RETRIEVAL_QUERY";
+  private static final String RETRIEVAL_DOCUMENT_TASK = "RETRIEVAL_DOCUMENT";
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
   private static final String CLOUD_PLATFORM_SCOPE =
       "https://www.googleapis.com/auth/cloud-platform";
@@ -85,7 +89,7 @@ public final class VertexAIEmbeddingClient extends EmbeddingClient {
           "GOOGLE_EMBEDDING_MODEL_ID must be a Google publisher model ID");
     }
     final String host =
-        location.equals("global")
+        GLOBAL_LOCATION.equals(location)
             ? "aiplatform.googleapis.com"
             : location + "-aiplatform.googleapis.com";
     return URI.create(
@@ -114,8 +118,7 @@ public final class VertexAIEmbeddingClient extends EmbeddingClient {
       final HttpResponse<String> response =
           http.send(buildRequest(text, query), HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() != 200) {
-        throw new IllegalStateException(
-            "Vertex AI embedding request failed with HTTP " + response.statusCode());
+        throw new IllegalStateException(providerErrorMessage(response.statusCode()));
       }
       return parsePrediction(response.body());
     } catch (IOException e) {
@@ -126,13 +129,32 @@ public final class VertexAIEmbeddingClient extends EmbeddingClient {
     }
   }
 
+  private static String providerErrorMessage(int status) {
+    // Google error messages can echo catalog text. Only report guidance derived from the HTTP
+    // status.
+    final String hint =
+        switch (status) {
+          case 400 -> ". Check the model's input limits and support for GOOGLE_EMBEDDING_DIMENSION.";
+          case 401 -> ". Check the workload's Application Default Credentials.";
+          case 403 -> ". Check that the Vertex AI API is enabled and the workload has aiplatform.endpoints.predict in the configured project.";
+          case 404 -> ". Check that GOOGLE_EMBEDDING_MODEL_ID is available in LLM_GOOGLE_VERTEX_LOCATION for this project.";
+          case 429 -> ". Check the project's Vertex AI quota and retry with backoff.";
+          case 500,
+              502,
+              503,
+              504 -> ". The service may be temporarily unavailable. Wait briefly and retry with backoff.";
+          default -> "";
+        };
+    return "Vertex AI embedding request failed with HTTP " + status + hint;
+  }
+
   private HttpRequest buildRequest(String text, boolean query) throws IOException {
     final ObjectNode payload = MAPPER.createObjectNode();
     payload
         .putArray("instances")
         .addObject()
         .put("content", text)
-        .put("task_type", query ? "RETRIEVAL_QUERY" : "RETRIEVAL_DOCUMENT");
+        .put("task_type", query ? RETRIEVAL_QUERY_TASK : RETRIEVAL_DOCUMENT_TASK);
     payload.putObject("parameters").put("outputDimensionality", dimension);
     final HttpRequest.Builder request =
         HttpRequest.newBuilder(endpoint)
@@ -147,8 +169,15 @@ public final class VertexAIEmbeddingClient extends EmbeddingClient {
     return request.build();
   }
 
-  private EmbeddingResult parsePrediction(String body) throws IOException {
-    final JsonNode embeddings = MAPPER.readTree(body).at("/predictions/0/embeddings");
+  private EmbeddingResult parsePrediction(String body) {
+    final JsonNode embeddings;
+    try {
+      embeddings = MAPPER.readTree(body).at("/predictions/0/embeddings");
+    } catch (JsonProcessingException ignored) {
+      // A parser exception can include the provider's response text in its message.
+      throw new IllegalStateException(
+          "Vertex AI returned invalid JSON for an embedding prediction");
+    }
     final JsonNode values = embeddings.path("values");
     if (!values.isArray() || values.size() != dimension) {
       throw new IllegalStateException(
