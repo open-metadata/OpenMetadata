@@ -87,7 +87,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel, filter_by_project
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
     get_standard_chart_type,
@@ -274,7 +274,7 @@ class SigmaSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_project_name(self, dashboard_details: WorkbookDetails) -> str | None:
+    def get_project_name(self, dashboard_details: WorkbookDetails | DataModel) -> str | None:
         """
         The workspace: Sigma's path starts with it and continues with the folders
         (ADR:2026-11-07-a-sigma-dashboard-project-is-the-workbook-workspace)
@@ -1011,6 +1011,9 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_data_model_lineage()
             return
         display_name = data_model.name or data_model.dataModelId
+        if filter_by_project(self.source_config.projectFilterPattern, self.get_project_name(data_model) or ""):
+            self.status.filter(display_name, "Project / Workspace Filtered Out")
+            return
         if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
             self.status.filter(display_name, "Data model filtered out.")
             return
