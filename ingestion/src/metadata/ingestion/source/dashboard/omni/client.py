@@ -285,6 +285,13 @@ class OmniApiClient:
                 new_views.append((name, inline))
         return new_views
 
+    @staticmethod
+    def _pass_reference(topics: list[OmniTopic], name: str, reference: str | None) -> None:
+        """Give the data model that took a skipped view's name the inline name that view answered to."""
+        for topic in topics:
+            if reference and topic.name == name and not topic.alias:
+                topic.alias = reference
+
     @classmethod
     def _parse_model_yaml(cls, model: OmniModel, files: dict) -> list[OmniTopic]:
         """
@@ -381,6 +388,7 @@ class OmniApiClient:
         # name was already taken by a topic (or another view).
         for view_name, view in view_records:
             if view_name in seen_names:
+                cls._pass_reference(topics, view_name, view.get("reference"))
                 logger.debug(
                     "Skipping view %r: name already used by a topic/view in model %s",
                     view_name,

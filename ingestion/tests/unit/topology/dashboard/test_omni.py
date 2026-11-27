@@ -1096,6 +1096,34 @@ def test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file(omni
     ]
 
 
+def test_tile_reference_to_a_replaced_inline_view_resolves_to_a_topic_of_the_same_name(omni_source):
+    """A curated topic that takes the view file's name also takes the inline name it answered to."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\n",
+        "sv_orders__fact_orders.topic": "base_view: sv_orders__fact_orders\nlabel: Fact Orders\n",
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+    }
+    model = OmniModel(id="m1", name="sales")
+    omni_source.client.get_models = lambda *_: [model]
+    omni_source.client.get_model_topics = lambda *_: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    tile = QueryPresentation(
+        name="Orders",
+        query=OmniQuery(
+            table="semantic_views__sv_orders",
+            fields=["semantic_views__sv_orders__fact_orders.amount"],
+        ),
+    )
+    resolved = list(omni_source._tile_topics(tile))
+    assert [(t.name, t.label) for t in resolved] == [
+        ("semantic_views__sv_orders", "Orders"),
+        ("sv_orders__fact_orders", "Fact Orders"),
+    ]
+
+
 @pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}", "label: {text: Orders}"])
 def test_parse_model_yaml_malformed_inline_view_is_skipped_alone(broken):
     """One inline view that cannot be parsed does not cost the model its other views."""
