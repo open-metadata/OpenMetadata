@@ -14695,6 +14695,8 @@ public class WorkflowDefinitionResourceIT {
     String suffix = String.valueOf(System.currentTimeMillis());
     User directVoter = createVoter(client, "repeatvoter1_" + suffix);
     User finalVoter = createVoter(client, "repeatvoter2_" + suffix);
+    // The runtime threshold is capped by the eligible voters when the task is created.
+    final User spareVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatspare_" + suffix));
     User teamApprover = createVoter(client, "repeatmember1_" + suffix);
     User teamRejecter = createVoter(client, "repeatmember2_" + suffix);
     Team team =
@@ -14712,7 +14714,8 @@ public class WorkflowDefinitionResourceIT {
                 client,
                 HttpMethod.POST,
                 BASE_PATH,
-                thresholdApprovalWorkflow(workflowName, 3, 2, directVoter, finalVoter))));
+                thresholdApprovalWorkflow(
+                    workflowName, 3, 2, directVoter, finalVoter, spareVoter))));
     waitForWorkflowDeployment(client, workflowName);
 
     Table table = untouchedTable(client, ns, "repeat_vote");
@@ -14720,7 +14723,7 @@ public class WorkflowDefinitionResourceIT {
         awaitApprovalTaskWithAssignees(
             client,
             table.getFullyQualifiedName(),
-            Stream.of(directVoter.getName(), finalVoter.getName()).sorted().toList());
+            Stream.of(directVoter, finalVoter, spareVoter).map(User::getName).sorted().toList());
     // Workflow candidates are expanded to their users. A team keeps its own assignee entry only
     // when the task is assigned to it, and that entry is what lets a member reach the vote again.
     addTeamAssignee(client, task, team);
@@ -14749,8 +14752,13 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private static CreateWorkflowDefinition thresholdApprovalWorkflow(
-      String workflowName, int approvalThreshold, int rejectionThreshold, User first, User second) {
-    String workflowJson =
+      final String workflowName,
+      final int approvalThreshold,
+      final int rejectionThreshold,
+      final User... voters) {
+    final List<EntityReference> candidates =
+        Stream.of(voters).map(User::getEntityReference).toList();
+    final String workflowJson =
         """
             {
               "name": "%s",
@@ -14781,20 +14789,7 @@ public class WorkflowDefinitionResourceIT {
                     "assignees": {
                       "addReviewers": false,
                       "addOwners": false,
-                      "candidates": [
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        },
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        }
-                      ]
+                      "candidates": %s
                     },
                     "approvalThreshold": %d,
                     "rejectionThreshold": %d
@@ -14828,12 +14823,7 @@ public class WorkflowDefinitionResourceIT {
             """
             .formatted(
                 workflowName,
-                first.getId(),
-                first.getFullyQualifiedName(),
-                first.getName(),
-                second.getId(),
-                second.getFullyQualifiedName(),
-                second.getName(),
+                JsonUtils.pojoToJson(candidates),
                 approvalThreshold,
                 rejectionThreshold);
     return JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
