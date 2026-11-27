@@ -14,10 +14,11 @@ Add methods to the workflows for updating the IngestionPipeline status
 
 import traceback
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
 from time import sleep
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from requests.exceptions import HTTPError
 
@@ -49,6 +50,8 @@ logger = ometa_logger()
 
 TERMINAL_STATUS_WRITE_ATTEMPTS = 3
 TERMINAL_STATUS_WRITE_RETRY_DELAY = 0.25
+TERMINAL_STATUS_GATEWAY_RETRY_DELAY = 5.0
+SLOW_RECOVERY_HTTP_CODES = {503, 504}
 RETRYABLE_STATUS_HTTP_CODES = {500, 502, 503, 504}
 
 _StatusResponse = TypeVar("_StatusResponse")
@@ -129,10 +132,7 @@ class WorkflowStatusMixin:
                     if isinstance(exc, APIError)
                     else getattr(getattr(exc, "response", None), "status_code", None)
                 )
-                retryable = (
-                    isinstance(exc, RestTransportError)
-                    or http_status in RETRYABLE_STATUS_HTTP_CODES
-                )
+                retryable = isinstance(exc, RestTransportError) or http_status in RETRYABLE_STATUS_HTTP_CODES
                 if not retryable or attempt == attempts - 1:
                     raise
                 logger.warning(
@@ -141,7 +141,12 @@ class WorkflowStatusMixin:
                     attempts,
                     exc,
                 )
-                sleep(TERMINAL_STATUS_WRITE_RETRY_DELAY * (attempt + 1))
+                delay = (
+                    TERMINAL_STATUS_GATEWAY_RETRY_DELAY
+                    if http_status in SLOW_RECOVERY_HTTP_CODES
+                    else TERMINAL_STATUS_WRITE_RETRY_DELAY
+                )
+                sleep(delay * (attempt + 1))
         raise RuntimeError("Terminal pipeline status retry loop did not complete")
 
     def _write_pipeline_status(
@@ -149,9 +154,7 @@ class WorkflowStatusMixin:
     ) -> None:
         """Repeat an idempotent final status PUT without changing the run's outcome."""
         self._run_pipeline_status_request(
-            lambda: self.metadata.create_or_update_pipeline_status(
-                fqn, status, **({"retries": 0} if terminal else {})
-            ),
+            lambda: self.metadata.create_or_update_pipeline_status(fqn, status, **({"retries": 0} if terminal else {})),
             terminal=terminal,
         )
 
@@ -160,9 +163,7 @@ class WorkflowStatusMixin:
     ) -> PipelineStatus | None:
         """Do not abandon a terminal status because its preceding GET times out."""
         return self._run_pipeline_status_request(
-            lambda: self.metadata.get_pipeline_status(
-                fqn, run_id, **({"retries": 0} if terminal else {})
-            ),
+            lambda: self.metadata.get_pipeline_status(fqn, run_id, **({"retries": 0} if terminal else {})),
             terminal=terminal,
         )
 

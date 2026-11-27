@@ -19,8 +19,10 @@ failed executions.
 
 - For terminal pipeline states, retry both the run-specific status GET and the final PUT **at most
   three times** each when the request fails with a transport error or HTTP 500/502/503/504.
-- Use a short linear pause of 0.25 seconds times the failed attempt number, so this layer adds at
-  most 0.75 seconds of pause per terminal read or write if its failures are immediately reported.
+- Use a linear pause of 0.25 seconds times the failed attempt number for HTTP 500/502 and
+  transport errors, and 5 seconds times the failed attempt number for HTTP 503/504. This provides
+  recovery opportunities at 5 and 15 seconds for sustained 503/504 without increasing attempts.
+  Explicit retry sleep is bounded to 15 seconds per terminal read or write (30 seconds across both).
 - Disable the REST client's HTTP retry loop for each terminal GET/PUT using the per-call
   `retries=0` override. The outer budget handles both gateway and transport failures, including
   mixed failure sequences, without restarting the REST client's long backoff. Ordinary callers

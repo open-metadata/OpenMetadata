@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
-from metadata.ingestion.ometa.client import APIError, ClientConfig, REST, RestTransportError
+from metadata.ingestion.ometa.client import REST, APIError, ClientConfig, RestTransportError
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import OMetaIngestionPipelineMixin
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -140,24 +140,26 @@ class TestTerminalStatusWriteRetry:
         harness = _Harness(ProgressRegistry(), metadata)
         status = MagicMock()
 
-        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
-            with pytest.raises(RestTransportError):
-                harness._write_pipeline_status("svc.pipeline", status, terminal=False)
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            pytest.raises(RestTransportError),
+        ):
+            harness._write_pipeline_status("svc.pipeline", status, terminal=False)
 
         metadata.create_or_update_pipeline_status.assert_called_once()
         delay.assert_not_called()
 
     def test_non_retryable_api_error_fails_without_rewriting_status(self):
         metadata = MagicMock()
-        metadata.create_or_update_pipeline_status.side_effect = APIError(
-            {"message": "Permission denied"}
-        )
+        metadata.create_or_update_pipeline_status.side_effect = APIError({"message": "Permission denied"})
         harness = _Harness(ProgressRegistry(), metadata)
         status = MagicMock()
 
-        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
-            with pytest.raises(APIError):
-                harness._write_pipeline_status("svc.pipeline", status, terminal=True)
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            pytest.raises(APIError),
+        ):
+            harness._write_pipeline_status("svc.pipeline", status, terminal=True)
 
         metadata.create_or_update_pipeline_status.assert_called_once()
         delay.assert_not_called()
@@ -169,9 +171,11 @@ class TestTerminalStatusWriteRetry:
         )
         harness = _Harness(ProgressRegistry(), metadata)
 
-        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
-            with pytest.raises(RestTransportError):
-                harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            pytest.raises(RestTransportError),
+        ):
+            harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
 
         assert metadata.create_or_update_pipeline_status.call_count == 3
         assert delay.call_count == 2
@@ -192,21 +196,22 @@ class TestTerminalStatusWriteRetry:
         assert metadata.create_or_update_pipeline_status.call_count == 2
         delay.assert_called_once()
 
-    def test_503_uses_the_same_terminal_retry_budget(self):
+    @pytest.mark.parametrize("code", [503, 504])
+    def test_gateway_uses_the_same_terminal_retry_budget(self, code):
         metadata = MagicMock()
         response = Response()
-        response.status_code = 503
-        metadata.create_or_update_pipeline_status.side_effect = HTTPError(
-            "Service Unavailable", response=response
-        )
+        response.status_code = code
+        metadata.create_or_update_pipeline_status.side_effect = HTTPError("Service Unavailable", response=response)
         harness = _Harness(ProgressRegistry(), metadata)
 
-        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
-            with pytest.raises(HTTPError):
-                harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            pytest.raises(HTTPError),
+        ):
+            harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
 
         assert metadata.create_or_update_pipeline_status.call_count == 3
-        assert delay.call_count == 2
+        assert [call.args for call in delay.call_args_list] == [(5.0,), (10.0,)]
         assert all(call.kwargs == {"retries": 0} for call in metadata.create_or_update_pipeline_status.call_args_list)
 
     def test_terminal_read_retries_transport_failure_before_write(self):
@@ -232,9 +237,11 @@ class TestTerminalStatusWriteRetry:
         )
         harness = _Harness(ProgressRegistry(), metadata)
 
-        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
-            with pytest.raises(RestTransportError):
-                harness._read_pipeline_status("svc.pipeline", "run-1", terminal=False)
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            pytest.raises(RestTransportError),
+        ):
+            harness._read_pipeline_status("svc.pipeline", "run-1", terminal=False)
 
         metadata.get_pipeline_status.assert_called_once()
         delay.assert_not_called()
@@ -330,9 +337,13 @@ class TestTerminalStatusWriteRetry:
 
 
 class TestHttpTerminalPersistence:
-    def test_real_http_gateway_recovers_terminal_status(self):
-        """Exercise a real HTTP 502 response and durable reread over loopback."""
-        state = {"status": "running", "finished": False, "puts": 0}
+    @pytest.mark.parametrize("code,outage", [(502, 0.1), (503, 1.0), (504, 1.0), (503, 6.0), (504, 6.0)])
+    def test_real_http_gateway_recovers_terminal_status(self, code, outage):
+        """Real HTTP responses, virtual recovery time, and a durable reread over loopback."""
+        state = {"status": "running", "finished": False, "puts": 0, "elapsed": 0.0}
+
+        def advance_clock(seconds):
+            state["elapsed"] += seconds
 
         class StatusEndpoint(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -348,11 +359,9 @@ class TestHttpTerminalPersistence:
             def do_PUT(self):
                 state["puts"] += 1
                 length = int(self.headers["Content-Length"])
-                payload = json.loads(
-                    self.rfile.read(length).decode("utf-8")
-                )
-                if state["puts"] == 1:
-                    self.send_response(502)
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                if state["elapsed"] < outage:
+                    self.send_response(code)
                     self.send_header("Content-Type", "text/html")
                     self.end_headers()
                     self.wfile.write(b"<html>temporary gateway failure</html>")
@@ -400,7 +409,7 @@ class TestHttpTerminalPersistence:
             harness.config.ingestionPipelineFQN = "svc.pipeline"
             harness.config.model_dump.return_value = {}
             with (
-                patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+                patch("metadata.workflow.workflow_status_mixin.sleep", side_effect=advance_clock) as delay,
                 patch(
                     "metadata.workflow.workflow_status_mixin.ContextManager.dump_contexts",
                     return_value={},
@@ -410,8 +419,15 @@ class TestHttpTerminalPersistence:
 
             saved = requests.get(url, timeout=5).json()
             assert saved == {"state": PipelineState.success.value, "finished": True}
-            assert state["puts"] == 2
-            delay.assert_called_once()
+            if code == 502:
+                expected_delays = [0.25]
+            elif outage > 5.0:
+                expected_delays = [5.0, 10.0]
+            else:
+                expected_delays = [5.0]
+            assert state["puts"] == len(expected_delays) + 1
+            assert [call.args[0] for call in delay.call_args_list] == expected_delays
+            assert state["elapsed"] >= outage
         finally:
             server.shutdown()
             server.server_close()
@@ -462,6 +478,7 @@ class TestTerminalStatusRetryBudget:
                 patch("metadata.ingestion.ometa.client.time.sleep") as rest_delay,
                 patch("metadata.workflow.workflow_status_mixin.sleep") as outer_delay,
             ):
+
                 def operation():
                     if method == "GET":
                         return harness._read_pipeline_status("svc.pipeline", "run-1", terminal=True)
@@ -475,4 +492,5 @@ class TestTerminalStatusRetryBudget:
 
                 assert request.call_count == 3
                 rest_delay.assert_not_called()
-                assert [call.args for call in outer_delay.call_args_list] == [(0.25,), (0.5,)]
+                expected_delays = [(5.0,), (10.0,)] if sequence == "review_sequence" else [(5.0,), (0.5,)]
+                assert [call.args for call in outer_delay.call_args_list] == expected_delays
