@@ -137,12 +137,17 @@ public class OidcDiscoveryValidator {
     String reason;
     // Jackson's parse errors are IOExceptions too, so they are told apart first: the URL was
     // reached but did not answer with JSON (an HTML login or proxy error page, for example).
+    // Any other error keeps its own message when it has one: a TLS failure such as "PKIX path
+    // building failed" points the admin at the truststore. Only a message-less I/O error (a
+    // refused or timed-out connection) is reported as unreachable.
     if (e instanceof JsonProcessingException) {
       reason = "the discovery URL did not return a valid JSON document (" + discoveryUri + ")";
+    } else if (e.getMessage() != null) {
+      reason = e.getMessage();
     } else if (e instanceof IOException) {
       reason = "the discovery URL could not be reached (" + discoveryUri + ")";
     } else {
-      reason = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+      reason = e.getClass().getSimpleName();
     }
     return reason;
   }

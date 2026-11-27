@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.ConnectException;
 import java.util.List;
+import javax.net.ssl.SSLHandshakeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -699,6 +700,26 @@ public class OidcDiscoveryValidatorTest {
         OidcDiscoveryValidator.class.getDeclaredMethod("determineFieldPathFromErrors", List.class);
     fieldMethod.setAccessible(true);
     return (String) fieldMethod.invoke(validator, errors);
+  }
+
+  /** A TLS failure keeps its own message, which points the admin at the truststore. */
+  @Test
+  void anUntrustedCertificateKeepsItsTlsMessage() {
+    String pkix =
+        "PKIX path building failed: unable to find valid certification path to requested target";
+    try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenThrow(new SSLHandshakeException(pkix));
+
+      FieldError error =
+          validator.validateAgainstDiscovery(
+              "https://self-signed.badssl.com/.well-known/openid-configuration",
+              new AuthenticationConfiguration(),
+              new OidcClientConfig());
+
+      assertNotNull(error);
+      assertEquals("Failed to validate against discovery document: " + pkix, error.getError());
+    }
   }
 
   /** An unreachable discovery URL is reported as such, not as "null". */
