@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Median Metric definition
+Third Quartile definition
 """
 # pylint: disable=duplicate-code
 
@@ -93,14 +93,14 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
         import pandas as pd
 
         if is_quantifiable(self.col.type):
-            # we can't compute the median unless we have
+            # we can't compute the third quartile unless we have
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
                 df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
-                    f"Unable to compute Median for {self.col.name} due to memory constraints."
+                    f"Unable to compute Third Quartile for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitioning."
                 )
                 return None
