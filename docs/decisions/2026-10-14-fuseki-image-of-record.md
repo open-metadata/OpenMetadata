@@ -79,11 +79,13 @@ The extension reads Thrift uploads with its upload bound as the row cap (open-me
   and read-only checks run first, so their messages are unchanged.
 - A guarantee the extension leaves unmet, such as an unset `arq:queryTimeout`, is still logged and
   does not fail readiness.
-- Every ontology graph write (`replaceGraph`: activation, deactivation, deletion) checks the same
+- Every ontology graph write (`replaceGraph`: activation, deactivation, deletion) requires the same
   capabilities before it uploads, so a release fails with the same message instead of Fuseki's
   HTTP 500. The check does not depend on what the graph holds: on a store without the extension,
   OpenMetadata writes no ontology graph at all, rather than judging each payload against the row
-  cap. The refusal is an `RdfStorageUnsupportedException`: the live-write queue dead-letters it on
+  cap. Like a rebuild's, the check negotiates once per dataset and server process, so a Fuseki
+  restarted without the extension under a running server is refused only after the server restarts
+  or a rebuild repoints it. The refusal is an `RdfStorageUnsupportedException`: the live-write queue dead-letters it on
   the first attempt and marks the projection degraded, instead of retrying it for minutes ahead of
   every later write. Dead letters are not replayed; an `RdfIndexApp` run after the extension is on
   restores the ontology graphs.
