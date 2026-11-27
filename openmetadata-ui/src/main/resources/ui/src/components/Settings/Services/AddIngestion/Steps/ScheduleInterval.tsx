@@ -141,6 +141,7 @@ const TimezoneSelect = ({
         allowClear
         allowsEmptyCollection
         data-testid="timezone-select"
+        fontSize="sm"
         inputValue={inputValue}
         isDisabled={disabled}
         items={filteredItems}

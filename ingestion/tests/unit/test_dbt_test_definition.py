@@ -58,8 +58,8 @@ def _make_dbt_test(manifest_node):
 
 def _make_dbt_source(bound_method_name, existing_test_definition=None):
     source = MagicMock(spec=DbtSource)
-    bound = getattr(DbtSource, bound_method_name).__get__(source, DbtSource)
-    setattr(source, bound_method_name, bound)
+    for method_name in (bound_method_name, "_missing_test_column"):
+        setattr(source, method_name, getattr(DbtSource, method_name).__get__(source, DbtSource))
     source.metadata = MagicMock()
     source.metadata.get_by_name.return_value = existing_test_definition
     return source

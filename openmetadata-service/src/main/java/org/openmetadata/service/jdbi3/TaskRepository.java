@@ -491,8 +491,11 @@ public class TaskRepository extends EntityRepository<Task> {
   /**
    * If no assignees are specified and the target entity has owners, set the entity owners as default
    * assignees. This ensures tasks about owned entities are automatically routed to the right people.
+   * The task's creator is never one of them: TaskAuthorPolicy denies a filer ResolveTask, so a task
+   * handed back to its creator could only be resolved by an admin
+   * (ADR:2026-11-25-an-approval-never-goes-to-its-requester).
    */
-  void setDefaultAssigneesFromEntityOwners(Task task) {
+  public void setDefaultAssigneesFromEntityOwners(Task task) {
     if (!nullOrEmpty(task.getAssignees())
         || Boolean.FALSE.equals(task.getUseEntityOwnerFallback())) {
       return;
@@ -506,7 +509,8 @@ public class TaskRepository extends EntityRepository<Task> {
     try {
       List<EntityReference> owners = Entity.getOwners(about);
       if (!nullOrEmpty(owners)) {
-        List<EntityReference> expandedAssignees = expandTeamsToUsers(owners);
+        List<EntityReference> expandedAssignees =
+            withoutCreator(expandTeamsToUsers(owners), task.getCreatedBy());
         task.setAssignees(expandedAssignees);
         LOG.debug(
             "Task {} defaulting assignees to entity owners: {}",
@@ -520,6 +524,13 @@ public class TaskRepository extends EntityRepository<Task> {
           about.getId(),
           e.getMessage());
     }
+  }
+
+  private static List<EntityReference> withoutCreator(
+      List<EntityReference> owners, EntityReference creator) {
+    final UUID creatorId = creator == null ? null : creator.getId();
+    return new ArrayList<>(
+        owners.stream().filter(owner -> !owner.getId().equals(creatorId)).toList());
   }
 
   private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {

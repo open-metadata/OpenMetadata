@@ -14,6 +14,9 @@
 
 .sso-configuration-form-card {
   border: none;
+  // The core Card clips its content for its rounded border, which this card hides; clipping
+  // only cut off the border of a field that ends on the card's edge (Default OAuth Role).
+  overflow: visible;
   padding: 0 @padding-mlg @padding-lg @padding-mlg;
   box-shadow: none;
 
@@ -308,24 +311,10 @@
   }
 
   .content-resizable-panel-container {
+    // Layout (full-bleed width, padding, top shadow) comes from the shared
+    // .sso-settings-page rule, so the bar spans the panel like on a new configuration;
+    // a narrower box with an all-round shadow sat inside the card with its buttons on the edge.
     .form-actions-bottom {
-      position: sticky;
-      bottom: 0;
-      width: 100%;
-      margin-left: 0;
-      margin-right: 0;
-      z-index: var(--om-z-10);
-      display: flex;
-      justify-content: flex-end;
-      gap: var(--om-space-12);
-      margin-top: @size-lg;
-      margin-bottom: 0;
-      padding: @size-md @size-lg 0 @size-lg;
-      border-top: 1px solid @grey-200;
-      background-color: var(--tw-color-bg-primary);
-      box-shadow: @box-shadow-base;
-      box-sizing: border-box;
-
       .cancel-sso-configuration {
         font-weight: @font-medium;
 
@@ -486,7 +475,10 @@
   }
 }
 
-.sso-configuration-form-card .rjsf span {
+// The Deprecated badge is a core Badge and keeps its own type and colour.
+.sso-configuration-form-card
+  .rjsf
+  span:not(.sso-deprecated-tag, .sso-deprecated-tag *) {
   display: inline-flex;
   align-items: center;
   gap: @size-xs;

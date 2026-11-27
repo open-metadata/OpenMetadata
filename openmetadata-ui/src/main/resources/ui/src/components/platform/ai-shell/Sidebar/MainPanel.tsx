@@ -46,6 +46,8 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarMainFooter();
   const recentSlots = useAppModeSidebarRecent();
+  // Give the recent slot a heading and two rows to start with on short screens.
+  const flexBasis = 'calc(var(--tw-spacing) * 24)';
 
   const handleItemClick = useCallback(
     (item: MainNavItem) => handleNavItemClick({ item, navigate }),
@@ -112,7 +114,10 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
       </nav>
 
       {recentSlots.length > 0 ? (
-        <div className="ask-main-panel__chats" data-testid="ask-recent-region">
+        <div
+          className="ask-main-panel__chats"
+          data-testid="ask-recent-region"
+          style={{ /* style-guard-allow: unlayered flex wins */ flexBasis }}>
           {recentSlots.map(({ key, component: Slot }) => (
             <Slot key={key} />
           ))}

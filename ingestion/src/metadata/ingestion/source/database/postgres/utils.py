@@ -549,8 +549,7 @@ def validate_query_statement_source(query_statement_source: str | None) -> str:
         return DEFAULT_QUERY_STATEMENT_SOURCE
     if not QUERY_STATEMENT_SOURCE_PATTERN.fullmatch(query_statement_source):
         raise ValueError(
-            f"Invalid queryStatementSource [{query_statement_source}]: expected an optionally "
-            "schema-qualified identifier, such as 'pg_stat_statements' or "
-            "'my_schema.custom_pg_stat_statements'"
+            "Invalid queryStatementSource. Enter a table or view name such as "
+            "my_schema.query_history, or leave it blank to use pg_stat_statements."
         )
     return query_statement_source

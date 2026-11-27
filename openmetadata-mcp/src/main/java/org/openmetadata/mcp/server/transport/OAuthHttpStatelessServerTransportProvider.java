@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.server.transport;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -35,15 +37,18 @@ import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.TokenAudience;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -88,6 +93,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile String contextPath;
 
   static final String BEARER_PREFIX = "Bearer ";
+  private static final String RESOURCE_PARAM = "resource";
 
   // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
   // the CORS preflight fail, and the user just sees a network error.
@@ -163,9 +169,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     List<String> supportedScopes = getSupportedScopesForProvider();
-    String issuer = baseUrl + mcpEndpoint;
+    final URI issuer = buildResourceUri(baseUrl, mcpEndpoint);
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(URI.create(issuer));
+    metadata.setIssuer(issuer);
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -183,16 +189,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
-    ProtectedResourceMetadata protectedResourceMetadata = new ProtectedResourceMetadata();
-    protectedResourceMetadata.setResource(URI.create(baseUrl + mcpEndpoint));
-    protectedResourceMetadata.setAuthorizationServers(List.of(URI.create(baseUrl + mcpEndpoint)));
-    protectedResourceMetadata.setScopesSupported(supportedScopes);
-    protectedResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
-
     this.oauthMetadata = metadata;
-    this.protectedResourceMetadata = protectedResourceMetadata;
-    // Same ordering as rebuildMetadata: the metadata is in place before the issuer is published.
-    authProvider.setIssuer(issuer);
+    this.protectedResourceMetadata =
+        buildProtectedResourceMetadata(issuer, baseUrl, supportedScopes);
+    authProvider.setIssuer(issuer.toString());
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -200,7 +200,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.jwtFilter =
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
-            SecurityConfigurationManager.getCurrentAuthzConfig());
+            SecurityConfigurationManager.getCurrentAuthzConfig(),
+            mcpTokenAudience());
 
     this.allowedOrigins = allowedOrigins;
 
@@ -254,7 +255,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
     // Tokens must be checked against the reloaded security settings, not the ones at startup.
-    this.jwtFilter = new JwtFilter(authConfig, authzConfig);
+    this.jwtFilter = new JwtFilter(authConfig, authzConfig, mcpTokenAudience());
     if (mcpConfig != null) {
       if (mcpConfig.getAllowedOrigins() != null) {
         updateAllowedOrigins(mcpConfig.getAllowedOrigins());
@@ -271,10 +272,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
     warnIfBaseUrlMissesContextPath(baseUrl, contextPath);
     List<String> supportedScopes = getSupportedScopesForProvider();
-    String issuer = baseUrl + mcpEndpoint;
+    final URI issuer = buildResourceUri(baseUrl, mcpEndpoint);
 
     OAuthMetadata newMetadata = new OAuthMetadata();
-    newMetadata.setIssuer(URI.create(issuer));
+    newMetadata.setIssuer(issuer);
     newMetadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     newMetadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     newMetadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -290,12 +291,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     addOpenIdDiscoveryFields(newMetadata, baseUrl);
     this.oauthMetadata = newMetadata;
 
-    ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
-    newResourceMetadata.setResource(URI.create(baseUrl + mcpEndpoint));
-    newResourceMetadata.setAuthorizationServers(List.of(URI.create(baseUrl + mcpEndpoint)));
-    newResourceMetadata.setScopesSupported(supportedScopes);
-    newResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
-    this.protectedResourceMetadata = newResourceMetadata;
+    this.protectedResourceMetadata =
+        buildProtectedResourceMetadata(issuer, baseUrl, supportedScopes);
 
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
@@ -305,9 +302,37 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // the old one, and a client comparing the two would reject a valid authorization response.
     // Note this only closes the gap inside this method. A base URL change while a login is already
     // in progress still moves the issuer under that client, which no ordering here can prevent.
-    authProvider.setIssuer(issuer);
+    authProvider.setIssuer(issuer.toString());
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
+  }
+
+  private static URI buildResourceUri(final String baseUrl, final String endpoint) {
+    final String resource = baseUrl + endpoint;
+    if (McpResourceUri.canonicalize(resource).isEmpty()) {
+      LOG.error(
+          "Invalid MCP OAuth resource URI '{}'. Check the configured MCP base URL.",
+          McpResourceUri.describeForLogging(resource));
+    }
+    return URI.create(resource);
+  }
+
+  private static ProtectedResourceMetadata buildProtectedResourceMetadata(
+      final URI issuer, final String baseUrl, final List<String> scopes) {
+    final ProtectedResourceMetadata metadata = new ProtectedResourceMetadata();
+    metadata.setResource(issuer);
+    metadata.setAuthorizationServers(List.of(issuer));
+    metadata.setScopesSupported(scopes);
+    metadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
+    return metadata;
+  }
+
+  /**
+   * A token this endpoint accepts names its protected resource in {@code aud}, or carries no
+   * {@code aud} at all. ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  private TokenAudience mcpTokenAudience() {
+    return McpResourceUri.tokenAudienceOf(authProvider::getIssuer);
   }
 
   /**
@@ -359,6 +384,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     sanitized.remove("access_token");
     sanitized.remove("token");
     sanitized.remove("password");
+    sanitized.remove(RESOURCE_PARAM);
 
     // Replace code_challenge with indicator (still safe to log)
     if (sanitized.containsKey("code_challenge")) {
@@ -724,8 +750,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             .setRequestContext(request, response);
       }
 
+      List<String> resourceValues = extractResourceValues(request);
       AuthorizationHandler.AuthorizationResponse authResponse =
-          authorizationHandler.handle(params).join();
+          authorizationHandler.handle(params, resourceValues).join();
 
       String redirectUrl = authResponse.getRedirectUrl();
       if (redirectUrl != null && response.isCommitted()) {
@@ -762,15 +789,17 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         // would hit a closed stream (EofException).
         LOG.debug("SSO login redirect already initiated by provider; response committed");
       } else {
-        // No redirect URL — error case where redirect_uri is invalid or client is unknown.
-        // Per RFC 6749, display the error to the user instead of redirecting.
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(400);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_request");
-        error.put("error_description", "Authorization request failed");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        // No redirect URL — error case where redirect_uri is invalid, client is unknown, or policy
+        // blocks error callbacks. Per RFC 6749, display the error directly instead of redirecting.
+        final AuthorizationErrorResponse authError = authResponse.getError();
+        sendOAuthError(
+            request,
+            response,
+            HttpServletResponse.SC_BAD_REQUEST,
+            authError != null && !nullOrEmpty(authError.getError())
+                ? authError.getError()
+                : "invalid_request",
+            "Authorization request failed");
       }
 
     } catch (Exception ex) {
@@ -861,6 +890,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         throw new TokenException("invalid_request", "grant_type parameter is required");
       }
 
+      List<String> resourceValues = extractResourceValues(request);
+
       if ("authorization_code".equals(grantType)) {
         // Handle authorization code exchange
         String code = params.get("code");
@@ -870,6 +901,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         if (code == null || code.isEmpty()) {
           throw new TokenException("invalid_request", "code parameter is required");
         }
+
+        validateRequestedResource(resourceValues);
 
         // Load the authorization code to validate client_id and redirect_uri
         AuthorizationCode storedCode = authProvider.loadAuthorizationCode(client, code).join();
@@ -917,6 +950,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         if (refreshTokenValue == null || refreshTokenValue.isEmpty()) {
           throw new TokenException("invalid_request", "refresh_token parameter is required");
         }
+
+        validateRequestedResource(resourceValues);
+
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(refreshTokenValue);
         refreshToken.setClientId(clientId);
@@ -963,7 +999,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       }
       getObjectMapper().writeValue(response.getOutputStream(), error);
     } catch (TokenException ex) {
-      LOG.error("Token request failed", ex);
+      if (!McpResourceUri.INVALID_TARGET_ERROR.equals(ex.getError())) {
+        LOG.error("Token request failed", ex);
+      }
       setCorsHeaders(request, response);
       response.setContentType("application/json");
       int status =
@@ -1279,6 +1317,18 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     body.put("error", error);
     body.put("error_description", description);
     getObjectMapper().writeValue(response.getOutputStream(), body);
+  }
+
+  private static List<String> extractResourceValues(HttpServletRequest request) {
+    final String[] values = request.getParameterValues(RESOURCE_PARAM);
+    return values != null ? Arrays.asList(values) : null;
+  }
+
+  private void validateRequestedResource(List<String> resourceValues) throws TokenException {
+    if (!McpResourceUri.validateRequested(resourceValues, authProvider.getIssuer(), "/mcp/token")) {
+      throw new TokenException(
+          McpResourceUri.INVALID_TARGET_ERROR, McpResourceUri.INVALID_TARGET_DESCRIPTION);
+    }
   }
 
   private static String sanitizeRedirectUrlForLogging(String url) {

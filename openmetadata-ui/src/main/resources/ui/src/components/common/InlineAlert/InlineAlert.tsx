@@ -59,6 +59,9 @@ function InlineAlert({
   }, [onClose]);
 
   const combinedText = `${description} ${subDescription}`.trim();
+  // Only text long enough to get the show-more toggle is clamped; clamping a shorter message
+  // (which can still wrap past two lines in a narrow modal) hid its end with no way to read it.
+  const isLong = combinedText.length >= 200;
 
   useEffect(() => {
     mounted.current = true;
@@ -95,7 +98,7 @@ function InlineAlert({
         <Typography
           as="p"
           className={classNames('tw:m-0 tw:text-sm', {
-            'tw:line-clamp-2 tw:break-words': !showMore,
+            'tw:line-clamp-2 tw:break-words': isLong && !showMore,
           })}
           data-testid="inline-alert-description">
           {description}
@@ -106,7 +109,7 @@ function InlineAlert({
             </>
           )}
         </Typography>
-        {combinedText.length >= 200 && (
+        {isLong && (
           <Button
             className="tw:w-fit"
             color="link-color"

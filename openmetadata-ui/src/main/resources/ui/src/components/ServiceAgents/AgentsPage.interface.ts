@@ -65,6 +65,7 @@ export interface Agent {
   // is what binds the log tail to a run.
   currentRunId?: string;
   schedule?: string;
+  scheduleTimezone?: string;
   after?: string;
   finishedAt?: string;
   /**
