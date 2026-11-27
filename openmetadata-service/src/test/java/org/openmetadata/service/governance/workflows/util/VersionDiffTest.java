@@ -90,6 +90,36 @@ class VersionDiffTest {
   }
 
   @Test
+  void between_inheritedReferencesInTheHistoricalVersionAreNotRemovals() {
+    GlossaryTerm before =
+        term(0.1)
+            .withDescription("Original")
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("team")
+                        .withInherited(true)))
+            .withReviewers(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("user")
+                        .withInherited(true)))
+            .withDomains(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("domain")
+                        .withInherited(true)));
+    GlossaryTerm after = term(0.5).withDescription("Edited");
+
+    assertEquals(
+        Map.of("description", new FieldDiff(List.of("Edited"), List.of("Original"))),
+        ChangePreviewUtils.buildChangeMap(VersionDiff.between(before, after)));
+  }
+
+  @Test
   void between_aNewFollowerIsNotAChange() {
     Metric before = new Metric().withId(TERM_ID).withName("metric").withVersion(0.1);
     Metric after =
