@@ -147,7 +147,6 @@ _INTEGER_PARTITION_DATA_TYPES = frozenset(
         DataType.SMALLINT,
         DataType.INT,
         DataType.BIGINT,
-        DataType.LARGEINT,
         DataType.BYTEINT,
         DataType.LONG,
         DataType.NUMBER,

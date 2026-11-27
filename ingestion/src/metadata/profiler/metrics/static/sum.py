@@ -57,6 +57,9 @@ class Sum(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
+        if self.col is None:
+            return None
+
         if is_quantifiable(self.col.type):
             col_expr = column(self.col.name, self.col.type)
             if isinstance(self.col.type, CustomTypes.LARGEINT.value):
