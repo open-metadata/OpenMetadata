@@ -64,8 +64,10 @@ said "Service" ("Servicename", "Servicetyp", "Quellservices").
 
 - English "service" (the connected source system) is "Dienst", masculine: "der Dienst", plural
   "Dienste". Compounds are closed for German words ("Dienstname", "Diensttyp", "Dienstkonto",
-  "Dienstverbindung") and hyphenated with a product or English term ("Pipeline-Dienst",
-  "Dienst-Konnektoren").
+  "Dienstverbindung", "Dienstkonnektoren") and hyphenated with a product or English term
+  ("Pipeline-Dienst", "Dienstkonto-E-Mail"). Exception: a label in a series keeps the form of its
+  siblings, so the lineage level label stays "Dienst-Ebene" next to "Datenbank-Ebene" and
+  "Datei-Ebene".
 - "Service account" is "Dienstkonto", as in the German Google Cloud documentation.
 - Outside the service page sub-headers (see the ingestion amendment), the verb "ingest" is
   "erfassen": "erfassen Sie Metadaten", "Was sollen wir erfassen?". `de-de` has no "ingestieren".
