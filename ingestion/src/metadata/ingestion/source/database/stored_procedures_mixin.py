@@ -13,7 +13,6 @@ Mixin class with common Stored Procedures logic aimed at lineage.
 """
 
 import json
-import pickle
 import tempfile
 import traceback
 from abc import ABC, abstractmethod
@@ -184,34 +183,21 @@ class StoredProcedureLineageMixin(ABC):
         Result.yield_per, not the yield_per/stream_results execution option: that one asks for
         a server-side cursor, which psycopg2 (Redshift) refuses under the AUTOCOMMIT engines
         builders.py creates, and which mssql+pytds answers with zero rows.
+
+        Rows are spooled as validated JSON, not pickled driver values: pytds returns
+        datetimeoffset columns with a tzinfo that cannot be unpickled.
         """
         for row in conn.execute(text(query)).yield_per(STORED_PROCEDURE_FETCH_SIZE):
+            # Bound outside the try so the handler can still name the procedure, and
+            # assigned inside it so an unreadable row cannot escape and drop every row after it.
+            row_data = {}
             try:
                 row_data = row._asdict()
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error reading a stored procedure query history row due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
-                continue
-            pickle.dump(row_data, spool)
-
-    def _read_spooled_history(self, spool: IO[bytes]) -> Iterator[QueryByProcedure]:
-        while True:
-            try:
-                row_data = pickle.load(spool)  # written by _spool_history in this process
-            except EOFError:
-                break
-            try:
                 query_by_procedure = QueryByProcedure.model_validate(row_data)
                 if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
                     query_by_procedure.procedure_name = get_procedure_name_from_call(
                         query_text=query_by_procedure.procedure_text
                     )
-                yield query_by_procedure
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -221,6 +207,13 @@ class StoredProcedureLineageMixin(ABC):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+                continue
+            spool.write(query_by_procedure.model_dump_json(by_alias=True).encode() + b"\n")
+
+    @staticmethod
+    def _read_spooled_history(spool: IO[bytes]) -> Iterator[QueryByProcedure]:
+        for line in spool:
+            yield QueryByProcedure.model_validate_json(line)
 
     @staticmethod
     def _reference_name(reference: EntityReference | None) -> str:

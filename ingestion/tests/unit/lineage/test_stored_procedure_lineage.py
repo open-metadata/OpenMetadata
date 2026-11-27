@@ -21,6 +21,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
+from pytds.tz import FixedOffsetTimezone
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.pool import StaticPool
@@ -1127,6 +1128,21 @@ class TestStoredProcedureHistoryIsSpooled:
         assert queries == []
         assert mixin.status.failed.call_count == 1
         assert "Error reading stored procedure query history" in mixin.status.failed.call_args.args[0].error
+
+    def test_driver_timezone_that_cannot_be_pickled_survives_the_spool(self):
+        """MSSQL Query Store times are datetimeoffset, which pytds tags with FixedOffsetTimezone."""
+        start = datetime(2026, 11, 27, 10, 0, tzinfo=FixedOffsetTimezone(330))
+        row = _history_row("usp_load")
+        row._asdict.return_value |= {"PROCEDURE_START_TIME": start, "QUERY_START_TIME": start}
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [row]
+
+        queries = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in queries] == ["usp_load"]
+        assert queries[0].procedure_start_time == start
+        assert queries[0].query_start_time == start
+        mixin.status.failed.assert_not_called()
 
     def test_reads_every_row_through_a_real_cursor(self):
         engine = create_engine("sqlite://", poolclass=StaticPool)
