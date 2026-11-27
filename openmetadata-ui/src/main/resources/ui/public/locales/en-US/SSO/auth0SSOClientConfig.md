@@ -59,7 +59,7 @@ $$section
 
 **MCP sign-in**
 
-- Allow the authorization code grant (`code`) for this client. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
 - Add `<om-url>/mcp/callback` to the Auth0 application’s allowed callback URLs. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
 $$
 

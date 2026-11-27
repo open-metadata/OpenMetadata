@@ -57,7 +57,7 @@ $$section
 
 **MCP sign-in**
 
-- Allow the authorization code grant (`code`) for this client. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
 - Add `<om-url>/mcp/callback` to the redirect URIs in your Entra app registration. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
 - In **App registrations → your application → Authentication**, choose **Mobile and desktop applications** for an OpenMetadata **Public** client (S256 PKCE, no client secret), or **Web** for a **Confidential** client. A **Single-page application** redirect requires a browser token exchange. OpenMetadata redeems the MCP code on the server. [Microsoft redirect URI setup](https://learn.microsoft.com/en-us/entra/identity-platform/how-to-add-redirect-uri)
 $$
