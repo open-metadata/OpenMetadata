@@ -93,6 +93,7 @@ class ColumnTypeParser:
         "BOOL": "BOOLEAN",
         "BOOLEAN": "BOOLEAN",
         "BPCHAR": "CHAR",
+        "BYTE": "BINARY",
         "BYTEINT": "BYTEINT",
         "BYTES": "BYTES",
         "CHAR": "CHAR",
@@ -190,6 +191,7 @@ class ColumnTypeParser:
         "UNION": "UNION",
         "UROWID": "VARCHAR",
         "VARBINARY": "VARBINARY",
+        "VARBYTE": "VARBINARY",
         "VARCHAR": "VARCHAR",
         "VARIANT": "JSON",
         "JSON": "JSON",
@@ -314,17 +316,6 @@ class ColumnTypeParser:
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*(?:,\s*(\d+)\s*)?\))?")
-
-    try:
-        # pylint: disable=import-outside-toplevel
-        from teradatasqlalchemy import BYTE, VARBYTE
-
-        _COLUMN_TYPE_MAPPING[BYTE] = "BINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["BYTE"] = "BINARY"
-        _COLUMN_TYPE_MAPPING[VARBYTE] = "VARBINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["VARBYTE"] = "VARBINARY"
-    except ImportError:
-        pass
 
     @staticmethod
     def get_column_type(column_type: Any) -> str:

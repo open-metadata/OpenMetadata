@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { MemoryDerivation } from '../../generated/entity/context/memoryDerivation';
 import {
   EntityStatus,
@@ -17,7 +18,14 @@ import {
 } from '../../generated/entity/data/glossaryTerm';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
-import { Task } from '../../rest/tasksAPI';
+import {
+  listTasks,
+  ListTasksParams,
+  Task,
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+} from '../../rest/tasksAPI';
 import {
   getGlossaryEntityLink,
   isAiGeneratedDraft,
@@ -29,6 +37,28 @@ export const PENDING_REVIEW_STATUSES = [
   EntityStatus.Draft,
   EntityStatus.InReview,
 ];
+
+/** Every open approval request matching the filter, across all pages. */
+export const listOpenApprovalTasks = async (
+  filter: Pick<ListTasksParams, 'aboutEntity' | 'aboutEntityIds' | 'fields'>
+): Promise<Task[]> => {
+  const tasks: Task[] = [];
+  let after: string | undefined;
+  do {
+    const { data, paging } = await listTasks({
+      ...filter,
+      status: TaskEntityStatus.Open,
+      category: TaskCategory.Approval,
+      type: TaskEntityType.RequestApproval,
+      limit: PAGE_SIZE_LARGE,
+      after,
+    });
+    tasks.push(...data);
+    after = paging?.after;
+  } while (after);
+
+  return tasks;
+};
 
 /** Who proposed a term, or nothing once a person has decided it. */
 export const getProposalSource = (

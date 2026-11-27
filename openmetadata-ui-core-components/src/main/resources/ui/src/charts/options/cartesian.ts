@@ -426,7 +426,7 @@ const valueAxes = <T extends object>(
     const built = valueAxis(
       theme,
       axis,
-      horizontal ? 'bottom' : index ? 'right' : 'left'
+      horizontal ? (index ? 'top' : 'bottom') : index ? 'right' : 'left'
     );
 
     return isCategoryValueAxis(input, index)

@@ -3,7 +3,6 @@ import copy
 import logging
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -120,26 +119,40 @@ def update_ri_version(args):
 
 def update_pyproject_version(args):
     """Updates pyproject version."""
+    from packaging.utils import canonicalize_name
     from packaging.version import Version
+    from python_tools import ensure_uv
 
-    path = Path(args.file_path)
-    text = path.read_text(encoding="utf-8")
-    metadata = read_toml(text)["project"]
     version = str(Version(get_python_version(args.version)))
-    updated = project_version(text, version)
-    lock = path.with_name("uv.lock")
-    changes = {path: updated}
-    uv = Path(sys.executable).with_name("uv")
-    if lock.is_file():
-        changes[lock] = local_lock_versions(
-            lock.read_text(encoding="utf-8"), {metadata["name"]: (metadata["version"], version)}
-        )
-        subprocess.run([str(uv), "lock", "--check", "--project", str(path.parent)], check=True)
-    logger.info("Updating %s version to %s", path, version)
-    for target, content in changes.items():
-        target.write_text(content, encoding="utf-8")
-    if lock.is_file():
-        subprocess.run([str(uv), "lock", "--check", "--project", str(path.parent)], check=True)
+    originals = {}
+    changes = {}
+    versions = {}
+    locks = []
+    for path in args.file_path:
+        text = originals[path] = path.read_text(encoding="utf-8")
+        metadata = read_toml(text)["project"]
+        versions[canonicalize_name(metadata["name"])] = (metadata["version"], version)
+        changes[path] = project_version(text, version)
+        lock = path.with_name("uv.lock")
+        if lock.is_file():
+            locks.append(lock)
+
+    uv = ensure_uv()
+    for lock in locks:
+        originals[lock] = lock.read_text(encoding="utf-8")
+        changes[lock] = local_lock_versions(originals[lock], versions)
+        subprocess.run([str(uv), "lock", "--check", "--project", str(lock.parent)], check=True)
+
+    logger.info("Updating Python projects to %s", version)
+    try:
+        for target, content in changes.items():
+            target.write_text(content, encoding="utf-8")
+        for lock in locks:
+            subprocess.run([str(uv), "lock", "--check", "--project", str(lock.parent)], check=True)
+    except subprocess.CalledProcessError:
+        for target, content in originals.items():
+            target.write_text(content, encoding="utf-8")
+        raise
 
 
 def update_openapi_version(args):
@@ -176,7 +189,9 @@ def main():
 
     # Update pyproject.toml Version
     parser_upv = subparsers.add_parser("update_pyproject_version")
-    parser_upv.add_argument("--file-path", "-f", type=str, help="pyproject.toml file to update.")
+    parser_upv.add_argument(
+        "--file-path", "-f", type=Path, action="append", required=True, help="Project file to update."
+    )
     parser_upv.add_argument("--version", "-v", type=str, help="Version to update to")
     parser_upv.set_defaults(func=update_pyproject_version)
 

@@ -26,6 +26,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage } from '../../../utils/common';
 import { visitProfilerTab } from '../../../utils/incidentManager';
 import { reindexEntities } from '../../../utils/reindex';
+import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -47,6 +48,7 @@ test('Profiler settings survive a table reindex', async ({ browser }) => {
 
     await page.getByTestId('profiler-setting-btn').click();
     await page.getByTestId('profiler-settings-modal').waitFor();
+    await waitForAriaOverlayToSettle(page);
 
     const settings = page.getByRole('dialog', { name: 'Settings' });
     const sampleType = settings

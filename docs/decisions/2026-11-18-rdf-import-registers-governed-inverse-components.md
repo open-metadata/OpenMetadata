@@ -1,0 +1,25 @@
+# RDF import preserves governed predicates and validates inverse components before registration
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-18 (initial); v2 2026-11-18 (validate before wiring; re-read a partner after a lost version comparison); v3 2026-11-18 (a soft-deleted type on a named predicate is restored, not aliased)
+- **Deciders:** OpenMetadata maintainers
+- **Guard:** GlossaryRdfImporterTest#collectRelationTypesRegistersOnePredicateOnceAcrossEdgeAndInverseSlots; GlossaryRdfImportIT#importReusesTheGovernedNameOfAnAuthoredPredicate; GlossaryRdfImportIT#importSkipsInvalidInversePairWithoutSavingEitherHalf; GlossaryRdfImportIT#importDoesNotRejectAValidPairForAnUnwiredInvalidDeclaration; GlossaryRdfImportIT#importRestoresASoftDeletedInverseFoundByItsPredicate; GlossaryRdfImportIT#importSkipsANameHeldByADeletedTypeOnAnotherPredicate; SoftDeletedRelationTypesTest; GlossaryRdfImportConcurrencyIT
+- **Related:** #38042, #38069, #38147, #38140; ADR:2026-11-18-rdf-import-symmetric-inverse-partners-stay-unlinked, ADR:2026-11-18-a-relationship-type-in-use-cannot-be-deleted
+
+## Context
+
+A predicate can already have a governed name different from its IRI local name, or appear in multiple slots of one import. Saving definitions individually before validating their partners can leave a half-saved pair. When a partner declares no inverse, it pairs with the first property, in IRI order, that declares it as an inverse, so an invalid property could claim it ahead of a valid one. Existing definitions may also change while the import is planned.
+
+## Decision
+
+Use RDF predicate identity for both authored edges and inverse targets. Reuse the governing registry type or an already planned type with that predicate; do not create an alias from another local name. Edges use the resolved governed name.
+
+Validate every new definition before wiring inverse pairs, in real imports and dry runs alike. A definition that fails is skipped with a message naming it, and so is any new definition whose own `owl:inverseOf` declaration names a skipped one. A skipped definition's declaration does not claim a partner that declares nothing: that partner pairs with the next valid claimer, or with none. After wiring, the definitions are validated again; a failure there skips every new member wired to the failing one and cancels their pending existing-partner updates. Other valid definitions can import. The import returns HTTP 200 with skips and accurate counts rather than failing the whole import with HTTP 400.
+
+A predicate the import names, as an edge or a declared inverse, that only a soft-deleted type holds brings that type back rather than registering a new one beside it, which a later restore would leave as a second live type on the predicate. Only the predicate decides, one type per predicate (the most recently changed when several soft-deleted types hold it), and nothing is restored onto a predicate a live type holds. A soft-deleted type that holds only the name the import would register is never restored: its predicate differs, and restoring it would move the authored edges onto that predicate. Registering a new type under that name would overwrite the deleted one by name, so that new type is skipped with a message naming the deleted type's predicate (restore or rename it), as any other skipped definition. A real import restores the type before collecting definitions, so validation and wiring see a live, governed type whose stored definition is kept; restoring it applies its own inverse rule (a stale inverse is cleared or its unused partner linked back) and records a restore change event. A dry run restores nothing: it reports the type as one it would restore and validates and wires against it as that restore would leave it.
+
+Refresh existing partners before publishing new types, and again before completing a partner. Complete it with EntityRepository.updateIfCurrent on an unchanged original and a copy, so a stale update cannot overwrite a newer version. When the version comparison fails, re-read the partner once. If it now points at the new type, the pair is complete. If it is still unclaimed (only an unrelated edit happened), retry the conditional write once. If another type has claimed it, or it changes again, keep that edit and clear the new type's inverse before adding its edges. A partner-completion validation failure likewise clears the new inverse and reports the skipped update.
+
+## Consequences
+
+Governed identities and definitions survive import, and an invalid definition cannot take down a valid pair that it merely claims. Two imports that make the same claim at once both end with a consistent pair, and an unrelated concurrent edit does not drop it. This is not a transaction over all definitions. A same-user PATCH consolidated in-session can keep its version, so the version comparison does not detect that edit; such an edit can still be overwritten. Previously stored definitions are not deleted when an imported component is rejected. No migration or schema change is required.

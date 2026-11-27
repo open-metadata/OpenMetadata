@@ -22,14 +22,14 @@ The user needs `SHOW VIEW` to ingest view definitions. When the user has no `SEL
 To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.0.20 and up). With only `EXECUTE`, the connector ingests them without their code.
 
 $$note
-OpenMetadata supports MySQL version `8.0.0` and up. 
+OpenMetadata supports MySQL version `8.0.0` and up.
 $$
 
-### Lineage & Usage 
+### Lineage & Usage
 To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
 
 ```sql
--- Enable Logging 
+-- Enable Logging
 SET GLOBAL general_log='ON';
 set GLOBAL log_output='table';
 

@@ -82,8 +82,10 @@ export const EntityLinksCell: FC<{
 
   const renderItem = (item: EntityReference) => (
     <ProfileHashLink
+      className="tw:block tw:max-w-full tw:truncate"
       key={item.id}
       target={targetFn(item.fullyQualifiedName ?? item.name ?? '')}
+      title={getEntityName(item)}
       onNavigate={goTo}>
       {getEntityName(item)}
     </ProfileHashLink>
@@ -107,7 +109,7 @@ export const EntityLinksCell: FC<{
             {t('label.plus-count-more', { count: items.length - LIST_CAP })}
           </Button>
           <Popover className="tw:overflow-y-auto" maxHeight={320}>
-            <Box className="tw:p-3" direction="col" gap={1}>
+            <Box className="tw:max-w-xs tw:p-3" direction="col" gap={1}>
               {items.slice(LIST_CAP).map(renderItem)}
             </Box>
           </Popover>

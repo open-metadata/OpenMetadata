@@ -29,8 +29,6 @@ import java.sql.ResultSet;
 import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -106,10 +104,7 @@ class JobDAOTest {
             .getMethod("markStaleRunningJobsFailed", long.class, long.class)
             .getAnnotation(SqlUpdate.class);
 
-    assertTrue(
-        update
-            .value()
-            .contains("'" + BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name() + "'"));
+    assertTrue(update.value().contains("'" + BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION + "'"));
   }
 
   @Test
@@ -141,7 +136,7 @@ class JobDAOTest {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
     when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
     when(jobDao.insertJobInternal(
-            BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name(),
+            BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION,
             JobDAO.MEMORY_GLOSSARY_DERIVATION_HANDLER,
             "{}",
             "admin",
@@ -180,7 +175,7 @@ class JobDAOTest {
 
     verify(jobDao, never())
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -197,7 +192,7 @@ class JobDAOTest {
 
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -215,7 +210,7 @@ class JobDAOTest {
 
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{\"jobKey\":\"page:page-id\"}",
             "admin",
@@ -245,7 +240,7 @@ class JobDAOTest {
     verify(jobDao, times(2)).countInFlightMemoryJobs("contextFile:file-id:content-id", true);
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{}",
             "admin",
@@ -262,34 +257,25 @@ class JobDAOTest {
     verify(jobDao).countInFlightMemoryJobs("contextFile:file-id:content-id", false);
     verify(jobDao)
         .insertJobInternal(
-            BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+            BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
             "ContextMemoryExtractionJobHandler",
             "{}",
             "admin",
             null);
   }
 
-  @ParameterizedTest
-  @ValueSource(
-      strings = {
-        "ADMIN_OPS_REINDEX",
-        "ADMIN_OPS_DEPLOY_PIPELINES",
-        "ADMIN_OPS_SSO_CONFIG",
-        "ADMIN_OPS_AUTHORIZER_CONFIG",
-        "ADMIN_OPS_LIMITS_CONFIG",
-        "ADMIN_OPS_APP_CONFIG"
-      })
-  void workerReadsAQueuedAdminOpsJob(String storedJobType) throws Exception {
+  @Test
+  void workerReadsAJobTypeOpenMetadataDoesNotDefine() throws Exception {
     ResultSet row = mock(ResultSet.class);
     when(row.getLong("id")).thenReturn(7L);
-    when(row.getString("jobType")).thenReturn(storedJobType);
-    when(row.getString("methodName")).thenReturn("AdminOpsJobHandler");
+    when(row.getString("jobType")).thenReturn("DOWNSTREAM_REINDEX");
+    when(row.getString("methodName")).thenReturn("DownstreamReindexHandler");
     when(row.getString("jobArgs")).thenReturn("{}");
     when(row.getString("status")).thenReturn("PENDING");
 
     BackgroundJob job = new JobDAO.BackgroundJobMapper().map(row, null);
 
-    assertEquals(storedJobType, job.getJobType().value());
+    assertEquals("DOWNSTREAM_REINDEX", job.getJobType());
     assertEquals(BackgroundJob.Status.PENDING, job.getStatus());
   }
 }

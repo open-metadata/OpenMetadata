@@ -61,8 +61,12 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     [entityType.customProperties]
   );
 
-  const { canCreate, canDelete, canEditAll } =
-    getDerivedPermissionFlags(permission);
+  // Deleting a custom property is a JSON Patch `remove` on
+  // PATCH /metadata/types/{id}; the server authorizes that as EditAll (no
+  // narrower field mapping is registered for `customProperties`), so both
+  // edit and delete are gated on canEditAll — matching the Settings page
+  // (CustomPropertyTable uses `hasAccess` = EditAll for both actions).
+  const { canCreate, canEditAll } = getDerivedPermissionFlags(permission);
 
   const handleDeleteConfirm = useCallback(
     async (propertyToDelete: CustomProperty) => {
@@ -133,7 +137,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
           <Tabs.Panel id="custom-properties">
             <CustomPropertiesListTable
-              canDelete={canDelete}
+              canDelete={canEditAll}
               canEdit={canEditAll}
               containerClassName="custom-card-with-table"
               customProperties={customProperties}

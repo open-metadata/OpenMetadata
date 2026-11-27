@@ -73,7 +73,6 @@ function FileDetailsPage() {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.FILE, fileFQN);
 
   const { id: fileId, version: currentVersion } = fileDetails;
@@ -282,7 +281,7 @@ function FileDetailsPage() {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewBasic) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder

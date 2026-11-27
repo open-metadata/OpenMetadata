@@ -40,14 +40,12 @@ public final class OntologyDocument {
   }
 
   public static SerializedOntology serialize(String requestedFormat) {
-    RdfSerializationFormat format = RdfSerializationFormat.parse(requestedFormat);
-    ByteArrayOutputStream output = new ByteArrayOutputStream();
-    RDFDataMgr.write(output, Holder.MODEL, format.rdfFormat());
-    return new SerializedOntology(
-        format.externalName(),
-        output.toString(StandardCharsets.UTF_8),
-        format.mediaType(),
-        format.extension());
+    return render(Holder.MODEL, RdfSerializationFormat.parse(requestedFormat));
+  }
+
+  /** Collate loads a fresh canonical ontology model to resolve the vocabulary it serves. */
+  public static Model loadCanonicalModel() {
+    return loadModel(RESOURCES);
   }
 
   static Model loadModel(List<String> resourcePaths) {
@@ -80,6 +78,32 @@ public final class OntologyDocument {
           "Unable to parse ontology resource: " + resourcePath, exception);
     }
   }
+
+  /**
+   * One class with the properties whose domain covers it and, by label and comment, the shared
+   * properties recorded for it; or one property; from the bundled ontology. {@code term} is a prefixed name such as {@code om:Table} or an absolute IRI.
+   */
+  public static Optional<TermEntry> describeTerm(String term, String requestedFormat) {
+    RdfSerializationFormat format = RdfSerializationFormat.parse(requestedFormat);
+    return OntologyTermEntry.resolve(Holder.MODEL, term)
+        .map(
+            resource ->
+                new TermEntry(
+                    resource.getURI(),
+                    render(OntologyTermEntry.extract(Holder.MODEL, resource), format)));
+  }
+
+  private static SerializedOntology render(Model model, RdfSerializationFormat format) {
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    RDFDataMgr.write(output, model, format.rdfFormat());
+    return new SerializedOntology(
+        format.externalName(),
+        output.toString(StandardCharsets.UTF_8),
+        format.mediaType(),
+        format.extension());
+  }
+
+  public record TermEntry(String iri, SerializedOntology document) {}
 
   public record SerializedOntology(
       String format, String body, String mediaType, String extension) {}

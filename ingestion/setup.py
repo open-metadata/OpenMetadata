@@ -50,7 +50,7 @@ VERSIONS = {
     # both entries: their markers are mutually exclusive.
     "pyarrow": "pyarrow>=26.0.0,<27; python_version >= '3.11'",
     "pyarrow-py310": "pyarrow>=23.0.1,<26; python_version < '3.11'",
-    "pydantic": "pydantic>=2.12.5,<3",
+    "pydantic": "pydantic>=2.14.2,<3",  # GHSA-qpmf-fgh3-ff25, GHSA-3r8g-cqwr-jr29 extra-data validation bypasses
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     # 2.6.0 annotates with typing.Self (3.11+) but declares no requires-python floor, so
@@ -110,6 +110,7 @@ VERSIONS = {
 }
 
 COMMONS = {
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
@@ -208,7 +209,7 @@ base_requirements = {
     "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
+    "kubernetes>=36.0.3,<37",  # 35.0.0 ignores NO_PROXY; 36.0.0 broke in-cluster auth (fixed 36.0.1); 37 rewrites the client
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
@@ -400,7 +401,7 @@ plugins: dict[str, set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
-    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
+    "nats": {*COMMONS["nats"]},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -434,7 +435,7 @@ plugins: dict[str, set[str]] = {
     },
     "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
-    "openlineage": {*COMMONS["kafka"]},
+    "openlineage": {*COMMONS["kafka"], *COMMONS["nats"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},

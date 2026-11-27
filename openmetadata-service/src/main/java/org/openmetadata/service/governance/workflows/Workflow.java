@@ -53,6 +53,10 @@ public class Workflow {
   // WorkflowInstance record, so this string stays fixed for the whitelist match.
   public static final String TERMINATED_BY_ADMIN =
       "Workflow instance terminated by an administrator";
+  // Cause string passed to deleteProcessInstance when a user closes the task the process waits on.
+  // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for it.
+  public static final String TASK_CLOSED_BY_USER =
+      "Workflow process ended because its task was closed";
   public static final String APPROVE_CONDITION = "approve";
   public static final String REJECT_CONDITION = "reject";
   public static final String LEGACY_APPROVE_CONDITION = "true";

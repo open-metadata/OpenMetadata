@@ -22,7 +22,7 @@ import { Query, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 // Both stylesheets target RAQB's own markup, which the canvas no longer renders, so neither reaches this component's
 // DOM.
 import '@react-awesome-query-builder/ui/css/styles.css';
-import { debounce, isEqual } from 'lodash';
+import { cloneDeep, debounce, isEqual } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
@@ -35,7 +35,10 @@ import {
   formatQuery,
   isQueryTreeComplete,
 } from '../../../utils/queryBuilder/formatters';
-import { loadQueryBuilderTree } from '../../../utils/queryBuilder/tree';
+import {
+  loadQueryBuilderTree,
+  sanitizeQueryBuilderTree,
+} from '../../../utils/queryBuilder/tree';
 import {
   QUERY_BUILDER_CONJUNCTION_MODE,
   QUERY_BUILDER_GROUP_MODE,
@@ -148,7 +151,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   );
 
   useEffect(() => {
-    setTreeInternal((current) => QbUtils.checkTree(current, config));
+    setTreeInternal((current) => sanitizeQueryBuilderTree(current, config));
   }, [config]);
 
   const valueRef = useRef(value);
@@ -221,14 +224,11 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
       onValidityChange?.(isQueryTreeComplete(nextTree, nextConfig));
 
       if (queryFilter) {
-        // One scoping pass feeds both: addEntityTypeFilter mutates in place, so scoping twice would double the entity-
-        // type clause.
+        // Taken before scoping: addEntityTypeFilter mutates the filter in place.
+        const builderFilter = cloneDeep(queryFilter);
+        // One scoping pass feeds both the link and the count; scoping twice would double the entity-type clause.
         const scopedFilter = getScopedQueryFilter(queryFilter, entityType);
-        nextExploreUrl = getQueryBuilderExploreUrl(
-          scopedFilter,
-          nextConfig,
-          nextTree
-        );
+        nextExploreUrl = getQueryBuilderExploreUrl(builderFilter, scopedFilter);
         setExploreUrl(nextExploreUrl);
 
         if (showCountPreview) {

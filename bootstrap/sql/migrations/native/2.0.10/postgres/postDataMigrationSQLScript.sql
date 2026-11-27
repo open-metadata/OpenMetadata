@@ -1,0 +1,3 @@
+-- Nothing runs after the 2.0.10 data migration, which is the Java step in
+-- org.openmetadata.service.migration.postgres.v2010. This file keeps the version folder in the tree
+-- for that step.

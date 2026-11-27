@@ -299,7 +299,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 <Tabs
                   className="tw:gap-3"
                   data-testid="tabs"
-                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  selectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
                   <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (

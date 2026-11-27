@@ -650,6 +650,7 @@ public class UserApprovalTask implements NodeInterface {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
       result.put("addDomainOwners", config.getOrDefault("addDomainOwners", false));
+      result.put("cascadeOwners", config.getOrDefault("cascadeOwners", false));
       result.put("emptyAssigneeStrategy", config.getOrDefault("emptyAssigneeStrategy", "none"));
 
       Set<String> users = new HashSet<>();

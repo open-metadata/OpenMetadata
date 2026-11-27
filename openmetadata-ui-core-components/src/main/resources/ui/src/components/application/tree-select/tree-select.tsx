@@ -312,7 +312,7 @@ export const TreeSelect = <T = unknown,>({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const prevValueRef = useRef<typeof value>(undefined);
+  const prevValueKeyRef = useRef<string | undefined>(undefined);
   // Armed until a focus event consumes it; a timed reset loses the race and reopens.
   const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
@@ -427,12 +427,20 @@ export const TreeSelect = <T = unknown,>({
     [selectedData, isLocked]
   );
 
+  // Keyed by the selected nodes' content, not the array's identity: a parent
+  // that re-renders with an equal array (an entity refetch rebuilds its tags)
+  // must not discard a staged draft, but a changed label or data (a renamed
+  // domain) still updates the selection.
+  const valueKey = JSON.stringify(
+    toArray(value).map((node) => [node.id, node.label, node.data ?? null])
+  );
   useEffect(() => {
-    if (value !== prevValueRef.current) {
-      prevValueRef.current = value;
+    if (valueKey !== prevValueKeyRef.current) {
+      prevValueKeyRef.current = valueKey;
       setSelection(toArray(value));
     }
-  }, [value, setSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey, setSelection]);
 
   // Resync on open, including a programmatic one via `isOpen`. Staged mode
   // drops the draft; a controlled immediate picker drops an optimistic pick the

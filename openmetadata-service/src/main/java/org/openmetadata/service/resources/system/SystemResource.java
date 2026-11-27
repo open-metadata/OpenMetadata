@@ -50,6 +50,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -123,6 +124,7 @@ import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeMapper;
 import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -831,27 +833,6 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
-
-      if (mergedSettings.getGlobalSettings() != null
-          && mergedSettings.getGlobalSettings().getKeywordWeight() != null
-          && mergedSettings.getGlobalSettings().getSemanticWeight() != null) {
-        try {
-          Entity.getSearchRepository()
-              .updateHybridSearchPipeline(
-                  mergedSettings.getGlobalSettings().getKeywordWeight(),
-                  mergedSettings.getGlobalSettings().getSemanticWeight());
-        } catch (Exception e) {
-          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
-          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
-          // the whole settings save on that made search settings unsaveable there. The weights
-          // being saved here are the ones hybrid search reads per query, so they take effect
-          // regardless of whether the stored pipeline could be refreshed.
-          LOG.warn(
-              "Saved search settings but could not refresh the named hybrid search pipeline; "
-                  + "the new weights still apply to hybrid queries",
-              e);
-        }
-      }
     }
 
     LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
@@ -1287,20 +1268,23 @@ public class SystemResource {
     try {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
     } catch (AuthenticationException notApplied) {
-      throw refusalOf(written, previous, ExceptionUtils.getRootCauseMessage(notApplied));
+      throw refusalOf(written, stored, previous, ExceptionUtils.getRootCauseMessage(notApplied));
     }
   }
 
   /**
-   * Puts {@code previous} back over {@code written}, a save this server could not apply, but only
-   * while the rows still hold it, and answers for what is left: 400 when it was put back, 412 when
-   * another save replaced it meanwhile and was kept, 500 when putting it back failed and the
-   * refused configuration may still be stored.
+   * Undoes {@code written}, a save this server could not apply, but only while the rows still hold
+   * it, and answers for what is left: 400 when it was undone, 412 when another save replaced it
+   * meanwhile and was kept, 500 when undoing it failed and the refused configuration may still be
+   * stored.
    */
   private WebApplicationException refusalOf(
-      StoredSecurityConfiguration written, SecurityConfiguration previous, String reason) {
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous,
+      final String reason) {
     try {
-      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+      putBack(written, stored, previous);
     } catch (PreconditionFailedException savedMeanwhile) {
       LOG.warn(
           "Kept a security configuration saved while one that could not be applied ({}) was in"
@@ -1328,6 +1312,22 @@ public class SystemResource {
     }
     return new BadRequestException(
         "The security configuration could not be applied, so it was not saved: " + reason);
+  }
+
+  /**
+   * Puts the rows {@code written} replaced back as they were read. When a row was missing there
+   * were none to put back, so the configuration this server runs, {@code previous}, is stored as
+   * any other write is.
+   */
+  private void putBack(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous) {
+    if (stored == null) {
+      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+    } else {
+      systemRepository.restoreSecurityConfigurationIfCurrent(stored, written);
+    }
   }
 
   /**
@@ -2016,6 +2016,13 @@ public class SystemResource {
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+    // The setting is saved before its types are deleted, so a delete the guard would refuse has to
+    // be refused here, while nothing is written yet.
+    ((RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE))
+        .requireRemovableTogether(
+            removedRelationTypes,
+            new LegacyRelationshipTypeMapper(Clock.systemUTC())
+                .map(newConfig, Entity.ADMIN_USER_NAME));
   }
 
   private static int relationTypeUsage(

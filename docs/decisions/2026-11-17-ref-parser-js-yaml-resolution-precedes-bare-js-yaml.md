@@ -1,6 +1,6 @@
 # The ref-parser's js-yaml 4 resolution stays above the bare js-yaml resolution
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-19-ui-yarn-resolutions-pin-only-what-a-fresh-resolve-gets-wrong
 - **Revisions:** v1 2026-11-17 (initial)
 - **Deciders:** Harsh Vador
 - **Guard:** `generate-types` in `.github/workflows/typescript-type-generation.yml`, which runs

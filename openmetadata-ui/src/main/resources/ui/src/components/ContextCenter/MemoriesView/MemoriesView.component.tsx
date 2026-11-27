@@ -30,7 +30,7 @@ import {
   Time,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
-import { FC, useMemo } from 'react';
+import { FC, Fragment, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
@@ -41,6 +41,10 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import {
+  MemoryActionPermissions,
+  NO_MEMORY_ACTIONS,
+} from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
@@ -121,6 +125,15 @@ const MemoryRowSkeleton: FC = () => (
   </Box>
 );
 
+const MetaSeparator: FC = () => (
+  <Typography
+    aria-hidden
+    className="tw:text-utility-gray-400 tw:leading-none tw:select-none"
+    size="text-xs">
+    &middot;
+  </Typography>
+);
+
 /** The owner leads; whoever changed the memory last follows when that is someone else. */
 const MemoryRowHeader: FC<{
   owner?: string;
@@ -142,9 +155,7 @@ const MemoryRowHeader: FC<{
       )}
       {showsUpdater && (
         <>
-          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
-            &middot;
-          </span>
+          <MetaSeparator />
           <Typography
             className="tw:text-quaternary"
             data-testid="memory-updated-by"
@@ -158,9 +169,7 @@ const MemoryRowHeader: FC<{
       )}
       {!showsUpdater && updatedAt !== undefined && (
         <>
-          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
-            &middot;
-          </span>
+          <MetaSeparator />
           <Typography className="tw:text-quaternary" size="text-xs">
             {getShortRelativeTime(updatedAt)}
           </Typography>
@@ -221,34 +230,14 @@ const MemoryLinkedEntities: FC<MemoryLinkedEntitiesProps> = ({
   );
 };
 
-interface MemoryUsageInfoProps {
-  memory: ContextMemory;
-}
-
-const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
+const MemoryVoteCounts: FC<{
+  positiveCount: number;
+  negativeCount: number;
+}> = ({ positiveCount, negativeCount }) => {
   const { t } = useTranslation();
-  const { count, lastAt } = getMemoryCitations(memory);
-  const {
-    positiveCount = 0,
-    negativeCount = 0,
-    correctedCount = 0,
-  } = memory.outcomes ?? {};
-
-  if (count === undefined && lastAt === undefined) {
-    return null;
-  }
 
   return (
-    <Box
-      align="center"
-      className="tw:mt-1 tw:text-quaternary"
-      data-testid="memory-usage-info"
-      gap={1}>
-      <Time size={16} />
-      <Typography className="tw:whitespace-nowrap" size="text-xs">
-        {count === undefined ? '' : t('label.cited-n-times', { count })}
-        {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
-      </Typography>
+    <Box align="center" gap={2}>
       {/* A Box has no role, so an aria-label on it is never read: the counts are named in text. */}
       {positiveCount > 0 && (
         <Box align="center" data-testid="memory-helpful-count" gap={1}>
@@ -272,24 +261,99 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
           </Typography>
         </Box>
       )}
-      {correctedCount > 0 && (
+    </Box>
+  );
+};
+
+interface UsageSegment {
+  key: string;
+  node: ReactNode;
+}
+
+interface MemoryUsageInfoProps {
+  memory: ContextMemory;
+}
+
+const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
+  const { t } = useTranslation();
+  const { count, lastAt } = getMemoryCitations(memory);
+  const {
+    positiveCount = 0,
+    negativeCount = 0,
+    correctedCount = 0,
+  } = memory.outcomes ?? {};
+
+  if (count === undefined && lastAt === undefined) {
+    return null;
+  }
+
+  const hasVotes = positiveCount > 0 || negativeCount > 0;
+  const candidates: Array<UsageSegment | false> = [
+    count !== undefined && {
+      key: 'cited',
+      node: (
+        <Typography className="tw:whitespace-nowrap" size="text-xs">
+          {t('label.cited-n-times', { count })}
+        </Typography>
+      ),
+    },
+    Boolean(lastAt) && {
+      key: 'last-used',
+      node: (
+        <Typography
+          className="tw:whitespace-nowrap"
+          data-testid="memory-last-used"
+          size="text-xs">
+          {t('label.last-used-time', { time: getShortRelativeTime(lastAt) })}
+        </Typography>
+      ),
+    },
+    hasVotes && {
+      key: 'votes',
+      node: (
+        <MemoryVoteCounts
+          negativeCount={negativeCount}
+          positiveCount={positiveCount}
+        />
+      ),
+    },
+    correctedCount > 0 && {
+      key: 'corrected',
+      node: (
         <Typography
           className="tw:whitespace-nowrap"
           data-testid="memory-corrected-count"
           size="text-xs">
           {t('label.corrected-n-times', { count: correctedCount })}
         </Typography>
-      )}
+      ),
+    },
+  ];
+  const segments = candidates.filter((segment): segment is UsageSegment =>
+    Boolean(segment)
+  );
+
+  return (
+    <Box
+      align="center"
+      className="tw:mt-1 tw:text-quaternary"
+      data-testid="memory-usage-info"
+      gap={2}
+      wrap="wrap">
+      <Time size={16} />
+      {segments.map(({ key, node }, index) => (
+        <Fragment key={key}>
+          {index > 0 && <MetaSeparator />}
+          {node}
+        </Fragment>
+      ))}
     </Box>
   );
 };
 
-interface MemoryRowActionsProps {
+interface MemoryRowActionsProps extends MemoryActionPermissions {
   memory: ContextMemory;
   memoryUrl: string;
-  canActOnMemory: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
 }
@@ -297,7 +361,6 @@ interface MemoryRowActionsProps {
 const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   memory,
   memoryUrl,
-  canActOnMemory,
   canEdit,
   canDelete,
   onDeleteMemory,
@@ -308,7 +371,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyButton value={memoryUrl} />
-      {canActOnMemory && canEdit && onEditMemory && (
+      {canEdit && onEditMemory && (
         <ButtonUtility
           data-testid="edit-memory-btn"
           icon={Edit01}
@@ -317,7 +380,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
           onClick={() => onEditMemory(memory)}
         />
       )}
-      {canActOnMemory && canDelete && (
+      {canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
       )}
     </Box>
@@ -325,11 +388,8 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
 };
 
 interface MemoryRowProps {
-  currentUserName?: string;
-  isAdminUser?: boolean;
   memory: ContextMemory;
-  canEdit?: boolean;
-  canDelete?: boolean;
+  actions: MemoryActionPermissions;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onTogglePin?: (memory: ContextMemory) => void;
@@ -418,19 +478,13 @@ const useMemoryAuthors = (memory: ContextMemory) => {
 };
 
 const MemoryRow: FC<MemoryRowProps> = ({
-  currentUserName,
-  isAdminUser,
+  actions,
   memory,
-  canEdit,
-  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
   const authors = useMemoryAuthors(memory);
-  const isOwner =
-    memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
-  const canActOnMemory = isOwner || Boolean(isAdminUser);
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -521,9 +575,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <MemoryRowActions
-          canActOnMemory={canActOnMemory}
-          canDelete={canDelete}
-          canEdit={canEdit}
+          canDelete={actions.canDelete}
+          canEdit={actions.canEdit}
           memory={memory}
           memoryUrl={memoryUrl}
           onDeleteMemory={onDeleteMemory}
@@ -535,14 +588,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
 };
 
 const MemoriesView: FC<MemoriesViewProps> = ({
-  currentUserName,
   data,
-  isAdminUser,
+  getMemoryActions = () => NO_MEMORY_ACTIONS,
   isLoading,
   onDeleteMemory,
   onEditMemory,
-  canEdit,
-  canDelete,
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
@@ -604,10 +654,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
-          canDelete={canDelete}
-          canEdit={canEdit}
-          currentUserName={currentUserName}
-          isAdminUser={isAdminUser}
+          actions={getMemoryActions(memory)}
           isPinningMemoryId={isPinningMemoryId}
           key={memory.id}
           memory={memory}

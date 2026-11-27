@@ -16,6 +16,7 @@ package org.openmetadata.service.governance.workflows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
@@ -32,6 +33,17 @@ public final class TriggeringChange {
    * The change of {@code triggeringVersion} on {@code entity}, or the entity's current change when
    * the run carries no version, the entity is still at it, or its history no longer has it.
    */
+  /**
+   * Whether a run whose entity shows no change still has something to judge. Only a create carries
+   * no change: an update that leaves none (an edit undone within its session reverts the entity to
+   * a version without one) has nothing to judge. A run started before the event type was recorded
+   * keeps treating a missing change as a create.
+   */
+  public static boolean mayCarryNoChange(Object triggeringEventType) {
+    return triggeringEventType == null
+        || EventType.ENTITY_CREATED.value().equals(triggeringEventType);
+  }
+
   public static ChangeDescription of(EntityInterface entity, Object triggeringVersion) {
     ChangeDescription change = entity.getChangeDescription();
     // Flowable hands process variables back as Object; the event consumer stores the version as

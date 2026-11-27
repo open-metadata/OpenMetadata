@@ -12,9 +12,10 @@ allowed-tools:
 
 # UI Checkstyle / ESLint + Prettier + organize-imports
 
-The `UI Checkstyle` GitHub workflow (`.github/workflows/ui-checkstyle.yml`) runs
-a **single `checkstyle` job** (after `check-changes` + `authorize` gates) whose
-steps gate **six** checks, each on only the files the PR changed:
+The `ui-checkstyle` composite action (`.github/actions/ui-checkstyle/action.yml`,
+run by the `lint` job of `ui-ci.yml`, the `ui` job of `ci-pr.yml` and `ci-merge-queue.yml`
+when the UI changed) runs steps that gate, among others, these **six** checks,
+each on only the files the PR changed:
 
 1. ESLint + Prettier + organize-imports on **src**
    (`openmetadata-ui/src/main/resources/ui/src/...`)
@@ -25,7 +26,8 @@ steps gate **six** checks, each on only the files the PR changed:
 6. ESLint + Prettier on **core-components**
    (`openmetadata-ui-core-components/src/main/resources/ui/src/...`)
 
-Any failing step fails the required **`ui-checkstyle`** status check. Each lint
+Any failing step fails the required **`ui-tests-status`** check (and, on a pull
+request, skips the Jest and browser tests until checkstyle passes). Each lint
 step reformats the changed files and fails if the reformat produces a diff — i.e.
 the committed tree must already be formatted. This skill runs the same sequence
 locally so CI never has to ask.

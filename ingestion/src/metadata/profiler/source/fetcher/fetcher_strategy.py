@@ -15,7 +15,7 @@ Entity Fetcher Strategy
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -279,6 +279,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             entity=Table,
             fields=FIELDS,
             params=params,
+            skip_on_failure=True,
+            on_skip=self._record_unparseable_table,
         )
 
         has_deferred = self._has_conflicting_filter_modes()
@@ -291,6 +293,16 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             if self._filter_views(table):
                 continue
             yield table
+
+    def _record_unparseable_table(self, raw_table: dict[str, Any], exc: Exception) -> None:
+        """One table the client cannot parse must not cost the rest of the database."""
+        self.status.failed(
+            StackTraceError(
+                name=raw_table.get("fullyQualifiedName", "<unknown table>"),
+                error=f"Skipping table the client could not parse: {exc}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
 
     def _seed_table_total(self, database: Database, db_fqn: str) -> None:
         """Seed this database's server-side-filtered table count so % and ETA
