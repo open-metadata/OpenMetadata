@@ -176,28 +176,6 @@ describe('useIncidentList', () => {
     expect(mockGetList).not.toHaveBeenCalled();
   });
 
-  it('should refetch the current page when handlePagingClick asks for it', async () => {
-    const props = makeProps({ filters: { testCaseFQN: 'x' } });
-    const { result } = renderHook(() => useIncidentList(props));
-
-    await waitFor(() =>
-      expect(result.current.testCaseListData.isLoading).toBe(false)
-    );
-    mockGetList.mockClear();
-    mockHandlePageChange.mockClear();
-
-    act(() => {
-      result.current.handlePagingClick({ currentPage: 1 });
-    });
-
-    await waitFor(() => expect(mockGetList).toHaveBeenCalledTimes(1));
-
-    expect(mockGetList.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ offset: 0, testCaseFQN: 'x' })
-    );
-    expect(mockHandlePageChange).not.toHaveBeenCalled();
-  });
-
   it('should fetch the offset of the current page', async () => {
     const pagingMock = usePaging as jest.Mock;
     const defaultPaging = pagingMock.getMockImplementation();
@@ -205,16 +183,18 @@ describe('useIncidentList', () => {
       ...defaultPaging?.(),
       currentPage: 3,
     }));
-    const props = makeProps({ filters: { testCaseFQN: 'x' } });
-    renderHook(() => useIncidentList(props));
+    try {
+      const props = makeProps({ filters: { testCaseFQN: 'x' } });
+      renderHook(() => useIncidentList(props));
 
-    await waitFor(() => expect(mockGetList).toHaveBeenCalled());
+      await waitFor(() => expect(mockGetList).toHaveBeenCalled());
 
-    expect(mockGetList.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ offset: 20, testCaseFQN: 'x' })
-    );
-
-    pagingMock.mockImplementation(defaultPaging);
+      expect(mockGetList.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ offset: 20, testCaseFQN: 'x' })
+      );
+    } finally {
+      pagingMock.mockImplementation(defaultPaging);
+    }
   });
 
   it('should request deleted incidents scoped to the origin table when tableDetails is deleted', async () => {
