@@ -848,7 +848,6 @@ describe('CanvasUtils', () => {
       source: string,
       target: string,
       isColumnLineage = false
-      // eslint-disable-next-line sonarjs/no-identical-functions -- test helper; identical shape is coincidental
     ): Edge => ({
       id,
       source,

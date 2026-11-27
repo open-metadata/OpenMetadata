@@ -857,7 +857,6 @@ jobs:
             --project=ImportExport \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \
-            --project=SearchRBAC \
             --project=DomainIsolation \
             --project=Reindex \
             --project=GlobalSettings \
@@ -933,7 +932,7 @@ jobs:
             --project=chromium --project=Basic --project="Data Insight" \
             --project=Ingestion --project=ImportExport \
             --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled \
-            --project=SearchRBAC --project=DomainIsolation --project=Reindex \
+            --project=DomainIsolation --project=Reindex \
             --project=GlobalSettings --project=SystemCertificationTags \
             --project=IntakeForm --project=AdvancedSearch --project=search-nightly \
             > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"

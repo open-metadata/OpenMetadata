@@ -833,27 +833,6 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
-
-      if (mergedSettings.getGlobalSettings() != null
-          && mergedSettings.getGlobalSettings().getKeywordWeight() != null
-          && mergedSettings.getGlobalSettings().getSemanticWeight() != null) {
-        try {
-          Entity.getSearchRepository()
-              .updateHybridSearchPipeline(
-                  mergedSettings.getGlobalSettings().getKeywordWeight(),
-                  mergedSettings.getGlobalSettings().getSemanticWeight());
-        } catch (Exception e) {
-          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
-          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
-          // the whole settings save on that made search settings unsaveable there. The weights
-          // being saved here are the ones hybrid search reads per query, so they take effect
-          // regardless of whether the stored pipeline could be refreshed.
-          LOG.warn(
-              "Saved search settings but could not refresh the named hybrid search pipeline; "
-                  + "the new weights still apply to hybrid queries",
-              e);
-        }
-      }
     }
 
     LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
