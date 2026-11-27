@@ -179,6 +179,7 @@ class DbtSchemaMetadata:
             model_str(table.fullyQualifiedName) if table and not table.deleted and table.fullyQualifiedName else None
         )
         wildcard_scopes = []
+        case_mismatch_fqn = None
         for service_name, catalog in dict.fromkeys(scopes):
             if not (service_name and catalog and schema):
                 wildcard_scopes.append((service_name, catalog))
@@ -192,25 +193,25 @@ class DbtSchemaMetadata:
                 table_name=table_name,
                 skip_es_search=True,
             )
-            if actual_fqn and isinstance(expected_fqn, str) and actual_fqn.lower() == expected_fqn.lower():
-                return table
+            if actual_fqn and expected_fqn:
+                if actual_fqn == expected_fqn:
+                    return table
+                if actual_fqn.lower() == expected_fqn.lower():
+                    case_mismatch_fqn = expected_fqn
+
+        if case_mismatch_fqn:
+            if self._unique_table_fqn(case_mismatch_fqn, wildcard=False) != actual_fqn:
+                raise _SchemaWriteError("Physical source binding changed during validation")
+            return table
 
         for service_name, catalog in wildcard_scopes:
-            # Ordinary table ingestion may take the first search match. A schema write
-            # needs a unique binding, including the hits omitted from the first page.
             pattern = ".".join(
                 fqn.quote_name(part).replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
                 if part is not None
                 else "*"
                 for part in (service_name, catalog, schema, table_name)
             )
-            matches = self.metadata.search_fqn_candidates(Table, pattern, wildcard=True, size=2)
-            if not matches.total_is_exact or matches.total > 1:
-                raise _AmbiguousSourceError
-            if matches.total == 1:
-                if len(matches.fqns) != 1:
-                    raise _SchemaWriteError("Table search did not return its reported match")
-                matched_fqn = matches.fqns[0]
+            if matched_fqn := self._unique_table_fqn(pattern, wildcard=True):
                 if actual_fqn:
                     if actual_fqn != matched_fqn:
                         raise _SchemaWriteError("Physical source binding changed during validation")
@@ -219,6 +220,16 @@ class DbtSchemaMetadata:
         if table:
             raise _SchemaWriteError("Physical source table does not match its declared scope")
         return None
+
+    def _unique_table_fqn(self, value: str, *, wildcard: bool) -> str | None:
+        # Ordinary table ingestion retains the first result even when the
+        # search index normalizes different canonical FQNs to the same value.
+        matches = self.metadata.search_fqn_candidates(Table, value, wildcard=wildcard, size=2)
+        if not matches.total_is_exact or matches.total > 1:
+            raise _AmbiguousSourceError
+        if len(matches.fqns) != matches.total:
+            raise _SchemaWriteError("Table search did not return its reported matches")
+        return matches.fqns[0] if matches.fqns else None
 
     def _failed(self, name: str, operation: str, exc: Exception, fields: tuple[str, ...] = ()) -> None:
         code = (exc.status_code or exc.code) if isinstance(exc, APIError) else None

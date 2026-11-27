@@ -48,6 +48,7 @@ class Catalog:
             "service": self.service,
             "version": 0.1,
         }
+        self.other_schemas = []
         self.tables = {
             f"{SCHEMA_FQN}.{name}": {
                 "id": str(uuid4()),
@@ -81,11 +82,8 @@ class Catalog:
             return deepcopy(self.tables.get(route.removeprefix("/tables/name/"))) or self._missing()
         if route.startswith("/tables/"):
             return deepcopy(self._table_by_id(route.removeprefix("/tables/")))
-        if route in {
-            f"/databaseSchemas/{self.schema['id']}",
-            f"/databaseSchemas/name/{self.schema['fullyQualifiedName']}",
-        }:
-            return deepcopy(self.schema)
+        if route.startswith("/databaseSchemas/"):
+            return deepcopy(self._schema_for_route(route))
         if route == "/domains/name/Analytics":
             return {
                 "id": self.domain["id"],
@@ -131,6 +129,15 @@ class Catalog:
             return {"customProperties": [{"name": "name", "propertyType": {"name": "string"}}]}
         if route.startswith("/metadata/types/name/"):
             return {"customProperties": []}
+        return self._missing()
+
+    def _schema_for_route(self, route):
+        for schema in [self.schema, *self.other_schemas]:
+            if route in {
+                f"/databaseSchemas/{schema['id']}",
+                f"/databaseSchemas/name/{schema['fullyQualifiedName']}",
+            }:
+                return schema
         return self._missing()
 
     def _table_by_id(self, table_id):
@@ -269,6 +276,42 @@ def test_schema_metadata_uses_case_insensitive_source_table_binding(manifest, so
     assert len(catalog.patches) == 1
     assert catalog.schema["extension"] == {"reviewed": False, "quality": 0}
     assert not source.status.failures
+
+
+def test_case_insensitive_source_binding_skips_two_physical_schemas(manifest, source_factory):
+    manifest["sources"].pop(OTHER_SOURCE_ID)
+    manifest["nodes"] = {}
+    source, catalog = source_factory(manifest, enabled=True)
+    schema_fqn = SCHEMA_FQN.lower()
+    other_fqn = "warehouse.Raw_Db.Raw"
+    catalog.schema.update(name="raw", fullyQualifiedName=schema_fqn)
+    catalog.database.update(name="raw_db", fullyQualifiedName="warehouse.raw_db")
+    other_schema = {
+        **catalog.schema,
+        "id": str(uuid4()),
+        "name": "Raw",
+        "fullyQualifiedName": other_fqn,
+        "database": _reference("database", "warehouse.Raw_Db"),
+    }
+    catalog.other_schemas.append(other_schema)
+    table = catalog.tables.pop(f"{SCHEMA_FQN}.raw_orders")
+    catalog.tables.update(
+        {
+            f"{schema_fqn}.raw_orders": {**table, "fullyQualifiedName": f"{schema_fqn}.raw_orders"},
+            f"{other_fqn}.raw_orders": {
+                **table,
+                "id": str(uuid4()),
+                "fullyQualifiedName": f"{other_fqn}.raw_orders",
+                "databaseSchema": {"type": "databaseSchema", "id": other_schema["id"]},
+            },
+        }
+    )
+
+    assert _table_links(source) == [f"{schema_fqn}.raw_orders"]
+    assert not catalog.attempts
+    assert catalog.schema["version"] == other_schema["version"] == 0.1
+    assert not source.status.failures
+    assert any("Ambiguous physical source" in warning.get(SOURCE_ID, "") for warning in source.status.warnings)
 
 
 @pytest.mark.parametrize("enabled", [None, False])
