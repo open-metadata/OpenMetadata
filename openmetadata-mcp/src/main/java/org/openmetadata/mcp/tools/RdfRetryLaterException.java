@@ -18,9 +18,9 @@ package org.openmetadata.mcp.tools;
  * rebuilding, the store is unreachable, or the server is at its query capacity. Classified as
  * retryable rather than as a backend fault, so the client is not told that retrying will not help.
  */
-final class RdfRetryLaterException extends RuntimeException {
+public final class RdfRetryLaterException extends RuntimeException {
 
-  RdfRetryLaterException(final String message, final Throwable cause) {
+  public RdfRetryLaterException(final String message, final Throwable cause) {
     super(message, cause);
   }
 }

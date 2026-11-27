@@ -438,6 +438,32 @@ describe('DirectoryVersion', () => {
     });
   });
 
+  it('should follow the tab route param when it changes without a remount', async () => {
+    const { rerender } = renderDirectoryVersion();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /schema/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(
+      <MemoryRouter>
+        <DirectoryVersion {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('tab', { name: /custom/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+  });
+
   describe('ViewCustomFields Permission Tests', () => {
     it('should render custom properties tab when ViewCustomFields is true', async () => {
       const permissionsWithViewCustomFields = {

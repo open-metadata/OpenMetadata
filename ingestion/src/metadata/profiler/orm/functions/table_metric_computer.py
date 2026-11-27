@@ -134,11 +134,7 @@ class AbstractTableMetricComputer(ABC):
         return self._conn_config
 
     def _set_table_and_schema_name(self):
-        """get table and schema name from table args
-
-        Args:
-            table (DeclarativeBase): _description_
-        """
+        """get table and schema name from table args"""
         try:
             self._schema_name = self.runner.schema_name
             self._table_name = self.runner.table_name
@@ -161,9 +157,6 @@ class AbstractTableMetricComputer(ABC):
 
     def _get_col_names_and_count(self) -> tuple[str, int]:
         """get column names and count from table
-
-        Args:
-            table (DeclarativeBase): table object
 
         Returns:
             Tuple[str, int]
@@ -419,7 +412,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or res.rowCount < 0 or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res

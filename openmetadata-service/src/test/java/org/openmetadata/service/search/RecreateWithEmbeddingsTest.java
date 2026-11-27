@@ -1,35 +1,79 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 class RecreateWithEmbeddingsTest {
+  private static final String STAGED_CHUNKS = "data_asset_embeddings_chunks_g1700000000000";
+
+  private final VectorIndexService vectorService = mock(VectorIndexService.class);
+  private final SearchRepository searchRepository = mock(SearchRepository.class);
+
+  @Test
+  void aFullJobDrivenRecreateStagesAChunkGenerationOnTheRepositorysVectorService() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(vectorService.beginStagedChunkRecreate()).thenReturn(STAGED_CHUNKS);
+    DefaultRecreateHandler handler =
+        new RecreateWithEmbeddings().withJobData(new EventPublisherJob());
+
+    ReindexContext context;
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      context = handler.reCreateIndexes(Set.copyOf(EmbeddedEntityTypes.ALL));
+    }
+
+    assertEquals(Optional.of(STAGED_CHUNKS), context.getStagedChunkIndex());
+  }
+
+  @Test
+  void finalizingATypeWithNoStagedEntityIndexReportsItAsNotPromoted() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    // Without a staged entity index nothing replaces the live one, so the chunks stay live too.
+    EntityReindexContext context =
+        EntityReindexContext.builder().entityType("table").stagedChunkIndex(STAGED_CHUNKS).build();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      new RecreateWithEmbeddings().finalizeReindex(context, true);
+    }
+
+    verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+  }
 
   @Test
   void coversAllVectorTypes_matchesCanonicalCamelCaseNames() {
     // Regression: the reindex job carries canonical camelCase entity names ("glossaryTerm"),
-    // while AvailableEntityTypes.SET is lowercased — a case-sensitive containsAll never matched,
-    // so the chunk-index recreate silently never fired on a full run.
-    Set<String> canonicalNames = new HashSet<>(AvailableEntityTypes.LIST);
+    // while the chunk types used to be compared lowercased. A case-sensitive containsAll never
+    // matched, so the chunk-index recreate silently never fired on a full run.
+    Set<String> canonicalNames = new HashSet<>(EmbeddedEntityTypes.ALL);
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(canonicalNames));
   }
 
   @Test
   void coversAllVectorTypes_matchesLowercasedNames() {
     Set<String> lowercased =
-        AvailableEntityTypes.LIST.stream()
+        EmbeddedEntityTypes.ALL.stream()
             .map(s -> s.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(lowercased));
@@ -37,7 +81,7 @@ class RecreateWithEmbeddingsTest {
 
   @Test
   void stagesAssetChunksForExistingSavedEntityLists() {
-    Set<String> saved = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> saved = new HashSet<>(EmbeddedEntityTypes.ALL);
     saved.remove("ontologyConcept");
     saved.remove("ontologyProperty");
     assertTrue(RecreateWithEmbeddings.shouldStageChunkRecreate(new EventPublisherJob(), saved));
@@ -45,7 +89,7 @@ class RecreateWithEmbeddingsTest {
 
   @Test
   void coversAllVectorTypes_falseWhenAnyTypeMissing() {
-    Set<String> missingOne = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.ALL);
     missingOne.remove("glossaryTerm");
     assertFalse(
         RecreateWithEmbeddings.coversAllVectorTypes(missingOne),
@@ -53,8 +97,18 @@ class RecreateWithEmbeddingsTest {
   }
 
   @Test
+  void coversAllVectorTypes_countsATypeInTwoCasingsOnce() {
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.DATA_ASSETS);
+    missingOne.remove("table");
+    missingOne.add("glossaryterm");
+    assertFalse(
+        RecreateWithEmbeddings.coversAllVectorTypes(missingOne),
+        "a type named in two casings must not stand in for a missing type");
+  }
+
+  @Test
   void coversAllVectorTypes_trueForSupersets() {
-    Set<String> superset = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> superset = new HashSet<>(EmbeddedEntityTypes.ALL);
     superset.add("user");
     superset.add("team");
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(superset));
@@ -70,7 +124,7 @@ class RecreateWithEmbeddingsTest {
     assertNull(jobData.getRecreateIndex(), "sanitizer-shaped config carries no recreateIndex");
     assertTrue(
         RecreateWithEmbeddings.shouldStageChunkRecreate(
-            jobData, new HashSet<>(AvailableEntityTypes.LIST)));
+            jobData, new HashSet<>(EmbeddedEntityTypes.ALL)));
   }
 
   @Test
@@ -78,12 +132,12 @@ class RecreateWithEmbeddingsTest {
     // The jobless ops-CLI createIndexes path must never stage a chunk sweep.
     assertFalse(
         RecreateWithEmbeddings.shouldStageChunkRecreate(
-            null, new HashSet<>(AvailableEntityTypes.LIST)));
+            null, new HashSet<>(EmbeddedEntityTypes.ALL)));
   }
 
   @Test
   void shouldStageChunkRecreate_falseForPartialCoverage() {
-    Set<String> missingOne = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.ALL);
     missingOne.remove("table");
     assertFalse(
         RecreateWithEmbeddings.shouldStageChunkRecreate(new EventPublisherJob(), missingOne));

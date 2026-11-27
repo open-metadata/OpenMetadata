@@ -17,6 +17,7 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,6 +28,7 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -118,6 +120,25 @@ const assetsFilterFor = (type: AssetsOfEntity) =>
     ? PORT_ASSETS_FILTER
     : undefined;
 
+// `name.keyword` is lowercased in most indices but not all; `case_insensitive`
+// makes the match behave the same for every asset type.
+const exactNameFilterFor = (name: string): QueryFilterInterface => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            [EntityFields.NAME_KEYWORD]: {
+              value: name,
+              case_insensitive: true,
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+
 export const useAssetSelectionState = ({
   entityFqn,
   onCancel,
@@ -130,6 +151,7 @@ export const useAssetSelectionState = ({
 }: UseAssetSelectionStateProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  const [isExactName, setIsExactName] = useState(false);
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [dryRunWarnings, setDryRunWarnings] = useState<BulkResponse[]>();
@@ -170,8 +192,27 @@ export const useAssetSelectionState = ({
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const latestFetchIdRef = useRef(0);
 
   const { socket } = useWebSocketConnector();
+
+  const exactName = isExactName ? search.trim() : '';
+  // The relevance query can miss names with query syntax in them, so the filter
+  // alone decides which names match.
+  const searchText = exactName ? '' : search;
+
+  const combinedQueryFilter = useMemo(
+    () =>
+      getCombinedQueryFilterObject(
+        getCombinedQueryFilterObject(
+          queryFilter,
+          quickFilterQuery,
+          assetsFilterFor(type)
+        ),
+        exactName ? exactNameFilterFor(exactName) : undefined
+      ),
+    [queryFilter, quickFilterQuery, type, exactName]
+  );
 
   const fetchEntities = useCallback(
     async ({
@@ -185,6 +226,9 @@ export const useAssetSelectionState = ({
       index?: SearchIndex;
       updatedQueryFilter?: Record<string, unknown>;
     }) => {
+      const fetchId = ++latestFetchIdRef.current;
+      const isLatestFetch = () => fetchId === latestFetchIdRef.current;
+
       try {
         setIsLoading(true);
         const searchFn = useQueryPost ? searchQueryPost : searchQuery;
@@ -196,13 +240,29 @@ export const useAssetSelectionState = ({
           queryFilter: updatedQueryFilter,
           includeDeleted: false,
         });
+        // A slow loose search must not replace the exact results that followed it.
+        if (!isLatestFetch()) {
+          return;
+        }
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
         setAggregations(getAggregations(res?.aggregations));
+      } catch (err) {
+        if (isLatestFetch()) {
+          // The listed assets answer an earlier search, so they must not stay
+          // selectable as if they matched this one.
+          if (page === 1) {
+            setItems([]);
+            setTotalCount(0);
+          }
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (isLatestFetch()) {
+          setIsLoading(false);
+        }
       }
     },
     [activeFilter, useQueryPost]
@@ -265,18 +325,13 @@ export const useAssetSelectionState = ({
 
   useEffect(() => {
     if (open) {
-      const combinedQueryFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface,
-        assetsFilterFor(type)
-      );
       fetchEntities({
         index: activeFilter,
-        searchText: search,
+        searchText,
         updatedQueryFilter: combinedQueryFilter,
       });
     }
-  }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
+  }, [open, activeFilter, searchText, combinedQueryFilter]);
 
   useEffect(() => {
     if (open) {
@@ -519,18 +574,12 @@ export const useAssetSelectionState = ({
         remainingScrollHeight < SCROLL_BOTTOM_THRESHOLD_PX &&
         items.length < totalCount
       ) {
-        const combinedQueryFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface,
-          assetsFilterFor(type)
-        );
-
         if (isLoading) {
           return;
         }
 
         fetchEntities({
-          searchText: search,
+          searchText,
           page: pageNumber + 1,
           index: activeFilter,
           updatedQueryFilter: combinedQueryFilter,
@@ -540,16 +589,21 @@ export const useAssetSelectionState = ({
     [
       pageNumber,
       activeFilter,
-      search,
+      searchText,
       totalCount,
       items,
-      quickFilterQuery,
-      queryFilter,
+      combinedQueryFilter,
       isLoading,
       fetchEntities,
-      type,
     ]
   );
+
+  // Items picked from the other mode's results are no longer listed, so keeping
+  // them selected would save assets the user cannot see.
+  const onExactNameChange = useCallback((isSelected: boolean) => {
+    setIsExactName(isSelected);
+    setSelectedItems(undefined);
+  }, []);
 
   const onSelectAll = (selectAll: boolean) => {
     setSelectedItems((prevItems) => {
@@ -661,6 +715,8 @@ export const useAssetSelectionState = ({
     activeEntity,
     search,
     setSearch,
+    isExactName,
+    onExactNameChange,
     items,
     failedStatus,
     dryRunWarnings,

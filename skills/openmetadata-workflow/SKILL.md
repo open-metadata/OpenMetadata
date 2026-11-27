@@ -27,7 +27,7 @@ Load only applicable instructions, batch independent reads, and return compact c
 | Bug fix | `/systematic-debugging` then `/tdd` (write regression test) then `/verification` |
 | New API endpoint | `/planning` then `/tdd` then `/test-enforcement` (must include integration test) |
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
-| UI component | **Read `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` first** (folder structure + file naming for any new file), then `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + Playwright if user-facing) |
+| UI component | **Read `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` first** (folder structure + file naming for any new file), then `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + a browser test for page behaviour or Playwright E2E for cross-feature journeys if user-facing — see `.claude/rules/frontend-browser-tests.md`) |
 | UI a11y / UX / design audit | `/web-design-guidelines` |
 | React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
@@ -36,7 +36,7 @@ Load only applicable instructions, batch independent reads, and return compact c
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/java-affected-tests` (Java side) then `/verification` |
 
-> **Note:** Connector skills (`/connector-standards`, `/connector-building`, `/connector-review`) and `/playwright` are part of the OpenMetadata Skills plugin and ship together with this workflow skill. They are defined in the `skills/` directory alongside this file.
+Use the short commands in the checkout. With the installed Claude Code plugin, prefix each name with `openmetadata-skills:`, for example `/openmetadata-skills:connector-building` or `/openmetadata-skills:playwright`.
 
 > **Why the UI row names skills explicitly:** a skill only loads when it is invoked, and the model
 > decides that from the skill's own `description`. `/composition-patterns` describes itself as being
@@ -60,7 +60,7 @@ Load only applicable instructions, batch independent reads, and return compact c
 3. **Always enforce test coverage.** Before any PR, use `/test-enforcement` to verify:
    - 90% line coverage on changed Java classes
    - Integration tests for all changed/new API endpoints
-   - Playwright E2E tests for new user-facing features
+   - Browser tests for new UI page behaviour + Playwright E2E for cross-feature journeys (per `.claude/rules/frontend-browser-tests.md`)
    - Jest unit tests for new React components
 
 4. **Verify with evidence.** Use `/verification` before claiming completion. Show actual test output, not claims.

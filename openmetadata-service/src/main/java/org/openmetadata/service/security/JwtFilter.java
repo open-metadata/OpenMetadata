@@ -130,12 +130,13 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private Set<String> allowedDomains;
   private boolean enforcePrincipalDomain;
-  private AuthProvider providerType;
+  @Getter private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
   private OidcClientConfig serverSideOidcClient;
   private ProviderTokenValidator providerTokenValidator =
       ProviderTokenValidator.acceptingAnyProviderToken();
+  private TokenAudience tokenAudience = TokenAudience.OPENMETADATA_API;
 
   /** Looked up per check: the server installs its verifier after the first filter is built. */
   private final Supplier<CredentialVerifier> credentialVerifier;
@@ -275,6 +276,19 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   /**
+   * A filter for an entry point that serves its own resource, such as the MCP endpoint, whose
+   * OpenMetadata-signed tokens name it in {@code aud}. The other constructors build a filter for
+   * the OpenMetadata API, which refuses those tokens.
+   */
+  public JwtFilter(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration,
+      TokenAudience tokenAudience) {
+    this(authenticationConfiguration, authorizerConfiguration);
+    this.tokenAudience = tokenAudience;
+  }
+
+  /**
    * Warns only about deprecated settings that are now redundant, i.e. once the replacement is
    * configured. 'jwtPrincipalClaims' ships with a non-empty default and still drives the legacy
    * flow when 'emailClaim' is unset, so warning about it unconditionally would tell every
@@ -359,6 +373,17 @@ public class JwtFilter implements ContainerRequestFilter {
       Supplier<CredentialVerifier> credentialVerifier) {
     this(jwkProvider, jwtPrincipalClaims, principalDomain, false, credentialVerifier);
     this.providerTokenValidator = providerTokenValidator;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      Supplier<CredentialVerifier> credentialVerifier,
+      TokenAudience tokenAudience) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false, credentialVerifier);
+    this.tokenAudience = tokenAudience;
   }
 
   @VisibleForTesting
@@ -738,9 +763,9 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   /**
-   * Signature, expiry and issuer only, with no stored-credential check. For probes and dry runs
-   * that grant no access, and for a caller that runs {@link #checkValidationsForToken} next, which
-   * makes that check. Anything else that authenticates a request calls {@link
+   * Signature, expiry, issuer and audience only, with no stored-credential check. For probes and
+   * dry runs that grant no access, and for a caller that runs {@link #checkValidationsForToken}
+   * next, which makes that check. Anything else that authenticates a request calls {@link
    * #validateJwtAndGetClaims}.
    */
   public Map<String, Claim> verifySignatureOnly(String token) {
@@ -818,6 +843,7 @@ public class JwtFilter implements ContainerRequestFilter {
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
     requireIssuedForThisDeployment(jwt);
+    requireAddressedToThisEntryPoint(jwt);
 
     return jwt;
   }
@@ -844,6 +870,17 @@ public class JwtFilter implements ContainerRequestFilter {
   private void requireIssuedForThisDeployment(DecodedJWT jwt) {
     if (!isSignedWithOpenMetadataKey(jwt)) {
       providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Every way this filter authenticates a token verifies it here, so an MCP access token, whose
+   * {@code aud} names the MCP resource, is refused by the REST and push-feed filters and accepted
+   * only by the filter the MCP endpoint builds. A provider token's audience is checked above.
+   */
+  private void requireAddressedToThisEntryPoint(DecodedJWT jwt) {
+    if (isSignedWithOpenMetadataKey(jwt)) {
+      tokenAudience.requireAddressedHere(jwt);
     }
   }
 
@@ -1033,15 +1070,11 @@ public class JwtFilter implements ContainerRequestFilter {
    * on every pod without a session sweep.
    */
   private void validateSessionProviderIsCurrent(UserSession session) {
-    String sessionProvider = session.getProvider();
-    if (nullOrEmpty(sessionProvider) || providerType == null) {
-      return;
-    }
-    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
+    if (SessionProviders.isFromAnotherProvider(session.getProvider(), providerType)) {
       LOG.warn(
           "Rejecting session {} issued by provider {} — the configured provider is now {}",
           SessionService.truncateId(session.getId()),
-          sessionProvider,
+          session.getProvider(),
           providerType.value());
       throw AuthenticationException.getInvalidTokenException(
           "Session was issued by a provider that is no longer configured.");

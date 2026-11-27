@@ -48,7 +48,9 @@ import org.openmetadata.service.resources.drives.WorksheetResource;
 public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet> {
 
   public WorksheetResourceIT() {
+    supportsLineage = true;
     supportsPatch = true;
+    supportsAsyncDelete = true;
     supportsFollowers = false;
     supportsTags = true;
     supportsDataProducts = false;

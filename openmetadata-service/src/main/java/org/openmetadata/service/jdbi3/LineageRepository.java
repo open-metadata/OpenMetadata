@@ -102,9 +102,11 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -1525,12 +1527,16 @@ public class LineageRepository {
     boolean hasField =
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
-    if (!hasField) return;
-
-    for (EntityReference fromRef : getter.apply(fromEntity)) {
-      for (EntityReference toRef : getter.apply(toEntity)) {
-        processExtendedLineageCleanup(fromRef, toRef);
-      }
+    if (hasField) {
+      // The deleted edge counted once in each pair of its ends' products; drawn edges stay.
+      // ADR:2026-11-26-data-product-lineage-rollups-move-by-exact-deltas-and-drawn-edges-stay
+      List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
+      List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
+      fromRefs.forEach(
+          from ->
+              toRefs.forEach(
+                  to -> LineageUtil.adjustDataProductLineage(from.getId(), to.getId(), -1)));
+      fromRefs.forEach(from -> toRefs.forEach(to -> invalidateLineageCacheForEdge(from, to)));
     }
   }
 
@@ -1590,7 +1596,29 @@ public class LineageRepository {
       EntityReference from = resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId());
       EntityReference to = resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId());
       deleteLineageFromSearch(from, to, lineageDetails);
+      releaseDataProductLineage(from, to);
       emitLineageChangeEvent(EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
+    }
+  }
+
+  // A delete by source runs before an override run adds the edges back, which adds one again.
+  private void releaseDataProductLineage(EntityReference from, EntityReference to) {
+    boolean holdsDataProducts =
+        from.getType() != null
+            && to.getType() != null
+            && hasField(from, FIELD_DATA_PRODUCTS)
+            && hasField(to, FIELD_DATA_PRODUCTS);
+    EntityInterface<?> fromEntity =
+        holdsDataProducts
+            ? Entity.getEntityOrNull(from.getType(), from.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    EntityInterface<?> toEntity =
+        fromEntity != null
+            ? Entity.getEntityOrNull(to.getType(), to.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    if (toEntity != null) {
+      cleanUpLineageForDataProducts(
+          fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface<?>::getDataProducts);
     }
   }
 
@@ -2109,11 +2137,51 @@ public class LineageRepository {
   /**
    * A service, domain or data product edge refcounts the child edges rolled up into it. A caller
    * writing that edge directly cannot know the count, so the stored one survives the write.
+   *
+   * <p>Likewise, a write that carries no column-level lineage (e.g. an OpenLineage event without a
+   * {@code columnLineage} facet) does not know the stored column mappings, so the stored {@code
+   * columnsLineage} survives the write. {@code addLineage} rewrites the edge {@code json} in full,
+   * so dropping the stored column lineage on a no-facet write would silently wipe column-level
+   * lineage that typically originated from dbt ingestion or an earlier facet-carrying event. This
+   * mirrors the protection the reference Python consumer applies via {@code check_patch=True}
+   * union-merge in {@code lineage_mixin.py}.
+   *
+   * <p>The restore is keyed on a {@code null} incoming {@code columnsLineage} only — never on an
+   * empty list. The OpenLineage mapper sends {@code null} when the facet is absent
+   * ({@link org.openmetadata.service.openlineage.OpenLineageMapper}), whereas the UI sends an
+   * explicit empty list to clear all column mappings on the edge. Restoring on empty would make
+   * that clear-all request silently re-instate the removed mappings. The restored list and its
+   * {@link ColumnLineage} entries are deep-copied so the subsequent {@code validateLineageDetails}
+   * call cannot mutate the prior edge's objects and thereby mask a real change from
+   * {@code payloadChanged}.
    */
   static void preserveAssetEdges(LineageDetails incoming, LineageDetails prior) {
     if (prior != null) {
       incoming.setAssetEdges(prior.getAssetEdges());
+      if (incoming.getColumnsLineage() == null && prior.getColumnsLineage() != null) {
+        incoming.setColumnsLineage(copyColumnsLineage(prior.getColumnsLineage()));
+      }
     }
+  }
+
+  /**
+   * Deep-copies a {@link ColumnLineage} list so mutations performed by {@code
+   * validateLineageDetails} on the incoming copy never reach the prior edge objects, which would
+   * otherwise make {@code payloadChanged} compare two already-mutated references and miss a real
+   * change. Carries over {@link ColumnLineage#getFunction()} so a transformation description
+   * attached to a facet-carrying write survives a subsequent no-facet event.
+   */
+  private static List<ColumnLineage> copyColumnsLineage(List<ColumnLineage> source) {
+    List<ColumnLineage> copy = new ArrayList<>(source.size());
+    for (ColumnLineage entry : source) {
+      copy.add(
+          new ColumnLineage()
+              .withFromColumns(
+                  entry.getFromColumns() == null ? null : new ArrayList<>(entry.getFromColumns()))
+              .withToColumn(entry.getToColumn())
+              .withFunction(entry.getFunction()));
+    }
+    return copy;
   }
 
   private static long resolveCreatedAt(LineageDetails incoming, LineageDetails prior, long now) {
@@ -2202,6 +2270,7 @@ public class LineageRepository {
             .withEntityFullyQualifiedName(edgeFqn)
             .withEntity(edge)
             .withUserName(userName)
+            .withImpersonatedBy(ImpersonationContext.getImpersonatedBy())
             .withTimestamp(System.currentTimeMillis());
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }

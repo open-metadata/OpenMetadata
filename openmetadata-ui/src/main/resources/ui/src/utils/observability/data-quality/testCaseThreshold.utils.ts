@@ -163,6 +163,7 @@ const ROW_COUNTABLE_DENOMINATORS: Record<string, ThresholdNoun> = {
   columnValuesToBeNotInSet: ThresholdNoun.Rows,
   columnValuesToBeNotNull: ThresholdNoun.Rows,
   columnValuesToNotMatchRegex: ThresholdNoun.Rows,
+  columnValuesToBeAtExpectedLocation: ThresholdNoun.Rows,
 };
 
 export const THRESHOLD_NOUN_KEYS: Record<ThresholdNoun, string> = {

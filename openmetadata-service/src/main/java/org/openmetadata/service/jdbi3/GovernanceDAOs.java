@@ -472,6 +472,11 @@ public interface GovernanceDAOs {
         "SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM workflow_definition_entity")
     String workflowDefinitionEpoch();
 
+    // Workflows resolve the bots they list to bot users, so a bot created, deleted or reassigned to
+    // another user changes what they resolve to.
+    @SqlQuery("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM bot_entity")
+    String botEpoch();
+
     @SqlUpdate(
         "UPDATE change_request SET deliveryStatus = 'Pending', deliveryAttempts = 0,"
             + " nextDeliveryAt = :now, claimToken = NULL, leaseUntil = NULL"

@@ -211,15 +211,55 @@ public final class ChangeRequestService {
   /** What saving {@code patch} on the entity would do under approval gating, without saving it. */
   public static ChangeRequestPreview preview(
       String entityType, UUID entityId, JsonPatch patch, String user) {
-    Optional<StagedChange> staged =
-        Entity.getEntityRepository(entityType).previewPatch(entityId, user, patch);
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Optional<StagedChange> staged = repository.previewPatch(entityId, user, patch);
     return new ChangeRequestPreview()
         .withEntityType(entityType)
         .withEntityId(entityId)
         .withRequiresApproval(staged.isPresent())
         .withWorkflowDefinitionId(staged.map(StagedChange::workflowDefinitionId).orElse(null))
-        .withOps(staged.map(StagedChange::ops).orElse(List.of()));
+        .withOps(
+            staged
+                .map(StagedChange::ops)
+                .orElseGet(
+                    () ->
+                        DESCRIPTIVE_FIELDS.containsAll(JsonUtils.extractPatchedFields(patch))
+                            ? descriptiveOnly(repository.previewPatchOps(entityId, user, patch))
+                            : List.of()));
   }
+
+  /**
+   * The ops of an ungated preview, or none when preparing the patch changed a field outside {@link
+   * #DESCRIPTIVE_FIELDS}: an ungated preview returns ops only for descriptive fields.
+   */
+  static List<MutationOp> descriptiveOnly(List<MutationOp> ops) {
+    return ops.stream().allMatch(op -> DESCRIPTIVE_FIELDS.contains(op.getField()))
+        ? ops
+        : List.of();
+  }
+
+  /**
+   * The fields an edit no workflow holds is previewed for: descriptive metadata only. An edit that
+   * touches anything else, such as a connection or a configuration, gets no ops, as before
+   * (ADR:2026-11-20-a-change-request-preview-shows-an-ungated-edit-of-descriptive-metadata).
+   */
+  static final Set<String> DESCRIPTIVE_FIELDS =
+      Set.of(
+          "description",
+          "displayName",
+          "tags",
+          "owners",
+          "domains",
+          "dataProducts",
+          "columns",
+          "certification",
+          "synonyms",
+          "relatedTerms",
+          "parent",
+          "metricExpression",
+          "metricType",
+          "granularity",
+          "relatedMetrics");
 
   /**
    * Links a review task to the revision it reviews. Returns false when the request has ended or

@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -218,6 +219,55 @@ class FilterEntityImplTest {
     delegate.execute(execution);
 
     assertFalse(passesFilter(), "Only the workflow that reviews the request runs it");
+  }
+
+  @Test
+  void botChange_runsInAWorkflowWhoseListContainsTheBot() {
+    givenEntity(glossary().withChangeDescription(changeOf("tags")));
+    when(execution.getVariable("global_changedByBot")).thenReturn("scraperbot");
+    try (MockedStatic<GovernanceApprovalRegistry> registry =
+        mockStatic(GovernanceApprovalRegistry.class)) {
+      registry
+          .when(
+              () ->
+                  GovernanceApprovalRegistry.isTriggeringBotOfWorkflow(
+                      "PendingChangeApprovalWorkflow", "scraperbot"))
+          .thenReturn(true);
+
+      delegate.execute(execution);
+    }
+
+    assertTrue(passesFilter(), "A workflow that lists the bot runs its change");
+  }
+
+  @Test
+  void botChange_isSkippedByAWorkflowThatDoesNotListTheBot() {
+    givenEntity(glossary().withChangeDescription(changeOf("tags")));
+    when(execution.getVariable("global_changedByBot")).thenReturn("scraperbot");
+    try (MockedStatic<GovernanceApprovalRegistry> registry =
+        mockStatic(GovernanceApprovalRegistry.class)) {
+      registry
+          .when(
+              () -> GovernanceApprovalRegistry.isTriggeringBotOfWorkflow(anyString(), anyString()))
+          .thenReturn(false);
+
+      delegate.execute(execution);
+    }
+
+    assertFalse(passesFilter(), "A workflow that does not list the bot skips its change");
+  }
+
+  @Test
+  void personsChange_neverConsultsTheBotLists() {
+    givenEntity(glossary().withChangeDescription(changeOf("tags")));
+    try (MockedStatic<GovernanceApprovalRegistry> registry =
+        mockStatic(GovernanceApprovalRegistry.class)) {
+      delegate.execute(execution);
+
+      registry.verifyNoInteractions();
+    }
+
+    assertTrue(passesFilter(), "A person's change is filtered as before");
   }
 
   @Test

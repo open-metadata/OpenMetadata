@@ -47,10 +47,10 @@ public class TopicCollection implements Iterable<Topic> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Topic> response = client.topics().list(pageParams);

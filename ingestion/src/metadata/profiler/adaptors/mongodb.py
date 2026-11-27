@@ -13,6 +13,7 @@ MongoDB adaptor for the NoSQL profiler.
 """
 
 import json
+import math
 from datetime import date, datetime, time
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -125,8 +126,13 @@ class MongoDB(NoSQLAdaptor):
             return None
         if hasattr(value, "to_decimal"):
             decimal_value = value.to_decimal()
-            return float(decimal_value) if decimal_value.is_finite() else None
+            if not decimal_value.is_finite():
+                return None
+            converted = float(decimal_value)
+            return converted if math.isfinite(converted) else None
         if isinstance(value, (int, float, str, datetime, date, time)):
+            if isinstance(value, float) and not math.isfinite(value):
+                return None
             return value
         return str(value)
 

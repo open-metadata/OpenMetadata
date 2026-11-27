@@ -16,10 +16,14 @@ They are authoring-time aids, not gates — a skill only fires if an agent reads
 
 ```bash
 # From the OpenMetadata repo root
-claude plugin install skills/
+claude plugin marketplace add ./skills
+claude plugin install openmetadata-skills@openmetadata-skills
+claude plugin list
 ```
 
-This installs all skills, agents, hooks, and commands. The plugin auto-loads the OpenMetadata workflow on session start.
+Check that `openmetadata-skills@openmetadata-skills` is enabled. Start a new Claude Code session to use the plugin. For example, `/openmetadata-skills:connector-audit` runs the connector audit skill. The plugin loads the OpenMetadata workflow on session start.
+
+When adding a top-level skill, include its directory in [the plugin manifest](.claude-plugin/plugin.json). Each skill supplies its own slash command. See [the plugin packaging decision](../docs/decisions/2026-11-26-claude-plugin-loads-canonical-skills-from-the-checkout.md).
 
 ### Claude Code (In-Repo, Zero Setup)
 
@@ -71,7 +75,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 
 | Skill | Command | Purpose |
 |-------|---------|---------|
-| [Connector Building](connector-building/SKILL.md) | `/scaffold-connector` | Scaffold a new connector with JSON Schema, Python boilerplate, and AI context |
+| [Connector Building](connector-building/SKILL.md) | `/connector-building` | Scaffold a new connector with JSON Schema, Python boilerplate, and AI context |
 | [Connector Review](connector-review/SKILL.md) | `/connector-review` | Review connector code against golden standards with multi-agent analysis |
 | [Connector Standards](connector-standards/SKILL.md) | `/connector-standards` | Load connector development standards into agent context |
 | [Test Locally](test-locally/SKILL.md) | `/test-locally` | Build and deploy a full local Docker stack to test your connector |
@@ -118,7 +122,7 @@ The `/test-enforcement` skill enforces these targets:
 | Java service (`openmetadata-service`) | 90% line coverage | JaCoCo |
 | API endpoints | 100% of changed endpoints have integration tests | `openmetadata-integration-tests` |
 | React components | 90% line coverage | Jest |
-| UI features | Playwright E2E for all user-facing changes | Playwright |
+| UI features | Browser tests for page behaviour; Playwright E2E for cross-feature journeys | Vitest browser mode + Playwright |
 | Python ingestion | 90% line coverage | pytest --cov |
 
 ## Standards
@@ -202,20 +206,20 @@ JSON Schema (single source of truth)
 ## Quick Start
 
 ```bash
-# 1. Install the plugin
-claude plugin install skills/
+# 1. Install the plugin using the instructions above, then start Claude Code
+claude
 
 # 2. Start a new feature
-# Just describe what you want — the workflow skill will guide you to /planning
+# Describe what you want — the workflow skill will guide you to /openmetadata-skills:planning
 
 # 3. Implement with TDD
-# /tdd "Add new endpoint for data quality scores"
+# /openmetadata-skills:tdd "Add new endpoint for data quality scores"
 
 # 4. Verify coverage before PR
-# /test-enforcement
+# /openmetadata-skills:test-enforcement
 
 # 5. Review your changes
-# /code-review
+# /openmetadata-skills:code-review
 ```
 
 ## CI

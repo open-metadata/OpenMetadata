@@ -81,8 +81,9 @@ file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
 - **Prettier** — 2-space indent, single quotes, strict HTML whitespace.
 - **Apache-2.0 header** on new files (`yarn license-header-fix`).
 
-> The `UI Checkstyle` workflow runs one `checkstyle` job gating six steps (src lint, licence header,
-> i18n sync, app-docs, playwright lint, core-components lint) — not three separate jobs. The
+> CI runs UI checkstyle as one `ui / lint` job (the `.github/actions/ui-checkstyle` composite) whose
+> steps gate src lint, licence header, i18n sync, app-docs, playwright lint, core-components lint and
+> more — not separate jobs. The
 > `ui-checkstyle` skill runs the same ESLint → Prettier → organize-imports sequence locally.
 
 ## Commands

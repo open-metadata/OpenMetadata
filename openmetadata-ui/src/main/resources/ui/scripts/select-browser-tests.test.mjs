@@ -82,6 +82,8 @@ it('runs everything when it cannot reason about the change', () => {
     'none'
   );
   assert.equal(select(['src/test/browser/setup.ts']).mode, 'all');
+  // Docs beside the tests are not setup.
+  assert.equal(select(['src/test/browser/README.md']).mode, 'none');
   assert.equal(select(['src/styles/variables.less']).mode, 'all');
   // A stylesheet a component imports, just not one any test reaches.
   const sidebar = select(['src/Sidebar/sidebar.less'], { inCode: () => true });
@@ -89,6 +91,17 @@ it('runs everything when it cannot reason about the change', () => {
     [sidebar.mode, sidebar.uncovered],
     ['none', ['src/Sidebar/sidebar.less']]
   );
+  // The CI that sets up and runs the browser tests.
+  for (const file of [
+    '.github/actions/ui-browser-setup/action.yml',
+    '.github/actions/setup-ui/action.yml',
+  ]) {
+    assert.equal(
+      selectTests({ changed: [file], tests, map, graph }).mode,
+      'all',
+      file
+    );
+  }
   assert.equal(select([], { map: undefined }).mode, 'all');
   assert.equal(select([], { graph: undefined }).mode, 'all');
 });

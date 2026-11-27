@@ -28,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -88,6 +89,16 @@ public class SocketAddressFilter implements Filter {
   }
 
   /**
+   * The provider handshakes are validated under now; null when there is no configuration to
+   * validate a token with. Only the reload listener replaces it, and only for a reload that
+   * succeeded, so a provider a reload published and then rolled back never shows here.
+   */
+  public AuthProvider validatingProvider() {
+    JwtFilter validator = jwtFilter;
+    return validator != null ? validator.getProviderType() : null;
+  }
+
+  /**
    * Socket handshakes are always authenticated: a presented token is validated against the
    * authentication configuration, a session cookie is validated against the session store, and a
    * handshake with neither is rejected. Token validation must not depend on
@@ -130,13 +141,15 @@ public class SocketAddressFilter implements Filter {
    * @throws CredentialUnavailableException the stored-credential check could not be confirmed
    */
   public HandshakeIdentity authenticate(HttpServletRequest request) throws AuthenticationException {
+    // Read once: the provider stamped on the socket must be the one whose filter validated it.
+    JwtFilter validator = jwtFilter;
     Map<String, String> query = parseQuery(request);
     String requestedUserId = trimToNull(query.get("userId"));
-    TokenIdentity tokenIdentity = resolveTokenIdentity(request, query, requestedUserId);
+    TokenIdentity tokenIdentity = resolveTokenIdentity(validator, request, query, requestedUserId);
     String socketUserId = socketUserId(tokenIdentity, requestedUserId);
     SessionValidationResult sessionValidation =
         isSessionStillActive(request, tokenPrincipal(tokenIdentity), socketUserId);
-    return identity(sessionValidation, tokenIdentity, socketUserId);
+    return identity(sessionValidation, tokenIdentity, socketUserId, providerOf(validator));
   }
 
   @Override
@@ -168,19 +181,20 @@ public class SocketAddressFilter implements Filter {
 
   /** The token binds the socket to its user only when the caller-id agrees — else it is invalid. */
   private TokenIdentity resolveTokenIdentity(
-      HttpServletRequest request, Map<String, String> query, String requestedUserId) {
+      JwtFilter validator,
+      HttpServletRequest request,
+      Map<String, String> query,
+      String requestedUserId) {
     String tokenWithType = resolveHandshakeToken(request, query);
     if (!hasText(tokenWithType)) {
       return null;
     }
-    JwtFilter currentJwtFilter = jwtFilter;
-    if (currentJwtFilter == null) {
+    if (validator == null) {
       // A credential was presented but this filter has no configuration to validate it.
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
     }
-    ValidatedTokenPrincipal tokenPrincipal =
-        validatePrefixedTokenRequest(currentJwtFilter, tokenWithType);
+    ValidatedTokenPrincipal tokenPrincipal = validatePrefixedTokenRequest(validator, tokenWithType);
     UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
     if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
       throw new HandshakeRejectedException(
@@ -260,9 +274,11 @@ public class SocketAddressFilter implements Filter {
     Optional<UserSession> session = sessionService.getFreshSessionById(sessionId);
     if (session.isEmpty()
         || session.get().getStatus() != SessionStatus.ACTIVE
-        || session.get().isExpired(System.currentTimeMillis())) {
+        || session.get().isExpired(System.currentTimeMillis())
+        || sessionService.isFromAnotherProvider(session.get())) {
       LOG.info(
-          "Rejecting WebSocket handshake: session {} is not active",
+          "Rejecting WebSocket handshake: session {} is not active or its provider is no longer"
+              + " configured",
           SessionService.truncateId(sessionId));
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");
@@ -341,8 +357,17 @@ public class SocketAddressFilter implements Filter {
     return tokenIdentity != null ? tokenIdentity.userId().toString() : requestedUserId;
   }
 
+  private static String providerOf(JwtFilter validator) {
+    return validator != null && validator.getProviderType() != null
+        ? validator.getProviderType().value()
+        : null;
+  }
+
   private static HandshakeIdentity identity(
-      SessionValidationResult sessionValidation, TokenIdentity tokenIdentity, String socketUserId) {
+      SessionValidationResult sessionValidation,
+      TokenIdentity tokenIdentity,
+      String socketUserId,
+      String provider) {
     ValidatedTokenPrincipal principal = tokenPrincipal(tokenIdentity);
     String sessionId =
         hasText(sessionValidation.sessionId())
@@ -355,7 +380,7 @@ public class SocketAddressFilter implements Filter {
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
     }
-    return new HandshakeIdentity(userId, sessionId);
+    return new HandshakeIdentity(userId, sessionId, provider);
   }
 
   private static ValidatedTokenPrincipal tokenPrincipal(TokenIdentity tokenIdentity) {
@@ -370,11 +395,15 @@ public class SocketAddressFilter implements Filter {
       HeaderRequestWrapper requestWrapper, HandshakeIdentity identity) {
     requestWrapper.removeHeader("UserId");
     requestWrapper.removeHeader("SessionId");
+    requestWrapper.removeHeader("AuthProvider");
     if (hasText(identity.userId())) {
       requestWrapper.addHeader("UserId", identity.userId());
     }
     if (hasText(identity.sessionId())) {
       requestWrapper.addHeader("SessionId", identity.sessionId());
+    }
+    if (hasText(identity.provider())) {
+      requestWrapper.addHeader("AuthProvider", identity.provider());
     }
   }
 

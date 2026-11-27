@@ -14,7 +14,6 @@
         "description": "The name of the column."
       },
       "minItems": 1,
-      "maxItems": 3,
       "uniqueItems": true
     },
     "minColumns": {
@@ -24,8 +23,7 @@
     },
     "maxColumns": {
       "type": "integer",
-      "default": 3,
-      "$comment": "For internal use only: Maximum number of columns."
+      "$comment": "Deprecated: no longer enforced; kept so previously stored configs still validate."
     }
   },
   "required": ["columns"],

@@ -121,22 +121,18 @@ class ProfilerInterface(Root, ABC):
         ometa_client: OpenMetadata | None,
         **kwargs,
     ) -> "ProfilerInterface":
-        """create class method is used to dispatch the profiler protocol to the
-        correct object based on the service connection object
+        """create class method is used to build the profiler interface
+        for the given entity
 
         Args:
-            _profiler_type (str): service connection object str
             entity (Table): entity
-            entity_config (Optional[TableConfig]): entity config object
             source_config (DatabaseServiceProfilerPipeline): source config object
             service_connection_config (_type_): connection for the service
+            sampler (SamplerInterface): sampler object
             ometa_client (Optional[OpenMetadata]): ometa client object
 
-        Raises:
-            NotImplementedError: if the profiler type is not supported
-
         Returns:
-
+            ProfilerInterface
         """
         thread_count = source_config.threadCount
         timeout_seconds = source_config.timeoutSeconds

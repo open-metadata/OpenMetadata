@@ -424,12 +424,21 @@ public class UserRepository extends EntityRepository<User> {
     return ProfileWebhookSecrets.masked(entity);
   }
 
+  /**
+   * Records a login with a single-row JSON update rather than an entity patch. A patch inside the
+   * EntityUpdater session window consolidates changes by reloading the user with every field,
+   * including {@code owns}, which costs one lookup per asset the user's teams own. The direct write
+   * emits no change event and does not reindex the user; see
+   * ADR:2026-10-30-user-writes-keep-login-and-activity-times.
+   */
+  @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    String fqn = quoteName(canonicalUserName(orginalUser.getName()));
+    LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
+    // @BindFQN hashes the fqn, so it is passed unhashed
+    daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
+    // The row changed under the entity cache: drop the cached copy so reads see the new value
+    invalidateCacheForEntity(USER, orginalUser.getId(), orginalUser.getFullyQualifiedName());
 
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login
@@ -625,10 +634,35 @@ public class UserRepository extends EntityRepository<User> {
     return false;
   }
 
-  public boolean isTeamJoinable(String teamId) {
-    Team team =
-        daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
-    return team.getIsJoinable();
+  /**
+   * Members of a team hold the team's defaultRoles as inherited roles and are governed by its
+   * policies, so joining a team that is not open to everyone grants privileges the same way naming
+   * a role does, and leaving one sheds them, deny rules included, the way dropping a role does.
+   * Only the teams that change are looked up. Every user belongs to the organization, which is
+   * never left. A null {@code currentUser} is a user being created.
+   * ADR:2026-10-30-only-admins-add-roles-or-policies-to-a-team
+   */
+  public boolean changesClosedTeamMembership(User currentUser, List<UUID> requestedTeamIds) {
+    Set<UUID> currentTeamIds =
+        currentUser == null ? Set.of() : teamIds(listOrEmpty(currentUser.getTeams()));
+    Set<UUID> requested = new HashSet<>(listOrEmpty(requestedTeamIds));
+    Stream<UUID> joined = requested.stream().filter(teamId -> !currentTeamIds.contains(teamId));
+    Stream<UUID> left =
+        currentTeamIds.stream()
+            .filter(teamId -> !requested.contains(teamId) && !isOrganization(teamId));
+    return Stream.concat(joined, left).anyMatch(this::isClosedTeam);
+  }
+
+  private boolean isClosedTeam(UUID teamId) {
+    return !daoCollection.teamDAO().findEntityById(teamId, Include.NON_DELETED).getIsJoinable();
+  }
+
+  private boolean isOrganization(UUID teamId) {
+    return teamId.equals(getOrganization().getId());
+  }
+
+  private static Set<UUID> teamIds(List<EntityReference> teams) {
+    return teams.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   public void validateTeams(User user) {
@@ -1580,6 +1614,7 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
+      rejectClosedTeamChangeFromNonAdmin(printer, csvRecord, user);
       rejectEmailOutsideSignInDomains(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
@@ -1653,6 +1688,41 @@ public class UserRepository extends EntityRepository<User> {
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
       String error = String.format("Only an admin can set %s during user import", fieldName);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+    }
+
+    /**
+     * A row writes the user's whole team list, so it is judged on the teams it leaves the user in,
+     * with the same check the REST paths use. Runs before the write, so a dry run reports the row
+     * as well.
+     */
+    private void rejectClosedTeamChangeFromNonAdmin(
+        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
+      if (processRecord
+          && !SubjectContext.getSubjectContext(importedBy).isAdmin()
+          && changesClosedTeamMembership(user)) {
+        importFailure(printer, closedTeamRequiresAdmin(6), csvRecord);
+        processRecord = false;
+      }
+    }
+
+    private static boolean changesClosedTeamMembership(User user) {
+      UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
+      User stored = repository.findMatchForImport(user);
+      User current =
+          stored == null
+              ? null
+              : repository.get(null, stored.getId(), repository.getFields(TEAMS_FIELD), ALL, false);
+      List<UUID> requestedTeamIds =
+          listOrEmpty(user.getTeams()).stream().map(EntityReference::getId).toList();
+      return repository.changesClosedTeamMembership(current, requestedTeamIds);
+    }
+
+    private static String closedTeamRequiresAdmin(int field) {
+      String error =
+          "Only an admin can add a user to, or remove a user from, a team that is not open to"
+              + " everyone";
       return String.format(
           "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }

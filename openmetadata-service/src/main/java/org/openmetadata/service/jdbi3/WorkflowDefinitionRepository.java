@@ -21,12 +21,14 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -42,12 +44,15 @@ import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTriggeringBots;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.secrets.WorkflowSinkSecrets;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionSecretGuards;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -175,6 +180,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
     validateWorkflowStructure(entity);
+    if (entity.getTrigger() instanceof PeriodicBatchEntityTriggerDefinition periodic
+        && periodic.getConfig() != null
+        && periodic.getConfig().getSchedule() != null) {
+      AppSchedule schedule = periodic.getConfig().getSchedule();
+      schedule.setTimezone(TimezoneUtil.normalize(schedule.getTimezone()));
+      PeriodicBatchEntityTrigger.requireServerTimezone(schedule);
+    }
     requireDeployable(entity);
   }
 
@@ -204,6 +216,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     updated.setSuspended(original.getSuspended());
     WorkflowDefinitionMasker.restoreMaskedSecrets(original, updated);
     if (operation != Operation.SOFT_DELETE) {
+      requireNewTriggeringBotsAllowed(original, updated);
       WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(updated);
       WorkflowDefinitionSecretGuards.requireStoredEncryptedSecrets(original, updated);
     }
@@ -215,6 +228,28 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       validateRecognizerFeedbackInputNamespaceMap(updated);
     }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  /**
+   * Only a bot an admin created can trigger a workflow. Only bots newly listed are checked, so a
+   * listed bot deleted later never blocks another edit of the workflow; it simply starts nothing.
+   */
+  private static void requireNewTriggeringBotsAllowed(
+      WorkflowDefinition original, WorkflowDefinition updated) {
+    List<String> added = triggeringBotsOf(updated);
+    added.removeAll(triggeringBotsOf(original));
+    WorkflowTriggeringBots.requireAdminCreatedBots(updated.getName(), added);
+  }
+
+  private static List<String> triggeringBotsOf(WorkflowDefinition workflowDefinition) {
+    List<String> bots = new ArrayList<>();
+    if (workflowDefinition != null) {
+      JsonUtils.valueToTree(workflowDefinition.getTrigger())
+          .path("config")
+          .path("triggeringBots")
+          .forEach(bot -> bots.add(bot.asText()));
+    }
+    return bots;
   }
 
   /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
@@ -310,6 +345,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   private static void prepareForCreate(WorkflowDefinition entity) {
+    requireNewTriggeringBotsAllowed(null, entity);
     validateBatchAndSinkRules(entity);
     validateRecognizerFeedbackInputNamespaceMap(entity);
     WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);

@@ -377,6 +377,137 @@ describe('buildResolveBody', () => {
     });
   });
 
+  // The fix: a workflow transition whose form the inbox collected carries the
+  // form data as `payload` and derives `newValue` from it + the transition's
+  // uiSchema — mirroring `TaskTabNew.runWorkflowTransition` — so a field-mode
+  // resolution reaches the entity instead of being warn-logged as missing.
+  it('derives newValue from the form payload and transition uiSchema of a workflow action', () => {
+    const task = makeTask({
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          formRef: 'approve',
+          resolutionType:
+            'Approved' as TaskAvailableTransition['resolutionType'],
+          targetStageId: 'approved',
+          targetTaskStatus: TaskStatus.Approved,
+        },
+      ],
+      type: TaskType.CustomTask,
+      payload: { targetField: 'description' },
+    });
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: {
+            'ui:resolution': { mode: 'field', valueField: 'proposedText' },
+          },
+        },
+      },
+    };
+
+    const body = buildResolveBody(
+      firstAction(task)[0],
+      task,
+      { payload: { targetField: 'description', proposedText: 'new desc' } },
+      schema
+    );
+
+    expect(body).toEqual({
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+      payload: { targetField: 'description', proposedText: 'new desc' },
+      newValue: 'new desc',
+    });
+  });
+
+  // A payload-mode transition (`ui:resolution.mode: 'payload'`, like the
+  // shipped custom-form workflow's `approve`) yields no `newValue`; the form
+  // data lives entirely in `payload`, matching the entity-page tab.
+  it('omits newValue for a payload-mode transition even when a payload is sent', () => {
+    const task = makeTask({
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          formRef: 'approve',
+          resolutionType:
+            'Approved' as TaskAvailableTransition['resolutionType'],
+          targetStageId: 'approved',
+          targetTaskStatus: TaskStatus.Approved,
+        },
+      ],
+      type: TaskType.CustomTask,
+    });
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+
+    const body = buildResolveBody(
+      firstAction(task)[0],
+      task,
+      { payload: { targetField: 'description', proposedText: 'new desc' } },
+      schema
+    );
+
+    expect(body).toEqual({
+      transitionId: 'approve',
+      resolutionType: 'Approved',
+      payload: { targetField: 'description', proposedText: 'new desc' },
+    });
+    expect(body).not.toHaveProperty('newValue');
+  });
+
+  // No schema (bulk resolve, or a transition resolved before the schema
+  // resolved) keeps the original behaviour: the payload is forwarded but no
+  // `newValue` is derived, so the body never carries a stale/form-less value.
+  it('forwards the payload without deriving newValue when no schema is provided', () => {
+    const task = makeTask({
+      availableTransitions: [DAR_REJECT],
+      type: TaskType.DataAccessRequest,
+    });
+
+    const body = buildResolveBody(firstAction(task)[0], task, {
+      payload: { testCaseFailureReason: 'FalsePositive' },
+    });
+
+    expect(body).toEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      payload: { testCaseFailureReason: 'FalsePositive' },
+    });
+    expect(body).not.toHaveProperty('newValue');
+  });
+
   it('resolves a legacy approval task with the approved sentinel and no transitionId', () => {
     // A fabricated transitionId is what the server rejects with a 400.
     const task = makeTask({
@@ -507,6 +638,7 @@ describe('getTaskActionInput', () => {
       requiresComment: false,
       requiresAssignee: false,
       requiresRootCause: false,
+      requiresForm: false,
     });
     expect(needsTaskActionInput(task, action)).toBe(false);
   });
@@ -554,6 +686,145 @@ describe('getTaskActionInput', () => {
       requiresComment: true,
       requiresAssignee: false,
       requiresRootCause: true,
+      requiresForm: false,
+    });
+  });
+
+  // The seeded TestCaseResolution `resolve` transition declares
+  // `testCaseFailureReason` as required, but the comment modal already
+  // collects it as the Root Cause; `requiresComment` takes precedence, so
+  // `requiresForm` is reported but the comment modal still handles the input.
+  it('reports requiresForm for an incident resolve whose schema declares required fields', () => {
+    const task = workflowTask(
+      {
+        id: 'resolve',
+        label: 'Resolve',
+        requiresComment: true,
+        targetStageId: 'resolved',
+        targetTaskStatus: TaskStatus.Completed,
+      },
+      { category: TaskCategory.Incident, type: TaskType.TestCaseResolution }
+    );
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'TestCaseResolution',
+      taskType: TaskType.TestCaseResolution,
+      taskCategory: TaskCategory.Incident,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        resolve: {
+          formSchema: {
+            type: 'object',
+            required: ['testCaseFailureReason'],
+            properties: {
+              testCaseFailureReason: {
+                type: 'string',
+                enum: ['FalsePositive'],
+              },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toMatchObject({
+      requiresComment: true,
+      requiresForm: true,
+    });
+  });
+
+  // The bug: a custom task `approve` transition declares `requiresComment:
+  // false` but binds (`formRef`) a form whose schema marks
+  // `targetField`/`proposedText` required. The inbox must open the form modal
+  // — mirroring `TaskTabNew` — rather than fire immediately with no payload.
+  it('requires a form for a no-comment transition whose form schema declares required fields', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'CustomTask',
+      taskType: TaskType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toEqual({
+      requiresComment: false,
+      requiresAssignee: false,
+      requiresRootCause: false,
+      requiresForm: true,
+    });
+    expect(needsTaskActionInput(task, action, schema)).toBe(true);
+  });
+
+  // A transition whose form carries only optional fields (the seeded DAR
+  // `approve` schema has an optional `comment`) keeps firing straight through,
+  // so the inbox does not gain a modal for every optional form.
+  it('does not require a form when the transition schema has no required fields', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+    const schema: TaskFormSchema = {
+      name: 'DataAccessRequest',
+      taskType: TaskType.DataAccessRequest,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            properties: { comment: { type: 'string' } },
+          },
+        },
+      },
+    };
+
+    expect(getTaskActionInput(task, action, schema)).toEqual({
+      requiresComment: false,
+      requiresAssignee: false,
+      requiresRootCause: false,
+      requiresForm: false,
+    });
+    expect(needsTaskActionInput(task, action, schema)).toBe(false);
+  });
+
+  // Without a resolved schema the guard cannot see `transitionForms`, so it
+  // conservatively reports no form need; bulk resolve (which does not fetch a
+  // per-task schema) relies on this not to block on a missing schema.
+  it('reports requiresForm false without a schema even for a formRef transition', () => {
+    const task = workflowTask({
+      id: 'approve',
+      label: 'Approve',
+      formRef: 'approve',
+      targetStageId: 'approved',
+      targetTaskStatus: TaskStatus.Approved,
+    });
+    const [action] = getTaskResolveActions(task, LABELS);
+
+    expect(getTaskActionInput(task, action)).toMatchObject({
+      requiresForm: false,
     });
   });
 });

@@ -1,5 +1,5 @@
 ---
-name: scaffold-connector
+name: connector-building
 description: Build a new OpenMetadata connector from scratch — scaffold JSON Schema, Python boilerplate, and AI context using schema-first architecture with code generation across Python, Java, TypeScript, and auto-rendered UI forms.
 user-invocable: true
 argument-hint: "[connector name or description]"

@@ -47,6 +47,7 @@ import {
   addTaskComment,
   getTask,
   resolveTask,
+  TaskPayload,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -56,7 +57,6 @@ import {
 } from '../../../../../utils/ExtensionPointTypes';
 import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
-import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import {
   getTaskAboutPath,
   hasVotedInCurrentStage,
@@ -86,7 +86,9 @@ import {
   applyActionLabels,
   buildResolveBody,
   getReassignBlocker,
+  getTaskActionInput,
   getTaskResolveActions,
+  resolveTaskFormSchema,
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
@@ -103,6 +105,7 @@ import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
 import TaskTitle from './TaskTitle';
+import TaskTransitionFormModal from './TaskTransitionFormModal';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -410,6 +413,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const syncRunRef = useRef(0);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [commentAction, setCommentAction] = useState<TaskResolveAction>();
+  // A transition whose form declares required fields (a custom task `approve`
+  // needing `targetField`/`proposedText`); resolving it opens the form modal
+  // instead of firing, even when it also requires a comment.
+  const [formAction, setFormAction] = useState<TaskResolveAction>();
   const [formSchema, setFormSchema] = useState<TaskFormSchema>();
 
   const loadTask = useCallback(async () => {
@@ -472,28 +479,17 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     };
   }, [getEntityPermission, task?.id, task?.type]);
 
-  // A task the workflow engine never touched resolves through the legacy path,
-  // whose newValue comes from the type's form schema (resolution is cached per
-  // type+category, so switching between tasks of one type refetches nothing).
-  const isLegacyTask = Boolean(task) && !task?.availableTransitions?.length;
-  const taskType = task?.type;
-  const taskCategory = task?.category;
-
+  // The legacy resolve body reads the form schema, and a workflow transition's
+  // `transitionForms` may declare fields to collect. Resolution is cached per
+  // type+category, so switching between tasks of one type refetches nothing.
   useEffect(() => {
     let active = true;
-    if (!isLegacyTask || !taskType || !taskCategory) {
-      setFormSchema(undefined);
-
-      return undefined;
-    }
-
-    getResolvedTaskFormSchema(taskType, taskCategory, {
-      // Suggestion tasks share one taskType+taskCategory binding across two
-      // seeded schemas; pass the stamped id (and payload for fallback
-      // disambiguation) so a tag-suggestion legacy task does not render the
-      // DescriptionSuggestion form. See TaskFormSchemaUtils.
+    resolveTaskFormSchema({
+      type: task?.type,
+      category: task?.category,
       taskFormSchemaId: task?.taskFormSchemaId,
       payload: task?.payload,
+      availableTransitions: task?.availableTransitions,
     })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
@@ -503,11 +499,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       active = false;
     };
   }, [
-    isLegacyTask,
-    taskType,
-    taskCategory,
+    task?.type,
+    task?.category,
     task?.taskFormSchemaId,
     task?.payload,
+    task?.availableTransitions,
   ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
@@ -721,6 +717,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           queryKey: [TASK_ABOUT_ENTITY_QUERY_KEY],
         });
         setCommentAction(undefined);
+        setFormAction(undefined);
         if (extras?.isAssigneeChange) {
           onTaskUpdated?.(resolved);
         } else {
@@ -755,7 +752,38 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   );
 
   const handleTransition = useCallback(
-    (action: TaskResolveAction) => () => {
+    (action: TaskResolveAction) => async () => {
+      if (loadingTransitionId) {
+        return;
+      }
+      // An incident's root-cause modal collects its form's required reason.
+      if (
+        task &&
+        action.transition &&
+        !getTaskActionInput(task, action).requiresRootCause
+      ) {
+        // Lock the actions before the lookup so a second click can't race it.
+        setLoadingTransitionId(action.id);
+        try {
+          // A click can land before the schema loads; wait on the cached
+          // lookup rather than fire a transition whose form it has not seen.
+          const schema = await resolveTaskFormSchema(task);
+          setFormSchema(schema);
+          // The form wins over the comment-only modal, which would drop its
+          // required fields; a `comment` field in it still reaches the server.
+          if (getTaskActionInput(task, action, schema).requiresForm) {
+            setFormAction(action);
+
+            return;
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return;
+        } finally {
+          setLoadingTransitionId(undefined);
+        }
+      }
       if (action.requiresComment) {
         setCommentAction(action);
 
@@ -763,7 +791,24 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       }
       runTransition(action);
     },
-    [runTransition]
+    [loadingTransitionId, runTransition, task]
+  );
+
+  // The form modal collected the transition's required fields; resolve with
+  // them as the payload. A `comment` field in the form (e.g. a transition whose
+  // own schema carries a comment) is also forwarded as the top-level comment,
+  // mirroring `TaskTabNew.runWorkflowTransition`.
+  const handleFormConfirm = useCallback(
+    (payload: TaskPayload) => {
+      const action = formAction;
+      if (!action) {
+        return;
+      }
+      const comment =
+        typeof payload?.comment === 'string' ? payload.comment : undefined;
+      runTransition(action, { payload, ...(comment ? { comment } : {}) });
+    },
+    [formAction, runTransition]
   );
 
   // The backend reads payload.assignees, persists them and routes the workflow
@@ -814,6 +859,30 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   );
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
+
+  // Rendered as a helper so the modal's optional-label fallbacks do not push
+  // the component's cyclomatic complexity over the lint threshold — the
+  // `action.label ?? t(...)` lives in this nested function's scope, not the
+  // panel's.
+  const renderTransitionFormModal = () => {
+    if (!formAction || !task) {
+      return null;
+    }
+
+    return (
+      <TaskTransitionFormModal
+        open
+        actionLabel={formAction.label ?? t('label.submit')}
+        isLoading={loadingTransitionId !== undefined}
+        schema={formSchema}
+        task={task}
+        title={formAction.label ?? t('label.resolve')}
+        transition={formAction.transition}
+        onCancel={() => setFormAction(undefined)}
+        onConfirm={handleFormConfirm}
+      />
+    );
+  };
 
   if (!task || !descriptor) {
     return isLoading ? (
@@ -975,6 +1044,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           })
         }
       />
+
+      {renderTransitionFormModal()}
     </Box>
   );
 };

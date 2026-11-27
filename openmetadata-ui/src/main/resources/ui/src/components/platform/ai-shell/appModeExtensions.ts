@@ -17,6 +17,11 @@ import {
   EXTENSION_POINTS,
 } from '../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import {
+  GlobalSearchQueryActionContribution,
+  GlobalSearchSourceContribution,
+} from './GlobalSearch/GlobalSearch.types';
+import { getUsableSources } from './GlobalSearch/GlobalSearch.utils';
 
 /**
  * Typed read helpers over the app-mode extension points.
@@ -115,4 +120,26 @@ export const useAppModeSidebarRecentRail = (): AppModeSlotContribution[] => {
   return extensionRegistry.getContributions<AppModeSlotContribution>(
     EXTENSION_POINTS.APP_MODE_SIDEBAR_RECENT_RAIL
   );
+};
+
+export const useGlobalSearchSources = (): GlobalSearchSourceContribution[] => {
+  const { extensionRegistry } = useApplicationsProvider();
+
+  return getUsableSources(
+    extensionRegistry.getContributions<GlobalSearchSourceContribution>(
+      EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_SOURCES
+    )
+  );
+};
+
+export const useGlobalSearchQueryAction = ():
+  | GlobalSearchQueryActionContribution
+  | undefined => {
+  const { extensionRegistry } = useApplicationsProvider();
+  const handlers =
+    extensionRegistry.getContributions<GlobalSearchQueryActionContribution>(
+      EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_QUERY_ACTION
+    );
+
+  return handlers[handlers.length - 1];
 };
