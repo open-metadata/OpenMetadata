@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.database import Database, databaseSer
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.constants import BINARY_DATA_TYPES, PROFILER_DATA_TYPE_KEY
 from metadata.profiler.orm.converter.converter_registry import converter_registry
 from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import profiler_logger
@@ -126,6 +127,7 @@ def build_orm_col(
     return sqlalchemy.Column(
         name=str(col.name.root),
         type_=converter_registry[table_service_type]().map_types(col, table_service_type),
+        info={PROFILER_DATA_TYPE_KEY: col.dataType} if col.dataType in BINARY_DATA_TYPES else {},
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=quote,
         # Add lowercase column name as key for snowflake case sensitive columns

@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.services import databaseService
 from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.constants import BINARY_DATA_TYPES, PROFILER_DATA_TYPE_KEY
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     HybridMetric,
@@ -167,24 +168,35 @@ class MetricFilter:
 
         # TODO: improve the expected type. Currently Column will have SQA type while SQALikeColumn will have OM type
         # Column will be returned by SQA sources while SQALikeColumn will be returned by other sources
+        exact_data_type = None
         if not isinstance(column, SQALikeColumn):
+            catalog_data_type = column.info.get(PROFILER_DATA_TYPE_KEY)
+            if catalog_data_type in BINARY_DATA_TYPES:
+                exact_data_type = catalog_data_type
             mapper = converter_registry[service_type]
             sqa_to_om_types = mapper.map_sqa_to_om_types()
             om_data_types: set | None = sqa_to_om_types.get(column.type.__class__, None)
         else:
             om_data_types = {column.type}
 
-        if not om_data_types:
-            return [metric for metric in metrics if metric.is_col_metric()]
-
+        # Binary aliases share a SQL type, but explicit catalog rules remain independent.
         col_dtype_config = next(
             (
                 metric_config
                 for metric_config in self.global_profiler_config.metricConfiguration
-                if metric_config.dataType in om_data_types
+                if exact_data_type is not None and metric_config.dataType == exact_data_type
             ),
             None,
         )
+        if col_dtype_config is None:
+            col_dtype_config = next(
+                (
+                    metric_config
+                    for metric_config in self.global_profiler_config.metricConfiguration
+                    if metric_config.dataType in (om_data_types or set())
+                ),
+                None,
+            )
 
         if not col_dtype_config or (not col_dtype_config.disabled and not col_dtype_config.metrics):
             return [metric for metric in metrics if metric.is_col_metric()]
