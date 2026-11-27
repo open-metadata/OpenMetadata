@@ -25,10 +25,14 @@ stored workflow changes behaviour.
 
 Only a bot an admin created can be listed. Saving a workflow refuses a name that is not a bot, a
 system bot (`provider: system`, such as ingestion-bot and governance-bot) and an application's
-bot (the bot an application contains): they write in bulk on their own schedule. Only names newly
-added are checked, so a listed bot deleted later never blocks another edit; it simply starts
-nothing. Workflow automation, a write by governance-bot or impersonating as it, never starts a
-workflow, whatever a list says.
+bot: they write in bulk on their own schedule. An application's bot is stored with
+`provider: user`, so it is recognised by the application instead: an installed application links
+to it, and every application names its bot `<application name>Bot`. A bot so named for an
+installed or marketplace application is refused even without the link, because a bot left behind
+by an uninstalled application loses the link and installing the application again reuses it. The
+workflow builder's picker hides the same bots. Only names newly added are checked, so a listed bot
+deleted later never blocks another edit; it simply starts nothing. Workflow automation, a write by
+governance-bot or impersonating as it, never starts a workflow, whatever a list says.
 
 `WorkflowEventConsumer` drops a bot's change before Flowable unless a workflow on that entity type
 lists the bot, so an unlisted bot costs no process instance. A listed bot's change carries the bot
