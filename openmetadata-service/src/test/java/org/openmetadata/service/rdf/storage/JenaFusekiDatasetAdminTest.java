@@ -213,7 +213,7 @@ class JenaFusekiDatasetAdminTest {
           failure.getMessage().contains("OPENMETADATA_EXTENSION_ENABLED=true"),
           failure.getMessage());
       assertTrue(updates.isEmpty(), updates.toString());
-      assertFalse(requests.contains("POST /$/datasets"), requests.toString());
+      assertEquals(List.of("OPTIONS /build_a/data"), requests);
     }
   }
 

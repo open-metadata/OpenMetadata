@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
@@ -283,7 +284,8 @@ public final class RdfLiveWriteStore {
     final boolean retired =
         maintenance.isEmpty()
             && (attempts >= MAX_DELIVERY_ATTEMPTS
-                || RdfStorageUnsupportedException.find(failure).isPresent());
+                || ExceptionUtils.throwableOfType(failure, RdfStorageUnsupportedException.class)
+                    != null);
     if (maintenance.isPresent()) {
       deferForMaintenance(handle, entry, maintenance.get());
     } else if (retired) {

@@ -1730,8 +1730,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     try {
       // A release can hold a literal over stock Fuseki's 100 KB Thrift row cap; refuse before the
       // upload so activation names the missing extension instead of failing on Fuseki's 500.
-      // Graph writes are rare, so each asks the store again; readiness already logged any
-      // missing guarantee.
+      // Graph writes are rare, so each asks the store again.
       probeDataset(endpoint);
       new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();

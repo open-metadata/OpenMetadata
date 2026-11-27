@@ -12,8 +12,6 @@
  */
 package org.openmetadata.service.rdf.storage;
 
-import java.util.Optional;
-
 /**
  * The RDF store answered, but it is configured so that OpenMetadata cannot write to it, for example
  * without the OpenMetadata Graph Store extension. Retrying cannot succeed until an operator changes
@@ -25,14 +23,5 @@ public class RdfStorageUnsupportedException extends IllegalStateException {
 
   public RdfStorageUnsupportedException(final String message) {
     super(message);
-  }
-
-  /** The unsupported-store refusal behind {@code failure}, if that is what it was. */
-  public static Optional<RdfStorageUnsupportedException> find(final Throwable failure) {
-    Throwable current = failure;
-    while (current != null && !(current instanceof RdfStorageUnsupportedException)) {
-      current = current.getCause() == current ? null : current.getCause();
-    }
-    return Optional.ofNullable((RdfStorageUnsupportedException) current);
   }
 }
