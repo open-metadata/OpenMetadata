@@ -34,7 +34,7 @@ class NoSQLAdaptorFactory(Factory):
 
     This class maintains a registry of callable constructors for different NoSQL client types.
     The client types are registered with their corresponding constructors,
-    and can be created using the `construct` method.
+    and can be created using the `create` method.
     """
 
     def register(self, interface_type: str, interface_class: NoSQLAdaptorConstructor):
