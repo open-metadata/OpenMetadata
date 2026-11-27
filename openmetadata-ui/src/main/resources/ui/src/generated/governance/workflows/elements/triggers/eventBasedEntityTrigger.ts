@@ -57,6 +57,12 @@ export interface TriggerConfiguration {
      * workflow. Takes priority over exclude fields.
      */
     include?: string[];
+    /**
+     * Names of the bots whose changes start this workflow. A change made by any other bot never
+     * starts it. Only bots an admin created can be listed: system bots and application bots
+     * cannot.
+     */
+    triggeringBots?: string[];
 }
 
 /**
