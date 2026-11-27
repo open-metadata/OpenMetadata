@@ -360,6 +360,18 @@ class ChunkSetBoundTest {
   }
 
   @Test
+  void aHeaderReadThatLeavesTheHeaderOutFailsTheDeleteAndDeletesNothing() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.leaveDocsOutOfReadsOf(LIVE);
+
+    assertThrows(IllegalStateException.class, () -> service.deleteEntityChunks(parentId));
+
+    cluster.acceptAllReads();
+    assertEquals(3, cluster.chunkIds(LIVE, parentId).size(), "nothing is deleted");
+  }
+
+  @Test
   void theHealRemovesChunksPastTheirHeader() throws IOException {
     givenTheLiveChunkIndexExists();
     assertTrue(write(LIVE, chunks(2)));
@@ -787,6 +799,7 @@ class ChunkSetBoundTest {
     private int requestsToMissingIndices;
     private Predicate<String> rejectHeaderIndex = index -> false;
     private Predicate<String> unreadableIndex = index -> false;
+    private Predicate<String> docsLeftOutIndex = index -> false;
     private int unreadableStatus;
     private String faultyReadIndex;
     private int faultyReads;
@@ -825,6 +838,12 @@ class ChunkSetBoundTest {
 
     void acceptAllReads() {
       unreadableIndex = index -> false;
+      docsLeftOutIndex = index -> false;
+    }
+
+    /** Every header read of {@code index} answers 200 with no documents, as a broken proxy may. */
+    void leaveDocsOutOfReadsOf(String index) {
+      docsLeftOutIndex = index::equals;
     }
 
     /** The next {@code times} reads of {@code index} answer {@code status}, or nothing for 0. */
@@ -1015,6 +1034,8 @@ class ChunkSetBoundTest {
         response = failure(faultyReadStatus);
       } else if (unreadableIndex.test(index)) {
         response = failure(unreadableStatus);
+      } else if (docsLeftOutIndex.test(index)) {
+        response = ok("{\"docs\":[]}");
       } else {
         ArrayNode docs = MAPPER.createArrayNode();
         JsonNode request = MAPPER.readTree(body);

@@ -2029,7 +2029,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         sendChunkRequest(
             "/" + indexName + "/_mget",
             storedChunksRequest(parentIds),
-            response -> readHeaderDocs(indexName, response));
+            response -> readHeaderDocs(indexName, parentIds.size(), response));
     Map<String, StoredChunks> stored = new LinkedHashMap<>();
     for (int i = 0; i < parentIds.size(); i++) {
       JsonNode doc = docs.path(i);
@@ -2057,9 +2057,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return INDEX_NOT_FOUND.equals(doc.path("error").path("type").asText());
   }
 
-  // A shard that cannot answer for a document reports it on the document, inside a 200.
-  private static JsonNode readHeaderDocs(String indexName, JsonNode response) {
+  // A shard that cannot answer for a document reports it on the document, inside a 200. Documents
+  // come back in the order they were asked for, so an answer that leaves one out is not read.
+  private static JsonNode readHeaderDocs(String indexName, int requested, JsonNode response) {
     JsonNode docs = response.path("docs");
+    if (docs.size() != requested) {
+      throw new TransientChunkRequestException(
+          "Read " + docs.size() + " of " + requested + " chunk headers in " + indexName, null);
+    }
     for (JsonNode doc : docs) {
       if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
         throw new TransientChunkRequestException(

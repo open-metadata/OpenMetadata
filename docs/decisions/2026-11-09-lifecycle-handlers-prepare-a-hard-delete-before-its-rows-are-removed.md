@@ -52,7 +52,9 @@ no equivalent.
 - Cleanup is best effort after the fact: a cleanup that fails leaves its external resource behind,
   logged, and the delete stands. A handler that needs all-or-nothing must keep its data in the same
   database transaction instead.
-- Soft deletes do not call the hook; `onEntitySoftDeletedOrRestored` covers them.
+- Soft deletes do not call the hook. `onEntitySoftDeletedOrRestored` covers the root of one; each
+  descendant of a recursive soft delete gets only an update event with `deleted` set, so a
+  handler that acts on soft deletes checks that flag on updates too.
 - A new hard-delete path must call `prepareHardDeleteCleanup` before it removes references, and
   queue the result with `PostCommitActionQueue.runOrDefer`, or the handlers it skips lose their
   cleanup without any error.
