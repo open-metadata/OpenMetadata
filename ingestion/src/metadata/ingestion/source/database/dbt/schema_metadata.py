@@ -192,7 +192,7 @@ class DbtSchemaMetadata:
                 table_name=table_name,
                 skip_es_search=True,
             )
-            if actual_fqn and actual_fqn == expected_fqn:
+            if actual_fqn and isinstance(expected_fqn, str) and actual_fqn.lower() == expected_fqn.lower():
                 return table
 
         for service_name, catalog in wildcard_scopes:

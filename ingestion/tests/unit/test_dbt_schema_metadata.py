@@ -69,9 +69,11 @@ class Catalog:
         query = parse_qs(parts.query)
         self.reads.append(route)
         if route == "/search/fieldQuery":
-            pattern = query["fieldValue"][0]
+            pattern = query["fieldValue"][0].lower()
             hits = [
-                {"_source": {"fullyQualifiedName": name}} for name in self.tables if fnmatch.fnmatchcase(name, pattern)
+                {"_source": {"fullyQualifiedName": name}}
+                for name in self.tables
+                if fnmatch.fnmatchcase(name.lower(), pattern)
             ]
             size = int(query["size"][0])
             return {"hits": {"hits": hits[:size], "total": {"relation": "eq", "value": len(hits)}}}
@@ -252,6 +254,21 @@ def test_source_meta_patches_existing_schema_once_and_keeps_table_outputs(manife
 
     assert _table_links(source) == tables
     assert len(catalog.patches) == 1
+
+
+def test_schema_metadata_uses_case_insensitive_source_table_binding(manifest, source_factory):
+    source, catalog = source_factory(manifest, enabled=True)
+    schema_fqn = SCHEMA_FQN.lower()
+    catalog.schema.update(name="raw", fullyQualifiedName=schema_fqn)
+    catalog.database.update(name="raw_db", fullyQualifiedName="warehouse.raw_db")
+    catalog.tables = {
+        name.lower(): {**table, "fullyQualifiedName": name.lower()} for name, table in catalog.tables.items()
+    }
+
+    assert f"{schema_fqn}.raw_orders" in _table_links(source)
+    assert len(catalog.patches) == 1
+    assert catalog.schema["extension"] == {"reviewed": False, "quality": 0}
+    assert not source.status.failures
 
 
 @pytest.mark.parametrize("enabled", [None, False])
