@@ -52,6 +52,8 @@ from metadata.utils.stored_procedures import get_procedure_name_from_call
 
 logger = ingestion_logger()
 
+STORED_PROCEDURE_FETCH_SIZE = 1000
+
 
 class StoredProcedureLineageMixin(ABC):
     """
@@ -147,7 +149,12 @@ class StoredProcedureLineageMixin(ABC):
         lineage as well.
         """
         try:
-            results = conn.execute(text(query)).all()
+            # Fetch in batches: the history can hold every procedure child statement in the
+            # window with its full text, which loaded at once OOM-killed the ingestion pod.
+            # Result.yield_per, not the yield_per/stream_results execution option: that one asks
+            # for a server-side cursor, which psycopg2 (Redshift) refuses under the AUTOCOMMIT
+            # engines builders.py creates, and which mssql+pytds answers with zero rows.
+            results = conn.execute(text(query)).yield_per(STORED_PROCEDURE_FETCH_SIZE)
         except Exception as exc:
             narrowed = list(self.narrow_stored_procedure_statement(query, exc))
             if not narrowed:
@@ -163,28 +170,39 @@ class StoredProcedureLineageMixin(ABC):
                 yield from self._yield_queries_for_statement(conn, narrower_query)
             return
 
-        for row in results:
-            # Bound outside the try so the handler can still name the procedure, and
-            # assigned inside it so an unreadable row cannot escape and silently drop
-            # every row after it.
-            row_data = {}
-            try:
-                row_data = row._asdict()
-                query_by_procedure = QueryByProcedure.model_validate(row_data)
-                if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
-                    query_by_procedure.procedure_name = get_procedure_name_from_call(
-                        query_text=query_by_procedure.procedure_text
+        try:
+            for row in results:
+                # Bound outside the try so the handler can still name the procedure, and
+                # assigned inside it so an unreadable row cannot escape and silently drop
+                # every row after it.
+                row_data = {}
+                try:
+                    row_data = row._asdict()
+                    query_by_procedure = QueryByProcedure.model_validate(row_data)
+                    if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
+                        query_by_procedure.procedure_name = get_procedure_name_from_call(
+                            query_text=query_by_procedure.procedure_text
+                        )
+                    yield query_by_procedure
+                except Exception as exc:
+                    self.status.failed(
+                        StackTraceError(
+                            name="Stored Procedure",
+                            error=f"Error trying to get procedure name for "
+                            f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
-                yield query_by_procedure
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error trying to get procedure name for "
-                        f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    )
+        except Exception as exc:
+            # A fetch failing mid-stream: rows already yielded are processed, so re-reading a
+            # narrower window would duplicate them. Record it instead of aborting the workflow.
+            self.status.failed(
+                StackTraceError(
+                    name="Stored Procedure",
+                    error=f"Error streaming stored procedure query history due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
                 )
+            )
 
     @staticmethod
     def _reference_name(reference: EntityReference | None) -> str:
