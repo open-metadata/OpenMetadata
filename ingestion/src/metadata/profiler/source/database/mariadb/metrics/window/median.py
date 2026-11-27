@@ -1,4 +1,4 @@
-"""Override first quartile metric definition for MariaDB"""
+"""Override median metric definition for MariaDB"""
 
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.source.database.mariadb.functions.median import MariaDBMedianFn
