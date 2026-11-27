@@ -332,6 +332,8 @@ export interface ServiceConnectionClass {
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  *
+ * Apache Solr Connection.
+ *
  * Apache Ranger Connection Config
  *
  * Google Drive Connection Config
@@ -429,6 +431,8 @@ export interface AirflowConnectionObject {
      * OpenSearch Type
      *
      * Custom search service type
+     *
+     * Solr Type
      */
     type?: AirflowConnectionType;
     /**
@@ -668,6 +672,9 @@ export interface AirflowConnectionObject {
      *
      * Host and port of the OpenSearch service.
      *
+     * Base URL of the Solr instance, e.g. `http://localhost:8983/solr`. For SolrCloud, point at
+     * any node of the cluster.
+     *
      * Apache Ranger Admin URL.
      */
     hostPort?: string;
@@ -775,6 +782,8 @@ export interface AirflowConnectionObject {
      * password to connect  to the Atlas.
      *
      * Password to connect to the Collibra.
+     *
+     * Password to connect to Solr.
      */
     password?: string;
     /**
@@ -919,6 +928,9 @@ export interface AirflowConnectionObject {
      *
      * Username to connect to the Collibra. This user should have privileges to read all the
      * metadata in Collibra.
+     *
+     * Username to connect to Solr. This user should have privileges to read all the metadata in
+     * Solr.
      */
     username?: string;
     /**
@@ -2487,6 +2499,8 @@ export interface AirflowConnectionObject {
     containerName?: string;
     /**
      * Connection Timeout in Seconds
+     *
+     * Connection timeout in seconds when talking to the Solr instance.
      */
     connectionTimeoutSecs?: number;
     /**
@@ -5494,6 +5508,10 @@ export enum TokenType {
  *
  * Custom search service type
  *
+ * Solr Type
+ *
+ * Solr service type
+ *
  * Apache Ranger service type
  *
  * Google Drive service type
@@ -5631,6 +5649,7 @@ export enum AirflowConnectionType {
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
     Snowplow = "Snowplow",
+    Solr = "Solr",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",

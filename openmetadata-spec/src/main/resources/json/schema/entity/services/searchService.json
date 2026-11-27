@@ -19,7 +19,8 @@
       "enum": [
         "ElasticSearch",
         "OpenSearch",
-        "CustomSearch"
+        "CustomSearch",
+        "Solr"
       ],
       "javaEnums": [
         {
@@ -30,6 +31,9 @@
         },
         {
           "name": "CustomSearch"
+        },
+        {
+          "name": "Solr"
         }
       ]
     },
@@ -52,6 +56,9 @@
             },
             {
               "$ref": "connections/search/customSearchConnection.json"
+            },
+            {
+              "$ref": "connections/search/solrConnection.json"
             }
           ]
         }

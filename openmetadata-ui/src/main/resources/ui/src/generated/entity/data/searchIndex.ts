@@ -658,6 +658,7 @@ export enum SearchServiceType {
     CustomSearch = "CustomSearch",
     ElasticSearch = "ElasticSearch",
     OpenSearch = "OpenSearch",
+    Solr = "Solr",
 }
 
 /**

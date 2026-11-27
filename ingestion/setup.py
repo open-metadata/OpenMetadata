@@ -365,6 +365,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["elasticsearch"],
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
+    "solr": {},  # uses requests, which is in base
     "exasol": {
         "sqlalchemy_exasol>=7.1.1,<8",
     },
