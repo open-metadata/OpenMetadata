@@ -14,7 +14,9 @@
   generation lookup's cache); v7 2026-11-26 (every entity a hard delete removes, the descendants of
   a recursive delete included, loses its chunks through the handler's prepare hook, in batches; a
   descendant a recursive soft delete marks deleted loses them through that update; a sweep removes
-  once the chunks earlier recursive deletes left behind)
+  once the chunks earlier recursive deletes left behind); v8 2026-11-27 (a staged generation is
+  checked against the database before it goes live and swept again once it is; a run no longer
+  waits for the generation lookup, and a missed delete no longer keeps the live chunks)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way, the requests a
@@ -25,10 +27,9 @@
   `VectorEmbeddingHandlerTest` (which deletes reach the chunks, a restore embeds again),
   `OrderedLaneExecutorTest` (one task per lane, after the tasks queued for its entities),
   `SearchIndexRetryWorkerTest` and `VectorEmbeddingHandlerTest` (a live delete the cluster
-  refused is replayed), `RecreateWithEmbeddingsTest` (the wait before the first read),
-  `DistributedIndexingStrategyTest` and
-  `DistributedSearchIndexExecutorTest` (an unrecorded staged delete keeps the live chunks),
-  `ElasticSearchVectorServiceTest` (the Elasticsearch dialect and the promotion rule),
+  refused is replayed), `RecreateWithEmbeddingsTest` (the run's generation),
+  `ElasticSearchVectorServiceTest` (the Elasticsearch dialect, the promotion rule and the check
+  against the database),
   `EmbeddingEnricherTest` (the reindex embedding step and its retry), `DefaultRecreateHandlerTest`
   (what an entity index tells the chunk generation), `StoredEmbeddingReuseIT` (both engines);
   `reviewer` for a new caller that names an engine class
@@ -108,29 +109,26 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   detail per entity at debug. An entity left without chunks gets them on its next edit or
   reindex, through the fingerprint-guarded backfill. A missed mirror is not retried; it heals the
   same way.
-- **Only a missed delete blocks promotion.** A delete that fails in the staged generation would
-  bring a removed entity's chunks back, so it sets `_meta.incompleteChunkWrites` on that
-  generation's index. A node saves the flag once per generation. The coordinator reads it before
-  the alias swap and keeps the old chunks live when it is set; the next staged recreate sweeps the
-  unpromoted generation. The flag lives on the cluster, so a participant's failure reaches the
-  coordinator. A node that cannot save the flag retries it when its next partition ends, whatever
-  that partition's type, and, if it still cannot, fails the partition for good, without a retry,
-  with an error that starts with `VectorIndexService.UNRECORDED_STAGED_DELETE`. A retry on another
-  node could not repair the missed delete, and nothing rewrites a FAILED row, so the error stays
-  for the rest of the job. The miss belongs to the generation, not to a type, so whenever a type
-  finishes, through its own promotion or at the end of a job that stopped first, the coordinator
-  reads that error from any of the job's failed partitions and counts the type as keeping its
-  live chunks. Keeping live chunks wins over a later promotion of the same type, so no callback
-  can undo it. The type's entity index still promotes its partial data, and the run ends with
-  errors. A node that has not joined the run finds the generation through a lookup it keeps for
-  15 seconds, so the run waits that long after creating the generation before it reads its first
-  entity: an entity changed on a node that still misses the generation is read by the run after
-  the change, from the database. A lookup that fails keeps the last answer for 2 seconds and is
-  then tried again, so an outage adds no lookup to every chunk write or delete. Narrow windows
-  remain, in which the deleted entity's chunks stay in the generation until the next full
-  recreate: a delete that fails after the coordinator reads the flag; a node that misses a delete
-  after its last partition and still cannot save the flag when it leaves the run, which it logs
-  as an error; and a node whose lookup keeps failing past the wait while its deletes succeed.
+- **A generation is checked against the database before it goes live, and swept again once it
+  is.** The run writes the generation from the entities it reads, but an entity it read can be
+  deleted before the swap: by a server that has not found the generation yet and deletes from the
+  live index only, or by a delete into the generation that fails. Its chunks would go live with
+  the generation. So once every type has finalized, the coordinator refreshes the generation and
+  runs the sweep of deleted entities' chunks on it, as the startup sweep does on the live index:
+  the parents of each page are looked up in their tables, and the chunks of those that no longer
+  exist or are soft deleted are deleted by their header's bound. A check that cannot finish keeps
+  the live chunks, and the next staged recreate sweeps the generation. A delete can still miss
+  the generation between the check and the swap, so a generation is created without
+  `_meta.chunksOfDeletedEntitiesRemoved`, and going live starts the leased runner the startup
+  uses, which sweeps the new live index in the background until it records the pass. From the
+  swap on, every server deletes through the alias, so no later delete can miss it. A server finds
+  the generation through a lookup it keeps for 15 seconds, and a lookup that fails keeps the last
+  answer for 2 seconds, so an outage adds no lookup to every chunk write or delete. The run does
+  not wait for every server to find it: a delete is repaired by the check, and an edit on a server
+  that has not found the generation yet leaves its old text in the generation until the entity's
+  next edit, as a missed mirror does. A delete of a live entity's stale chunks that misses the
+  generation is such an edit too. An entity restored in the moment a sweep reads it can lose its
+  chunks until its next update or reindex.
 - **A live edit refreshes the entity document even when its chunk write fails.** Chunk 0
   carries the header the next update compares against, so it is written in its own request
   after every other chunk and delete succeeded. A failed write leaves the old header, and the
@@ -230,7 +228,8 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   retries, the write or delete fails instead: a write would lower the bound, and a delete would
   leave behind the chunks no refresh has made searchable and report success. A failed write is a
   miss as above, and a live edit of a data asset or an ontology term still refreshes its entity
-  document. A staged delete flags its generation. A delete that misses the live index reports the
+  document. A staged delete that fails is logged and repaired by the check before the swap. A
+  delete that misses the live index reports the
   entity to its handler once it has tried the staged generation, and the handler puts the entity
   on the search retry queue: the search retry worker removes the chunks of an entity that is gone,
   soft-deleted or no longer embeddable, with the queue's own retries and backoff.
@@ -252,8 +251,9 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   dropping it.
 - **A rebuild costs an entity its chunks only until that entity is written again.** A
   generation promoted with misses lacks those entities' passages; the run's vector failures and
-  each node's summary warning name how many. A rebuild is kept from going live only by a missed
-  delete or by an entity index that kept its live index.
+  each node's summary warning name how many. A rebuild is kept from going live only by an entity
+  index that kept its live index, a check against the database that could not finish, or an
+  empty generation while the live index holds chunks.
 - **The heal reads the whole chunk index once.** The first start after the upgrade sends one
   aggregation request per 500 parents, in the background, and three requests for each parent it
   heals, on one server; the others try the lease again until the record is there. The deletes are
@@ -264,9 +264,11 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   delete per table would send about 500. A recursive soft delete deletes per descendant, on the
   lane task its update already has. Restoring a subtree embeds its entities again, one provider
   call per chunk.
-- **The sweep reads the whole chunk index once.** The first start after the upgrade sends one
-  aggregation request per 500 parents and one database query per entity type in each page, and
-  three requests per 250 entities it removes.
+- **The sweep reads the whole chunk index once, and each full rebuild reads its generation
+  twice.** The first start after the upgrade sends one aggregation request per 500 parents and one
+  database query per entity type in each page, and three requests per 250 entities it removes. A
+  full rebuild does the same on its generation before the swap, on the coordinator, and once more
+  in the background after it.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose

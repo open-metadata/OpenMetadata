@@ -718,13 +718,15 @@ class VectorChunkIndexIT {
     Table hardDeleted = table("ledger", "word ".repeat(940));
     Table softDeleted = table("refunds", "Refunds issued");
     LiveEntities database = (type, ids) -> Set.of(id(kept));
+    LiveEntities everyEntityLive = (type, ids) -> Set.copyOf(ids);
     try {
+      service.removeChunksOfDeletedEntities(everyEntityLive);
       List.of(kept, hardDeleted, softDeleted).forEach(table -> writeChunks(service, table, null));
       refresh(service, live);
       assertEquals(
           Optional.empty(),
           service.removeChunksOfDeletedEntities(database),
-          "an index created empty holds no chunk of a deleted entity");
+          "an index that records the sweep is not swept again");
       String target = liveTarget(service);
       int docVersion = chunkIndexMeta(service, target).path("chunkDocVersion").asInt();
       putMeta(service, target, "{\"chunkDocVersion\":" + docVersion + "}");
