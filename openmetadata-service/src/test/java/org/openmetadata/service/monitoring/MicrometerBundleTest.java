@@ -126,7 +126,10 @@ public class MicrometerBundleTest {
     bundle.initialize(bootstrap);
     String route = "/v1/micrometer-bundle-route";
     Timer timer =
-        Metrics.globalRegistry.timer("request.latency.total", "endpoint", route, "method", "GET");
+        Timer.builder("request.latency.total")
+            .tags("endpoint", route, "method", "GET")
+            .serviceLevelObjectives(MetricUtils.LATENCY_SLA_BUCKETS)
+            .register(Metrics.globalRegistry);
     try {
       timer.record(12, TimeUnit.MILLISECONDS);
       String scrape = bundle.getPrometheusMeterRegistry().scrape();

@@ -66,6 +66,10 @@ class JettyMetricsIntegrationTest {
                     1.0, registry.get("jetty.http.handler.failures").functionCounter().count());
                 assertEquals(2.0, registry.get("jetty.requests.failed").gauge().value());
               });
+
+      server.stop();
+      server.start();
+      assertEquals(0.0, registry.get("jetty.http.requests").functionCounter().count());
     } finally {
       server.stop();
     }
