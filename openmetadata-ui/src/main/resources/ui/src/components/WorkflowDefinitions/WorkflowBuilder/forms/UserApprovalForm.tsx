@@ -43,6 +43,7 @@ import { MetadataFormSection } from './MetadataFormSection';
 import {
   EMPTY_ASSIGNEE_STRATEGY_OPTIONS,
   EMPTY_ASSIGNEE_STRATEGY_ORDER,
+  NONE_IN_TASK_WORKFLOW_OPTION,
 } from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
@@ -139,7 +140,11 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
   const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
-  const { isFormDisabled } = useWorkflowModeContext();
+  const { isFormDisabled, isNoOp } = useWorkflowModeContext();
+  const strategyOption = (strategy: EmptyAssigneeStrategy) =>
+    isNoOp && strategy === EmptyAssigneeStrategy.None
+      ? NONE_IN_TASK_WORKFLOW_OPTION
+      : EMPTY_ASSIGNEE_STRATEGY_OPTIONS[strategy];
 
   useEffect(() => {
     if (!node?.data) {
@@ -368,9 +373,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         <div className="tw:mb-6">
           <Select
             data-testid="user-approval-empty-assignee-strategy-select"
-            hint={t(
-              EMPTY_ASSIGNEE_STRATEGY_OPTIONS[emptyAssigneeStrategy].hintKey
-            )}
+            hint={t(strategyOption(emptyAssigneeStrategy).hintKey)}
             isDisabled={isFormDisabled}
             label={t('label.if-no-one-else-can-approve')}
             value={emptyAssigneeStrategy}
@@ -382,7 +385,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
                 data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
                 id={strategy}
                 key={strategy}
-                label={t(EMPTY_ASSIGNEE_STRATEGY_OPTIONS[strategy].labelKey)}
+                label={t(strategyOption(strategy).labelKey)}
               />
             ))}
           </Select>

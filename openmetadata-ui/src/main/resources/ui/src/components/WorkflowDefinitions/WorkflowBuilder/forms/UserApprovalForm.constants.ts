@@ -31,6 +31,13 @@ export const EMPTY_ASSIGNEE_STRATEGY_OPTIONS: Record<
   },
 };
 
+// A task workflow (noOp trigger) never approves on its own: with none, its task stays open and the
+// owner fallback assigns the asset's owners.
+export const NONE_IN_TASK_WORKFLOW_OPTION = {
+  labelKey: 'label.go-to-asset-owners',
+  hintKey: 'message.empty-assignee-strategy-none-task-workflow-hint',
+};
+
 // The default comes first; the generated enum is alphabetical.
 export const EMPTY_ASSIGNEE_STRATEGY_ORDER: EmptyAssigneeStrategy[] = [
   EmptyAssigneeStrategy.None,

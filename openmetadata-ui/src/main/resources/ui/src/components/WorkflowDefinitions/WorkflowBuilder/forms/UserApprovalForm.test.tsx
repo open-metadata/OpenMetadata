@@ -15,6 +15,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { EmptyAssigneeStrategy } from '../../../../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
+import {
+  Type,
+  WorkflowDefinition,
+} from '../../../../generated/governance/workflows/workflowDefinition';
 import { UserApprovalForm } from './UserApprovalForm';
 
 const node: Node = {
@@ -51,10 +55,15 @@ const nodeWithStrategy = (strategy?: EmptyAssigneeStrategy): Node => ({
   },
 });
 
-const renderForm = (formNode: Node, onSave = jest.fn(), url = '/?mode=edit') =>
+const renderForm = (
+  formNode: Node,
+  onSave = jest.fn(),
+  url = '/?mode=edit',
+  workflowDefinition?: WorkflowDefinition
+) =>
   render(
     <MemoryRouter initialEntries={[url]}>
-      <WorkflowModeProvider>
+      <WorkflowModeProvider workflowDefinition={workflowDefinition}>
         <UserApprovalForm node={formNode} onClose={jest.fn()} onSave={onSave} />
       </WorkflowModeProvider>
     </MemoryRouter>
@@ -124,6 +133,30 @@ describe('UserApprovalForm', () => {
     expect(
       screen.getByText('message.empty-assignee-strategy-description')
     ).toBeInTheDocument();
+  });
+
+  it('says a task workflow sends the default to the asset owners', () => {
+    const taskWorkflow = {
+      name: 'TagUpdateTaskWorkflow',
+      description: 'Task workflow',
+      trigger: { type: Type.NoOp },
+    } as WorkflowDefinition;
+    renderForm(
+      nodeWithStrategy(undefined),
+      jest.fn(),
+      '/?mode=view',
+      taskWorkflow
+    );
+
+    expect(strategyTrigger()).toHaveTextContent('label.go-to-asset-owners');
+    expect(
+      screen.getByText(
+        'message.empty-assignee-strategy-none-task-workflow-hint'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.empty-assignee-strategy-none-hint')
+    ).not.toBeInTheDocument();
   });
 
   it('lists the default option first', async () => {
