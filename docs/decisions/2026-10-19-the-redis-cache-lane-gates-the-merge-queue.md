@@ -6,7 +6,7 @@
 - **Guard:** the `merge-rules` ruleset lists `backend-checks-status` as a required check; that job
   in `ci-merge-queue.yml` fails when `it-postgres-elasticsearch-redis` is selected and does not
   succeed, pinned by `test_merge_queue_backend_gate_verifies_selected_integration_jobs` in
-  `.github/scripts/tests/test_ci_speed_workload_plan.py`
+  `.github/scripts/tests/test_ci_speed_status_gates.py`
 - **Related:** #35761 (the rollout, steps 1-4 below); #35769 (the PR trigger); #35672; #35722 (the
   rollback cache eviction that made this lane green); ADR:2026-11-25-backend-checks-reports-native-stage-failures
 

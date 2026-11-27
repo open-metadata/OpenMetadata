@@ -55,12 +55,14 @@ jobs:
     permissions:
       contents: read
     steps:
+      # Every selected suite needs the whole repository; with none selected, or
+      # after a planner failure, the status gate below still needs its action.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        if: ${{ needs.plan.result == 'success' && needs.plan.outputs.static == 'true' }}
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: ${{ needs.plan.outputs.static != 'true' && '.github/actions/ci-status-gate' || '' }}
       - name: Run Python static checks
         id: static
         if: ${{ needs.plan.result == 'success' && needs.plan.outputs.static == 'true' }}
@@ -81,33 +83,26 @@ jobs:
         uses: ./.github/actions/python-airflow-apis
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
+      # The suites run as steps here, so the gate gets their outcomes in the
+      # shape of `needs`.
       - name: Verify selected Python workloads
-        id: gate
         if: ${{ always() }}
-        env:
-          NEEDS_JSON: |
+        uses: ./.github/actions/ci-status-gate
+        with:
+          needs: |
             {
               "plan": {"result": "${{ needs.plan.result }}"},
               "python-static-checks": {"result": "${{ steps.static.outcome }}"},
               "python-unit": {"result": "${{ steps.unit.outcome }}"},
               "airflow-apis": {"result": "${{ steps.airflow.outcome }}"}
             }
-          EXPECTED_RESULTS: |
+          expected: |
             {
               "plan": "success",
               "python-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}"
             }
-        run: |
-          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
-            $expected | length > 0 and
-            (keys == ($needs | keys)) and
-            all(to_entries[]; . as $job |
-              ($job.value == "success" or $job.value == "skipped") and
-              $needs[$job.key].result == $job.value)
-          '
-        shell: bash
 
   # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
   # Jest and the browser tests out to parallel shards.
@@ -289,54 +284,26 @@ jobs:
           compose_file: ./docker/docker-compose-quickstart/docker-compose.yml
           health_check_timeout: 300
 
+  # Required check for the backend. Like the Python and UI gates it runs on
+  # every non-draft PR: a job skipped by `if` reports success.
   backend-checks-status:
     name: backend-checks-status
     needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: >-
-      ${{ always() && github.event_name == 'pull_request' &&
-          (needs.plan.result != 'success' ||
-           needs.plan.outputs.checkstyle != 'false' ||
-           needs.plan.outputs.java-unit != 'false' ||
-           needs.plan.outputs.java-operator != 'false' ||
-           needs.plan.outputs.docker-smoke != 'false') }}
+    if: ${{ always() && github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     steps:
-      - name: Verify backend checks, operator tests, and Docker smoke test
-        env:
-          CHANGES_RESULT: ${{ needs.plan.result }}
-          CHECKSTYLE_CHANGED: ${{ needs.plan.outputs.checkstyle }}
-          JAVA_CHANGED: ${{ needs.plan.outputs.java-unit }}
-          K8S_CHANGED: ${{ needs.plan.outputs.java-operator }}
-          DOCKER_CHANGED: ${{ needs.plan.outputs.docker-smoke }}
-          SERVICE_RESULT: ${{ needs.backend-checks.result }}
-          K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
-          DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
-        run: |
-          if [[ "$CHANGES_RESULT" != "success" ]]; then
-            echo "::error::CI planning did not succeed: ${CHANGES_RESULT}"
-            exit 1
-          fi
-
-          fail=0
-          check() {
-            local name="$1" changed="$2" result="$3"
-            if [[ "$changed" != "true" ]]; then
-              echo "${name}: no relevant paths changed, skipped."
-              return
-            fi
-            if [[ "$result" != "success" ]]; then
-              echo "::error::${name} did not succeed (result=${result})"
-              fail=1
-            else
-              echo "${name}: success"
-            fi
-          }
-          backend_changed="false"
-          if [[ "$JAVA_CHANGED" == "true" || "$CHECKSTYLE_CHANGED" == "true" ]]; then
-            backend_changed="true"
-          fi
-          check "backend-checks" "$backend_changed" "$SERVICE_RESULT"
-          check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
-          check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
-          exit $fail
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions/ci-status-gate
+      - uses: ./.github/actions/ci-status-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          expected: |
+            {
+              "plan": "success",
+              "backend-checks": "${{ needs.plan.outputs.checkstyle == 'true' && 'success' || 'skipped' }}",
+              "k8s_operator-unit-tests": "${{ needs.plan.outputs.java-operator == 'true' && 'success' || 'skipped' }}",
+              "docker-image-smoke-test": "${{ needs.plan.outputs.docker-smoke == 'true' && 'success' || 'skipped' }}"
+            }

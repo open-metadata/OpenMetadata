@@ -1,10 +1,10 @@
 # UI CI runs from the event entrypoints behind one required check
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-26 (initial), v2 2026-11-27 (shared planning and manual UI selection)
+- **Revisions:** v1 2026-11-26 (initial), v2 2026-11-27 (shared planning and manual UI selection),
+  v3 2026-11-27 (one status gate for every component)
 - **Deciders:** Chirag Madlani
-- **Guard:** `.github/scripts/tests/test_python_ci.py` (`test_ui_status_expects_a_result_for_every_dependency`
-  and the `ci-status-gate` cases of the gate tests); actionlint
+- **Guard:** `.github/scripts/tests/test_ci_speed_status_gates.py`; actionlint
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
   ADR:2026-11-26-ui-jest-runs-sharded-without-coverage-before-main,
   ADR:2026-11-25-browser-tests-are-selected-before-main-and-run-in-full-on-main
@@ -53,3 +53,9 @@ hit. Browser tests and the core-components tests become merge-blocking for the f
 ruleset never required them. A queue entry's impact map counts only when the whole `ci-merge-queue`
 run passed. Manual dispatch runs the UI when `workload` is `ui` on either entrypoint or `all`
 on `ci-merge-queue`. Python's gates can move onto `ci-status-gate` the same way.
+
+## Amendment: one status gate for every component (2026-11-27)
+
+ADR:2026-11-27-ci-components-share-one-status-gate-that-always-runs makes `ci-status-gate` the
+status gate of the Python and backend checks too. `ui-tests-status` keeps its shape. Its tests
+moved to `test_ci_speed_status_gates.py`, which runs on pull requests.

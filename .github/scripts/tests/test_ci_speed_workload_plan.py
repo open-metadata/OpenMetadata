@@ -1,4 +1,4 @@
-"""Exercise workload routing and planning failure gates."""
+"""Exercise workload routing."""
 
 import json
 import os
@@ -360,9 +360,9 @@ def test_missing_path_detection_result_fails_planning(tmp_path):
     assert not outputs.exists()
 
 
-@pytest.mark.parametrize("workflow", ["ci-pr.yml", "ci-merge-queue.yml"])
-def test_validation_actions_run_only_for_their_selected_workload(workflow):
-    job = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]["validate-json-yaml"]
+# Both entrypoints share this job; test_ci_speed_status_gates.py keeps them identical.
+def test_validation_actions_run_only_for_their_selected_workload():
+    job = yaml.safe_load((WORKFLOWS / "ci-pr.yml").read_text())["jobs"]["validate-json-yaml"]
     assert job["if"] == (
         "${{ needs.plan.outputs.json-yaml == 'true' || "
         "needs.plan.outputs.ci-rules == 'true' }}"
@@ -408,99 +408,3 @@ def test_one_nightly_schedule_runs_java_without_waiting_for_python():
             ):
                 callers.add((path.name, name))
     assert callers == {("ci-nightly.yml", "maven-sonarcloud-ci")}
-
-
-@pytest.mark.parametrize("workflow", ["ci-pr.yml", "ci-merge-queue.yml"])
-def test_backend_gate_rejects_failed_planner_when_nothing_runs(workflow):
-    jobs = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]
-    gate = jobs["backend-checks-status"]["steps"][0]
-    assert gate["env"]["CHANGES_RESULT"] == "${{ needs.plan.result }}"
-    env = dict.fromkeys(gate["env"], "false")
-    env["CHANGES_RESULT"] = "failure"
-
-    result = subprocess.run(
-        ["bash", "-e", "-c", gate["run"]],
-        env={**os.environ, **env},
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=30,
-    )
-
-    assert result.returncode != 0
-    assert "CI planning did not succeed" in result.stdout
-
-
-@pytest.mark.parametrize(
-    ("outcomes", "expected_error"),
-    [
-        pytest.param({}, None, id="integration-only"),
-        pytest.param(
-            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "success"},
-            None,
-            id="backend-and-integration-succeed",
-        ),
-        pytest.param(
-            {
-                "JAVA_IT_CHANGED": "false",
-                "REDIS_IT_CHANGED": "false",
-                "IT_BUILD_RESULT": "skipped",
-                "MYSQL_ES_RESULT": "skipped",
-                "POSTGRES_OS_RESULT": "skipped",
-                "POSTGRES_REDIS_RESULT": "skipped",
-            },
-            None,
-            id="irrelevant-change",
-        ),
-        pytest.param(
-            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "failure"},
-            "backend-checks",
-            id="backend-failure",
-        ),
-        pytest.param(
-            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "cancelled"},
-            "backend-checks",
-            id="backend-cancelled",
-        ),
-        ({"IT_BUILD_RESULT": "failure"}, "integration-test-build"),
-        ({"MYSQL_ES_RESULT": "skipped"}, "it-mysql-elasticsearch"),
-        ({"POSTGRES_OS_RESULT": "cancelled"}, "it-postgres-opensearch"),
-        ({"POSTGRES_REDIS_RESULT": "failure"}, "it-postgres-elasticsearch-redis"),
-        ({"REDIS_IT_CHANGED": "false", "POSTGRES_REDIS_RESULT": "skipped"}, None),
-    ],
-)
-def test_merge_queue_backend_gate_verifies_selected_integration_jobs(
-    outcomes, expected_error
-):
-    jobs = yaml.safe_load((WORKFLOWS / "ci-merge-queue.yml").read_text())["jobs"]
-    gate = jobs["backend-checks-status"]["steps"][0]
-    env = {
-        "CHANGES_RESULT": "success",
-        "CHECKSTYLE_CHANGED": "false",
-        "JAVA_CHANGED": "false",
-        "K8S_CHANGED": "false",
-        "DOCKER_CHANGED": "false",
-        "SERVICE_RESULT": "skipped",
-        "K8S_RESULT": "skipped",
-        "DOCKER_RESULT": "skipped",
-        "JAVA_IT_CHANGED": "true",
-        "REDIS_IT_CHANGED": "true",
-        "IT_BUILD_RESULT": "success",
-        "MYSQL_ES_RESULT": "success",
-        "POSTGRES_OS_RESULT": "success",
-        "POSTGRES_REDIS_RESULT": "success",
-        **outcomes,
-    }
-    result = subprocess.run(
-        ["bash", "-eu", "-c", gate["run"]],
-        env={**os.environ, **env},
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=30,
-    )
-    if expected_error:
-        assert result.returncode == 1, result.stderr
-        assert f"::error::{expected_error} did not succeed" in result.stdout
-    else:
-        assert result.returncode == 0, result.stdout + result.stderr

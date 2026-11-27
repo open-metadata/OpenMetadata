@@ -1,7 +1,7 @@
 # Backend checks report failures at the stage that failed
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-25 (initial) · v2 2026-11-26 (Java rollup cutover)
+- **Revisions:** v1 2026-11-25 (initial) · v2 2026-11-26 (Java rollup cutover) · v3 2026-11-27 (shared gate)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `test_java_checkstyle_is_unified_fail_fast_in_backend_job`, `test_merge_queue_backend_gate_verifies_selected_integration_jobs`, and `test_summary_leads_with_stage_results`
 - **Related:** ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once
@@ -54,3 +54,11 @@ The rollout removes the three profile status jobs and their PR placeholders. Bef
 rollout PR, replace the three required `integration-tests-*` contexts with `backend-checks-status`
 in `merge-rules`. Keep `backend-checks` required for early failures. Requiring the rollup also
 makes operator tests and Docker smoke merge-blocking when selected.
+
+## Amendment: shared gate (2026-11-27)
+
+`backend-checks-status` verifies its jobs through `ci-status-gate`, under
+ADR:2026-11-27-ci-components-share-one-status-gate-that-always-runs. On pull requests it runs on
+every non-draft PR, not only when Java work is selected. Each expected result follows the planner
+output of that job's own `if`, so `backend-checks` follows `checkstyle`, and a job that runs
+without being selected now fails the rollup.

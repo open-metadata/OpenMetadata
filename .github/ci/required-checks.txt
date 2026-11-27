@@ -1,0 +1,11 @@
+# Status checks that ci-pr.yml and ci-merge-queue.yml report for the merge-rules
+# ruleset. Each name is a top-level job name in both workflows, never a job inside
+# a reusable workflow, which GitHub would report as `<caller> / <job>`.
+# test_ci_speed_status_gates.py enforces this. Rename a check here, in both
+# workflows and in the ruleset together.
+backend-checks
+backend-checks-status
+py-tests-status
+ui-checkstyle
+ui-coverage
+ui-tests-status
