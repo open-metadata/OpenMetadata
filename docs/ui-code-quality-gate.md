@@ -47,11 +47,11 @@ This is the command to trust — it runs the fixing steps (organize-imports, esl
 headers, i18n sync, app-docs) **and** the audit gates (`tw-audit`, `tw-guard`).
 The gates are collected rather than short-circuited, so one failure does not hide the others.
 
-In CI, warnings appear in the sticky GitHub Actions comment on the PR titled
-**UI Checkstyle passed — lint findings in changed files**. The comment groups findings by rule and
-includes file, line, column, and message details for the PR's changed files. The same output is
-available in **Actions → UI Checkstyle → checkstyle → ESLint + Prettier + Organise Imports (src)**.
-Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-checkstyle`.
+In CI, warnings appear in the job summary of the `ui / lint` job, titled
+**UI Checkstyle passed — lint findings in changed files**. The summary groups findings by rule and
+includes file, line, column, and message details for the PR's changed files. The same output is in
+that job's **ESLint + Prettier + Organise Imports (src)** step.
+Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-tests-status`.
 
 ## What each gate enforces
 
@@ -243,12 +243,20 @@ project settings, not on the gate.
 
 ### Branch protection
 
-Mark these checks required on `main`:
+Mark `ui-tests-status` (from `ci-pr.yml` and `ci-merge-queue.yml`) required on `main`. It passes
+only when every selected UI job passed:
 
-| Required check | Enforces |
-|---|---|
-| `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
-| `ui-coverage` | Jest run completed |
+The `ui` job (`ui-ci.yml`) runs:
+
+| Check | Runs | Enforces |
+|---|---|---|
+| `ui / lint` | `.github/actions/ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard`, bundle budget, knip |
+| `ui / unit` | `.github/actions/ui-unit`, four shards | Jest |
+| `ui / browser` | `ui-browser-tests.yml` | browser tests selected by impact |
+
+`ui / unit` and `ui / browser` start only after `ui / lint` passes. Until the ruleset switches
+to `ui-tests-status`, the entrypoints also report it under the old names `ui-checkstyle` and
+`ui-coverage`.
 
 Do not require `ui-sonar-gate` or SonarCloud's PR check. PR jobs do not receive Sonar credentials,
 including same-repository PRs, under ADR:2026-11-10-pr-jobs-never-receive-credentials.
