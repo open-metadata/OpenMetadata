@@ -21,6 +21,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
@@ -33,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.ContainerServiceTestFactory;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
@@ -43,6 +47,7 @@ import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -64,6 +69,7 @@ import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -86,6 +92,7 @@ import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -128,6 +135,219 @@ public class LineageResourceIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String LINEAGE_PATH = "/v1/lineage";
+  private static final String DASHBOARD_CHART_BATCH_PATH = LINEAGE_PATH + "/dashboardCharts/batch";
+
+  @Test
+  void dashboardChartBatchPreservesDecoratedLineageAndRejectsNonMembers() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardChartFixture fixture = createDashboardChartFixture(client);
+    executeAddLineage(
+        client,
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(fixture.dashboard().getEntityReference())
+                    .withToEntity(fixture.member().getEntityReference())
+                    .withLineageDetails(
+                        new LineageDetails()
+                            .withDescription("Curated lineage")
+                            .withSqlQuery("select 1"))));
+    JsonNode before = getDashboardChartDetails(client, fixture);
+    assertEquals("Curated lineage", before.path("description").asText());
+    assertEquals("select 1", before.path("sqlQuery").asText());
+
+    JsonNode results =
+        writeDashboardChartBatch(
+            client, fixture, fixture.outsider(), fixture.member(), fixture.otherMember());
+
+    assertEquals(3, results.size());
+    assertEquals(fixture.outsider().getId().toString(), results.get(0).path("chartId").asText());
+    assertEquals("failed", results.get(0).path("status").asText());
+    assertEquals("notMember", results.get(0).path("errorCode").asText());
+    assertEquals("present", results.get(1).path("status").asText());
+    assertEquals("created", results.get(2).path("status").asText());
+    assertEquals(before, getDashboardChartDetails(client, fixture));
+  }
+
+  @Test
+  void dashboardChartBatchConcurrentWritersCreateOneEdgeAndOneEvent() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardChartFixture fixture = createDashboardChartFixture(client);
+    long start = System.currentTimeMillis();
+    CyclicBarrier startTogether = new CyclicBarrier(2);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var first = executor.submit(() -> createDashboardChartEdge(client, fixture, startTogether));
+      var second = executor.submit(() -> createDashboardChartEdge(client, fixture, startTogether));
+      assertEquals(
+          Set.of("created", "present"),
+          Set.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS)));
+    }
+    JsonNode details = getDashboardChartDetails(client, fixture);
+    assertEquals("DashboardLineage", details.path("source").asText());
+    assertEquals(
+        "present",
+        writeDashboardChartBatch(client, fixture, fixture.member()).get(0).path("status").asText());
+    assertEquals(details, getDashboardChartDetails(client, fixture));
+    assertOneDashboardChartCreateEvent(client, fixture, start);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "chart, VIEW_BASIC",
+    "dashboard, VIEW_BASIC",
+    "chart, EDIT_LINEAGE",
+    "dashboard, EDIT_LINEAGE"
+  })
+  void dashboardChartBatchDoesNotExposeEdgeExistenceWhenAnEndIsForbidden(
+      String entityType, MetadataOperation operation) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DashboardChartFixture fixture = createDashboardChartFixture(admin);
+    assertEquals(
+        "created",
+        writeDashboardChartBatch(admin, fixture, fixture.member()).get(0).path("status").asText());
+    OpenMetadataClient restricted =
+        createDashboardChartRestrictedClient(admin, entityType, operation);
+
+    JsonNode results =
+        writeDashboardChartBatch(restricted, fixture, fixture.member(), fixture.otherMember());
+
+    assertEquals(2, results.size());
+    for (JsonNode result : results) {
+      assertEquals("failed", result.path("status").asText());
+      assertEquals("forbidden", result.path("errorCode").asText());
+      assertFalse(result.has("lineageDetails"));
+    }
+    assertEquals(
+        "created",
+        writeDashboardChartBatch(admin, fixture, fixture.otherMember())
+            .get(0)
+            .path("status")
+            .asText());
+  }
+
+  @Test
+  void dashboardChartBatchRejectsDuplicatePairsBeforeCreatingAnything() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DashboardChartFixture fixture = createDashboardChartFixture(admin);
+    assertThrows(
+        InvalidRequestException.class,
+        () -> writeDashboardChartBatch(admin, fixture, fixture.member(), fixture.member()));
+    assertEquals(
+        "created",
+        writeDashboardChartBatch(admin, fixture, fixture.member()).get(0).path("status").asText());
+  }
+
+  private OpenMetadataClient createDashboardChartRestrictedClient(
+      OpenMetadataClient admin, String entityType, MetadataOperation operation) throws Exception {
+    TestNamespace namespace = new TestNamespace("DashboardChartPermissions");
+    Rule deny =
+        new Rule()
+            .withName("deny_end")
+            .withEffect(Rule.Effect.DENY)
+            .withResources(List.of(entityType))
+            .withOperations(List.of(operation));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy().withName(namespace.prefix("policy")).withRules(List.of(deny)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(namespace.prefix("role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String name = namespace.prefix("user");
+    String email = name + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private String createDashboardChartEdge(
+      OpenMetadataClient client, DashboardChartFixture fixture, CyclicBarrier startTogether)
+      throws Exception {
+    startTogether.await(10, TimeUnit.SECONDS);
+    return writeDashboardChartBatch(client, fixture, fixture.member())
+        .get(0)
+        .path("status")
+        .asText();
+  }
+
+  private void assertOneDashboardChartCreateEvent(
+      OpenMetadataClient client, DashboardChartFixture fixture, long start) throws Exception {
+    String edgeFqn =
+        fixture.dashboard().getFullyQualifiedName()
+            + "--upstream-->"
+            + fixture.member().getFullyQualifiedName();
+    assertTrue(awaitAuditLogEntry(client, "entityLineageAdded", edgeFqn, start).isPresent());
+    long count =
+        listAuditLogs(client, "entityLineageAdded", start).stream()
+            .filter(event -> edgeFqn.equals(event.path("entityFQN").asText()))
+            .count();
+    assertEquals(1, count);
+  }
+
+  private JsonNode getDashboardChartDetails(
+      OpenMetadataClient client, DashboardChartFixture fixture) throws Exception {
+    String path =
+        LINEAGE_PATH
+            + "/getLineageEdge/"
+            + fixture.dashboard().getId()
+            + "/"
+            + fixture.member().getId();
+    return OBJECT_MAPPER
+        .readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null, null))
+        .path("edge");
+  }
+
+  private JsonNode writeDashboardChartBatch(
+      OpenMetadataClient client, DashboardChartFixture fixture, Chart... charts) throws Exception {
+    var batch = OBJECT_MAPPER.createObjectNode();
+    var pairs = batch.putArray("pairs");
+    for (Chart chart : charts) {
+      pairs
+          .addObject()
+          .put("dashboardId", fixture.dashboard().getId().toString())
+          .put("chartId", chart.getId().toString());
+    }
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.PUT, DASHBOARD_CHART_BATCH_PATH, batch, null);
+    return OBJECT_MAPPER.readTree(response).path("results");
+  }
+
+  private DashboardChartFixture createDashboardChartFixture(OpenMetadataClient client) {
+    TestNamespace namespace = new TestNamespace("DashboardChartLineage");
+    String service = DashboardServiceTestFactory.createMetabase(namespace).getFullyQualifiedName();
+    Chart member = createBatchChart(client, service, namespace.prefix("member"));
+    Chart otherMember = createBatchChart(client, service, namespace.prefix("other_member"));
+    Chart outsider = createBatchChart(client, service, namespace.prefix("outsider"));
+    Dashboard dashboard =
+        client
+            .dashboards()
+            .create(
+                new CreateDashboard()
+                    .withName(namespace.prefix("dashboard"))
+                    .withService(service)
+                    .withCharts(
+                        List.of(
+                            member.getFullyQualifiedName(), otherMember.getFullyQualifiedName())));
+    return new DashboardChartFixture(dashboard, member, otherMember, outsider);
+  }
+
+  private Chart createBatchChart(OpenMetadataClient client, String service, String name) {
+    return client
+        .charts()
+        .create(
+            new CreateChart().withName(name).withService(service).withChartType(ChartType.Line));
+  }
+
+  private record DashboardChartFixture(
+      Dashboard dashboard, Chart member, Chart otherMember, Chart outsider) {}
 
   @Test
   void testAddLineageBetweenTables() throws Exception {

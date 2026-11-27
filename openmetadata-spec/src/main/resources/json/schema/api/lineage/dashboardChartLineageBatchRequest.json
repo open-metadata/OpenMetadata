@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/dashboardChartLineageBatchRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DashboardChartLineageBatchRequest",
+  "javaType": "org.openmetadata.schema.api.lineage.DashboardChartLineageBatchRequest",
+  "description": "Create structural lineage edges for current dashboard chart membership.",
+  "type": "object",
+  "properties": {
+    "pairs": {
+      "description": "Distinct dashboard and chart pairs, in the order in which to process them.",
+      "type": "array",
+      "items": {"$ref": "dashboardChartLineagePair.json"},
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": ["pairs"],
+  "additionalProperties": false
+}

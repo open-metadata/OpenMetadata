@@ -34,6 +34,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -57,6 +58,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.DashboardChartLineageBatchRequest;
+import org.openmetadata.schema.api.lineage.DashboardChartLineageBatchResponse;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
@@ -79,6 +82,7 @@ import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.lineage.DashboardChartLineageBatchService;
 import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.lineage.LineageSceneResolver;
@@ -103,8 +107,10 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "lineage")
 public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
+  private static final String DASHBOARD_CHART_BATCH_PATH = "/dashboardCharts/batch";
   private final LineageRepository dao;
   private final Authorizer authorizer;
+  private final DashboardChartLineageBatchService dashboardChartLineageBatch;
   private final LineageHydrator hydrator;
   private final LineagePermissionFilter lineagePermissionFilter;
   private final SearchLineagePermissionFilter searchLineagePermissionFilter;
@@ -117,6 +123,9 @@ public class LineageResource {
     this.lineagePermissionFilter = new LineagePermissionFilter(authorizer);
     this.searchLineagePermissionFilter = new SearchLineagePermissionFilter(authorizer);
     this.sceneResolver = new LineageSceneResolver(hydrator);
+    this.dashboardChartLineageBatch =
+        new DashboardChartLineageBatchService(
+            dao, (type, id) -> Entity.getEntityReferenceById(type, id, Include.NON_DELETED));
   }
 
   private static void validateTemporalBounds(Long startTime, Long endTime) {
@@ -1054,6 +1063,39 @@ public class LineageResource {
     SearchLineageResult page =
         Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext);
     return searchLineagePermissionFilter.filterPage(securityContext, subjectContext, page, request);
+  }
+
+  @GET
+  @Path(DASHBOARD_CHART_BATCH_PATH + "/capability")
+  @Operation(
+      operationId = "getDashboardChartLineageBatchCapability",
+      summary = "Check support for batched dashboard chart lineage creation",
+      responses = @ApiResponse(responseCode = "204", description = "Batch creation is supported"))
+  public Response getDashboardChartLineageBatchCapability() {
+    return Response.noContent().build();
+  }
+
+  @PUT
+  @Path(DASHBOARD_CHART_BATCH_PATH)
+  @Operation(
+      operationId = "writeDashboardChartLineageBatch",
+      summary = "Create missing lineage edges for existing dashboard chart membership",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Outcome for each requested dashboard chart pair",
+            content =
+                @Content(
+                    schema = @Schema(implementation = DashboardChartLineageBatchResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid batch")
+      })
+  public DashboardChartLineageBatchResponse writeDashboardChartLineageBatch(
+      @Context SecurityContext securityContext,
+      @NotNull @Valid DashboardChartLineageBatchRequest request) {
+    return dashboardChartLineageBatch.write(
+        request,
+        securityContext.getUserPrincipal().getName(),
+        (entity, operation) -> authorizeLineageReference(securityContext, entity, operation));
   }
 
   @PUT

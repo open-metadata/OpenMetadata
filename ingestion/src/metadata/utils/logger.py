@@ -36,7 +36,11 @@ from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaDashboardChartLineageDrain,
+    OMetaDashboardChartLineageRequest,
+    OMetaFQNLineageRequest,
+)
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
@@ -283,13 +287,11 @@ def _(record: OMetaFQNLineageRequest) -> str:
     )
 
 
-@get_log_name.register
-def _(record: Barrier) -> None:
-    """A Barrier is a control record, not an ingested asset.
-
-    Returning None keeps it out of Status.scanned, which would otherwise report the
-    flush as a scanned record and inflate the connector's record count.
-    """
+@get_log_name.register(Barrier)
+@get_log_name.register(OMetaDashboardChartLineageDrain)
+@get_log_name.register(OMetaDashboardChartLineageRequest)
+def _(record: Barrier | OMetaDashboardChartLineageDrain | OMetaDashboardChartLineageRequest) -> None:
+    """Control records would inflate the connector's asset count if reported as scans."""
     return
 
 

@@ -20,6 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
+import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
@@ -42,6 +43,7 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,17 +63,20 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.DashboardChartLineagePair;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -91,6 +96,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.lineage.LineageEdgePipeline;
@@ -278,17 +284,25 @@ public class LineageRepository {
     // Direct invalidation of cached lineage rooted at either endpoint of the new edge.
     // Other roots that transitively contain these endpoints fall through to the TTL backstop —
     // see CachedLineage class doc for the design rationale.
-    var cachedLineage = org.openmetadata.service.cache.CacheBundle.getCachedLineage();
-    if (cachedLineage != null) {
-      cachedLineage.invalidateEdge(from.getId(), to.getId());
-    }
+    invalidateCachedLineage(from, to);
 
     Optional<EventType> eventType = decideEventType(priorDetails, lineageDetails);
     if (eventType.isPresent()) {
       emitLineageChangeEvent(eventType.get(), from, to, lineageDetails, updatedBy);
     }
 
-    // Add lineage to RDF
+    addLineageToRdf(from, to);
+    buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
+  }
+
+  private void invalidateCachedLineage(EntityReference from, EntityReference to) {
+    var cachedLineage = CacheBundle.getCachedLineage();
+    if (cachedLineage != null) {
+      cachedLineage.invalidateEdge(from.getId(), to.getId());
+    }
+  }
+
+  private void addLineageToRdf(EntityReference from, EntityReference to) {
     if (RdfUpdater.isEnabled()) {
       EntityRelationship lineageRelationship =
           new EntityRelationship()
@@ -299,9 +313,153 @@ public class LineageRepository {
               .withRelationshipType(Relationship.UPSTREAM);
       RdfUpdater.addRelationship(lineageRelationship);
     }
+  }
 
-    // build Extended Lineage
-    buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
+  public enum DashboardChartWrite {
+    CREATED,
+    PRESENT,
+    NOT_MEMBER,
+    PROJECTION_FAILED
+  }
+
+  private record DashboardChartInsert(DashboardChartWrite outcome, List<Runnable> projections) {}
+
+  public DashboardChartWrite createDashboardChartLineage(
+      DashboardChartLineagePair pair, String updatedBy) {
+    DashboardChartInsert insert =
+        DeadlockRetry.execute(
+            () ->
+                dao.inTransaction(
+                    transaction -> insertDashboardChartEdge(transaction, pair, updatedBy)));
+    DashboardChartWrite outcome = insert.outcome();
+    for (Runnable projection : insert.projections()) {
+      try {
+        projection.run();
+      } catch (RuntimeException exception) {
+        LOG.error(
+            "Could not project dashboard chart lineage {} to {}",
+            pair.getDashboardId(),
+            pair.getChartId(),
+            exception);
+        outcome = DashboardChartWrite.PROJECTION_FAILED;
+      }
+    }
+    return outcome;
+  }
+
+  private DashboardChartInsert insertDashboardChartEdge(
+      CollectionDAO transaction, DashboardChartLineagePair pair, String updatedBy) {
+    EntityReference dashboard = lockDashboard(transaction, pair.getDashboardId());
+    EntityReference chart = lockChart(transaction, pair.getChartId());
+    DashboardChartInsert insert;
+    if (transaction
+        .relationshipDAO()
+        .lockActiveMembership(
+            dashboard.getId(), DASHBOARD, chart.getId(), CHART, Relationship.HAS.ordinal())
+        .isEmpty()) {
+      insert = new DashboardChartInsert(DashboardChartWrite.NOT_MEMBER, List.of());
+    } else {
+      insert = writeDashboardChartEdge(transaction, dashboard, chart, updatedBy);
+    }
+    return insert;
+  }
+
+  private EntityReference lockDashboard(CollectionDAO transaction, UUID dashboardId) {
+    String json =
+        transaction.dashboardDAO().findJsonByIdForUpdate(dashboardId, Include.NON_DELETED);
+    if (json == null) {
+      throw EntityNotFoundException.byId(dashboardId.toString());
+    }
+    return JsonUtils.readValue(json, Dashboard.class).getEntityReference();
+  }
+
+  private EntityReference lockChart(CollectionDAO transaction, UUID chartId) {
+    String json = transaction.chartDAO().findJsonByIdForUpdate(chartId, Include.NON_DELETED);
+    if (json == null) {
+      throw EntityNotFoundException.byId(chartId.toString());
+    }
+    return JsonUtils.readValue(json, Chart.class).getEntityReference();
+  }
+
+  private DashboardChartInsert writeDashboardChartEdge(
+      CollectionDAO transaction,
+      EntityReference dashboard,
+      EntityReference chart,
+      String updatedBy) {
+    LineageDetails details =
+        new LineageDetails().withSource(LineageDetails.Source.DASHBOARD_LINEAGE);
+    applyTemporalFields(details, null, updatedBy, System.currentTimeMillis());
+    String json = validateLineageDetails(dashboard, chart, details);
+    boolean created = insertLineageIfAbsent(transaction, dashboard, chart, json);
+    List<Runnable> projections = new ArrayList<>();
+    if (created) {
+      emitLineageChangeEvent(EventType.ENTITY_LINEAGE_ADDED, dashboard, chart, details, updatedBy);
+      projections.add(() -> projectCommittedDashboardChart(dashboard, chart));
+      projections.add(() -> invalidateCachedLineage(dashboard, chart));
+      buildExtendedLineage(
+          dashboard, chart, new LineageChildWrite(details, null, false, projections::add));
+    }
+    return new DashboardChartInsert(
+        created ? DashboardChartWrite.CREATED : DashboardChartWrite.PRESENT,
+        List.copyOf(projections));
+  }
+
+  private void projectCommittedDashboardChart(EntityReference dashboard, EntityReference chart) {
+    try {
+      // A later ordinary lineage write may already have decorated or removed the committed edge.
+      dao.useTransaction(
+          transaction ->
+              transaction
+                  .relationshipDAO()
+                  .lockRelationshipDetails(
+                      dashboard.getId(), chart.getId(), Relationship.UPSTREAM.ordinal())
+                  .ifPresent(json -> projectDashboardChart(dashboard, chart, json)));
+    } catch (RuntimeException exception) {
+      SearchIndexRetryQueue.enqueue(
+          chart.getId().toString(),
+          chart.getFullyQualifiedName(),
+          chart.getType(),
+          SearchIndexRetryQueue.failureReason("projectDashboardChartLineage", exception));
+      throw exception;
+    }
+  }
+
+  private void projectDashboardChart(
+      EntityReference dashboard, EntityReference chart, String json) {
+    try {
+      if (!searchClient.isClientAvailable()) {
+        throw new IllegalStateException("Search is unavailable for dashboard chart lineage");
+      }
+      addLineageToSearch(dashboard, chart, JsonUtils.readValue(json, LineageDetails.class));
+    } finally {
+      addLineageToRdf(dashboard, chart);
+    }
+  }
+
+  private boolean insertLineageIfAbsent(
+      CollectionDAO transaction, EntityReference from, EntityReference to, String json) {
+    boolean inserted;
+    try {
+      inserted =
+          transaction
+                  .relationshipDAO()
+                  .insertLineageIfAbsent(
+                      from.getId(),
+                      to.getId(),
+                      from.getType(),
+                      to.getType(),
+                      Relationship.UPSTREAM.ordinal(),
+                      json)
+              == 1;
+    } catch (UnableToExecuteStatementException exception) {
+      // MySQL reports a duplicate with 1062 regardless of the connector's affected-rows setting.
+      if (!(exception.getCause() instanceof SQLException sqlException)
+          || sqlException.getErrorCode() != 1062) {
+        throw exception;
+      }
+      inserted = false;
+    }
+    return inserted;
   }
 
   @Transaction
@@ -325,12 +483,24 @@ public class LineageRepository {
         updatedBy);
   }
 
+  private record LineageChildWrite(
+      LineageDetails details,
+      LineageDetails priorDetails,
+      boolean childRelationExists,
+      Consumer<Runnable> project) {}
+
   private void buildExtendedLineage(
       EntityReference from,
       EntityReference to,
-      LineageDetails lineageDetails,
+      LineageDetails details,
       LineageDetails priorDetails,
       boolean childRelationExists) {
+    buildExtendedLineage(
+        from, to, new LineageChildWrite(details, priorDetails, childRelationExists, Runnable::run));
+  }
+
+  private void buildExtendedLineage(
+      EntityReference from, EntityReference to, LineageChildWrite write) {
     boolean addService =
         Entity.entityHasField(from.getType(), FIELD_SERVICE)
             && Entity.entityHasField(to.getType(), FIELD_SERVICE);
@@ -346,23 +516,19 @@ public class LineageRepository {
         Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
     EntityInterface<?> toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
-    addServiceLineage(fromEntity, toEntity, lineageDetails, priorDetails, childRelationExists);
-    addDomainLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
-    addDataProductsLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
+    addServiceLineage(fromEntity, toEntity, write);
+    addDomainLineage(fromEntity, toEntity, write);
+    addDataProductsLineage(fromEntity, toEntity, write);
   }
 
   private void addServiceLineage(
-      EntityInterface<?> fromEntity,
-      EntityInterface<?> toEntity,
-      LineageDetails entityLineageDetails,
-      LineageDetails priorDetails,
-      boolean childRelationExists) {
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity, LineageChildWrite write) {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    EntityReference pipelineService = getPipelineService(write.details());
 
     // An edge that gains, loses, or switches its pipeline feeds a different pair of service edges
     // than it did before. The previous projection has to be released, or the edges it used to feed
@@ -370,12 +536,12 @@ public class LineageRepository {
     // written first: both land on the target service's search doc, and search removals run
     // asynchronously, so a write issued after the release can lose a version conflict and never
     // reach the service view.
-    PriorServiceShape priorShape = childRelationExists ? priorServiceShape(priorDetails) : null;
+    PriorServiceShape priorShape =
+        write.childRelationExists() ? priorServiceShape(write.priorDetails()) : null;
     boolean reshaped = priorShape != null && priorShape.isReshapedTo(pipelineService);
-    boolean childAlreadyCounted = childRelationExists && !reshaped;
+    boolean childAlreadyCounted = write.childRelationExists() && !reshaped;
 
-    insertServiceShape(
-        fromService, toService, pipelineService, entityLineageDetails, childAlreadyCounted);
+    insertServiceShape(fromService, toService, pipelineService, write, childAlreadyCounted);
     if (reshaped && priorShape.isKnown()) {
       releaseServiceShape(fromService, toService, priorShape.pipelineService());
     }
@@ -426,16 +592,14 @@ public class LineageRepository {
       EntityReference fromService,
       EntityReference toService,
       EntityReference pipelineService,
-      LineageDetails entityLineageDetails,
+      LineageChildWrite write,
       boolean childAlreadyCounted) {
     if (pipelineService != null) {
-      insertServiceEdgeIfDistinct(
-          fromService, pipelineService, entityLineageDetails, childAlreadyCounted);
-      insertServiceEdgeIfDistinct(
-          pipelineService, toService, entityLineageDetails, childAlreadyCounted);
+      insertServiceEdgeIfDistinct(fromService, pipelineService, write, childAlreadyCounted);
+      insertServiceEdgeIfDistinct(pipelineService, toService, write, childAlreadyCounted);
       return;
     }
-    insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childAlreadyCounted);
+    insertServiceEdgeIfDistinct(fromService, toService, write, childAlreadyCounted);
   }
 
   /**
@@ -484,23 +648,20 @@ public class LineageRepository {
   private void insertServiceEdgeIfDistinct(
       EntityReference fromService,
       EntityReference toService,
-      LineageDetails entityLineageDetails,
+      LineageChildWrite write,
       boolean childRelationExists) {
     if (fromService.getId().equals(toService.getId())) {
       return;
     }
     LineageDetails serviceDetails =
         getOrCreateLineageDetails(
-                fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
+                fromService.getId(), toService.getId(), write.details(), childRelationExists)
             .withPipeline(null);
-    insertLineage(fromService, toService, serviceDetails);
+    insertLineage(fromService, toService, serviceDetails, write.project());
   }
 
   private void addDomainLineage(
-      EntityInterface<?> fromEntity,
-      EntityInterface<?> toEntity,
-      LineageDetails entityLineageDetails,
-      boolean childRelationExists) {
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity, LineageChildWrite write) {
 
     if (!shouldAddDomainsLineage(fromEntity, toEntity)) {
       return;
@@ -516,20 +677,17 @@ public class LineageRepository {
               getOrCreateLineageDetails(
                       fromDomain.getId(),
                       toDomain.getId(),
-                      entityLineageDetails,
-                      childRelationExists)
+                      write.details(),
+                      write.childRelationExists())
                   .withPipeline(null);
-          insertLineage(fromDomain, toDomain, domainLineageDetails);
+          insertLineage(fromDomain, toDomain, domainLineageDetails, write.project());
         }
       }
     }
   }
 
   private void addDataProductsLineage(
-      EntityInterface<?> fromEntity,
-      EntityInterface<?> toEntity,
-      LineageDetails entityLineageDetails,
-      boolean childRelationExists) {
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity, LineageChildWrite write) {
 
     if (!shouldAddDataProductLineage(fromEntity, toEntity)) {
       return;
@@ -542,10 +700,10 @@ public class LineageRepository {
               getOrCreateLineageDetails(
                       fromEntityRef.getId(),
                       toEntityRef.getId(),
-                      entityLineageDetails,
-                      childRelationExists)
+                      write.details(),
+                      write.childRelationExists())
                   .withPipeline(null);
-          insertLineage(fromEntityRef, toEntityRef, dataProductsLineageDetails);
+          insertLineage(fromEntityRef, toEntityRef, dataProductsLineageDetails, write.project());
         }
       }
     }
@@ -602,7 +760,10 @@ public class LineageRepository {
   }
 
   private void insertLineage(
-      EntityReference from, EntityReference to, LineageDetails lineageDetails) {
+      EntityReference from,
+      EntityReference to,
+      LineageDetails lineageDetails,
+      Consumer<Runnable> project) {
     dao.relationshipDAO()
         .insert(
             from.getId(),
@@ -611,19 +772,8 @@ public class LineageRepository {
             to.getType(),
             Relationship.UPSTREAM.ordinal(),
             JsonUtils.pojoToJson(lineageDetails));
-    addLineageToSearch(from, to, lineageDetails);
-
-    // Add lineage to RDF
-    if (RdfUpdater.isEnabled()) {
-      EntityRelationship lineageRelationship =
-          new EntityRelationship()
-              .withFromEntity(from.getType())
-              .withFromId(from.getId())
-              .withToEntity(to.getType())
-              .withToId(to.getId())
-              .withRelationshipType(Relationship.UPSTREAM);
-      RdfUpdater.addRelationship(lineageRelationship);
-    }
+    project.accept(() -> addLineageToSearch(from, to, lineageDetails));
+    project.accept(() -> addLineageToRdf(from, to));
   }
 
   private String getExtendedLineageFields(boolean service, boolean domain, boolean dataProducts) {

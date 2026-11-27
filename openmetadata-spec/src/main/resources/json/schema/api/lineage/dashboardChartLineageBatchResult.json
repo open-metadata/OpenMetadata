@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/dashboardChartLineageBatchResult.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DashboardChartLineageBatchResult",
+  "javaType": "org.openmetadata.schema.api.lineage.DashboardChartLineageBatchResult",
+  "description": "The outcome for one submitted pair. Existing edge contents are never returned.",
+  "type": "object",
+  "properties": {
+    "dashboardId": {"$ref": "../../type/basic.json#/definitions/uuid"},
+    "chartId": {"$ref": "../../type/basic.json#/definitions/uuid"},
+    "status": {"type": "string", "enum": ["created", "present", "failed"]},
+    "errorCode": {
+      "type": "string",
+      "enum": ["forbidden", "notFound", "notMember", "writeFailed", "projectionFailed"]
+    }
+  },
+  "required": ["dashboardId", "chartId", "status"],
+  "additionalProperties": false
+}

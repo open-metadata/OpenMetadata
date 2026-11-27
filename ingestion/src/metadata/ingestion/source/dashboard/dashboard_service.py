@@ -66,7 +66,12 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaDashboardChartLineageDrain,
+    OMetaDashboardChartLineageRequest,
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -212,6 +217,7 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["drain_dashboard_chart_lineage"],
     )
 
 
@@ -235,6 +241,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state = PerSourceState(set)
     datamodel_source_state = PerSourceState(set)
     chart_source_state = PerSourceState(set)
+    _has_dashboard_chart_lineage_intents = False
 
     @property
     def tags_registry(self) -> TagRegistry:
@@ -487,7 +494,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return self.source_config.includeDirectChartLineage is not False
 
-    def yield_dashboard_chart_lineage(self, _) -> Iterable[Either[OMetaLineageRequest]]:
+    def yield_dashboard_chart_lineage(
+        self, _
+    ) -> Iterable[Either[OMetaDashboardChartLineageRequest] | Either[OMetaLineageRequest] | Either[Barrier]]:
         """
         One Dashboard -> Chart edge per chart the server holds under the dashboard, so the
         visual hierarchy can be walked through lineage. It is a stage of its own so that a
@@ -501,9 +510,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         dashboard_name = self.context.get().dashboard  # pyright: ignore[reportAttributeAccessIssue]
         if not dashboard_name:
             return
-        # Flush the sink buffer so the dashboard and its charts are persisted before
-        # they are read back.
-        yield Either(right=Barrier(reason="dashboard_chart_lineage_flush"))  # pyright: ignore[reportCallIssue]
         try:
             dashboard_fqn = fqn.build(
                 self.metadata,
@@ -511,9 +517,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
                 dashboard_name=dashboard_name,
             )
+            if not dashboard_fqn:
+                return
+
+            if not self.source_config.overrideLineage and self.metadata.accepts_dashboard_chart_lineage_intents:
+                support = self.metadata.dashboard_chart_lineage_batch_capability
+                if isinstance(support, str):
+                    yield Either(left=StackTraceError(name=dashboard_name, error=support), right=None)
+                    return
+                if support is True:
+                    self._has_dashboard_chart_lineage_intents = True
+                    yield Either(left=None, right=OMetaDashboardChartLineageRequest(dashboard_fqn=dashboard_fqn))
+                    return
+
+            # The immediate write carries the override order across dashboards and remains
+            # the compatibility path for servers without the batch route.
+            yield Either(left=None, right=Barrier(reason="dashboard_chart_lineage_flush"))
             dashboard = self.metadata.get_by_name(
                 entity=Dashboard,
-                fqn=dashboard_fqn,  # pyright: ignore[reportArgumentType]
+                fqn=dashboard_fqn,
                 fields=["charts"],
             )
             if not dashboard or not dashboard.charts:
@@ -540,6 +562,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def drain_dashboard_chart_lineage(self) -> Iterable[Either[OMetaDashboardChartLineageDrain]]:
+        if self._has_dashboard_chart_lineage_intents:
+            self._has_dashboard_chart_lineage_intents = False
+            yield Either(left=None, right=OMetaDashboardChartLineageDrain())
 
     def yield_dashboard_lineage(self, dashboard_details: Any) -> Iterable[Either[OMetaLineageRequest]]:
         """

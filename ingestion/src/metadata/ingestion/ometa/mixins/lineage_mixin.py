@@ -19,11 +19,18 @@ import json
 import traceback
 from collections.abc import Sequence
 from copy import deepcopy
+from http import HTTPStatus
 from typing import Any, Generic, TypeVar, cast
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.lineage.dashboardChartLineageBatchRequest import (
+    DashboardChartLineageBatchRequest,
+)
+from metadata.generated.schema.api.lineage.dashboardChartLineageBatchResponse import (
+    DashboardChartLineageBatchResponse,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import (
@@ -47,6 +54,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 LINEAGE_ROUTE = "/lineage"
+DASHBOARD_CHART_LINEAGE_BATCH_ROUTE = f"{LINEAGE_ROUTE}/dashboardCharts/batch"
 
 
 class OMetaLineageMixin(Generic[T]):
@@ -57,6 +65,32 @@ class OMetaLineageMixin(Generic[T]):
     """
 
     client: REST
+    accepts_dashboard_chart_lineage_intents = False
+
+    @functools.cached_property
+    def dashboard_chart_lineage_batch_capability(self) -> bool | str:
+        """Return support, or a failure description that must not trigger a legacy write."""
+        try:
+            response = self.client.get_raw(f"{DASHBOARD_CHART_LINEAGE_BATCH_ROUTE}/capability")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            return f"Could not check dashboard chart lineage batch support: {exc}"
+
+        if response is None:
+            return "Could not check dashboard chart lineage batch support: no server response"
+        if response.status_code == HTTPStatus.NO_CONTENT:
+            return True
+        if response.status_code in (HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED):
+            return False
+        return f"Could not check dashboard chart lineage batch support: HTTP {response.status_code}"
+
+    def add_dashboard_chart_lineage_batch(
+        self,
+        data: DashboardChartLineageBatchRequest,
+    ) -> DashboardChartLineageBatchResponse:
+        """Create structural edges atomically per pair. Repeating the request preserves existing edges."""
+        response = self.client.put(DASHBOARD_CHART_LINEAGE_BATCH_ROUTE, data=data.model_dump_json())
+        return DashboardChartLineageBatchResponse.model_validate(response)
 
     @functools.cached_property
     def _lineage_edge_cache(self) -> LRUCache[dict[str, Any] | None]:
