@@ -205,6 +205,15 @@ const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   domains: (fqn) => getDomainDetailsPath(fqn),
 };
 
+// Free-text fields: a replaced value arrives whole on both sides, so it is shown as a word diff.
+// Every other field (owners, reviewers, synonyms) is a set of identifiers and stays as chips.
+const TEXT_DIFF_FIELDS = new Set(['description', 'displayName']);
+
+// Only the description is rich text (Markdown from imports, HTML from the editor). Plain values
+// such as "# of Orders" must not go through the Markdown parser.
+const toProposedChangeText = (field: string, value: string) =>
+  field === 'description' ? getReadableText(value) : value;
+
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -1870,10 +1879,10 @@ export const TaskTabNew = ({
             {Object.entries(proposedChanges).map(
               ([field, { added, removed }]) => {
                 const getUrl = FIELD_ROUTE_MAP[field];
-                // A replaced text value (description, display name) arrives
-                // whole on both sides; diff it so reviewers see only the edit.
                 const isTextEdit =
-                  !getUrl && removed.length === 1 && added.length === 1;
+                  TEXT_DIFF_FIELDS.has(field) &&
+                  removed.length === 1 &&
+                  added.length === 1;
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
@@ -1887,8 +1896,8 @@ export const TaskTabNew = ({
                         data-testid={`proposed-changes-${field}-diff`}
                         size="text-sm">
                         {getTextDiffElements(
-                          getReadableText(removed[0]),
-                          getReadableText(added[0])
+                          toProposedChangeText(field, removed[0]),
+                          toProposedChangeText(field, added[0])
                         )}
                       </Typography>
                     ) : (
@@ -1905,7 +1914,7 @@ export const TaskTabNew = ({
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
                               key={`${field}-removed-${val}`}>
-                              {getReadableText(val)}
+                              {toProposedChangeText(field, val)}
                             </span>
                           )
                         )}
@@ -1921,7 +1930,7 @@ export const TaskTabNew = ({
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
                               key={`${field}-added-${val}`}>
-                              {getReadableText(val)}
+                              {toProposedChangeText(field, val)}
                             </span>
                           )
                         )}

@@ -1112,6 +1112,68 @@ describe('TaskTabNew Component', () => {
     ).toBe('Test change');
   });
 
+  it('keeps a single owner swap as removed and added chips, not a word diff', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                owners: { removed: ['Data Team'], added: ['Data Platform'] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('proposed-changes-owners-diff')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Data Team')).toHaveClass(
+      'task-proposed-changes-chip--removed'
+    );
+    expect(screen.getByText('Data Platform')).toHaveClass(
+      'task-proposed-changes-chip--added'
+    );
+  });
+
+  it('diffs a display name as plain text without reading it as markdown', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                displayName: { removed: ['Orders'], added: ['# of Orders'] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('proposed-changes-displayName-diff')
+    ).toHaveTextContent('# of Orders');
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,
