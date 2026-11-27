@@ -14,6 +14,7 @@ package org.openmetadata.service.governance.workflows.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Level;
@@ -26,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalDouble;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -40,6 +40,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle.ReviewedRange;
 import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory.CycleChanges;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
@@ -49,16 +51,20 @@ class ApprovalCycleHistoryTest {
   private static final UUID TERM_ID = UUID.randomUUID();
   private static final String REVIEWER = "reviewer";
   private static final String AUTHOR = "author";
+  private static final String BOT = "bot";
 
   private final Map<Double, EntityInterface<?>> rows = new HashMap<>();
   private final List<Double> reads = new ArrayList<>();
   private final List<ILoggingEvent> warnings = new ArrayList<>();
-  private final ApprovalCycleHistory history =
-      new ApprovalCycleHistory(
-          (id, version) -> {
-            reads.add(version);
-            return Optional.ofNullable(rows.get(version));
-          });
+  private final ApprovalCycleHistory history = new ApprovalCycleHistory(this::readVersion);
+  private final ApprovalCycleHistory governedHistory =
+      new ApprovalCycleHistory(this::readVersion, version -> !BOT.equals(version.getUpdatedBy()));
+
+  private Optional<EntityInterface<?>> readVersion(UUID id, double version) {
+    reads.add(version);
+    return Optional.<EntityInterface<?>>ofNullable(rows.get(version))
+        .filter(row -> row.getId().equals(id));
+  }
 
   @Test
   void changesSince_stopsAtTheBaseAndListsTheChangesOldestFirst() {
@@ -70,13 +76,14 @@ class ApprovalCycleHistoryTest {
     CycleChanges changes = history.changesSince(current, 0.2);
 
     assertEquals(new CycleChanges(changesOf(inReview, current), true), changes);
-    assertEquals(List.of(0.3), reads);
+    assertEquals(List.of(0.3, 0.2), reads);
   }
 
   // A major change moves the version by 1.0, and the history list sorts 10.0 before 9.0, so the
   // walk follows each change's recorded previous version instead of counting down.
   @Test
   void changesSince_followsTheRecordedPreviousVersionPastVersionTen() {
+    store(term(9.8, 9.7, null));
     GlossaryTerm minor = store(term(9.9, 9.8, description("D0", "D1")));
     GlossaryTerm major = store(term(10.9, 9.9, description("D1", "D2")));
     GlossaryTerm current = term(11.0, 10.9, description("D2", "D3"));
@@ -106,9 +113,8 @@ class ApprovalCycleHistoryTest {
     assertEquals(new CycleChanges(changesOf(inReview, current), true), changes);
   }
 
-  // Past the read cap, the snapshot comparison recovers visible changes in two extra reads.
   @Test
-  void changesSince_pastTheCapComparesTheBaseWithTheCurrentVersion() {
+  void changesSince_pastTheCapShowsOnlyAttributedChangesAndWarns() {
     GlossaryTerm current = chainOf(ApprovalCycleHistory.MAX_VERSIONS + 5);
 
     CycleChanges changes = withWarnings(() -> history.changesSince(current, 0.1));
@@ -117,16 +123,14 @@ class ApprovalCycleHistoryTest {
     assertEquals(
         Map.of(
             Entity.FIELD_DESCRIPTION,
-            new FieldDiff(List.of(current.getDescription()), List.of("D1"))),
+            new FieldDiff(List.of(current.getDescription()), List.of("D5"))),
         ChangePreviewUtils.foldChanges(current, changes.changes()));
-    assertEquals(ApprovalCycleHistory.MAX_VERSIONS + 1, reads.size());
+    assertEquals(ApprovalCycleHistory.MAX_VERSIONS, reads.size());
     assertTrue(warnings.stream().anyMatch(event -> event.getLevel() == Level.WARN));
   }
 
-  // Version 0.2, the cycle's first edit, is not in the history; walking the changes alone would
-  // hide that edit from the reviewer who approves it.
   @Test
-  void changesSince_aMissingVersionComparesTheBaseWithTheCurrentVersion() {
+  void changesSince_aMissingVersionDoesNotGuessWhichEarlierChangesWereGoverned() {
     store(described(0.1, 0.0, null, "Original").withSynonyms(List.of()));
     store(
         term(0.3, 0.2, synonymAdded("Alias"))
@@ -142,11 +146,7 @@ class ApprovalCycleHistoryTest {
 
     assertFalse(changes.complete());
     assertEquals(
-        Map.of(
-            Entity.FIELD_DESCRIPTION,
-            new FieldDiff(List.of("Edited again"), List.of("Original")),
-            "synonyms",
-            new FieldDiff(List.of("Alias"), List.of())),
+        Map.of(Entity.FIELD_DESCRIPTION, new FieldDiff(List.of("Edited again"), List.of("Edited"))),
         ChangePreviewUtils.foldChanges(current, changes.changes()));
   }
 
@@ -174,7 +174,7 @@ class ApprovalCycleHistoryTest {
             null,
             () -> new CyclePreview(before.getVersion(), changes.changes(), changes.complete()));
 
-    assertEquals("columns", changes.changes().getFirst().getFieldsUpdated().getFirst().getName());
+    assertTrue(ChangePreviewUtils.foldChanges(current, changes.changes()).isEmpty());
     assertEquals(
         Boolean.TRUE,
         ((Map<?, ?>) payload).get(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
@@ -184,12 +184,23 @@ class ApprovalCycleHistoryTest {
   // after the gap and says it is incomplete.
   @Test
   void changesSince_withoutTheBaseVersionListsTheChangesAfterTheGapAsIncomplete() {
-    GlossaryTerm afterGap = store(described(0.3, 0.2, "Edited", "Edited twice"));
+    store(described(0.3, 0.2, "Edited", "Edited twice"));
     GlossaryTerm current = store(described(0.4, 0.3, "Edited twice", "Edited thrice"));
 
     CycleChanges changes = withWarnings(() -> history.changesSince(current, 0.1));
 
-    assertEquals(new CycleChanges(changesOf(afterGap, current), false), changes);
+    assertFalse(changes.complete());
+    assertEquals(
+        Map.of(
+            Entity.FIELD_DESCRIPTION,
+            new FieldDiff(List.of("Edited thrice"), List.of("Edited twice"))),
+        ChangePreviewUtils.foldChanges(current, changes.changes()));
+    assertEquals(
+        "Edited twice",
+        history
+            .undoReviewedChanges(current, new ReviewedRange(0.1, 0.4))
+            .path(Entity.FIELD_DESCRIPTION)
+            .asText());
     assertTrue(warnings.stream().anyMatch(event -> event.getLevel() == Level.WARN));
   }
 
@@ -199,48 +210,146 @@ class ApprovalCycleHistoryTest {
 
     CycleChanges changes = withWarnings(() -> history.changesSince(current, 0.0));
 
-    assertEquals(ApprovalCycleHistory.MAX_VERSIONS, changes.changes().size());
-    assertEquals(current.getChangeDescription(), changes.changes().getLast());
+    assertEquals(
+        Map.of(
+            Entity.FIELD_DESCRIPTION,
+            new FieldDiff(List.of(current.getDescription()), List.of("D5"))),
+        ChangePreviewUtils.foldChanges(current, changes.changes()));
     assertFalse(changes.complete());
   }
 
   @Test
-  void approvedBaseline_skipsAnEditThatInheritedApprovedAndFindsTheApproval() {
+  void aMissingBaseMakesThePreviewIncompleteAndDoesNotGuessTheInverse() {
+    GlossaryTerm current = described(0.2, 0.1, "Original", "Edited");
+
+    CycleChanges preview = withWarnings(() -> history.changesSince(current, 0.1));
+    assertFalse(preview.complete());
+    assertTrue(ChangePreviewUtils.foldChanges(current, preview.changes()).isEmpty());
+    assertEquals(
+        "Edited",
+        history
+            .undoReviewedChanges(current, new ReviewedRange(0.1, 0.2))
+            .path(Entity.FIELD_DESCRIPTION)
+            .asText());
+  }
+
+  @Test
+  void priorDecision_findsAnApprovalTransitionBeforeAnInheritedApproval() {
     store(reviewedTerm(0.2, 0.1, REVIEWER, status(EntityStatus.IN_REVIEW, EntityStatus.APPROVED)));
     store(reviewedTerm(0.3, 0.2, AUTHOR, description("D0", "D1")));
     GlossaryTerm current =
         reviewedTerm(0.4, 0.3, AUTHOR, status(EntityStatus.APPROVED, EntityStatus.IN_REVIEW))
             .withEntityStatus(EntityStatus.IN_REVIEW);
 
-    assertEquals(OptionalDouble.of(0.2), history.approvedBaseline(current));
+    assertEquals(Optional.of(EntityStatus.APPROVED.value()), history.priorDecision(current, 0.3));
   }
 
   @Test
-  void approvedBaseline_neverReturnsTheCurrentVersion() {
+  void priorDecision_excludesAnApprovalAfterTheCycleBase() {
     store(reviewedTerm(0.1, 0.0, AUTHOR, null).withEntityStatus(EntityStatus.DRAFT));
     GlossaryTerm current =
         reviewedTerm(0.2, 0.1, REVIEWER, status(EntityStatus.DRAFT, EntityStatus.APPROVED));
 
-    assertEquals(OptionalDouble.empty(), history.approvedBaseline(current));
+    assertEquals(Optional.empty(), history.priorDecision(current, 0.1));
   }
 
   @Test
-  void approvedBaseline_isAbsentForAnEntityWithoutLifecycleStatus() {
+  void priorDecision_isAbsentForAnEntityWithoutLifecycleStatus() {
     UUID teamId = UUID.randomUUID();
     rows.put(0.1, new Team().withId(teamId).withVersion(0.1));
     Team current = new Team().withId(teamId).withVersion(0.2);
 
-    assertEquals(OptionalDouble.empty(), history.approvedBaseline(current));
+    assertEquals(Optional.empty(), history.priorDecision(current, 0.1));
   }
 
   @Test
-  void lastApprovalOrLatestChange_withoutAnApprovalIsWhereTheLatestChangeWasMade() {
-    store(reviewedTerm(0.1, 0.0, AUTHOR, null).withEntityStatus(EntityStatus.DRAFT));
-    GlossaryTerm current =
-        reviewedTerm(0.3, 0.1, AUTHOR, description("D0", "D1"))
-            .withEntityStatus(EntityStatus.IN_REVIEW);
+  void priorDecision_findsTheRejectionAfterAnEarlierApproval() {
+    store(reviewedTerm(0.2, 0.1, REVIEWER, status(EntityStatus.IN_REVIEW, EntityStatus.APPROVED)));
+    store(
+        reviewedTerm(0.3, 0.2, REVIEWER, status(EntityStatus.IN_REVIEW, EntityStatus.REJECTED))
+            .withEntityStatus(EntityStatus.REJECTED));
+    GlossaryTerm current = reviewedTerm(0.4, 0.3, AUTHOR, description("D0", "D1"));
 
-    assertEquals(0.1, history.lastApprovalOrLatestChange(current));
+    assertEquals(Optional.of(EntityStatus.REJECTED.value()), history.priorDecision(current, 0.3));
+  }
+
+  @Test
+  void priorDecision_ignoresAnInheritedApprovalEvenWithoutReviewers() {
+    store(described(0.1, 0.0, null, "Original"));
+    store(described(0.2, 0.1, "Original", "Edit one"));
+    GlossaryTerm current = described(0.3, 0.2, "Edit one", "Edit two");
+
+    assertEquals(Optional.empty(), history.priorDecision(current, 0.2));
+  }
+
+  @Test
+  void aLaterBotEditWinsOnTheSameField() {
+    store(described(0.1, 0.0, null, "Original"));
+    store(described(0.2, 0.1, "Original", "Human"));
+    GlossaryTerm current = described(0.3, 0.2, "Human", "Bot").withUpdatedBy(BOT);
+
+    CycleChanges preview = governedHistory.changesSince(current, 0.1);
+    assertTrue(preview.complete());
+    assertTrue(ChangePreviewUtils.foldChanges(current, preview.changes()).isEmpty());
+    assertEquals(
+        "Bot",
+        governedHistory
+            .undoReviewedChanges(current, new ReviewedRange(0.1, 0.2))
+            .path(Entity.FIELD_DESCRIPTION)
+            .asText());
+  }
+
+  @Test
+  void aHumanEditAfterABotPreviewsAndRestoresTheBotsValue() {
+    store(described(0.1, 0.0, null, "Original"));
+    store(described(0.2, 0.1, "Original", "Human"));
+    store(described(0.3, 0.2, "Human", "Bot").withUpdatedBy(BOT));
+    GlossaryTerm current = described(0.4, 0.3, "Bot", "Last human edit");
+
+    CycleChanges preview = governedHistory.changesSince(current, 0.1);
+    assertEquals(
+        Map.of(Entity.FIELD_DESCRIPTION, new FieldDiff(List.of("Last human edit"), List.of("Bot"))),
+        ChangePreviewUtils.foldChanges(current, preview.changes()));
+    assertEquals(
+        "Bot",
+        governedHistory
+            .undoReviewedChanges(current, new ReviewedRange(0.1, 0.4))
+            .path(Entity.FIELD_DESCRIPTION)
+            .asText());
+  }
+
+  @Test
+  void aBotPropertySurvivesUndoOfTheFirstHumanPropertyInAnExtension() {
+    store(term(0.1, 0.0, null));
+    store(
+        term(0.2, 0.1, propertyAdded("human", "Human value"))
+            .withExtension(Map.of("human", "Human value")));
+    GlossaryTerm current =
+        term(0.3, 0.2, propertyAdded("bot", "Bot value"))
+            .withUpdatedBy(BOT)
+            .withExtension(Map.of("human", "Human value", "bot", "Bot value"));
+
+    CycleChanges preview = governedHistory.changesSince(current, 0.1);
+    assertEquals(
+        Map.of("extension.human", new FieldDiff(List.of("Human value"), List.of())),
+        ChangePreviewUtils.foldChanges(current, preview.changes()));
+    var extension =
+        governedHistory
+            .undoReviewedChanges(current, new ReviewedRange(0.1, 0.3))
+            .path(Entity.FIELD_EXTENSION);
+    assertFalse(extension.has("human"));
+    assertEquals("Bot value", extension.path("bot").asText());
+  }
+
+  @Test
+  void rollbackDoesNotUseAnEditConsolidatedAfterTheTaskOpened() {
+    store(described(0.1, 0.0, null, "Original"));
+    GlossaryTerm current =
+        described(0.2, 0.1, "Original", "Consolidated after review").withUpdatedAt(200L);
+    ReviewedRange reviewed = new ReviewedRange(TERM_ID, 0.1, 0.2, 100L);
+
+    assertThrows(
+        PreconditionFailedException.class, () -> history.undoReviewedChanges(current, reviewed));
   }
 
   @Test
@@ -332,6 +441,15 @@ class ApprovalCycleHistoryTest {
     return new ChangeDescription()
         .withFieldsAdded(
             List.of(new FieldChange().withName("synonyms").withNewValue(List.of(synonym))));
+  }
+
+  private static ChangeDescription propertyAdded(String name, String value) {
+    return new ChangeDescription()
+        .withFieldsAdded(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_EXTENSION + Entity.SEPARATOR + name)
+                    .withNewValue(value)));
   }
 
   private static ChangeDescription status(EntityStatus oldStatus, EntityStatus newStatus) {

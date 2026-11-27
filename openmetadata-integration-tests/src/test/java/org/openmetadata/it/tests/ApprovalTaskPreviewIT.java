@@ -37,19 +37,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -65,8 +71,7 @@ import org.openmetadata.service.util.EntityUtil;
 
 /**
  * The Proposed Changes card of an approval task lists what the entity changed since its approval
- * cycle began: the last version a reviewer accepted, up to the version under review. It must not
- * repeat a stale preview, drop an edit that started no run, or carry an earlier cycle forward.
+ * cycle began, through the edit under review. Rejection undoes the same governed changes.
  */
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.CONCURRENT)
@@ -74,6 +79,7 @@ public class ApprovalTaskPreviewIT {
 
   private static final String GLOSSARY_WORKFLOW = "GlossaryTermApprovalWorkflow";
   private static final String DESCRIPTION = "description";
+  private static final String DISPLAY_NAME = "displayName";
   private static final String SYNONYMS = "synonyms";
   private static final String FINISHED = "FINISHED";
   private static final Duration TIMEOUT = Duration.ofMinutes(3);
@@ -145,15 +151,19 @@ public class ApprovalTaskPreviewIT {
     assertNotEquals(superseding.getId(), last.getId());
   }
 
-  // A preview stored on the open task, here one listing only a status move, is not the base the
-  // next task builds on: the next task lists every change since the cycle began.
+  // Task payloads can carry stale display data, including a start from an earlier approval cycle.
   @Test
   void aStalePreviewOnTheOpenTaskIsNotCarriedIntoTheNextTask(TestNamespace ns) throws Exception {
     GlossaryTerm term = approvedTerm(ns, "stale_preview", "Original definition");
+    editDescription(SdkClients.adminClient(), term, "Accepted definition");
+    Task previous =
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Accepted definition", "Original definition")));
+    approve(previous, term);
     editDescription(SdkClients.adminClient(), term, "Edited definition");
     Task opened =
         awaitPreview(
-            term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
+            term, Map.of(DESCRIPTION, replaced("Edited definition", "Accepted definition")));
     SdkClients.adminClient()
         .tasks()
         .patch(
@@ -161,9 +171,13 @@ public class ApprovalTaskPreviewIT {
             MAPPER.readTree(
                 """
                 [{"op":"replace","path":"/payload/%s",
-                  "value":{"entityStatus":{"added":["In Review"],"removed":["Approved"]}}}]
+                  "value":{"entityStatus":{"added":["In Review"],"removed":["Approved"]}}},
+                 {"op":"replace","path":"/payload/%s","value":%s}]
                 """
-                    .formatted(ChangePreviewUtils.PROPOSED_CHANGES_KEY)));
+                    .formatted(
+                        ChangePreviewUtils.PROPOSED_CHANGES_KEY,
+                        ChangePreviewUtils.PROPOSED_CHANGES_BASE_VERSION_KEY,
+                        baseOf(previous))));
 
     addSynonym(SdkClients.adminClient(), term, "Alias");
 
@@ -172,63 +186,180 @@ public class ApprovalTaskPreviewIT {
             term,
             Map.of(
                 DESCRIPTION,
-                replaced("Edited definition", "Original definition"),
+                replaced("Edited definition", "Accepted definition"),
                 SYNONYMS,
                 added("Alias")));
     assertNotEquals(opened.getId(), next.getId());
+
+    reject(next);
+
+    awaitRestoredTerm(term, EntityStatus.APPROVED, "Accepted definition", List.of());
   }
 
-  // A bot's edit starts no run, but the reviewer approves it with the rest of the cycle, so the
-  // next
-  // task lists it.
   @Test
-  void aBotEditDuringTheCycleIsInTheNextPreview(TestNamespace ns) throws Exception {
+  void aBotEditDuringTheCycleIsExcludedFromTheNextPreviewAndRollback(TestNamespace ns)
+      throws Exception {
     GlossaryTerm term = approvedTerm(ns, "bot_edit", "Original definition");
     editDescription(SdkClients.adminClient(), term, "Edited definition");
     awaitPreview(term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
-    editDescription(SdkClients.ingestionBotClient(), term, "Ingested definition");
+    addSynonym(SdkClients.ingestionBotClient(), term, "Ingested alias");
+    editDescription(SdkClients.adminClient(), term, "Revised definition");
 
-    addSynonym(SdkClients.adminClient(), term, "Alias");
+    Task task =
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Revised definition", "Original definition")));
+    reject(task);
 
-    awaitPreview(
-        term,
-        Map.of(
-            DESCRIPTION,
-            replaced("Ingested definition", "Original definition"),
-            SYNONYMS,
-            added("Alias")));
+    awaitRestoredTerm(
+        term, EntityStatus.APPROVED, "Original definition", List.of("Ingested alias"));
   }
 
   @Test
-  void aBotEditBeforeTheCycleIsPreviewedAndRevertedOnRejection(TestNamespace ns) throws Exception {
+  void aBotEditBeforeTheCycleSurvivesRejection(TestNamespace ns) throws Exception {
     GlossaryTerm term = approvedTerm(ns, "bot_edit_before_cycle", "Original definition");
     editDescription(SdkClients.ingestionBotClient(), term, "Ingested definition");
     addSynonym(SdkClients.adminClient(), term, "Alias");
 
-    Task task =
-        awaitPreview(
-            term,
-            Map.of(
-                DESCRIPTION, replaced("Ingested definition", "Original definition"),
-                SYNONYMS, added("Alias")));
+    Task task = awaitPreview(term, Map.of(SYNONYMS, added("Alias")));
     assertFalse(isMarkedIncomplete(task));
-    SdkClients.user1Client()
-        .tasks()
-        .resolve(
-            task.getId().toString(),
-            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+    reject(task);
 
-    await("rejection of " + term.getFullyQualifiedName())
-        .atMost(TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .untilAsserted(
-            () -> {
-              GlossaryTerm restored =
-                  SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "synonyms");
-              assertEquals(EntityStatus.APPROVED, restored.getEntityStatus());
-              assertEquals("Original definition", restored.getDescription());
-              assertTrue(nullOrEmpty(restored.getSynonyms()));
-            });
+    awaitRestoredTerm(term, EntityStatus.APPROVED, "Ingested definition", List.of());
+  }
+
+  @Test
+  void rejectingAnEditRestoresTheEarlierBotValueOfTheSameField(TestNamespace ns) throws Exception {
+    GlossaryTerm term = approvedTerm(ns, "earlier_bot_value", "Original definition");
+    editDescription(SdkClients.ingestionBotClient(), term, "Ingested definition");
+    editDescription(SdkClients.adminClient(), term, "Edited definition");
+
+    reject(
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Edited definition", "Ingested definition"))));
+
+    awaitRestoredTerm(term, EntityStatus.APPROVED, "Ingested definition", List.of());
+  }
+
+  @Test
+  void rejectionPreservesABotWriteThatSupersedesAnEditToTheSameField(TestNamespace ns)
+      throws Exception {
+    GlossaryTerm term = approvedTerm(ns, "later_bot_value", "Original definition");
+    editDescription(SdkClients.adminClient(), term, "Edited definition");
+    awaitPreview(term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
+    editDescription(SdkClients.ingestionBotClient(), term, "Ingested definition");
+    addSynonym(SdkClients.adminClient(), term, "Alias");
+
+    reject(awaitPreview(term, Map.of(SYNONYMS, added("Alias"))));
+
+    awaitRestoredTerm(term, EntityStatus.APPROVED, "Ingested definition", List.of());
+  }
+
+  @Test
+  void rejectingAnEditToARejectedTermRestoresItsLastRejectedContent(TestNamespace ns)
+      throws Exception {
+    GlossaryTerm term = createTerm(ns, "rejected_twice", "Original definition");
+    reject(awaitPreview(term, Map.of()));
+    awaitRestoredTerm(term, EntityStatus.REJECTED, "Original definition", List.of());
+    editDescription(SdkClients.adminClient(), term, "Edited definition");
+
+    reject(
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition"))));
+
+    awaitRestoredTerm(term, EntityStatus.REJECTED, "Original definition", List.of());
+  }
+
+  @Test
+  void aWorkflowThatKeepsRejectedContentPreviewsOnlyTheNextEdit(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            admin
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.shortPrefix("keep_rejected"))
+                        .withDescription("Original definition")
+                        .withDisplayName("Original label")));
+    String fqn = glossary.getFullyQualifiedName();
+    String id = glossary.getId().toString();
+    WorkflowDefinition workflow =
+        createApprovalWorkflow(ns, Entity.GLOSSARY, fqn, statusNode("undo", "Rejected", "review"));
+    try {
+      awaitWorkflowDeployment(workflow);
+      admin.glossaries().patch(id, descriptionPatch("Approved definition"));
+      approve(
+          awaitPreview(
+              fqn, Map.of(DESCRIPTION, replaced("Approved definition", "Original definition"))),
+          fqn,
+          () -> admin.glossaries().get(id).getEntityStatus());
+      admin.glossaries().patch(id, descriptionPatch("Rejected definition"));
+      reject(
+          awaitPreview(
+              fqn, Map.of(DESCRIPTION, replaced("Rejected definition", "Approved definition"))));
+      await("reject sets status and keeps the proposed content")
+          .atMost(TIMEOUT)
+          .untilAsserted(
+              () -> {
+                Glossary rejected = admin.glossaries().get(id);
+                assertEquals(EntityStatus.REJECTED, rejected.getEntityStatus());
+                assertEquals("Rejected definition", rejected.getDescription());
+              });
+
+      admin.glossaries().patch(id, replaceTextPatch(DISPLAY_NAME, "New label"));
+
+      awaitPreview(fqn, Map.of(DISPLAY_NAME, replaced("New label", "Original label")));
+    } finally {
+      deleteWorkflow(workflow);
+    }
+  }
+
+  @Test
+  void rejectionRevertsATableEditEvenWithoutEntityReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    var service = DatabaseServiceTestFactory.createPostgres(ns);
+    var schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table =
+        TableTestFactory.createWithDescription(
+            ns, schema.getFullyQualifiedName(), "Original definition");
+    String fqn = table.getFullyQualifiedName();
+    String id = table.getId().toString();
+    WorkflowDefinition workflow =
+        createApprovalWorkflow(
+            ns,
+            Entity.TABLE,
+            fqn,
+            """
+        {"type":"automatedTask","subType":"rollbackEntityTask","name":"undo",
+          "displayName":"Undo","config":{},
+          "inputNamespaceMap":{"relatedEntity":"global","updatedBy":"review"}}
+        """);
+    try {
+      awaitWorkflowDeployment(workflow);
+      admin.tables().patch(id, descriptionPatch("Approved definition"));
+      approve(
+          awaitPreview(
+              fqn, Map.of(DESCRIPTION, replaced("Approved definition", "Original definition"))),
+          fqn,
+          () -> admin.tables().get(id).getEntityStatus());
+      admin.tables().patch(id, descriptionPatch("Unreviewed definition"));
+      reject(
+          awaitPreview(
+              fqn, Map.of(DESCRIPTION, replaced("Unreviewed definition", "Approved definition"))));
+
+      await("table rejection restores its approved description")
+          .atMost(TIMEOUT)
+          .untilAsserted(
+              () -> {
+                Table restored = admin.tables().get(id);
+                assertEquals(EntityStatus.APPROVED, restored.getEntityStatus());
+                assertEquals("Approved definition", restored.getDescription());
+                assertTrue(openApprovals(fqn).isEmpty());
+              });
+    } finally {
+      deleteWorkflow(workflow);
+    }
   }
 
   // A reviewer's own edit is approved as it is made, so the next cycle starts from it.
@@ -244,9 +375,9 @@ public class ApprovalTaskPreviewIT {
     awaitPreview(term, Map.of(DESCRIPTION, replaced("Edited definition", "Reviewed definition")));
   }
 
-  // The snapshot comparison recovers visible changes and flags the incomplete history.
+  // A missing version has no author, so its changes cannot safely be attributed to the review.
   @Test
-  void aMissingVersionKeepsTheSnapshotChangesAndMarksThePreviewIncomplete(TestNamespace ns)
+  void aMissingVersionKeepsTheKnownChangesAndMarksThePreviewIncomplete(TestNamespace ns)
       throws Exception {
     GlossaryTerm term = approvedTerm(ns, "missing_version", "Original definition");
     editDescription(SdkClients.adminClient(), term, "Edited definition");
@@ -257,19 +388,15 @@ public class ApprovalTaskPreviewIT {
 
     addSynonym(SdkClients.adminClient(), term, "Alias");
 
-    Task next =
-        awaitPreview(
-            term,
-            Map.of(
-                DESCRIPTION,
-                replaced("Edited definition", "Original definition"),
-                SYNONYMS,
-                added("Alias")));
+    Task next = awaitPreview(term, Map.of(SYNONYMS, added("Alias")));
     assertTrue(isMarkedIncomplete(next));
+
+    reject(next);
+
+    awaitRestoredTerm(term, EntityStatus.APPROVED, "Edited definition", List.of());
   }
 
-  // Without the version the cycle began from there is nothing to compare with, so the task lists
-  // the changes after the gap and says the list is incomplete.
+  // A predecessor pointer alone cannot supply the missing values of the cycle's base version.
   @Test
   void aCycleWhoseBaseIsMissingFromTheHistoryIsMarkedIncomplete(TestNamespace ns) throws Exception {
     GlossaryTerm term = approvedTerm(ns, "missing_base", "Original definition");
@@ -277,17 +404,26 @@ public class ApprovalTaskPreviewIT {
     Task opened =
         awaitPreview(
             term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
-    double base = baseOf(opened);
-    dropVersion(term, firstEditOf(term, base));
-    dropVersion(term, base);
+    dropVersion(term, baseOf(opened));
 
     addSynonym(SdkClients.adminClient(), term, "Alias");
 
-    assertTrue(isMarkedIncomplete(awaitPreview(term, Map.of(SYNONYMS, added("Alias")))));
+    Task next = awaitPreview(term, Map.of(SYNONYMS, added("Alias")));
+    assertTrue(isMarkedIncomplete(next));
+
+    reject(next);
+
+    awaitRestoredTerm(term, EntityStatus.REJECTED, "Edited definition", List.of());
   }
 
   private static GlossaryTerm approvedTerm(TestNamespace ns, String name, String description)
       throws Exception {
+    GlossaryTerm term = createTerm(ns, name, description);
+    approve(awaitPreview(term, Map.of()), term);
+    return term;
+  }
+
+  private static GlossaryTerm createTerm(TestNamespace ns, String name, String description) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Glossary glossary =
         ns.trackRoot(
@@ -298,17 +434,14 @@ public class ApprovalTaskPreviewIT {
                     new CreateGlossary()
                         .withName(ns.shortPrefix("preview_" + name))
                         .withDescription("Glossary for the approval preview tests")));
-    GlossaryTerm term =
-        admin
-            .glossaryTerms()
-            .create(
-                new CreateGlossaryTerm()
-                    .withName(name)
-                    .withGlossary(glossary.getFullyQualifiedName())
-                    .withDescription(description)
-                    .withReviewers(List.of(SharedEntities.get().USER1_REF)));
-    approve(awaitPreview(term, Map.of()), term);
-    return term;
+    return admin
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(name)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription(description)
+                .withReviewers(List.of(SharedEntities.get().USER1_REF)));
   }
 
   private static Metric approvedMetric(TestNamespace ns, String description) throws Exception {
@@ -351,6 +484,32 @@ public class ApprovalTaskPreviewIT {
 
   private static EntityStatus termStatus(GlossaryTerm term) {
     return SdkClients.adminClient().glossaryTerms().get(term.getId().toString()).getEntityStatus();
+  }
+
+  private static void reject(Task task) {
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+  }
+
+  private static void awaitRestoredTerm(
+      GlossaryTerm term, EntityStatus status, String description, List<String> synonyms) {
+    await("rejection of " + term.getFullyQualifiedName())
+        .atMost(TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .untilAsserted(
+            () -> {
+              GlossaryTerm restored =
+                  SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), SYNONYMS);
+              assertEquals(status, restored.getEntityStatus());
+              assertEquals(
+                  synonyms,
+                  nullOrEmpty(restored.getSynonyms()) ? List.of() : restored.getSynonyms());
+              assertEquals(description, restored.getDescription());
+              assertTrue(openApprovals(term.getFullyQualifiedName()).isEmpty());
+            });
   }
 
   private static Task awaitPreview(
@@ -450,17 +609,84 @@ public class ApprovalTaskPreviewIT {
     client.glossaryTerms().patch(term.getId().toString(), descriptionPatch(value));
   }
 
-  private static JsonNode descriptionPatch(String value) throws Exception {
-    return MAPPER.readTree(
-        MAPPER
-            .createArrayNode()
-            .add(
-                MAPPER
-                    .createObjectNode()
-                    .put("op", "replace")
-                    .put("path", "/" + DESCRIPTION)
-                    .put("value", value))
-            .toString());
+  private static JsonNode descriptionPatch(String value) {
+    return replaceTextPatch(DESCRIPTION, value);
+  }
+
+  private static JsonNode replaceTextPatch(String field, String value) {
+    return MAPPER
+        .createArrayNode()
+        .add(
+            MAPPER
+                .createObjectNode()
+                .put("op", "replace")
+                .put("path", "/" + field)
+                .put("value", value));
+  }
+
+  private static WorkflowDefinition createApprovalWorkflow(
+      TestNamespace ns, String entityType, String fqn, String rejectNode) {
+    String scope =
+        JsonUtils.pojoToJson(Map.of("!=", List.of(Map.of("var", "fullyQualifiedName"), fqn)));
+    String definition =
+        """
+        {"name":"%s","displayName":"Test Approval", "description":"Approval preview regression",
+          "trigger":{"type":"eventBasedEntity","config":{"entityTypes":["%s"],
+            "events":["Updated"],"include":["description","displayName"],"filter":%s},
+            "output":["relatedEntity","updatedBy"]},
+          "nodes":[
+            {"type":"startEvent","subType":"startEvent","name":"start","displayName":"Start"},
+            %s,
+            {"type":"userTask","subType":"userApprovalTask","name":"review","displayName":"Review",
+              "config":{"assignees":{"candidates":[%s]},"approvalThreshold":1,"rejectionThreshold":1},
+              "inputNamespaceMap":{"relatedEntity":"global"},"output":["updatedBy"]},
+            %s,
+            %s,
+            {"type":"endEvent","subType":"endEvent","name":"end","displayName":"End"}],
+          "edges":[{"from":"start","to":"inReview"},{"from":"inReview","to":"review"},
+            {"from":"review","to":"accept","condition":"approve"},
+            {"from":"review","to":"undo","condition":"reject"},
+            {"from":"accept","to":"end"},{"from":"undo","to":"end"}],
+          "config":{"storeStageStatus":false}}
+        """
+            .formatted(
+                "preview_workflow_" + ns.shortPrefix(),
+                entityType,
+                JsonUtils.pojoToJson(Map.of(entityType, scope)),
+                statusNode("inReview", "In Review", "global"),
+                JsonUtils.pojoToJson(SharedEntities.get().USER1_REF),
+                statusNode("accept", "Approved", "review"),
+                rejectNode);
+    return SdkClients.adminClient()
+        .workflowDefinitions()
+        .create(JsonUtils.readValue(definition, CreateWorkflowDefinition.class));
+  }
+
+  private static String statusNode(String name, String status, String actorNamespace) {
+    return """
+        {"type":"automatedTask","subType":"setEntityAttributeTask","name":"%s","displayName":"%s",
+          "config":{"fieldName":"status","fieldValue":"%s"},
+          "inputNamespaceMap":{"relatedEntity":"global","updatedBy":"%s"}}
+        """
+        .formatted(name, status, status, actorNamespace);
+  }
+
+  private static void awaitWorkflowDeployment(WorkflowDefinition workflow) {
+    await("deployment of " + workflow.getName())
+        .atMost(TIMEOUT)
+        .until(
+            () ->
+                Boolean.TRUE.equals(
+                    SdkClients.adminClient()
+                        .workflowDefinitions()
+                        .get(workflow.getId().toString(), "deployed")
+                        .getDeployed()));
+  }
+
+  private static void deleteWorkflow(WorkflowDefinition workflow) {
+    SdkClients.adminClient()
+        .workflowDefinitions()
+        .delete(workflow.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   private static void addSynonym(OpenMetadataClient client, GlossaryTerm term, String synonym)

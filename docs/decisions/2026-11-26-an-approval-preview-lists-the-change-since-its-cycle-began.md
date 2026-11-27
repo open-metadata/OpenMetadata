@@ -1,6 +1,6 @@
 # An approval preview lists the change since its cycle began
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-27-approval-rejection-restores-the-reviewed-edit
 - **Revisions:** v1 2026-11-26 (initial)
 - **Deciders:** Vamsi-klu; pending agreement from yan-3005, who decided the record this supersedes
 - **Guard:** `ApprovalTaskPreviewIT`, `ApprovalCycleHistoryTest`, `ApprovalCycleTest`,

@@ -15,6 +15,7 @@ package org.openmetadata.service.governance.workflows.util;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -40,24 +41,35 @@ public final class ApprovedBaseline {
             .equals(EntityStatusAdapter.forEntityType(entity.getClass()).read(entity));
     boolean hasDurableApproval =
         nullOrEmpty(entity.getReviewers())
-            || recordsApprovalTransition(entity)
+            || recordsTransition(entity, EntityStatus.APPROVED)
             || wasUpdatedByReviewer(entity);
     return isApproved && hasDurableApproval;
   }
 
-  private static boolean recordsApprovalTransition(EntityInterface<?> entity) {
+  static Optional<String> recordedDecision(EntityInterface<?> entity) {
+    String status = entity.getEntityStatus() == null ? null : entity.getEntityStatus().toString();
+    boolean approved =
+        EntityStatus.APPROVED.value().equals(status)
+            && (recordsTransition(entity, EntityStatus.APPROVED) || wasUpdatedByReviewer(entity));
+    boolean rejected =
+        EntityStatus.REJECTED.value().equals(status)
+            && recordsTransition(entity, EntityStatus.REJECTED);
+    return approved || rejected ? Optional.of(status) : Optional.empty();
+  }
+
+  private static boolean recordsTransition(EntityInterface<?> entity, EntityStatus status) {
     ChangeDescription change = entity.getIncrementalChangeDescription();
     if (change == null) {
       change = entity.getChangeDescription();
     }
     List<FieldChange> updatedFields = change == null ? List.of() : change.getFieldsUpdated();
     return !nullOrEmpty(updatedFields)
-        && updatedFields.stream().anyMatch(ApprovedBaseline::setsApprovedStatus);
+        && updatedFields.stream().anyMatch(changeField -> setsStatus(changeField, status));
   }
 
-  private static boolean setsApprovedStatus(FieldChange change) {
+  private static boolean setsStatus(FieldChange change, EntityStatus status) {
     return Entity.FIELD_ENTITY_STATUS.equals(change.getName())
-        && EntityStatus.APPROVED.value().equals(String.valueOf(change.getNewValue()));
+        && status.value().equals(String.valueOf(change.getNewValue()));
   }
 
   private static boolean wasUpdatedByReviewer(EntityInterface<?> entity) {

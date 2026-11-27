@@ -93,6 +93,8 @@ import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle.ReviewedRange;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
@@ -1304,6 +1306,20 @@ public class WorkflowHandler {
 
   public record ApprovalTaskContext(
       String processInstanceId, String nodeName, List<String> voters) {}
+
+  public Optional<ReviewedRange> reviewedApprovalRange(UUID customTaskId, UUID entityId) {
+    final Task task = getTaskFromCustomTaskId(customTaskId);
+    Optional<ReviewedRange> range = Optional.empty();
+    if (task != null) {
+      String node = getParentActivityId(task.getExecutionId());
+      String variable = getNamespacedVariableName(node, ApprovalCycle.REVIEWED_RANGE_VARIABLE);
+      if (variable != null) {
+        Object value = processEngine.getTaskService().getVariable(task.getId(), variable);
+        range = ApprovalCycle.rangeFor(value, entityId);
+      }
+    }
+    return range;
+  }
 
   public ApprovalTaskContext approvalTaskContext(UUID customTaskId) {
     final Task task = getTaskFromCustomTaskId(customTaskId);

@@ -12,35 +12,67 @@
  */
 package org.openmetadata.service.governance.workflows.util;
 
-import com.google.common.base.Suppliers;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.UUID;
 import java.util.function.DoubleSupplier;
-import java.util.function.Supplier;
+import java.util.stream.DoubleStream;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 
 /** Where an approval cycle begins when its tasks supersede one another. */
 public final class ApprovalCycle {
+  public static final String REVIEWED_RANGE_VARIABLE = "approvalCycleReviewedRange";
+
   private ApprovalCycle() {}
 
   /**
-   * The earliest of the triggering edit's base and the bases carried by prior tasks. An opening
-   * task also considers {@code unknownBase}, which can recover the last approved version before
-   * edits that did not start a run. The same fallback supplies missing bases on later tasks and is
-   * evaluated at most once.
+   * The earliest recorded start, including the edit that triggered this run. For a task from an
+   * older server without a start, the triggering edit's predecessor still suffices. When no
+   * start can be found, use the predecessor of the latest edit.
    */
   public static double baseVersion(
-      OptionalDouble triggeringBase, List<Object> carriedPayloads, DoubleSupplier unknownBase) {
-    Supplier<Double> unknown = Suppliers.memoize(unknownBase::getAsDouble);
-    double editBase = orUnknown(triggeringBase, unknown);
-    double earliestCarriedOrApprovedBase =
-        carriedPayloads.stream()
-            .mapToDouble(payload -> orUnknown(ChangePreviewUtils.cycleBaseOf(payload), unknown))
-            .min()
-            .orElseGet(unknown::get);
-    return Math.min(editBase, earliestCarriedOrApprovedBase);
+      OptionalDouble triggeringBase, List<Double> carriedBases, DoubleSupplier unknownBase) {
+    return DoubleStream.concat(
+            triggeringBase.stream(), carriedBases.stream().mapToDouble(Double::doubleValue))
+        .min()
+        .orElseGet(unknownBase);
   }
 
-  private static double orUnknown(OptionalDouble base, Supplier<Double> unknown) {
-    return base.orElseGet(unknown::get);
+  /** The exact history interval the approval task displayed. */
+  public record ReviewedRange(UUID entityId, double base, double tip, Long tipUpdatedAt) {
+    ReviewedRange(double base, double tip) {
+      this(null, base, tip, null);
+    }
+  }
+
+  public static void recordReviewedRange(WorkflowVariableHandler variables, ReviewedRange range) {
+    String value = JsonUtils.pojoToJson(range);
+    String node = variables.getNodeNamespace();
+    if (node != null) {
+      variables.setNamespacedVariable(node, REVIEWED_RANGE_VARIABLE, value);
+    }
+    variables.setGlobalVariable(REVIEWED_RANGE_VARIABLE, value);
+  }
+
+  public static Optional<ReviewedRange> reviewedRange(
+      WorkflowVariableHandler variables, String approvalNode, UUID entityId) {
+    String namespace = approvalNode == null ? GLOBAL_NAMESPACE : approvalNode;
+    return rangeFor(variables.getNamespacedVariable(namespace, REVIEWED_RANGE_VARIABLE), entityId)
+        .or(
+            () ->
+                rangeFor(
+                    variables.getNamespacedVariable(GLOBAL_NAMESPACE, REVIEWED_RANGE_VARIABLE),
+                    entityId));
+  }
+
+  public static Optional<ReviewedRange> rangeFor(Object variable, UUID entityId) {
+    return variable instanceof String json
+        ? Optional.ofNullable(JsonUtils.readValue(json, ReviewedRange.class))
+            .filter(range -> entityId.equals(range.entityId()))
+        : Optional.empty();
   }
 }

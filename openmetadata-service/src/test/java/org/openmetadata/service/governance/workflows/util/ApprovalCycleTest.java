@@ -13,12 +13,8 @@
 package org.openmetadata.service.governance.workflows.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.PROPOSED_CHANGES_BASE_VERSION_KEY;
-import static org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.PROPOSED_CHANGES_KEY;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.DoubleSupplier;
@@ -36,9 +32,7 @@ class ApprovalCycleTest {
 
   @Test
   void theCycleBeginsAtTheEarliestOfTheTriggeringBaseAndEachCarriedBase() {
-    double base =
-        ApprovalCycle.baseVersion(
-            OptionalDouble.of(0.7), carried(withBase(0.4), withBase(0.5)), unknownBase);
+    double base = ApprovalCycle.baseVersion(OptionalDouble.of(0.7), List.of(0.4, 0.5), unknownBase);
 
     assertEquals(0.4, base);
     assertEquals(0, unknownReads.get());
@@ -46,28 +40,21 @@ class ApprovalCycleTest {
 
   @Test
   void aTriggeringEditOlderThanTheCarriedTaskKeepsItsOwnBase() {
-    assertEquals(
-        0.3,
-        ApprovalCycle.baseVersion(OptionalDouble.of(0.3), carried(withBase(0.6)), unknownBase));
+    assertEquals(0.3, ApprovalCycle.baseVersion(OptionalDouble.of(0.3), List.of(0.6), unknownBase));
   }
 
   @Test
-  void tasksStoredBeforeBasesWereRecordedReadTheUnknownBaseOnce() {
-    double base =
-        ApprovalCycle.baseVersion(
-            OptionalDouble.of(0.7),
-            carried(Map.of(PROPOSED_CHANGES_KEY, Map.of()), Map.of(), null),
-            unknownBase);
+  void tasksStoredBeforeBasesWereRecordedKeepTheTriggeringEditBase() {
+    double base = ApprovalCycle.baseVersion(OptionalDouble.of(0.7), List.of(), unknownBase);
 
-    assertEquals(UNKNOWN_BASE, base);
-    assertEquals(1, unknownReads.get());
+    assertEquals(0.7, base);
+    assertEquals(0, unknownReads.get());
   }
 
   @Test
-  void anOpeningTaskUsesAnEarlierApprovedBaseline() {
-    assertEquals(
-        UNKNOWN_BASE, ApprovalCycle.baseVersion(OptionalDouble.of(0.7), List.of(), unknownBase));
-    assertEquals(1, unknownReads.get());
+  void anOpeningTaskNeverLooksBackPastTheTriggeringEdit() {
+    assertEquals(0.7, ApprovalCycle.baseVersion(OptionalDouble.of(0.7), List.of(), unknownBase));
+    assertEquals(0, unknownReads.get());
   }
 
   @Test
@@ -79,6 +66,7 @@ class ApprovalCycleTest {
   void aRunWithoutATriggeringVersionBeginsAtTheUnknownBase() {
     assertEquals(
         UNKNOWN_BASE, ApprovalCycle.baseVersion(OptionalDouble.empty(), List.of(), unknownBase));
+    assertEquals(1, unknownReads.get());
   }
 
   // Two runs that opened tasks at the same time each recorded their own base; whichever task is
@@ -86,35 +74,8 @@ class ApprovalCycleTest {
   @Test
   void racingRunsAgreeOnTheEarlierBaseInEitherOrder() {
     assertEquals(
-        0.3,
-        ApprovalCycle.baseVersion(
-            OptionalDouble.of(0.9), carried(withBase(0.3), withBase(0.6)), unknownBase));
+        0.3, ApprovalCycle.baseVersion(OptionalDouble.of(0.9), List.of(0.3, 0.6), unknownBase));
     assertEquals(
-        0.3,
-        ApprovalCycle.baseVersion(
-            OptionalDouble.of(0.9), carried(withBase(0.6), withBase(0.3)), unknownBase));
-  }
-
-  @Test
-  void aRecordedBaseThatIsNotAVersionCountsAsUnknown() {
-    double base =
-        ApprovalCycle.baseVersion(
-            OptionalDouble.of(0.7),
-            carried(
-                Map.of(PROPOSED_CHANGES_BASE_VERSION_KEY, -1.0),
-                Map.of(PROPOSED_CHANGES_BASE_VERSION_KEY, Double.NaN),
-                Map.of(PROPOSED_CHANGES_BASE_VERSION_KEY, "0.1")),
-            unknownBase);
-
-    assertEquals(UNKNOWN_BASE, base);
-    assertEquals(1, unknownReads.get());
-  }
-
-  private static Map<String, Object> withBase(double base) {
-    return Map.of(PROPOSED_CHANGES_BASE_VERSION_KEY, base);
-  }
-
-  private static List<Object> carried(Object... payloads) {
-    return Arrays.asList(payloads);
+        0.3, ApprovalCycle.baseVersion(OptionalDouble.of(0.9), List.of(0.6, 0.3), unknownBase));
   }
 }
