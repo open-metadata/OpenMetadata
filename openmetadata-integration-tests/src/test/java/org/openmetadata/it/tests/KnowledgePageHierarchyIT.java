@@ -24,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,9 +73,10 @@ public class KnowledgePageHierarchyIT {
   private static final String PII_SENSITIVE = "PII.Sensitive";
   // A search-index-only pseudo-type: it has no entity repository, so resolving it throws.
   private static final String NO_REPOSITORY_TYPE = "tableColumn";
+  private static final String PAGE_SEARCH_INDEX = "knowledge_page_search_index";
 
   @ParameterizedTest
-  @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
+  @ValueSource(strings = {Entity.PAGE, PAGE_SEARCH_INDEX})
   void testPageSearchMatchesQuestionAndPreservesLuceneSyntax(String index, TestNamespace ns)
       throws Exception {
     String topic = ns.prefix("vacation_" + index);
@@ -87,19 +89,48 @@ public class KnowledgePageHierarchyIT {
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted(
             () -> {
-              assertPageSearchHit(index, question, page);
-              assertPageSearchHit(index, question.substring(0, question.length() - 1), page);
-              assertPageSearchHit(index, "name:" + topic + "*", page);
+              assertPageSearchMatch(index, question, page, true);
+              assertPageSearchMatch(
+                  index, question.substring(0, question.length() - 1), page, true);
+              assertPageSearchMatch(index, "name:" + topic + "*", page, true);
             });
   }
 
-  private void assertPageSearchHit(String index, String query, Page page) throws Exception {
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.PAGE, PAGE_SEARCH_INDEX})
+  void testPageWildcardSearchMatchesPartialTitleOnly(String index, TestNamespace ns)
+      throws Exception {
+    Page page =
+        createPage(
+            RestClient.admin(),
+            buildCreateRequest(ns.prefix("wildcard_" + index), null)
+                .withDisplayName("Compass calibration")
+                .withDescription("Hydrangeas grow near the trail."));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              assertPageSearchMatch(index, "hydrangeas", page, true);
+              assertPageSearchMatch(index, "*mpas*", page, true);
+              assertPageSearchMatch(index, "*rangea*", page, false);
+            });
+  }
+
+  private void assertPageSearchMatch(String index, String query, Page page, boolean expected)
+      throws Exception {
     String response =
         SdkClients.adminClient().search().query(query).index(index).size(10).execute();
     JsonNode hits = JsonUtils.readTree(response).path("hits").path("hits");
-    assertTrue(
-        hits.findValuesAsText("fullyQualifiedName").contains(page.getFullyQualifiedName()),
-        () -> "Missing page for " + index + " query " + query + ": " + response);
+    assertTrue(hits.isArray(), () -> "Missing hits array: " + response);
+    boolean matched =
+        StreamSupport.stream(hits.spliterator(), false)
+            .map(hit -> hit.path("_source").path("fullyQualifiedName").asText())
+            .anyMatch(page.getFullyQualifiedName()::equals);
+    assertEquals(
+        expected,
+        matched,
+        () -> "Unexpected page match for " + index + " query " + query + ": " + response);
   }
 
   private Page createPage(RestClient rest, CreatePage request) throws HttpResponseException {
