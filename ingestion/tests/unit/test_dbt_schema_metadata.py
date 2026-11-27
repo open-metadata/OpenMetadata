@@ -477,3 +477,28 @@ def test_invalid_declarations_leave_other_schema_fields_eligible(manifest, sourc
     assert any("undefinedProperty" in item.get(SOURCE_ID, "") for item in source.status.warnings)
     assert any("schema tier" in item.get(SOURCE_ID, "") for item in source.status.warnings)
     assert any("schema glossary" in item.get(SOURCE_ID, "") for item in source.status.warnings)
+
+
+def test_already_bound_quoted_catalog_keeps_its_schema(manifest, source_factory):
+    for node in manifest["sources"].values():
+        node["database"] = "raw.catalog"
+    source, catalog = source_factory(manifest, enabled=True, catalogMapping={"raw.catalog": "mapped.catalog"})
+    actual_fqn = 'warehouse."raw.catalog".RAW'
+    decoy_fqn = 'other_service."mapped.catalog".RAW'
+    catalog.schema["fullyQualifiedName"] = actual_fqn
+    decoy = _reference("databaseSchema", decoy_fqn)
+    for name in ("raw_orders", "raw_payments"):
+        original = catalog.tables.pop(f"{SCHEMA_FQN}.{name}")
+        original["fullyQualifiedName"] = f"{actual_fqn}.{name}"
+        catalog.tables[original["fullyQualifiedName"]] = original
+        catalog.tables[f"{decoy_fqn}.{name}"] = {
+            **original,
+            "id": str(uuid4()),
+            "fullyQualifiedName": f"{decoy_fqn}.{name}",
+            "databaseSchema": decoy,
+        }
+
+    assert f"{actual_fqn}.raw_orders" in _table_links(source)
+    assert len(catalog.patches) == 1
+    assert catalog.schema["extension"] == {"reviewed": False, "quality": 0}
+    assert not source.status.failures

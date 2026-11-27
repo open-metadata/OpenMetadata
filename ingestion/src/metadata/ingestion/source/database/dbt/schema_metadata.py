@@ -178,21 +178,24 @@ class DbtSchemaMetadata:
         actual_fqn = (
             model_str(table.fullyQualifiedName) if table and not table.deleted and table.fullyQualifiedName else None
         )
+        wildcard_scopes = []
         for service_name, catalog in dict.fromkeys(scopes):
-            if service_name and catalog and schema:
-                expected_fqn = fqn.build(
-                    self.metadata,
-                    Table,
-                    service_name=service_name,
-                    database_name=catalog,
-                    schema_name=schema,
-                    table_name=table_name,
-                    skip_es_search=True,
-                )
-                if actual_fqn and actual_fqn == expected_fqn:
-                    return table
+            if not (service_name and catalog and schema):
+                wildcard_scopes.append((service_name, catalog))
                 continue
+            expected_fqn = fqn.build(
+                self.metadata,
+                Table,
+                service_name=service_name,
+                database_name=catalog,
+                schema_name=schema,
+                table_name=table_name,
+                skip_es_search=True,
+            )
+            if actual_fqn and actual_fqn == expected_fqn:
+                return table
 
+        for service_name, catalog in wildcard_scopes:
             # Ordinary table ingestion may take the first search match. A schema write
             # needs a unique binding, including the hits omitted from the first page.
             pattern = ".".join(
@@ -208,7 +211,9 @@ class DbtSchemaMetadata:
                 if len(matches.fqns) != 1:
                     raise _SchemaWriteError("Table search did not return its reported match")
                 matched_fqn = matches.fqns[0]
-                if actual_fqn == matched_fqn:
+                if actual_fqn:
+                    if actual_fqn != matched_fqn:
+                        raise _SchemaWriteError("Physical source binding changed during validation")
                     return table
                 return self.metadata.get_by_name(Table, matched_fqn, nullable=False)
         if table:
