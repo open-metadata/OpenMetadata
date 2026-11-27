@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.service.Entity.API_SERVICE;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.Entity.DRIVE_SERVICE;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
 import static org.openmetadata.service.Entity.METADATA_SERVICE;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryLineagePipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
+import org.openmetadata.schema.metadataIngestion.DriveServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceAutoClassificationPipeline;
@@ -123,6 +125,8 @@ public class CreateIngestionPipelineImpl {
         SEARCH_SERVICE, CreateIngestionPipelineImpl::getSearchServiceMetadataPipeline);
     SERVICE_TO_PIPELINE_MAP.put(
         API_SERVICE, CreateIngestionPipelineImpl::getApiServiceMetadataPipeline);
+    SERVICE_TO_PIPELINE_MAP.put(
+        DRIVE_SERVICE, CreateIngestionPipelineImpl::getDriveServiceMetadataPipeline);
   }
 
   private static final Map<String, List<String>> SERVICE_FILTERS_MAP = new HashMap<>();
@@ -141,6 +145,10 @@ public class CreateIngestionPipelineImpl {
   public static final String CONTAINER_FILTER_PATTERN = "containerFilterPattern";
   public static final String SEARCH_INDEX_FILTER_PATTERN = "searchIndexFilterPattern";
   public static final String API_COLLECTION_FILTER_PATTERN = "apiCollectionFilterPattern";
+  public static final String DIRECTORY_FILTER_PATTERN = "directoryFilterPattern";
+  public static final String FILE_FILTER_PATTERN = "fileFilterPattern";
+  public static final String SPREADSHEET_FILTER_PATTERN = "spreadsheetFilterPattern";
+  public static final String WORKSHEET_FILTER_PATTERN = "worksheetFilterPattern";
 
   static {
     SERVICE_FILTERS_MAP.put(
@@ -166,6 +174,13 @@ public class CreateIngestionPipelineImpl {
     SERVICE_FILTERS_MAP.put(STORAGE_SERVICE, List.of(CONTAINER_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(SEARCH_SERVICE, List.of(SEARCH_INDEX_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(API_SERVICE, List.of(API_COLLECTION_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(
+        DRIVE_SERVICE,
+        List.of(
+            DIRECTORY_FILTER_PATTERN,
+            FILE_FILTER_PATTERN,
+            SPREADSHEET_FILTER_PATTERN,
+            WORKSHEET_FILTER_PATTERN));
   }
 
   private final IngestionPipelineMapper mapper;
@@ -476,6 +491,15 @@ public class CreateIngestionPipelineImpl {
       Map<String, FilterPattern> defaultFilters) {
     return new ApiServiceMetadataPipeline()
         .withApiCollectionFilterPattern(defaultFilters.get(API_COLLECTION_FILTER_PATTERN));
+  }
+
+  private static DriveServiceMetadataPipeline getDriveServiceMetadataPipeline(
+      Map<String, FilterPattern> defaultFilters) {
+    return new DriveServiceMetadataPipeline()
+        .withDirectoryFilterPattern(defaultFilters.get(DIRECTORY_FILTER_PATTERN))
+        .withFileFilterPattern(defaultFilters.get(FILE_FILTER_PATTERN))
+        .withSpreadsheetFilterPattern(defaultFilters.get(SPREADSHEET_FILTER_PATTERN))
+        .withWorksheetFilterPattern(defaultFilters.get(WORKSHEET_FILTER_PATTERN));
   }
 
   @Getter

@@ -1,5 +1,7 @@
 package org.openmetadata.service.events.consumer.ledger;
 
+import com.google.common.collect.Lists;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,12 +10,14 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
+import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.AlertExtension;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.SubscriberExtension;
 
 /**
@@ -22,6 +26,7 @@ import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO
  */
 @Slf4j
 public final class AlertRecord {
+  private static final int HEALTH_READ_BATCH = 500;
 
   private AlertRecord() {}
 
@@ -40,15 +45,54 @@ public final class AlertRecord {
     insertIfAbsent(alertId, LedgerKeys.HEALTH, LedgerKeys.HEALTH_SCHEMA, initialHealth(now));
   }
 
+  /**
+   * The destination health of each alert, by alert id, read in one query per few hundred alerts.
+   * An alert with no position row reads as having none, as {@link #open} does.
+   */
+  public static Map<UUID, Map<String, DestinationHealth>> healthOf(List<UUID> alertIds) {
+    Map<UUID, Map<String, DestinationHealth>> health = new HashMap<>();
+    for (List<UUID> chunk : Lists.partition(alertIds, HEALTH_READ_BATCH)) {
+      List<AlertExtension> rows =
+          dao()
+              .listAlertsExtensions(
+                  chunk.stream().map(UUID::toString).toList(),
+                  List.of(LedgerKeys.POSITION, LedgerKeys.HEALTH));
+      Map<String, Map<String, String>> byAlert = new HashMap<>();
+      rows.forEach(
+          row ->
+              byAlert
+                  .computeIfAbsent(row.id(), id -> new HashMap<>())
+                  .put(row.extension(), row.json()));
+      byAlert.entrySet().stream()
+          .filter(alert -> isScheduled(alert.getValue()))
+          .filter(alert -> alert.getValue().containsKey(LedgerKeys.HEALTH))
+          .forEach(
+              alert ->
+                  health.put(
+                      UUID.fromString(alert.getKey()),
+                      destinationsOf(alert.getValue().get(LedgerKeys.HEALTH))));
+    }
+    return health;
+  }
+
+  private static Map<String, DestinationHealth> destinationsOf(String healthJson) {
+    Map<String, DestinationHealth> destinations =
+        JsonUtils.readValue(healthJson, AlertHealth.class).getDestinations();
+    return destinations == null ? Map.of() : destinations;
+  }
+
   /** Empty when the alert has no position row, which means it was never scheduled or is gone. */
   public static Optional<AlertLedger> open(EventSubscription alert) {
     Map<String, String> rows = new LinkedHashMap<>();
     for (SubscriberExtension row : dao().listSubscriberExtensions(alert.getId().toString())) {
       rows.put(row.extension(), row.json());
     }
-    return rows.containsKey(LedgerKeys.POSITION)
-        ? Optional.of(new AlertLedger(alert, rows))
-        : Optional.empty();
+    return isScheduled(rows) ? Optional.of(new AlertLedger(alert, rows)) : Optional.empty();
+  }
+
+  // An alert with no position row was never scheduled, or is gone: nothing it holds speaks.
+  private static boolean isScheduled(Map<String, String> rows) {
+    return rows.containsKey(LedgerKeys.POSITION);
   }
 
   /**

@@ -739,6 +739,8 @@ class NativeOntologyCsvCodecTest {
   void enforcesTheInputAndStatementBudgets() {
     final String oversized = "x".repeat(SafeRdfModelParser.MAX_INPUT_BYTES + 1);
     assertEquals("Native ontology CSV must contain at most 10 MiB of data", errorOf(oversized));
+    assertEquals("Native ontology CSV is empty", errorOf(""));
+    assertEquals("Native ontology CSV is empty", errorOf("  \n"));
     final String parents =
         IntStream.range(0, SafeRdfModelParser.MAX_TRIPLES)
             .mapToObj(index -> EX + "P" + index)

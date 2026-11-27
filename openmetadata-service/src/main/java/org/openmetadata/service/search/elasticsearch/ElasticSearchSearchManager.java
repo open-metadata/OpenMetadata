@@ -25,6 +25,8 @@ import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregationSource;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -37,6 +39,7 @@ import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
+import es.co.elastic.clients.util.NamedValue;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -55,6 +58,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,6 +100,7 @@ import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -117,6 +122,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private final AuditReportSearchVisibility auditReportVisibility =
+      new AuditReportSearchVisibility(new ElasticQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -182,7 +189,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .query(
                         restrictToOrgWideMemories(
                             ElasticRbacQueries.withAccessPolicies(
-                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator),
+                            subjectContext)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -225,7 +233,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             .query(
                 restrictToOrgWideMemories(
                     ElasticRbacQueries.withAccessPolicies(
-                        query, subjectContext, rbacConditionEvaluator)));
+                        query, subjectContext, rbacConditionEvaluator),
+                    subjectContext));
     List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
     if (!sourceExcludes.isEmpty()) {
       request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
@@ -459,7 +468,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     applyRbacCondition(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+        subjectContext,
+        requestBuilder,
+        statuses,
+        ContextMemoryAnchorPins.ofQueryFilters(filter),
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? matchingListingAnchors(index, requestBuilder, subjectContext, statuses)
+            : null);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -641,16 +656,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       String transformedQuery)
-      throws com.fasterxml.jackson.core.JsonProcessingException {
+      throws IOException {
     ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
     String queryToProcess = EsUtils.parseJsonQuery(transformedQuery);
     requestBuilder.query(Query.of(q -> q.withJson(new StringReader(queryToProcess))));
     requestBuilder.from(request.getFrom());
     requestBuilder.size(request.getSize());
 
-    // applyRbacCondition already applies the ContextMemory visibility filter.
-    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-    applyQueryFilter(requestBuilder, request);
+    // Applies RBAC and the ContextMemory visibility filter, as the fallback search does.
+    applyMemoryVisibilityAndQueryFilter(request, subjectContext, requestBuilder, true);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
@@ -665,6 +679,37 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   private static String[] toArrayOrNull(List<String> fields) {
     return nullOrEmpty(fields) ? null : fields.toArray(String[]::new);
+  }
+
+  /**
+   * A search of the memory index alone checks the anchors of the memories it matches, as the Context
+   * Center listing does, so a reader finds an anchored memory without pinning its anchor. Other
+   * searches keep the pinned-anchor rule, and so does the memory bucket of a count over several
+   * indexes ({@code listsMemoryAnchors} false), so its total matches what that search lists. The
+   * query filter goes first because the anchors are collected from the memories the full query
+   * matches. RBAC is applied here too, as {@code applyRbacCondition} does on every search.
+   * ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
+   */
+  private void applyMemoryVisibilityAndQueryFilter(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      boolean listsMemoryAnchors)
+      throws IOException {
+    if (listsMemoryAnchors
+        && ContextMemorySearchVisibility.isMemoryOnlySearch(request.getIndex())) {
+      final List<ContextMemoryStatus> statuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+      applyQueryFilter(requestBuilder, request);
+      applyRbacCondition(
+          subjectContext,
+          requestBuilder,
+          statuses,
+          List.of(),
+          matchingListingAnchors(request.getIndex(), requestBuilder, subjectContext, statuses));
+    } else {
+      applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
+      applyQueryFilter(requestBuilder, request);
+    }
   }
 
   private void applyRbacCondition(
@@ -683,6 +728,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       ElasticSearchRequestBuilder requestBuilder,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
+    applyRbacCondition(subjectContext, requestBuilder, statuses, pinnedAnchorIds, null);
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds,
+      Collection<String> matchingAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -704,7 +758,81 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
+    OMQueryBuilder memoryVisibility =
+        matchingAnchorIds != null
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext, statuses, matchingAnchorIds)
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      ElasticSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      ElasticSearchRequestBuilder candidates =
+          new ElasticSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((ElasticQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, ElasticSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, ElasticSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(NamedValue.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed().intValue() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   /**
@@ -714,8 +842,19 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    * must fail closed. Non-memory documents are unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
+    return restrictToOrgWideMemories(query, null);
+  }
+
+  private Query restrictToOrgWideMemories(Query query, SubjectContext subjectContext) {
     Query memoryFilter =
-        ((ElasticQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+        ((ElasticQueryBuilder)
+                new ElasticQueryBuilderFactory()
+                    .boolQuery()
+                    .must(
+                        List.of(
+                            contextMemoryVisibility.buildOrgWideOnlyFilter(),
+                            auditReportVisibility.buildVisibilityFilter(subjectContext))))
+            .buildV2();
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
@@ -734,6 +873,18 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
+    requestBuilder
+        .filter(
+            ((ElasticQueryBuilder) auditReportVisibility.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1372,7 +1523,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     try {
       return new SearchEntityTypeCounts(
               Entity.getSearchRepository(),
-              (perType, configured) -> prepareCountQuery(perType, subjectContext, configured),
+              (perType, configured) ->
+                  prepareCountQuery(
+                      perType,
+                      subjectContext,
+                      configured,
+                      ContextMemorySearchVisibility.isMemoryOnlySearch(index)),
               (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
               hint -> doSearch(hint, subjectContext, settings, clusterAlias))
           .search(request, index, settings);
@@ -1384,10 +1540,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private ObjectNode prepareCountQuery(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
-      SearchSettings settings)
+      SearchSettings settings,
+      boolean listsMemoryAnchors)
       throws IOException {
     SearchRequest prepared =
-        buildSearchRequestBuilder(request, subjectContext, settings, clusterAlias)
+        buildSearchRequestBuilder(
+                request, subjectContext, settings, clusterAlias, listsMemoryAnchors)
             .build(request.getIndex());
     return SearchEntityTypeCounts.toJson(
         client._transport().jsonpMapper().jsonProvider(),
@@ -1420,7 +1578,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             .trackTotalHits(false)
             .timeout("30s")
             .preference(SearchUtils.searchPreferenceFor(subjectContext))
-            .contextMemoryVisibilityResolved();
+            .contextMemoryVisibilityResolved()
+            .auditReportVisibilityResolved();
     body.path("aggs")
         .fields()
         .forEachRemaining(
@@ -1493,7 +1652,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
       return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
@@ -1511,7 +1670,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
     return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
   }
 
@@ -1632,7 +1791,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias)
+      String clusterAlias,
+      boolean listsMemoryAnchors)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -1665,9 +1825,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-
-    applyQueryFilter(requestBuilder, request);
+    applyMemoryVisibilityAndQueryFilter(
+        request, subjectContext, requestBuilder, listsMemoryAnchors);
 
     // Apply post filter
     if (!nullOrEmpty(request.getPostFilter())) {

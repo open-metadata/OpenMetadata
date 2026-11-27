@@ -31,4 +31,6 @@ export interface CustomPropertyEditFormProps {
   showHint?: boolean;
   fieldDocVariant?: FieldDocPopoverVariant;
   onSubmit: (changes: CustomPropertyChanges) => Promise<void> | void;
+  /** Reports whether the form differs from the property, so a host can guard leaving. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }

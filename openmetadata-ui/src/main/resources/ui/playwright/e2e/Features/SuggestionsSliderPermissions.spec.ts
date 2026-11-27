@@ -231,7 +231,7 @@ test.describe(
     test('admin sees bulk accept and reject for every suggestion type', async ({
       page,
     }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
 
       await adminUser.signIn(page);
 

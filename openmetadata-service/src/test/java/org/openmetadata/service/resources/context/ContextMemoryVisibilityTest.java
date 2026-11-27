@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.AfterEach;
@@ -85,6 +86,35 @@ class ContextMemoryVisibilityTest {
   @AfterEach
   void tearDown() {
     entityStaticMock.close();
+  }
+
+  @Test
+  void aListingEvaluatesReadableAnchorsBeyondTheFirstPage() {
+    List<EntityReference> anchors =
+        IntStream.range(0, 101)
+            .mapToObj(
+                index ->
+                    new EntityReference().withId(new UUID(0, index + 1)).withType(Entity.TABLE))
+            .toList();
+    List<Integer> batchSizes = new ArrayList<>();
+    Set<UUID> readable = Set.of(anchors.getFirst().getId(), anchors.getLast().getId());
+    Set<String> selected =
+        ContextMemoryVisibility.readableListingAnchorIds(
+            BOB,
+            anchors.stream().map(anchor -> anchor.getId().toString()).toList(),
+            candidates -> {
+              batchSizes.add(candidates.size());
+              return anchors.stream()
+                  .filter(anchor -> candidates.contains(anchor.getId()))
+                  .toList();
+            },
+            (userName, anchor) -> {
+              assertEquals(BOB, userName);
+              return readable.contains(anchor.getId());
+            });
+
+    assertEquals(readable.stream().map(UUID::toString).collect(Collectors.toSet()), selected);
+    assertEquals(List.of(100, 1), batchSizes);
   }
 
   @Test

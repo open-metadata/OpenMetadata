@@ -47,7 +47,7 @@ const MembersAssetsTab: FC<MembersAssetsTabProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:w-full tw:h-full" direction="row">
+    <Box className="tw:w-full tw:h-full" direction="row" gap={4}>
       <Box className="tw:flex-1 tw:min-w-0">
         <AssetsTabs
           isSummaryPanelOpen
@@ -62,7 +62,7 @@ const MembersAssetsTab: FC<MembersAssetsTabProps> = ({
         />
       </Box>
       {previewAsset && (
-        <Box className="tw:w-96 tw:border-l tw:border-secondary tw:shrink-0">
+        <Box className="tw:w-96 tw:shrink-0">
           <EntitySummaryPanel
             entityDetails={previewAsset}
             handleClosePanel={onClosePreview}

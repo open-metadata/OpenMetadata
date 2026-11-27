@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.DocumentRepository;
+import org.openmetadata.service.security.ImpersonationContext;
 
 final class OpenMetadataSavedSparqlQueryDocumentRepository
     implements SavedSparqlQueryDocumentRepository {
@@ -51,7 +52,8 @@ final class OpenMetadataSavedSparqlQueryDocumentRepository
     if (current == null) {
       updated.setId(UUID.randomUUID());
       updated.setUpdatedAt(clock.millis());
-      persisted = repository.create(uriInfo, updated, userName, null);
+      persisted =
+          repository.create(uriInfo, updated, userName, ImpersonationContext.getImpersonatedBy());
     } else {
       updated.setId(current.getId());
       updated.setVersion(current.getVersion());

@@ -9,6 +9,8 @@ import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -39,6 +41,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ImpersonationDeniedException;
+import org.openmetadata.service.security.ImpersonationTargetNotFoundException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -163,13 +167,27 @@ public class McpServer implements McpServerProvider {
     return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
   }
 
+  /** Collate overrides this to supply initialization instructions to MCP clients. */
+  protected String serverInstructions() {
+    return null;
+  }
+
   static McpStatelessSyncServer buildServer(
       McpStatelessServerTransport transport,
       McpSchema.ServerCapabilities capabilities,
       Supplier<MCPConfiguration> mcpConfig) {
+    return buildServer(transport, capabilities, mcpConfig, null);
+  }
+
+  static McpStatelessSyncServer buildServer(
+      McpStatelessServerTransport transport,
+      McpSchema.ServerCapabilities capabilities,
+      Supplier<MCPConfiguration> mcpConfig,
+      String instructions) {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
         .serverInfo(serverInfo(mcpConfig.get()))
         .capabilities(capabilities)
+        .instructions(instructions)
         // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
         // tools accept looser shapes on purpose, see
         // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
@@ -297,7 +315,8 @@ public class McpServer implements McpServerProvider {
           buildServer(
               statelessOauthTransport,
               serverCapabilities,
-              SecurityConfigurationManager::getCurrentMcpConfig);
+              SecurityConfigurationManager::getCurrentMcpConfig,
+              serverInstructions());
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
 
@@ -311,6 +330,8 @@ public class McpServer implements McpServerProvider {
       BasicAuthLoginServlet basicAuthLoginServlet = new BasicAuthLoginServlet(authProvider);
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
+
+      registerAvailabilityFilter(environment);
 
       // Register well-known filter via Dropwizard's environment.servlets() API.
       // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
@@ -364,9 +385,15 @@ public class McpServer implements McpServerProvider {
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
       // invokes this handler, which asks the user to approve the client before a code is minted.
+      // The SAML ACS is not under /mcp/, so it checks availability itself.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
-          (req, resp, username, email, relayState) ->
-              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+          (req, resp, username, email, relayState) -> {
+            if (McpAvailabilityFilter.isMcpAvailable()) {
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState);
+            } else {
+              McpAvailabilityFilter.refuse(resp);
+            }
+          });
       LOG.info("Registered MCP SAML callback handler for SAML SSO support");
 
       // Register MCP callback servlet unconditionally — SSO availability is checked at
@@ -385,6 +412,16 @@ public class McpServer implements McpServerProvider {
               + "and restart.",
           ex);
     }
+  }
+
+  /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
+  private static void registerAvailabilityFilter(Environment environment) {
+    McpAvailabilityFilter.startAppStateRefresh();
+    environment
+        .servlets()
+        .addFilter("mcp-availability", new McpAvailabilityFilter())
+        .addMappingForUrlPatterns(
+            EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD), false, "/mcp/*");
   }
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
@@ -437,7 +474,7 @@ public class McpServer implements McpServerProvider {
     String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
     DefaultToolContext.CallToolOutcome outcome = null;
     try {
-      ImpersonationContext.setImpersonatedBy(getMcpBotName());
+      ImpersonationContext.setImpersonatedBy(attributedBot(securityContext));
       outcome =
           refusalReason(tool, SecurityConfigurationManager.getCurrentMcpConfig())
               .map(DefaultToolContext::forbidden)
@@ -473,14 +510,27 @@ public class McpServer implements McpServerProvider {
                         securityContextFrom(context), prompt.name(), arguments)));
   }
 
+  /** An impersonated call is attributed to the bot that asked; every other call to the MCP bot. */
+  private String attributedBot(CatalogSecurityContext securityContext) {
+    return Optional.ofNullable(securityContext.impersonatedUser()).orElseGet(this::getMcpBotName);
+  }
+
   /** Tools and prompts both resolve the caller from the request headers, never from the body. */
   private CatalogSecurityContext securityContextFrom(McpTransportContext context) {
     String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
     String activePersona =
         (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
-    return activePersona == null
-        ? jwtFilter.getCatalogSecurityContext(token)
-        : jwtFilter.getCatalogSecurityContext(token, activePersona);
+    String impersonateUser =
+        (String) context.get(AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER);
+    CatalogSecurityContext securityContext;
+    if (impersonateUser != null) {
+      securityContext = jwtFilter.getCatalogSecurityContext(token, activePersona, impersonateUser);
+    } else if (activePersona == null) {
+      securityContext = jwtFilter.getCatalogSecurityContext(token);
+    } else {
+      securityContext = jwtFilter.getCatalogSecurityContext(token, activePersona);
+    }
+    return securityContext;
   }
 
   /**
@@ -490,12 +540,16 @@ public class McpServer implements McpServerProvider {
    *
    * <p>The SDK answers an exception that is not an {@link McpError} with -32603 and the
    * exception's own message. A token the server could not confirm becomes an {@link McpError} that
-   * reads as temporarily unavailable, without that message, which names the principal.
+   * reads as temporarily unavailable, without that message, which names the principal. A refused
+   * {@code X-Impersonate-User} is the caller's error, as REST answers it with 401/403, so it reads
+   * as unauthorized with the same message REST sends.
    */
   private static <T> T runCallback(String name, Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
+    } catch (ImpersonationDeniedException | ImpersonationTargetNotFoundException e) {
+      throw McpError.builder(JsonRpcErrorBody.UNAUTHORIZED).message(e.getMessage()).build();
     } catch (CredentialUnavailableException e) {
       LOG.debug("MCP callback token could not be confirmed", e);
       throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)

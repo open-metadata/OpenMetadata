@@ -20,6 +20,9 @@ import { showErrorToast } from '../utils/ToastUtils';
 import { useApplicationStore } from './useApplicationStore';
 import { useDomainStore } from './useDomainStore';
 
+// The URL params usePaging reads the current page from.
+const PAGING_URL_PARAMS = ['currentPage', 'cursorType', 'cursorValue'];
+
 /**
  * Switches the navbar domain and persists it as the user's `defaultDomain`, so the server applies
  * it to every list. `undefined` clears the selection (All Domains).
@@ -52,6 +55,14 @@ export const useSwitchActiveDomain = () => {
           return;
         }
       }
+      // A list page belongs to the old domain's results, so reload at page 1
+      // (e.g. page 3 of one domain may not exist in another).
+      const search = new URLSearchParams(globalThis.location.search);
+      PAGING_URL_PARAMS.forEach((param) => search.delete(param));
+      navigate(
+        { search: search.toString(), hash: globalThis.location.hash },
+        { replace: true }
+      );
       navigate(0);
     },
     [currentUser?.id, navigate, updateActiveDomain, updateCurrentUser]

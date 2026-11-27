@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { runUnderExitGuard } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
@@ -30,6 +31,7 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
 } from '../../../../../../rest/securityConfigAPI';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 import {
   getProviderDisplayName,
   getProviderIcon,
@@ -43,6 +45,11 @@ import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import SsoConfigureForm, { SsoSubPage } from './SsoConfigureForm';
 import SsoOverview from './SsoOverview';
+import {
+  CRUMB_PROVIDER,
+  CRUMB_SAVED_PROVIDER,
+  IN_EDITOR_CRUMBS,
+} from './SsoPanel.constants';
 import type { SsoView } from './SsoPanel.types';
 import {
   hashSubPathToView,
@@ -51,17 +58,32 @@ import {
 } from './SsoPanel.utils';
 import SsoProviderGrid from './SsoProviderGrid';
 
-const CRUMB_PROVIDER = 'provider';
-
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
-// Under a sub page the provider crumb leads back to the form.
+// Under a sub page the provider crumb leads back to the form; while changing
+// provider, the saved provider's crumb leads back to its Configure tab.
 const getProviderCrumbs = (
-  provider?: string,
-  subPage?: SsoSubPage
+  provider: string | undefined,
+  subPage: SsoSubPage | undefined,
+  change: {
+    isChangingProvider: boolean;
+    savedProvider?: string;
+    changeLabel: string;
+  }
 ): BreadcrumbItemType[] => {
+  if (change.isChangingProvider) {
+    return change.savedProvider
+      ? [
+          {
+            id: CRUMB_SAVED_PROVIDER,
+            label: getProviderDisplayName(change.savedProvider),
+          },
+          { id: 'current', label: change.changeLabel },
+        ]
+      : [];
+  }
   if (!provider) {
     return [];
   }
@@ -150,8 +172,14 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   );
 
   const onNavigate = useCallback(
-    (next: SsoView) => setHash(SSO_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+    (next: SsoView) =>
+      setHash(
+        SSO_HASH_TAB,
+        viewToSubPath(next),
+        undefined,
+        settingsHashOptions(view, next)
+      ),
+    [setHash, view]
   );
 
   const fetchConfig = useCallback(async () => {
@@ -176,14 +204,16 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     onNavigate({ type: 'overview' });
   }, [fetchConfig, onNavigate]);
 
+  // Tabs and Change provider leave an edited form, so they ask first.
   const handleTabChange = useCallback(
-    (key: Key) => {
-      if (key === 'overview') {
-        // A save on the Configure tab may have changed self signup.
-        void fetchConfig();
-      }
-      onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
-    },
+    (key: Key) =>
+      runUnderExitGuard(() => {
+        if (key === 'overview') {
+          // A save on the Configure tab may have changed self signup.
+          void fetchConfig();
+        }
+        onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
+      }),
     [fetchConfig, onNavigate]
   );
 
@@ -243,7 +273,11 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     const breadcrumbs: BreadcrumbItemType[] = [
       { id: 'settings', label: t('label.setting-plural') },
       { id: SSO_HASH_TAB, label: ssoLabel },
-      ...getProviderCrumbs(headerProvider, subPage),
+      ...getProviderCrumbs(headerProvider, subPage, {
+        isChangingProvider: view.type === 'providers',
+        savedProvider,
+        changeLabel: t('label.change-provider'),
+      }),
     ];
 
     const hintToggle = (
@@ -269,7 +303,9 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             color="secondary"
             data-testid="change-provider-button"
             size="xs"
-            onPress={() => onNavigate({ type: 'providers' })}>
+            onPress={() =>
+              runUnderExitGuard(() => onNavigate({ type: 'providers' }))
+            }>
             {t('label.change-provider')}
           </Button>
         )}
@@ -284,11 +320,14 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       iconNode: headerProvider ? (
         <ProviderLogo provider={headerProvider} />
       ) : undefined,
+      inEditorBreadcrumbIds: IN_EDITOR_CRUMBS,
       onBreadcrumbAction: (id: Key) => {
         if (id === SSO_HASH_TAB) {
           onNavigate({ type: 'overview' });
         } else if (id === CRUMB_PROVIDER) {
           subPage?.onBack();
+        } else if (id === CRUMB_SAVED_PROVIDER) {
+          onNavigate({ type: 'configure' });
         }
       },
       actions: isLoading || subPage ? undefined : actions,
@@ -304,6 +343,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     isLoading,
     onHeaderChange,
     onNavigate,
+    savedProvider,
     showHint,
     showsForm,
     showsTabs,

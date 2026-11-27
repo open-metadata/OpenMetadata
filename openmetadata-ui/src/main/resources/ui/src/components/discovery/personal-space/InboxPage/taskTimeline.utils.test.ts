@@ -39,6 +39,18 @@ describe('buildTaskTimeline', () => {
     });
   });
 
+  // The task's "Created by" names the agent, so its timeline must too.
+  it('credits the creation to the proposing agent, not its bot', () => {
+    const [first] = buildTaskTimeline(buildTask(), {
+      proposingAgent: 'Glossary Agent',
+    });
+
+    expect(first).toMatchObject({
+      textKey: 'message.task-event-created',
+      textParams: { user: 'Glossary Agent' },
+    });
+  });
+
   it('reads an incident as opened and tones it as an alert', () => {
     const [first] = buildTaskTimeline(
       buildTask({ category: TaskCategory.Incident })

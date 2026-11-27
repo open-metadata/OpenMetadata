@@ -24,19 +24,22 @@ export const DistributionKeyOff: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g
+      clipPath="url(#distribution-key-off_a)"
+      stroke="currentColor"
+      strokeWidth={1.3}>
       <path d="M3.756 15.418V3.801m2.494 9.901-2.493 2.493-2.494-2.493m7.153-9.429h10.319M1.264 9.96h17.472m-10.32 1.935h4.045M8.416 8.086h7.27m-7.27 7.621h2.814" />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="distribution-key-off_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>

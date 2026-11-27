@@ -32,9 +32,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -58,6 +62,150 @@ class ContextMemorySearchVisibilityTest {
   private static final UUID DOMAIN_ID = UUID.randomUUID();
   private static final Map<String, List<String>> OWNER_PENDING_REQUESTED =
       Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved", "Unprocessed", "Draft"));
+
+  @Test
+  void listingAdmitsOnlyMatchingReadableAnchorsAndKeepsPendingOwnerOnly() {
+    String readable = UUID.randomUUID().toString();
+    Set<String> matches = Set.of(readable);
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            (name, candidates) -> {
+              assertEquals("alice", name);
+              assertEquals(matches, Set.copyOf(candidates));
+              return matches;
+            });
+    String query =
+        serializeElasticQuery(
+            ((ElasticQueryBuilder)
+                    visibility.buildListingVisibilityFilter(
+                        nonAdminSubject(),
+                        List.of(
+                            ContextMemoryStatus.APPROVED,
+                            ContextMemoryStatus.UNPROCESSED,
+                            ContextMemoryStatus.DRAFT),
+                        matches))
+                .build());
+    DocumentContext json = JsonPath.parse(query);
+    String branches = "$.bool.should[1].bool.must[1].bool.should";
+    assertFieldExists(
+        json, branches + "[0]..terms['anchorId']", "published memories admit authorized anchors");
+    assertTrue(query.contains(readable));
+    assertFieldDoesNotExist(
+        json,
+        branches + "[1]..terms['anchorId']",
+        "pending memories are never admitted through an anchor");
+    assertFieldExists(
+        json, branches + "[1]..term['owners.id']", "pending memories require ownership");
+  }
+
+  @Test
+  void pendingEmptyAndAdminListingsNeedNoAnchorAuthorization() {
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            (name, candidates) -> {
+              throw new AssertionError("no matching published anchors require authorization");
+            });
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            nonAdminSubject(), ContextMemorySearchVisibility.OWNER_PENDING_STATUSES));
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(),
+            ContextMemorySearchVisibility.OWNER_PENDING_STATUSES,
+            Set.of("unused")));
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of()));
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of("unused")));
+    assertNull(
+        visibility.buildListingVisibilityFilter(
+            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of("unused")));
+  }
+
+  @Test
+  void openSearchListingsIncludeTheSameAuthorizedAnchors() {
+    String readable = UUID.randomUUID().toString();
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new OpenSearchQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            (name, candidates) -> Set.copyOf(candidates));
+    OMQueryBuilder filter =
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of(readable));
+    String query = ((OpenSearchQueryBuilder) filter).build().toJsonString();
+    assertTrue(query.contains(readable));
+    assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void listingsSplitLargeAuthorizedAnchorSetsBelowTheEngineTermsLimit(boolean openSearch) {
+    Set<String> anchors =
+        IntStream.range(0, 65_537)
+            .mapToObj(index -> new UUID(0, index + 1).toString())
+            .collect(Collectors.toSet());
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            (name, candidates) -> Set.copyOf(candidates));
+    OMQueryBuilder filter =
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, anchors);
+    String query =
+        openSearch
+            ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
+            : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    List<List<String>> chunks = JsonPath.parse(query).read("$..terms.anchorId");
+    assertEquals(anchors.size(), chunks.stream().mapToInt(List::size).sum());
+    assertTrue(chunks.stream().allMatch(chunk -> chunk.size() <= 1024));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void anchorCandidatesExcludePrivateSharedPendingAndUnanchoredMemories(boolean openSearch) {
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory());
+    OMQueryBuilder filter =
+        visibility.buildListingAnchorCandidateFilter(
+            List.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
+    String query =
+        openSearch
+            ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
+            : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    assertTrue(query.contains(MemoryVisibility.ENTITY.value()));
+    assertTrue(query.contains(MemoryVisibility.PUBLIC.value()));
+    assertTrue(query.contains(ContextMemoryIndex.UNANCHORED));
+    assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
+    assertFalse(query.contains(MemoryVisibility.PRIVATE.value()));
+    assertFalse(query.contains(MemoryVisibility.SHARED.value()));
+    assertFalse(query.contains(ContextMemoryStatus.DRAFT.value()));
+  }
+
+  @Test
+  void listingRecognizesCanonicalAndClusterPrefixedMemoryIndicesOnly() {
+    assertTrue(ContextMemorySearchVisibility.isMemoryListingIndex("context_memory_search_index"));
+    assertTrue(
+        ContextMemorySearchVisibility.isMemoryListingIndex("tenant_context_memory_search_index"));
+    assertFalse(ContextMemorySearchVisibility.isMemoryListingIndex("table_search_index"));
+    assertFalse(ContextMemorySearchVisibility.isMemoryListingIndex("contextMemory"));
+  }
 
   private SubjectContext nonAdminSubject() {
     User user =

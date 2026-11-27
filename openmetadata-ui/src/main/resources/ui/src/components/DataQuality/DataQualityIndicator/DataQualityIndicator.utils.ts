@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
-} from '../../../generated/tests/testCaseResolutionStatus';
+import { OPEN_INCIDENT_STATUS_TYPES } from '../../../constants/TestSuite.constant';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import {
   DataQualityIndicatorCounts,
   DataQualityIndicatorLevel,
@@ -21,11 +19,7 @@ import {
 
 export const DQ_INDICATOR_FETCH_LIMIT = 100;
 
-export const OPEN_INCIDENT_STATUSES = [
-  TestCaseResolutionStatusTypes.New,
-  TestCaseResolutionStatusTypes.ACK,
-  TestCaseResolutionStatusTypes.Assigned,
-].join(',');
+export const OPEN_INCIDENT_STATUSES = OPEN_INCIDENT_STATUS_TYPES.join(',');
 
 export const EMPTY_DQ_INDICATOR_COUNTS: DataQualityIndicatorCounts = {
   failingTests: 0,

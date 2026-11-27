@@ -112,6 +112,8 @@ public class OntologyDraftQueryIT extends BaseOntologyApprovalIT {
   void aViewerIsRefusedAServiceClauseHiddenInsideAnExpression(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     concept(ontology, "First");
+    // The release scope refuses an ontology with no active release before it reads the query.
+    activate(ns, ontology);
     final SparqlQuery hidden =
         new SparqlQuery()
             .withQuery(

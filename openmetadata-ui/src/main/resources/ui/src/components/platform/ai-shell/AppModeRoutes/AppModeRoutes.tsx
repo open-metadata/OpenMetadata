@@ -12,7 +12,7 @@
  */
 
 import { lazy, useMemo } from 'react';
-import { Route, Routes, useMatch } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
@@ -102,10 +102,6 @@ export const AppModeRoutes = () => {
     [modules, extensionRegistry, contributionsVersion]
   );
 
-  // A fresh route cache on /tour, so the tour never opens on a page kept alive
-  // from before it, still showing the server's data.
-  const routeCacheKey = useMatch(ROUTES.TOUR) ? 'tour' : 'app';
-
   return (
     <Routes>
       <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
@@ -118,7 +114,7 @@ export const AppModeRoutes = () => {
             {isApplicationsLoading ? (
               <Loader />
             ) : (
-              <KeepAliveRoutes key={routeCacheKey} routes={routes}>
+              <KeepAliveRoutes routes={routes}>
                 {fallback ? (
                   <Route element={fallback.element} path="/*" />
                 ) : (

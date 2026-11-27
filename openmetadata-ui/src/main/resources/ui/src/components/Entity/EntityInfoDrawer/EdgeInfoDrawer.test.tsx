@@ -20,6 +20,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
 
 jest.mock(
@@ -288,6 +289,41 @@ describe('EdgeInfoDrawer Component', () => {
     const hasTarget = entityInfoV1.some((item) => item.name === 'label.target');
 
     expect(hasSource || hasTarget).toBe(true);
+  });
+
+  it('lists the column mappings of a table edge and the edge count of a rollup', async () => {
+    (getNameFromFQN as jest.Mock).mockImplementation(
+      (fqn: string) => fqn.split('.').pop() ?? fqn
+    );
+    const edge = {
+      ...mockEdgeInfoDrawer.edge,
+      data: {
+        ...mockEdgeInfoDrawer.edge.data,
+        weight: 3,
+        edge: {
+          ...mockEdgeInfoDrawer.edge.data.edge,
+          columns: [
+            { fromColumns: ['svc.db.s.t1.id'], toColumn: 'svc.db.s.t2.id' },
+            { fromColumns: ['svc.db.s.t1.val'], toColumn: 'svc.db.s.t2.val' },
+          ],
+        },
+      },
+    } as Edge;
+
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} edge={edge} />);
+
+    await waitFor(() => {
+      const calls = (OverviewSection as jest.Mock).mock.calls;
+      const items: Array<{ name: string; value?: unknown }> =
+        calls[calls.length - 1]?.[0]?.entityInfoV1 ?? [];
+
+      expect(items).toEqual(
+        expect.arrayContaining([
+          { name: 'label.column-plural', value: 'id → id; val → val' },
+          { name: 'label.edge-plural', value: '3' },
+        ])
+      );
+    });
   });
 
   it('should pass empty componentType to OverviewSection', async () => {

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,8 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.DocStats;
 import es.co.elastic.clients.elasticsearch._types.HealthStatus;
 import es.co.elastic.clients.elasticsearch._types.StoreStats;
+import es.co.elastic.clients.elasticsearch._types.mapping.Property;
+import es.co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
 import es.co.elastic.clients.elasticsearch.indices.AliasDefinition;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexResponse;
@@ -29,12 +32,15 @@ import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
+import es.co.elastic.clients.elasticsearch.indices.GetMappingRequest;
+import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.elasticsearch.indices.IndicesStatsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingResponse;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.elasticsearch.indices.get_alias.IndexAliases;
+import es.co.elastic.clients.elasticsearch.indices.get_mapping.IndexMappingRecord;
 import es.co.elastic.clients.elasticsearch.indices.stats.IndexStats;
 import es.co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
 import es.co.elastic.clients.elasticsearch.indices.stats.ShardRouting;
@@ -48,9 +54,14 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 @ExtendWith(MockitoExtension.class)
 class ElasticSearchIndexManagerTest {
@@ -890,5 +901,79 @@ class ElasticSearchIndexManagerTest {
         .status(status)
         .error(error -> error.type(type).reason(type))
         .build();
+  }
+
+  private static final String VECTOR_MAPPING_UPDATE =
+      "{\"mappings\":{\"properties\":{\"fingerprint\":{\"type\":\"keyword\"},"
+          + "\"addedInNextRelease\":{\"type\":\"keyword\"}}}}";
+
+  private void updateWithEmbeddingsOn(GetMappingResponse liveMapping) throws IOException {
+    when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
+    when(indicesClient.getMapping(any(GetMappingRequest.class))).thenReturn(liveMapping);
+    lenient()
+        .when(indicesClient.putMapping(any(PutMappingRequest.class)))
+        .thenReturn(putMappingResponse);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.getDimension()).thenReturn(8);
+    lenient().when(embeddingClient.getModelId()).thenReturn("test-model");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      indexManager.updateIndex(indexMapping, VECTOR_MAPPING_UPDATE);
+    }
+  }
+
+  private static IndexMappingRecord liveIndex(Property embedding) {
+    return IndexMappingRecord.of(
+        index ->
+            index.mappings(
+                TypeMapping.of(
+                    mapping ->
+                        embedding == null
+                            ? mapping.properties("fingerprint", Property.of(p -> p.keyword(k -> k)))
+                            : mapping.properties("embedding", embedding))));
+  }
+
+  private PutMappingRequest sentMapping() throws IOException {
+    ArgumentCaptor<PutMappingRequest> captor = forClass(PutMappingRequest.class);
+    verify(indicesClient).putMapping(captor.capture());
+    return captor.getValue();
+  }
+
+  @Test
+  void updateIndex_leavesOutAnEmbeddingAnyIndexBehindTheAliasAlreadyMaps() throws IOException {
+    Property embedding = Property.of(p -> p.denseVector(vector -> vector.dims(8)));
+    updateWithEmbeddingsOn(
+        GetMappingResponse.of(
+            response ->
+                response
+                    .mappings("test_index_rebuild_1", liveIndex(embedding))
+                    .mappings("test_index_rebuild_2", liveIndex(null))));
+
+    PutMappingRequest sent = sentMapping();
+    assertFalse(sent.properties().containsKey("embedding"));
+    assertTrue(sent.properties().containsKey("addedInNextRelease"));
+  }
+
+  @Test
+  void updateIndex_addsThePinnedEmbeddingWhenTheLiveIndexHasNone() throws IOException {
+    updateWithEmbeddingsOn(
+        GetMappingResponse.of(response -> response.mappings(TEST_INDEX, liveIndex(null))));
+
+    Property embedding = sentMapping().properties().get("embedding");
+    assertEquals(8, embedding.denseVector().dims());
+    assertEquals(48, embedding.denseVector().indexOptions().m());
+  }
+
+  @Test
+  void updateIndex_failsWhenTheLiveEmbeddingHasAnotherDimension() throws IOException {
+    Property embedding = Property.of(p -> p.denseVector(vector -> vector.dims(384)));
+    GetMappingResponse liveMapping =
+        GetMappingResponse.of(response -> response.mappings(TEST_INDEX, liveIndex(embedding)));
+
+    assertThrows(IllegalStateException.class, () -> updateWithEmbeddingsOn(liveMapping));
+    verify(indicesClient, never()).putMapping(any(PutMappingRequest.class));
   }
 }

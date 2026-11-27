@@ -53,10 +53,21 @@ from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
+# Map Domo DataFlow execution `state` values to OpenMetadata status types.
+# Domo's dataprocessing v1 API surfaces `SUCCESS`, `FAILED_DATA_FLOW`,
+# `CREATED` and `RUNNING` (uppercase); it never returns the Dagster-derived
+# `"failure"` key the prior map was copied from. An unrecognized state
+# defaults to Pending rather than Failed: seeing a state we don't
+# understand is not evidence the run failed. The record's `failed`
+# boolean is honored ahead of the state string in `yield_pipeline_status`
+# so a failure surfaced with an unanticipated state value can never
+# silently fall through to Pending.
 STATUS_MAP = {
-    "success": StatusType.Successful.value,
-    "failure": StatusType.Failed.value,
-    "queued": StatusType.Pending.value,
+    "success": StatusType.Successful,
+    "failed_data_flow": StatusType.Failed,
+    "failed": StatusType.Failed,
+    "created": StatusType.Pending,
+    "running": StatusType.Pending,
 }
 
 
@@ -137,18 +148,27 @@ class DomopipelineSource(PipelineServiceSource):
                     Timestamp(convert_timestamp_to_milliseconds(run["beginTime"])) if run.get("beginTime") else None
                 )
                 end_time = Timestamp(convert_timestamp_to_milliseconds(run["endTime"])) if run.get("endTime") else None
-                run_state = run.get("state", "Pending")
+                run_state = run.get("state") or ""
+
+                # Domo explicitly flags failures via a `failed` boolean on
+                # each run record. Honor it ahead of the state string so a
+                # failure the API surfaces with an unanticipated state
+                # value can never silently fall through to Pending.
+                if run.get("failed"):
+                    execution_status = StatusType.Failed
+                else:
+                    execution_status = STATUS_MAP.get(run_state.lower(), StatusType.Pending)
 
                 task_status = TaskStatus(
                     name=pipeline_id,
-                    executionStatus=STATUS_MAP.get(run_state.lower(), StatusType.Pending.value),
+                    executionStatus=execution_status,
                     startTime=start_time,
                     endTime=end_time,
                 )
 
                 pipeline_status = PipelineStatus(
                     taskStatus=[task_status],
-                    executionStatus=STATUS_MAP.get(run_state.lower(), StatusType.Pending.value),
+                    executionStatus=execution_status,
                     timestamp=end_time,
                 )
                 pipeline_fqn = fqn.build(

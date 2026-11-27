@@ -31,6 +31,7 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 

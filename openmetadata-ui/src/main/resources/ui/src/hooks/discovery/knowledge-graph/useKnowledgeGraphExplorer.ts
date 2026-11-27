@@ -12,6 +12,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -26,13 +27,14 @@ import {
   resolveFocusNodeId,
   transformToG6Format,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { conceptEntityType } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
+  localizeGraphLabels,
   restrictToEntityLevel,
-  sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
@@ -49,6 +51,11 @@ interface ExplorerOptions {
   focusedNodeId?: string;
 }
 
+// One shared instance: a fresh `{ nodes: [], edges: [] }` per render changes
+// every downstream memo's input, and the canvas state updates that follow
+// re-render forever (the "Extended connections" page freeze).
+const EMPTY_ONTOLOGY_GRAPH: GraphData = { nodes: [], edges: [] };
+
 const getExplorerResult = (
   assets: ReturnType<typeof useKnowledgeGraphData>,
   ontology: ReturnType<typeof useKnowledgeGraphOntology>,
@@ -58,7 +65,7 @@ const getExplorerResult = (
     return assets;
   }
   const empty: GraphData | null =
-    !assets.loading && !ontology.concept ? { nodes: [], edges: [] } : null;
+    !assets.loading && !ontology.concept ? EMPTY_ONTOLOGY_GRAPH : null;
 
   return {
     ...ontology,
@@ -80,6 +87,7 @@ export const useKnowledgeGraphExplorer = ({
   expanded,
   focusedNodeId,
 }: ExplorerOptions) => {
+  const { t } = useTranslation();
   const query = useMemo(
     () => ({
       entityId: entityId,
@@ -101,19 +109,20 @@ export const useKnowledgeGraphExplorer = ({
   const result = getExplorerResult(assetResult, ontology, mode);
   const rootEntityId =
     mode === 'ontology' ? ontology.concept?.id ?? '' : entityId;
-  const rootEntityType = mode === 'ontology' ? 'glossaryTerm' : entityType;
+  const rootEntityType =
+    mode === 'ontology' ? conceptEntityType(ontology.concept) : entityType;
   const rootId = resolveFocusNodeId(
     result.unfiltered?.nodes ?? [],
     rootEntityId
   );
   const entityLevel = selectedLevel === 1;
   const labelledUnfiltered = useMemo(
-    () => sentenceCaseGraphLabels(result.unfiltered),
-    [result.unfiltered]
+    () => localizeGraphLabels(result.unfiltered, t),
+    [result.unfiltered, t]
   );
   const labelledData = useMemo(
-    () => sentenceCaseGraphLabels(result.data),
-    [result.data]
+    () => localizeGraphLabels(result.data, t),
+    [result.data, t]
   );
   const rawData = useMemo(
     () =>

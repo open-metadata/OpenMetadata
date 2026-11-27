@@ -32,7 +32,9 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
+    DataModel,
     DataType,
+    ModelType,
     Table,
     TableData,
 )
@@ -164,6 +166,7 @@ class TestCustomBasemodelValidation(TestCase):
             TableData,
             CreateTableRequest,
             CreateDashboardDataModelRequest,
+            DataModel,
         }
 
         for entity in expected_entities:
@@ -728,6 +731,52 @@ class TestCustomBasemodelValidation(TestCase):
         self.assertEqual(decoded.name.root, original_name)
         self.assertEqual(decoded.columns[0].name.root, original_column)
         self.assertEqual(decoded.columns[0].children[0].name.root, original_child)
+
+    def test_table_data_model_create_transformation(self):
+        """DataModel sent via PUT /tables/{id}/dataModel should encode column names (#35969)."""
+        data_model = DataModel(
+            modelType=ModelType.DBT,
+            columns=[
+                Column(
+                    name=ColumnName("a>b"),
+                    dataType=DataType.STRUCT,
+                    children=[Column(name=ColumnName('x::"y"'), dataType=DataType.STRING)],
+                ),
+                Column(name=ColumnName("plain"), dataType=DataType.INT),
+            ],
+        )
+
+        self.assertEqual(get_entity_config(DataModel)["direction"], TransformDirection.ENCODE)
+        self.assertEqual(data_model.columns[0].name.root, "a__reserved__arrow__b")
+        self.assertEqual(
+            data_model.columns[0].children[0].name.root,
+            "x__reserved__colon____reserved__quote__y__reserved__quote__",
+        )
+        self.assertEqual(data_model.columns[1].name.root, "plain")
+
+    def test_table_data_model_fetch_transformation(self):
+        """A fetched Table should decode the column names of its nested dataModel too."""
+        table = Table(
+            id=self.sample_table_id,
+            name="orders_model",
+            databaseSchema=self.sample_schema_ref,
+            fullyQualifiedName="db.schema.orders_model",
+            columns=[Column(name=ColumnName("a__reserved__arrow__b"), dataType=DataType.INT)],
+            dataModel=DataModel(
+                modelType=ModelType.DBT,
+                columns=[
+                    Column(
+                        name=ColumnName("a__reserved__arrow__b"),
+                        dataType=DataType.STRUCT,
+                        children=[Column(name=ColumnName("x__reserved__arrow__y"), dataType=DataType.STRING)],
+                    )
+                ],
+            ),
+        )
+
+        self.assertEqual(table.columns[0].name.root, "a>b")
+        self.assertEqual(table.dataModel.columns[0].name.root, "a>b")
+        self.assertEqual(table.dataModel.columns[0].children[0].name.root, "x>y")
 
     def test_configuration_consistency(self):
         """Test consistency of configuration across the system."""

@@ -463,6 +463,44 @@ class SamlValidatorTest {
     assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
   }
 
+  /** Sign-in signs requests with the keystore's key when one is set, so no PEM values are needed. */
+  @Test
+  void validateSecurityConfigurationAcceptsSignedRequestsWithAKeyStore() {
+    SamlSSOClientConfig samlConfig = withoutPemCredentials(baseConfig("http://localhost/unused"));
+    samlConfig.setSecurity(keyStore().withSendSignedAuthRequest(true));
+
+    assertNull(SamlValidator.validateSecurityConfiguration(samlConfig));
+  }
+
+  /**
+   * The PEM values are still needed where sign-in reads no keystore: one missing its alias, and
+   * metadata signing on its own, for which sign-in never loads the keystore.
+   */
+  @Test
+  void validateSecurityConfigurationNeedsPemCredentialsWhereSignInReadsNoKeyStore() {
+    SamlSSOClientConfig samlConfig = withoutPemCredentials(baseConfig("http://localhost/unused"));
+
+    samlConfig.setSecurity(keyStore().withKeyStoreAlias(null).withSendSignedAuthRequest(true));
+    FieldError incompleteKeyStore = SamlValidator.validateSecurityConfiguration(samlConfig);
+    samlConfig.setSecurity(keyStore().withSignSpMetadata(true));
+    FieldError metadataSigning = SamlValidator.validateSecurityConfiguration(samlConfig);
+
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_CERT, incompleteKeyStore.getField());
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_CERT, metadataSigning.getField());
+  }
+
+  private static SamlSecurityConfig keyStore() {
+    return new SamlSecurityConfig()
+        .withKeyStoreFilePath("/etc/openmetadata/saml-sp.jks")
+        .withKeyStoreAlias("sp")
+        .withKeyStorePassword("keystore-password");
+  }
+
+  private static SamlSSOClientConfig withoutPemCredentials(SamlSSOClientConfig samlConfig) {
+    samlConfig.getSp().withSpX509Certificate(null).setSpPrivateKey(null);
+    return samlConfig;
+  }
+
   @Test
   void validateCertificatesRejectsInvalidSpCertificateWhenSigningIsEnabled() throws Exception {
     SamlSSOClientConfig samlConfig = baseConfig("http://localhost/unused");
@@ -1194,6 +1232,40 @@ class SamlValidatorTest {
     assertNotNull(error);
     assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
     verify(validator, never()).openConnection(any(URL.class));
+  }
+
+  @Test
+  void validatesRolloverBundlesButStillRejectsInactiveSpCertificates() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String pem;
+      try (InputStream input = getClass().getResourceAsStream("/saml/" + inactive + "-idp.crt")) {
+        pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
+      }
+      invokePrivate(
+          "validateX509Certificate",
+          new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+          pem + "\n" + GENERIC_CERT,
+          "IdP X509 certificate",
+          baseConfig("http://localhost/unused"));
+      String inactivePem = pem;
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+                  inactivePem,
+                  "IdP X509 certificate",
+                  baseConfig("http://localhost/unused")));
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class},
+                  inactivePem,
+                  "SP X509 certificate"));
+    }
   }
 
   @Test

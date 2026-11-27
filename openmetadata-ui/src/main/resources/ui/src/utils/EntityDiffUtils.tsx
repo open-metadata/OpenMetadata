@@ -115,17 +115,19 @@ export const getTextDiff = (
     return latestText ?? '';
   }
 
+  // Version diff values are parsed from persisted JSON and may be non-strings;
+  // coerce before any string operation so a bad payload can't crash rendering.
+  const oldValue = toString(oldText);
+  const newValue = toString(newText);
+
   if (
-    newText?.includes(imagePlaceholder) ||
-    oldText?.includes(imagePlaceholder)
+    newValue.includes(imagePlaceholder) ||
+    oldValue.includes(imagePlaceholder)
   ) {
-    return newText;
+    return newValue;
   }
 
-  const diffArr = diffWords(
-    toDiffableText(toString(oldText)),
-    toDiffableText(toString(newText))
-  );
+  const diffArr = diffWords(toDiffableText(oldValue), toDiffableText(newValue));
 
   const result = diffArr.map((diff) => {
     if (diff.added) {

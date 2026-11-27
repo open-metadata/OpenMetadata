@@ -37,16 +37,24 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+const extractedFile = {
+  extractionStats: { chunksProcessed: 12, chunksTotal: 12, pillsCreated: 3 },
+  neverExtracted: false,
+  processingStatus: ProcessingStatus.Processed,
+};
+
 describe('DocumentStatusBadge', () => {
   it('renders nothing when status is undefined', () => {
-    const { container } = render(<DocumentStatusBadge />);
+    const { container } = render(<DocumentStatusBadge file={{}} />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it('renders nothing for an unknown status value', () => {
     const { container } = render(
-      <DocumentStatusBadge status={'FutureStatus' as ProcessingStatus} />
+      <DocumentStatusBadge
+        file={{ processingStatus: 'FutureStatus' as ProcessingStatus }}
+      />
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -55,8 +63,10 @@ describe('DocumentStatusBadge', () => {
   it('shows the processing error as a tooltip on a Failed badge', () => {
     render(
       <DocumentStatusBadge
-        error="provider exploded"
-        status={ProcessingStatus.Failed}
+        file={{
+          processingError: 'provider exploded',
+          processingStatus: ProcessingStatus.Failed,
+        }}
       />
     );
 
@@ -69,8 +79,10 @@ describe('DocumentStatusBadge', () => {
   it('shows partial chunk coverage as a tooltip on a Processed badge', () => {
     render(
       <DocumentStatusBadge
-        stats={{ chunksProcessed: 8, chunksTotal: 12 }}
-        status={ProcessingStatus.Processed}
+        file={{
+          ...extractedFile,
+          extractionStats: { chunksProcessed: 8, chunksTotal: 12 },
+        }}
       />
     );
 
@@ -81,14 +93,57 @@ describe('DocumentStatusBadge', () => {
   });
 
   it('renders no tooltip when extraction covered every chunk', () => {
+    render(<DocumentStatusBadge file={extractedFile} />);
+
+    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
+      'label.processed'
+    );
+  });
+
+  it('shows Not processed when the server reports the file was never extracted', () => {
     render(
       <DocumentStatusBadge
-        stats={{ chunksProcessed: 12, chunksTotal: 12 }}
-        status={ProcessingStatus.Processed}
+        file={{
+          neverExtracted: true,
+          processingStatus: ProcessingStatus.Processed,
+        }}
       />
     );
 
-    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
+    const badge = screen.getByTestId('document-status-badge');
+
+    expect(badge).toHaveTextContent('label.not-processed');
+    expect(badge.querySelector('[data-color]')).toHaveAttribute(
+      'data-color',
+      'gray'
+    );
+  });
+
+  it('keeps Processed when the server reports the file was extracted', () => {
+    render(
+      <DocumentStatusBadge
+        file={{
+          neverExtracted: false,
+          processingStatus: ProcessingStatus.Processed,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
+      'label.processed'
+    );
+  });
+
+  // The server owns the rule: a file that looks never extracted stays Processed without the flag.
+  it('does not work out Not processed from the file itself', () => {
+    const looksNeverExtracted = {
+      headContentId: 'content-1',
+      processingStatus: ProcessingStatus.Processed,
+    };
+
+    render(<DocumentStatusBadge file={looksNeverExtracted} />);
+
     expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
       'label.processed'
     );
@@ -102,7 +157,7 @@ describe('DocumentStatusBadge', () => {
     [ProcessingStatus.Failed, 'label.failed', 'error'],
     [ProcessingStatus.Unsupported, 'label.unsupported', 'warning'],
   ])('renders %s with label %s and color %s', (status, label, color) => {
-    render(<DocumentStatusBadge status={status} />);
+    render(<DocumentStatusBadge file={{ processingStatus: status }} />);
 
     const badge = screen.getByTestId('document-status-badge');
 

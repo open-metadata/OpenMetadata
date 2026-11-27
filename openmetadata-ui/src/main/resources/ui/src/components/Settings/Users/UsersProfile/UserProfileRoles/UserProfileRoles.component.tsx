@@ -65,24 +65,28 @@ const UserProfileRoles = ({
     if (!isUserAdmin) {
       options.push({
         id: toLower(TERM_ADMIN),
-        label: TERM_ADMIN,
+        label: t('label.admin-superuser'),
       });
     }
 
     return options;
-  }, [roles, isUserAdmin]);
+  }, [roles, isUserAdmin, t]);
 
   const selectedRoleItems = useMemo(
     () =>
       selectedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+        const role =
+          roles.find((r) => r.id === roleId) ??
+          userRoles?.find((r) => r.id === roleId);
+        const fallbackLabel =
+          roleId === toLower(TERM_ADMIN) ? t('label.admin-superuser') : roleId;
 
         return {
           id: roleId,
-          label: role ? getEntityName(role) : TERM_ADMIN,
+          label: role ? getEntityName(role) : fallbackLabel,
         };
       }),
-    [selectedRoles, roles]
+    [selectedRoles, roles, userRoles, t]
   );
 
   const handleRoleInserted = useCallback(
@@ -165,7 +169,14 @@ const UserProfileRoles = ({
       <Chip
         data={[
           ...(isUserAdmin
-            ? [{ id: 'admin', type: 'role', name: TERM_ADMIN }]
+            ? [
+                {
+                  id: 'admin',
+                  type: 'role',
+                  name: TERM_ADMIN,
+                  displayName: t('label.admin-superuser'),
+                },
+              ]
             : []),
           ...(userRoles ?? []),
         ]}

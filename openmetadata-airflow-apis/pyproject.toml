@@ -2,8 +2,6 @@
 requires = ["setuptools>=83"]
 build-backend = "setuptools.build_meta"
 
-# We will keep handling dependencies in setup.py
-# since it helps us organize and isolate version management
 [project]
 name = "openmetadata_managed_apis"
 version = "2.0.0.0.dev0"
@@ -29,6 +27,24 @@ dev = [
     "pytest-cov",
 ]
 
+[dependency-groups]
+test = [
+    "nox",
+    "pytest==9.0.3",
+    "pytest-cov",
+    "pytest-timeout~=2.4",
+    "openmetadata-ingestion[airflow,pii-processor]",
+]
+
+[tool.uv]
+default-groups = []
+
+[tool.uv.sources]
+openmetadata-ingestion = { path = "../ingestion", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [project.urls]
 Homepage = "https://open-metadata.org/"
 Documentation = "https://docs.open-metadata.org/"
@@ -49,7 +65,6 @@ openmetadata_managed_apis = "openmetadata_managed_apis.plugin:RestApiPlugin"
 source = ["openmetadata_managed_apis"]
 relative_files = true
 branch = true
-parallel = true
 
 # Remap installed-package paths back to the source tree so that
 # ``coverage combine`` (in a lightweight CI job without the package

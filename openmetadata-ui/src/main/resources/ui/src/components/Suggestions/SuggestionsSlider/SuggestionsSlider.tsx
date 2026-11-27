@@ -70,7 +70,11 @@ const SuggestionsSlider = () => {
   }, [dataSuggestionType, t]);
 
   return (
-    <Box align="center" className="m-r-md" gap={2}>
+    <Box
+      align="center"
+      className="m-r-md"
+      data-testid="suggestions-slider"
+      gap={2}>
       <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (

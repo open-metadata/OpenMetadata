@@ -27,16 +27,24 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { observerOptions } from '../../../../constants/Mydata.constants';
+import {
+  INCIDENT_TASK_ID_PARAM,
+  INCIDENT_TASK_TYPES,
+} from '../../../../constants/Task.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
+  getTaskById,
   getTaskCounts,
   Task,
   TaskStatusGroup,
 } from '../../../../rest/tasksAPI';
+import { isTaskTerminalStatus } from '../../../../utils/TaskNavigationUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -52,6 +60,71 @@ const TaskTabNew = withSuspenseFallback(
     }))
   )
 );
+
+const useLinkedIncidentSelection = (
+  decodedFqn: string,
+  selectedTask: Task | undefined,
+  setActiveTask: (task?: Task) => void,
+  setTaskFilter: (filter: TaskFilter) => void
+) => {
+  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const linkedTaskId = searchParams.get(INCIDENT_TASK_ID_PARAM);
+  const [loadedTaskLink, setLoadedTaskLink] = useState<string>();
+  const taskLink =
+    linkedTaskId && decodedFqn ? `${decodedFqn}/${linkedTaskId}` : undefined;
+  const isLoadingLinkedTask = Boolean(taskLink && loadedTaskLink !== taskLink);
+  const isLinkedTaskSelected = Boolean(
+    selectedTask &&
+      selectedTask.id === linkedTaskId &&
+      selectedTask.about?.fullyQualifiedName === decodedFqn
+  );
+
+  useEffect(() => {
+    if (!linkedTaskId || !decodedFqn) {
+      setLoadedTaskLink(undefined);
+
+      return;
+    }
+
+    let cancelled = false;
+    getTaskById(linkedTaskId, {
+      fields: 'assignees,createdBy,about,comments,payload',
+    })
+      .then(({ data: incident }) => {
+        if (
+          cancelled ||
+          !INCIDENT_TASK_TYPES.has(incident.type) ||
+          incident.about?.type !== EntityType.TEST_CASE ||
+          incident.about.fullyQualifiedName !== decodedFqn
+        ) {
+          return;
+        }
+
+        setTaskFilter(isTaskTerminalStatus(incident.status) ? 'close' : 'open');
+        setActiveTask(incident);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          showErrorToast(
+            error,
+            t('server.entity-fetch-error', { entity: t('label.incident') })
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedTaskLink(taskLink);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [decodedFqn, linkedTaskId, setActiveTask, setTaskFilter, t, taskLink]);
+
+  return { isLoadingLinkedTask, isLinkedTaskSelected };
+};
 
 const TestCaseIncidentTab = () => {
   const { t } = useTranslation();
@@ -76,6 +149,26 @@ const TestCaseIncidentTab = () => {
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [closedTasksCount, setClosedTasksCount] = useState(0);
+  const { isLoadingLinkedTask, isLinkedTaskSelected } =
+    useLinkedIncidentSelection(
+      decodedFqn,
+      selectedTask,
+      setActiveTask,
+      setTaskFilter
+    );
+  const displayedTasks = useMemo(() => {
+    if (
+      !isLinkedTaskSelected ||
+      !selectedTask ||
+      tasks.some(({ id }) => id === selectedTask.id)
+    ) {
+      return tasks;
+    }
+
+    return [selectedTask, ...tasks];
+  }, [isLinkedTaskSelected, selectedTask, tasks]);
+  const showTaskDetails =
+    !isLoadingLinkedTask && (!loading || isLinkedTaskSelected);
 
   const statusGroup =
     taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
@@ -107,14 +200,22 @@ const TestCaseIncidentTab = () => {
   );
 
   useEffect(() => {
-    if (decodedFqn) {
+    if (decodedFqn && !isLoadingLinkedTask) {
       handleFeedFetchFromFeedList();
       fetchCounts();
     }
-  }, [decodedFqn, handleFeedFetchFromFeedList, fetchCounts]);
+  }, [
+    decodedFqn,
+    handleFeedFetchFromFeedList,
+    fetchCounts,
+    isLoadingLinkedTask,
+  ]);
 
   useEffect(() => {
-    if (decodedFqn && isInView && entityPaging.after && !loading) {
+    if (!decodedFqn || isLoadingLinkedTask) {
+      return;
+    }
+    if (isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
   }, [
@@ -123,6 +224,7 @@ const TestCaseIncidentTab = () => {
     isInView,
     decodedFqn,
     handleFeedFetchFromFeedList,
+    isLoadingLinkedTask,
   ]);
 
   const handleTaskClick = useCallback(
@@ -191,10 +293,12 @@ const TestCaseIncidentTab = () => {
           emptyPlaceholderText={t('label.no-entity', {
             entity: t('label.task-plural'),
           })}
-          isLoading={loading && isEmpty(tasks)}
+          isLoading={
+            isLoadingLinkedTask || (loading && isEmpty(displayedTasks))
+          }
           selectedTask={selectedTask}
-          taskList={tasks}
-          onTaskClick={handleTaskClick}
+          taskList={displayedTasks}
+          onTaskClick={isLoadingLinkedTask ? undefined : handleTaskClick}
         />
         {!isEmpty(tasks) && loader}
         <div
@@ -207,7 +311,7 @@ const TestCaseIncidentTab = () => {
       </div>
       <div className="right-container" data-testid="right-container">
         {loader}
-        {selectedTask && !loading && (
+        {showTaskDetails && selectedTask && (
           <div id="task-panel">
             <TaskTabNew
               entityType={EntityType.TEST_CASE}

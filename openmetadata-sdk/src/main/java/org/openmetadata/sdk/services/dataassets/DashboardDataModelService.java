@@ -21,4 +21,9 @@ public class DashboardDataModelService extends EntityServiceBase<DashboardDataMo
   public DashboardDataModel create(CreateDashboardDataModel request) throws OpenMetadataException {
     return httpClient.execute(HttpMethod.POST, basePath, request, DashboardDataModel.class);
   }
+
+  // Create or update dashboarddatamodel using CreateDashboardDataModel request (PUT)
+  public DashboardDataModel upsert(CreateDashboardDataModel request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, DashboardDataModel.class);
+  }
 }

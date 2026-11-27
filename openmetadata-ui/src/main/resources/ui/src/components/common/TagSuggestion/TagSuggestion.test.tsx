@@ -102,10 +102,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div>
-        {label && (
-          // eslint-disable-next-line jsx-a11y/label-has-for -- test mock caption
-          <label>{label}</label>
-        )}
+        {label && <label>{label}</label>}
         <input
           aria-controls={listboxId}
           aria-expanded={open}

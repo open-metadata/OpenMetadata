@@ -72,6 +72,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.search.indexes.MetricIndex;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
@@ -222,6 +224,25 @@ class MetricRepositoryTest {
               org.mockito.ArgumentMatchers.eq(groupId),
               org.mockito.ArgumentMatchers.isNull(),
               org.mockito.ArgumentMatchers.any());
+    }
+  }
+
+  @Test
+  void groupInDomainPickSkipsTheBatchLookupWhenThePickHasNoMetrics() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      EntityReference group =
+          new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC_GROUP);
+
+      java.util.function.Predicate<EntityReference> inPick =
+          fixture.repository().groupInDomainPick(java.util.Optional.empty(), Set.of());
+
+      assertFalse(inPick.test(group));
+      verify(fixture.relationshipDAO(), never())
+          .findFromBatch(
+              anyList(),
+              org.mockito.ArgumentMatchers.anyInt(),
+              any(String.class),
+              any(org.openmetadata.schema.type.Include.class));
     }
   }
 
@@ -1243,6 +1264,31 @@ class MetricRepositoryTest {
 
   private static EntityReference domainRef(String fqn) {
     return new EntityReference().withFullyQualifiedName(fqn).withType(Entity.DOMAIN);
+  }
+
+  @Test
+  void aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      Metric written =
+          metric(UUID.randomUUID(), UUID.randomUUID())
+              .withRelatedMetrics(
+                  List.of(
+                      new EntityReference()
+                          .withId(UUID.randomUUID())
+                          .withType(Entity.METRIC)
+                          .withName("cost")
+                          .withFullyQualifiedName("cost")));
+      Metric reindexed = JsonUtils.deepCopy(written, Metric.class);
+
+      fixture
+          .repository()
+          .clearFields(
+              reindexed, new Fields(new MetricIndex(reindexed).getRequiredReindexFields()));
+
+      assertEquals(
+          VectorDocBuilder.computeFingerprintForEntity(written),
+          VectorDocBuilder.computeFingerprintForEntity(reindexed));
+    }
   }
 
   private RepositoryFixture repositoryFixture() {

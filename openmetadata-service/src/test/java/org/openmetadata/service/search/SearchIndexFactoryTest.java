@@ -224,7 +224,7 @@ class SearchIndexFactoryTest {
     assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.METRIC));
     assertEquals(Set.of("metricCount"), factory.getFieldsLoadedOnWriteFor(Entity.METRIC_GROUP));
     assertEquals(Set.of("userCount"), factory.getFieldsLoadedOnWriteFor(Entity.TEAM));
-    assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.FOLDER));
+    assertEquals(Set.of(), factory.getFieldsLoadedOnWriteFor(Entity.FOLDER));
     assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.GLOSSARY_TERM));
   }
 
@@ -244,8 +244,8 @@ class SearchIndexFactoryTest {
   }
 
   @Test
-  void folderReindexFieldsIncludeParentAndChildrenCount() {
-    assertReindexFields(Entity.FOLDER, "parent", "childrenCount");
+  void folderReindexFieldsIncludeParent() {
+    assertReindexFields(Entity.FOLDER, "parent");
   }
 
   @Test

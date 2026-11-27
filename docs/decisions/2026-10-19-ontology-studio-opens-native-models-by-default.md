@@ -1,9 +1,9 @@
 # Ontology Studio opens native models by default
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial)
+- **Status:** Superseded by ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-11-15 (superseded: the Studio and this route moved to Collate)
 - **Deciders:** Studio implementation review
-- **Guard:** `OntologyExplorerPage.test.tsx`, `useOntologyStudioModel.test.tsx`, reviewer
+- **Guard:** `OntologyExplorerPage.test.tsx` *(openmetadata-collate)*, `useOntologyStudioModel.test.tsx` *(openmetadata-collate)*, reviewer
 - **Related:** ADR:2026-10-16-native-ontologies-share-studio-and-memory-review, ADR:2026-10-17-glossaries-do-not-own-ontology-models
 
 ## Context
@@ -37,3 +37,7 @@ individual ontology until a server aggregate API can provide bounded graph pagin
 
 No glossary data is converted or deleted. The existing library remains vocabulary installation;
 native library installation requires its own adapter and persistence tests.
+
+## Amendment
+
+v2 (2026-11-15): OpenMetadata no longer serves `/governance/ontology`; Ontology Studio and this record's guard tests moved to Collate. ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate supersedes this record for OpenMetadata; the rule now governs Collate's route.
