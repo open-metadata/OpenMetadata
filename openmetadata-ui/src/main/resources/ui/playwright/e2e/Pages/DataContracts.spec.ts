@@ -1985,8 +1985,7 @@ test.describe('Data Contracts', () => {
           return (
             response.request().method() === 'GET' &&
             url.pathname === '/api/v1/dataContracts/entity' &&
-            url.searchParams.get('entityId') === table.entityResponseData.id &&
-            url.searchParams.get('fields') === 'owners'
+            url.searchParams.get('entityId') === table.entityResponseData.id
           );
         }),
         page.reload(),
