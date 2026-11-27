@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Pipeline, TagSource } from '../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  StatusType,
+  TagSource,
+  TaskStatus,
+} from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
+import { getTaskExecStatus } from './PipelineDetailsUtils';
 import { extractPipelineTasks } from './TablePureUtils';
 
 type PipelineTestData = Partial<Pipeline> &
@@ -238,5 +244,48 @@ describe('PipelineDetailsUtils', () => {
       expect(result[0].owners?.[0].name).toBe('Owner 1');
       expect(result[0].tags).toEqual([]);
     });
+  });
+});
+
+describe('getTaskExecStatus', () => {
+  // The server keeps a run's task lines in the order the connector wrote them, not by time.
+  const retriedRun: TaskStatus[] = [
+    {
+      name: 'flaky',
+      executionStatus: StatusType.Failed,
+      startTime: 100,
+      endTime: 150,
+    },
+    {
+      name: 'flaky',
+      executionStatus: StatusType.Failed,
+      startTime: 200,
+      endTime: 250,
+    },
+    {
+      name: 'flaky',
+      executionStatus: StatusType.Successful,
+      startTime: 300,
+      endTime: 350,
+    },
+    { name: 'load', executionStatus: StatusType.Pending, startTime: 400 },
+  ];
+
+  it('returns the status of the latest try of a task retried within the run', () => {
+    expect(getTaskExecStatus('flaky', retriedRun)).toBe(StatusType.Successful);
+  });
+
+  it('returns the latest try when it is not the last line', () => {
+    expect(getTaskExecStatus('flaky', [...retriedRun].reverse())).toBe(
+      StatusType.Successful
+    );
+  });
+
+  it('returns the status of a task with one line', () => {
+    expect(getTaskExecStatus('load', retriedRun)).toBe(StatusType.Pending);
+  });
+
+  it('returns undefined for a task the run has no line for', () => {
+    expect(getTaskExecStatus('report', retriedRun)).toBeUndefined();
   });
 });

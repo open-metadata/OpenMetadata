@@ -57,7 +57,7 @@ import { digitFormatter } from '../../../utils/NumberUtils';
 import { getPersonaContextFreshness } from '../../../utils/PersonaAIContextUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const PERSONA_FIELDS = `${TabSpecificField.USERS},${TabSpecificField.CONTEXT_DEFINITION}`;
+const PERSONA_FIELDS = `userCount,${TabSpecificField.CONTEXT_DEFINITION}`;
 const EMPTY_CELL = '—';
 const MIN_VISIBLE_BUDGET_FRACTION = 0.02;
 // The budget is stored in characters; the backend estimates tokens with the same 4:1 ratio.
@@ -266,7 +266,7 @@ const ContextCenterAIContextPage = () => {
           </Box>
         </Table.Cell>
         <Table.Cell data-testid="ai-context-persona-users">
-          {persona.users?.length ?? 0}
+          {persona.userCount ?? 0}
         </Table.Cell>
         <Table.Cell data-testid="ai-context-persona-rules">
           {rules.length}

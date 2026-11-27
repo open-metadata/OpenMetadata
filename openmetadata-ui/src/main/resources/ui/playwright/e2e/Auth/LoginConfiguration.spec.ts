@@ -104,7 +104,7 @@ test.describe(
       ).toHaveText('5');
       await expect(
         page.locator('[data-testid="access-block-time"]')
-      ).toHaveText('500');
+      ).toHaveText('500 Seconds');
       await expect(
         page.locator('[data-testid="jwt-token-expiry-time"]')
       ).toHaveText('5000 Seconds');

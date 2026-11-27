@@ -178,7 +178,7 @@
                       },
                       "description": {
                         "description": "Description for the tag label.",
-                        "$ref": "#/properties/service/properties/description"
+                        "$ref": "#/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners/items/properties/description"
                       },
                       "style": {
                         "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
@@ -241,7 +241,7 @@
                       },
                       "href": {
                         "description": "Link to the tag resource.",
-                        "$ref": "#/properties/service/properties/href"
+                        "$ref": "#/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners/items/properties/href"
                       },
                       "reason": {
                         "type": "string",

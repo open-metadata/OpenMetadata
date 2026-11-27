@@ -23,10 +23,14 @@ import { ArticleStatusBadgeProps } from './ArticleStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'success' | 'error';
 
-const STATUS_CONFIG: Record<
-  PageProcessingStatus,
-  { color: BadgeColor; labelKey: string }
-> = {
+type StatusConfig = { color: BadgeColor; labelKey: string };
+
+const NOT_PROCESSED_CONFIG: StatusConfig = {
+  color: 'gray',
+  labelKey: 'label.not-processed',
+};
+
+const STATUS_CONFIG: Record<PageProcessingStatus, StatusConfig> = {
   [PageProcessingStatus.Queued]: { color: 'gray', labelKey: 'label.queued' },
   [PageProcessingStatus.Processing]: {
     color: 'blue',
@@ -39,16 +43,21 @@ const STATUS_CONFIG: Record<
   [PageProcessingStatus.Failed]: { color: 'error', labelKey: 'label.failed' },
 };
 
-const ArticleStatusBadge: FC<ArticleStatusBadgeProps> = ({ error, status }) => {
+const ArticleStatusBadge: FC<ArticleStatusBadgeProps> = ({ page }) => {
   const { t } = useTranslation();
+  const {
+    neverExtracted,
+    processingError: error,
+    processingStatus: status,
+  } = page;
 
-  if (!status) {
-    return null;
+  let config: StatusConfig | undefined;
+  if (neverExtracted) {
+    config = NOT_PROCESSED_CONFIG;
+  } else if (status) {
+    // A backend newer than this UI can report a status we don't know yet
+    config = STATUS_CONFIG[status];
   }
-
-  // A backend newer than this UI can report a status we don't know yet
-  const config: { color: BadgeColor; labelKey: string } | undefined =
-    STATUS_CONFIG[status];
 
   if (!config) {
     return null;

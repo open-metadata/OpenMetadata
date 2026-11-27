@@ -1,5 +1,4 @@
 DIRECTORY_NAME := $(notdir $(CURDIR))
-PY_SOURCE ?= ./src
 
 ifeq (ingestion,$(DIRECTORY_NAME))
     INGESTION_DIR := .
@@ -13,22 +12,18 @@ PYTHON ?= python3
 INGESTION_ABS := $(abspath $(INGESTION_DIR))
 NOX_BOOTSTRAP := $(INGESTION_ABS)/.nox/bootstrap
 NOX = "$(NOX_BOOTSTRAP)/bin/nox" -f "$(INGESTION_ABS)/noxfile.py"
-PYTHON_UV_VERSION := $(shell sed -n 's/^required-version *= *"==\([^"]*\)" *$$/\1/p' "$(INGESTION_ABS)/pyproject.toml")
 export OM_VENV_DIR
 
+PYTHON_TEST_PROFILE ?= test-classification
+PYTHON_PROFILE ?= runtime
+
 .PHONY: install
-install: python_tools  ## Install the ingestion module to the current environment
-	$(NOX) -s install -- runtime
+install: python_tools  ## Install a locked Python profile
+	$(NOX) -s install -- $(PYTHON_PROFILE)
 
 .PHONY: python_tools
 python_tools:  ## Bootstrap the locked Nox tools without installing the application
-	@test -n "$(PYTHON_UV_VERSION)"
-	@if [ ! -f "$(NOX_BOOTSTRAP)/pyvenv.cfg" ]; then $(PYTHON) -m venv "$(NOX_BOOTSTRAP)"; fi
-	@case "$$("$(NOX_BOOTSTRAP)/bin/uv" --version 2>/dev/null)" in \
-		"uv $(PYTHON_UV_VERSION) "*) ;; \
-		*) "$(NOX_BOOTSTRAP)/bin/python" -I -m pip install "uv==$(PYTHON_UV_VERSION)" ;; \
-	esac
-	@VIRTUAL_ENV="$(NOX_BOOTSTRAP)" UV_PROJECT_ENVIRONMENT="$(NOX_BOOTSTRAP)" "$(NOX_BOOTSTRAP)/bin/uv" sync --locked --inexact --project "$(INGESTION_ABS)" --only-group nox --python "$(NOX_BOOTSTRAP)/bin/python"
+	@$(PYTHON) "$(INGESTION_ABS)/../scripts/python_tools.py" bootstrap
 
 .PHONY: install_dev_env
 install_dev_env: install_test  ## Install the locked development and test environment
@@ -39,7 +34,7 @@ install_dev: python_tools  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test: python_tools  ## Install the ingestion module with test dependencies
-	$(NOX) -s install -- test
+	$(NOX) -s install -- $(PYTHON_TEST_PROFILE)
 
 .PHONY: install_all
 install_all: python_tools  ## Install the ingestion module with all dependencies
@@ -94,27 +89,25 @@ run_python_tests: python_tools  ## Run all Python tests with coverage
 	$(NOX) -s coverage -- report
 
 .PHONY: sonar_ingestion
-sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
+sonar_ingestion: python_tools  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
+	versions=$$("$(NOX_BOOTSTRAP)/bin/python" "$(ROOT_DIR)/scripts/python_ci.py" versions --project "$(INGESTION_ABS)" --csv) && \
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
 		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
-		-v ${PWD}/$(INGESTION_DIR):/usr/src \
+		-v "$(INGESTION_ABS):/usr/src" \
 		sonarsource/sonar-scanner-cli \
-		-Dproject.settings=sonar-project.properties
+		-Dproject.settings=sonar-project.properties \
+		-Dsonar.python.version="$$versions"
 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
-	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
-	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis test
 
 .PHONY: coverage_apis
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
-	$(MAKE) run_apis_tests
-	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis coverage
 
 .PHONY: coverage
 coverage: python_tools  ## Run all Python tests and generate the coverage XML report

@@ -20,6 +20,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -76,6 +78,37 @@ class LineageBasedDownstreamHandlerTest {
         Set.of(ownerOf(BROKEN_ROOT), ownerOf(HEALTHY_ROOT), ownerOf(DOWNSTREAM)), reached.found());
     assertEquals(1, reached.failures().size());
     assertTrue(reached.failures().getFirst().contains("lineage did not answer"));
+  }
+
+  @Test
+  void anEntityInLineageItselfIsWalkedFromItsOwnPlace() {
+    UUID changed = UUID.randomUUID();
+    RecipientResolutionStrategy owners = mock(RecipientResolutionStrategy.class);
+    when(owners.resolve(any(UUID.class), any(), any(), any(), any()))
+        .thenAnswer(ask -> Recipients.of(ownerOf(ask.getArgument(0))));
+
+    Recipients reached;
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedConstruction<LineageGraphExplorer> lineage =
+            mockConstruction(
+                LineageGraphExplorer.class,
+                (explorer, context) ->
+                    when(explorer.findUniqueEntitiesDownstream(changed, "table", 2))
+                        .thenReturn(Set.of(table(DOWNSTREAM))))) {
+      entity.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+      reached =
+          new LineageBasedDownstreamHandler(Map.of("*", new DefaultLineageResolver()), owners)
+              .resolveDownstreamRecipients(
+                  null,
+                  new SubscriptionDestination(),
+                  AddressDirectory.NONE,
+                  new ChangeEvent().withEntityType("table").withEntityId(changed),
+                  2);
+    }
+
+    assertEquals(Set.of(ownerOf(DOWNSTREAM)), reached.found());
+    assertTrue(reached.failures().isEmpty());
+    verify(owners, never()).resolve(eq(changed), any(), any(), any(), any());
   }
 
   private static EntityReference table(UUID id) {

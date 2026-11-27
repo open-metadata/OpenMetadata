@@ -1,5 +1,6 @@
 package org.openmetadata.it.sso.config;
 
+import java.net.InetAddress;
 import java.util.List;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
@@ -7,6 +8,7 @@ import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -103,6 +105,27 @@ public final class SsoConfigs {
                         .withWantMessagesSigned(false)
                         .withWantAssertionsSigned(false)
                         .withSendSignedAuthRequest(false)));
+    return config;
+  }
+
+  /** LDAP against a directory listening on the loopback address at {@code port}. */
+  public static SecurityConfiguration ldap(
+      SecurityConfiguration live, int port, String bindDn, String bindPassword, String userBaseDn) {
+    SecurityConfiguration config = copyOf(live);
+    config
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.LDAP)
+        .withProviderName("LDAP")
+        .withClientType(ClientType.PUBLIC)
+        .withLdapConfiguration(
+            new LdapConfiguration()
+                .withHost(InetAddress.getLoopbackAddress().getHostAddress())
+                .withPort(port)
+                .withDnAdminPrincipal(bindDn)
+                .withDnAdminPassword(bindPassword)
+                .withUserBaseDN(userBaseDn)
+                .withMailAttributeName("mail")
+                .withSslEnabled(false));
     return config;
   }
 

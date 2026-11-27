@@ -22,17 +22,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -43,6 +47,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -135,18 +140,28 @@ public abstract class SecretsManager {
           buildSecretId(true, serviceType.value(), connectionName),
           true,
           persistExternalSecrets);
-    } catch (Exception e) {
-      String message =
-          SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
-      if (message != null) {
-        throw new InvalidServiceConnectionException(message);
+    } catch (SecretsManagerException e) {
+      // A deliberate 400 names the offending value; the generic message would blame the key.
+      if (e.getResponse().getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
+        throw e;
       }
-      throw InvalidServiceConnectionException.byMessage(
-          connectionType,
-          String.format(
-              "Failed to encrypt connection instance of %s. Did the Fernet Key change?",
-              connectionType));
+      throw invalidConnection(e, connectionType);
+    } catch (Exception e) {
+      throw invalidConnection(e, connectionType);
     }
+  }
+
+  private static InvalidServiceConnectionException invalidConnection(
+      Exception e, String connectionType) {
+    String message =
+        SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
+    return message != null
+        ? new InvalidServiceConnectionException(message)
+        : InvalidServiceConnectionException.byMessage(
+            connectionType,
+            String.format(
+                "Failed to encrypt connection instance of %s. Did the Fernet Key change?",
+                connectionType));
   }
 
   public Object decryptServiceConnectionConfig(
@@ -515,24 +530,30 @@ public abstract class SecretsManager {
                         persistExternalSecrets);
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                    // store value if proceed
-                    String storedFieldValue =
-                        storeValue(
-                            fieldName,
-                            fernet.decryptIfApplies((String) obj),
-                            secretId,
-                            store && persistExternalSecrets);
-                    String newFieldValue = persistExternalSecrets ? storedFieldValue : (String) obj;
-                    // get setMethod
-                    Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value. A null means the field was cleared, so there is nothing left
-                    // to encrypt and the entity must not keep a reference to a removed secret.
-                    ReflectionUtil.setValueInMethod(
-                        toEncryptObject,
-                        newFieldValue == null || Fernet.isTokenized(newFieldValue)
-                            ? newFieldValue
-                            : store ? fernet.encrypt(newFieldValue) : newFieldValue,
-                        toSet);
+                    if (obj instanceof Map<?, ?> secretMap) {
+                      encryptSecretMapEntries(
+                          secretMap, fieldName, secretId, store, persistExternalSecrets);
+                    } else {
+                      // store value if proceed
+                      String storedFieldValue =
+                          storeValue(
+                              fieldName,
+                              fernet.decryptIfApplies((String) obj),
+                              secretId,
+                              store && persistExternalSecrets);
+                      String newFieldValue =
+                          persistExternalSecrets ? storedFieldValue : (String) obj;
+                      // get setMethod
+                      Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
+                      // set new value. A null means the field was cleared, so there is nothing left
+                      // to encrypt and the entity must not keep a reference to a removed secret.
+                      ReflectionUtil.setValueInMethod(
+                          toEncryptObject,
+                          newFieldValue == null || Fernet.isTokenized(newFieldValue)
+                              ? newFieldValue
+                              : store ? fernet.encrypt(newFieldValue) : newFieldValue,
+                          toSet);
+                    }
                   } else {
                     forEachTraversableElement(
                         obj,
@@ -564,6 +585,85 @@ public abstract class SecretsManager {
     }
   }
 
+  /**
+   * Encrypts each string entry of a password-annotated map - a schema property whose {@code
+   * additionalProperties} carry {@code format: password}, such as Kafka {@code consumerConfig}.
+   * Non-string values are left alone: those maps also carry numbers and booleans that are not
+   * secrets. Each entry is stored under its own secret id, derived from the map's id and the entry
+   * key, so that {@code deleteSecrets} derives the same id for the same entry. An empty entry is
+   * kept as an empty string; its backing secret is reconciled only after the entity write commits.
+   */
+  private void encryptSecretMapEntries(
+      Map<?, ?> secretMap,
+      String fieldName,
+      String secretId,
+      boolean store,
+      boolean persistExternalSecrets) {
+    String mapSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    rejectCollidingEntrySecretIds(secretMap, fieldName, mapSecretId);
+    transformSecretMapEntries(
+        secretMap,
+        (entryKey, entryValue) -> {
+          String clearValue = fernet.decryptIfApplies(entryValue);
+          if (clearValue.isEmpty()) {
+            return clearValue;
+          }
+          String storedValue =
+              storeValue(entryKey, clearValue, mapSecretId, store && persistExternalSecrets);
+          String newValue = persistExternalSecrets ? storedValue : entryValue;
+          return encryptedForStorage(newValue, store);
+        });
+  }
+
+  private String encryptedForStorage(String value, boolean store) {
+    return value == null || Fernet.isTokenized(value) || !store ? value : fernet.encrypt(value);
+  }
+
+  /**
+   * Secret ids are normalized - lower-cased, with characters the store does not accept replaced -
+   * so distinct entry keys such as {@code X.Auth.Token} and {@code X_Auth_Token} can share one id.
+   * Storing both would overwrite one secret with the other and resolve both references to the same
+   * value, so such a map is refused before any entry is written.
+   */
+  private void rejectCollidingEntrySecretIds(
+      Map<?, ?> secretMap, String fieldName, String mapSecretId) {
+    Map<String, String> keyBySecretId = new HashMap<>();
+    secretMap.forEach(
+        (key, value) -> {
+          String entryKey = String.valueOf(key);
+          String entrySecretId =
+              buildSecretId(false, mapSecretId, entryKey.toLowerCase(Locale.ROOT));
+          String clashingKey =
+              value instanceof String ? keyBySecretId.putIfAbsent(entrySecretId, entryKey) : null;
+          if (clashingKey != null) {
+            throw new SecretsManagerException(
+                Response.Status.BAD_REQUEST,
+                String.format(
+                    "Entries [%s] and [%s] of [%s] would be stored under the same secret id. "
+                        + "Rename one of them.",
+                    clashingKey, entryKey, fieldName));
+          }
+        });
+  }
+
+  /**
+   * Applies {@code transform} to every string-valued entry of a password-annotated map, keyed by
+   * the entry's own key. Iterates over a copy of the entries so the transform may replace values.
+   */
+  private void transformSecretMapEntries(
+      Map<?, ?> secretMap, BiFunction<String, String, String> transform) {
+    new ArrayList<>(secretMap.entrySet())
+        .forEach(
+            entry -> {
+              if (entry.getValue() instanceof String stringValue) {
+                String entryKey = String.valueOf(entry.getKey());
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mutableMap = (Map<String, Object>) secretMap;
+                mutableMap.put(entryKey, transform.apply(entryKey, stringValue));
+              }
+            });
+  }
+
   private Object decryptPasswordFields(Object toDecryptObject) {
     try {
       // for each get method
@@ -579,15 +679,26 @@ public abstract class SecretsManager {
                   decryptPasswordFields(obj);
                   // check if it has annotation
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  String fieldValue = (String) obj;
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // Only Fernet-decrypt. Secret references (secret:/path) are returned as-is
-                  // for the ingestion client to resolve. The server does not fetch secrets.
-                  ReflectionUtil.setValueInMethod(
-                      toDecryptObject,
-                      Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
-                      toSet);
+                  if (obj instanceof Map<?, ?> secretMap) {
+                    // Only Fernet-decrypt. Secret references (secret:/path) are returned as-is
+                    // for the ingestion client to resolve. The server does not fetch secrets.
+                    transformSecretMapEntries(
+                        secretMap,
+                        (entryKey, entryValue) ->
+                            Fernet.isTokenized(entryValue)
+                                ? fernet.decrypt(entryValue)
+                                : entryValue);
+                  } else {
+                    String fieldValue = (String) obj;
+                    // get setMethod
+                    Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
+                    // Only Fernet-decrypt. Secret references (secret:/path) are returned as-is
+                    // for the ingestion client to resolve. The server does not fetch secrets.
+                    ReflectionUtil.setValueInMethod(
+                        toDecryptObject,
+                        Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
+                        toSet);
+                  }
                 } else {
                   forEachTraversableElement(
                       obj, (element, elementKey) -> decryptPasswordFields(element));
@@ -621,16 +732,25 @@ public abstract class SecretsManager {
                   getSecretFields(obj);
                   // check if it has annotation
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  String fieldValue = (String) obj;
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // Fetch from SM if it's a secret reference
-                  ReflectionUtil.setValueInMethod(
-                      toDecryptObject,
-                      Boolean.TRUE.equals(isSecret(fieldValue))
-                          ? getSecretValue(fieldValue)
-                          : fieldValue,
-                      toSet);
+                  if (obj instanceof Map<?, ?> secretMap) {
+                    transformSecretMapEntries(
+                        secretMap,
+                        (entryKey, entryValue) ->
+                            Boolean.TRUE.equals(isSecret(entryValue))
+                                ? getSecretValue(entryValue)
+                                : entryValue);
+                  } else {
+                    String fieldValue = (String) obj;
+                    // get setMethod
+                    Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
+                    // Fetch from SM if it's a secret reference
+                    ReflectionUtil.setValueInMethod(
+                        toDecryptObject,
+                        Boolean.TRUE.equals(isSecret(fieldValue))
+                            ? getSecretValue(fieldValue)
+                            : fieldValue,
+                        toSet);
+                  }
                 } else {
                   forEachTraversableElement(obj, (element, elementKey) -> getSecretFields(element));
                 }
@@ -774,16 +894,19 @@ public abstract class SecretsManager {
   }
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
-    deleteSecrets(toDeleteSecretsFrom, List.of(secretId));
+    visitStoredSecrets(
+        toDeleteSecretsFrom, List.of(secretId), secret -> deleteStoredSecret(secret.name()));
   }
 
   /**
    * @param secretIds the secret id of {@code toDeleteSecretsFrom} last, preceded by the ids of the
    *     objects that enclose it
    */
-  private void deleteSecrets(Object toDeleteSecretsFrom, List<String> secretIds) {
+  private void visitStoredSecrets(
+      Object toDeleteSecretsFrom, List<String> secretIds, Consumer<StoredSecret> visitor) {
     String secretId = secretIds.getLast();
-    if (!DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
+    if (toDeleteSecretsFrom != null
+        && !DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
           .forEach(
@@ -794,20 +917,33 @@ public abstract class SecretsManager {
                 // We are replicating the logic that we use for storing the fields we need to
                 // encrypt at encryptPasswordFields
                 if (CommonUtil.isOpenMetadataObject(obj)) {
-                  deleteSecrets(
+                  visitStoredSecrets(
                       obj,
                       withNestedSecretId(
                           secretIds,
-                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))));
+                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
+                      visitor);
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  deleteStoredSecret(
-                      storedSecretName(
-                          (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)));
+                  if (obj instanceof Map<?, ?> secretMap) {
+                    visitSecretMapEntries(
+                        secretMap,
+                        withNestedSecretId(
+                            secretIds,
+                            buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
+                        visitor);
+                  } else {
+                    visitor.accept(
+                        new StoredSecret(
+                            storedSecretName(
+                                (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)),
+                            (String) obj,
+                            false));
+                  }
                 } else {
                   forEachTraversableElement(
                       obj,
                       (element, elementKey) ->
-                          deleteSecrets(
+                          visitStoredSecrets(
                               element,
                               withNestedSecretId(
                                   secretIds,
@@ -815,9 +951,96 @@ public abstract class SecretsManager {
                                       false,
                                       secretId,
                                       fieldName.toLowerCase(Locale.ROOT),
-                                      elementKey))));
+                                      elementKey)),
+                              visitor));
                 }
               });
+    }
+  }
+
+  private void visitSecretMapEntries(
+      Map<?, ?> secretMap, List<String> mapSecretIds, Consumer<StoredSecret> visitor) {
+    secretMap.forEach(
+        (key, value) -> {
+          if (value instanceof String stringValue) {
+            visitor.accept(
+                new StoredSecret(
+                    storedSecretName(
+                        stringValue, mapSecretIds, String.valueOf(key).toLowerCase(Locale.ROOT)),
+                    stringValue,
+                    true));
+          }
+        });
+  }
+
+  public SecretInventory secretInventory(ServiceEntityInterface service, ServiceType serviceType) {
+    Object config =
+        service.getConnection() == null || service.getConnection().getConfig() == null
+            ? null
+            : SecretsUtil.convert(
+                service.getConnection().getConfig(),
+                service.getServiceType().value(),
+                service.getName(),
+                serviceType);
+    return secretInventory(config, buildSecretId(true, serviceType.value(), service.getName()));
+  }
+
+  public SecretInventory secretInventory(IngestionPipeline pipeline) {
+    IngestionPipeline typed = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    IngestionPipelineBuilder.addDefinedConfigForRead(typed);
+    typed.setOpenMetadataServerConnection(null);
+    return secretInventory(typed, buildSecretId(true, "pipeline", pipeline.getId().toString()));
+  }
+
+  /** Local inventory only: reference targets are never fetched to establish ownership. */
+  public record SecretInventory(
+      String root,
+      Set<String> writtenMaps,
+      Set<String> storedMaps,
+      Set<String> writtenScalars,
+      Set<String> storedScalars,
+      Set<String> references) {}
+
+  private record StoredSecret(String name, String value, boolean mapEntry) {}
+
+  @VisibleForTesting
+  SecretInventory secretInventory(Object config, String root) {
+    Set<String> writtenMaps = new HashSet<>();
+    Set<String> storedMaps = new HashSet<>();
+    Set<String> writtenScalars = new HashSet<>();
+    Set<String> storedScalars = new HashSet<>();
+    Set<String> references = new HashSet<>();
+    visitStoredSecrets(
+        config,
+        List.of(root),
+        secret ->
+            collectSecret(
+                secret,
+                secret.mapEntry() ? writtenMaps : writtenScalars,
+                secret.mapEntry() ? storedMaps : storedScalars,
+                references));
+    return new SecretInventory(
+        root,
+        Set.copyOf(writtenMaps),
+        Set.copyOf(storedMaps),
+        Set.copyOf(writtenScalars),
+        Set.copyOf(storedScalars),
+        Set.copyOf(references));
+  }
+
+  private void collectSecret(
+      StoredSecret secret, Set<String> written, Set<String> stored, Set<String> references) {
+    String clear = fernet.decryptIfApplies(secret.value());
+    if (clear.isEmpty()) {
+      return;
+    }
+    Optional<String> reference = referencedSecretName(clear);
+    reference.ifPresent(references::add);
+    if (reference.isEmpty()) {
+      written.add(secret.name());
+    }
+    if (reference.isEmpty() || reference.get().equals(secret.name())) {
+      stored.add(secret.name());
     }
   }
 
@@ -842,8 +1065,9 @@ public abstract class SecretsManager {
   }
 
   private Optional<String> referencedSecretName(String fieldValue) {
-    return Boolean.TRUE.equals(isSecret(fieldValue))
-        ? Optional.of(fieldValue.substring(SECRET_FIELD_PREFIX.length()))
+    String value = Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue;
+    return Boolean.TRUE.equals(isSecret(value))
+        ? Optional.of(value.substring(SECRET_FIELD_PREFIX.length()))
         : Optional.empty();
   }
 

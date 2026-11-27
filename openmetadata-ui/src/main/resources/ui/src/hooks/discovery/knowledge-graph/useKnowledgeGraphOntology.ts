@@ -20,6 +20,7 @@ import {
 } from '../../../interface/discovery/knowledge-graph.interface';
 import { graphLevelToDepth } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
+  conceptEntityType,
   getOntologyScope,
   graphEntityId,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
@@ -45,7 +46,7 @@ export const useKnowledgeGraphOntology = (
   const query = useMemo(
     () => ({
       entityId: mode === 'ontology' && concept ? graphEntityId(concept.id) : '',
-      entityType: 'glossaryTerm',
+      entityType: conceptEntityType(concept),
       depth: graphLevelToDepth(level),
       entityTypes: filters.entityTypes,
       relationshipTypes: filters.relationshipTypes,

@@ -35,7 +35,7 @@ const ownerUser = new UserClass();
 
 test.describe('Domain Data Products Tab - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await domainEntity.create(apiContext);

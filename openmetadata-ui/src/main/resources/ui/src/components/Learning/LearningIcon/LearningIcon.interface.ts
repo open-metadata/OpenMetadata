@@ -15,6 +15,6 @@ export interface LearningIconProps {
   pageId: string;
   title?: string;
   className?: string;
-  /** `xs` beside a 16px heading, so the 12px glyph matches the cap height. */
-  size?: 'xs' | 'sm';
+  /** Defaults to `lg` so it matches the CopyButton it usually sits beside. */
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }

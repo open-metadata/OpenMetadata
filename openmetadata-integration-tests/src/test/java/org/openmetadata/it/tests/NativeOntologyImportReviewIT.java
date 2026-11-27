@@ -2,12 +2,12 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -20,12 +20,12 @@ import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportItem;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyChangeSetState;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 
@@ -104,27 +104,26 @@ public class NativeOntologyImportReviewIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void aRangeOutsideTheOwlDatatypeMapFailsThePreviewWithItsReason(TestNamespace ns) {
+  void aRangeOutsideTheOwlDatatypeMapIsSkippedAndReported(TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Ontology ontology = createOntology(ns, "reviewDatatype");
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
 
-    final OpenMetadataException failure =
-        assertThrows(
-            OpenMetadataException.class,
-            () ->
-                client
-                    .ontologies()
-                    .previewImport(
-                        ontology.getId(),
-                        turtle(
-                            ns,
-                            "ex:when a owl:DatatypeProperty ; rdfs:label \"when\" ; rdfs:range xsd:date .")));
+    final NativeOntologyImportPreview preview =
+        client
+            .ontologies()
+            .previewImport(
+                ontology.getId(),
+                turtle(
+                    ns,
+                    "ex:when a owl:DatatypeProperty ; rdfs:label \"when\" ; rdfs:range xsd:date ."));
 
-    assertEquals(400, failure.getStatusCode());
-    assertTrue(
-        failure.getMessage().contains("Data property ranges require supported OWL 2 datatypes"),
-        failure.getMessage());
+    final var groups = preview.getSummary().getSkippedStatements().getGroups();
+    assertEquals(1, groups.size(), groups.toString());
+    assertEquals(
+        NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE, groups.getFirst().getReason());
+    assertEquals(RDFS.range.getURI(), groups.getFirst().getPredicate());
+    assertEquals(1, groups.getFirst().getCount());
     assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
   }
 
@@ -187,16 +186,23 @@ public class NativeOntologyImportReviewIT extends BaseOntologyApprovalIT {
             .getHttpClient()
             .execute(
                 HttpMethod.POST,
-                "/v1/ontologies/" + ontology.getId() + "/library/fibo/review",
-                new PreviewNativeOntologyPack().withModuleIds(Set.of("foundations")),
+                "/v1/ontologies/" + ontology.getId() + "/library/dcat/review",
+                new PreviewNativeOntologyPack().withModuleIds(Set.of("dcat")),
                 NativeOntologyImportPreview.class);
 
     assertFalse(review.getSummary().getItems().isEmpty());
     assertTrue(
         review.getSummary().getItems().stream()
-            .allMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW));
+            .allMatch(
+                item ->
+                    item.getStatus() == NativeOntologyImportItemStatus.NEW
+                        || item.getStatus() == NativeOntologyImportItemStatus.SKIPPED),
+        "a first import of a library pack creates or skips, never updates");
+    assertTrue(
+        review.getSummary().getItems().stream()
+            .anyMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW));
     assertTrue(review.getSummary().getItems().stream().allMatch(item -> item.getWarning() == null));
-    assertEquals("fibo", review.getChangeSet().getSourcePack().getPackId());
+    assertEquals("dcat", review.getChangeSet().getSourcePack().getPackId());
   }
 
   @Test

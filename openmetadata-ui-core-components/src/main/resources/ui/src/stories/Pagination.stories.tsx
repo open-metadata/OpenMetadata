@@ -20,6 +20,7 @@ import {
   PaginationPageDefault,
   PaginationPageMinimalCenter,
 } from '../components/application/pagination/pagination';
+import { PaginationDot } from '../components/application/pagination/pagination-dot';
 import {
   DEFAULT_PAGE_SIZE,
   DEFAULT_PAGE_SIZE_OPTIONS,
@@ -130,6 +131,26 @@ export const CardWithControls: StoryObj = {
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
+      </div>
+    );
+  },
+};
+
+export const Dots: StoryObj = {
+  render: () => {
+    const [page, setPage] = useState(1);
+
+    return (
+      <div className="tw:flex tw:flex-col tw:items-center tw:gap-6">
+        {(['sm', 'md', 'lg'] as const).map((size) => (
+          <PaginationDot
+            key={size}
+            page={page}
+            size={size}
+            total={5}
+            onPageChange={setPage}
+          />
+        ))}
       </div>
     );
   },

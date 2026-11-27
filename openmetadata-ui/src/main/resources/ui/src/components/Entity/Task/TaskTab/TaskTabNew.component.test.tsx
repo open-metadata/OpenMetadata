@@ -10,16 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { ReviewVoteDecision } from '../../../../generated/entity/tasks/task';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -34,6 +29,9 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import ontologyExplorerClassBase, {
+  OntologyReviewPanelProps,
+} from '../../../../utils/OntologyExplorerClassBase';
 import { TaskTabNew } from './TaskTabNew.component';
 
 jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
@@ -374,7 +372,6 @@ jest.mock('../../../../utils/EntityLink', () => {
 
 jest.mock('../../../../utils/TaskActionUtils', () => ({
   ...jest.requireActual('../../../../utils/TaskActionUtils'),
-  isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
 }));
@@ -495,7 +492,6 @@ describe('TaskTabNew Component', () => {
       getResolvedTaskFormSchema,
     } = require('../../../../utils/TaskFormSchemaUtils');
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
     } = require('../../../../utils/TaskActionUtils');
@@ -520,7 +516,6 @@ describe('TaskTabNew Component', () => {
           )
         )
     );
-    isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
     isRecognizerFeedbackTask.mockReturnValue(false);
   });
@@ -616,10 +611,8 @@ describe('TaskTabNew Component', () => {
 
   it('should render schema-driven description payload details for description tasks', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
     const descriptionTask: Task = {
@@ -815,7 +808,11 @@ describe('TaskTabNew Component', () => {
     await waitFor(() => {
       expect(getResolvedTaskFormSchema).toHaveBeenCalledWith(
         MOCK_APPROVAL_TASK.type,
-        MOCK_APPROVAL_TASK.category
+        MOCK_APPROVAL_TASK.category,
+        expect.objectContaining({
+          taskFormSchemaId: MOCK_APPROVAL_TASK.taskFormSchemaId,
+          payload: MOCK_APPROVAL_TASK.payload,
+        })
       );
     });
   });
@@ -1019,10 +1016,8 @@ describe('TaskTabNew Component', () => {
 
   it('should display the task information for approval tasks with suggestion data', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {
@@ -1041,10 +1036,8 @@ describe('TaskTabNew Component', () => {
 
   it('shows the change request a review task names instead of its preview chips', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {
@@ -1113,6 +1106,47 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('task-payload-details')).toBeInTheDocument();
     expect(screen.getByText('Custom description proposal')).toBeInTheDocument();
     expect(screen.getByText('Needs final verification')).toBeInTheDocument();
+  });
+
+  it('keeps the current task form when an older schema response lands last', async () => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    const schemaWithTitle = (title: string) => ({
+      name: title,
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: {
+        type: 'object',
+        properties: { reviewNotes: { type: 'string', title } },
+      },
+      uiSchema: {},
+    });
+    const pending: Array<(schema: unknown) => void> = [];
+    getResolvedTaskFormSchema.mockImplementation(
+      () => new Promise((resolve) => pending.push(resolve))
+    );
+    const nextTask = {
+      ...MOCK_CUSTOM_TASK,
+      id: 'custom-task-next',
+      payload: { ...MOCK_CUSTOM_TASK.payload },
+    };
+
+    const { rerender } = render(
+      <TaskTabNew {...mockProps} task={MOCK_CUSTOM_TASK} />,
+      { wrapper: MemoryRouter }
+    );
+    rerender(<TaskTabNew {...mockProps} task={nextTask} />);
+
+    await act(async () => {
+      pending[1](schemaWithTitle('Current Task Notes'));
+    });
+    await act(async () => {
+      pending[0](schemaWithTitle('Previous Task Notes'));
+    });
+
+    expect(await screen.findByText('Current Task Notes')).toBeInTheDocument();
+    expect(screen.queryByText('Previous Task Notes')).not.toBeInTheDocument();
   });
 
   it('submits schema-driven payload when resolving a custom task', async () => {
@@ -1202,6 +1236,41 @@ describe('TaskTabNew Component', () => {
       screen.getByTestId('workflow-task-action-primary')
     ).toBeInTheDocument();
     expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
+  });
+
+  it('leads an assigned incident with Resolve, not its return to New', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    const transition = (id: string, label: string, targetStageId: string) => ({
+      id,
+      label,
+      targetStageId,
+      targetTaskStatus: TaskEntityStatus.InProgress,
+    });
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          entityType={EntityType.TEST_CASE}
+          task={{
+            ...MOCK_INCIDENT_TASK,
+            workflowStageId: 'assigned',
+            availableTransitions: [
+              transition('new', 'New', 'new'),
+              transition('ack', 'Acknowledge', 'ack'),
+              transition('reassign', 'Reassign', 'assigned'),
+              transition('resolve', 'Resolve', 'resolved'),
+            ],
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('workflow-task-action-primary')
+    ).toHaveTextContent('Resolve');
   });
 
   const buildAssignees = (count: number) =>
@@ -1384,10 +1453,8 @@ describe('TaskTabNew Component', () => {
     'restricts native ontology resolution to assigned reviewers (assigned: %s)',
     async (assigned) => {
       const { useAuth } = require('../../../../hooks/authHooks');
-      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
       const { resolveTask } = require('../../../../rest/tasksAPI');
       useAuth.mockReturnValue({ isAdminUser: true });
-      isTagsTaskType.mockReturnValue(false);
       const task: Task = {
         ...MOCK_TASK,
         type: TaskEntityType.RequestApproval,
@@ -1427,12 +1494,12 @@ describe('TaskTabNew Component', () => {
         );
       });
 
-      if (!assigned) {
-        const panel = await screen.findByTestId('ontology-review-panel');
-        await waitFor(() =>
-          expect(within(panel).queryByRole('status')).not.toBeInTheDocument()
-        );
+      // OpenMetadata has no review panel; the release is reviewed in Collate.
+      expect(
+        screen.queryByTestId('ontology-review-panel')
+      ).not.toBeInTheDocument();
 
+      if (!assigned) {
         expect(
           screen.queryByTestId('workflow-task-action-primary')
         ).not.toBeInTheDocument();
@@ -1459,12 +1526,18 @@ describe('TaskTabNew Component', () => {
     }
   );
 
-  it('disables release approval when the submitted content is unavailable', async () => {
+  it('keeps release approval hidden until a review panel reports the release loaded', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
-    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
-    const { resolveTask } = require('../../../../rest/tasksAPI');
     useAuth.mockReturnValue({ isAdminUser: true });
-    isTagsTaskType.mockReturnValue(false);
+    let reportReady: OntologyReviewPanelProps['onReadyChange'] | undefined;
+    const ReviewPanel = ({ onReadyChange }: OntologyReviewPanelProps) => {
+      reportReady = onReadyChange;
+
+      return <div data-testid="ontology-review-panel" />;
+    };
+    const getReviewPanel = jest
+      .spyOn(ontologyExplorerClassBase, 'getReviewPanel')
+      .mockReturnValue(ReviewPanel);
     const task: Task = {
       ...MOCK_TASK,
       type: TaskEntityType.RequestApproval,
@@ -1489,21 +1562,128 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'message.ontology-review-unavailable'
-    );
+    expect(screen.getByTestId('ontology-review-panel')).toBeInTheDocument();
     expect(screen.getByTestId('workflow-task-action-primary')).toBeDisabled();
 
-    fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+    act(() => reportReady?.(true));
 
-    expect(resolveTask).not.toHaveBeenCalled();
+    expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled();
+
+    getReviewPanel.mockRestore();
+  });
+
+  describe('multi-approver vote', () => {
+    const APPROVE_TRANSITION = {
+      id: 'approve',
+      label: 'Approve',
+      resolutionType: TaskResolutionType.Approved,
+      targetStageId: 'approved',
+      targetTaskStatus: TaskEntityStatus.Approved,
+    };
+
+    const STEWARDS = { id: 'stewards-id', type: 'team', name: 'stewards' };
+    const OTHER = { id: 'other-id', type: 'user', name: 'other' };
+
+    const renderApproval = async (
+      reviewVotes: Task['reviewVotes'],
+      availableTransitions: Task['availableTransitions'] = [APPROVE_TRANSITION],
+      assignees: Task['assignees'] = [
+        { id: 'test-user-id', type: 'user', name: 'test-user' },
+        OTHER,
+      ]
+    ) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      useAuth.mockReturnValue({ isAdminUser: false });
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'dp-id', type: 'dataProduct' },
+        workflowStageId: 'review',
+        assignees,
+        availableTransitions,
+        reviewVotes,
+      };
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    const vote = (stage: string) => ({
+      voter: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      assignee: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      decision: ReviewVoteDecision.Approved,
+      stage,
+      timestamp: 1,
+    });
+
+    it('offers Approve to an assignee who has not voted in this stage', async () => {
+      await renderApproval([vote('draft')]);
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('task-review-votes')).not.toBeInTheDocument();
+    });
+
+    it("keeps the stage's other transitions for a team member who voted", async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: {
+          id: 'test-user-id',
+          name: 'test-user',
+          teams: [STEWARDS],
+        },
+      }));
+      await renderApproval(
+        [vote('review')],
+        [
+          APPROVE_TRANSITION,
+          {
+            id: 'reassign',
+            label: 'Reassign',
+            targetStageId: 'assigned',
+            targetTaskStatus: TaskEntityStatus.Open,
+          },
+        ],
+        // A team entry survives the vote; only the voter's own entry is dropped.
+        [STEWARDS, OTHER]
+      );
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toHaveTextContent('Reassign');
+
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: { id: 'test-user-id', name: 'test-user', teams: [] },
+      }));
+    });
+
+    it('shows the counted vote instead of Approve once the assignee voted', async () => {
+      // The server drops the voter's own assignee entry after a non-final vote.
+      await renderApproval([vote('review')], [APPROVE_TRANSITION], [OTHER]);
+
+      expect(
+        screen.queryByTestId('workflow-task-action-primary')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+        'message.user-approved-task'
+      );
+      expect(
+        screen.getByTestId('task-review-votes-waiting')
+      ).toBeInTheDocument();
+    });
   });
 
   it('does not fall back to legacy approval while a native workflow is starting', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
-    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
     useAuth.mockReturnValue({ isAdminUser: true });
-    isTagsTaskType.mockReturnValue(false);
     const task: Task = {
       ...MOCK_TASK,
       type: TaskEntityType.RequestApproval,

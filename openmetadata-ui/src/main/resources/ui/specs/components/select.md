@@ -43,7 +43,7 @@ state), **label / hint**, **focus ring** (outline).
 | Surface | `--om-color-bg-primary` |
 | Rest border (outline) | `--om-color-border` |
 | Focus / open border | `--om-color-border-brand`, `--om-color-focus-ring` |
-| Shadow | `--om-shadow-xs` (trigger), `--om-shadow-lg` (popover) |
+| Shadow | `--om-shadow-xs` (trigger), `--om-shadow-raised` (popover) |
 | Value / supporting text | `--om-color-text-primary` / `--om-color-text-tertiary` |
 | Placeholder | `--om-color-text-placeholder` |
 | Selected option | `--om-color-interactive-selected` |
@@ -72,7 +72,7 @@ state), **label / hint**, **focus ring** (outline).
 | --- | --- |
 | Default | `--om-color-bg-primary` + `--om-color-border` outline + `--om-shadow-xs` |
 | Hover | border → `--om-color-border-brand` |
-| Focus / open | `--om-color-border-brand` 2px outline; popover open with `--om-shadow-lg` |
+| Focus / open | `--om-color-border-brand` 2px outline; popover open with `--om-shadow-raised` |
 | Selected option | row background `--om-color-interactive-selected` |
 | Disabled | `--om-color-bg-disabled` + `--om-color-text-disabled`, `cursor: not-allowed` |
 | Error | border `--om-color-border-error`, hint `--om-color-text-error` |

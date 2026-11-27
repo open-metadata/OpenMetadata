@@ -36,6 +36,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -53,6 +54,7 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import ApprovePendingMemoriesButton from '../../../components/discovery/context-center/ApprovePendingMemoriesButton/ApprovePendingMemoriesButton';
 import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
@@ -67,6 +69,7 @@ import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryActionPermissions } from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { usePageForSize } from '../../../hooks/paging/usePageForSize';
 import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
@@ -162,6 +165,19 @@ const searchOutsideReview = (
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
 
+/** One picked status shows its name; several show how many are picked. */
+const getStatusFilterValue = (
+  selectedStatuses: ContextMemoryStatus[],
+  t: TFunction
+): string => {
+  if (selectedStatuses.length !== 1) {
+    return `${selectedStatuses.length} ${t('label.status-plural')}`;
+  }
+  const labelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+
+  return labelKey ? t(labelKey) : selectedStatuses[0];
+};
+
 const isStatusFilterChanged = (selectedStatuses: ContextMemoryStatus[]) =>
   selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
   DEFAULT_MEMORY_LIST_STATUSES.some(
@@ -190,9 +206,7 @@ const getMemoriesViewFlags = ({
   reviewCount: number;
 }) => {
   const hasActiveFilters = Boolean(
-    selectedAsset ||
-      selectedAuthor ||
-      isStatusFilterChanged(selectedStatuses)
+    selectedAsset || selectedAuthor || isStatusFilterChanged(selectedStatuses)
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -378,42 +392,21 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
-  // Resource-level permission (usePermissionProvider().getResourcePermission(
-  // CONTEXT_MEMORY), itself OperationPermission-shaped) run through
-  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
-  // MetricListPage.tsx precedent. `Create`/`Delete` are untouched raw reads (not
-  // flagged by the rule — only EditAll/ViewAll/ViewBasic are). Pure rename: no
-  // field-specific EditX key exists on this resource-level permission object, so
-  // canEditAll matches the old raw `permissions.EditAll` exactly.
-  const canEditAll = useMemo(
-    () => getDerivedPermissionFlags(permissions).canEditAll,
+  const { canCreate: hasCreatePermission } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
 
-  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
-    useMemo(
-      () => ({
-        hasCreatePermission: permissions.Create,
-        hasDeletePermission: permissions.Delete,
-        hasEditPermission: canEditAll,
-      }),
-      [permissions.Create, permissions.Delete, canEditAll]
-    );
-
-  const canDeleteMemory = useMemo(() => {
-    const memory = memoryToEdit ?? memoryToView;
-
-    const isOwner =
-      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
-
-    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
-  }, [
-    hasDeletePermission,
-    memoryToEdit,
-    memoryToView,
-    currentUser?.name,
-    currentUser?.isAdmin,
-  ]);
+  const selectedMemory = memoryToEdit ?? memoryToView;
+  const actionTargets = useMemo(
+    () => [...memories, selectedMemory],
+    [memories, selectedMemory]
+  );
+  const { getMemoryActions } = useMemoryActionPermissions(
+    actionTargets,
+    permissions
+  );
+  const selectedMemoryActions = getMemoryActions(selectedMemory);
 
   const applyMemoryListResponse = useCallback(
     (
@@ -720,6 +713,15 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
 
+  const handlePendingApproved = useCallback(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    void refreshMemoryReviews();
+    await fetchMemories();
+    await fetchMemoryCounts();
+  }, [fetchMemories, fetchMemoryCounts]);
+
   const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
     try {
       return await getContextMemoryById(memory.id, MEMORY_FIELDS);
@@ -853,10 +855,6 @@ const ContextCenterMemoriesPage: FC = () => {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
-  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
-  const selectedStatusLabel = selectedStatusLabelKey
-    ? t(selectedStatusLabelKey)
-    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -880,9 +878,7 @@ const ContextCenterMemoriesPage: FC = () => {
       <PageLayout
         className={pageLayoutClassNames.root}
         data-testid="context-center-page-layout">
-        <PageLayout.Header
-          className={pageLayoutClassNames.header}
-          data-tour-step="memories">
+        <PageLayout.Header className={pageLayoutClassNames.header}>
           <ContextCenterHeader
             actionsSlot={headerActions}
             breadcrumbs={[
@@ -987,7 +983,6 @@ const ContextCenterMemoriesPage: FC = () => {
                           }
                         )}
                         size={14}
-                        strokeWidth={2}
                       />
                       <Box align="center" className="tw:mb-1" gap={2}>
                         {icon}
@@ -1023,11 +1018,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.status')}:{' '}
-                      {selectedStatuses.length === 1
-                        ? selectedStatusLabel
-                        : `${selectedStatuses.length} ${t(
-                            'label.status-plural'
-                          )}`}
+                      {getStatusFilterValue(selectedStatuses, t)}
                     </Button>
                     <Dropdown.Popover className="tw:w-56">
                       <Dropdown.Menu
@@ -1165,7 +1156,6 @@ const ContextCenterMemoriesPage: FC = () => {
                                 <Check
                                   className="tw:shrink-0 tw:text-fg-brand-secondary"
                                   size={14}
-                                  strokeWidth={2.5}
                                 />
                               )}
                             </Box>
@@ -1194,6 +1184,12 @@ const ContextCenterMemoriesPage: FC = () => {
                     'tw:hidden': isReviewing,
                   })}
                   gap={4}>
+                  <ApprovePendingMemoriesButton
+                    isAdmin={currentUser?.isAdmin}
+                    isLoading={isMemoriesLoading}
+                    memories={memories}
+                    onApproved={handlePendingApproved}
+                  />
                   {hasActiveFilters && (
                     <Button
                       color="link-color"
@@ -1236,11 +1232,8 @@ const ContextCenterMemoriesPage: FC = () => {
                 style={{ overflow: 'unset' }}>
                 <div className={classNames({ 'tw:hidden': isReviewing })}>
                   <MemoriesView
-                    canDelete={hasDeletePermission}
-                    canEdit={hasEditPermission}
-                    currentUserName={currentUser?.name}
                     data={memories}
-                    isAdminUser={currentUser?.isAdmin}
+                    getMemoryActions={getMemoryActions}
                     isFiltered={isMemoriesFilteredOnly}
                     isLoading={isMemoriesLoading}
                     isPinningMemoryId={isPinningMemoryId}
@@ -1279,8 +1272,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
       <ContextCenterMemoriesModals
         canCreate={hasCreatePermission}
-        canDelete={canDeleteMemory}
-        canEdit={hasEditPermission}
+        canDelete={selectedMemoryActions.canDelete}
+        canEdit={selectedMemoryActions.canEdit}
         currentUserName={currentUser?.name}
         isAdminUser={currentUser?.isAdmin}
         isCreateModalOpen={isCreateModalOpen}

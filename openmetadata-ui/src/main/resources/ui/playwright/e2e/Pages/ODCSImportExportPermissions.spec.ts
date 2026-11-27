@@ -24,6 +24,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  confirmODCSExport,
   importODCSYaml,
   navigateToContractTab,
   openODCSImportDropdown,
@@ -138,6 +139,7 @@ const verifyContractButtonVisibility = async (
 const performODCSExport = async (page: Page) => {
   const downloadPromise = page.waitForEvent('download');
   await page.getByTestId('export-odcs-contract-button').click();
+  await confirmODCSExport(page);
   const download = await downloadPromise;
   await toastNotification(page, 'ODCS Contract exported successfully');
 

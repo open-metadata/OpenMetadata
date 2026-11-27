@@ -40,14 +40,18 @@ const EVALUATED_ROWS = 100;
 const RELATIVE_THRESHOLD = 5;
 
 // Seed verdicts to exercise persistence and presentation; this does not run
-// ingestion or verify the threshold evaluation algorithm.
+// ingestion or verify the threshold evaluation algorithm. The run details card
+// reads the threshold the run recorded, not the test case's current one, so
+// each seeded run carries the snapshot an agent would have written.
 const seedNotNullResult = async (
   apiContext: APIRequestContext,
   table: TableClass,
   testCaseFqn: string,
-  testCaseStatus: 'Success' | 'Failed'
+  testCaseStatus: 'Success' | 'Failed',
+  appliedThreshold: { value: number; unit: 'ABSOLUTE' | 'PERCENTAGE' }
 ) => {
   await table.addTestCaseResult(apiContext, testCaseFqn, {
+    appliedThreshold: { applied: true, ...appliedThreshold },
     result: `Found ${NULL_ROWS} null rows out of ${EVALUATED_ROWS} evaluated (3.00%).`,
     testCaseStatus,
     timestamp: Date.now(),
@@ -105,7 +109,7 @@ const expectListboxOptions = async (
  * Data Quality failure thresholds
  * @description Covers the `threshold` / `thresholdUnit` parameters end to end in the UI: enum
  * parameters read as sentences and round-trip through the test case form, and seeded strict
- * and relative results display their configured thresholds alongside the reported verdicts.
+ * and relative results display the thresholds each run recorded alongside the reported verdicts.
  */
 test.describe(
   'Data Quality failure thresholds',
@@ -259,8 +263,9 @@ test.describe(
      * Seeded strict and relative results display their thresholds
      * @description A `columnValuesToBeNotNull` test with a 5% threshold is created through the form
      * next to a strict one on the same column. Both are given seeded results reporting 3 nulls
-     * in 100 rows with precomputed Failed/Success verdicts. Each run shows its saved threshold
-     * beside the failing share and the evaluated rows; ingestion evaluation is covered separately.
+     * in 100 rows with precomputed Failed/Success verdicts and the threshold snapshot an agent
+     * records. Each run shows the threshold it recorded, not the test case's current one, beside
+     * the failing share and the evaluated rows; ingestion evaluation is covered separately.
      * Steps
      * 1. Create the relative test in the form; the preview and the saved parameters carry 5% of rows.
      * 2. Create the strict test through the API.
@@ -339,8 +344,14 @@ test.describe(
           });
           strictFqn = strict.fullyQualifiedName as string;
 
-          await seedNotNullResult(apiContext, table, strictFqn, 'Failed');
-          await seedNotNullResult(apiContext, table, relativeFqn, 'Success');
+          await seedNotNullResult(apiContext, table, strictFqn, 'Failed', {
+            value: 0,
+            unit: 'ABSOLUTE',
+          });
+          await seedNotNullResult(apiContext, table, relativeFqn, 'Success', {
+            value: RELATIVE_THRESHOLD,
+            unit: 'PERCENTAGE',
+          });
         });
       } finally {
         await afterAction();

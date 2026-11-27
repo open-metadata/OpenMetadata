@@ -46,7 +46,7 @@ import { test as base } from '../../fixtures/pages';
 // CSV test data as constants
 const VALID_TEST_CASES_CSV = `name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms
 column_value_max_to_be_between,Column value max to be between,test the value of a column is between x and y,columnValueMaxToBeBetween,sample_data.ecommerce_db.shopify.dim_address.shop_id,sample_data.ecommerce_db.shopify.dim_address.testSuite,"{""name"":""minValueForMaxInCol"",""value"":""50""};{""name"":""maxValueForMaxInCol"",""value"":""100""}",false,false,,,
-column_values_to_be_between,,test the number of column in table is between x and y,columnValuesToBeBetween,sample_data.ecommerce_db.shopify.dim_address.zip,sample_data.ecommerce_db.shopify.dim_address.testSuite,,false,true,,,
+column_values_to_be_between,,test the number of column in table is between x and y,columnValuesToBeBetween,sample_data.ecommerce_db.shopify.dim_address.shop_id,sample_data.ecommerce_db.shopify.dim_address.testSuite,,false,true,,,
 table_column_count_equals,,test the number of column in table,tableColumnCountToEqual,sample_data.ecommerce_db.shopify.dim_address,sample_data.ecommerce_db.shopify.dim_address.testSuite,"{""name"":""columnCount"",""value"":""10""}",false,false,,,`;
 
 const INVALID_TEST_CASES_CSV = `name,displayName,testDefinition

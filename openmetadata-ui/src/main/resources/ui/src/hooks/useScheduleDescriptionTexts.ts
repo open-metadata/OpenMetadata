@@ -34,7 +34,8 @@ const EMPTY_TEXTS: ScheduleDescriptionTexts = {
  * with the parsed values.
  */
 export const useScheduleDescriptionTexts = (
-  scheduleInterval?: string | null
+  scheduleInterval?: string | null,
+  timezone?: string
 ): ScheduleDescriptionTexts => {
   const [, setLoaded] = useState<boolean>(() => Boolean(getLoadedCronstrue()));
 
@@ -58,5 +59,5 @@ export const useScheduleDescriptionTexts = (
     return EMPTY_TEXTS;
   }
 
-  return getScheduleDescriptionTexts(scheduleInterval);
+  return getScheduleDescriptionTexts(scheduleInterval, timezone);
 };

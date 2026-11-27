@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MemoryConflictReviewResolution;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
@@ -253,6 +256,168 @@ class MemoryConflictDecisionTest {
     ContextMemory reviewed = reviewed("three-orders", approved);
 
     requireComparedAsIs(comparing(reviewed, 150L, approved, null), reviewed, approved);
+  }
+
+  /**
+   * Two values disputing one Approved value: approving the first superseded it, so the second's
+   * review must weigh the first instead, or both would end Approved.
+   */
+  @Test
+  void aDisputedMemoryAnotherReviewReplacedLeavesTheValueThatReplacedIt() {
+    ContextMemory first = memory("eight-to-eight", ContextMemoryStatus.APPROVED, 150L);
+    ContextMemory original = replacedBy(memory("nine-to-five", null, 100L), first);
+    ContextMemory second = reviewed("seven-to-seven", original);
+
+    Map<UUID, ContextMemory> later =
+        MemoryConflictDecision.laterValues(second, byId(original), stored(first));
+
+    assertEquals(Map.of(original.getId(), first), later);
+  }
+
+  /** A replacement replaced again leads to the value holding the claim now. */
+  @Test
+  void aChainOfReplacementsLeadsToTheValueHoldingTheClaimNow() {
+    ContextMemory latest = memory("latest", ContextMemoryStatus.APPROVED, 170L);
+    ContextMemory middle = replacedBy(memory("middle", null, 150L), latest);
+    ContextMemory original = replacedBy(memory("original", null, 100L), middle);
+
+    Map<UUID, ContextMemory> later =
+        MemoryConflictDecision.laterValues(
+            reviewed("reviewed", original), byId(original), stored(middle, latest));
+
+    assertEquals(Map.of(original.getId(), latest), later);
+  }
+
+  /**
+   * The reviewed memory replacing the disputed one is this decision retried, even once its own
+   * approval committed after the review was read: nothing later.
+   */
+  @Test
+  void theReviewedMemoryReplacingADisputedOneIsNoLaterValue() {
+    ContextMemory original = memory("original", null, 100L);
+    ContextMemory reviewed = reviewed("reviewed", original);
+    replacedBy(original, reviewed);
+    ContextMemory approvedSince =
+        JsonUtils.deepCopy(reviewed, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+
+    assertTrue(
+        MemoryConflictDecision.laterValues(reviewed, byId(original), stored(approvedSince))
+            .isEmpty());
+  }
+
+  /**
+   * Ten replacements are followed to the value holding the claim. A chain still replaced after the
+   * tenth refuses the decision, so a cut walk never reads as no later value.
+   */
+  @Test
+  void aChainLongerThanTenReplacementsRefusesTheDecision() {
+    List<ContextMemory> followed = chainOf(10);
+    assertEquals(
+        Map.of(followed.getFirst().getId(), followed.getLast()),
+        MemoryConflictDecision.laterValues(
+            reviewed("reviewed", followed.getFirst()),
+            byId(followed.getFirst()),
+            stored(followed.toArray(ContextMemory[]::new))));
+
+    List<ContextMemory> cut = chainOf(11);
+    PreconditionFailedException refused =
+        assertThrows(
+            PreconditionFailedException.class,
+            () ->
+                MemoryConflictDecision.laterValues(
+                    reviewed("reviewed", cut.getFirst()),
+                    byId(cut.getFirst()),
+                    stored(cut.toArray(ContextMemory[]::new))));
+    assertEquals(MemoryConflictDecision.REPLACED_TOO_OFTEN, refused.getMessage());
+  }
+
+  /** An original replaced {@code replacements} times, through to the Approved value at the end. */
+  private static List<ContextMemory> chainOf(int replacements) {
+    List<ContextMemory> chain = new ArrayList<>();
+    ContextMemory next =
+        memory("value-" + replacements, ContextMemoryStatus.APPROVED, 100L + replacements);
+    chain.add(next);
+    for (int step = replacements - 1; step >= 0; step--) {
+      next = replacedBy(memory("value-" + step, null, 100L + step), next);
+      chain.addFirst(next);
+    }
+    return chain;
+  }
+
+  /** A replacement since archived or deleted is followed to the value replacing it in turn. */
+  @Test
+  void aDeletedReplacementInTheChainIsFollowed() {
+    ContextMemory latest = memory("latest", ContextMemoryStatus.APPROVED, 170L);
+    ContextMemory archived = replacedBy(memory("archived", null, 150L), latest).withDeleted(true);
+    ContextMemory original = replacedBy(memory("original", null, 100L), archived);
+
+    assertEquals(
+        Map.of(original.getId(), latest),
+        MemoryConflictDecision.laterValues(
+            reviewed("reviewed", original), byId(original), stored(archived, latest)));
+  }
+
+  /** A replacement since rejected or deleted, or a dispute still Approved, holds no later value. */
+  @Test
+  void onlyAnApprovedReplacementIsALaterValue() {
+    ContextMemory rejected = memory("rejected", ContextMemoryStatus.REJECTED, 150L);
+    ContextMemory replacedByRejected = replacedBy(memory("a", null, 100L), rejected);
+    ContextMemory replacedByDeleted =
+        replacedBy(memory("b", null, 100L), memory("deleted", null, 150L));
+    ContextMemory stillApproved = memory("c", ContextMemoryStatus.APPROVED, 100L);
+
+    assertTrue(
+        MemoryConflictDecision.laterValues(
+                memory("reviewed", ContextMemoryStatus.DRAFT, 150L),
+                byId(replacedByRejected, replacedByDeleted, stillApproved),
+                stored(rejected))
+            .isEmpty());
+  }
+
+  /** The replaced claim's dispute names its replacement, detected now, for the same reason. */
+  @Test
+  void repointingSwapsEachReplacedDisputeAndKeepsOnePerMemory() {
+    ContextMemory first = memory("first", ContextMemoryStatus.APPROVED, 150L);
+    ContextMemory original = memory("original", ContextMemoryStatus.SUPERSEDED, 100L);
+    ContextMemory other = memory("other", ContextMemoryStatus.APPROVED, 100L);
+    List<MemoryDispute> disputes =
+        List.of(dispute(original, "another value"), dispute(other, "unrelated"));
+
+    List<MemoryDispute> repointed =
+        MemoryConflictDecision.repointed(disputes, Map.of(original.getId(), first), 300L);
+
+    assertEquals(2, repointed.size());
+    assertEquals(first.getId(), repointed.getFirst().getMemory().getId());
+    assertEquals("another value", repointed.getFirst().getReason());
+    assertEquals(300L, repointed.getFirst().getDetectedAt());
+    assertEquals(disputes.getLast(), repointed.getLast());
+    assertEquals(
+        1,
+        MemoryConflictDecision.repointed(
+                List.of(dispute(original, "another value"), dispute(first, "also")),
+                Map.of(original.getId(), first),
+                300L)
+            .size(),
+        "a replacement already disputed is disputed once");
+  }
+
+  private static ContextMemory replacedBy(ContextMemory memory, ContextMemory successor) {
+    return memory
+        .withEntityStatus(ContextMemoryStatus.SUPERSEDED)
+        .withSupersededBy(referenceTo(successor));
+  }
+
+  private static MemoryDispute dispute(ContextMemory disputed, String reason) {
+    return new MemoryDispute()
+        .withMemory(referenceTo(disputed))
+        .withReason(reason)
+        .withDetectedAt(DETECTED_AT);
+  }
+
+  private static Function<UUID, Optional<ContextMemory>> stored(ContextMemory... memories) {
+    Map<UUID, ContextMemory> byId = byId(memories);
+    return id -> Optional.ofNullable(byId.get(id));
   }
 
   private static void requireComparedAsIs(

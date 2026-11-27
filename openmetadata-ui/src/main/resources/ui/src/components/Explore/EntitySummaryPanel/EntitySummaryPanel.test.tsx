@@ -21,6 +21,7 @@ import {
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { Include } from '../../../generated/type/include';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -283,7 +284,9 @@ jest.mock('../../../rest/testAPI', () => ({
 
 const mockGetTableDetailsByFQN = jest.fn();
 
+const mockGetColumnByFQN = jest.fn();
 jest.mock('../../../rest/tableAPI', () => ({
+  getColumnByFQN: (...args: unknown[]) => mockGetColumnByFQN(...args),
   getTableDetailsByFQN: (...args: unknown[]) =>
     mockGetTableDetailsByFQN(...args),
   patchTableDetails: jest.fn(),
@@ -1318,6 +1321,119 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
+    it('shows the column extension from the API, not the stale search hit', async () => {
+      const columnHit = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      };
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        name: columnHit.name,
+        extension: { helloWorld: ['hello'] },
+      });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object; table?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify({
+              extension: props.dataAsset?.extension,
+              table: props.dataAsset?.table,
+            })}
+          </div>
+        ),
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: columnHit as unknown as never }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({
+            extension: { helloWorld: ['hello'] },
+            table: { id: 'parent-table-id' },
+          })
+        );
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+        columnHit.fullyQualifiedName,
+        {
+          entityType: EntityType.TABLE,
+          fields: 'tags,extension',
+          include: Include.All,
+        }
+      );
+    });
+
+    it('ignores a late response for a previously selected column', async () => {
+      const columnHit = (fqn: string) => ({
+        ...mockTableEntityDetails,
+        id: fqn,
+        fullyQualifiedName: fqn,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      });
+      let resolveFirst: (value: object) => void = jest.fn();
+      mockGetColumnByFQN
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveFirst = resolve))
+        )
+        .mockResolvedValueOnce({ extension: { owner: 'second' } });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify(props.dataAsset?.extension)}
+          </div>
+        ),
+      });
+
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.first') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+      rerender(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.second') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({ owner: 'second' })
+        );
+      });
+
+      await act(async () => {
+        resolveFirst({ extension: { owner: 'first' } });
+      });
+
+      expect(screen.getByTestId('captured-column')).toHaveTextContent(
+        JSON.stringify({ owner: 'second' })
+      );
+    });
+
     it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
       const mockOnEntityUpdate = jest.fn();
       const tableEntity = {

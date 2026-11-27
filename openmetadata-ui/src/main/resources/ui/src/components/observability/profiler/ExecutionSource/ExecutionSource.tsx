@@ -10,15 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Check, Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { TableExecutionSource } from '../../../../generated/type/tableExecutionSource';
-import { useClipboard } from '../../../../hooks/useClipBoard';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 
 interface ExecutionSourceProps {
   source?: TableExecutionSource;
@@ -37,7 +32,6 @@ export const ExecutionSource = ({
   const physicalName = source
     ? `${source.databaseName}.${source.schemaName}.${source.tableName}`
     : undefined;
-  const { hasCopied, onCopyToClipBoard } = useClipboard(physicalName ?? '');
 
   if (!source && !isSharded) {
     return null;
@@ -53,16 +47,11 @@ export const ExecutionSource = ({
           {physicalName ?? t('message.execution-source-unavailable')}
         </Typography>
         {physicalName && copyable && (
-          <ButtonUtility
-            aria-label={t('message.copy-to-clipboard')}
-            icon={hasCopied ? Check : Copy01}
+          <CopyButton
             size="xs"
-            tooltip={t(
-              hasCopied
-                ? 'message.copied-to-clipboard'
-                : 'message.copy-to-clipboard'
-            )}
-            onClick={() => onCopyToClipBoard(physicalName)}
+            testId="copy-execution-source"
+            tooltip={t('message.copy-to-clipboard')}
+            value={physicalName}
           />
         )}
       </Box>

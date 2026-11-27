@@ -27,6 +27,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  waitForToastToDisappear,
 } from '../../utils/common';
 import {
   mockClipboardApi,
@@ -910,7 +911,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     });
 
     await test.step('should verify the removed value from entity', async () => {
-      await page.getByTestId('alert-bar').waitFor({ state: 'detached' });
+      await waitForToastToDisappear(page, /details updated successfully/);
       await waitForAllLoadersToDisappear(page);
       const columnNameLink = page
         .getByTestId('column-name')

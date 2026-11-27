@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,8 @@ import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
 export type SuccessScreenProps = {
+  /** Layout of the action container; button appearance remains owned by core. */
+  actionsClassName?: string;
   name: string;
   suffix?: string;
   successMessage?: ReactNode;
@@ -43,6 +46,7 @@ export type SuccessScreenProps = {
 };
 
 const SuccessScreen = ({
+  actionsClassName,
   name,
   suffix,
   showIngestionButton,
@@ -157,7 +161,7 @@ const SuccessScreen = ({
         )}
       </div>
 
-      <div className="mt-7 text-center">
+      <div className={classNames('mt-7 text-center', actionsClassName)}>
         <Button
           color="secondary-brand"
           data-testid="view-service-button"

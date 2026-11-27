@@ -26,6 +26,7 @@ import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -113,6 +116,45 @@ class JWTTokenGeneratorTest {
     assertEquals("admin@attacker.example", claims.get("email").asString());
     assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
     assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  /**
+   * A bot token minted under a mapping must resolve to the bot's stored email, whichever claim the
+   * username maps to: upn holds the bare name, and under username:email so does the email claim.
+   * The principal domain differs from the bot's, as in a deployment whose ingestion-bot keeps the
+   * default open-metadata.org address.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"username:upn", "username:email"})
+  void botTokenMintedUnderMappingResolvesToTheBotsStoredEmail(String usernameMapping) {
+    List<String> order = List.of("upn", "mail", "email", "preferred_username", "sub");
+    List<String> mappingConfig = List.of(usernameMapping, "email:mail");
+    initGenerator(order, mappingConfig);
+    Map<String, Claim> claims =
+        decodedJWT(
+                jwtTokenGenerator
+                    .generateJWTToken(
+                        "ingestion-bot",
+                        Set.of(),
+                        false,
+                        "ingestion-bot@open-metadata.org",
+                        3600,
+                        true,
+                        ServiceTokenType.BOT)
+                    .getJWTToken())
+            .getClaims();
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        new JwtIdentityResolver(
+                null,
+                buildPrincipalClaimsMapping(mappingConfig),
+                order,
+                "openmetadata.local",
+                email -> "ignored")
+            .resolve(claims, true, true);
+
+    assertEquals("ingestion-bot", identity.userName());
+    assertEquals("ingestion-bot@open-metadata.org", identity.email());
   }
 
   @Test
@@ -448,6 +490,47 @@ class JWTTokenGeneratorTest {
         JWTTokenGenerator.getAlgorithm(
             AuthenticationConfiguration.TokenValidationAlgorithm.ES_512, ecPublicKey, ecPrivateKey);
     assertNotNull(es512);
+  }
+
+  @Test
+  void tokensAreSignedWithRs256WhateverAlgorithmTheProviderUses() {
+    jwtTokenGenerator.init(
+        new AuthenticationConfiguration()
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER)
+            .withTokenValidationAlgorithm(
+                AuthenticationConfiguration.TokenValidationAlgorithm.ES_256),
+        jwtTokenConfiguration);
+
+    String token =
+        jwtTokenGenerator
+            .generateJWTToken(
+                "mohit",
+                Set.of(),
+                false,
+                "mohit@getcollate.io",
+                60,
+                false,
+                ServiceTokenType.OM_USER)
+            .getJWTToken();
+
+    assertEquals("RS256", JWT.decode(token).getAlgorithm());
+    assertDoesNotThrow(() -> decodedJWT(token));
+  }
+
+  @Test
+  void ownTokensVerifyOnlyWithTheRsaAlgorithmsTheServerHasSignedWith() {
+    RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
+    for (String algorithm : List.of("RS256", "RS384", "RS512")) {
+      assertEquals(
+          algorithm,
+          JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey).getName());
+    }
+    for (String algorithm : Arrays.asList("HS256", "none", "ES256", null)) {
+      assertThrows(
+          AuthenticationException.class,
+          () -> JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey),
+          String.valueOf(algorithm));
+    }
   }
 
   private DecodedJWT decodedJWT(String token) {

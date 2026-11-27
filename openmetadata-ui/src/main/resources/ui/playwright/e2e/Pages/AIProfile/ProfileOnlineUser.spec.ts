@@ -36,7 +36,10 @@ test.describe('AI Profile Online Users', () => {
 
     await expect(page.getByTestId('online-users-table')).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Username' })
+      page.getByRole('columnheader', { name: 'Name' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: 'Email' })
     ).toBeVisible();
     await expect(
       page.getByRole('columnheader', { name: 'Last Activity' })

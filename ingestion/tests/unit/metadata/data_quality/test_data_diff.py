@@ -318,6 +318,33 @@ class TestBuildSampleWhereClause:
                 ),
                 "SUBSTRING(MD5(\"ID\" || \"REGION\" || 'salt'), 1, 8) < '19999999'",
             ),
+            (
+                build_table(DatabaseServiceType.Oracle, ("id", DataType.INT), key_columns=["id"]),
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || 'salt'), 'MD5'))), 1, 8) < '19999999'",
+            ),
+            (
+                build_table(
+                    DatabaseServiceType.Oracle,
+                    ("id", DataType.INT),
+                    ("name", DataType.VARCHAR),
+                    key_columns=["name"],
+                ),
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(name || 'salt'), 'MD5'))), 1, 8) < '19999999'",
+            ),
+            (
+                build_table(
+                    DatabaseServiceType.Oracle,
+                    ("id", DataType.INT),
+                    ("name", DataType.VARCHAR),
+                    ("payload", DataType.VARCHAR),
+                    key_columns=["name", "id"],
+                ),
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || name || 'salt'), 'MD5'))), 1, 8) < '19999999'",
+            ),
+            (
+                build_table(DatabaseServiceType.Oracle, ("CustomerId", DataType.INT), key_columns=["CustomerId"]),
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(\"CustomerId\" || 'salt'), 'MD5'))), 1, 8) < '19999999'",
+            ),
             # SQL Server's + would add an integer key to the salt: the key is cast to text first
             (
                 build_table(
@@ -343,6 +370,10 @@ class TestBuildSampleWhereClause:
         ids=(
             "postgres",
             "snowflake",
+            "oracle-int",
+            "oracle-string",
+            "oracle-composite",
+            "oracle-quoted",
             "sql-server-int",
             "azure-sql",
             "composite",
@@ -411,3 +442,56 @@ class TestSamplingWithSqlServer:
 
         with patch("random.choices", Mock(return_value=["salt"])):
             assert validator.sample_where_clause() == ("SUBSTRING(MD5(day || 'salt'), 1, 8) < '19999999'",) * 2
+
+
+class TestSamplingWithOracle:
+    @pytest.mark.parametrize("other_service", (DatabaseServiceType.Oracle, DatabaseServiceType.Postgres))
+    @pytest.mark.parametrize(
+        "sample_type, sample, nonce",
+        (
+            (ProfileSampleType.PERCENTAGE, 10, "19999999"),
+            (ProfileSampleType.PERCENTAGE, 75, "bfffffff"),
+            (ProfileSampleType.ROWS, 1000, "19999999"),
+        ),
+    )
+    def test_both_tables_use_the_same_salt_and_threshold(
+        self, other_service: DatabaseServiceType, sample_type: ProfileSampleType, sample: int, nonce: str
+    ) -> None:
+        validator = build_sampling_validator(
+            build_table(DatabaseServiceType.Oracle, ("id", DataType.INT), key_columns=["id"]),
+            build_table(other_service, ("id", DataType.INT), key_columns=["id"]),
+        )
+        validator.runtime_params.table_profile_config = TableProfilerConfig(
+            profileSampleConfig=ProfileSampleConfig(
+                sampleConfigType="STATIC",
+                config={"profileSample": sample, "profileSampleType": sample_type},
+            ),
+        )
+        oracle_clause = f"SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || 'salt'), 'MD5'))), 1, 8) < '{nonce}'"
+        other_clause = (
+            oracle_clause
+            if other_service == DatabaseServiceType.Oracle
+            else f"SUBSTRING(MD5(id || 'salt'), 1, 8) < '{nonce}'"
+        )
+
+        with patch("random.choices", Mock(return_value=["salt"])):
+            assert validator.sample_where_clause() == (oracle_clause, other_clause)
+
+    @pytest.mark.parametrize("configured", (False, True), ids=("no-config", "full-percentage"))
+    def test_full_comparison_does_not_add_a_sampling_predicate(self, configured: bool) -> None:
+        validator = build_sampling_validator(
+            build_table(DatabaseServiceType.Oracle, ("id", DataType.INT), key_columns=["id"]),
+            build_table(DatabaseServiceType.Oracle, ("id", DataType.INT), key_columns=["id"]),
+        )
+        validator.runtime_params.table_profile_config = (
+            TableProfilerConfig(
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={"profileSample": 100, "profileSampleType": "PERCENTAGE"},
+                ),
+            )
+            if configured
+            else None
+        )
+
+        assert validator.sample_where_clause() == (None, None)

@@ -54,6 +54,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Control, useForm } from 'react-hook-form';
@@ -86,8 +87,12 @@ import {
 import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { queryClient } from '../../../queryClient';
-import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
+import {
+  deleteContextMemory,
+  updateContextMemory,
+} from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getMemoryStatusPatch } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
@@ -95,9 +100,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { navigatesThisTab } from '../../../utils/LinkClickUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
-import { showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import MemoryDerivedTerm from '../../discovery/context-center/MemoryDerivedTerm/MemoryDerivedTerm';
+import MemoryStatusActions from '../../discovery/context-center/MemoryStatusActions/MemoryStatusActions';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
@@ -110,11 +116,13 @@ import {
 } from './CreateMemoryModal.interface';
 import {
   buildMemoryFormState,
+  canDecideMemoryStatus,
   getAssetKey,
   getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
   getQueryTableFqn,
   getSuccessorSearch,
+  hasMemoryChangedSince,
   removeAssetByKey,
   submitMemoryCreate,
   submitMemoryUpdate,
@@ -264,9 +272,9 @@ const LinkedAssetsReadOnly: FC<{
 };
 
 const VISIBILITY_ICON_MAP = {
-  Share07: <Share07 size={12} strokeWidth={2} />,
-  Database01: <Database01 size={12} strokeWidth={2} />,
-  FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+  Share07: <Share07 size={12} />,
+  Database01: <Database01 size={12} />,
+  FileLock02: <FileLock02 size={12} />,
 };
 
 const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
@@ -279,11 +287,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
     <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
-      <Lightbulb03
-        className="tw:text-utility-brand-700"
-        size={20}
-        strokeWidth={1.5}
-      />
+      <Lightbulb03 className="tw:text-utility-brand-700" size={20} />
     </div>
     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
       <div className="tw:max-w-112">
@@ -299,7 +303,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <UserPopOverCard
             showUserName
             className="tw:text-primary"
-            displayName={getEntityName(memoryToEdit.owners[0])}
+            displayName={memoryToEdit.owners[0].displayName}
             profileWidth={16}
             type={
               memoryToEdit.owners[0].type === EntityType.TEAM
@@ -315,7 +319,6 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <FileLock02
             className="tw:shrink-0 tw:text-utility-gray-400"
             size={12}
-            strokeWidth={2}
           />
           <Typography className="tw:text-quaternary" size="text-xs">
             {t('label.extracted-from')}
@@ -355,7 +358,6 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
       <Lock01
         className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
-        strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
@@ -370,7 +372,7 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
-              memoryToEdit.owners?.[0]?.name ?? memoryToEdit.updatedBy,
+              getEntityName(memoryToEdit.owners?.[0]) || memoryToEdit.updatedBy,
           })}
         </Typography>
       </div>
@@ -440,6 +442,7 @@ const LinkedAssetsSection: FC<LinkedAssetsSectionProps> = ({
 const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   memoryToEdit,
   canDelete,
+  isDecidingStatus,
   isDeleting,
   isSubmitting,
   handleDelete,
@@ -448,53 +451,60 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
   handleSwitchToEdit,
   showSubmitButton,
   isSubmitDisabled,
+  statusActions,
   submitLabel,
   t,
-}) => (
-  <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
-    <div>
-      {Boolean(memoryToEdit) && canDelete && (
+}) => {
+  const isBusy = isDeleting || isSubmitting || isDecidingStatus;
+
+  return (
+    <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
+      <div>
+        {Boolean(memoryToEdit) && canDelete && (
+          <Button
+            color="tertiary-destructive"
+            iconLeading={Trash01}
+            isDisabled={isBusy}
+            isLoading={isDeleting}
+            size="sm"
+            onClick={handleDelete}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </div>
+      <div className="tw:flex tw:items-center tw:gap-3">
         <Button
-          color="tertiary-destructive"
-          iconLeading={Trash01}
-          isDisabled={isDeleting || isSubmitting}
-          isLoading={isDeleting}
+          color="secondary"
+          isDisabled={isBusy}
           size="sm"
-          onClick={handleDelete}>
-          {t('label.delete')}
+          onClick={handleClose}>
+          {t('label.cancel')}
         </Button>
-      )}
+        {showEditButton && (
+          <Button
+            color={statusActions ? 'secondary' : 'primary'}
+            iconLeading={Edit01}
+            isDisabled={isBusy}
+            size="sm"
+            onClick={handleSwitchToEdit}>
+            {t('label.edit')}
+          </Button>
+        )}
+        {statusActions}
+        {showSubmitButton && (
+          <Button
+            color="primary"
+            isDisabled={isSubmitDisabled || isBusy}
+            isLoading={isSubmitting}
+            size="sm"
+            type="submit">
+            {submitLabel}
+          </Button>
+        )}
+      </div>
     </div>
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <Button
-        color="secondary"
-        isDisabled={isSubmitting || isDeleting}
-        size="sm"
-        onClick={handleClose}>
-        {t('label.cancel')}
-      </Button>
-      {showEditButton && (
-        <Button
-          color="primary"
-          iconLeading={Edit01}
-          size="sm"
-          onClick={handleSwitchToEdit}>
-          {t('label.edit')}
-        </Button>
-      )}
-      {showSubmitButton && (
-        <Button
-          color="primary"
-          isDisabled={isSubmitDisabled || isSubmitting || isDeleting}
-          isLoading={isSubmitting}
-          size="sm"
-          type="submit">
-          {submitLabel}
-        </Button>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 interface MemoryMetadataSectionProps {
   control: Control<MemoryFormValues>;
@@ -976,6 +986,22 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
   const [showTagForm, setShowTagForm] = useState(false);
+  const [decidingStatus, setDecidingStatus] = useState<ContextMemoryStatus>();
+  const activeDecision = useRef<symbol | undefined>(undefined);
+
+  useEffect(() => {
+    setDecidingStatus(undefined);
+
+    return () => {
+      activeDecision.current = undefined;
+    };
+  }, [isOpen, memoryToEdit?.id]);
+
+  const canDecideStatus = canDecideMemoryStatus(
+    memoryToEdit,
+    Boolean(isAdminUser),
+    isViewOnly
+  );
 
   const isOwner = useMemo(
     () =>
@@ -1018,6 +1044,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   }, [memoryToEdit, form, t]);
 
   const resetModal = () => {
+    activeDecision.current = undefined;
+    setDecidingStatus(undefined);
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
     setSelectedTags([]);
@@ -1122,6 +1150,45 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
   };
 
+  const handleDecideStatus = async (status: ContextMemoryStatus) => {
+    if (!memoryToEdit) {
+      return;
+    }
+    const decision = Symbol();
+    activeDecision.current = decision;
+    setDecidingStatus(status);
+    try {
+      await updateContextMemory(
+        memoryToEdit.id,
+        getMemoryStatusPatch(memoryToEdit, status)
+      );
+      if (activeDecision.current === decision) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+        });
+        showSuccessToast(
+          t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
+        );
+        onUpdated?.();
+        handleClose();
+      }
+    } catch (err) {
+      const isChanged = await hasMemoryChangedSince(memoryToEdit);
+      if (activeDecision.current === decision) {
+        showErrorToast(
+          isChanged
+            ? t('message.memory-changed-since-opened')
+            : (err as AxiosError)
+        );
+      }
+    } finally {
+      if (activeDecision.current === decision) {
+        activeDecision.current = undefined;
+        setDecidingStatus(undefined);
+      }
+    }
+  };
+
   const handleSwitchToEdit = () => {
     setIsViewOnly(false);
   };
@@ -1202,13 +1269,14 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   return (
     <ModalOverlay
+      isKeyboardDismissDisabled={Boolean(decidingStatus)}
       isOpen={isOpen}
       style={{ zIndex: 999 }}
-      onOpenChange={(open) => !open && handleClose()}>
+      onOpenChange={(open) => !open && !decidingStatus && handleClose()}>
       <Modal>
         <Dialog
-          showCloseButton
           data-testid="memory-modal"
+          showCloseButton={!decidingStatus}
           title=""
           width={600}
           onClose={handleClose}>
@@ -1278,7 +1346,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               <InfoCircle
                                 className="tw:text-utility-gray-400 tw:cursor-pointer"
                                 size={14}
-                                strokeWidth={2}
                               />
                             </TooltipTrigger>
                           </Tooltip>
@@ -1354,12 +1421,22 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 handleClose={handleClose}
                 handleDelete={handleDelete}
                 handleSwitchToEdit={handleSwitchToEdit}
+                isDecidingStatus={Boolean(decidingStatus)}
                 isDeleting={isDeleting}
                 isSubmitDisabled={isSubmitDisabled}
                 isSubmitting={isSubmitting}
                 memoryToEdit={memoryToEdit}
                 showEditButton={showEditButton}
                 showSubmitButton={showSubmitButton}
+                statusActions={
+                  canDecideStatus && (
+                    <MemoryStatusActions
+                      decidingStatus={decidingStatus}
+                      isDisabled={isDeleting}
+                      onDecide={handleDecideStatus}
+                    />
+                  )
+                }
                 submitLabel={submitLabel}
                 t={t}
               />

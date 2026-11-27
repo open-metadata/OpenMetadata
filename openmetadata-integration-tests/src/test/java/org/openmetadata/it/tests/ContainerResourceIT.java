@@ -61,7 +61,10 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

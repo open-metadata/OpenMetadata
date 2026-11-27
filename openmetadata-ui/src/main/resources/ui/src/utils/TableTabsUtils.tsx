@@ -41,6 +41,12 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -242,6 +248,13 @@ const getTableQueriesTabChildren = ({
     </div>
   );
 
+/** The graph explorer answers only admins, so other users are not offered its tab. */
+const isKnowledgeGraphTabAvailable = () => {
+  const { rdfEnabled, currentUser } = useApplicationStore.getState();
+
+  return Boolean(rdfEnabled && currentUser?.isAdmin);
+};
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
@@ -256,6 +269,7 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
+  viewQueryResourcePermission,
   editLineagePermission,
   fetchTableDetails,
   isViewTableType,
@@ -276,8 +290,9 @@ export const getTableDetailPageBaseTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.TABLE}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -334,6 +349,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
+      // Hidden rather than omitted: a persona layout listing this tab would otherwise
+      // render it with the Schema tab's content.
+      isHidden: !viewQueryResourcePermission,
       children: getTableQueriesTabChildren({
         viewQueriesPermission,
         deleted,
@@ -406,7 +424,7 @@ export const getTableDetailPageBaseTabs = ({
           />
         </Suspense>
       ),
-      isHidden: !useApplicationStore.getState().rdfEnabled,
+      isHidden: !isKnowledgeGraphTabAvailable(),
     },
     {
       label: (

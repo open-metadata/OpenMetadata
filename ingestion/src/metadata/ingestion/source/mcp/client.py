@@ -31,7 +31,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # MCP Protocol Version
-MCP_PROTOCOL_VERSION = "2025-03-26"
+MCP_PROTOCOL_VERSION = "2025-11-25"
 
 # Client info sent during initialization
 CLIENT_INFO = {

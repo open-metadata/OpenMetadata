@@ -68,6 +68,10 @@ describe('MetricAssetsTab', () => {
         queryFilter: {
           query: { bool: { must: [{ ids: { values: ['a', 'b'] } }] } },
         },
+        // The metric path embeds every linked asset id in the `ids` filter, so the
+        // search must be routed through POST /v1/search/query to avoid the GET
+        // request-line size limit for metrics with many links.
+        useQueryPost: true,
       }),
       expect.anything()
     );

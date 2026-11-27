@@ -86,6 +86,7 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
@@ -211,6 +212,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  useEffect(() => {
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
+  }, []);
+
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
+  const extraInfoData = useMemo(() => {
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isServicePermissionLoading, setIsServicePermissionLoading] =
@@ -544,9 +559,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceCategory]
   );
 
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
   const isTestingDisabled = useMemo(
-    () => !canEditAll || !connectionDetails,
-    [canEditAll, connectionDetails]
+    () => !isExtraInfoLoaded || !canEditAll || !connectionDetails,
+    [isExtraInfoLoaded, canEditAll, connectionDetails]
   );
 
   const goToEditConnection = useCallback(() => {
@@ -1004,12 +1020,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         icon={
           <FeaturedIcon
-            className="tw:bg-[linear-gradient(180deg,#ffffff_0%,#f5f5f5_100%)]"
             color="gray"
             icon={getServiceLogo(
               serviceDetails.serviceType,
               'tw:h-6 tw:w-6 tw:object-contain'
             )}
+            radius="lg"
+            shape="square"
             size="lg"
             theme="modern"
           />
@@ -1123,6 +1140,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                     {allowTestConn && (
                       <TestConnection
                         connectionType={serviceDetails?.serviceType ?? ''}
+                        extraInfo={extraInfoData?.name}
                         getData={() => connectionDetails}
                         isTestingDisabled={isTestingDisabled}
                         serviceCategory={serviceCategory as ServiceCategory}

@@ -437,6 +437,29 @@ describe('TestConnectionModal', () => {
     expect(screen.queryByTestId('raw-connection-log')).not.toBeInTheDocument();
   });
 
+  it('should show a step duration in compact units in the raw log', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: true,
+            mandatory: true,
+            message: 'Connected',
+            durationMs: 125_000,
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    expect(screen.getByTestId('raw-connection-log')).toHaveTextContent(
+      'Connected (2m 5s)'
+    );
+  });
+
   it('should show executedCommand with > prefix in raw log', () => {
     render(
       <TestConnectionModal

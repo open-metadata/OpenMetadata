@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -20,14 +19,18 @@ import org.openmetadata.schema.api.data.NativeOntologyImportItem;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
-import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 
@@ -253,6 +256,68 @@ class NativeOntologyImportItemsTest {
     assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
   }
 
+  // The server refuses a second identical rule, so the preview must not plan one it would refuse.
+  @Test
+  void aRuleListedTwiceIsADuplicateAndAddsNoSecondOperation() {
+    final OntologyConcept parent = concept("https://example.org/items/B", "B");
+    final OntologyConcept child = concept("https://example.org/items/A", "A");
+    final var source =
+        new NativeOntologyRdfImporter.Source(
+            NativeOntologyImportFormat.CSV,
+            new NativeOntologyDocument(
+                null,
+                List.of(parent, child),
+                List.of(),
+                List.of(subClassOf(child, parent), subClassOf(child, parent))));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    final var axiomStatuses =
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getKind() == NativeOntologyImportItemKind.RELATIONSHIP)
+            .map(NativeOntologyImportItem::getStatus)
+            .toList();
+    assertEquals(
+        List.of(NativeOntologyImportItemStatus.NEW, NativeOntologyImportItemStatus.DUPLICATE),
+        axiomStatuses);
+    assertEquals(
+        1,
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getAxiom() != null)
+            .count());
+  }
+
+  // The old count-based matching planned the second copy as NEW, which applying then refused.
+  @Test
+  void aStoredRuleListedTwiceAlreadyExistsThenIsADuplicate() {
+    final OntologyConcept parent = concept("https://example.org/items/B", "B");
+    final OntologyConcept child = concept("https://example.org/items/A", "A");
+    final Ontology target = root();
+    final var stored =
+        applied(target, csv(List.of(parent, child), List.of(subClassOf(child, parent))));
+
+    final var preview =
+        importer.preview(
+            csv(
+                List.of(parent, child),
+                List.of(subClassOf(child, parent), subClassOf(child, parent))),
+            stored);
+
+    assertEquals(
+        List.of(
+            NativeOntologyImportItemStatus.ALREADY_EXISTS,
+            NativeOntologyImportItemStatus.DUPLICATE),
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getKind() == NativeOntologyImportItemKind.RELATIONSHIP)
+            .map(NativeOntologyImportItem::getStatus)
+            .toList());
+    assertEquals(
+        0,
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getAxiom() != null)
+            .count());
+  }
+
   @Test
   void aRelationshipToAClassNobodyDeclaresIsSkippedWithItsReason() {
     final var preview =
@@ -308,22 +373,25 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
-  void aRangeOutsideTheOwlDatatypeMapFailsThePreviewWithItsReason() {
-    final var source =
-        read(
-            PREFIXES
-                + """
-                ex:when a owl:DatatypeProperty ; rdfs:label "when" ; rdfs:range xsd:date .
-                """);
+  void aRangeOutsideTheOwlDatatypeMapIsSkippedAndReportedSoApplyNeverRefusesIt() {
+    final var preview =
+        importer.preview(
+            read(
+                PREFIXES
+                    + """
+                    ex:when a owl:DatatypeProperty ; rdfs:label "when" ; rdfs:range xsd:date .
+                    """),
+            emptySnapshot(root()));
 
-    final var failure =
-        assertThrows(
-            BadRequestException.class, () -> importer.preview(source, emptySnapshot(root())));
-
+    final var skipped = preview.getSummary().getSkippedStatements();
+    assertEquals(1, skipped.getTotal());
     assertEquals(
-        "Property https://example.org/items/when, range: Data property ranges require supported"
-            + " OWL 2 datatypes: http://www.w3.org/2001/XMLSchema#date",
-        failure.getMessage());
+        NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE,
+        skipped.getGroups().getFirst().getReason());
+    assertEquals(
+        "http://www.w3.org/2000/01/rdf-schema#range",
+        skipped.getGroups().getFirst().getPredicate());
+    assertEquals(1, preview.getSummary().getCounts().getNewProperties());
   }
 
   @Test
@@ -459,6 +527,25 @@ class NativeOntologyImportItemsTest {
         .withDisplayName(label);
   }
 
+  private static OntologyAxiom subClassOf(
+      final OntologyConcept child, final OntologyConcept parent) {
+    return new OntologyAxiom()
+        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+        .withSubjectIri(child.getIri())
+        .withExpressions(
+            List.of(
+                new OntologyExpression()
+                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                    .withClassIri(parent.getIri())));
+  }
+
+  private static NativeOntologyRdfImporter.Source csv(
+      final List<OntologyConcept> concepts, final List<OntologyAxiom> axioms) {
+    return new NativeOntologyRdfImporter.Source(
+        NativeOntologyImportFormat.CSV,
+        new NativeOntologyDocument(null, concepts, List.of(), axioms));
+  }
+
   private static OntologyWorkingSnapshot.Snapshot emptySnapshot(final Ontology root) {
     return new OntologyWorkingSnapshot.Snapshot(
         state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
@@ -466,7 +553,13 @@ class NativeOntologyImportItemsTest {
 
   /** The snapshot a target holds after the planned import of {@code turtle} has been applied. */
   private OntologyWorkingSnapshot.Snapshot imported(final Ontology root, final String turtle) {
-    final var plan = importer.preview(read(turtle), emptySnapshot(root));
+    return applied(root, read(turtle));
+  }
+
+  /** The snapshot a target holds after the planned import of {@code source} has been applied. */
+  private OntologyWorkingSnapshot.Snapshot applied(
+      final Ontology root, final NativeOntologyRdfImporter.Source source) {
+    final var plan = importer.preview(source, emptySnapshot(root));
     final var entries = new ArrayList<OntologyWorkingSnapshot.Entry>();
     entries.add(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root));
     for (final OntologyChangeOperation operation : plan.getChangeSet().getOperations()) {

@@ -10,7 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { rectFitsViewport, rectOfCenters } from './studioViewport';
+import type { Graph } from '@antv/g6';
+import { fitViewWithMinZoom } from '../OntologyExplorer.constants';
+import {
+  rectFitsViewport,
+  rectOfCenters,
+  settleAfterCanvasResize,
+} from './studioViewport';
+
+jest.mock('../OntologyExplorer.constants', () => ({
+  ...jest.requireActual('../OntologyExplorer.constants'),
+  fitViewWithMinZoom: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Two nodes, 600px apart, drawn at zoom 1 where canvas and viewport coincide.
+const graphOfTwoNodes = () =>
+  ({
+    getZoom: () => 1,
+    getNodeData: () => [{ id: 'a' }, { id: 'b' }],
+    getElementPosition: (id: string) => (id === 'a' ? [100, 100] : [700, 100]),
+    getViewportByCanvas: (point: number[]) => point,
+    hasNode: () => true,
+  } as unknown as Graph);
+
+const containerOf = (width: number) =>
+  ({ offsetWidth: width, offsetHeight: 600 } as HTMLElement);
 
 describe('studio viewport helpers', () => {
   it('grows the rectangle of node centres by the node half size', () => {
@@ -42,5 +66,27 @@ describe('studio viewport helpers', () => {
     expect(
       rectFitsViewport({ minX: 10, maxX: 700, minY: 10, maxY: 601 }, size)
     ).toBe(false);
+  });
+
+  it('fits a graph that was wholly visible once a panel hides part of it', async () => {
+    await settleAfterCanvasResize(
+      graphOfTwoNodes(),
+      containerOf(500),
+      true,
+      undefined
+    );
+
+    expect(fitViewWithMinZoom).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a graph that was already partly off screen where the user left it', async () => {
+    await settleAfterCanvasResize(
+      graphOfTwoNodes(),
+      containerOf(500),
+      false,
+      undefined
+    );
+
+    expect(fitViewWithMinZoom).not.toHaveBeenCalled();
   });
 });

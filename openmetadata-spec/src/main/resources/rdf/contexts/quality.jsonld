@@ -18,6 +18,10 @@
         "@id": "om:TestCaseResult",
         "@type": "om:Entity"
       },
+      "TestResultValue": {
+        "@id": "om:TestResultValue",
+        "@type": "om:Entity"
+      },
       "TestCaseResolutionStatus": {
         "@id": "om:TestCaseResolutionStatus",
         "@type": "om:Entity"
@@ -49,12 +53,20 @@
       },
       "testCaseResult": {
         "@id": "om:hasTestResult",
-        "@type": "@json"
+        "@type": "@id"
       },
       "testResultValue": {
         "@id": "om:hasResultValue",
-        "@type": "@json",
+        "@type": "@id",
         "@container": "@list"
+      },
+      "minBound": {
+        "@id": "om:minBound",
+        "@type": "xsd:double"
+      },
+      "maxBound": {
+        "@id": "om:maxBound",
+        "@type": "xsd:double"
       },
       "passedRows": {
         "@id": "om:passedRows",
@@ -143,6 +155,10 @@
       "severity": {
         "@id": "om:hasSeverity",
         "@type": "xsd:string"
+      },
+      "incidentStatus": {
+        "@id": "om:hasOpenIncident",
+        "@type": "@id"
       },
       "incidentId": {
         "@id": "om:hasIncidentId",

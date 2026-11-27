@@ -231,6 +231,6 @@ public class GroupEventChangesHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{groupEventChanges }}")
                     .withExample(
-                        "{{#with (groupEventChanges event.changeDescription) as |grouped|}}{{#if grouped.updates}}Updates: {{grouped.updates}}{{/if}}{{/with}}")));
+                        "{{#with (groupEventChanges event.changeDescription) as |changes|}}{{#each changes.updates}}{{name}}: {{oldValue}} to {{newValue}} {{/each}}{{/with}}")));
   }
 }

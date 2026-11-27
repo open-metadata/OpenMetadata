@@ -29,7 +29,7 @@ import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.service.ontology.OntologyPackContentLoader.PackContent;
 
 class OntologyPackVerifierTest {
-  private static final String RESOURCE_PATH = "rdf/ontology-packs/fhir/core.ttl";
+  private static final String RESOURCE_PATH = "rdf/ontology-packs/dcat/dcat.ttl";
   private static final String HASH_A = "a".repeat(64);
   private static final String HASH_B = "b".repeat(64);
   private static final URI SOURCE_URL = URI.create("https://spec.example.org/ontology.ttl");

@@ -26,7 +26,7 @@ const meta = {
       table: {
         type: {
           summary:
-            '"default" | "elevated" | "outlined" | "ghost" | "muted" | "tile"',
+            '"default" | "elevated" | "outlined" | "ghost" | "muted" | "tile" | "stat"',
         },
       },
     },
@@ -151,7 +151,15 @@ export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
       {(
-        ['default', 'elevated', 'outlined', 'ghost', 'muted', 'tile'] as const
+        [
+          'default',
+          'elevated',
+          'outlined',
+          'ghost',
+          'muted',
+          'tile',
+          'stat',
+        ] as const
       ).map((variant) => (
         <div key={variant} style={{ width: 200 }}>
           <Card variant={variant}>
@@ -182,6 +190,33 @@ export const MutedOnDarkSurface: StoryObj = {
             <Card.Content>
               <p className="tw:text-sm tw:text-secondary">
                 Hover to compare the interaction.
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+// The stat variant is a clickable summary tile: hover in both themes to see
+// the brand edge and the soft lift.
+export const StatOnSurface: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['tw:bg-page', 'dark-mode tw:bg-page'] as const).map((theme) => (
+        <div
+          className={`${theme} tw:rounded-xl tw:p-6`}
+          key={theme}
+          style={{ width: 260 }}>
+          <Card isClickable variant="stat">
+            <Card.Header
+              subtitle={theme.startsWith('dark') ? 'dark theme' : 'light theme'}
+              title="Concepts · 8"
+            />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Hover for the brand edge.
               </p>
             </Card.Content>
           </Card>

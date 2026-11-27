@@ -31,6 +31,7 @@ import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.sparql.graph.GraphUnionRead;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.storage.ChunkedGraphReplace;
 
 /**
  * Runs restricted queries with Jena's own dataset-description handling, the same code Fuseki uses,
@@ -81,6 +82,15 @@ class AssertedOnlyQueriesTest {
     add(ONTOLOGY, "urn:a", "urn:p", "urn:b");
 
     assertEquals(1, count(queries.restrict("SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }")));
+  }
+
+  @Test
+  void aGraphStagedForAReplacementIsNotReadBeforeItIsMovedIntoPlace() {
+    add(ONTOLOGY, "urn:customer", "urn:label", "urn:old");
+    add(ChunkedGraphReplace.STAGING_PREFIX + "abc/0", "urn:customer", "urn:label", "urn:new");
+
+    assertTrue(ask(queries.restrict("ASK { <urn:customer> <urn:label> <urn:old> }")));
+    assertFalse(ask(queries.restrict("ASK { <urn:customer> <urn:label> <urn:new> }")));
   }
 
   @Test

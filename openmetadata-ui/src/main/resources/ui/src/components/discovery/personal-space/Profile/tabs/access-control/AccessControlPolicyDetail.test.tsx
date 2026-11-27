@@ -227,7 +227,10 @@ describe('AccessControlPolicyDetail', () => {
     fireEvent.click(screen.getByTestId('delete-policy-popover-confirm'));
 
     await waitFor(() =>
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'policies' })
+      expect(mockOnNavigate).toHaveBeenCalledWith(
+        { type: 'policies' },
+        { replace: true }
+      )
     );
 
     expect(deleteEntity).toHaveBeenCalledWith(

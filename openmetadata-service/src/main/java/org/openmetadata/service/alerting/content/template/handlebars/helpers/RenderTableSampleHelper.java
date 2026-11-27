@@ -231,6 +231,6 @@ public class RenderTableSampleHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{renderTableSample }}")
                     .withExample(
-                        "{{{renderTableSample entity.failedRowsSample targetColumn 10 3}}}")));
+                        "{{#with (parseEntityLink entity.entityLink) as |link|}}{{{renderTableSample entity.failedRowsSample link.arrayField 10 3}}}{{/with}}")));
   }
 }

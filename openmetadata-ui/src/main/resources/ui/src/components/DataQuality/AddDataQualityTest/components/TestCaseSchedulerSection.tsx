@@ -24,12 +24,18 @@ import {
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_PIPELINE_TIMEZONE,
+  DEFAULT_SCHEDULE_CRON_DAILY,
+} from '../../../../constants/Schedular.constants';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
-import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
+import {
+  isValidTestCaseSelection,
+  normalizeSelectedTestProp,
+} from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseSchedulerSectionProps } from './TestCaseFormV1.interface';
 
 const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
@@ -177,9 +183,11 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                   control={form.control}
                   name="testCases"
                   rules={{
-                    required: t('label.field-required', {
-                      field: t('label.test-case'),
-                    }),
+                    validate: (value) =>
+                      isValidTestCaseSelection(value) ||
+                      t('label.field-required', {
+                        field: t('label.test-case'),
+                      }),
                   }}>
                   {({ field }) => (
                     <div data-testid="test-cases-field">
@@ -187,20 +195,10 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                       <AddTestCaseList
                         columnFilters={columnFilters}
                         hideTableFilter={Boolean(table)}
-                        selectedTest={(field.value ?? []).map(
-                          (testCase) => testCase.name ?? ''
-                        )}
+                        selectedTest={normalizeSelectedTestProp(field.value)}
                         showButton={false}
                         testCaseParams={testCaseParams}
-                        onChange={(payload: AddTestCaseListChangePayload) =>
-                          field.onChange(
-                            payload.testCases.map((testCase) => ({
-                              id: testCase.id,
-                              name: testCase.name,
-                              type: 'testCase',
-                            }))
-                          )
-                        }
+                        onChange={field.onChange}
                       />
                     </div>
                   )}
@@ -219,6 +217,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                     defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                     entity={t('label.test-case')}
                     includePeriodOptions={schedulerOptions}
+                    timezone={DEFAULT_PIPELINE_TIMEZONE}
                     value={field.value || undefined}
                     onChange={(cron) => field.onChange(cron ?? '')}
                   />

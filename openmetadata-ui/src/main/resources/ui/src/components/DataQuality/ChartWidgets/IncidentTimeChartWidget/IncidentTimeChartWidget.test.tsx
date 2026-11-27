@@ -51,6 +51,7 @@ const defaultProps: IncidentTimeChartWidgetProps = {
   incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESOLUTION,
   name: 'Incident Type',
   title: 'Incident time Area Chart Widget',
+  description: 'Average resolution time with daily activity',
 };
 
 describe('IncidentTimeChartWidget', () => {
@@ -63,6 +64,9 @@ describe('IncidentTimeChartWidget', () => {
     ).toBeInTheDocument();
     expect((await screen.findByTestId('average-time')).textContent).toEqual(
       '1h 32m'
+    );
+    expect(screen.getByTestId('widget-description')).toHaveTextContent(
+      defaultProps.description
     );
   });
 

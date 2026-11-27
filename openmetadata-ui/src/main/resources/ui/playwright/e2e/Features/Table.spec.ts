@@ -48,7 +48,7 @@ const table1 = new TableClass();
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.create(apiContext);
@@ -455,6 +455,19 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     }
   });
 
+  // Hard-deleting the glossary and classification also strips their labels
+  // from the shared dim_customer columns when a test fails mid-way.
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.delete(apiContext);
+      await testClassification.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test('Glossary term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
@@ -550,6 +563,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
   test('Tags term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
+    const columnName = 'shop_id';
+    const columnFqn = `sample_data.ecommerce_db.shopify.dim_customer.${columnName}`;
+    const rowSelector = `[data-row-key="${columnFqn}"] [data-testid*="classification-tags"]`;
+
+    const columnSearchUrl =
+      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*';
+
     const columnsResponse = page.waitForResponse(
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
@@ -562,9 +582,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
-    // Check if add button exists and is visible
-    const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+    // Searching first finds the row whatever the column page size or sort order.
+    const searchResponse = page.waitForResponse(columnSearchUrl);
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill(columnName);
+    await searchResponse;
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
     const editButton = page.locator(
@@ -602,18 +626,11 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
+    // The search is kept in the URL, so the reload re-runs it.
+    const reloadSearchResponse = page.waitForResponse(columnSearchUrl);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    // Wait for page to be fully loaded
+    await reloadSearchResponse;
     await waitForAllLoadersToDisappear(page);
-    const getRequest = page.waitForResponse(
-      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
-    );
-    await page
-      .getByTestId('search-bar-container')
-      .getByTestId('searchbar')
-      .fill('shop_id');
-
-    await getRequest;
 
     await expect(
       page
@@ -624,7 +641,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await openClassificationTagPicker(
       page,
       page.locator(
-        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+        `[data-row-key="${columnFqn}"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
       )
     );
 
@@ -801,9 +818,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await page.getByTestId('close-button').click();
     await expect(sidePanel).not.toBeVisible();
 
-    // Verify URL reverts to base table URL
+    // The column part leaves the URL; the page the link jumped to stays.
     await expect(page).toHaveURL(
-      new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
+      new RegExp(`/table/${createdTable.fullyQualifiedName}(\\?|$)`)
     );
   });
 
@@ -872,6 +889,50 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await expect(page).toHaveURL(/currentPage=2/);
     await expect(pageIndicator).toContainText('Page 2 of');
     await expect(pageTwoRow).toBeVisible();
+  });
+
+  test('Opening a column link lands on the page holding the column and highlights it', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const tableFqn = String(createdTable.fullyQualifiedName);
+    const columnFqn = `${tableFqn}.${targetColumnName}`;
+    const columnsPath = `/api/v1/tables/name/${tableFqn}/columns`;
+    const requestedOffsets: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith(columnsPath)) {
+        requestedOffsets.push(url.searchParams.get('offset') ?? '');
+      }
+    });
+
+    // 51 columns at 15 per page: the target sorts last (by name or position), so page 4.
+    const targetPageResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith(columnsPath) &&
+          url.searchParams.get('offset') === '45'
+        );
+      },
+      200
+    );
+    await page.goto(`/table/${columnFqn}`, { waitUntil: 'domcontentloaded' });
+    await targetPageResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const targetRow = page.locator(`[data-row-key="${columnFqn}"]`);
+    await expect(targetRow).toHaveClass(/highlighted-row/);
+    await expect(targetRow).toBeInViewport();
+    await expect(page.getByTestId('page-indicator')).toContainText('Page 4 of');
+    await expect(page).toHaveURL(/currentPage=4/);
+    await expect(page.locator('.column-detail-panel')).toContainText(
+      targetColumnName
+    );
+    expect(requestedOffsets).not.toContain('0');
   });
 });
 

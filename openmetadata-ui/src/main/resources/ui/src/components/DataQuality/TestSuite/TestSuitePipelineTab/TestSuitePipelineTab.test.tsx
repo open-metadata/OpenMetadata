@@ -76,7 +76,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
 
-  const MockEmptyPlaceholder = () => <div />;
+  const MockEmptyPlaceholder = ({
+    actions,
+  }: {
+    actions?: Array<{ key: string; label: string }>;
+  }) => (
+    <div>
+      {actions?.map((action) => (
+        <button
+          data-testid={`placeholder-action-${action.key}`}
+          key={action.key}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const MockTable = ({
     children,
@@ -531,6 +545,50 @@ describe('TestSuite Pipeline component', () => {
     expect(drawer).toHaveAttribute('data-pipeline', '');
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it('should not offer Add Pipeline when the host marks the entity deleted', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab deleted testSuite={mockTestSuite} />);
+    });
+
+    expect(await screen.findByText('pipeline1')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-pipeline-button')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'with no pipelines and deleted=%s, the empty state offers Add Pipeline: %s',
+    async (deleted, offered) => {
+      const { usePermissionProvider } = jest.requireMock(
+        '../../../../context/PermissionProvider/PermissionProvider'
+      );
+      const defaultPermissions = usePermissionProvider();
+      usePermissionProvider.mockReturnValue({
+        ...defaultPermissions,
+        permissions: { all: { All: true } },
+      });
+      (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      try {
+        await act(async () => {
+          render(
+            <TestSuitePipelineTab deleted={deleted} testSuite={mockTestSuite} />
+          );
+        });
+
+        expect(
+          screen.queryByTestId('placeholder-action-add-pipeline') !== null
+        ).toBe(offered);
+      } finally {
+        usePermissionProvider.mockReturnValue(defaultPermissions);
+      }
+    }
+  );
 
   it('should let the host take over Add through onAddPipeline', async () => {
     const onAddPipeline = jest.fn();

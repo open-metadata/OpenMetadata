@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.GlossaryTestFactory;
@@ -41,6 +42,7 @@ import org.openmetadata.sdk.network.HttpMethod;
  * concurrent SPARQL queries per user and answers a third with 429, even one it would refuse.
  */
 @Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock("ontology-sparql-worker")
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryOntologyQueryIT {
 

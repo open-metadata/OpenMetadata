@@ -37,12 +37,17 @@ on:
         description: PR number to report on
         required: true
         type: number
+      dequeue:
+        description: Which dequeue to report on, counted back from the latest (1)
+        type: number
+        default: 1
       dry_run:
         description: Print to the job summary instead of commenting on the PR
         type: boolean
         default: true
 
 permissions:
+  actions: read
   checks: read
   contents: read
   issues: write
@@ -59,10 +64,16 @@ jobs:
       OWNER: ${{ github.repository_owner }}
       REPO: ${{ github.event.repository.name }}
       PR: ${{ github.event.number || inputs.pr }}
+      DEQUEUE: ${{ inputs.dequeue || 1 }}
       BASE_REF: ${{ github.event.repository.default_branch }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
       SLACK_CHANNEL: C0AC5T013V1 # #ci-cleanup
     steps:
+      # pull_request_target checks out the trusted base, never the PR head.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: Resolve the dequeue event
         id: event
         shell: bash
@@ -73,11 +84,11 @@ jobs:
           # matches at once, and its createdAt in the comment exposes a stale read.
           # shellcheck disable=SC2016  # the GraphQL query and jq filter must not expand
           for _ in 1 2 3; do
-            gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -f query='
-              query($owner: String!, $repo: String!, $pr: Int!) {
+            gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -F last="$DEQUEUE" -f query='
+              query($owner: String!, $repo: String!, $pr: Int!, $last: Int!) {
                 repository(owner: $owner, name: $repo) {
                   pullRequest(number: $pr) {
-                    timelineItems(last: 1, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) {
+                    timelineItems(last: $last, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) {
                       nodes {
                         ... on RemovedFromMergeQueueEvent {
                           reason
@@ -88,11 +99,18 @@ jobs:
                     }
                   }
                 }
-              }' --jq '.data.repository.pullRequest.timelineItems.nodes[0]
+              }' --jq '.data.repository.pullRequest.timelineItems.nodes
+                       | select(length == ($ENV.DEQUEUE | tonumber)) | .[0]
                        | select(.reason != null)
                        | "\(.reason)\t\(.beforeCommit.oid // "")\t\(.createdAt)"' > event.tsv || true
 
             if [ -s event.tsv ]; then
+              case "$(cut -f1 event.tsv)" in
+                manual|MANUAL)
+                  echo "Manual removal; skipping notifications."
+                  exit 0
+                  ;;
+              esac
               {
                 echo "reason=$(cut -f1 event.tsv)"
                 echo "sha=$(cut -f2 event.tsv)"
@@ -103,6 +121,11 @@ jobs:
             sleep 5
           done
 
+          # A dispatch replaying an older dequeue must find it, never report another.
+          if [ "$DEQUEUE" != 1 ]; then
+            echo "::error::PR #$PR has no dequeue $DEQUEUE back from the latest (1-100)."
+            exit 1
+          fi
           echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
       - name: Label what the entry conflicts with
@@ -158,108 +181,29 @@ jobs:
         run: |
           set -euo pipefail
           : > tests.txt
-          # shellcheck disable=SC2016  # the jq filter must not expand
-
-          # An entry removed while still queued was never built, so it has no
-          # merge-group commit and nothing ever ran against it.
-          if [ -z "$SHA" ]; then
-            echo "The entry left the queue before it was built, so no checks ran against it." > detail.txt
-            {
-              echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
-              echo
-              cat detail.txt
-            } > body.md
-          else
-            gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
-              --jq '.check_runs[]
-                    | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")
-                    | "\(.html_url)\t\(.name)"' > failures.tsv
-
-            # Only a required check can dequeue an entry; the rest failed alongside it.
-            gh api "repos/$GH_REPO/rules/branches/$BASE_REF" \
-              --jq '.[] | select(.type == "required_status_checks")
-                    | .parameters.required_status_checks[].context' > required.txt || true
-
-            blocked=$(cut -f2 failures.tsv | grep -xFf required.txt \
-              | awk '{ out = out (out ? ", " : "") "`" $0 "`" } END { print out }' || true)
-
-            : > runs.md
-            : > runs.slack
-            # A check run published through the Checks API rather than by a job
-            # (e.g. "Test Report") has no /job/ segment, so its trailing id is a
-            # check-run id and not a workflow-run id — looking that up under
-            # /actions/runs 404s, and under set -e it fails the whole report.
-            grep -E '/actions/runs/[0-9]+/job/' failures.tsv > actions.tsv || true
-            grep -vE '/actions/runs/[0-9]+/job/' failures.tsv > other.tsv || true
-
-            cut -f1 actions.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
-              run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
-              # Matrix jobs carry every parameter; the first one is the shard id.
-              jobs=$(grep -F "$run/job/" actions.tsv | cut -f2 \
-                     | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
-                     | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
-              echo "- [$run_name]($run) — $jobs" >> runs.md
-              # Slack mrkdwn has no []() links; it uses <url|text>.
-              echo "• <$run|$run_name> — $jobs" >> runs.slack
-            done
-
-            # Nothing to group these under, so each is listed on its own.
-            while IFS=$'\t' read -r url name; do
-              echo "- [$name]($url)" >> runs.md
-              echo "• <$url|$name>" >> runs.slack
-            done < other.tsv
-
-            # The Playwright summary leaves its failed tests in one annotation rather
-            # than alerting itself (a failed run does not always dequeue its PR), so
-            # this report is the queue's only #ci-cleanup alert.
+          # The Playwright summary leaves its failed tests in one annotation rather
+          # than alerting itself (a failed run does not always dequeue its PR), so
+          # this report is the queue's only #ci-cleanup alert.
+          if [ -n "$SHA" ]; then
+            # shellcheck disable=SC2016  # the jq filter must not expand
             gh api "repos/$GH_REPO/commits/$SHA/check-runs?check_name=playwright-summary" \
               --jq '.check_runs[].id' | while read -r id; do
                 gh api "repos/$GH_REPO/check-runs/$id/annotations" \
                   --jq '.[] | select(.title == "Merge queue failed tests") | .message'
               done | sed '/^$/d' | sort -u > tests.txt || true
-
-            if [ -s runs.md ]; then
-              if [ -n "$blocked" ]; then
-                echo "Blocked the queue: $blocked" > detail.txt
-              else
-                echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending." > detail.txt
-              fi
-            else
-              echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out." > detail.txt
-            fi
-
-            {
-              echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
-              echo
-              cat detail.txt
-              if [ -s runs.md ]; then
-                echo
-                cat runs.md
-              fi
-              if [ -s tests.txt ]; then
-                echo
-                echo "Failed Playwright tests:"
-                sed 's/.*/- `&`/' tests.txt
-              fi
-            } > body.md
           fi
+
+          # Only reads GitHub; writes the PR comment and the #ci-cleanup payload.
+          python3 .github/scripts/merge_queue_dequeue.py \
+            --repo "$GH_REPO" --pr "$PR" --branch "$BASE_REF" \
+            --queue "merge queue" --reason "$REASON" \
+            --sha "$SHA" --created "$CREATED" --failed-tests tests.txt \
+            --channel "$SLACK_CHANNEL" --body body.md --slack slack.json
 
           # PR comment only: the #ci-cleanup message stays as it was.
           if [ -s conflict.txt ]; then
             { echo; cat conflict.txt; } >> body.md
           fi
-
-          # The same report, re-rendered as Slack mrkdwn. jq -Rs escapes the body,
-          # so backticks and newlines from the check names survive as-is.
-          {
-            echo ":rotating_light: *<$GITHUB_SERVER_URL/$GH_REPO/pull/$PR|PR #$PR>* removed from the merge queue — \`$REASON\`"
-            cat detail.txt
-            if [ -s runs.slack ]; then
-              cat runs.slack
-            fi
-            # shellcheck disable=SC2016  # backticks are Slack code spans
-            sed 's/.*/• FAILED `&`/' tests.txt
-          } | jq -Rs --arg channel "$SLACK_CHANNEL" '{channel: $channel, text: .}' > slack.json
 
           if [ "$DRY_RUN" = "true" ]; then
             cat body.md >> "$GITHUB_STEP_SUMMARY"

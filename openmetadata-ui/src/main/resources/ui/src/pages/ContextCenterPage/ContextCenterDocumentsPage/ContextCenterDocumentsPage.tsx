@@ -206,15 +206,22 @@ interface ContextCenterDocumentPreviewProps {
   previewFile?: ContextFile;
   url: string;
   onClose: () => void;
+  onFileRefreshed: (file: ContextFile) => void;
 }
 
 const ContextCenterDocumentPreview: FC<ContextCenterDocumentPreviewProps> = ({
   previewFile,
   url,
   onClose,
+  onFileRefreshed,
 }) =>
   previewFile ? (
-    <DocumentPreviewPanel file={previewFile} url={url} onClose={onClose} />
+    <DocumentPreviewPanel
+      file={previewFile}
+      url={url}
+      onClose={onClose}
+      onFileRefreshed={onFileRefreshed}
+    />
   ) : null;
 
 interface ContextCenterDeleteFileModalProps {
@@ -400,6 +407,10 @@ const ContextCenterDocumentsPage: FC = () => {
 
     return () => clearTimeout(id);
   }, [documentSearchQuery]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedFolderId, debouncedSearchQuery]);
 
   const fetchDocuments = useCallback(
     async (after?: string) => {
@@ -614,6 +625,12 @@ const ContextCenterDocumentsPage: FC = () => {
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(fileToDelete.id);
+
+        return next;
+      });
       setTotalFileCount((prev) => prev - 1);
       setGlobalFileCount((prev) => prev - 1);
       fetchFolders();
@@ -634,8 +651,26 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t, fetchFolders]);
 
+  // A write returns stored fields only; a metadata write leaves what the list read computed as is.
   const handleFileUpdated = useCallback((file: ContextFile) => {
+    setAllDocuments((prev) =>
+      prev.map((d) =>
+        d.id === file.id
+          ? {
+              ...file,
+              folder: d.folder,
+              memoryCount: d.memoryCount,
+              neverExtracted: d.neverExtracted,
+            }
+          : d
+      )
+    );
+  }, []);
+
+  // An Extract response, or a read after one is refused, carries every field the list reads.
+  const handleFileRefreshed = useCallback((file: ContextFile) => {
     setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+    setPreviewFile((prev) => (prev?.id === file.id ? file : prev));
   }, []);
 
   const handleFileMoved = useCallback(
@@ -982,9 +1017,11 @@ const ContextCenterDocumentsPage: FC = () => {
                     onBulkDelete={handleBulkDelete}
                     onBulkDownload={handleBulkDownload}
                     onBulkMove={handleBulkMove}
+                    onClearSelection={() => setSelectedIds(new Set())}
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
+                    onFileRefreshed={handleFileRefreshed}
                     onFileUpdated={handleFileUpdated}
                     onLoadMoreFolders={fetchMoreFolders}
                     onOpenPreview={setFilePreviewModalFile}
@@ -1001,6 +1038,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     previewFile={previewFile}
                     url={previewFileUrl}
                     onClose={() => handlePreview(undefined)}
+                    onFileRefreshed={handleFileRefreshed}
                   />
                 </Box>
               </ReflexElement>

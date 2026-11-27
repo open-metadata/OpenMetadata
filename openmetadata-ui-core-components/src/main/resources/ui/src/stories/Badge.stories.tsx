@@ -12,6 +12,7 @@
  */
 import { HelpCircle } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Avatar } from '../components/base/avatar/avatar';
 import {
   Badge,
   BadgeIcon,
@@ -236,6 +237,72 @@ export const ModernStyle: StoryObj = {
       <BadgeWithDot color="gray" type="modern">
         With Dot
       </BadgeWithDot>
+    </div>
+  ),
+};
+
+/**
+ * Opaque fill for a badge laid over imagery, such as a count on an avatar.
+ * Check it in both themes: the tinted fill is translucent in dark mode.
+ */
+export const Solid: StoryObj = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+      }}>
+      <Badge color="gray" variant="solid">
+        Gray
+      </Badge>
+      <Badge color="brand" variant="solid">
+        Brand
+      </Badge>
+      <Badge color="error" variant="solid">
+        Error
+      </Badge>
+      <Badge color="warning" variant="solid">
+        Warning
+      </Badge>
+      <Badge color="success" variant="solid">
+        Success
+      </Badge>
+      <Badge color="gray-blue" variant="solid">
+        Gray Blue
+      </Badge>
+      <Badge color="blue-light" variant="solid">
+        Blue Light
+      </Badge>
+      <Badge color="blue" variant="solid">
+        Blue
+      </Badge>
+      <Badge color="indigo" variant="solid">
+        Indigo
+      </Badge>
+      <Badge color="purple" variant="solid">
+        Purple
+      </Badge>
+      <Badge color="pink" variant="solid">
+        Pink
+      </Badge>
+      <Badge color="orange" variant="solid">
+        Orange
+      </Badge>
+      <Badge color="blue-dark" variant="solid">
+        Blue Dark
+      </Badge>
+      <div className="tw:relative tw:inline-flex">
+        <Avatar initials="A" size="sm" />
+        <Badge
+          className="tw:absolute tw:-top-1.5 tw:-right-1.5"
+          color="error"
+          size="xs"
+          variant="solid">
+          10
+        </Badge>
+      </div>
     </div>
   ),
 };

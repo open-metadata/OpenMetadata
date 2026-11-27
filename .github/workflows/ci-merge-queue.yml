@@ -1,0 +1,252 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: ci-merge-queue
+on:
+  merge_group: null
+  workflow_dispatch: null
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    name: Select workloads
+    runs-on: ubuntu-latest
+    outputs:
+      python-lowest: ${{ steps.versions.outputs.lowest }}
+      python-highest: ${{ steps.versions.outputs.highest }}
+      ref: ${{ github.sha }}
+      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' }}
+      airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
+      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
+      # ui-unit implies ui: Jest waits for checkstyle on pull requests.
+      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' || steps.ui-filter.outputs.ui-unit == 'true' }}
+      ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            .github/python-ci/paths.yml
+            .github/ui-ci/paths.yml
+            ingestion/pyproject.toml
+            scripts/python_ci.py
+            scripts/prepare_classification_models.py
+          sparse-checkout-cone-mode: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event.merge_group.base_sha }}
+          initial-fetch-depth: 2
+          filters: .github/python-ci/paths.yml
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: ui-filter
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event.merge_group.base_sha }}
+          initial-fetch-depth: 2
+          filters: .github/ui-ci/paths.yml
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+
+  backend:
+    name: Build backend image
+    needs: plan
+    if: ${{ needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true' }}
+    uses: ./.github/workflows/reusable-build-backend.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+
+  py-static-checks:
+    name: py-static-checks
+    needs: plan
+    if: ${{ needs.plan.outputs.static == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Python static checks
+        uses: ./.github/actions/python-static-checks
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+          check-types: ${{ needs.plan.outputs.python }}
+
+  prepare-classification-models:
+    needs: plan
+    if: ${{ needs.plan.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            scripts/prepare_classification_models.py
+            ingestion/pyproject.toml
+            .github/actions/prepare-classification-models
+            .github/actions/prepare-classification-model
+          sparse-checkout-cone-mode: false
+      - uses: ./.github/actions/prepare-classification-models
+
+  python-unit:
+    needs:
+      - plan
+      - prepare-classification-models
+    if: ${{ needs.plan.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Python unit tests
+        uses: ./.github/actions/python-unit
+        with:
+          python-version: ${{ needs.plan.outputs.python-highest }}
+
+  python-integration:
+    needs:
+      - plan
+      - prepare-classification-models
+      - backend
+    if: ${{ needs.plan.outputs.python == 'true' }}
+    uses: ./.github/workflows/reusable-py-integration.yml
+    with:
+      python-version: ${{ needs.plan.outputs.python-highest }}
+      ref: ${{ needs.plan.outputs.ref }}
+      source-database-version: newest
+      collect-coverage: false
+
+  airflow-apis:
+    needs: [plan, backend]
+    if: ${{ needs.plan.outputs.airflow-apis == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Airflow API tests
+        uses: ./.github/actions/python-airflow-apis
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+          use-backend-image: 'true'
+
+  py-tests-status:
+    name: py-tests-status
+    needs:
+      - plan
+      - airflow-apis
+      - py-static-checks
+      - prepare-classification-models
+      - backend
+      - python-unit
+      - python-integration
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Verify selected Python workloads
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
+              "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "prepare-classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "backend": "${{ (needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true') && 'success' || 'skipped' }}",
+              "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "python-integration": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
+            }
+        run: |
+          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
+            $expected | length > 0 and
+            (keys == ($needs | keys)) and
+            all(to_entries[]; . as $job |
+              ($job.value == "success" or $job.value == "skipped") and
+              $needs[$job.key].result == $job.value)
+          '
+        shell: bash
+
+  # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
+  # Jest and the browser tests out to parallel shards.
+  ui:
+    name: ui
+    needs: plan
+    if: ${{ needs.plan.outputs.ui == 'true' }}
+    permissions:
+      contents: read
+      # The browser tests download the impact map from earlier runs.
+      actions: read
+    uses: ./.github/workflows/ui-ci.yml
+    with:
+      unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
+
+  # Required check for the UI. It runs even when ui is skipped, so the check is
+  # always reported.
+  ui-tests-status:
+    name: ui-tests-status
+    needs: [plan, ui]
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions/ci-status-gate
+      - uses: ./.github/actions/ci-status-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          expected: |
+            {
+              "plan": "success",
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+            }
+
+  # TEMPORARY: the merge-rules ruleset still requires these two names. Remove
+  # both once it requires ui-tests-status instead.
+  ui-checkstyle:
+    name: ui-checkstyle
+    needs: ui-tests-status
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success
+
+  ui-coverage:
+    name: ui-coverage
+    needs: ui-tests-status
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success

@@ -64,6 +64,6 @@ public class HasFieldInChangesHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{hasFieldInChanges }}")
                     .withExample(
-                        "{{#if (hasFieldInChanges changes \"testCaseResult\")}}Test results changed{{/if}}")));
+                        "{{#with (groupEventChanges event.changeDescription) as |changes|}}{{#if (hasFieldInChanges changes \"description\")}}Description changed{{/if}}{{/with}}")));
   }
 }

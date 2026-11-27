@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import type { TFunction } from 'i18next';
 import type { ComponentType, FC } from 'react';
@@ -77,10 +78,19 @@ export type PlatformSettingsPageContribution = Pick<
 > &
   Required<Pick<PlatformSettingsPage, 'component'>>;
 
+/**
+ * `replace` is for redirects run from an effect (a stale link): they must not
+ * push, or Back lands on the stale view and redirects again.
+ */
+export type PlatformSettingsNavigate = (
+  view: PlatformSettingsView,
+  options?: SettingsNavigateOptions
+) => void;
+
 /** Shared by every platform-settings page: report back to the panel. */
 export interface PlatformSettingsPageProps {
   itemId?: string;
-  onNavigate: (view: PlatformSettingsView) => void;
+  onNavigate: PlatformSettingsNavigate;
   onSetHeaderActions: (actions: React.ReactNode) => void;
   /**
    * State the page saved before it unmounted (e.g. a list's search and page
@@ -94,5 +104,5 @@ export interface PlatformSettingsFormProps
   extends Pick<PlatformSettingsPageProps, 'savedState' | 'onSaveState'> {
   showHint: boolean;
   itemId?: string;
-  onNavigate: (view: PlatformSettingsView) => void;
+  onNavigate: PlatformSettingsNavigate;
 }

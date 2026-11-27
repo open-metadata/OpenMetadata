@@ -338,6 +338,42 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void post_mysqlServiceWithUnknownSslConfigField_400(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("sslMode", "require"));
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("mysql_bad_ssl"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    OpenMetadataException e =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, e.getStatusCode());
+    assertTrue(e.getMessage().contains("unrecognized field 'sslMode'"), e.getMessage());
+  }
+
+  @Test
+  void post_mysqlServiceWithValidSslConfig_200_OK(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("caCertificate", "ca-pem"));
+
+    DatabaseService service =
+        createEntity(
+            new CreateDatabaseService()
+                .withName(ns.prefix("mysql_ssl"))
+                .withServiceType(DatabaseServiceType.Mysql)
+                .withConnection(new DatabaseConnection().withConfig(conn)));
+    assertNotNull(service.getConnection());
+  }
+
+  @Test
   void put_databaseServiceDescription_200_OK(TestNamespace ns) {
     CreateDatabaseService request = createMinimalRequest(ns);
     request.setName(ns.prefix("service_update_desc"));
@@ -350,6 +386,59 @@ public class DatabaseServiceResourceIT
     service.setDescription("Updated description");
     DatabaseService updated = patchEntity(service.getId().toString(), service);
     assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void put_updateWithoutConnection_preservesExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("service_unmask_null_conn"));
+
+    DatabaseService service = createEntity(request);
+    assertNotNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated via PUT without connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT omitting connection on an existing service with a connection must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    DatabaseService reFetched = getEntity(service.getId().toString());
+    assertEquals("Updated via PUT without connection", reFetched.getDescription());
+    assertNotNull(reFetched.getConnection(), "Existing connection must be preserved, not wiped");
+  }
+
+  @Test
+  void put_updateWithoutConnection_whenNoExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("service_no_conn_at_all"))
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Initial description");
+
+    DatabaseService service = createEntity(request);
+    assertNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated description, still no connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT with no connection on either side must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
   }
 
   @Test

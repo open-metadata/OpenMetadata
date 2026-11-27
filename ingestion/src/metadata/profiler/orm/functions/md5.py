@@ -13,7 +13,10 @@
 Define MD5 hashing function
 """
 
+from typing import Any
+
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
@@ -48,3 +51,9 @@ def _(element, compiler, **kw):
     # There is no MD5 in Teradata or any other hashes
     # But we can use UDF function hash_md5 published by Teradata Community
     return f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
+
+
+@compiles(MD5, PythonDialects.Oracle.value)
+def _(element: MD5, compiler: SQLCompiler, **kw: Any) -> str:
+    # Convert national-character inputs to database-character-set text before hashing.
+    return f"LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR({compiler.process(element.clauses, **kw)}), 'MD5')))"

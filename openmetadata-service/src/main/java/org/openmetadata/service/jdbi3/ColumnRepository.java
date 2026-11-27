@@ -74,6 +74,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchColumnAggregat
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.ViewPermissionFilter;
@@ -106,10 +107,12 @@ public class ColumnRepository {
   static final int MAX_SYNC_IMPORT_COLUMN_UPDATES = 200;
 
   private final Authorizer authorizer;
+  private final ViewPermissionFilter viewPermissionFilter;
   private final ColumnAggregator columnAggregator;
 
   public ColumnRepository(Authorizer authorizer, SearchClient searchClient) {
     this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     if (searchClient instanceof ElasticSearchClient) {
       this.columnAggregator = new ElasticSearchColumnAggregator(searchClient.getHighLevelClient());
     } else if (searchClient instanceof OpenSearchClient) {
@@ -198,7 +201,7 @@ public class ColumnRepository {
           .enrichSingleColumnFields(
               (Table) parent,
               column,
-              fieldsParam,
+              readableTableColumnFields(securityContext, parent, fieldsParam),
               ((Table) parent).getOwners(),
               authorizer,
               securityContext);
@@ -207,6 +210,16 @@ public class ColumnRepository {
           .enrichSingleColumnFields((DashboardDataModel) parent, column, fieldsParam);
       default -> column;
     };
+  }
+
+  /** The parent was loaded with the authorization fields, so it is decided on as it stands. */
+  private String readableTableColumnFields(
+      SecurityContext securityContext, EntityInterface<?> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter,
+        securityContext,
+        resourceContextFor(TABLE, table, Entity.getEntityRepository(TABLE)),
+        fieldsParam);
   }
 
   public FieldInterface updateChildByFQN(
@@ -340,7 +353,13 @@ public class ColumnRepository {
       triggerParentChangeEvent(patchResponse.entity(), user);
     }
 
-    return new ChildUpdate(child, pendingChangeRequestId);
+    // A published update answers with the column as written: a glossary term held back as
+    // pending is not on it, whatever the request sent.
+    FieldInterface written =
+        pendingChangeRequestId == null
+            ? ChildFieldResolver.locate(patchResponse.entity(), entityType, columnFQN).orElse(child)
+            : child;
+    return new ChildUpdate(written, pendingChangeRequestId);
   }
 
   @SuppressWarnings("unchecked")
@@ -1038,11 +1057,13 @@ public class ColumnRepository {
               totalUpdates, maxColumnUpdates));
     }
 
+    Map<String, Set<String>> refusedTerms = refusedGlossaryTerms(parsedRows, occurrencesByName);
     Map<List<String>, BulkOperationResult> resultByRow = new HashMap<>();
     for (String[] fields : parsedRows) {
       try {
-        List<ColumnOccurrence> occurrences = occurrencesByName.get(fields[0]);
-        if (occurrences == null || occurrences.isEmpty()) {
+        Set<String> acceptingColumns =
+            acceptingColumns(occurrencesByName.get(fields[0]), rowTags(fields), refusedTerms);
+        if (acceptingColumns.isEmpty()) {
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           continue;
         }
@@ -1059,7 +1080,12 @@ public class ColumnRepository {
                     bulkUpdateColumns(
                         uriInfo,
                         securityContext,
-                        new BulkColumnUpdateRequest().withColumnUpdates(updatesByRow.get(key))));
+                        new BulkColumnUpdateRequest()
+                            .withColumnUpdates(
+                                updatesByRow.get(key).stream()
+                                    .filter(
+                                        update -> acceptingColumns.contains(update.getColumnFQN()))
+                                    .toList())));
         if (updateResult.getNumberOfRowsPassed() > 0) {
           result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
         } else {
@@ -1080,6 +1106,39 @@ public class ColumnRepository {
     }
 
     return result;
+  }
+
+  /**
+   * The glossary terms a CSV import refuses, per column: like an entity CSV import, it refuses a term
+   * that is not Approved and that a column does not already hold, instead of holding it as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). Judged in one
+   * guard call for the whole file; rows naming the same column pool their labels.
+   */
+  private Map<String, Set<String>> refusedGlossaryTerms(
+      List<String[]> parsedRows, Map<String, List<ColumnOccurrence>> occurrencesByName) {
+    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
+    for (String[] fields : parsedRows) {
+      List<TagLabel> tags = rowTags(fields);
+      for (ColumnOccurrence occurrence : listOrEmpty(occurrencesByName.get(fields[0]))) {
+        tagsByColumn
+            .computeIfAbsent(occurrence.getColumnFQN(), column -> new ArrayList<>())
+            .addAll(tags);
+      }
+    }
+    return ApprovedGlossaryTermGuard.heldTermHashesByTarget(tagsByColumn, Map.of());
+  }
+
+  private List<TagLabel> rowTags(String[] fields) {
+    return parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null);
+  }
+
+  // A row applies to the columns that take all of its terms; it fails when none does.
+  private static Set<String> acceptingColumns(
+      List<ColumnOccurrence> occurrences, List<TagLabel> tags, Map<String, Set<String>> refused) {
+    return listOrEmpty(occurrences).stream()
+        .map(ColumnOccurrence::getColumnFQN)
+        .filter(column -> !ApprovedGlossaryTermGuard.appliesAnyOf(tags, refused.get(column)))
+        .collect(Collectors.toSet());
   }
 
   /** Deduplicates write rows: same column name and payload means one shared update pass. */

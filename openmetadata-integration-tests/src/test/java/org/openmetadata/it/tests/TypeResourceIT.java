@@ -11,8 +11,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -44,10 +47,10 @@ import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -59,8 +62,6 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for Type entity operations.
@@ -78,7 +79,6 @@ import org.slf4j.LoggerFactory;
 @ExtendWith(TestNamespaceExtension.class)
 public class TypeResourceIT {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TypeResourceIT.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static Type INT_TYPE;
   private static Type STRING_TYPE;
@@ -274,6 +274,56 @@ public class TypeResourceIT {
     assertNotNull(addedProperty);
     assertEquals(propertyName, addedProperty.getName());
     assertNotNull(addedProperty.getCustomPropertyConfig());
+  }
+
+  @Test
+  void test_tableCustomPropertyStoresValueWithTenColumns(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    List<String> columns = List.of("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10");
+    String property = ns.prefix("wideTable");
+    addCustomProperty(
+        client,
+        getTypeByName(client, Entity.DOMAIN).getId(),
+        tableCustomProperty(
+            client, property, new TableConfig().withColumns(new LinkedHashSet<>(columns))));
+    try {
+      Map<String, String> row = new HashMap<>();
+      columns.forEach(column -> row.put(column, "value-" + column));
+      Map<String, Object> value = Map.of("columns", columns, "rows", List.of(row));
+
+      Domain domain = createDomain(client, ns, property, value);
+
+      JsonNode stored =
+          JsonUtils.valueToTree(client.domains().get(domain.getId().toString(), "extension"))
+              .path("extension")
+              .path(property);
+      assertEquals(JsonUtils.valueToTree(value), stored);
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_addTableCustomPropertyWithoutColumns_fails(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CustomProperty property =
+        tableCustomProperty(
+            client, ns.prefix("emptyTableProp"), new TableConfig().withColumns(Set.of()));
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), property));
+    assertTrue(error.getMessage().contains("must have at least 1 column(s)"), error.getMessage());
+  }
+
+  private static CustomProperty tableCustomProperty(
+      OpenMetadataClient client, String name, TableConfig tableConfig) throws Exception {
+    return new CustomProperty()
+        .withName(name)
+        .withDescription("Table custom property")
+        .withPropertyType(getTypeByName(client, "table-cp").getEntityReference())
+        .withCustomPropertyConfig(new CustomPropertyConfig().withConfig(tableConfig));
   }
 
   @Test
@@ -1529,49 +1579,9 @@ public class TypeResourceIT {
     return name;
   }
 
-  /**
-   * Properties are removed by patching the type. Concurrent tests add and remove properties on
-   * the same type, so the index is guarded by a {@code test} op and the patch retried on a miss.
-   */
   private static void deleteDomainProperty(OpenMetadataClient client, String property)
       throws Exception {
-    String typeId = getTypeByName(client, Entity.DOMAIN).getId().toString();
-    for (int attempt = 0; attempt < 5; attempt++) {
-      int index = customPropertyIndex(client, typeId, property);
-      if (index < 0) {
-        return;
-      }
-      JsonNode patch =
-          OBJECT_MAPPER.readTree(
-              String.format(
-                  "[{\"op\":\"test\",\"path\":\"/customProperties/%d/name\",\"value\":\"%s\"},"
-                      + "{\"op\":\"remove\",\"path\":\"/customProperties/%d\"}]",
-                  index, property, index));
-      try {
-        client
-            .getHttpClient()
-            .execute(HttpMethod.PATCH, "/v1/metadata/types/" + typeId, patch, Type.class);
-        return;
-      } catch (OpenMetadataException e) {
-        LOG.debug("Custom property index moved under the patch, retrying: {}", e.getMessage());
-      }
-    }
-  }
-
-  private static int customPropertyIndex(OpenMetadataClient client, String typeId, String property)
-      throws Exception {
-    String response =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET, "/v1/metadata/types/" + typeId + "?fields=customProperties", null);
-    JsonNode properties = OBJECT_MAPPER.readTree(response).path("customProperties");
-    for (int index = 0; index < properties.size(); index++) {
-      if (property.equals(properties.get(index).path("name").asText())) {
-        return index;
-      }
-    }
-    return -1;
+    CustomPropertyTestSupport.deleteProperty(client, Entity.DOMAIN, property);
   }
 
   private static Team createTeam(

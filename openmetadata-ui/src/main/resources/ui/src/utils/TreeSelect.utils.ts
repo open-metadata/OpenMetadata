@@ -73,3 +73,16 @@ export const getTreeSelectValues = (
     .filter((node) => !node.parentId || !selectedIds.has(node.parentId))
     .map((node) => node.value ?? node.id);
 };
+
+/** `nodes` with every node whose value is in `values` disabled, at any depth. */
+export const disableTreeNodes = <T>(
+  nodes: TreeSelectNode<T>[],
+  values: ReadonlySet<string>
+): TreeSelectNode<T>[] =>
+  nodes.map((node) => ({
+    ...node,
+    disabled: node.disabled || values.has(node.value),
+    ...(node.children && {
+      children: disableTreeNodes(node.children, values),
+    }),
+  }));

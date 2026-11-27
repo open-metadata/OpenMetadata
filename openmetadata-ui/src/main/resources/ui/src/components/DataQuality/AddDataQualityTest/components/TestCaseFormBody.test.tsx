@@ -910,7 +910,15 @@ describe('TestCaseFormBody', () => {
     });
 
     await waitFor(() => {
-      expect(formRef?.getValues('testCases')).toHaveLength(1);
+      // The picker's onChange now stores the raw AddTestCaseListChangePayload
+      // (preserving selectAll/includeIds/excludeIds) rather than collapsing
+      // it to an EntityReference[] — see TestCaseSchedulerSection.tsx.
+      expect(formRef?.getValues('testCases')).toEqual(
+        expect.objectContaining({
+          selectAll: false,
+          includeIds: ['test-case-1'],
+        })
+      );
     });
   });
 

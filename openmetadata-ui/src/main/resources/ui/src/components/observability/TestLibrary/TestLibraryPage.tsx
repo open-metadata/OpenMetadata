@@ -16,14 +16,16 @@ import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import TestDefinitionDetailsPanel from '../../TestLibrary/TestDefinitionDetailsPanel/TestDefinitionDetailsPanel';
 import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from '../../TestLibrary/TestDefinitionList/TestDefinitionTable.component';
 import { useTestDefinitionListPage } from '../../TestLibrary/TestDefinitionList/useTestDefinitionListPage';
+import { OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import TestDefinitionFilterBar from './TestDefinitionFilterBar';
 
 /**
@@ -65,6 +67,11 @@ const TestLibraryPage = () => {
     handleDeleteCancel,
     handleFormSuccess,
     handleFormCancel,
+    viewedDefinition,
+    canEditViewedDefinition,
+    openDetails,
+    closeDetails,
+    editFromDetails,
   } = useTestDefinitionListPage();
 
   if (!viewPermission) {
@@ -82,84 +89,92 @@ const TestLibraryPage = () => {
 
   return (
     <>
-      <ObservabilityPageShell
-        header={
-          <PageLayout.PageHeader
-            actions={
-              createPermission ? (
-                <Button
-                  color="primary"
-                  data-testid="add-test-definition-button"
-                  iconLeading={Plus}
-                  size="md"
-                  onPress={openCreateForm}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-definition'),
-                  })}
-                </Button>
-              ) : undefined
-            }
-            badge={
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                title={t('label.test-library')}
+      <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+        <DocumentTitle title={t('label.test-library')} />
+        <PageLayout.PageHeader
+          actions={
+            createPermission ? (
+              <Button
+                color="primary"
+                data-testid="add-test-definition-button"
+                iconLeading={Plus}
+                size="md"
+                onPress={openCreateForm}>
+                {t('label.add-entity', {
+                  entity: t('label.test-definition'),
+                })}
+              </Button>
+            ) : undefined
+          }
+          badge={
+            <LearningIcon
+              pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
+              title={t('label.test-library')}
+            />
+          }
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              className="tw:text-xs"
+              items={[
+                getObservabilityRootBreadcrumb(t),
+                {
+                  label: t('label.test-library'),
+                  ariaLabel: t('label.test-library'),
+                },
+              ]}
+              showHome={false}
+            />
+          }
+          subtitle={t('message.page-sub-header-for-test-definitions')}
+          title={t('label.test-library')}
+          variant="gradient"
+        />
+        <PageLayout.Content>
+          <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
+            <div className="tw:p-4">
+              <TestDefinitionFilterBar
+                filterValues={urlFilters}
+                hasActiveFilters={hasActiveFilters}
+                searchQuery={searchQuery}
+                onClearAll={clearAllFilters}
+                onFilterChange={setSingleFilter}
+                onSearchChange={handleSearchChange}
               />
-            }
-            breadcrumb={
-              <HeaderBreadcrumb
-                noMargin
-                className="tw:text-xs"
-                items={[
-                  getObservabilityRootBreadcrumb(t),
-                  {
-                    label: t('label.test-library'),
-                    ariaLabel: t('label.test-library'),
-                  },
-                ]}
-                showHome={false}
-              />
-            }
-            subtitle={t('message.page-sub-header-for-test-definitions')}
-            title={t('label.test-library')}
-            variant="gradient"
-          />
-        }
-        pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
-          <div className="tw:p-4">
-            <TestDefinitionFilterBar
-              filterValues={urlFilters}
+            </div>
+            <TestDefinitionTable
               hasActiveFilters={hasActiveFilters}
-              searchQuery={searchQuery}
-              onClearAll={clearAllFilters}
-              onFilterChange={setSingleFilter}
-              onSearchChange={handleSearchChange}
+              isInitialLoading={isInitialLoading}
+              isLoading={isLoading}
+              pagingData={pagingData}
+              permissionLoading={permissionLoading}
+              showPagination={showPagination}
+              sortDescriptor={sortDescriptor}
+              testDefinitionPermissions={testDefinitionPermissions}
+              testDefinitions={testDefinitions}
+              onClearFilters={clearAllFilters}
+              onDelete={handleDeleteClick}
+              onEdit={handleEdit}
+              onEnableToggle={handleEnableToggle}
+              onSortChange={handleSortChange}
+              onView={openDetails}
             />
           </div>
-          <TestDefinitionTable
-            hasActiveFilters={hasActiveFilters}
-            isInitialLoading={isInitialLoading}
-            isLoading={isLoading}
-            pagingData={pagingData}
-            permissionLoading={permissionLoading}
-            showPagination={showPagination}
-            sortDescriptor={sortDescriptor}
-            testDefinitionPermissions={testDefinitionPermissions}
-            testDefinitions={testDefinitions}
-            onClearFilters={clearAllFilters}
-            onDelete={handleDeleteClick}
-            onEdit={handleEdit}
-            onEnableToggle={handleEnableToggle}
-            onSortChange={handleSortChange}
-          />
-        </div>
-      </ObservabilityPageShell>
+        </PageLayout.Content>
+      </PageLayout>
 
       <TestDefinitionForm
         initialValues={selectedDefinition}
         open={isFormVisible}
         onCancel={handleFormCancel}
         onSuccess={handleFormSuccess}
+      />
+
+      <TestDefinitionDetailsPanel
+        canEdit={canEditViewedDefinition}
+        testDefinition={viewedDefinition}
+        onClose={closeDetails}
+        onEdit={editFromDetails}
       />
 
       <DeleteModal

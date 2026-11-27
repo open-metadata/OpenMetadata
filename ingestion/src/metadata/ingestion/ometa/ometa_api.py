@@ -18,7 +18,7 @@ working with OpenMetadata entities.
 import traceback
 import types
 from collections import OrderedDict
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from itertools import chain
 from typing import (
     Any,
@@ -657,6 +657,7 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_skip: Callable[[dict[str, Any], Exception], None] | None = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -684,6 +685,8 @@ class OpenMetadata(
                 except Exception as exc:
                     logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
                     logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
+                    if on_skip:
+                        on_skip(elmt, exc)
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -701,6 +704,7 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_skip: Callable[[dict[str, Any], Exception], None] | None = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -720,6 +724,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
             include=include,
+            on_skip=on_skip,
         )
         yield from entity_list.entities
 
@@ -733,6 +738,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
                 include=include,
+                on_skip=on_skip,
             )
             yield from entity_list.entities
             after = entity_list.after

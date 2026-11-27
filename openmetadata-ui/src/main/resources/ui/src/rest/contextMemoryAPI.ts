@@ -12,7 +12,10 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ApproveExtractedMemories } from '../generated/api/context/approveExtractedMemories';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
+import { ExtractedMemoryApproval } from '../generated/api/context/extractedMemoryApproval';
+import { ExtractionAvailability } from '../generated/api/context/extractionAvailability';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { MemoryDerivation } from '../generated/entity/context/memoryDerivation';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -117,6 +120,41 @@ export const getContextMemoryByName = async (
 
   return response.data;
 };
+
+/** What approving a document's Unprocessed extracted memories would do; writes nothing. */
+export const getExtractedMemoryApproval = async (
+  sourceId: string,
+  sourceType: string
+): Promise<ExtractedMemoryApproval> => {
+  const response = await APIClient.get<ExtractedMemoryApproval>(
+    `${BASE_URL}/extractedApproval`,
+    { params: { sourceId, sourceType } }
+  );
+
+  return response.data;
+};
+
+/** Approves a document's Unprocessed extracted memories; contested ones stay pending. */
+export const approveExtractedMemories = async (
+  request: ApproveExtractedMemories
+): Promise<ExtractedMemoryApproval> => {
+  const response = await APIClient.put<
+    ApproveExtractedMemories,
+    AxiosResponse<ExtractedMemoryApproval>
+  >(`${BASE_URL}/extractedApproval`, request);
+
+  return response.data;
+};
+
+/** Whether memories can be extracted now, and why not; any signed-in user may read it. */
+export const getExtractionAvailability =
+  async (): Promise<ExtractionAvailability> => {
+    const response = await APIClient.get<ExtractionAvailability>(
+      `${BASE_URL}/extractionAvailability`
+    );
+
+    return response.data;
+  };
 
 /** The server reads at most this many derived entities per request. */
 export const MAX_DERIVATION_ENTITIES = 100;

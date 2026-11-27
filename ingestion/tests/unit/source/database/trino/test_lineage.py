@@ -8,12 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Regression tests for Trino cross-database lineage (Issue #27419)."""
+"""Regression tests for Trino cross-database lineage (Issues #27419 and #34279)."""
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.trino.lineage import TrinoLineageSource
 
@@ -69,7 +72,7 @@ def test_yield_cross_database_lineage_finds_uppercase_source_table():
     trino_table.id.root = "11111111-1111-1111-1111-111111111111"
     trino_table.fullyQualifiedName.root = "repro_trino.postgres.source_schema.customer"
     trino_table.name.root = "customer"
-    trino_table.databaseSchema.name.root = "source_schema"
+    trino_table.databaseSchema.name = "source_schema"
     trino_table.databaseSchema.fullyQualifiedName.root = "repro_trino.postgres.source_schema"
     trino_table.columns = [_mock_column("id"), _mock_column("name")]
 
@@ -155,3 +158,53 @@ def test_get_cross_database_schema_fqn_parses_quoted_schema_from_fqn():
         )
 
     assert result == 'repro_postgres.source_db."source.schema"'
+
+
+def _table_stub(schema_name: str | None):
+    ref = EntityReference(id="00000000-0000-0000-0000-000000000001", type="databaseSchema", name=schema_name)
+    table = MagicMock()
+    table.databaseSchema = ref
+    table.fullyQualifiedName = None
+    return table
+
+
+@pytest.mark.parametrize("schema_name", ["public", "my_schema", "Purchases"])
+def test_plain_str_name_does_not_raise(schema_name):
+    """Issue #34279: databaseSchema.name is a plain str and must not raise AttributeError."""
+    lineage_source = TrinoLineageSourceTestDouble(MagicMock())
+    table = _table_stub(schema_name)
+    with patch(
+        "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
+        return_value=[],
+    ):
+        result = lineage_source._get_cross_database_schema_fqn("svc2.db", table, {})
+    # Falls back to constructing an FQN, so the schema name must appear in it
+    assert result is not None
+    assert schema_name.lower() in result.lower()
+
+
+def test_mapping_entry_returned_verbatim():
+    """When the schema name is found in the pre-populated mapping, return its FQN as-is."""
+    lineage_source = TrinoLineageSourceTestDouble(MagicMock())
+    table = _table_stub("public")
+    mapping = {"svc2.db": {"public": "svc2.db.PUBLIC"}}
+    with patch(
+        "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
+        return_value=[],
+    ):
+        result = lineage_source._get_cross_database_schema_fqn("svc2.db", table, mapping)
+    assert result == "svc2.db.PUBLIC"
+
+
+def test_none_schema_name_no_fqn_returns_none():
+    """When both databaseSchema.name and fullyQualifiedName are absent, return None."""
+    lineage_source = TrinoLineageSourceTestDouble(MagicMock())
+    table = MagicMock()
+    table.databaseSchema = None
+    table.fullyQualifiedName = None
+    with patch(
+        "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
+        return_value=[],
+    ):
+        result = lineage_source._get_cross_database_schema_fqn("svc2.db", table, {})
+    assert result is None

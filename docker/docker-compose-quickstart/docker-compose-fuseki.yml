@@ -1,0 +1,78 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Adds the Fuseki RDF store to the quickstart stack. Use it on top of the release compose file,
+# with MySQL or PostgreSQL:
+#
+#   docker compose -f docker-compose.yml -f docker-compose-fuseki.yml up -d
+#   docker compose -f docker-compose-postgres.yml -f docker-compose-fuseki.yml up -d
+#
+# Set FUSEKI_ADMIN_PASSWORD to change the Fuseki admin password; OpenMetadata uses the same value.
+
+x-rdf-environment: &rdf-environment
+  RDF_ENABLED: ${RDF_ENABLED:-true}
+  RDF_STORAGE_TYPE: FUSEKI
+  RDF_ENDPOINT: ${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}
+  RDF_REMOTE_USERNAME: admin
+  RDF_REMOTE_PASSWORD: ${FUSEKI_ADMIN_PASSWORD:-admin}
+  RDF_DATASET: openmetadata
+  RDF_MATERIALIZED_INFERENCE_ENABLED: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-true}
+
+volumes:
+  # The published image keeps TDB2 datasets, their configuration and shiro.ini under /fuseki.
+  # A volume written by the image used up to 2.1.0-rc1 (mounted at /fuseki-data) is a different
+  # layout; docs/rdf-production-setup.md "Upgrading from the in-repo image" moves it.
+  fuseki-store:
+
+services:
+  fuseki:
+    container_name: openmetadata_fuseki
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-91a23ac
+    restart: always
+    environment:
+      # ADMIN_PASSWORD is the image's only required variable. The datasets are the serving dataset
+      # and its two blue/green rebuild targets; docs/rdf-production-setup.md explains the rest.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
+    # Loopback only: OpenMetadata reaches Fuseki over app_net, and the default password is admin.
+    ports:
+      - "127.0.0.1:3030:3030"
+    volumes:
+      - fuseki-store:/fuseki
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  execute-migrate-all:
+    environment:
+      <<: *rdf-environment
+    depends_on:
+      fuseki:
+        condition: service_healthy
+
+  openmetadata-server:
+    environment:
+      <<: *rdf-environment
+    depends_on:
+      fuseki:
+        condition: service_healthy

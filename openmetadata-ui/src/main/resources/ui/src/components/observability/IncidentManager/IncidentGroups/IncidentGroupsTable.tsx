@@ -197,7 +197,10 @@ const IncidentGroupsTable = ({
       { id: 'status', label: t('label.status') },
       { id: 'assignees', label: t('label.assignee-plural') },
       { id: 'lastSeen', label: t('label.last-seen') },
-      { id: 'trend', label: t('label.trend') },
+      {
+        id: 'trend',
+        label: t('label.open-incident-history'),
+      },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
     [dimension.labelKey, groupBy, isSelectable, t]
@@ -294,6 +297,8 @@ const IncidentGroupsTable = ({
             severity={group.severity}
             trend={group.trend}
             trendDirection={group.trendDirection}
+            trendEnd={group.trendEnd}
+            trendStart={group.trendStart}
           />
         </Table.Cell>
         <Table.Cell>

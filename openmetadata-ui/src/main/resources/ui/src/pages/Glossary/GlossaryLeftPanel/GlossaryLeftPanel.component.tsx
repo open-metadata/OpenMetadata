@@ -90,10 +90,7 @@ const GlossaryLeftPanel = ({
   }, [glossaryFqn]);
 
   return (
-    <div
-      className="tw:h-full"
-      data-testid="glossary-left-panel"
-      data-tour-step="glossary">
+    <div className="tw:h-full" data-testid="glossary-left-panel">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {createGlossaryPermission && (

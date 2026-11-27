@@ -165,7 +165,7 @@ class HexApiClient:
                 export = ProjectExport.model_validate(
                     self.client.post("/projects/export", json={"projectId": project_id})
                 )
-                self._export = (project_id, yaml.safe_load(export.content) or {})
+                self._export = (project_id, _load_export(export.content))
             except Exception as exc:
                 # Kept, so the next stage of the same project doesn't spend another call to fail again
                 self._export = (project_id, exc)
@@ -239,6 +239,28 @@ class HexApiClient:
         # Only editors can open the notebook (/hex); a published app (/app) is viewable by everyone
         path = "app" if project.lastPublishedAt else "hex"
         return f"{clean_uri(self.config.hostPort)}/{self.workspace_id}/{path}/{project.id}"
+
+
+class _ExportLoader(yaml.SafeLoader):
+    """
+    Every value the export gives is text, so only null is resolved: a cell labelled `no` or
+    `2024` must not reach the model as a bool or an int
+    """
+
+
+_ExportLoader.yaml_implicit_resolvers = {
+    first: [(tag, regexp) for tag, regexp in resolvers if tag == "tag:yaml.org,2002:null"]
+    for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+
+
+def _load_export(content: str) -> dict:
+    try:
+        return yaml.load(content, Loader=_ExportLoader) or {}
+    except yaml.YAMLError:
+        # PyYAML rejects a tab inside a plain scalar (`text: id<TAB>email`), which YAML allows
+        # and Hex writes; tabs are never indentation in valid YAML, so spaces keep the structure
+        return yaml.load(content.replace("\t", " "), Loader=_ExportLoader) or {}
 
 
 def _flatten_export_cells(export_cells: list[dict]) -> list[Cell]:

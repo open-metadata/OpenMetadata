@@ -13,7 +13,7 @@
       "default": "default"
     },
     "enabled": {
-      "description": "Enable it for pipelines deployed in the server",
+      "description": "Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3 (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).",
       "type": "boolean",
       "default": false
     },

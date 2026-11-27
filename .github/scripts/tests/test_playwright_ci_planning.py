@@ -36,16 +36,6 @@ def test_duration_aware_sharding_uses_longest_processing_time_first():
     assert [sum(unit.weight_ms for unit in shard) for shard in shards] == [100, 100]
 
 
-def test_basic_and_chromium_share_the_bounded_common_lane():
-    planner = load_script("build_playwright_shards")
-
-    assert planner.PROJECT_LANES["Basic"] == "chromium"
-    assert planner.lane_bounds("chromium", "full") == (
-        5,
-        planner.COMMON_MAX_SHARDS,
-    )
-
-
 def test_full_common_shard_count_is_capped_at_the_common_max():
     planner = load_script("build_playwright_shards")
     cap = planner.COMMON_MAX_SHARDS
@@ -63,18 +53,6 @@ def test_full_common_shard_count_is_capped_at_the_common_max():
     ]
 
     assert planner.shard_count(units, "chromium", "full") == cap
-
-
-def test_common_lane_carries_its_own_shard_budget():
-    # Chromium's budget is a minute UNDER the other lanes' TARGET_MS, derived
-    # from the predicted→actual execution tail: actuals run up to 1.23× the
-    # prediction on noisy runs (run 32209040146), and 19 min × 1.32 is the
-    # break-even against the 25-minute playwright wrapper. See the derivation
-    # comment on COMMON_SHARD_BUDGET_MS.
-    planner = load_script("build_playwright_shards")
-
-    assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
-    assert planner.shard_budget_ms_for_lane("global-state") == 20 * 60 * 1000
 
 
 def test_predicted_execution_applies_runner_efficiency():
@@ -852,20 +830,6 @@ def test_main_fails_on_misrouted_lane_hint(tmp_path):
     assert not (output_dir / "matrix.json").exists()
 
 
-def test_oversized_units_error_names_both_common_fixes():
-    # The improved error message must point the reader at BOTH the tag
-    # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
-    # message just said "refactor or audit" and left developers guessing.
-    src = (SCRIPTS / "build_playwright_shards.py").read_text()
-
-    assert "FILE_LANE_HINTS" in src
-    # The oversized branch mentions both remediation paths:
-    oversized_index = src.index("Atomic Playwright units exceed")
-    following = src[oversized_index:oversized_index + 2000]
-    assert "tag:" in following or "tag option" in following.lower() or "'{ tag:" in following
-    assert "AUDITED_PARALLEL_SUITES" in following
-
-
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
     # Was previously "only_preserves_explicit_skips" — the planner used to pin
     # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
@@ -1249,40 +1213,6 @@ def test_search_rbac_does_not_depend_on_data_asset_rule_assertions():
     assert expanded == [search]
 
 
-def test_domain_isolation_and_search_share_the_global_state_lane():
-    planner = load_script("build_playwright_shards")
-
-    for project in (
-        "DomainIsolation",
-        "search-nightly",
-        "GlobalSettings",
-        "SystemCertificationTags",
-        "IntakeForm",
-    ):
-        assert planner.PROJECT_LANES[project] == "global-state"
-    assert planner.LANE_WORKERS["global-state"] == 1
-    assert "domain-isolation" not in planner.LANE_WORKERS
-    assert "search" not in planner.LANE_WORKERS
-
-
-def test_search_rbac_uses_an_isolated_single_worker_lane():
-    planner = load_script("build_playwright_shards")
-
-    assert planner.PROJECT_LANES["SearchRBAC"] == "search-rbac"
-    assert planner.LANE_WORKERS["search-rbac"] == 1
-    assert planner.lane_bounds("search-rbac", "full") == (1, 8)
-
-
-def test_import_export_runs_in_its_own_lane_with_two_workers():
-    planner = load_script("build_playwright_shards")
-
-    assert "ImportExport" in planner.FULL_PROJECTS
-    assert planner.PROJECT_LANES["ImportExport"] == "import-export"
-    assert planner.LANE_WORKERS["import-export"] == 2
-    assert planner.lane_bounds("import-export", "full") == (1, 8)
-    assert planner.lane_bounds("import-export", "targeted") == (1, 2)
-
-
 def test_targeted_side_lane_grows_past_its_starting_cap_to_meet_the_budget():
     # A targeted PR that touches helpers nearly every spec imports (e.g.
     # playwright/utils/common.ts) selects a whole side lane. The targeted cap
@@ -1517,7 +1447,7 @@ def test_persona_details_change_selects_ai_context_specs(tmp_path, monkeypatch):
     } <= selected_specs
 
 
-def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypatch):
+def test_explore_changes_select_schema_search_for_chromium(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     changed = tmp_path / "changed.txt"
     output = tmp_path / "selection.json"
@@ -1549,48 +1479,7 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
         for entry in selection["selectors"]
         if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
-    assert "Ingestion" in schema_search["projects"]
-
-
-def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
-    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
-    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
-    ``SearchRBAC`` project runs. Without that project in the mapping the selector
-    resolves to zero units and build_playwright_shards.py aborts the whole plan.
-    """
-    selector = load_script("select_playwright_tests")
-    changed = tmp_path / "changed.txt"
-    output = tmp_path / "selection.json"
-    changed.write_text(
-        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
-        "QuickFilterDropdown.tsx\n"
-    )
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(Path(".github/playwright/impact-map.json")),
-            "--output",
-            str(output),
-        ],
-    )
-
-    selector.main()
-
-    selection = json.loads(output.read_text())
-    search_rbac = next(
-        entry
-        for entry in selection["selectors"]
-        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
-    )
-    assert "SearchRBAC" in search_rbac["projects"]
+    assert "chromium" in schema_search["projects"]
 
 
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
@@ -1853,8 +1742,6 @@ def test_is_lifecycle_test_matches_setup_projects():
         "entity-data-setup",
         "entity-data-teardown",
         "data-insight-application",
-        "search-rbac-setup",
-        "search-rbac-teardown",
     ]:
         assert verifier.is_lifecycle_test({"id": "x", "project": project}), project
 
@@ -2367,114 +2254,6 @@ def test_outcome_classifier_separates_lifecycle_retries_from_product_totals(tmp_
     assert outcome["retryPasses"][0]["lifecycle"] is True
 
 
-def test_fast_opensearch_config_does_not_duplicate_security_disable():
-    fast_compose = (
-        SCRIPTS.parents[1] / "docker/development/docker-compose-playwright-fast.yml"
-    ).read_text()
-
-    assert 'plugins.security.disabled: "true"' in fast_compose
-    assert "DISABLE_SECURITY_PLUGIN" not in fast_compose
-
-
-def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
-    fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
-    fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
-    fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
-        "  playwright-ci:", 1
-    )[0]
-
-    assert "searchClusterAlias: $searchClusterAlias" in fixture_builder
-    assert "ELASTICSEARCH_CLUSTER_ALIAS: openmetadata" in fixture_job
-    assert "s/^[[:space:]]+//" in fixture_builder
-    assert ".searchClusterAlias" in fast_launcher
-    assert (
-        'export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"' in fast_launcher
-    )
-    assert "provider_address_texas" in fast_launcher
-
-
-def test_planner_discovers_oss_only_specs():
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
-    planner_job = workflow.split("  plan-playwright:", 1)[1].split(
-        "  restore-playwright-fixture:", 1
-    )[0]
-    discovery_step = planner_job.split("      - name: Discover tests", 1)[1].split(
-        "      - name: Build duration-aware shard plans", 1
-    )[0]
-
-    assert 'PLAYWRIGHT_IS_OSS: "true"' in discovery_step
-
-
-def test_basic_project_excludes_dedicated_state_specs():
-    playwright_config = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-    ).read_text()
-    basic_project = playwright_config.split("name: 'Basic'", 1)[1].split(
-        "name: 'Ingestion'", 1
-    )[0]
-
-    assert "testIgnore: dedicatedStateTestIgnore" in basic_project
-    assert "'**/SearchSettings.spec.ts'" in playwright_config
-    assert "'**/SearchSeparation/**'" in playwright_config
-    assert "'**/*AfterReindex.spec.ts'" in playwright_config
-
-
-def test_search_rbac_uses_only_its_setup_and_teardown_projects():
-    playwright_config = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-    ).read_text()
-    search_project = playwright_config.split("name: 'SearchRBAC'", 1)[1].split(
-        "name: 'DomainIsolation'", 1
-    )[0]
-
-    assert "name: 'search-rbac-setup'" in playwright_config
-    assert "teardown: 'search-rbac-teardown'" in playwright_config
-    assert "dependencies: ['search-rbac-setup']" in search_project
-    assert "DataAssetRulesDisabled" not in search_project
-
-
-def test_search_rbac_state_setup_maps_only_to_search_rbac():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry
-        for entry in impact_map["mappings"]
-        if "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts"
-        in entry["sources"]
-    )
-
-    assert mapping["projects"] == ["SearchRBAC"]
-    assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
-
-
-def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry
-        for entry in impact_map["mappings"]
-        if "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
-        in entry["sources"]
-    )
-    schema_search = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
-    ).read_text()
-
-    assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
-    assert "Ingestion" in mapping["projects"]
-    assert "tag: '@ingestion'" in schema_search
-
-
 def test_scheduler_impact_mapping_covers_shared_consumers():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
@@ -2552,32 +2331,6 @@ def test_import_export_impacts_use_the_dedicated_project(source_pattern, spec_pa
     assert "@import-export" in source
 
 
-def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry for entry in impact_map["mappings"] if "ingestion/**" in entry["sources"]
-    )
-
-    data_quality_specs = {
-        spec for spec in mapping["specs"] if "/Features/DataQuality/" in spec
-    }
-    assert mapping["projects"] == ["Ingestion"]
-    assert data_quality_specs == {
-        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
-        "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
-        "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
-    }
-    for spec in data_quality_specs:
-        source = (
-            SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec
-        ).read_text()
-        assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in source or "tag: '@ingestion'" in source
-
-
 def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
@@ -2586,9 +2339,11 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     assert (
         "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
     )
-    assert (
-        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
-        in impact_map["delegatedSpecs"]
+    # The Ontology RDF specs moved to Collate; a leftover glob would route a
+    # matching OpenMetadata spec away from every lane.
+    assert not any(
+        "Ontology" in pattern and "Rdf" in pattern
+        for pattern in impact_map["delegatedSpecs"]
     )
 
 
@@ -2837,178 +2592,25 @@ def test_security_impact_mapping_includes_ingestion_permission_specs():
     )
 
 
-def test_summary_reconciles_results_and_evaluates_performance_independently():
-    # The playwright-summary job lives in the postgres PR caller (not the
-    # reusable) so branch protection can require its unprefixed check name.
-    # The paths-filter that watches render_playwright_summary.cjs still
-    # lives in the reusable's check-changes job.
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
-    ).read_text()
-    reusable = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
-    ).read_text()
-    summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
-    summary_job = workflow.split("  playwright-summary:", 1)[1]
-    coverage_step = workflow.split(
-        "      - name: Verify Playwright timing coverage", 1
-    )[1].split("      - name: Evaluate Playwright performance", 1)[0]
-    performance_step = workflow.split(
-        "      - name: Evaluate Playwright performance", 1
-    )[1].split("      - name: Upload merged Playwright report", 1)[0]
-
-    assert "--result-glob" in coverage_step
-    assert "playwright-results-json-*/results.json" in coverage_step
-    assert "evaluate_playwright_performance.py" not in coverage_step
-    assert "evaluate_playwright_performance.py" in performance_step
-    assert "if: ${{ always() && !cancelled() }}" in summary_job
-    assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
-    assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
-    summary_script = summary_job.split("          script: |\n", 1)[1].split(
-        "\n      - name:", 1
-    )[0]
-    assert len(summary_script) < 21_000
-    assert "- '.github/scripts/render_playwright_summary.cjs'" in reusable
-    assert "'${{ github.run_id }}'" not in summary_helper
-    assert "process.env.GITHUB_RUN_ID" in summary_helper
-    assert "zero-attempt; reason unknown" in summary_helper
-    assert "CI/reporting failure(s)" in summary_helper
-    assert "### CI and reporting failures" in summary_helper
-    assert "specFile.endsWith('.setup.ts')" in summary_helper
-    assert "lifecycleFailures" in summary_helper
-    assert "lifecycleFlaky" in summary_helper
-    assert ".budgetTargets.reportingAtMostTwoMinutes" in workflow
-    assert ".budgetTargetsMet = ([.budgetTargets[]] | all)" in workflow
-    assert "Signal Playwright budget breaches" in workflow
-    assert "### Performance targets" in summary_helper
-    assert "### Performance budget and convergence warnings" in summary_helper
-    assert "Budget targets signal capacity problems" in summary_helper
-    assert "convergenceWarnings" in summary_helper
-    assert "workflowWallSeconds" in summary_helper
-    assert "Full workflow signal wall (to summary)" in summary_helper
-    assert "Maximum shard-job elapsed before upload" in summary_helper
-    assert "version: 2" in summary_helper
-    performance_reporter = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"
-    ).read_text()
-    assert "lifecycleTests" in performance_reporter
-
-
-def test_playwright_summary_commonjs_helper_executes(tmp_path):
-    helper = SCRIPTS / "render_playwright_summary.cjs"
-    results_dir = tmp_path / "results/playwright-results-json-chromium-01"
-    results_dir.mkdir(parents=True)
-    (results_dir / "results.json").write_text(
-        json.dumps(
-            {
-                "suites": [
-                    {
-                        "file": "playwright/e2e/example.spec.ts",
-                        "specs": [
-                            {
-                                "title": "passes",
-                                "tests": [
-                                    {
-                                        "status": "expected",
-                                        "results": [{}],
-                                    }
-                                ],
-                            }
-                        ],
-                    }
-                ]
-            }
-        )
+def test_playwright_summary_commonjs_helper_executes(summary_with_passing_shard):
+    rendered, payload = _run_playwright_summary_harness(
+        summary_with_passing_shard,
+        event_name="workflow_dispatch",
+        extra_env={},
+        expected_shards=["chromium-01"],
     )
-    (results_dir / "ci-status.json").write_text(
-        json.dumps({"steps": {"tests": "success"}})
-    )
-    payload_path = tmp_path / "playwright-pr-comment/summary.json"
-    harness = f"""
-const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
-let summaryBody = '';
-let failure = null;
-const summary = {{
-  addRaw(body) {{
-    summaryBody = body;
-    return summary;
-  }},
-  async write() {{}},
-}};
-const core = {{
-  summary,
-  warning() {{}},
-  setFailed(message) {{
-    failure = message;
-  }},
-}};
-
-(async () => {{
-  await renderPlaywrightSummary({{
-    github: {{}},
-    context: {{
-      eventName: 'workflow_dispatch',
-      payload: {{}},
-      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
-    }},
-    core,
-  }});
-  process.stdout.write(JSON.stringify({{ summaryBody, failure }}));
-}})().catch(error => {{
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
-}});
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "CHECK_CHANGES_RESULT": "success",
-            "CACHE_KEYS_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "DETECT_CHANGES_RESULT": "success",
-            "PLAN_RESULT": "success",
-            "FIXTURE_RESTORE_RESULT": "success",
-            "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
-            "RUNNER_TEMP": str(tmp_path),
-            "COMMENT_PAYLOAD_PATH": str(payload_path),
-            "GITHUB_RUN_ID": "12345",
-        }
-    )
-
-    completed = subprocess.run(
-        ["node", "-e", harness],
-        cwd=tmp_path,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    assert completed.returncode == 0, completed.stderr
-    rendered = json.loads(completed.stdout)
     assert rendered["failure"] is None
     assert "all 1 tests passed" in rendered["summaryBody"]
     assert (
         "https://github.com/open-metadata/OpenMetadata/actions/runs/12345"
         in rendered["summaryBody"]
     )
-    payload = json.loads(payload_path.read_text())
     assert payload["totals"]["passed"] == 1
     assert payload["shards"][0]["id"] == "chromium-01"
 
 
-def _run_playwright_summary_harness(tmp_path, *, event_name, extra_env, expected_shards):
-    """Run renderPlaywrightSummary with a single passing shard and a matrix
-    that expects TWO shards, so the second is always "missing" — a canonical
-    infrastructure-issue setup (see run 34244326002 — chromium-09 and
-    advanced-search-01 uploaded blob but 403'd on FinalizeArtifact, so their
-    results.json never landed and the summary counted 149 missing tests +
-    4 per-shard "did not upload" issues). Returns the parsed harness result.
-    """
-    helper = SCRIPTS / "render_playwright_summary.cjs"
+@pytest.fixture
+def summary_with_passing_shard(tmp_path):
     results_dir = tmp_path / "results/playwright-results-json-chromium-01"
     results_dir.mkdir(parents=True)
     (results_dir / "results.json").write_text(
@@ -3036,6 +2638,12 @@ def _run_playwright_summary_harness(tmp_path, *, event_name, extra_env, expected
     (results_dir / "ci-status.json").write_text(
         json.dumps({"steps": {"tests": "success"}})
     )
+    return tmp_path
+
+
+def _run_playwright_summary_harness(tmp_path, *, event_name, extra_env, expected_shards):
+    """Execute the summary helper against the supplied result artifacts."""
+    helper = SCRIPTS / "render_playwright_summary.cjs"
     payload_path = tmp_path / "playwright-pr-comment/summary.json"
     harness = f"""
 const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
@@ -3105,9 +2713,9 @@ const core = {{
     return json.loads(completed.stdout), json.loads(payload_path.read_text())
 
 
-def test_playwright_summary_pr_fails_when_expected_shard_is_missing(tmp_path):
+def test_playwright_summary_pr_fails_when_expected_shard_is_missing(summary_with_passing_shard):
     rendered, payload = _run_playwright_summary_harness(
-        tmp_path,
+        summary_with_passing_shard,
         event_name="pull_request",
         extra_env={},
         expected_shards=["chromium-01", "chromium-99"],
@@ -3120,14 +2728,14 @@ def test_playwright_summary_pr_fails_when_expected_shard_is_missing(tmp_path):
     assert payload["infrastructureIssueCount"] >= 1
 
 
-def test_playwright_summary_merge_group_passes_when_only_infra_issues(tmp_path):
+def test_playwright_summary_merge_group_passes_when_only_infra_issues(summary_with_passing_shard):
     # Merge-queue tentative merges must NOT fail on infra-only issues. The
     # repo's merge-queue grouping strategy is ALLGREEN — a failing non-required
     # check still dissolves the whole batch — so an artifact-upload race on
     # one shard (run 34244326002) is enough to eject a green batch. The strict
     # checks already ran on the PR before it entered the queue.
     rendered, payload = _run_playwright_summary_harness(
-        tmp_path,
+        summary_with_passing_shard,
         event_name="merge_group",
         extra_env={},
         expected_shards=["chromium-01", "chromium-99"],
@@ -3141,10 +2749,11 @@ def test_playwright_summary_merge_group_passes_when_only_infra_issues(tmp_path):
     assert "did not upload" in rendered["summaryBody"]
 
 
-def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
-    # Real test failures still gate the merge_group check — this is the only
-    # signal that the tentative merge broke something on `main`.
-    helper = SCRIPTS / "render_playwright_summary.cjs"
+@pytest.mark.parametrize(
+    "event_name",
+    ["pull_request", "merge_group", "schedule", "workflow_dispatch"],
+)
+def test_playwright_summary_fails_on_real_test_failure_for_supported_events(tmp_path, event_name):
     results_dir = tmp_path / "results/playwright-results-json-chromium-01"
     results_dir.mkdir(parents=True)
     (results_dir / "results.json").write_text(
@@ -3169,124 +2778,16 @@ def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
     (results_dir / "ci-status.json").write_text(
         json.dumps({"steps": {"tests": "failure"}})
     )
-    payload_path = tmp_path / "playwright-pr-comment/summary.json"
-    harness = f"""
-const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
-let failure = null;
-const summary = {{ addRaw() {{ return summary; }}, async write() {{}} }};
-const core = {{
-  summary,
-  warning() {{}},
-  setFailed(message) {{ failure = message; }},
-}};
-(async () => {{
-  await renderPlaywrightSummary({{
-    github: {{}},
-    context: {{
-      eventName: 'merge_group',
-      payload: {{}},
-      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
-    }},
-    core,
-  }});
-  process.stdout.write(JSON.stringify({{ failure }}));
-}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "CHECK_CHANGES_RESULT": "success",
-            "CACHE_KEYS_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "DETECT_CHANGES_RESULT": "success",
-            "PLAN_RESULT": "success",
-            "FIXTURE_RESTORE_RESULT": "success",
-            "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
-            "RUNNER_TEMP": str(tmp_path),
-            "COMMENT_PAYLOAD_PATH": str(payload_path),
-            "GITHUB_RUN_ID": "12345",
-        }
+    rendered, _ = _run_playwright_summary_harness(
+        tmp_path,
+        event_name=event_name,
+        extra_env={},
+        expected_shards=["chromium-01"],
     )
-    completed = subprocess.run(
-        ["node", "-e", harness],
-        cwd=tmp_path,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0, completed.stderr
-    rendered = json.loads(completed.stdout)
+
     assert rendered["failure"] is not None
     assert "1 Playwright test failure(s)" in rendered["failure"]
     assert "author action needed" in rendered["failure"]
-
-
-def _run_playwright_summary_bare(
-    tmp_path, *, event_name, playwright_result, expected_shards
-):
-    """Run renderPlaywrightSummary with an empty results directory — no per-
-    shard result files at all. Simulates the summary job's own download step
-    flaking (run 34312746335: 37/37 shards succeeded upstream but
-    REPORT_DOWNLOAD_RESULTS_OUTCOME=failure lost every per-shard results.json,
-    producing 75 infrastructure issues and totals.passed=0 / totals.failed=0).
-    Callers vary PLAYWRIGHT_RESULT to model matrix outcomes.
-    """
-    helper = SCRIPTS / "render_playwright_summary.cjs"
-    payload_path = tmp_path / "playwright-pr-comment/summary.json"
-    harness = f"""
-const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
-let failure = null;
-const summary = {{ addRaw() {{ return summary; }}, async write() {{}} }};
-const core = {{
-  summary,
-  warning() {{}},
-  setFailed(message) {{ failure = message; }},
-}};
-(async () => {{
-  await renderPlaywrightSummary({{
-    github: {{}},
-    context: {{
-      eventName: {json.dumps(event_name)},
-      payload: {{}},
-      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
-    }},
-    core,
-  }});
-  process.stdout.write(JSON.stringify({{ failure }}));
-}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "CHECK_CHANGES_RESULT": "success",
-            "CACHE_KEYS_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "DETECT_CHANGES_RESULT": "success",
-            "PLAN_RESULT": "success",
-            "FIXTURE_RESTORE_RESULT": "success",
-            "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": playwright_result,
-            "EXPECTED_MATRIX": json.dumps(
-                {"include": [{"shardId": s} for s in expected_shards]}
-            ),
-            "RUNNER_TEMP": str(tmp_path),
-            "COMMENT_PAYLOAD_PATH": str(payload_path),
-            "GITHUB_RUN_ID": "12345",
-        }
-    )
-    completed = subprocess.run(
-        ["node", "-e", harness],
-        cwd=tmp_path,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0, completed.stderr
-    return json.loads(completed.stdout)
 
 
 def test_playwright_summary_merge_group_passes_when_summary_download_flakes(tmp_path):
@@ -3295,10 +2796,10 @@ def test_playwright_summary_merge_group_passes_when_summary_download_flakes(tmp_
     # returned nothing, so the render script sees zero per-shard results. On
     # merge_group we trust the matrix's own result — passing shards mean
     # passing tests, even when we can't fetch the per-shard artifacts.
-    rendered = _run_playwright_summary_bare(
+    rendered, _ = _run_playwright_summary_harness(
         tmp_path,
         event_name="merge_group",
-        playwright_result="success",
+        extra_env={"PLAYWRIGHT_RESULT": "success"},
         expected_shards=["chromium-01", "chromium-02"],
     )
     assert rendered["failure"] is None, (
@@ -3312,10 +2813,10 @@ def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
     # failure/skipped/cancelled — any state that isn't an authoritative
     # "tests passed" signal from GitHub's own matrix aggregation.
     for state in ("failure", "cancelled", "skipped", ""):
-        rendered = _run_playwright_summary_bare(
+        rendered, _ = _run_playwright_summary_harness(
             tmp_path,
             event_name="merge_group",
-            playwright_result=state,
+            extra_env={"PLAYWRIGHT_RESULT": state},
             expected_shards=["chromium-01"],
         )
         assert rendered["failure"] is not None, (
@@ -3337,7 +2838,6 @@ def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
     #   * collapse them to a single canonical <shardId> (no
     #     "Unexpected shard <shardId>-retry uploaded results" issue),
     #   * prefer the retry copy (the primary is the reason we retried).
-    helper = SCRIPTS / "render_playwright_summary.cjs"
 
     def write_shard(name, statuses):
         d = tmp_path / "results" / f"playwright-results-json-{name}"
@@ -3369,61 +2869,12 @@ def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
     write_shard("chromium-01", ["expected", "flaky", "expected"])
     write_shard("chromium-01-retry", ["expected"] * 5)
 
-    payload_path = tmp_path / "playwright-pr-comment/summary.json"
-    harness = f"""
-const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
-let failure = null;
-let summaryBody = '';
-const summary = {{
-  addRaw(body) {{ summaryBody = body; return summary; }},
-  async write() {{}},
-}};
-const core = {{
-  summary,
-  warning() {{}},
-  setFailed(message) {{ failure = message; }},
-}};
-(async () => {{
-  await renderPlaywrightSummary({{
-    github: {{}},
-    context: {{
-      eventName: 'pull_request',
-      payload: {{}},
-      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
-    }},
-    core,
-  }});
-  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
-}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "CHECK_CHANGES_RESULT": "success",
-            "CACHE_KEYS_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "DETECT_CHANGES_RESULT": "success",
-            "PLAN_RESULT": "success",
-            "FIXTURE_RESTORE_RESULT": "success",
-            "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
-            "RUNNER_TEMP": str(tmp_path),
-            "COMMENT_PAYLOAD_PATH": str(payload_path),
-            "GITHUB_RUN_ID": "12345",
-        }
+    rendered, payload = _run_playwright_summary_harness(
+        tmp_path,
+        event_name="pull_request",
+        extra_env={},
+        expected_shards=["chromium-01"],
     )
-    completed = subprocess.run(
-        ["node", "-e", harness],
-        cwd=tmp_path,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0, completed.stderr
-    rendered = json.loads(completed.stdout)
-    payload = json.loads(payload_path.read_text())
 
     # Retry wins: totals reflect the 5-passing retry, not the 3-with-flaky primary.
     assert payload["totals"]["passed"] == 5, payload["totals"]
@@ -3448,7 +2899,6 @@ def test_playwright_summary_prefers_current_attempt_over_stale_retry(tmp_path):
     # renderer's "retry beats primary" tiebreaker would keep counting the
     # stale failure — 8 phantom CI/reporting issues (4 shards × 2 messages)
     # permanently reddened an otherwise-green required check.
-    helper = SCRIPTS / "render_playwright_summary.cjs"
 
     def write_shard(dirname, statuses, ci_status_steps):
         d = tmp_path / "results" / f"playwright-results-json-{dirname}"
@@ -3488,61 +2938,12 @@ def test_playwright_summary_prefers_current_attempt_over_stale_retry(tmp_path):
         {"downloadDistribution": "success", "tests": "success"},
     )
 
-    payload_path = tmp_path / "playwright-pr-comment/summary.json"
-    harness = f"""
-const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
-let failure = null;
-let summaryBody = '';
-const summary = {{
-  addRaw(body) {{ summaryBody = body; return summary; }},
-  async write() {{}},
-}};
-const core = {{
-  summary,
-  warning() {{}},
-  setFailed(message) {{ failure = message; }},
-}};
-(async () => {{
-  await renderPlaywrightSummary({{
-    github: {{}},
-    context: {{
-      eventName: 'pull_request',
-      payload: {{}},
-      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
-    }},
-    core,
-  }});
-  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
-}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "CHECK_CHANGES_RESULT": "success",
-            "CACHE_KEYS_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "DETECT_CHANGES_RESULT": "success",
-            "PLAN_RESULT": "success",
-            "FIXTURE_RESTORE_RESULT": "success",
-            "FIXTURE_RESULT": "success",
-            "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
-            "RUNNER_TEMP": str(tmp_path),
-            "COMMENT_PAYLOAD_PATH": str(payload_path),
-            "GITHUB_RUN_ID": "12345",
-        }
+    rendered, payload = _run_playwright_summary_harness(
+        tmp_path,
+        event_name="pull_request",
+        extra_env={},
+        expected_shards=["chromium-01"],
     )
-    completed = subprocess.run(
-        ["node", "-e", harness],
-        cwd=tmp_path,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0, completed.stderr
-    rendered = json.loads(completed.stdout)
-    payload = json.loads(payload_path.read_text())
 
     # Attempt 2's green primary wins: totals reflect the 5 passing tests,
     # not the attempt-1 stub with a skipped test.
@@ -3557,26 +2958,6 @@ const core = {{
     assert payload["infrastructureIssueCount"] == 0, payload["infrastructureIssues"]
     assert rendered["failure"] is None, rendered["failure"]
     assert "downloadDistribution" not in rendered["summaryBody"]
-
-
-def test_normal_vite_build_keeps_hashed_entry_assets():
-    vite_config = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
-    ).read_text()
-    app_entry = (
-        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/src/index.tsx"
-    ).read_text()
-
-    assert "? 'assets/app-entry-[hash].js'" in vite_config
-    assert ": 'assets/[name]-[hash].js'" in vite_config
-    assert (
-        "'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild)"
-        in vite_config
-    )
-    assert "if (!import.meta.env.PW_E2E_BUILD)" in app_entry
-    assert "sessionStorage.getItem(scenarioKey)" in app_entry
-    assert "'playwright-app-boot': '1'" in app_entry
-    assert "diagnostics.set('playwright-ui-scenario', '1')" in app_entry
 
 
 def test_spec_file_exists_distinguishes_real_and_missing_specs(tmp_path, monkeypatch):
@@ -3656,47 +3037,6 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
     )
 
 
-def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
-    tmp_path, monkeypatch
-):
-    # Editing an OntologyExplorer source file fans out via the source->spec
-    # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
-    # postgres specs and the delegated @ontology-rdf spec. The regular ones must
-    # be selected; the delegated RDF spec must be dropped so the postgres plan
-    # does not get a shard with zero runnable tests.
-    selector = load_script("select_playwright_tests")
-    changed = tmp_path / "changed.txt"
-    output = tmp_path / "selection.json"
-    changed.write_text(
-        f"{selector.UI_ROOT}"
-        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
-    )
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(Path(".github/playwright/impact-map.json")),
-            "--output",
-            str(output),
-        ],
-    )
-
-    selector.main()
-
-    selection = json.loads(output.read_text())
-    selected_specs = {entry["spec"] for entry in selection["selectors"]}
-    # The delegated RDF spec is excluded from the postgres selection...
-    assert "playwright/e2e/Features/OntologyStudioRdf.spec.ts" not in selected_specs
-    # ...while the non-delegated Ontology Studio specs from the same glob remain,
-    # proving the mapping fired and only the delegated spec was dropped.
-    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
 
 
 def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):
@@ -4296,7 +3636,7 @@ def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
 
 def test_is_code_path_covers_every_root_the_e2e_filter_matches():
     """
-    Kept in lock-step with the `e2e` paths in playwright-e2e-reusable.yml.
+    Kept in lock-step with the `e2e` paths in reusable-playwright-e2e.yml.
     If a root gets added to that filter but not to UNMAPPED_CODE_ROOTS, a
     change under it would reach the planner (check-changes passed) but not
     trigger an escalation, silently reintroducing the coverage gap this
@@ -4358,7 +3698,6 @@ def _plan_with_gated_lanes(tmp_path, mode, enabled_lanes, selectors=()):
                     suite("Pages/Glossary.spec.ts", "chromium", 2),
                     suite("VisualRegression/Glossary.spec.ts", "visual-regression", 2),
                     suite("Features/KnowledgeGraph.spec.ts", "Knowledge Graph", 2),
-                    suite("Features/OntologyExplorerRdf.spec.ts", "Ontology RDF", 2),
                 ]
             }
         )
@@ -4397,7 +3736,7 @@ def test_visual_and_rdf_lanes_run_only_when_their_path_filters_enable_them(tmp_p
     matrix, plans = _plan_with_gated_lanes(tmp_path / "on", "full", ["visual", "rdf"])
     assert {entry["shardId"] for entry in matrix} >= {"visual-01", "rdf-01"}
     assert plans["visual"]["projects"] == ["visual-regression"]
-    assert plans["rdf"]["projects"] == ["Knowledge Graph", "Ontology RDF"]
+    assert plans["rdf"]["projects"] == ["Knowledge Graph"]
     assert not plans["rdf"]["requiresAirflow"]
 
 
@@ -4414,4 +3753,4 @@ def test_enabled_gated_lane_runs_in_full_on_a_targeted_plan_without_timing_histo
     )
     assert "rdf-01" in {entry["shardId"] for entry in matrix}
     assert "visual" not in plans
-    assert plans["rdf"]["testCount"] == 4
+    assert plans["rdf"]["testCount"] == 2
