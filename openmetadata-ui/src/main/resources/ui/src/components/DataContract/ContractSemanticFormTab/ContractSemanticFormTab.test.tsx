@@ -32,27 +32,37 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../common/QueryBuilder/QueryBuilder', () => {
+  const { useState } = jest.requireActual('react');
+
   return function MockQueryBuilder({
     onChange,
     onActionsReady,
     value,
     readonly,
+    tree,
   }: {
     onChange?: (value: string, tree: JsonTree) => void;
     onActionsReady?: (actions: Actions) => void;
     value?: string;
     readonly?: boolean;
+    tree?: JsonTree;
   }) {
+    // The real builder loads its tree once on mount, so a stale tree on the
+    // mounting render is what the user sees.
+    const [mountedTree] = useState(() => JSON.stringify(tree));
+
     return (
       <div data-testid="query-builder-widget">
         <span>Query Builder Widget</span>
         <span>Value: {value}</span>
         <span>Readonly: {readonly ? 'true' : 'false'}</span>
+        <span>Mounted tree: {mountedTree}</span>
         <button
           data-testid="mock-query-change"
           onClick={() => {
             onChange?.('{"and":[{"==":[{"var":"name"},"10"]}]}', {
               type: 'group',
+              id: 'edited-tree',
             } as JsonTree);
             onActionsReady?.({ addRule: jest.fn() } as unknown as Actions);
           }}>
@@ -357,6 +367,11 @@ describe('ContractSemanticFormTab', () => {
         })
       );
       expect(screen.getByText('Value: test rule')).toBeInTheDocument();
+      // The collapsed card's read-only builder must mount with the restored
+      // tree, not the cancelled one.
+      expect(
+        screen.getByText('Mounted tree: {"type":"group"}')
+      ).toBeInTheDocument();
     });
 
     it('does not emit on Cancel when nothing was edited', async () => {

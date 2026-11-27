@@ -104,7 +104,7 @@ export const ContractSemanticFormTab: React.FC<{
   const form = useForm<ContractSemanticFormValues>({
     defaultValues: { semantics: [] },
   });
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'semantics',
   });
@@ -131,13 +131,16 @@ export const ContractSemanticFormTab: React.FC<{
     if (!isNull(editingKey) && snapshot) {
       const current = form.getValues(`semantics.${editingKey}`);
       if (!isEqual(withoutBlankFields(current), withoutBlankFields(snapshot))) {
-        update(editingKey, snapshot);
+        // Not `update`: it re-keys the card and notifies useWatch a render
+        // late, so the read-only rule builder would mount with the cancelled
+        // tree and keep it.
+        form.setValue(`semantics.${editingKey}`, snapshot);
         onChange({ semantics: form.getValues('semantics') });
       }
       form.clearErrors(`semantics.${editingKey}`);
     }
     editSnapshotRef.current = undefined;
-  }, [editingKey, form, onChange, update]);
+  }, [editingKey, form, onChange]);
 
   useEffect(() => {
     form.reset({
