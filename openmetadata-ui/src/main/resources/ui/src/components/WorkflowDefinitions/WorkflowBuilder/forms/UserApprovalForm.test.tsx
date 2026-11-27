@@ -126,6 +126,21 @@ describe('UserApprovalForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('lists the default option first', async () => {
+    renderForm(node);
+
+    fireEvent.click(strategyTrigger());
+    await screen.findAllByRole('option');
+
+    expect(
+      screen.getAllByRole('option').map((option) => option.textContent)
+    ).toEqual([
+      'label.approve-automatically',
+      'label.assign-to-admins',
+      'label.keep-open-unassigned',
+    ]);
+  });
+
   it('saves the strategy picked in the form', async () => {
     const onSave = jest.fn();
     renderForm(nodeWithStrategy(EmptyAssigneeStrategy.None), onSave);

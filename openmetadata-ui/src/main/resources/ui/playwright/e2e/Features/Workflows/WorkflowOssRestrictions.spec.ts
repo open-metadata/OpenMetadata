@@ -30,9 +30,10 @@ const test = base.extend<{ page: Page }>({
 
 let workflowName: string;
 
-// The edit test switches the approval step to Assign admins. Skip every real table so tables other
-// workers create while this workflow is deployed never open an admin task.
-const NEVER_MATCHING_TABLE_FILTER = JSON.stringify({
+// The edit test switches the approval step to Assign admins. A filter that evaluates to true
+// excludes the entity, so this one excludes every table: tables other workers create while this
+// workflow is deployed never open an admin task.
+const EXCLUDE_EVERY_TABLE_FILTER = JSON.stringify({
   '!=': [{ var: 'name' }, `pw-oss-no-such-table-${uuid()}`],
 });
 
@@ -121,7 +122,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                 events: ['Created'],
                 exclude: [],
                 include: [],
-                filter: { table: NEVER_MATCHING_TABLE_FILTER },
+                filter: { table: EXCLUDE_EVERY_TABLE_FILTER },
               },
               output: ['relatedEntity', 'updatedBy'],
             },
@@ -238,7 +239,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         const savedWorkflow = (await saveRequest).postDataJSON();
 
         expect(savedWorkflow.trigger.config.filter.table).toBe(
-          NEVER_MATCHING_TABLE_FILTER
+          EXCLUDE_EVERY_TABLE_FILTER
         );
 
         const savedApprovalNode = (
@@ -260,6 +261,15 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+
+        await navigateToWorkflowDetailPage(page, workflowName);
+        const reopenedSidebar = await openTaskNodeSidebar(page);
+
+        await expect(
+          reopenedSidebar
+            .getByTestId('user-approval-empty-assignee-strategy-select')
+            .getByRole('button')
+        ).toContainText('Assign to admins');
       });
     });
 
@@ -354,7 +364,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       test('execution history tab loads and API call succeeds', async ({
         page,
       }) => {
-        // Trigger fires on table Created, so pin the payload to stay deterministic.
+        // Pin the instances payload so the history table renders the same rows on every run.
         await page.route(
           '**/api/v1/governance/workflowInstances**',
           async (route) => {

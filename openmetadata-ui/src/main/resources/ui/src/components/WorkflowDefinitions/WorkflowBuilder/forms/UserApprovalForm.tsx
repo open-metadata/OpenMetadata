@@ -40,7 +40,10 @@ import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
-import { EMPTY_ASSIGNEE_STRATEGY_OPTIONS } from './UserApprovalForm.constants';
+import {
+  EMPTY_ASSIGNEE_STRATEGY_OPTIONS,
+  EMPTY_ASSIGNEE_STRATEGY_ORDER,
+} from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
   node: Node;
@@ -374,7 +377,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
             onChange={(key) =>
               setEmptyAssigneeStrategy(key as EmptyAssigneeStrategy)
             }>
-            {Object.values(EmptyAssigneeStrategy).map((strategy) => (
+            {EMPTY_ASSIGNEE_STRATEGY_ORDER.map((strategy) => (
               <Select.Item
                 data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
                 id={strategy}

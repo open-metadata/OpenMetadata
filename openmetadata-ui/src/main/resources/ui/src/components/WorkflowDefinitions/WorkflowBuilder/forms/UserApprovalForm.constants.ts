@@ -30,3 +30,10 @@ export const EMPTY_ASSIGNEE_STRATEGY_OPTIONS: Record<
     hintKey: 'message.empty-assignee-strategy-wait-hint',
   },
 };
+
+// The default comes first; the generated enum is alphabetical.
+export const EMPTY_ASSIGNEE_STRATEGY_ORDER: EmptyAssigneeStrategy[] = [
+  EmptyAssigneeStrategy.None,
+  EmptyAssigneeStrategy.AssignAdmins,
+  EmptyAssigneeStrategy.Wait,
+];
