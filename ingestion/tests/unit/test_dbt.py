@@ -4639,6 +4639,94 @@ class TestAddDbtTestResultFailureReporting:
         assert "unknown" in recorded.name
 
 
+class TestDbtTestOnMissingColumn:
+    """A schema.yml test on a column the table does not have is a warning, not a failed record (#38812)."""
+
+    TABLE_FQN = "svc.db.sch.product_eng"
+
+    def _source(self, table):
+        from metadata.ingestion.api.status import Status
+
+        source = DbtSource.__new__(DbtSource)
+        source.status = Status()
+        source.metadata = MagicMock()
+        # The test case does not exist yet; only the table is found
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: table if entity is Table else None
+        source.context = MagicMock()
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 11, 24, 2, 30, 0)
+        return source
+
+    def _table(self):
+        return Table(
+            id=uuid.uuid4(),
+            name="product_eng",
+            fullyQualifiedName=self.TABLE_FQN,
+            columns=[
+                Column(name="TOTAL_PARTS", dataType=DataType.INT),
+                Column(
+                    name="ADDRESS",
+                    dataType=DataType.STRUCT,
+                    children=[Column(name="CITY", dataType=DataType.STRING)],
+                ),
+            ],
+        )
+
+    def _dbt_test(self, column_name):
+        manifest_node = MagicMock()
+        manifest_node.name = f"not_null_product_eng_{column_name}"
+        manifest_node.description = None
+        manifest_node.meta = None
+        manifest_node.column_name = column_name
+        manifest_node.test_metadata.name = "not_null"
+        manifest_node.test_metadata.kwargs = {
+            "column_name": column_name,
+            "model": "{{ get_where_subquery(ref('product_eng')) }}",
+        }
+        result = MagicMock()
+        result.message = "Got 3 results, configured to fail if != 0"
+        result.status.value = "fail"
+        result.unique_id = f"test.demo.{manifest_node.name}"
+        result.timing = []
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: result,
+            DbtCommonEnum.UPSTREAM.value: [self.TABLE_FQN],
+        }
+
+    def test_missing_column_is_skipped_with_an_actionable_warning(self):
+        source = self._source(self._table())
+        dbt_test = self._dbt_test("TOTAL_REQUEST")
+
+        assert list(source.create_dbt_test_case(dbt_test)) == []
+        source.add_dbt_test_result(dbt_test)
+
+        assert source.status.failures == []
+        assert len(source.status.warnings) == 1
+        reason = next(iter(source.status.warnings[0].values()))
+        assert "TOTAL_REQUEST" in reason
+        assert self.TABLE_FQN in reason
+        assert "schema.yml" in reason
+        source.metadata.add_test_case_results.assert_not_called()
+
+    @pytest.mark.parametrize("column_name", ["total_parts", "TOTAL_PARTS", "address.city"])
+    def test_existing_column_is_created(self, column_name):
+        source = self._source(self._table())
+
+        results = list(source.create_dbt_test_case(self._dbt_test(column_name)))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
+
+    def test_unknown_table_is_left_to_the_server(self):
+        source = self._source(None)
+
+        results = list(source.create_dbt_test_case(self._dbt_test("TOTAL_REQUEST")))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+
+
 class TestAddDbtSourceFreshnessResults:
     """
     `dbt source freshness` writes sources.json, whose result objects are a different
