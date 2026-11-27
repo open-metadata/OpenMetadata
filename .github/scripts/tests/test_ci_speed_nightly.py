@@ -28,7 +28,12 @@ PYTHON = CONNECTORS | {
     "airflow-apis",
     "sonar-cloud-coverage-upload",
 }
-JAVA = {"integration-test-build", "it-mysql-elasticsearch", "maven-sonarcloud-ci"}
+JAVA_SETUPS = (
+    "it-mysql-elasticsearch",
+    "it-postgres-opensearch",
+    "it-postgres-elasticsearch-redis",
+)
+JAVA = {"integration-test-build", *JAVA_SETUPS, "maven-sonarcloud-ci"}
 INGESTION_ON_DUTY = "<!subteam^S0AH093PEQL>"
 PLATFORM_ON_DUTY = "<!subteam^S0AH9J9UQ2V>"
 
@@ -152,20 +157,23 @@ def test_java_failure_alerts_platform_and_lists_skipped_jobs(report):
     status, summary, payloads = report(
         "java",
         JAVA,
-        {"integration-test-build": "failure", "it-mysql-elasticsearch": "skipped"},
+        {
+            "integration-test-build": "failure",
+            **dict.fromkeys(JAVA_SETUPS, "skipped"),
+        },
     )
     assert status == "true"
     assert "| Java integration runtime build | failure |" in summary
     assert set(payloads) == {"platform"}
     payload = payloads["platform"]
     assert payload["channel"] == "C0AC5T013V1"
+    after = " (after Java integration runtime build)"
     assert sections(payload) == {
         "*Failed*": ["• Java integration runtime build"],
         "*Did not run*": [
-            (
-                "• Java integration tests (MySQL + Elasticsearch)"
-                " (after Java integration runtime build)"
-            )
+            f"• Java integration tests (MySQL + Elasticsearch){after}",
+            f"• Java integration tests (PostgreSQL + OpenSearch){after}",
+            f"• Java integration tests (PostgreSQL + Elasticsearch + Redis){after}",
         ],
     }
     assert PLATFORM_ON_DUTY in json.dumps(payload)

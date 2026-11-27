@@ -70,5 +70,6 @@ job is selected and does not succeed, so a merge group that breaks a cache path 
 `integration-tests-postgres-elasticsearch-redis`.
 
 The skip-everything `pull_request` trigger is gone: PRs neither run this lane nor report its check.
-Pushes to `main` no longer run it either, so a merge that bypasses the ruleset gets no Redis signal
-until the next merge group that selects the lane, or a manual `ci-merge-queue` run.
+Pushes to `main` no longer run it either. `ci-nightly.yml` runs it every night with the same inputs,
+so a merge that bypasses the ruleset gets its Redis signal from the next nightly run, or earlier
+from the next merge group that selects the lane.

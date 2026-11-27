@@ -110,6 +110,18 @@ JOBS = {
         JAVA_RUNS,
         frozenset({"integration-test-build"}),
     ),
+    "it-postgres-opensearch": Job(
+        "Java integration tests (PostgreSQL + OpenSearch)",
+        "platform",
+        JAVA_RUNS,
+        frozenset({"integration-test-build"}),
+    ),
+    "it-postgres-elasticsearch-redis": Job(
+        "Java integration tests (PostgreSQL + Elasticsearch + Redis)",
+        "platform",
+        JAVA_RUNS,
+        frozenset({"integration-test-build"}),
+    ),
     # Sonar results are reported to the team but do not need someone the same morning.
     "maven-sonarcloud-ci": Job(
         "Java Sonar analysis", "platform", JAVA_RUNS, mentions=False

@@ -254,6 +254,34 @@ jobs:
       lanes_json: '["parallel","global-state","multi-node","retry-queue","rdf"]'
       store_database_version: oldest
 
+  # The merge queue runs these two only when Java paths change, and pushes to
+  # main do not run them, so the nightly is their daily run on main.
+  it-postgres-opensearch:
+    needs: integration-test-build
+    permissions:
+      contents: read
+      checks: write
+      packages: read
+    uses: ./.github/workflows/reusable-java-integration-lanes.yml
+    with:
+      profile_label: postgres-opensearch
+      maven_profile: postgres-opensearch
+      artifact_name: java-it-build-${{ github.run_id }}
+      lanes_json: '["parallel","global-state","multi-node","retry-queue","rdf"]'
+
+  it-postgres-elasticsearch-redis:
+    needs: integration-test-build
+    permissions:
+      contents: read
+      checks: write
+      packages: read
+    uses: ./.github/workflows/reusable-java-integration-lanes.yml
+    with:
+      profile_label: postgres-elasticsearch-redis
+      maven_profile: cache-tests
+      artifact_name: java-it-build-${{ github.run_id }}
+      lanes_json: '["parallel","global-state","multi-node","retry-queue"]'
+
   maven-sonarcloud-ci:
     name: Maven SonarCloud CI
     runs-on: ubuntu-latest
@@ -289,6 +317,8 @@ jobs:
       - sonar-cloud-coverage-upload
       - integration-test-build
       - it-mysql-elasticsearch
+      - it-postgres-opensearch
+      - it-postgres-elasticsearch-redis
       - maven-sonarcloud-ci
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
