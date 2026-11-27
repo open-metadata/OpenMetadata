@@ -102,6 +102,12 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
   ),
 }));
 
+const pageTwoPipeline = {
+  ...mockESIngestionData,
+  id: 'page-two-pipeline-id',
+  fullyQualifiedName: 'page.two.pipeline',
+};
+
 const mockLocationPathname = '/mock-path';
 
 const setUrl = (search = '') =>
@@ -227,6 +233,11 @@ describe('IngestionPipelineList', () => {
 
       fireEvent.click(screen.getByText('rowSelection'));
 
+      (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+        data: [pageTwoPipeline],
+        paging: { total: 3 },
+      });
+
       await act(async () => {
         fireEvent.click(screen.getByText(control));
       });
@@ -243,6 +254,9 @@ describe('IngestionPipelineList', () => {
       );
       expect(deployIngestionPipelineById).toHaveBeenCalledWith(
         mockESIngestionData.id
+      );
+      expect(deployIngestionPipelineById).not.toHaveBeenCalledWith(
+        pageTwoPipeline.id
       );
     }
   );
