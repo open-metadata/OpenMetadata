@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
-import IconTeams from '../../assets/svg/teams-grey.svg';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -99,8 +98,6 @@ export const useUserProfile = ({
       useApplicationStore.getState().userProfilePics;
 
     if (isTeam || currentUserProfilePics[cacheKey]) {
-      isTeam && setProfilePic(IconTeams);
-
       return;
     }
 

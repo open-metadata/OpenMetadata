@@ -135,7 +135,7 @@ test.describe('AI mode Observability — layout', () => {
       // way. What actually stops the tabs painting through is the page shell
       // owning a stacking context, so assert that too; it is the invariant the
       // `z-10` on each tab is scoped by.
-      await expect(page.getByTestId('observability-page-shell')).toHaveCSS(
+      await expect(page.getByTestId('test-suite-detail-page')).toHaveCSS(
         'isolation',
         'isolate'
       );

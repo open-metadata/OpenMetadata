@@ -229,6 +229,26 @@ describe('IncidentList', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows the assignee after a different user resolves the incident', () => {
+    renderList([
+      {
+        ...assigned,
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        testCaseResolutionStatusDetails: {
+          ...assigned.testCaseResolutionStatusDetails,
+          resolvedBy: { id: 'user-2', type: 'user', name: 'resolver' },
+        },
+      },
+    ]);
+
+    expect(screen.getByTestId('incident-status')).toHaveTextContent(
+      'label.resolved'
+    );
+    expect(screen.getByTestId('incident-assignee')).toHaveTextContent(
+      'Tomas Montiel'
+    );
+  });
+
   it('should show the last update as a short date over its time', () => {
     renderList();
 

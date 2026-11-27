@@ -1,7 +1,7 @@
 # Cursor-paged settings lists reach any page number by walking cached cursors
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial); v2 2026-11-17 (Members user lists narrowed out)
 - **Deciders:** Rohit Jain (settings modal design review)
 - **Guard:** `useCursorPagedList.test.ts` (jump, back-navigation and restart cases) and `PersonasLanding.test.tsx` (jump case)
 - **Related:** open-metadata/openmetadata-collate#7531, open-metadata/OpenMetadata#35630
@@ -30,3 +30,9 @@ Numbered jumps and the page input work on cursor endpoints without a server chan
 unvisited page costs one extra request per skipped page; acceptable for settings lists, which are
 short. Revisit if a list here can grow to many pages — at that point the endpoint should take an
 offset, and this walk should be replaced rather than tuned.
+
+## Amendment (v2, 2026-11-17)
+Members › Users, Admins and Online Users no longer offer numbered jumps: they can grow to many
+pages, the case this record says to revisit. They use the compact prev/next pager instead
+(ADR:2026-11-17-members-user-lists-use-the-compact-pager). Applications and Personas keep the
+walk described here.

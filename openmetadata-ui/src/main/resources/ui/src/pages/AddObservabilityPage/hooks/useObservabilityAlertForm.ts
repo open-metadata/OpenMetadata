@@ -15,12 +15,12 @@ import { useForm, UseFormReturn } from 'react-hook-form';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/eventSubscription';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import {
   ModifiedCreateEventSubscription,
   UseAlertFormDataOptions,
   UseAlertFormDataReturn,
 } from '../AddObservabilityPage.interface';
-import { useAlertFormData } from './useAlertFormData';
 import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
 type ObservabilityAlertFormInstance =
@@ -63,6 +63,7 @@ export function useObservabilityAlertForm({
       provider: ProviderType.User,
       timeout: 10,
       readTimeout: DEFAULT_READ_TIMEOUT,
+      enabled: true,
     },
   });
   const form = providedForm ?? internalForm;

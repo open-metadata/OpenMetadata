@@ -13,13 +13,17 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
+import { Bot } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as BotIcon } from '../../../../../../assets/svg/entity/bot.svg';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import BotAddForm from './BotAddForm';
 import BotDetailPanel from './BotDetailPanel';
@@ -71,19 +75,20 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
   }, [hashState.tab, hashState.subPath]);
 
   const onNavigate = useCallback(
-    (nextView: BotsView) => {
+    (nextView: BotsView, navOptions?: SettingsNavigateOptions) => {
       setView(nextView);
+      const options = settingsHashOptions(view, nextView, navOptions);
 
       if (nextView.type === 'detail') {
-        setHash('bots', encodeURIComponent(nextView.fqn));
+        setHash('bots', encodeURIComponent(nextView.fqn), undefined, options);
       } else if (nextView.type === 'add') {
-        setHash('bots', 'add');
+        setHash('bots', 'add', undefined, options);
       } else {
-        setHash('bots');
+        setHash('bots', undefined, undefined, options);
         setListRefreshKey((k) => k + 1);
       }
     },
-    [setHash]
+    [setHash, view]
   );
 
   useEffect(() => {
@@ -164,7 +169,7 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
     onHeaderChange({
       breadcrumbs: crumbsByType[view.type],
       description: descByType[view.type],
-      icon: BotIcon as FC<{ className?: string }>,
+      icon: Bot as FC<{ className?: string }>,
       title: titleByType[view.type],
       titleInput: titleInputForView,
       titleSuffix: titleSuffixForView,

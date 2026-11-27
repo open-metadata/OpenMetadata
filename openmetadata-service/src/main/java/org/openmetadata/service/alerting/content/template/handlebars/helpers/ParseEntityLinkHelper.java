@@ -140,6 +140,6 @@ public class ParseEntityLinkHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{parseEntityLink }}")
                     .withExample(
-                        "{{#with (parseEntityLink about) as |link|}}{{link.entityType}}{{/with}}")));
+                        "{{#with (parseEntityLink entity.entityLink) as |link|}}{{link.entityFQN}}{{/with}}")));
   }
 }

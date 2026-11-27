@@ -222,6 +222,20 @@ describe('LineageSearchSelect', () => {
     expect(mockColumnClick).toHaveBeenLastCalledWith('');
   });
 
+  it('should clear the selection from the clear button', async () => {
+    render(<LineageSearchSelect />);
+
+    expect(screen.queryByTestId('combobox-clear')).not.toBeInTheDocument();
+
+    await openDropdown();
+    await user.click(await screen.findByTestId('option-column1'));
+    await user.click(screen.getByTestId('combobox-clear'));
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(mockColumnClick).toHaveBeenLastCalledWith('');
+    expect(screen.queryByTestId('combobox-clear')).not.toBeInTheDocument();
+  });
+
   it('should not render when platform lineage is enabled', () => {
     setStoreState({ isPlatformLineage: true });
 

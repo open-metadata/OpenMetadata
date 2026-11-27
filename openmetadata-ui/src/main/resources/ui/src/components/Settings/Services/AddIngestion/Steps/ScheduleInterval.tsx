@@ -14,6 +14,7 @@
 import {
   Button,
   Card,
+  ComboBox,
   Grid,
   Input,
   Select,
@@ -21,12 +22,14 @@ import {
   TimePickerValue,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock } from '@openmetadata/ui-core-components/icons';
+import {
+  Calendar,
+  Clock,
+  Trigger,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
-import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
@@ -39,6 +42,7 @@ import {
   getStateValue,
   getUpdatedStateFromFormState,
 } from '../../../../../utils/CronExpressionUtils';
+import { getTimezoneOptions } from '../../../../../utils/date-time/DateTimeUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import {
@@ -90,6 +94,73 @@ const CronOptionSelect = ({
     </Select>
   </Grid.Item>
 );
+
+// Several hundred IANA zones: searchable, unlike the short pickers above. The core
+// ComboBox leaves controlled items unfiltered, so the typed text narrows them here.
+const TimezoneSelect = ({
+  disabled,
+  items,
+  value,
+  onChange,
+}: {
+  disabled?: boolean;
+  items: CronSelectOption[];
+  value?: string;
+  onChange: (timezone?: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const [inputValue, setInputValue] = useState(value ?? '');
+
+  useEffect(() => {
+    setInputValue(value ?? '');
+  }, [value]);
+
+  // While the input still shows the selected zone, opening the list must show
+  // every zone, not just the one already picked.
+  const filteredItems = useMemo(() => {
+    const needle = inputValue.trim().toLowerCase();
+    if (!needle || needle === (value ?? '').toLowerCase()) {
+      return items;
+    }
+
+    return items.filter((item) => item.id.toLowerCase().includes(needle));
+  }, [items, inputValue, value]);
+
+  const handleSelectionChange = useCallback(
+    (key: Key | null) => {
+      const zone = key === null ? undefined : String(key);
+      onChange(zone);
+      setInputValue(zone ?? '');
+    },
+    [onChange]
+  );
+
+  return (
+    <div data-testid="timezone-container">
+      <ComboBox
+        allowClear
+        allowsEmptyCollection
+        data-testid="timezone-select"
+        fontSize="sm"
+        inputValue={inputValue}
+        isDisabled={disabled}
+        items={filteredItems}
+        label={t('label.timezone')}
+        placeholder={t('label.default')}
+        shortcut={false}
+        size="sm"
+        value={value ?? null}
+        onChange={handleSelectionChange}
+        onInputChange={setInputValue}>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} textValue={item.label}>
+            {item.label}
+          </Select.Item>
+        )}
+      </ComboBox>
+    </div>
+  );
+};
 
 const ScheduleFieldsGrid = ({
   showWeekSelect,
@@ -231,6 +302,8 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   defaultSchedule,
   entity,
   onValidityChange,
+  timezone,
+  onTimezoneChange,
 }) => {
   const { t } = useTranslation();
   // Schedule options for SelectionCardGroup
@@ -241,7 +314,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       description: t('message.schedule-entity-description', {
         entity: entity ?? t('label.ingestion'),
       }),
-      icon: <ClockIcon />,
+      icon: <Calendar />,
     },
     {
       value: SchedularOptions.ON_DEMAND,
@@ -249,7 +322,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
       description: t('message.on-demand-entity-description', {
         entity: entity ?? t('label.ingestion'),
       }),
-      icon: <PlayIcon />,
+      icon: <Trigger />,
     },
   ];
 
@@ -441,6 +514,11 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
     };
   }, [state.hour, state.min]);
 
+  const timezoneItems = useMemo(
+    () => getTimezoneOptions(timezone).map((id) => ({ id, label: id })),
+    [timezone]
+  );
+
   const [cronHumanText, setCronHumanText] = useState<string>('');
 
   useEffect(() => {
@@ -475,17 +553,23 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
           value: cronHumanText,
         })
       : t('message.pipeline-will-trigger-manually');
+    const scheduleText =
+      cronString && timezone
+        ? `${cronStringValue} (${timezone})`
+        : cronStringValue;
 
     return (
       <Card
         className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
         size="sm"
         variant="muted">
-        <Clock className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
-        <Typography size="text-sm">{cronStringValue}</Typography>
+        <Clock className="tw:shrink-0 tw:text-fg-quaternary" size={20} />
+        <Typography data-testid="schedule-description" size="text-sm">
+          {scheduleText}
+        </Typography>
       </Card>
     );
-  }, [cronString, cronHumanText, entity, t]);
+  }, [cronString, cronHumanText, entity, timezone, t]);
 
   // Update internal state when the value changes outside of this component.
   // Comparing against the last emitted cron rather than the current state keeps
@@ -574,6 +658,15 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 showWeekSelect={showWeekSelect}
                 timeValue={timeValue}
               />
+
+              {onTimezoneChange && (
+                <TimezoneSelect
+                  disabled={disabled}
+                  items={timezoneItems}
+                  value={timezone}
+                  onChange={onTimezoneChange}
+                />
+              )}
             </div>
           </Grid.Item>
         )}

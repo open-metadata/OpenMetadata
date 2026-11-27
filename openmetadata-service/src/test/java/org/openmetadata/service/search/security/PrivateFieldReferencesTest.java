@@ -44,6 +44,26 @@ class PrivateFieldReferencesTest {
   }
 
   @Test
+  void aLuceneFieldNameIsReadWithItsEscapesResolvedAsLuceneResolvesThem() {
+    assertEquals(List.of("email"), PrivateFieldReferences.luceneFieldNames("em\\u0061il:j*"));
+    assertEquals(
+        List.of("email.keyword"),
+        PrivateFieldReferences.luceneFieldNames("email.k\\u0065yword:j*"));
+    assertEquals(
+        List.of("_exists_", "email"),
+        PrivateFieldReferences.luceneFieldNames("_exists_:\"\\u0065mail\""));
+    assertEquals(List.of("name"), PrivateFieldReferences.luceneFieldNames("n\\a\\me:jane"));
+    assertEquals(List.of("a:b"), PrivateFieldReferences.luceneFieldNames("a\\u003Ab:x"));
+  }
+
+  @Test
+  void aLuceneQueryWithEscapesLuceneRefusesCountsAsNamingAPrivateField() {
+    for (String query : List.of("em\\u006:j", "em\\u00zz:j", "x\\u12:y", "_exists_:\"x\\u1\"")) {
+      assertTrue(PrivateFieldReferences.inLuceneQuery(query), query);
+    }
+  }
+
+  @Test
   void aLuceneQueryNamesAPrivateFieldOnlyThroughAFieldReference() {
     for (String query :
         List.of(
@@ -52,6 +72,8 @@ class PrivateFieldReferencesTest {
             "+email:jane",
             "_exists_:email",
             "em\\*:jane",
+            "em\\u0061il:j*",
+            "\\u0045MAIL.keyword:j*",
             "*:jane@acme.com",
             "name:x OR email.keyword:/j.*/")) {
       assertTrue(PrivateFieldReferences.inLuceneQuery(query), query);
@@ -80,6 +102,7 @@ class PrivateFieldReferencesTest {
             "{\"multi_match\":{\"query\":\"jane\",\"fields\":[\"name\",\"em*^2\"]}}",
             "{\"query_string\":{\"query\":\"jane@acme.com\"}}",
             "{\"query_string\":{\"query\":\"email:j*\",\"fields\":[\"name\"]}}",
+            "{\"query_string\":{\"query\":\"em\\\\u0061il:j*\",\"fields\":[\"name\"]}}",
             "{\"simple_query_string\":{\"query\":\"jane\",\"fields\":[]}}",
             "{\"script\":{\"script\":\"doc['email.keyword'].value.startsWith('j')\"}}",
             "{\"script\":{\"script\":\"doc['e' + 'mail.keyword'].value.startsWith('j')\"}}",

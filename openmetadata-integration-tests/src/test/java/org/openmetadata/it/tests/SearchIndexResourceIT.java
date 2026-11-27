@@ -77,7 +77,10 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsSearchIndex = false;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsDomains = false;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
@@ -1305,5 +1308,21 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     CreateSearchIndex request = new CreateSearchIndex();
     request.setName(ns.prefix("invalid_search_index"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsFieldFqns(TestNamespace ns) {
+    SearchIndex created = createEntity(createMinimalRequest(ns));
+    SearchIndex patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    SearchIndex updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> fieldFqns =
+        updated.getFields().stream().map(SearchIndexField::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertFalse(fieldFqns.isEmpty());
+    assertTrue(fieldFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), fieldFqns::toString);
   }
 }

@@ -22,7 +22,11 @@ import {
   Tooltip as CoreTooltip,
 } from '@openmetadata/ui-core-components';
 import {
+  Bell01,
   ChevronDown,
+  CollapsePanel,
+  ExpandPanel,
+  HelpCircle,
   RefreshCw01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -39,10 +43,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
-import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
@@ -51,11 +51,12 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import { BackgroundJob } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -253,7 +254,7 @@ const NavBar = () => {
 
         const { jobArgs, status, jobType } = backgroundJobData;
 
-        if (jobType === JobType.CustomPropertyEnumCleanup) {
+        if (jobType === CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE) {
           const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(
@@ -575,9 +576,7 @@ const NavBar = () => {
           <div className="flex-center gap-2">
             <ButtonUtility
               data-testid="sidebar-toggle"
-              icon={
-                isSidebarCollapsed ? SidebarCollapsedIcon : SidebarExpandedIcon
-              }
+              icon={isSidebarCollapsed ? ExpandPanel : CollapsePanel}
               size="lg"
               tooltip={sidebarTooltipTitle}
               tooltipPlacement="right"
@@ -618,12 +617,11 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <Button
+              <ButtonUtility
                 aria-label={t('label.notification-plural')}
-                color="tertiary"
-                iconLeading={
+                icon={
                   <span className="tw:relative tw:inline-flex tw:items-center">
-                    <IconBell data-testid="task-notifications" width={20} />
+                    <Bell01 data-testid="task-notifications" size={20} />
                     {(hasTaskNotification || hasMentionNotification) && (
                       <Dot
                         aria-label={t('label.notification-plural')}
@@ -634,7 +632,7 @@ const NavBar = () => {
                     )}
                   </span>
                 }
-                size="sm"
+                size="lg"
               />
               <Popover className="tw:w-106" placement="bottom end">
                 <NotificationBox
@@ -652,7 +650,7 @@ const NavBar = () => {
             <Dropdown.Root>
               <ButtonUtility
                 data-testid="help-icon"
-                icon={Help}
+                icon={HelpCircle}
                 size="lg"
                 tooltip={t('label.need-help')}
               />
@@ -662,7 +660,10 @@ const NavBar = () => {
                   items={getHelpDropdownItems(version)}
                   selectionMode="none">
                   {(item) => (
-                    <Dropdown.Item id={item.key} textValue={item.key}>
+                    <Dropdown.Item
+                      id={item.key}
+                      textValue={item.key}
+                      onAction={item.onAction}>
                       {item.label}
                     </Dropdown.Item>
                   )}

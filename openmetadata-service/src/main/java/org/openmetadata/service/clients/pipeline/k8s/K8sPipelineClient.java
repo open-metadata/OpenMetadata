@@ -391,6 +391,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  /** The CronJob, ConfigMap, Secret and Job names and the pipeline label are the name alone. */
+  @Override
+  public boolean addressesPipelinesByName() {
+    return true;
+  }
+
   @Override
   public PipelineServiceClientResponse deployPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
@@ -1714,6 +1720,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     if (k8sConfig.getFsGroup() != null) {
       context.setFsGroup(k8sConfig.getFsGroup());
     }
+    context.setSeccompProfile(k8sConfig.getSeccomp());
     return context;
   }
 
@@ -1722,6 +1729,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .runAsNonRoot(k8sConfig.isRunAsNonRoot())
         .runAsUser(k8sConfig.getRunAsUser())
         .allowPrivilegeEscalation(false)
+        .seccompProfile(k8sConfig.getSeccomp())
         .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
         .capabilities(new V1Capabilities().drop(List.of("ALL")));
   }

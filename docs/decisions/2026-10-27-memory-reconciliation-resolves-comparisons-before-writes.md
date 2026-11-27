@@ -1,7 +1,7 @@
 # Memory reconciliation resolves comparisons before writing memories
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryReconcilerTest`, `LLMCompletionClientTest`, `ContextMemoryExtractionIT`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse
@@ -35,3 +35,9 @@ a successful no-match result.
   concurrency and retry behavior continues to apply.
 - Memories created by this run become searchable after the apply phase, rather than between
   comparisons. Cross-source semantic reuse remains bounded and best effort as previously recorded.
+
+## Amendment
+
+v2 (2026-11-03): the derived set is no longer deduplicated by normalized question alone; answers
+with conflicting numbers stay separate (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values).
+Planned writes are now stamped when they run, and updates are conditional on the planned version.

@@ -19,10 +19,13 @@ import {
   Card,
   Skeleton,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronDown,
+  Plus,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
 import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
@@ -134,7 +137,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
       data-testid={dataTestId}
       variant="ghost">
       <Box align="center" className="tw:mb-4 tw:gap-3">
-        <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary">
+        <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:text-utility-gray-500">
           {icon}
         </span>
         <div className="tw:flex-1">
@@ -162,7 +165,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
         {onRefresh && (
           <ButtonUtility
             data-testid="agent-group-refresh"
-            icon={isRefreshing ? <Loader size="x-small" /> : ReloadIcon}
+            icon={isRefreshing ? <Loader size="x-small" /> : RefreshCw01}
             isDisabled={isRefreshing}
             size="lg"
             tooltip={t('label.refresh-entity', {

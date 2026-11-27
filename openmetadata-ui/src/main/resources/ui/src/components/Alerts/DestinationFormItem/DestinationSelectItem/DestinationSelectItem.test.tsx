@@ -31,7 +31,7 @@ import {
   AlertSelection,
   AlertSelectionProvider,
 } from '../../../../hooks/useAlertSelection';
-import type { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../../../utils/AlertsClassBase.interface';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -377,7 +377,6 @@ function renderDestinationRows(
             destinationsWithStatus={destinationsWithStatus}
             id={index}
             isDestinationStatusLoading={false}
-            // eslint-disable-next-line react/no-array-index-key -- form array rows keyed by position in tests
             key={index}
             remove={jest.fn()}
             selectorKey={index}

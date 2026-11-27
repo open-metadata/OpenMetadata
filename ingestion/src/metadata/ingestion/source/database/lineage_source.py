@@ -55,7 +55,7 @@ from metadata.ingestion.source.database.lineage_processors import (
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import ViewLineageExtension
+from metadata.utils.db_utils import ViewLineageExtension, ViewLineageParserFactory
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -451,6 +451,10 @@ class LineageSource(QueryParserSource, ABC):
         """
         return None
 
+    def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
+        """Optional module-level parser factory, picklable for view lineage workers."""
+        return None
+
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
         producer_fn = self.view_lineage_producer
@@ -465,6 +469,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.overrideViewLineage,  # pyright: ignore[reportAttributeAccessIssue]
             self.get_query_parser_type(),
             self.get_view_lineage_extension(),
+            self.get_view_lineage_parser_factory(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

@@ -61,7 +61,10 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
@@ -3462,5 +3465,28 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("invalid_container"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsDataModelColumnFqns(TestNamespace ns) {
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)));
+    Container created = createEntity(createMinimalRequest(ns).withDataModel(dataModel));
+    Container patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Container updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> columnFqns =
+        updated.getDataModel().getColumns().stream().map(Column::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, columnFqns.size());
+    assertTrue(columnFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), columnFqns::toString);
   }
 }

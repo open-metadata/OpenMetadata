@@ -138,7 +138,7 @@ test.use({ isolatedUserOptions: { isAdmin: true } });
 
 test.describe('Domains', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     user = new UserClass();
     domain = new Domain();
@@ -175,7 +175,7 @@ test.describe('Domains', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.delete(apiContext);
@@ -581,7 +581,7 @@ test.describe('Domains', () => {
       await Promise.all([
         createSubDomain(page, subDomain.data),
         page.waitForResponse(
-          '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+          '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
         ),
       ]);
 
@@ -629,7 +629,7 @@ test.describe('Domains', () => {
       await selectDomain(page, domain.data);
 
       const subDomainApiRes1 = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
+        '/api/v1/search/query?q=&index=domain&from=0&size=15&deleted=false*'
       );
 
       // Create new sub domain under the existing sub domain
@@ -2843,7 +2843,7 @@ test.describe('Domains Rbac', () => {
     domain2 = new Domain();
     domain3 = new Domain();
     user1 = new UserClass();
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
@@ -3184,7 +3184,7 @@ test.describe('Domain Tree View Functionality', () => {
   const domainDisplayName = domain.data.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.create(apiContext);
@@ -3194,7 +3194,7 @@ test.describe('Domain Tree View Functionality', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.delete(apiContext);

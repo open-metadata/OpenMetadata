@@ -23,7 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert as AlertIcon,
   Check,
   CheckCircle,
   ChevronRight,
@@ -52,6 +52,7 @@ import {
   CSVImportResult,
   Status,
 } from '../../../../../../generated/type/csvImportResult';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
@@ -59,6 +60,7 @@ import {
 import { resolveCsvImportResult } from '../../../../../../rest/csvAPI';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { STAGE_ICON_CLASS } from './Members.constants';
 import type {
   ActiveJob,
@@ -104,7 +106,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
                 align="center"
                 className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}
                 justify="center">
-                {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
+                {isDone ? <Check size={10} /> : index + 1}
               </Box>
               {t(step.name)}
             </Badge>
@@ -257,12 +259,7 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
       data-testid="import-aborted"
       variant="muted">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>
-        <FeaturedIcon
-          color="error"
-          icon={AlertTriangle}
-          size="lg"
-          theme="light"
-        />
+        <FeaturedIcon color="error" icon={AlertIcon} size="lg" theme="light" />
         <Box align="center" direction="col" gap={1}>
           <Typography className="tw:text-primary" weight="semibold">
             {t('label.aborted')}
@@ -469,6 +466,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
+  );
+  // A validated file not yet imported is work the user would lose.
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    Boolean(selectedFile) && activeStep === VALIDATION_STEP.EDIT_VALIDATE
   );
   const [processingType, setProcessingType] = useState<ProcessingType>();
   const [activeJob, setActiveJob] = useState<ActiveJob>();
@@ -810,6 +811,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         direction="col"
         gap={6}>
         <ImportStepper activeStep={activeStep} />
+        <UnsavedChangesPrompt {...promptProps} />
         {renderBody()}
       </Box>
 
@@ -819,7 +821,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
           canConfirm={canConfirmImport}
           hasFile={Boolean(selectedFile)}
           onBack={handleBack}
-          onClose={onClose}
+          onClose={() => runGuarded(onClose)}
           onImport={handleImport}
           onNext={handleStartPreview}
         />

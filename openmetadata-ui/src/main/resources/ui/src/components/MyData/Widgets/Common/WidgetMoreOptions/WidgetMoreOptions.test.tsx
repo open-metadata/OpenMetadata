@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 
+import { TotalOccurrences } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetMoreOptions from './WidgetMoreOptions';
 
 const mockProps = {
   menuItems: [
-    { key: 'edit', label: 'Edit', icon: <TaskIcon data-testid="edit-icon" /> },
+    {
+      key: 'edit',
+      label: 'Edit',
+      icon: <TotalOccurrences data-testid="edit-icon" />,
+    },
     {
       key: 'delete',
       label: 'Delete',
-      icon: <TaskIcon data-testid="delete-icon" />,
+      icon: <TotalOccurrences data-testid="delete-icon" />,
     },
     { key: 'share', label: 'Share', disabled: true },
   ],

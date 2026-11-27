@@ -35,6 +35,7 @@ import { useListSearchInput } from '../../common/atoms/navigation/useListSearchI
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import TestDefinitionDetailsPanel from '../TestDefinitionDetailsPanel/TestDefinitionDetailsPanel';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from './TestDefinitionTable.component';
 import { useTestDefinitionListPage } from './useTestDefinitionListPage';
@@ -75,6 +76,11 @@ const TestDefinitionList = () => {
     handleFormCancel,
     hasActiveFilters,
     clearAllFilters,
+    viewedDefinition,
+    canEditViewedDefinition,
+    openDetails,
+    closeDetails,
+    editFromDetails,
   } = useTestDefinitionListPage();
 
   const { quickFilters } = useQuickFiltersWithComponent({
@@ -128,7 +134,7 @@ const TestDefinitionList = () => {
             <Card.Content>
               <Box className="layout-row" justify="between" wrap="wrap">
                 <Box className="layout-column tw:block">
-                  <div className="flex gap-2 items-center m-b-xss">
+                  <div className="tw:flex tw:items-center tw:gap-1 tw:mb-1">
                     <Typography
                       as="h5"
                       className="m-b-0"
@@ -194,6 +200,7 @@ const TestDefinitionList = () => {
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
               onSortChange={handleSortChange}
+              onView={openDetails}
             />
           </Card>
         </Grid.Item>
@@ -207,6 +214,13 @@ const TestDefinitionList = () => {
           onSuccess={handleFormSuccess}
         />
       )}
+
+      <TestDefinitionDetailsPanel
+        canEdit={canEditViewedDefinition}
+        testDefinition={viewedDefinition}
+        onClose={closeDetails}
+        onEdit={editFromDetails}
+      />
 
       <DeleteModal
         entityTitle={getEntityName(definitionToDelete)}

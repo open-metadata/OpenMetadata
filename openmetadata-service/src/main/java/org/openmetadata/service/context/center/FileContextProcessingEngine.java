@@ -92,7 +92,7 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
           if (current != null) {
             ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
             updated.setExtractionStats(stats);
-            fileRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+            fileRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
           }
         });
   }

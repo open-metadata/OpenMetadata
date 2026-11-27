@@ -1,11 +1,13 @@
 package org.openmetadata.mcp.tools;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -43,12 +45,47 @@ public final class McpResponseUtils {
           "votes",
           "sourceHash");
 
+  // Wide fields a patch can change as a whole: adding one column records "columns", adding one
+  // custom property records "extension". The compact patch reply names them in "changed" but
+  // never echoes their value.
+  private static final Set<String> BULK_FIELDS =
+      Set.of(
+          "columns",
+          "extension",
+          "schema",
+          "storedProcedureCode",
+          "queryUsedIn",
+          "tableConstraints",
+          "joins",
+          "schemaDefinition",
+          "viewDefinition",
+          "dataModel",
+          "tasks",
+          "features",
+          "mlFeatures",
+          "children",
+          "charts",
+          "dataModels",
+          "sampleData",
+          "tableProfilerConfig",
+          "customMetrics",
+          "fields",
+          "messageSchema",
+          "requestSchema",
+          "responseSchema");
+
+  private static final List<String> IDENTITY_FIELDS = List.of("id", "name", "fullyQualifiedName");
+
   private static final String CREATED = "created";
   private static final String VERSION_KEY = "version";
+  private static final String UPDATED_AT_KEY = "updatedAt";
+  private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String CHANGED_KEY = "changed";
   private static final String UPDATED = "updated";
   private static final String OPERATION_KEY = "_operation";
   private static final String DELETED_KEY = "deleted";
+  private static final String PENDING_APPROVAL = "pendingApproval";
+  private static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
 
   private McpResponseUtils() {}
 
@@ -132,20 +169,58 @@ public final class McpResponseUtils {
   }
 
   /**
-   * {@link #compact} plus the two things only an update can answer: the new version, and which
-   * fields actually changed.
+   * A confirmation of the patch rather than the patched entity: identity, the new version, which
+   * fields changed, and the new value of each changed top-level field. Values are read from the
+   * masked entity, so secret masks and visibility redaction still hold. A nested change ({@code
+   * columns.x.tags}) or a bulk field is reported by name only; {@code get_entity_details} reads the
+   * full entity.
    *
-   * <p>{@link #compact} strips {@code changeDescription} because it is noise on a create - nothing
-   * changed, the entity is new. On a patch it is the confirmation the caller wrote for. Only the
-   * field names are kept: the full object carries old and new values for every field, far more than
-   * "did my change land" needs.
+   * <p>A held write or a no-op returns the stored entity, whose change description belongs to the
+   * previous version, so {@code ENTITY_NO_CHANGE} reports no changed fields.
+   * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
    */
-  public static Map<String, Object> compactPatch(EntityInterface<?> entity, EventType changeType) {
-    Map<String, Object> doc = compact(entity, changeType);
-    doc.put(VERSION_KEY, entity.getVersion());
-    List<String> changed = changedFields(entity.getChangeDescription());
+  public static Map<String, Object> compactPatch(
+      final EntityInterface<?> entity, final String entityType, final EventType changeType) {
+    final Map<String, Object> masked = JsonUtils.getMap(maskSecrets(entity));
+    final Map<String, Object> doc = confirmation(entity, entityType, masked);
+    final List<String> changed =
+        EventType.ENTITY_NO_CHANGE.equals(changeType)
+            ? List.of()
+            : changedFields(entity.getChangeDescription());
     if (!changed.isEmpty()) {
       doc.put(CHANGED_KEY, changed);
+      changed.stream()
+          .filter(name -> !name.contains(".") && !BULK_FIELDS.contains(name))
+          .forEach(name -> putIfPresent(doc, name, masked.get(name)));
+    }
+    return doc;
+  }
+
+  private static Map<String, Object> confirmation(
+      final EntityInterface<?> entity, final String entityType, final Map<String, Object> masked) {
+    final Map<String, Object> doc = new LinkedHashMap<>();
+    IDENTITY_FIELDS.forEach(key -> putIfPresent(doc, key, masked.get(key)));
+    doc.put(ENTITY_TYPE_KEY, entityType);
+    doc.put(VERSION_KEY, entity.getVersion());
+    putIfPresent(doc, UPDATED_AT_KEY, entity.getUpdatedAt());
+    if (Boolean.TRUE.equals(masked.get(DELETED_KEY))) {
+      doc.put(DELETED_KEY, Boolean.TRUE);
+    }
+    doc.put(OPERATION_KEY, UPDATED);
+    return doc;
+  }
+
+  /**
+   * Relabels {@code doc} when an approval workflow held the write as {@code changeRequestId}, the
+   * id REST sends in {@code X-OpenMetadata-Pending-Change}. The entity in it is the published one,
+   * so "updated" and its last change's field list would report a write that has not happened.
+   * ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
+   */
+  public static Map<String, Object> markHeld(Map<String, Object> doc, UUID changeRequestId) {
+    if (changeRequestId != null) {
+      doc.put(OPERATION_KEY, PENDING_APPROVAL);
+      doc.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
+      doc.remove(CHANGED_KEY);
     }
     return doc;
   }
@@ -163,6 +238,13 @@ public final class McpResponseUtils {
   private static void collectNames(List<FieldChange> changes, Set<String> names) {
     if (changes != null) {
       changes.stream().map(FieldChange::getName).filter(Objects::nonNull).forEach(names::add);
+    }
+  }
+
+  private static void putIfPresent(
+      final Map<String, Object> doc, final String key, final Object value) {
+    if (value != null) {
+      doc.put(key, value);
     }
   }
 }

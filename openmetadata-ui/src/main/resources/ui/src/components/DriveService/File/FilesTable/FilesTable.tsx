@@ -191,7 +191,7 @@ function FilesTable({
       data-testid="data-models-table"
       dataSource={files}
       defaultVisibleColumns={DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS}
-      entityType="dashboardDataModelTable"
+      entityType="driveFilesTable"
       extraTableFilters={
         <span className="tw:inline-flex tw:items-center">
           <Toggle

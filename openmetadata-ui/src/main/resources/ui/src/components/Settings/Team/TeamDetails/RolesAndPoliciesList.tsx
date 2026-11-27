@@ -13,10 +13,10 @@
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 
+import { MinusCircle } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
@@ -86,7 +86,7 @@ const ListEntities = ({
           return (
             <ButtonUtility
               data-testid={`remove-action-${getEntityName(record)}`}
-              icon={IconRemove}
+              icon={MinusCircle}
               isDisabled={!hasAccess}
               size="lg"
               tooltip={

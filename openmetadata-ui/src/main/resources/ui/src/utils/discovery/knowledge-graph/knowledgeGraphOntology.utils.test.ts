@@ -12,7 +12,10 @@
  */
 
 import { GraphData } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
-import { getOntologyScope } from './knowledgeGraphOntology.utils';
+import {
+  conceptEntityType,
+  getOntologyScope,
+} from './knowledgeGraphOntology.utils';
 
 const graph: GraphData = {
   nodes: [
@@ -63,4 +66,33 @@ it('preserves an isolated selected concept and partial response information', ()
   expect(
     getOntologyScope({ ...graph, edges: [], truncated: true }, 'customer')
   ).toEqual({ nodes: [graph.nodes[0]], edges: [], truncated: true });
+});
+
+it('keeps a native concept bound to an asset', () => {
+  const bound: GraphData = {
+    nodes: [
+      { id: 'patient', label: 'Patient', type: 'ontologyConcept' },
+      { id: 'table', label: 'patients', type: 'table' },
+    ],
+    edges: [
+      {
+        from: 'patient',
+        to: 'table',
+        label: 'Bound asset',
+        relationType: 'boundAsset',
+      },
+    ],
+  };
+
+  expect(getOntologyScope(bound, 'patient')).toEqual(bound);
+});
+
+it('explores a native concept by its own type and any other concept as a glossary term', () => {
+  expect(
+    conceptEntityType({ id: 'c', label: 'C', type: 'ontologyConcept' })
+  ).toBe('ontologyConcept');
+  expect(conceptEntityType({ id: 't', label: 'T', type: 'glossaryTerm' })).toBe(
+    'glossaryTerm'
+  );
+  expect(conceptEntityType(undefined)).toBe('glossaryTerm');
 });

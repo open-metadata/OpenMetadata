@@ -40,6 +40,24 @@ class ConceptContextMarkdownTest {
   }
 
   @Test
+  void rendersWhatDefinesAMetricsNumber() {
+    ConceptContext concept =
+        concept()
+            .withFilters(List.of("fee_category = 'ATM Fee'", " region = 'EU' OR region = 'UK' "))
+            .withGranularity("MONTH")
+            .withUnit("DOLLARS");
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertTrue(markdown.contains("**Filters (all apply with the definition):**"), markdown);
+    assertTrue(
+        markdown.contains("(fee_category = 'ATM Fee')\nAND (region = 'EU' OR region = 'UK')"),
+        markdown);
+    assertTrue(markdown.contains("**Granularity:** MONTH"), markdown);
+    assertTrue(markdown.contains("**Unit:** DOLLARS"), markdown);
+  }
+
+  @Test
   void distinguishesQueryExcerptsAndRecordedStatusFromUnknownExecutionStatus() {
     ConceptContext concept =
         concept()
@@ -63,6 +81,29 @@ class ConceptContextMarkdownTest {
     assertTrue(markdown.contains("Status: failed"));
     assertTrue(markdown.contains("Query excerpt; fetch the saved Query"));
     assertFalse(markdown.substring(markdown.indexOf("saved.unknown")).contains("Status:"));
+  }
+
+  @Test
+  void capsLongSampleValuesOnConceptBindings() {
+    ConceptContext concept =
+        concept()
+            .withBindings(
+                List.of(
+                    new ConceptBinding()
+                        .withAssetFqn("svc.db.schema.orders")
+                        .withAssetType(Entity.TABLE)
+                        .withColumn("svc.db.schema.orders.amount")
+                        .withSampleValues(List.of("z".repeat(500)))));
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertFalse(
+        markdown.contains("z".repeat(121)),
+        "a long concept-binding sample value must be capped at MAX_SAMPLE_CELL_CHARS, not inlined"
+            + " unbounded");
+    assertTrue(
+        markdown.contains("\u2026"),
+        "a capped concept-binding sample value must be marked as elided");
   }
 
   @Test

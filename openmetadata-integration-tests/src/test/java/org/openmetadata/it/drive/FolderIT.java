@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
@@ -361,6 +362,49 @@ class FolderIT {
     jakarta.json.JsonObject ownerView =
         contentsOf(RestClient.forUser(owner.getEmail(), new String[] {}), folder.getId());
     assertEquals(2, ownerView.getInt("childrenFileCount"));
+  }
+
+  /** A file's fully qualified name starts with its folder's, and editing the file keeps it so. */
+  @Test
+  void testPatchingAFileKeepsItsFolderInItsFullyQualifiedName(TestNamespace ns) throws Exception {
+    RestClient adminRest = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "patch-owner");
+    Folder folder = createFolder(adminRest, new CreateFolder().withName(ns.prefix("patched")));
+    ContextFile file =
+        adminRest.create(
+            FILE_PATH, fileIn(folder, ns.prefix("patched-file"), owner), ContextFile.class);
+    assertTrue(file.getFullyQualifiedName().startsWith(folder.getFullyQualifiedName() + "."));
+    String original = JsonUtils.pojoToJson(file);
+    file.setDescription("Edited after upload");
+
+    adminRest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+
+    ContextFile patched = adminRest.getById(FILE_PATH, file.getId(), "folder", ContextFile.class);
+    assertEquals(file.getFullyQualifiedName(), patched.getFullyQualifiedName());
+    assertEquals(folder.getId(), patched.getFolder().getId());
+  }
+
+  /** A PATCH loads a folder without its parent, and must still keep the parent in its name. */
+  @Test
+  void testPatchingANestedFolderKeepsItsFullyQualifiedName(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Folder root = createFolder(rest, new CreateFolder().withName(ns.prefix("patch-root")));
+    Folder child =
+        createFolder(
+            rest,
+            new CreateFolder()
+                .withName(ns.prefix("patch-child"))
+                .withParent(root.getFullyQualifiedName()));
+    assertTrue(child.getFullyQualifiedName().startsWith(root.getFullyQualifiedName() + "."));
+    String original = JsonUtils.pojoToJson(child);
+    child.setDescription("Edited after creation");
+
+    Folder patched = patchFolder(rest, child.getId(), original, child);
+
+    assertEquals(child.getFullyQualifiedName(), patched.getFullyQualifiedName());
+    Folder byName =
+        rest.get(PATH + "/name/" + encodeURIComponent(child.getFullyQualifiedName()), Folder.class);
+    assertEquals(child.getId(), byName.getId());
   }
 
   private static CreateContextFile fileIn(Folder folder, String name, User owner) {

@@ -14,10 +14,10 @@ import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Eye,
   EyeInvisibleFilled,
+  MenuDuo,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import './draggable-menu-item.less';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 
@@ -69,11 +69,10 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       ref={(node) => {
         drag(drop(node));
       }}>
-      <ColumnDragIcon
+      <MenuDuo
         className="tw:text-quaternary"
         data-testid="draggable-menu-item-drag-icon"
-        height={16}
-        width={16}
+        size={16}
       />
 
       <Button

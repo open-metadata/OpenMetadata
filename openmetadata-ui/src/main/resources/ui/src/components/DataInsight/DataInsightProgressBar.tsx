@@ -12,9 +12,9 @@
  */
 
 import { ProgressBar } from '@openmetadata/ui-core-components';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { round } from 'lodash';
-import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import CustomStatistic from './CustomStatistic';
 
@@ -81,7 +81,10 @@ const DataInsightProgressBar = ({
             {renderProgressTarget(target, suffix)}
           </div>
           {showSuccessInfo && progress >= 100 && (
-            <IconSuccessBadge className="tw:align-middle tw:ml-2 tw:size-4 tw:shrink-0" />
+            <CheckCircle02
+              className="tw:align-middle tw:ml-2 tw:shrink-0 tw:text-utility-green-500"
+              size={16}
+            />
           )}
         </div>
       )}

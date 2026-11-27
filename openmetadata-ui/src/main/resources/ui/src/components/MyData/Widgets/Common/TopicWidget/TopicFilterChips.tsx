@@ -145,10 +145,12 @@ const TopicFilterChips: React.FC<TopicFilterChipsProps> = ({
                 tone.dot
               )}
             />
-            <span className="tw:flex tw:items-baseline tw:gap-1 tw:text-xs">
+            {/* Semibold digits stand at cap height and read as raised against
+              a mostly lowercase label, so the count is medium weight. */}
+            <span className="tw:flex tw:items-baseline tw:gap-1.5 tw:text-xs">
               <span className="tw:text-text-secondary">{chip.label}</span>
               <span
-                className={classNames('tw:font-semibold', tone.count)}
+                className={classNames('tw:font-medium', tone.count)}
                 data-testid={`${testIdPrefix}-filter-${chip.id}-count`}>
                 {chip.count}
               </span>

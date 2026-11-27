@@ -17,6 +17,7 @@ import {
   Select,
   SelectPopover,
 } from '@openmetadata/ui-core-components';
+import { Search, XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -32,10 +33,8 @@ import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
-import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -256,7 +255,7 @@ export const GlobalSearchBar = () => {
       <ButtonUtility
         className={searchIconClassName}
         data-testid="cancel-icon"
-        icon={IconCloseCircleOutlined}
+        icon={XCircle}
         size="xs"
         tooltip={t('label.clear')}
         onClick={handleClear}
@@ -265,8 +264,8 @@ export const GlobalSearchBar = () => {
       <ButtonUtility
         className={searchIconClassName}
         data-testid="search-icon"
-        icon={IconSearch}
-        size="xs"
+        icon={Search}
+        size="sm"
         tooltip={t('label.search')}
         onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.preventDefault();

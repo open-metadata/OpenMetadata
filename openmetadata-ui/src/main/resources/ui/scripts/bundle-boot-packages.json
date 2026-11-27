@@ -4,7 +4,6 @@
   "@analytics/session-storage-utils",
   "@analytics/session-utils",
   "@analytics/type-utils",
-  "@babel/runtime",
   "@fontsource/source-code-pro",
   "@internationalized/date",
   "@internationalized/number",

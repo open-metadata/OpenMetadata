@@ -38,13 +38,33 @@ public final class UiTestServer {
   private static volatile ContainerizedServer ownedContainer;
   private static volatile TokenRefresher refresher;
   private static volatile ExternalTokenRefresher externalRefresher;
+  private static volatile RuntimeException bootFailure;
 
   private UiTestServer() {}
 
+  /**
+   * Boots the server on first use. A failed boot is remembered and rethrown to every later
+   * caller, so one broken server fails the run fast instead of every test booting another.
+   */
   public static synchronized ServerHandle get() {
-    if (cached != null) {
-      return cached;
+    if (bootFailure != null) {
+      throw new IllegalStateException(
+          "The UI test server failed to start earlier in this run", bootFailure);
     }
+    if (cached == null) {
+      try {
+        boot();
+      } catch (RuntimeException e) {
+        bootFailure = e;
+        cached = null;
+        tearDown();
+        throw e;
+      }
+    }
+    return cached;
+  }
+
+  private static void boot() {
     final AuthBackend backend = AuthBackends.resolve();
     LOG.info("UI test auth backend: {}", backend.name());
     if (hasExternalConfig()) {
@@ -58,7 +78,6 @@ public final class UiTestServer {
     }
     Runtime.getRuntime()
         .addShutdownHook(new Thread(UiTestServer::tearDown, "UiTestServer-cleanup"));
-    return cached;
   }
 
   /**

@@ -60,9 +60,9 @@ const TopicCardControls: React.FC<TopicCardControlsProps> = ({
         triggerClassName="tw:flex">
         <span
           aria-hidden
-          className="drag-widget-icon tw:flex tw:cursor-grab tw:items-center tw:p-1.5 tw:text-fg-quaternary"
+          className="drag-widget-icon tw:flex tw:cursor-grab tw:items-center tw:p-1.5 tw:text-utility-gray-500 tw:hover:text-utility-gray-600"
           data-testid={`drag-widget-${widgetKey}`}>
-          <DotsGrid size={14} />
+          <DotsGrid size={20} />
         </span>
       </Tooltip>
       <ButtonUtility

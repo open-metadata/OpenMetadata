@@ -36,9 +36,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -55,8 +54,10 @@ import {
   getAllAlerts,
 } from '../../../../../../rest/alertsAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import AlertStatusBadge from '../../../../../Alerts/AlertStatusBadge/AlertStatusBadge';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -64,7 +65,7 @@ import type { NotificationView } from './Notification.types';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
 
-type AlertColumnId = 'name' | 'trigger' | 'description' | 'actions';
+type AlertColumnId = 'name' | 'status' | 'trigger' | 'description' | 'actions';
 type AlertColumn = { id: AlertColumnId; label: string; className?: string };
 
 interface NotificationAlertsPanelProps {
@@ -77,12 +78,12 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
@@ -95,13 +96,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const fetchAlertsRef = useRef<typeof fetchAlerts>(null!);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(alerts);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -112,6 +107,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
         label: t('label.name'),
         className: 'tw:w-70 tw:overflow-hidden',
       },
+      { id: 'status', label: t('label.status'), className: 'tw:w-28' },
       { id: 'trigger', label: t('label.trigger'), className: 'tw:w-40' },
       { id: 'description', label: t('label.description') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-24' },
@@ -308,6 +304,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -409,10 +406,13 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           </Button>
         );
 
+      case 'status':
+        return <AlertStatusBadge enabled={alert.enabled} />;
+
       case 'trigger':
         return (
           <Typography size="text-sm">
-            {alert.filteringRules?.resources?.join(', ') || '--'}
+            {alert.filteringRules?.resources?.join(', ') || NO_DATA_PLACEHOLDER}
           </Typography>
         );
 
@@ -511,11 +511,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

@@ -24,9 +24,9 @@ export const Workflow: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
@@ -47,26 +47,38 @@ export const Workflow: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <mask height={5} id="a" maskUnits="userSpaceOnUse" width={5} x={2} y={2}>
+    <mask
+      height={5}
+      id="workflow_a"
+      maskUnits="userSpaceOnUse"
+      width={5}
+      x={2}
+      y={2}>
       <path
         d="M5.8 2.535H3.533a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1H5.8a1 1 0 0 0 1-1V3.535a1 1 0 0 0-1-1"
         fill="#fff"
       />
     </mask>
-    <g mask="url(#a)">
+    <g mask="url(#workflow_a)">
       <path
         d="M3.533 2.535H5.8a1 1 0 0 1 1 1v2.267a1 1 0 0 1-1 1H3.533a1 1 0 0 1-1-1V3.535a1 1 0 0 1 1-1Z"
         stroke="currentColor"
         strokeWidth={2.6}
       />
     </g>
-    <mask height={5} id="b" maskUnits="userSpaceOnUse" width={5} x={13} y={13}>
+    <mask
+      height={5}
+      id="workflow_b"
+      maskUnits="userSpaceOnUse"
+      width={5}
+      x={13}
+      y={13}>
       <path
         d="M16.466 13.203h-2.267a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1h2.267a1 1 0 0 0 1-1v-2.267a1 1 0 0 0-1-1"
         fill="#fff"
       />
     </mask>
-    <g mask="url(#b)">
+    <g mask="url(#workflow_b)">
       <path
         d="M14.2 13.203h2.266a1 1 0 0 1 1 1v2.267a1 1 0 0 1-1 1h-2.267a1 1 0 0 1-1-1v-2.267a1 1 0 0 1 1-1Z"
         stroke="currentColor"

@@ -215,6 +215,38 @@ public class S3LogStorageTest {
   }
 
   @Test
+  void logsExistForAFinishedRunWhoseStreamWasNotClosed() throws IOException {
+    String logsKey = runObjectKey("logs.txt");
+    String partialKey = runObjectKey("partial.txt");
+    when(mockS3Client.headObject(
+            argThat((HeadObjectRequest req) -> req != null && logsKey.equals(req.key()))))
+        .thenThrow(NoSuchKeyException.builder().build());
+    when(mockS3Client.headObject(
+            argThat((HeadObjectRequest req) -> req != null && partialKey.equals(req.key()))))
+        .thenReturn(HeadObjectResponse.builder().build());
+
+    assertTrue(s3LogStorage.logsExist(testPipelineFQN, testRunId));
+  }
+
+  @Test
+  void logsExistForARunThisServerIsStreaming() throws IOException {
+    mockAsyncPutObject();
+    s3LogStorage.appendLogs(testPipelineFQN, testRunId, "line\n");
+
+    assertTrue(s3LogStorage.logsExist(testPipelineFQN, testRunId));
+    verify(mockS3Client, never()).headObject(any(HeadObjectRequest.class));
+  }
+
+  private String runObjectKey(String fileName) {
+    return String.join(
+        "/",
+        testPrefix,
+        testPipelineFQN.replaceAll("[^a-zA-Z0-9_-]", "_"),
+        testRunId.toString(),
+        fileName);
+  }
+
+  @Test
   void testCloseStreamFlushesAndCopiesPartialToLogs() throws Exception {
     String streamKey = testPipelineFQN + "/" + testRunId;
     String partialKey =

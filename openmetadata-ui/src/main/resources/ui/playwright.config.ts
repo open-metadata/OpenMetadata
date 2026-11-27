@@ -256,7 +256,7 @@ export default defineConfig({
     /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
      * transitions resolve instantly — a click landing before the animation
      * settles is a common flake source. Pixel/geometry-sensitive projects
-     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * (visual-regression, Knowledge Graph) opt back out via
      * reducedMotion: 'no-preference' below, because the graph's fit/centering
      * geometry shifts under reduced motion and the snapshot/geometry
      * assertions are calibrated for the default motion path. */
@@ -304,11 +304,6 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'ontology-rdf-setup',
-      testMatch: '**/ontology-rdf.setup.ts',
-      dependencies: ['entity-data-setup'],
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -320,7 +315,6 @@ export default defineConfig({
         ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
         ...(hasDedicatedImportExportLane ? [/@import-export/] : []),
         /@knowledge-graph/,
-        /@ontology-rdf/,
       ],
       teardown: entityTeardown,
       testIgnore: [
@@ -336,7 +330,6 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
-        '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
         '**/ProfileGovernance.spec.ts',
         '**/AdvancedSearch.spec.ts',
@@ -348,10 +341,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
@@ -433,17 +429,6 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
-      name: 'Ontology RDF',
-      // Same graph canvas as Knowledge Graph — keep the default motion path so
-      // fit/centering geometry matches the assertions.
-      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
-      dependencies: ['ontology-rdf-setup'],
-      grep: /ontology-rdf/,
-      teardown: 'entity-data-teardown',
-      fullyParallel: false,
-      workers: 1,
-    },
-    {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       grep: shardGrep,
@@ -458,16 +443,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
-    },
-    {
-      name: 'search-rbac-setup',
-      testMatch: '**/search-rbac.setup.ts',
-      dependencies: authDependencies,
-      teardown: 'search-rbac-teardown',
-    },
-    {
-      name: 'search-rbac-teardown',
-      testMatch: '**/search-rbac.teardown.ts',
     },
     {
       name: 'Basic',
@@ -518,15 +493,6 @@ export default defineConfig({
           },
         ]
       : []),
-    {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
-      grep: shardGrep,
-      dependencies: ['search-rbac-setup'],
-      use: { ...devices['Desktop Chrome'] },
-      fullyParallel: false,
-      workers: 1,
-    },
     // Domain isolation E2E suite (issue #24180). Runs in the single-worker global-state lane
     // because several specs toggle the global `enableAccessControl` search setting; each file
     // restores it in afterAll, and serial execution (workers: 1) prevents cross-file races.

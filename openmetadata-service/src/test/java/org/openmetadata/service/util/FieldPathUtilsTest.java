@@ -13,940 +13,157 @@
 
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.data.Dashboard;
-import org.openmetadata.schema.entity.data.Glossary;
-import org.openmetadata.schema.entity.data.MlModel;
-import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ContainerDataModel;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.MessageSchema;
-import org.openmetadata.schema.type.MlFeature;
-import org.openmetadata.schema.type.SearchIndexField;
-import org.openmetadata.schema.type.Task;
-import org.openmetadata.service.util.FieldPathUtils.FieldPathComponents;
 
-/**
- * Unit tests for FieldPathUtils.
- *
- * <p>Tests the field path parsing logic for various formats:
- * - Simple: "description"
- * - Column/Field: "columns::column_name::description"
- * - Dot notation: "columns.column_name.description"
- * - Nested with quotes: "messageSchema::\"parent.child\"::description"
- * - Array index: "columns[0].description"
- */
 class FieldPathUtilsTest {
 
   @Test
-  void testParseFieldPath_colonSeparator_simple() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns::customer_id::description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("customer_id", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_colonSeparator_noProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns::customer_id");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("customer_id", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_colonSeparator_quotedFieldName() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("messageSchema::\"level.somefield\"::description");
-
-    assertNotNull(result);
-    assertEquals("messageSchema", result.containerName());
-    assertEquals("level.somefield", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_simple() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.email.description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("email", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_noProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.email");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("email", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_arrayIndex() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns[0].description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("0", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_arrayIndex_nestedProperty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("schemaFields[2].tags");
-
-    assertNotNull(result);
-    assertEquals("schemaFields", result.containerName());
-    assertEquals("2", result.fieldName());
-    assertEquals("tags", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_messageSchema() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("messageSchema::event_id::description");
-
-    assertNotNull(result);
-    assertEquals("messageSchema", result.containerName());
-    assertEquals("event_id", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dataModel() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("dataModel::product_id::description");
-
-    assertNotNull(result);
-    assertEquals("dataModel", result.containerName());
-    assertEquals("product_id", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_schemaFields() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("schemaFields::user_id::description");
-
-    assertNotNull(result);
-    assertEquals("schemaFields", result.containerName());
-    assertEquals("user_id", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_responseSchema() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("responseSchema::status_code::description");
-
-    assertNotNull(result);
-    assertEquals("responseSchema", result.containerName());
-    assertEquals("status_code", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_tasks() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("tasks::etl_task::description");
-
-    assertNotNull(result);
-    assertEquals("tasks", result.containerName());
-    assertEquals("etl_task", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_charts() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("charts::revenue_chart::description");
-
-    assertNotNull(result);
-    assertEquals("charts", result.containerName());
-    assertEquals("revenue_chart", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_fields() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("fields::title::description");
-
-    assertNotNull(result);
-    assertEquals("fields", result.containerName());
-    assertEquals("title", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_null() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath(null);
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_empty() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("");
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_simpleString() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("description");
-    assertNull(result);
-  }
-
-  @Test
-  void testParseFieldPath_nestedChildrenPath() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("columns::address::children::street::description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("address", result.fieldName());
-    assertEquals("children", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_nestedDepth2() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.profile.personal.description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("profile.personal", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_nestedDepth3() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("columns.profile.personal.full_name.description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("profile.personal.full_name", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_nestedDepth3_quoted() throws Exception {
-    FieldPathComponents result =
-        invokeParseFieldPath("columns.\"profile.personal.full_name\".description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("profile.personal.full_name", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_nestedTags() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.profile.contact.phone.tags");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("profile.contact.phone", result.fieldName());
-    assertEquals("tags", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_threeSegments_propertyLast() throws Exception {
-    // "columns.profile.personal" is ambiguous (nested column with implied description vs.
-    // flat column + property). Property-last wins — this pins the pre-existing behavior for
-    // three-segment paths; every real producer appends an explicit ".description"/".tags".
-    FieldPathComponents result = invokeParseFieldPath("columns.profile.personal");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("profile", result.fieldName());
-    assertEquals("personal", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_literalDottedName() throws Exception {
-    FieldPathComponents result = invokeParseFieldPath("columns.\"a.b\".description");
-
-    assertNotNull(result);
-    assertEquals("columns", result.containerName());
-    assertEquals("a.b", result.fieldName());
-    assertEquals("description", result.property());
-  }
-
-  @Test
-  void testParseFieldPath_dotSeparator_malformedEmptySegment() throws Exception {
-    // The FQN parser rejects empty segments; parseFieldPath must return null (fail-loud
-    // upstream at setFieldDescription) instead of producing garbage components.
-    FieldPathComponents result = invokeParseFieldPath("columns..description");
-
-    assertNull(result);
-  }
-
-  @Test
-  void testSetFieldDescription_nestedLeaf_updatesLeafOnly() {
+  void setDescription_nestedPath_writesTheChildNotItsParent() {
+    // #36615: a nested column's description was written onto its parent column.
     Table table = nestedTable();
 
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            table, "columns.profile.personal.full_name.description", "Full name of the customer");
+    assertTrue(FieldPathUtils.setDescription(table, path("profile", "personal"), "Personal"));
 
-    assertTrue(updated);
     Column profile = table.getColumns().getFirst();
-    Column personal = profile.getChildren().getFirst();
-    Column fullName = personal.getChildren().getFirst();
-    assertEquals("Full name of the customer", fullName.getDescription());
+    assertEquals("Personal", profile.getChildren().getFirst().getDescription());
     assertEquals("Customer profile block", profile.getDescription());
-    assertNull(personal.getDescription());
   }
 
   @Test
-  void testSetFieldDescription_unresolvableNestedPath_failsLoudly() {
+  void getDescription_readsTheNestedLeaf() {
+    assertEquals(
+        Optional.of("name"),
+        FieldPathUtils.getDescription(nestedTable(), path("profile", "personal", "full_name")));
+  }
+
+  @Test
+  void locate_nameWithADot_isOneName() {
+    Column dotted = new Column().withName("a.b");
+    Table table = new Table().withName("t").withColumns(List.of(dotted));
+
+    assertSame(dotted, FieldPathUtils.locate(table, path("a.b")).orElseThrow());
+    assertTrue(FieldPathUtils.locate(table, path("a", "b")).isEmpty());
+  }
+
+  @Test
+  void locate_entityLevel_isTheEntity() {
     Table table = nestedTable();
 
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            table, "columns.profile.nonexistent.child.description", "text");
+    assertSame(
+        table,
+        FieldPathUtils.locate(table, EntityFieldPath.entityLevel(FieldProperty.TAGS))
+            .orElseThrow());
+  }
 
-    assertFalse(updated);
+  @Test
+  void setDescription_entityLevel_writesTheEntity() {
+    Table table = nestedTable();
+
+    assertTrue(
+        FieldPathUtils.setDescription(
+            table, EntityFieldPath.entityLevel(FieldProperty.DESCRIPTION), "Customers"));
+
+    assertEquals("Customers", table.getDescription());
+  }
+
+  @Test
+  void setDescription_missingField_changesNothing() {
+    Table table = nestedTable();
+
+    assertFalse(FieldPathUtils.setDescription(table, path("profile", "nonexistent"), "x"));
     assertEquals("Customer profile block", table.getColumns().getFirst().getDescription());
   }
 
   @Test
-  void testGetFieldDescription_nestedLeaf() {
-    Table table = nestedTable();
-
-    Optional<String> description =
-        FieldPathUtils.getFieldDescription(table, "columns.profile.personal.full_name.description");
-
-    assertEquals(Optional.of("name"), description);
+  void locate_doesNotReachAFieldByItsOwnNameAlone() {
+    assertTrue(FieldPathUtils.locate(nestedTable(), path("full_name")).isEmpty());
   }
 
-  private Table nestedTable() {
+  @Test
+  void locate_twoSiblingsWithTheSameName_areRefused() {
+    Table table =
+        new Table()
+            .withName("t")
+            .withColumns(List.of(new Column().withName("id"), new Column().withName("id")));
+
+    assertTrue(FieldPathUtils.locate(table, path("id")).isEmpty());
+  }
+
+  @Test
+  void locate_topicSchemaField() {
+    Field userId = new Field().withName("user_id");
+    Topic topic =
+        new Topic().withMessageSchema(new MessageSchema().withSchemaFields(List.of(userId)));
+    EntityFieldPath path =
+        new EntityFieldPath(
+            "messageSchema.schemaFields", List.of("user_id"), FieldProperty.DESCRIPTION);
+
+    assertSame(userId, FieldPathUtils.locate(topic, path).orElseThrow());
+  }
+
+  @Test
+  void locate_apiEndpointSchemasAreSeparate() {
+    Field request = new Field().withName("shared");
+    Field response = new Field().withName("shared");
+    APIEndpoint endpoint =
+        new APIEndpoint()
+            .withRequestSchema(new APISchema().withSchemaFields(List.of(request)))
+            .withResponseSchema(new APISchema().withSchemaFields(List.of(response)));
+
+    assertSame(
+        response,
+        FieldPathUtils.locate(endpoint, fieldIn("responseSchema.schemaFields", "shared"))
+            .orElseThrow());
+    assertSame(
+        request,
+        FieldPathUtils.locate(endpoint, fieldIn("requestSchema.schemaFields", "shared"))
+            .orElseThrow());
+  }
+
+  @Test
+  void supports_matchesWhatTheFieldCarries() {
+    Column column = new Column().withName("id");
+
+    assertTrue(FieldPathUtils.supports(column, FieldProperty.DESCRIPTION));
+    assertTrue(FieldPathUtils.supports(column, FieldProperty.TAGS));
+    assertFalse(FieldPathUtils.supports(new Object(), FieldProperty.DESCRIPTION));
+  }
+
+  @Test
+  void getDescription_fieldWithoutOne_isEmpty() {
+    assertTrue(FieldPathUtils.getDescription(nestedTable(), path("profile", "personal")).isEmpty());
+  }
+
+  private static EntityFieldPath path(String... names) {
+    return new EntityFieldPath("columns", List.of(names), FieldProperty.DESCRIPTION);
+  }
+
+  private static EntityFieldPath fieldIn(String container, String name) {
+    return new EntityFieldPath(container, List.of(name), FieldProperty.DESCRIPTION);
+  }
+
+  private static Table nestedTable() {
     Column fullName = new Column().withName("full_name").withDescription("name");
     Column personal = new Column().withName("personal").withChildren(List.of(fullName));
-    Column phone = new Column().withName("phone").withDescription("Phone");
-    Column contact = new Column().withName("contact").withChildren(List.of(phone));
     Column profile =
         new Column()
             .withName("profile")
             .withDescription("Customer profile block")
-            .withChildren(List.of(personal, contact));
-    return new Table()
-        .withId(UUID.randomUUID())
-        .withName("customer_events")
-        .withColumns(List.of(profile));
-  }
-
-  @Test
-  void setFieldDescription_tableColumn_updatesInMemory() {
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withColumns(new ArrayList<>(List.of(new Column().withName("id"))));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(table, "columns::id::description", "Order id");
-
-    assertTrue(updated);
-    assertEquals("Order id", table.getColumns().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_topicNestedSchemaField_quotedDottedName() {
-    Topic topic =
-        new Topic()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withMessageSchema(
-                new MessageSchema()
-                    .withSchemaFields(
-                        List.of(
-                            new Field()
-                                .withName("customer")
-                                .withChildren(List.of(new Field().withName("id"))))));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            topic, "messageSchema::\"customer.id\"::description", "Cust id");
-
-    assertTrue(updated);
-    assertEquals(
-        "Cust id",
-        topic.getMessageSchema().getSchemaFields().get(0).getChildren().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_containerDataModelColumn() {
-    Container container =
-        new Container()
-            .withId(UUID.randomUUID())
-            .withName("bucket")
-            .withDataModel(
-                new ContainerDataModel().withColumns(List.of(new Column().withName("payload"))));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            container, "dataModel::payload::description", "Payload col");
-
-    assertTrue(updated);
-    assertEquals("Payload col", container.getDataModel().getColumns().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_apiEndpointResponseSchemaField() {
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("getUser")
-            .withResponseSchema(
-                new APISchema().withSchemaFields(List.of(new Field().withName("userId"))));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            endpoint, "responseSchema::userId::description", "User id");
-
-    assertTrue(updated);
-    assertEquals("User id", endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_missingField_returnsFalse() {
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withColumns(List.of(new Column().withName("id")));
-
-    boolean updated = FieldPathUtils.setFieldDescription(table, "columns::nope::description", "x");
-
-    assertFalse(updated);
-  }
-
-  @Test
-  void setFieldDescription_unknownContainer_returnsFalse() {
-    Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName("etl");
-
-    // Pins today's gap: the if-chain does not know pipeline tasks. Task 10 deliberately
-    // changes this expectation (see that task's step 4).
-    boolean updated =
-        FieldPathUtils.setFieldDescription(pipeline, "unknownContainer::t1::description", "x");
-
-    assertFalse(updated);
-  }
-
-  @Test
-  void setFieldDescription_emptyChildArray_returnsFalse() {
-    Topic topic =
-        new Topic()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withMessageSchema(new MessageSchema().withSchemaFields(List.of()));
-
-    assertFalse(FieldPathUtils.setFieldDescription(topic, "messageSchema::id::description", "x"));
-  }
-
-  @Test
-  void findField_tableStructChild_dottedPath() {
-    Table table =
-        new Table()
-            .withName("orders")
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName("profile")
-                        .withChildren(List.of(new Column().withName("full_name")))));
-
-    Optional<Object> found =
-        FieldPathUtils.findField(table, "columns::profile.full_name::description");
-
-    assertTrue(found.isPresent());
-    assertEquals("full_name", ((Column) found.get()).getName());
-  }
-
-  @Test
-  void nestedContainerResolution_returnsTheLiveListInstance() {
-    // The registry must hand back the entity's own list, not a copy: FieldPathUtils mutates the
-    // element POJOs in place, so a copied list would write to something the entity cannot see.
-    // This is what makes the resolver a safe substitute for the deleted nested-container chain.
-    Topic topic =
-        new Topic()
-            .withMessageSchema(
-                new MessageSchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("customer")))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            topic, "messageSchema::customer::description", "via resolver"));
-    assertSame(
-        topic.getMessageSchema().getSchemaFields(),
-        ChildFieldResolver.containerListFor(topic, "messageSchema"));
-  }
-
-  @Test
-  void setFieldDescription_columnsContainerOnTable_worksToday() {
-    // FROZEN, must never change. Task 10 makes "columns" a registry-resolved alias for the
-    // entity's child container; for table the registry's container path IS literally "columns"
-    // (ChildFieldResolver's TABLE spec), so this resolution must stay byte-identical.
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withColumns(new ArrayList<>(List.of(new Column().withName("id"))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(table, "columns::id::description", "Primary key"));
-    assertEquals("Primary key", table.getColumns().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnTopic_writesTheSchemaField() {
-    // Was updateFieldDescription_columnsContainerOnTopic_silentlyDoesNothingToday, the
-    // characterization of the bug. "columns" is now the registry-resolved alias for the entity's
-    // child container, so the fieldPath the suggestion tool emits for every type finally lands.
-    Topic topic =
-        new Topic()
-            .withId(UUID.randomUUID())
-            .withName("orders")
-            .withMessageSchema(
-                new MessageSchema()
-                    .withSchemaFields(
-                        new ArrayList<>(List.of(new Field().withName("customer_id")))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            topic, "columns::customer_id::description", "Customer identifier"));
-    assertEquals(
-        "Customer identifier", topic.getMessageSchema().getSchemaFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnPipelineTask() {
-    Pipeline pipeline =
-        new Pipeline()
-            .withId(UUID.randomUUID())
-            .withName("etl")
-            .withTasks(new ArrayList<>(List.of(new Task().withName("extract"))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            pipeline, "columns::extract::description", "Extract step"));
-    assertEquals("Extract step", pipeline.getTasks().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnMlFeature() {
-    MlModel model =
-        new MlModel()
-            .withId(UUID.randomUUID())
-            .withName("churn")
-            .withMlFeatures(new ArrayList<>(List.of(new MlFeature().withName("age"))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(model, "columns::age::description", "Customer age"));
-    assertEquals("Customer age", model.getMlFeatures().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnSearchIndexField() {
-    SearchIndex index =
-        new SearchIndex()
-            .withId(UUID.randomUUID())
-            .withName("catalog")
-            .withFields(new ArrayList<>(List.of(new SearchIndexField().withName("title"))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(index, "columns::title::description", "Document title"));
-    assertEquals("Document title", index.getFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnContainerDataModelColumn() {
-    Container container =
-        new Container()
-            .withId(UUID.randomUUID())
-            .withName("bucket")
-            .withDataModel(
-                new ContainerDataModel()
-                    .withColumns(new ArrayList<>(List.of(new Column().withName("payload")))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            container, "columns::payload::description", "Raw payload"));
-    assertEquals("Raw payload", container.getDataModel().getColumns().get(0).getDescription());
-  }
-
-  @Test
-  void findField_columnsAliasOnApiEndpoint_refusesAnAmbiguousName() {
-    // findField is what the TAG path resolves through (TaskWorkflowHandler.patchFieldTags),
-    // and it walks a different method from the description path. Guarding only the
-    // description walkers left an approved `columns.<name>.tags` suggestion writing onto
-    // whichever of the two schemas' same-named fields came first, reporting success — the
-    // same silent mis-write, reached through the other door.
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("registerCustomer")
-            .withRequestSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))))
-            .withResponseSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))));
-
-    assertTrue(FieldPathUtils.findField(endpoint, "columns::email::tags").isEmpty());
-  }
-
-  @Test
-  void findField_apiEndpointOwnContainer_resolvesASharedName() {
-    // The counterweight: naming the container makes it unambiguous, and findField resolves.
-    Field responseEmail = new Field().withName("email");
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("registerCustomer")
-            .withRequestSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("email")))))
-            .withResponseSchema(
-                new APISchema().withSchemaFields(new ArrayList<>(List.of(responseEmail))));
-
-    assertSame(
-        responseEmail,
-        FieldPathUtils.findField(endpoint, "responseSchema::email::tags").orElse(null));
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnApiEndpoint_refusesAnAmbiguousName() {
-    // A REST endpoint normally echoes its request shape in its response, so the two schemas share
-    // field names. The "columns" alias concatenates both, and resolving by position wrote the
-    // caller's text onto whichever came first while reporting success — an accepted suggestion for
-    // the response field silently overwrote the request field.
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("registerCustomer")
-            .withRequestSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))))
-            .withResponseSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))));
-
-    assertFalse(
-        FieldPathUtils.setFieldDescription(
-            endpoint, "columns::category::description", "Pet category"));
-
-    // Neither is written, and nothing is persisted: guessing is worse than declining.
-    assertNull(endpoint.getRequestSchema().getSchemaFields().get(0).getDescription());
-    assertNull(endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_apiEndpointOwnContainer_disambiguatesASharedName() {
-    // The counterweight: the caller that means one of them says which, and that path resolves to
-    // a single schema's list, so the shared name is no longer ambiguous.
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("registerCustomer")
-            .withRequestSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))))
-            .withResponseSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("category")))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            endpoint,
-            "responseSchema::category::description",
-            "Category returned on the created account"));
-
-    assertEquals(
-        "Category returned on the created account",
-        endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
-    assertNull(endpoint.getRequestSchema().getSchemaFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnApiEndpoint_writesEitherSchemaField() {
-    // The two-container-path type. A response-schema field must be reachable through the same
-    // "columns" alias as a request-schema one.
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withId(UUID.randomUUID())
-            .withName("getUser")
-            .withRequestSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("query")))))
-            .withResponseSchema(
-                new APISchema()
-                    .withSchemaFields(new ArrayList<>(List.of(new Field().withName("userId")))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            endpoint, "columns::userId::description", "The user id"));
-    assertEquals(
-        "The user id", endpoint.getResponseSchema().getSchemaFields().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasReachesNestedStructChild() {
-    // The alias must not lose the recursion into children: a struct child of a container
-    // dataModel column is addressed as "columns::parent.child::description".
-    Container container =
-        new Container()
-            .withId(UUID.randomUUID())
-            .withName("bucket")
-            .withDataModel(
-                new ContainerDataModel()
-                    .withColumns(
-                        new ArrayList<>(
-                            List.of(
-                                new Column()
-                                    .withName("profile")
-                                    .withChildren(
-                                        new ArrayList<>(
-                                            List.of(new Column().withName("full_name"))))))));
-
-    assertTrue(
-        FieldPathUtils.setFieldDescription(
-            container, "columns::profile.full_name::description", "Full name"));
-    assertEquals(
-        "Full name",
-        container.getDataModel().getColumns().get(0).getChildren().get(0).getDescription());
-  }
-
-  @Test
-  void setFieldDescription_columnsAliasOnNonRegistryType_stillFails() {
-    // The alias is not a wildcard: a type with no registered child container still resolves
-    // nothing, so it cannot start writing to an unrelated list that happens to exist.
-    Glossary glossary = new Glossary().withId(UUID.randomUUID()).withName("business");
-
-    assertFalse(
-        FieldPathUtils.setFieldDescription(glossary, "columns::anything::description", "x"));
-  }
-
-  /** Table with two sibling columns [profile, address], each with an immediate child "street". */
-  private Table twinStreetTable() {
-    Column profileStreet = new Column().withName("street");
-    Column profile =
-        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileStreet)));
-    Column addressStreet = new Column().withName("street");
-    Column address =
-        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressStreet)));
-    return new Table()
-        .withId(UUID.randomUUID())
-        .withName("people")
-        .withColumns(new ArrayList<>(List.of(profile, address)));
-  }
-
-  @Test
-  void setFieldDescription_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
-    // A bare leaf "street" that lives under two sibling columns must not resolve to the first
-    // sibling's child and report success — guessing the target is worse than declining.
-    Table table = twinStreetTable();
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(table, "columns::street::description", "Road name");
-
-    assertFalse(updated, "an ambiguous bare leaf must not be resolved by sibling iteration order");
-    assertNull(
-        table.getColumns().get(0).getChildren().get(0).getDescription(),
-        "profile.street must not be written when the name is ambiguous");
-    assertNull(
-        table.getColumns().get(1).getChildren().get(0).getDescription(),
-        "address.street must not be written when the name is ambiguous");
-  }
-
-  @Test
-  void getFieldDescription_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
-    Table table = twinStreetTable();
-    table.getColumns().get(0).getChildren().get(0).setDescription("first");
-    table.getColumns().get(1).getChildren().get(0).setDescription("second");
-
-    Optional<String> description =
-        FieldPathUtils.getFieldDescription(table, "columns::street::description");
-
-    assertTrue(description.isEmpty(), "an ambiguous bare leaf must not return a value");
-  }
-
-  @Test
-  void findField_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
-    // findField is what the tag path resolves through (TaskWorkflowHandler.patchFieldTags), so
-    // an ambiguous bare leaf here would silently tag the first sibling's child.
-    Table table = twinStreetTable();
-
-    Optional<Object> found = FieldPathUtils.findField(table, "columns::street::tags");
-
-    assertTrue(found.isEmpty(), "an ambiguous bare leaf must not resolve to a field POJO");
-  }
-
-  @Test
-  void setFieldDescription_bareLeafTwoDeepInTwoSubtrees_isDeclinedNotGuessed() {
-    // The same ambiguity one level deeper: "street" is a grandchild of both siblings. The
-    // recursive fallback must not write to the first sibling's grandchild either; declining is
-    // the safe outcome for any bare leaf whose resolution would be a guess.
-    Column profileStreet = new Column().withName("street");
-    Column profileInner =
-        new Column().withName("personal").withChildren(new ArrayList<>(List.of(profileStreet)));
-    Column profile =
-        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileInner)));
-    Column addressStreet = new Column().withName("street");
-    Column addressInner =
-        new Column().withName("contact").withChildren(new ArrayList<>(List.of(addressStreet)));
-    Column address =
-        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressInner)));
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("people")
-            .withColumns(new ArrayList<>(List.of(profile, address)));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(table, "columns::street::description", "Road name");
-
-    assertFalse(updated, "an ambiguous grandchild bare leaf must not be guessed");
-    assertNull(profileStreet.getDescription(), "profile's deep street must not be written");
-    assertNull(addressStreet.getDescription(), "address's deep street must not be written");
-  }
-
-  @Test
-  void setFieldDescription_bareLeafInSingleSubtree_resolvesWithoutFalseRefusal() {
-    // Counterweight: a bare leaf that lives in exactly one sibling's subtree must still
-    // resolve, so the cross-subtree guard does not over-refuse unambiguous names.
-    Column street = new Column().withName("street");
-    Column profile =
-        new Column().withName("profile").withChildren(new ArrayList<>(List.of(street)));
-    Column other =
-        new Column()
-            .withName("address")
-            .withChildren(new ArrayList<>(List.of(new Column().withName("city"))));
-    Table table =
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName("people")
-            .withColumns(new ArrayList<>(List.of(profile, other)));
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(table, "columns::street::description", "Road name");
-
-    assertTrue(updated, "a unique bare leaf must still resolve");
-    assertEquals("Road name", street.getDescription());
-  }
-
-  @Test
-  void findField_dottedPathThroughNamedParentResolvesWithSiblingDuplicatePresent() {
-    // Regression: a dotted path that names the parent resolves to that parent's child even when
-    // a sibling subtree contains a same-named leaf; the cross-subtree guard is for bare leaves
-    // that the caller did not anchor to a parent.
-    Column profileStreet = new Column().withName("street");
-    Column profile =
-        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileStreet)));
-    Column addressStreet = new Column().withName("street");
-    Column address =
-        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressStreet)));
-    Table table =
-        new Table().withName("people").withColumns(new ArrayList<>(List.of(profile, address)));
-
-    Optional<Object> found =
-        FieldPathUtils.findField(table, "columns::address.street::description");
-
-    assertTrue(found.isPresent());
-    assertSame(addressStreet, found.get());
-  }
-
-  @Test
-  void getFieldDescription_bareLeafMissingEverywhere_isEmpty() {
-    // A bare leaf that matches no sibling's children is simply absent (not guessed).
-    Table table = twinStreetTable();
-
-    Optional<String> description =
-        FieldPathUtils.getFieldDescription(table, "columns::nope::description");
-
-    assertTrue(description.isEmpty());
-  }
-
-  // ==================== Dashboard charts (EntityReference list) ====================
-  // A Dashboard's charts are a List<EntityReference> — a projection of separate Chart entities,
-  // not editable child POJOs. The reflective fallback in resolveContainerList must refuse this
-  // list so an approved per-chart DescriptionUpdate task is surfaced as a visible failure
-  // instead of a silent no-op that reports success while prepare() reverts the change.
-
-  @Test
-  void setFieldDescription_dashboardChart_returnsFalse() {
-    // The user-facing bug: an approved "charts::<chartName>::description" task on a Dashboard
-    // returned true while prepare() reverted the only meaningful change. It must now return
-    // false so TaskWorkflowHandler logs failure instead of "Successfully applied".
-    Dashboard dashboard = dashboardWithCharts();
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(
-            dashboard, "charts::revenue_chart::description", "New desc");
-
-    assertFalse(updated, "mutating a chart EntityReference through the parent is a silent no-op");
-    // The transient EntityReference must NOT be written: the previous code mutated it in memory,
-    // reported success, and let prepare() revert it. Refusing to write keeps the failure honest.
-    assertEquals("old", dashboard.getCharts().get(0).getDescription());
-  }
-
-  @Test
-  void findField_dashboardChart_isEmpty() {
-    // findField is the entry point for the tag path (TaskWorkflowHandler.patchFieldTags); an
-    // approved "charts::<chartName>::tags" task must not silently tag a transient reference.
-    Dashboard dashboard = dashboardWithCharts();
-
-    Optional<Object> found = FieldPathUtils.findField(dashboard, "charts::revenue_chart::tags");
-
-    assertTrue(found.isEmpty());
-  }
-
-  @Test
-  void setFieldDescription_dashboardEntityLevelDescription_stillWorks() {
-    // Entity-level description ("description") must not regress: it never touches
-    // resolveContainerList.
-    Dashboard dashboard = dashboardWithCharts();
-
-    boolean updated =
-        FieldPathUtils.setFieldDescription(dashboard, "description", "Board-level description");
-
-    assertTrue(updated);
-    assertEquals("Board-level description", dashboard.getDescription());
-  }
-
-  private Dashboard dashboardWithCharts() {
-    return new Dashboard()
-        .withId(UUID.randomUUID())
-        .withName("sales_board")
-        .withDescription("board")
-        .withCharts(
-            List.of(
-                new EntityReference()
-                    .withId(UUID.randomUUID())
-                    .withType("chart")
-                    .withName("revenue_chart")
-                    .withDescription("old")));
-  }
-
-  private FieldPathComponents invokeParseFieldPath(String fieldPath) throws Exception {
-    Method method = FieldPathUtils.class.getDeclaredMethod("parseFieldPath", String.class);
-    method.setAccessible(true);
-    return (FieldPathComponents) method.invoke(null, fieldPath);
+            .withChildren(List.of(personal));
+    return new Table().withName("customer_events").withColumns(List.of(profile));
   }
 }

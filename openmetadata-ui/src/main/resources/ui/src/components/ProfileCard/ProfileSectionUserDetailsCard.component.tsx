@@ -19,11 +19,10 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Key01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -94,7 +93,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="change-password-button"
-        iconLeading={ChangePassword}
+        iconLeading={Key01}
         onClick={onChangePassword}>
         {t('label.change-entity', {
           entity: t('label.password-lowercase'),

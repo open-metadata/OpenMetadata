@@ -13,11 +13,11 @@
 
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { getSafeHttpUrl } from '../../../../utils/StringUtils';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
@@ -53,9 +53,10 @@ function CommonEntitySummaryInfo({
               rel="noopener noreferrer"
               target="_blank">
               {info.value}
-              <IconExternalLink
-                className="tw:ml-2 tw:size-3.5 tw:shrink-0"
+              <LinkExternal01
+                className="tw:ml-2 tw:shrink-0"
                 data-testid="external-link-icon"
+                size={14}
               />
             </a>
           );

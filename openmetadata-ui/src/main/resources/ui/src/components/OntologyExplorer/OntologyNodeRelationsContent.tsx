@@ -367,45 +367,51 @@ export const OntologyNodeRelationsContent: React.FC<
     }
 
     return (
-      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border-dashed tw:p-3 tw:shadow-sm">
-        <Select
-          aria-label={t('label.mapping-type')}
-          items={Object.values(ConceptMappingType).map((type) => ({
-            id: type,
-            label: t(mappingLabelKeys[type]),
-          }))}
-          size="sm"
-          value={mappingType}
-          onChange={(key) => setMappingType(String(key) as ConceptMappingType)}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
-        <Input
-          data-testid="concept-mapping-iri"
-          placeholder={t('label.concept-iri')}
-          value={mappingIri}
-          onChange={setMappingIri}
-        />
-        <div className="tw:flex tw:justify-end tw:gap-2">
-          <Button
-            color="tertiary"
+      <Card
+        className="tw:border-brand tw:outline-4 tw:outline-utility-brand-100"
+        size="sm">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
+          <Select
+            aria-label={t('label.mapping-type')}
+            items={Object.values(ConceptMappingType).map((type) => ({
+              id: type,
+              label: t(mappingLabelKeys[type]),
+            }))}
             size="sm"
-            onClick={() => {
-              setMappingIri('');
-              setIsAddingMapping(false);
-            }}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="save-concept-mapping"
-            isDisabled={isSavingMapping || !mappingIri.trim()}
-            size="sm"
-            onClick={handleAddMapping}>
-            {t('label.add-mapping')}
-          </Button>
-        </div>
+            value={mappingType}
+            onChange={(key) =>
+              setMappingType(String(key) as ConceptMappingType)
+            }>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
+          <Input
+            data-testid="concept-mapping-iri"
+            placeholder={t('label.concept-iri')}
+            value={mappingIri}
+            onChange={setMappingIri}
+          />
+          <div className="tw:flex tw:justify-end tw:gap-2">
+            <Button
+              color="tertiary"
+              size="sm"
+              onClick={() => {
+                setMappingIri('');
+                setIsAddingMapping(false);
+              }}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-concept-mapping"
+              isDisabled={isSavingMapping || !mappingIri.trim()}
+              size="sm"
+              onClick={handleAddMapping}>
+              {t('label.add-mapping')}
+            </Button>
+          </div>
+        </Card.Content>
       </Card>
     );
   };

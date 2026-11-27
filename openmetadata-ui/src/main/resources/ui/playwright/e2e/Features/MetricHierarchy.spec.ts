@@ -865,7 +865,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         return (
           url.pathname.endsWith('/api/v1/metrics/hierarchy') &&
-          url.searchParams.get('offset') === '20'
+          url.searchParams.get('offset') === '15'
         );
       });
       await page.getByTestId('metric-page-next').click();

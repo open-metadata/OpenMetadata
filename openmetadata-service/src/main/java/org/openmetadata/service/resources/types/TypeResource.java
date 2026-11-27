@@ -379,8 +379,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
         if (Entity.entityHasField(name, Entity.FIELD_EXTENSION)) {
           OperationContext operationContext =
               new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
-          ResourceContext<?> resourceContext = new ResourceContext<>(name);
-          authorizer.authorize(securityContext, operationContext, resourceContext);
+          authorizer.authorize(
+              securityContext, operationContext, ResourceContext.forEntityType(name));
           return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
         }
       } catch (EntityNotFoundException e) {

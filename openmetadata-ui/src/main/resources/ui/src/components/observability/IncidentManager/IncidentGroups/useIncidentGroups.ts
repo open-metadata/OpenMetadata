@@ -36,7 +36,6 @@ import {
 } from '../../../../rest/queries/incidentGroupsQuery';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-  INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
   INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
@@ -286,8 +285,7 @@ export const useIncidentGroups = () => {
     [sortFieldParam, sortTypeParam]
   );
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
-    `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`,
-    INCIDENT_GROUPS_PAGE_SIZE
+    `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`
   );
 
   const listParams = {
@@ -365,7 +363,7 @@ export const useIncidentGroups = () => {
         return;
       }
 
-      replaceSearch({ [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy });
+      void replaceSearch({ [INCIDENT_GROUP_BY_PARAM]: updatedGroupBy });
     },
     [groupBy, replaceSearch]
   );

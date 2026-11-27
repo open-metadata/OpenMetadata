@@ -14,7 +14,9 @@ dumps. No I/O is performed inside the detector.
 
 Tripwires:
   * Hang: a thread on the same op for >stuck_warn_seconds (warn) or
-    >auto_dump_seconds (warn + dump_reason).
+    >auto_dump_seconds (warn + dump_reason). Whole-phase wrapper ops
+    (_PHASE_OPS — source.iter, workflow.execute, ...) are excluded because
+    their cumulative age grows monotonically on healthy long runs.
   * Memory pressure: PSI avg10 over threshold; cgroup `memory.events.high`
     or `.events.oom` incremented since the previous tick.
 """
@@ -29,6 +31,9 @@ from metadata.ingestion.diagnostics.collectors.operation_registry import (
 )
 from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX, DiagnosticsConfig
 from metadata.ingestion.diagnostics.samplers.memory import MemorySample, MemoryTracker
+
+# Phase duration includes completed work; per-record processor/stage spans remain judged.
+_PHASE_OPS = frozenset({"workflow.execute", "source.iter", "bulksink.run"})
 
 
 @dataclass(frozen=True)
@@ -86,6 +91,8 @@ class Watchdog:
         name_by_ident: dict[int, str],
         now: float,
     ) -> Verdict | None:
+        if op_name in _PHASE_OPS:
+            return None
         if age < self._config.stuck_warn_seconds:
             return None
         key = (tid, op_name)

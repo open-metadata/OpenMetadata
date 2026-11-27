@@ -43,7 +43,7 @@ def test_provisions_and_reuses_models_in_a_clean_environment(tmp_path: Path):
     assert wheel.is_file(), f"Candidate wheel does not exist: {wheel}"
 
     environment = tmp_path / "model-provisioning"
-    venv.EnvBuilder(with_pip=True).create(environment)
+    venv.EnvBuilder(with_pip=True, symlinks=True).create(environment)
     python = environment / "bin" / "python"
 
     _run([str(python), "-m", "pip", "install", f"{wheel}[pii-processor]"])

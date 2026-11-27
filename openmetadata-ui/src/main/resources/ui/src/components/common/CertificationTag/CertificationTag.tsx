@@ -12,10 +12,10 @@
  */
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Certification } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
@@ -38,10 +38,9 @@ const CertificationTag = ({
       <Icon
         alt={`certification: ${name}`}
         fallback={
-          <CertificationIcon
+          <Certification
             className="tw:text-fg-secondary"
-            height={defaultIconSize}
-            width={defaultIconSize}
+            size={defaultIconSize}
           />
         }
         iconValue={iconURL}

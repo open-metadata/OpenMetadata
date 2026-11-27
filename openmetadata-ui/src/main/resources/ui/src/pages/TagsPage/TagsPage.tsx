@@ -51,6 +51,7 @@ import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/entity/type';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
@@ -227,6 +228,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
+      setCurrentClassification({ ...res, termCount: 0 });
       navigate(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (
@@ -247,6 +249,9 @@ const TagsPage = () => {
           })
         );
       }
+
+      // Rethrow so the form drawer stays open with the user's input.
+      throw error;
     }
   };
 
@@ -322,7 +327,9 @@ const TagsPage = () => {
     }
   }, [deleteTags.data?.id, handleDeleteTag]);
 
-  const handleUpdateClassification = useCallback(
+  // Rejects on failure so the edit drawer can stay open; inline edits use the
+  // non-throwing handleUpdateClassification below.
+  const updateClassification = useCallback(
     async (updatedClassification: Classification) => {
       if (!isUndefined(currentClassification)) {
         const patchData = compare(currentClassification, updatedClassification);
@@ -375,10 +382,31 @@ const TagsPage = () => {
               })
             );
           }
+
+          throw error;
         }
       }
     },
-    [currentClassification, history]
+    [currentClassification, navigate]
+  );
+
+  const handleUpdateClassification = useCallback(
+    async (updatedClassification: Classification) => {
+      try {
+        await updateClassification(updatedClassification);
+      } catch {
+        // Error toast already shown by updateClassification.
+      }
+    },
+    [updateClassification]
+  );
+
+  const handleClassificationDomainsUpdate = useCallback(
+    (id: string, domains?: EntityReference[]) =>
+      setCurrentClassification((prev) =>
+        prev?.id === id ? { ...prev, domains } : prev
+      ),
+    []
   );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
@@ -423,6 +451,8 @@ const TagsPage = () => {
           })
         );
       }
+
+      throw error;
     }
   };
 
@@ -451,6 +481,8 @@ const TagsPage = () => {
             })
           );
         }
+
+        throw error;
       }
     }
   };
@@ -672,7 +704,7 @@ const TagsPage = () => {
       setIsClassificationFormLoading(true);
       try {
         if (editClassification) {
-          await handleUpdateClassification({
+          await updateClassification({
             ...editClassification,
             ...formData,
           } as Classification);
@@ -686,7 +718,7 @@ const TagsPage = () => {
     },
     [
       editClassification,
-      handleUpdateClassification,
+      updateClassification,
       handleCreateClassification,
       handleClassificationDrawerClose,
     ]
@@ -872,6 +904,9 @@ const TagsPage = () => {
                   handleActionDeleteTag={handleActionDeleteTag}
                   handleAddNewTagClick={handleAddNewTagClick}
                   handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleClassificationDomainsUpdate={
+                    handleClassificationDomainsUpdate
+                  }
                   handleEditClassificationClick={handleEditClassificationClick}
                   handleEditTagClick={handleEditTagClick}
                   handleToggleDisable={handleToggleDisable}

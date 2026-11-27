@@ -33,3 +33,14 @@ export enum IncidentTimeMetricsType {
   TIME_TO_RESPONSE = 'timeToResponse',
   TIME_TO_RESOLUTION = 'timeToResolution',
 }
+
+export enum DataQualityPageTabs {
+  TEST_SUITES = 'test-suites',
+  TEST_CASES = 'test-cases',
+  DASHBOARD = 'dashboard',
+}
+
+export enum DataQualitySubTabs {
+  TABLE_SUITES = 'table-suites',
+  BUNDLE_SUITES = 'bundle-suites',
+}

@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { AlertTriangle, Building07, Mail01, User01 } from '../icons';
+import { Alert, Building07, Mail01, User01 } from '../icons';
 import { Button } from '../components/base/buttons/button';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';
@@ -296,7 +296,7 @@ export const Destructive: Story = {
                 <div className="tw:relative tw:w-max">
                   <FeaturedIcon
                     color="error"
-                    icon={AlertTriangle}
+                    icon={Alert}
                     size="lg"
                     theme="light"
                   />

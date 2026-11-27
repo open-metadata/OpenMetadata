@@ -1,7 +1,7 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets)
 - **Deciders:** backend security
 - **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
@@ -60,3 +60,36 @@ manifest source that matches none of the source schemas fails closed instead of 
   returned and decrypted, and the rest of the pipeline stays readable so it can be repaired.
 - **Re-stored by a secrets-manager migration**, which reads each pipeline back as above before
   encrypting it again: such a source is dropped and has to be entered again.
+
+## Amendment (v5, 2026-11-03)
+
+Once `additionalProperties: {format: password}` made every string entry of a password-valued map
+mask to the same placeholder (ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets),
+the masked comparison could no longer see an edit to a non-secret map entry — an OAuth token
+endpoint URL changed next to its masked client secret. The guard now also treats a typed
+(plaintext) value at a masked password-map entry as a change, unless it still equals the stored
+entry. The same holds for any value other than the mask: an entry is kept only when it arrives as
+the stored value itself or decrypts locally to the stored cleartext, so a different `secret:`
+reference, which the server never fetches, or another Fernet token counts as a change.
+Reference strings are compared after local Fernet unwrapping on both sides, so a plain reference
+and a stored token wrapping that same reference are unchanged. The check is scoped to password-map entries:
+a typed value at a scalar password field is a re-entered secret, which this record has always
+accepted. The check covers both connections and the ingestion pipeline sources of v3, where a dbt
+HTTP source's `dbtHttpHeaders` is such a map.
+
+The cost is deliberate: rotating one secret *inside* the map (a new value for an entry the schema
+does not declare) while the connection's other secrets stay masked reads exactly
+like a redirect — both are typed values at masked map entries — and is refused, so the caller
+must re-enter every secret of the connection. That is the same rule the unmasked maps produced
+before they were declared secret, and the only sound distinction (marking which keys are secrets)
+is the per-key declaration of v6. Pinned by
+`ConnectionSecretsGuardTest.rotatingAnUndeclaredMapEntryRequiresReenteringTheOthers`.
+
+## Amendment (v6, 2026-11-06)
+
+Keys a map's schema declares as `format: password` properties
+(ADR:2026-10-30-password-format-on-additionalproperties-makes-a-map-of-secrets, v4) are scalar
+password fields, not map entries, so a typed value at one is a re-entered secret and the write is
+accepted: rotating `sasl.oauthbearer.client.secret` no longer asks for the connection's other
+secrets. Entries the schema does not declare keep the v5 rule. Pinned by
+`ConnectionSecretsGuardTest.rotatingADeclaredSecretInsideTheConfigMapKeepsTheOthersMasked`.

@@ -68,6 +68,7 @@ export const DropdownSearchField = ({
 }: DropdownSearchFieldProps) => (
   <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={wrapperRef}>
     <Input
+      autoComplete="off"
       autoFocus={autoFocus}
       icon={SearchInputIcon}
       inputDataTestId={inputDataTestId}

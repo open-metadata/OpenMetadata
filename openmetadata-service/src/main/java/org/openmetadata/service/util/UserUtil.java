@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -63,6 +64,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -193,6 +195,41 @@ public final class UserUtil {
       current = current.getCause();
     }
     return false;
+  }
+
+  /**
+   * Two first sign-ins of one new user race to create the account, and the loser gets a uniqueness
+   * conflict. It signs in to the account the winner just created, but only when that account
+   * carries the same email: a conflict with a differently addressed account is a different person.
+   */
+  public static User createOrAdoptConcurrentlyCreatedUser(
+      Supplier<User> create, Supplier<User> loadByName, String email) {
+    try {
+      return create.get();
+    } catch (UserCreationException conflict) {
+      return adoptConcurrentlyCreatedUser(conflict, loadByName, email);
+    }
+  }
+
+  private static User adoptConcurrentlyCreatedUser(
+      UserCreationException conflict, Supplier<User> loadByName, String email) {
+    if (!isRetryableUserCreationConflict(conflict)) {
+      throw conflict;
+    }
+    User concurrentlyCreated = loadOrRethrow(loadByName, conflict);
+    if (!SecurityUtil.sameIdentifier(email, concurrentlyCreated.getEmail())) {
+      throw conflict;
+    }
+    LOG.debug("Signing in to the account a concurrent first login created for {}", email);
+    return concurrentlyCreated;
+  }
+
+  private static User loadOrRethrow(Supplier<User> loadByName, UserCreationException conflict) {
+    try {
+      return loadByName.get();
+    } catch (EntityNotFoundException notCreatedUnderThisName) {
+      throw conflict;
+    }
   }
 
   public static void addUsers(
@@ -433,36 +470,42 @@ public final class UserUtil {
   }
 
   /**
-   * Create and persist a ChangeEvent for SSO/LDAP user operations.
-   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   * Create and persist a ChangeEvent for a user written outside the REST layer, such as an SSO/LDAP
+   * sign-in or a bot token regeneration, which would otherwise reach no audit log or subscription.
+   * The actor is the name the audit log records: the user itself for a sign-in, the operator for a
+   * write made on its behalf. Profile webhook secrets are masked as the user repository's own
+   * events mask them. Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
-  private static void createUserChangeEvent(User user, EventType eventType) {
+  public static void createUserChangeEvent(User user, EventType eventType, String actor) {
     try {
+      User eventUser = ProfileWebhookSecrets.masked(user);
       ChangeEvent changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
               .withEventType(eventType)
-              .withEntityId(user.getId())
+              .withEntityId(eventUser.getId())
               .withEntityType(Entity.USER)
-              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
-              .withUserName(user.getName())
-              .withTimestamp(user.getUpdatedAt())
-              .withCurrentVersion(user.getVersion())
+              .withEntityFullyQualifiedName(eventUser.getFullyQualifiedName())
+              .withUserName(actor)
+              .withTimestamp(eventUser.getUpdatedAt())
+              .withCurrentVersion(eventUser.getVersion())
               .withPreviousVersion(
-                  user.getChangeDescription() != null
-                      ? user.getChangeDescription().getPreviousVersion()
-                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
-              .withEntity(user);
+                  eventUser.getChangeDescription() != null
+                      ? eventUser.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : eventUser.getVersion()))
+              .withEntity(eventUser);
 
       // Include changeDescription if present (for updates)
-      if (user.getChangeDescription() != null) {
-        changeEvent.withChangeDescription(user.getChangeDescription());
+      if (eventUser.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(eventUser.getChangeDescription());
       }
 
       // Populate domains if available
-      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+      if (eventUser.getDomains() != null && !eventUser.getDomains().isEmpty()) {
         changeEvent.withDomains(
-            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+            eventUser.getDomains().stream()
+                .map(EntityReference::getId)
+                .collect(Collectors.toList()));
       }
 
       // Change events never carry a user's authentication mechanism.
@@ -490,7 +533,7 @@ public final class UserUtil {
 
       // Create ChangeEvent for EventSubscription evaluation
       EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      createUserChangeEvent(addedUser.getEntity(), eventType);
+      createUserChangeEvent(addedUser.getEntity(), eventType, addedUser.getEntity().getName());
 
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());

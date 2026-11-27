@@ -119,16 +119,9 @@ class ProfilerPartitionUnitTest(TestCase):
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        mock_create_bigquery_client,
-        mock_connect,
-        auth_default,
-        validate_service_name,
-        mock_test_connection,
-    ):
-        super().__init__(methodName)
+    def setUp(
+        self, mock_create_bigquery_client, mock_connect, auth_default, validate_service_name, mock_test_connection
+    ) -> None:
         mock_test_connection.return_value = True
         validate_service_name.return_value = True
         auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)

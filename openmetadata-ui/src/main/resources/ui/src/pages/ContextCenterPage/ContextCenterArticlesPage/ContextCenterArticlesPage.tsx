@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowCircleBrokenUp,
+  Article,
   ChevronDown,
   Plus,
   Stars01,
@@ -31,7 +32,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -67,6 +67,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -87,6 +88,7 @@ import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -127,6 +129,13 @@ const ContextCenterArticlesPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
+  // Resource-level permission leaves isOwner()-style conditions unresolved, so the open
+  // article's header must use the entity-level one (shares the detail body's cached query).
+  const { permissions: articlePermissions } = useEntityPermissions(
+    ResourceEntity.KNOWLEDGE_PAGE,
+    fqn,
+    { enabled: Boolean(fqn) && !version }
+  );
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
     rightPanel: null,
@@ -348,7 +357,7 @@ const ContextCenterArticlesPage = () => {
           fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
           knowledgePage={page.data}
-          permissions={permissions}
+          permissions={articlePermissions}
           tabs={page.tabs}
           onFollowChange={
             page.handlers?.onFollowChange ?? (async () => undefined)
@@ -512,7 +521,7 @@ const ContextCenterArticlesPage = () => {
         features={[
           {
             key: 'create',
-            icon: <FileIcon className="tw:text-fg-brand-primary" />,
+            icon: <Article className="tw:text-fg-brand-primary" />,
             title: t('label.create-an-article'),
             description: t(
               'message.context-center-articles-empty-feature-create'
@@ -542,7 +551,6 @@ const ContextCenterArticlesPage = () => {
 
   const renderCenterPanel = () => (
     <ReflexElement
-      propagateDimensions
       className={classNames('center-panel', {
         'has-sidebar': leftSidebar,
       })}
@@ -625,7 +633,6 @@ const ContextCenterArticlesPage = () => {
       </ReflexSplitter>
 
       <ReflexElement
-        propagateDimensions
         className={classNames('right-panel', {
           'right-panel-collapsed': !rightSidebar,
         })}
@@ -655,7 +662,7 @@ const ContextCenterArticlesPage = () => {
             'tw:relative tw:flex tw:flex-col tw:min-h-0 tw:overflow-hidden tw:rounded-xl',
             pageLayoutClassNames.content
           )}
-          dir={i18n.dir()}
+          dir={getLanguageDirection(i18n)}
           id="knowledge-center-layout-container">
           <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
           {showArticlesEmptyState && renderArticlesEmptyState()}

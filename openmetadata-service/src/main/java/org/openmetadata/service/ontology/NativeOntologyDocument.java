@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.apache.jena.vocabulary.XSD;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipped;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -26,14 +27,32 @@ import org.openmetadata.schema.utils.JsonUtils;
  * so two sources that state the same definitions produce equal documents.
  *
  * @param header the source's ontology header, or null unless the source declares exactly one
+ * @param skipped the statements the source states that the native model cannot hold; empty for a
+ *     source that stays inside the native profile
  */
 public record NativeOntologyDocument(
     Header header,
     List<OntologyConcept> concepts,
     List<OntologyProperty> properties,
-    List<OntologyAxiom> axioms) {
+    List<OntologyAxiom> axioms,
+    NativeOntologyImportSkipped skipped) {
+
+  public NativeOntologyDocument(
+      final Header header,
+      final List<OntologyConcept> concepts,
+      final List<OntologyProperty> properties,
+      final List<OntologyAxiom> axioms) {
+    this(header, concepts, properties, axioms, null);
+  }
 
   public NativeOntologyDocument {
+    skipped =
+        skipped == null
+            ? new NativeOntologyImportSkipped()
+                .withTotal(0)
+                .withGroups(List.of())
+                .withOmittedGroups(0)
+            : skipped;
     concepts = sorted(concepts, concept -> concept.getIri().toString());
     properties = sorted(properties, property -> property.getIri().toString());
     axioms = sorted(axioms, NativeOntologyDocument::signature);

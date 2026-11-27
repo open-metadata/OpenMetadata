@@ -1,15 +1,21 @@
+"""Defer application imports to fixture setup: pytest loads this plugin before coverage starts."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
-from _openmetadata_testutils.ometa import int_admin_ometa
-from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
-from metadata.generated.schema.metadataIngestion.workflow import LogLevels
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.workflow.ingestion import IngestionWorkflow
+if TYPE_CHECKING:
+    from metadata.ingestion.api.common import Entity
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+    from metadata.workflow.ingestion import IngestionWorkflow
 
 
 @pytest.fixture(scope="session")
 def metadata():
+    from _openmetadata_testutils.ometa import int_admin_ometa
+
     return int_admin_ometa()
 
 
@@ -23,6 +29,8 @@ def sink_config(metadata):
 
 @pytest.fixture(scope="session")
 def workflow_config(metadata):
+    from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+
     return {
         "loggerLevel": LogLevels.DEBUG.value,
         "openMetadataServerConfig": metadata.config.model_dump(),
@@ -31,6 +39,8 @@ def workflow_config(metadata):
 
 @pytest.fixture(scope="session")
 def ingestion_bot_wokflow_config(metadata, workflow_config):
+    from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
+
     ingestion_bot: User = metadata.get_by_name(entity=User, fqn="ingestion-bot", nullable=False)
     ingestion_bot_auth: AuthenticationMechanism = metadata.get_by_id(
         entity=AuthenticationMechanism, entity_id=ingestion_bot.id, nullable=False
@@ -56,6 +66,9 @@ def clean_up_fqn(metadata):
 
 @pytest.fixture(scope="session")
 def ingestion_bot_workflow_config(metadata: OpenMetadata):
+    from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
+    from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+
     ingestion_bot: User = metadata.get_by_name(entity=User, fqn="ingestion-bot")
     ingestion_bot_auth: AuthenticationMechanism = metadata.get_by_id(
         entity=AuthenticationMechanism, entity_id=ingestion_bot.id

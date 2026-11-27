@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyBulkJob;
 import org.openmetadata.schema.api.data.OntologyBulkJobList;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
@@ -107,9 +108,11 @@ public final class OntologyBulkResource {
   @Operation(operationId = "listOntologyBulkJobs", summary = "List the caller's ontology bulk jobs")
   public OntologyBulkJobList listJobs(
       @Context final SecurityContext securityContext,
+      @QueryParam("glossaryId") final UUID glossaryId,
       @QueryParam("limit") @DefaultValue("20") final int limit) {
     final String user = subject(securityContext).user().getName();
-    return jobManager.list(user, boundedLimit(limit));
+    return jobManager.list(
+        user, glossaryId == null ? null : glossaryId.toString(), boundedLimit(limit));
   }
 
   @GET
@@ -153,7 +156,7 @@ public final class OntologyBulkResource {
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_GLOSSARY_TERMS),
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL),
         new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository));
   }
 

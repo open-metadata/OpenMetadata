@@ -53,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -450,7 +451,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             if (updated.getFields() != null) {
               updateSearchIndexFields(
                   "fields",
-                  original.getFields() == null ? null : original.getFields(),
+                  original.getFields(),
                   updated.getFields(),
                   EntityUtil.searchIndexFieldMatch);
             }
@@ -482,6 +483,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         List<SearchIndexField> origFields,
         List<SearchIndexField> updatedFields,
         BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+      // Normalize null lists to empty, mirroring EntityRepository.updateColumns, so that a stored
+      // SearchIndex whose `fields` is null (reachable via JSON PATCH that removes/nulls `/fields`)
+      // does not cause an NPE here on the subsequent write carrying fields.
+      origFields = listOrEmpty(origFields);
+      updatedFields = listOrEmpty(updatedFields);
       List<SearchIndexField> deletedFields = new ArrayList<>();
       List<SearchIndexField> addedFields = new ArrayList<>();
       recordListChange(
@@ -511,7 +517,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (SearchIndexField added : addedFields) {
@@ -526,8 +536,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        String searchFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String searchFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);

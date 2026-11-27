@@ -3,7 +3,6 @@
 # Review from UI owners for everything under the UI app and the component library
 /openmetadata-ui/                   @open-metadata/ui
 /openmetadata-ui-core-components/   @open-metadata/ui
-/tooling/antd-codemods/             @open-metadata/ui
 
 # No UI review needed: generated code/schemas, docs, and locale translations.
 # Unowned patterns must stay below the UI rules above — last match wins.

@@ -159,7 +159,11 @@ const LoginConfigurationPage = () => {
             </Grid.Item>
             <Grid.Item className="layout-column" span={24}>
               <Typography data-testid="access-block-time">
-                {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
+                {loginConfig?.accessBlockTime === undefined
+                  ? NO_DATA_PLACEHOLDER
+                  : `${loginConfig.accessBlockTime} ${t(
+                      'label.second-plural'
+                    )}`}
               </Typography>
             </Grid.Item>
           </Grid>

@@ -10,6 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const DEFAULT_PAGE_SIZE = 10;
+export const DEFAULT_PAGE_SIZE = 15;
 
-export const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50];
+export const DEFAULT_PAGE_SIZE_OPTIONS = [15, 25, 50];

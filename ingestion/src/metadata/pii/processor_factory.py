@@ -6,7 +6,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.base_processor import AutoClassificationProcessor
+from metadata.pii.base_processor import AutoClassificationProcessor, UnavailableClassificationProcessor
+from metadata.pii.model_loading import ClassificationModelLoadError
 from metadata.pii.processor import PIIProcessor
 from metadata.pii.tag_processor import TagProcessor
 
@@ -17,13 +18,16 @@ def create_pii_processor(
     classification_filter: list[str] | None = None,
 ) -> AutoClassificationProcessor:
     processor_type = getattr(openmetadata_config.processor, "type", "tag-pii-processor")
-    if processor_type == "tag-pii-processor":
-        return TagProcessor(
-            config=parse_workflow_config_gracefully(openmetadata_config.model_dump()),
-            metadata=metadata,
-            classification_filter=classification_filter,
+    try:
+        if processor_type == "tag-pii-processor":
+            return TagProcessor(
+                config=parse_workflow_config_gracefully(openmetadata_config.model_dump()),
+                metadata=metadata,
+                classification_filter=classification_filter,
+            )
+        return PIIProcessor.create(
+            openmetadata_config.model_dump(),
+            metadata,
         )
-    return PIIProcessor.create(
-        openmetadata_config.model_dump(),
-        metadata,
-    )
+    except ClassificationModelLoadError as failure:
+        return UnavailableClassificationProcessor(openmetadata_config, metadata, failure)

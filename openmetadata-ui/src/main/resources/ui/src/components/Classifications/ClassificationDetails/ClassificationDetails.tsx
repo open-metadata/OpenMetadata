@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -84,7 +86,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -99,7 +100,7 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
@@ -173,6 +174,7 @@ const ClassificationDetails = forwardRef(
       handleAfterDeleteAction,
       classificationPermissions,
       handleUpdateClassification,
+      handleClassificationDomainsUpdate,
       handleEditTagClick,
       deleteTags,
       isAddingTag,
@@ -194,7 +196,6 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
-    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -251,12 +252,6 @@ const ClassificationDetails = forwardRef(
       cursorType,
     }) => {
       if (cursorType) {
-        fetchClassificationChildren(
-          currentClassification?.fullyQualifiedName ?? '',
-          {
-            [cursorType]: paging[cursorType],
-          }
-        );
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -543,6 +538,10 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
+    const isPagedPastFirstPage =
+      Number(pagingCursor.currentPage) !== 1 ||
+      Boolean(pagingCursor.cursorType || pagingCursor.cursorValue);
+
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         const classificationChanged =
@@ -554,7 +553,7 @@ const ClassificationDetails = forwardRef(
           currentClassification.fullyQualifiedName;
 
         if (classificationChanged) {
-          isClassificationChangingRef.current = true;
+          isClassificationChangingRef.current = isPagedPastFirstPage;
           handlePageChange(1, { cursorType: null, cursorValue: undefined });
           fetchClassificationChildren(currentClassification.fullyQualifiedName);
 
@@ -594,6 +593,8 @@ const ClassificationDetails = forwardRef(
       classification: Classification,
       breadcrumb?: ReactNode
     ) {
+      const headerName = name ?? classification.name;
+
       return (
         <PageHeader
           actions={
@@ -648,31 +649,41 @@ const ClassificationDetails = forwardRef(
           breadcrumb={breadcrumb}
           data-testid="header"
           title={
-            <EntityHeaderTitle
-              badge={
-                <div className="d-flex gap-1">
+            <EntityPageTitle
+              badges={
+                <>
+                  {isClassificationDisabled && (
+                    <Badge
+                      color="gray"
+                      data-testid="disabled"
+                      size="sm"
+                      type="pill-color">
+                      {t('label.disabled')}
+                    </Badge>
+                  )}
                   {headerBadge}
                   {classification.mutuallyExclusive && (
-                    <div data-testid="mutually-exclusive-container">
+                    <Box data-testid="mutually-exclusive-container">
                       <AppBadge
                         bgColor={theme.primaryColor}
                         className="whitespace-nowrap"
                         label={t('label.mutually-exclusive')}
                       />
-                    </div>
+                    </Box>
                   )}
-                </div>
+                </>
               }
-              className="flex-wrap"
               displayName={displayName}
-              displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <FeaturedIcon
+                  color="gray"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
-              isDisabled={isClassificationDisabled}
-              name={name ?? classification.name}
-              nameClassName="text-xl"
-              serviceName="classification"
+              name={headerName}
+              testId={`classification-${headerName}`}
             />
           }
           variant={isAiMode ? 'gradient' : 'flat'}
@@ -714,7 +725,8 @@ const ClassificationDetails = forwardRef(
     }
 
     function renderTagsPanel() {
-      return isEmpty(tags) && !isLoading ? (
+      return isEmpty(tags) &&
+        (!isLoading || currentClassification?.termCount === 0) ? (
         <Box className="tw:relative tw:min-h-[360px]">
           <NoDataPlaceholder
             actions={
@@ -795,10 +807,20 @@ const ClassificationDetails = forwardRef(
             </div>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
               <DomainLabel
-                {...domainProps}
                 multiple
                 showDomainHeading
-                hasPermission={editDomainPermission}
+                afterDomainUpdateAction={(updated) =>
+                  handleClassificationDomainsUpdate?.(
+                    updated.id,
+                    updated.domains
+                  )
+                }
+                domains={currentClassification.domains}
+                entityFqn={currentClassification.fullyQualifiedName ?? ''}
+                entityId={currentClassification.id}
+                entityType={EntityType.CLASSIFICATION}
+                hasPermission={!isVersionView && editDomainPermission}
+                key={currentClassification.id}
                 variant="widget"
               />
               <WidgetCard

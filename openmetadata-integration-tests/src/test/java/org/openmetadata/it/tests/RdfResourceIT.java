@@ -1,9 +1,11 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.table;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -13,6 +15,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -39,11 +45,15 @@ import org.openmetadata.schema.api.rdf.SparqlTripleTerm;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for RDF resource operations.
@@ -177,6 +187,53 @@ public class RdfResourceIT {
         .atMost(Duration.ofSeconds(10))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(() -> RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName()));
+  }
+
+  @Test
+  void entityRdfReturns404ForSoftDeletedTableUntilRestored(final TestNamespace namespace) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Table table = table(namespace);
+    client.tables().delete(table.getId().toString());
+    assertEntityRdfStatus(Entity.TABLE, table.getId(), 404);
+
+    client.tables().restore(table.getId());
+    assertEntityRdfStatus(Entity.TABLE, table.getId(), 200);
+  }
+
+  @Test
+  void entityRdfReturns404ForSoftDeletedTestCaseUntilRestored(final TestNamespace namespace) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Table table = table(namespace);
+    final TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(namespace.prefix("rdf_test"))
+            .forColumn(table, "status")
+            .testDefinition("columnValuesToBeNotNull")
+            .create();
+    client.testCases().delete(testCase.getId().toString());
+    assertEntityRdfStatus(Entity.TEST_CASE, testCase.getId(), 404);
+
+    client.testCases().restore(testCase.getId());
+    assertEntityRdfStatus(Entity.TEST_CASE, testCase.getId(), 200);
+  }
+
+  private static void assertEntityRdfStatus(
+      final String entityType, final UUID id, final int expectedStatus) {
+    final String endpoint = SdkClients.getServerUrl() + "/v1/rdf/entity/" + entityType + "/" + id;
+    assertAll(
+        Stream.of("", "?format=turtle", "?format=rdfxml", "?format=ntriples")
+            .map(
+                format ->
+                    () -> {
+                      final HttpRequest request =
+                          HttpRequest.newBuilder(URI.create(endpoint + format))
+                              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                              .GET()
+                              .build();
+                      final HttpResponse<String> response =
+                          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+                      assertEquals(expectedStatus, response.statusCode(), request.uri().toString());
+                    }));
   }
 
   @Test
@@ -358,7 +415,7 @@ public class RdfResourceIT {
         response.statusCode() == 200,
         "GET /v1/rdf/ontology should return 200, got " + response.statusCode());
     String body = response.body();
-    assertTrue(body.contains("2.0.2"), "Ontology document should declare version 2.0.2");
+    assertTrue(body.contains("2.1.0"), "Ontology document should declare version 2.1.0");
     assertTrue(
         body.contains("om:Column") && body.contains("om:TableConstraint"),
         "Ontology document should declare core om:Column and om:TableConstraint classes");
@@ -455,20 +512,60 @@ public class RdfResourceIT {
     assertTrue(response.body().contains("not available"), response.body());
   }
 
+  /**
+   * EXISTS carries a whole graph pattern inside an expression, and Fuseki evaluates a SERVICE in it
+   * like any other SERVICE. The federation policy has to refuse it before the query is forwarded,
+   * or Fuseki sends the request — here to its own ping endpoint, which it can always reach.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT (EXISTS { SERVICE <%s> { ?s ?p ?o } } AS ?reachable) WHERE { }",
+        "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT * WHERE { ?s ?p ?o NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } } LIMIT 1",
+        "SELECT ?s WHERE { ?s ?p ?o } ORDER BY (EXISTS { SERVICE <%s> { ?a ?b ?c } }) LIMIT 2"
+      })
+  void testSparqlEndpointRefusesServiceHiddenInsideExists(String template) throws Exception {
+    HttpResponse<String> response =
+        postSparql(
+            template.formatted(FusekiTestImage.SELF_PING_URL), "json", SparqlQuery.Inference.NONE);
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
+  @Test
+  void testSparqlUpdateEndpointRefusesServiceHiddenInsideExists() throws Exception {
+    String update =
+        "INSERT { GRAPH <urn:om:it:federation> { <urn:om:it:probe> <urn:om:it:reached> ?x } } "
+            + "WHERE { BIND(EXISTS { SERVICE <"
+            + FusekiTestImage.SELF_PING_URL
+            + "> { ?s ?p ?o } } AS ?x) }";
+
+    HttpResponse<String> response =
+        postAsAdmin("/v1/rdf/sparql/update", new SparqlQuery().withQuery(update));
+
+    assertEquals(403, response.statusCode(), response.body());
+    assertTrue(response.body().contains(FusekiTestImage.SELF_PING_URL), response.body());
+  }
+
   private static HttpResponse<String> postSparql(
       String query, String format, SparqlQuery.Inference inference) throws Exception {
-    String requestBody =
-        JsonUtils.pojoToJson(
-            new SparqlQuery()
-                .withQuery(query)
-                .withFormat(SparqlQuery.Format.fromValue(format))
-                .withInference(inference));
+    return postAsAdmin(
+        "/v1/rdf/sparql",
+        new SparqlQuery()
+            .withQuery(query)
+            .withFormat(SparqlQuery.Format.fromValue(format))
+            .withInference(inference));
+  }
+
+  private static HttpResponse<String> postAsAdmin(String path, SparqlQuery body) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + "/v1/rdf/sparql"))
+            .uri(URI.create(SdkClients.getServerUrl() + path))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(body)))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }

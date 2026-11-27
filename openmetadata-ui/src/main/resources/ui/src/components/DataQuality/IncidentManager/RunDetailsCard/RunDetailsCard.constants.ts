@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  AlertTriangle,
+  Alert,
   CheckCircle,
   Clock,
 } from '@openmetadata/ui-core-components/icons';
@@ -46,7 +46,7 @@ export const RUN_DETAILS_STATUS_STYLE: Record<
     barClassName: 'tw:bg-fg-error-primary',
     color: 'error',
     note: {
-      icon: AlertTriangle,
+      icon: Alert,
       iconClassName: 'tw:text-fg-error-primary',
       messageKey: 'message.run-details-failed-note',
     },

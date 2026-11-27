@@ -19,7 +19,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.resources.metrics.MetricAuthorization;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -39,6 +38,9 @@ import org.openmetadata.service.util.RestUtil;
  * repository. The parts that are easy to get wrong - {@code /owners} replaces the whole list where
  * {@code /owners/-} appends to it - are taught in the tool description, where the model reads them,
  * rather than enforced by second-guessing a well-formed patch.
+ *
+ * <p>The reply confirms the write rather than echoing the entity
+ * (ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation).
  */
 @Slf4j
 public class PatchEntityTool implements McpTool {
@@ -57,7 +59,8 @@ public class PatchEntityTool implements McpTool {
   //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
   //   contextFile          Private/Shared visibility, owner-only restriction of sharing
-  //   document             requirePublic - private doc types are not editable
+  //   document             requirePublic - private doc types are not editable; authorizeAdmin
+  //                        on email templates
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
@@ -69,8 +72,7 @@ public class PatchEntityTool implements McpTool {
   //   team                 authorizeAdmin on defaultPersona
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
-  // metric and metricGroup are not listed: their resources' checks are shared, and execute() runs
-  // them through MetricAuthorization.
+  // metric and metricGroup are not listed: their extra checks run in the repository write.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
           Entity.ANNOUNCEMENT,
@@ -106,6 +108,7 @@ public class PatchEntityTool implements McpTool {
     String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
     requireGenericPatchLifecycle(entityType);
+    CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
     requireConnectionUntouched(entityType, jsonPatch);
@@ -116,9 +119,8 @@ public class PatchEntityTool implements McpTool {
         securityContext,
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
-    MetricAuthorization.authorizePatch(authorizer, securityContext, entityType, fqn, jsonPatch);
 
-    // The response carries the patched entity, so this write answers a read as well: apply the
+    // The response echoes the changed fields, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
     // policy model.
     CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
@@ -140,9 +142,12 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(
-        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
-        response.changeType());
+    return McpResponseUtils.markHeld(
+        McpResponseUtils.compactPatch(
+            CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+            entityType,
+            response.changeType()),
+        response.pendingChangeRequestId());
   }
 
   private static void requireTarget(String entityType, String fqn) {

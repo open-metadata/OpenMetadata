@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -109,8 +108,7 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void concurrentCapturesAllocateDistinctRevisionsForTheSameContent(TestNamespace ns)
-      throws Exception {
+  void concurrentCapturesAtOneRevisionReturnOneRelease(TestNamespace ns) throws Exception {
     Ontology ontology = createOntology(ns);
     long revision = state(ontology).getWorkingRevision();
     Callable<OntologyRelease> capture = () -> capture(ontology, revision);
@@ -119,12 +117,44 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
       var second = executor.submit(capture);
       OntologyRelease one = first.get(30, java.util.concurrent.TimeUnit.SECONDS);
       OntologyRelease two = second.get(30, java.util.concurrent.TimeUnit.SECONDS);
-      assertEquals(Set.of(1L, 2L), Set.of(one.getReleaseRevision(), two.getReleaseRevision()));
-      assertNotEquals(one.getId(), two.getId());
-      assertEquals(one.getContentDigest(), two.getContentDigest());
+      assertEquals(one.getId(), two.getId());
+      assertEquals(1L, one.getReleaseRevision());
     }
-    assertEquals(2L, state(ontology).getLastReleaseRevision());
+    assertEquals(1L, state(ontology).getLastReleaseRevision());
     assertEquals(revision, state(ontology).getWorkingRevision());
+  }
+
+  @Test
+  void repeatedCapturesAtOneWorkingRevisionReturnTheExistingDraft(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    long revision = state(ontology).getWorkingRevision();
+    OntologyRelease first = capture(ontology, revision);
+    for (int index = 0; index < 4; index++) {
+      assertEquals(first.getId(), capture(ontology, revision).getId());
+    }
+    assertEquals(1L, state(ontology).getLastReleaseRevision());
+    assertEquals(
+        1,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/ontologyReleases?ontologyId=" + ontology.getId(),
+                null,
+                JsonNode.class)
+            .path("paging")
+            .path("total")
+            .asInt());
+  }
+
+  @Test
+  void aCaptureAfterAnEditSealsANewRelease(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    OntologyRelease first = capture(ontology, state(ontology).getWorkingRevision());
+    declareClass(ontology, "Edited", java.net.URI.create("https://example.org/model/Edited"));
+    OntologyRelease second = capture(ontology, state(ontology).getWorkingRevision());
+    assertNotEquals(first.getId(), second.getId());
+    assertEquals(2L, second.getReleaseRevision());
   }
 
   @Test
@@ -289,9 +319,11 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     assertEquals(release.getContentDigest(), reviewed.getContentDigest());
     assertEquals(task.getOntologyReview().getContentDigest(), OntologyReview.digest(reviewed));
     assertNull(state(ontology).getActiveReleaseId());
-    JsonNode firstPage = events(release, "?limit=1");
-    assertEquals(2, firstPage.path("paging").path("total").asInt());
+    JsonNode firstPage = events(release, "?limit=2");
+    assertEquals(3, firstPage.path("paging").path("total").asInt());
     assertEquals("CAPTURED", firstPage.path("data").get(0).path("eventType").asText());
+    assertEquals("REVIEW_REQUESTED", firstPage.path("data").get(1).path("eventType").asText());
+    assertEquals(task.getId().toString(), firstPage.path("data").get(1).path("taskId").asText());
     String cursor = firstPage.path("paging").path("after").asText();
     JsonNode lastPage = events(release, "?limit=1&after=" + cursor);
     OntologyReleaseEvent decision =
@@ -343,9 +375,9 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     assertEquals(EntityStatus.REJECTED, get(release.getId()).getEntityStatus());
     assertEquals(release.getContentDigest(), get(release.getId()).getContentDigest());
     JsonNode events = events(release, "");
-    assertEquals(2, events.path("data").size());
-    assertEquals("REJECTED", events.path("data").get(1).path("eventType").asText());
-    assertEquals(task.getId().toString(), events.path("data").get(1).path("taskId").asText());
+    assertEquals(3, events.path("data").size());
+    assertEquals("REJECTED", events.path("data").get(2).path("eventType").asText());
+    assertEquals(task.getId().toString(), events.path("data").get(2).path("taskId").asText());
     assertNull(state(ontology).getActiveReleaseId());
   }
 
@@ -381,7 +413,7 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
         .tasks()
         .resolve(task.getId().toString(), decision(TaskResolutionType.Approved));
     assertEquals(EntityStatus.APPROVED, get(release.getId()).getEntityStatus());
-    assertEquals(2, events(release, "").path("data").size());
+    assertEquals(3, events(release, "").path("data").size());
     assertNull(state(ontology).getActiveReleaseId());
   }
 

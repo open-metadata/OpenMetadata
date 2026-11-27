@@ -290,7 +290,9 @@ class _IamStrategy(EngineStrategy[MySQLConnectionConfig]):
         def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: dict) -> None:
             cparams["password"] = token_manager.get_token()
             # RDS IAM requires TLS; a truthy ssl dict makes PyMySQL treat it as
-            # required (an empty dict only yields PREFERRED). Any explicit ssl
+            # required (an empty dict only yields PREFERRED). Without a CA, PyMySQL
+            # verifies neither the certificate nor the hostname: set
+            # sslConfig.caCertificate to the RDS bundle for that. Any explicit ssl
             # config is preserved.
             if "ssl" not in cparams:
                 cparams["ssl"] = {"check_hostname": True}

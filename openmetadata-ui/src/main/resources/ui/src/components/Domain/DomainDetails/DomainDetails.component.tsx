@@ -24,6 +24,7 @@ import {
   Collapse,
   Edit01,
   Expand,
+  ImageBrush,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -34,7 +35,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -869,7 +869,7 @@ const DomainDetails = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={StyleIcon}
+                icon={ImageBrush}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -1009,7 +1009,16 @@ const DomainDetails = ({
   const statusBadge =
     entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
     domain.entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={domain.entityStatus} />
+      // ml-2 restores the 12px gap after the copy/learning group's 4px.
+      <Box className="tw:ml-2">
+        <EntityStatusBadge
+          entityId={domain.id}
+          entityType={EntityType.DOMAIN}
+          fqn={domain.fullyQualifiedName}
+          showDivider={false}
+          status={domain.entityStatus}
+        />
+      </Box>
     ) : null;
 
   if (isLoading) {
@@ -1048,10 +1057,10 @@ const DomainDetails = ({
               serviceName=""
               suffix={
                 <>
-                  {statusBadge}
                   {!isTreeView && (
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
                   )}
+                  {statusBadge}
                 </>
               }
               titleColor={domain.style?.color}

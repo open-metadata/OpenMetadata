@@ -23,14 +23,13 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { ChangeSummaryEntry } from '../../rest/changeSummaryAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
-import { listTestCases } from '../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
@@ -430,52 +429,50 @@ export const DataAssetSummaryPanelV1 = ({
       return;
     }
 
+    if (!flags.canViewTests) {
+      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
+
+      return;
+    }
+
     try {
       setIsTestCaseLoading(true);
-      const entityLink = generateEntityLink(dataAsset?.fullyQualifiedName);
+      const entityLink = generateEntityLink(dataAsset.fullyQualifiedName);
+      const countTestCases = async (testCaseStatus: TestCaseStatus) => {
+        const { paging } = await getListTestCaseBySearch({
+          entityLink,
+          includeAllTests: true,
+          testCaseStatus,
+          limit: 0,
+        });
 
-      const response = await listTestCases({
-        entityLink,
-        includeAllTests: true,
-        limit: 100, // Get more test cases to ensure accurate counts
-        fields: ['testCaseResult', 'incidentId'],
+        return paging.total;
+      };
+      // One search count per status: tallying one fetched page capped the counts at the page size,
+      // DB list totals can be served stale from the list-count cache, and the data quality report
+      // endpoint can't evaluate a conditional ViewTests rule (isOwner()) without this table.
+      const [success, failed, aborted, queued] = await Promise.all([
+        countTestCases(TestCaseStatus.Success),
+        countTestCases(TestCaseStatus.Failed),
+        countTestCases(TestCaseStatus.Aborted),
+        countTestCases(TestCaseStatus.Queued),
+      ]);
+
+      setStatusCounts({
+        success,
+        failed,
+        aborted,
+        ack: 0,
+        // Queued results count toward the total, as they did before.
+        total: success + failed + aborted + queued,
       });
-
-      // Calculate status counts
-      const counts = (response.data || []).reduce(
-        (acc, testCase) => {
-          const status = testCase.testCaseResult?.testCaseStatus;
-          if (status) {
-            switch (status) {
-              case TestCaseStatus.Success:
-                acc.success++;
-
-                break;
-              case TestCaseStatus.Failed:
-                acc.failed++;
-
-                break;
-              case TestCaseStatus.Aborted:
-                acc.aborted++;
-
-                break;
-            }
-            acc.total++;
-          }
-
-          return acc;
-        },
-        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
-      );
-
-      setStatusCounts(counts);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
     } finally {
       setIsTestCaseLoading(false);
     }
-  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+  }, [dataAsset?.fullyQualifiedName, entityType, flags.canViewTests]);
 
   const fetchEntityBasedDetails = () => {
     if (entityType === EntityType.TABLE) {
@@ -660,9 +657,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -771,9 +765,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -841,9 +832,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -878,9 +866,7 @@ export const DataAssetSummaryPanelV1 = ({
           entityType={entityType}
           hasPermission={editTagsPermission}
           key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-          tags={dataAsset.tags?.filter(
-            (tag: TagLabel) => tag.source !== TagSource.Glossary
-          )}
+          tags={dataAsset.tags}
           onTagsUpdate={onTagsUpdate}
         />
       </div>
@@ -933,9 +919,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -948,9 +931,7 @@ export const DataAssetSummaryPanelV1 = ({
             entityType={entityType}
             hasPermission={editTagsPermission}
             key={`tags-${dataAsset.id}-${dataAsset.tags?.length ?? 0}`}
-            tags={dataAsset.tags?.filter(
-              (tag: TagLabel) => tag.source !== TagSource.Glossary
-            )}
+            tags={dataAsset.tags}
             onTagsUpdate={onTagsUpdate}
           />
         </div>

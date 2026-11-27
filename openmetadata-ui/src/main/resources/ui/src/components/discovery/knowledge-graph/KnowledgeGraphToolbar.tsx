@@ -17,7 +17,6 @@ import type {
 } from '@openmetadata/ui-core-components';
 import {
   Box,
-  Button,
   ButtonUtility,
   Checkbox,
   Popover,
@@ -423,12 +422,12 @@ const KnowledgeGraphToolbar = ({
           <PopoverTrigger
             isOpen={openControl === 'view'}
             onOpenChange={(open) => changeOpenControl('view', open)}>
-            <Button
+            <ButtonUtility
               aria-label={t('label.view')}
               color="secondary"
               data-testid="graph-view-menu"
-              iconLeading={Settings01}
-              size="sm"
+              icon={Settings01}
+              size="lg"
             />
 
             <Popover

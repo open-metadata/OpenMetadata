@@ -108,7 +108,7 @@ test.describe(
 );
 
 test.describe(
-  'Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource',
+  'Test Case Import/Export/Edit - End-to-End Flow with EditAll and Create on TestCase resource',
   { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
@@ -116,7 +116,7 @@ test.describe(
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Create user with EditAll and ViewAll permissions on testCase
+      // Give the importer permission for both existing and newly added rows.
       await testCaseEditUser.create(apiContext, false);
       const editPolicyResponse = await testCaseEditPolicy.create(
         apiContext,
@@ -173,7 +173,7 @@ test.describe(
      * 4. Update and verify successful creation
      * 5. Verify Bulk Edit capabilities (Display Name, Tags)
      */
-    test('EditAll User: Complete export-import-validate flow', async ({
+    test('EditAll and Create User: Complete export-import-validate flow', async ({
       testCaseEditPage,
     }) => {
       test.setTimeout(300_000);

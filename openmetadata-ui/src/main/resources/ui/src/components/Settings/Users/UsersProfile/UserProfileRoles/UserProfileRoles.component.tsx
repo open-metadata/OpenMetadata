@@ -20,15 +20,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ActivityOwnerChanged as RoleIcon,
+  ActivityOwnerChanged,
+  CloseCircleFilled,
   Edit01,
+  Save,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
@@ -65,24 +65,28 @@ const UserProfileRoles = ({
     if (!isUserAdmin) {
       options.push({
         id: toLower(TERM_ADMIN),
-        label: TERM_ADMIN,
+        label: t('label.admin-superuser'),
       });
     }
 
     return options;
-  }, [roles, isUserAdmin]);
+  }, [roles, isUserAdmin, t]);
 
   const selectedRoleItems = useMemo(
     () =>
       selectedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+        const role =
+          roles.find((r) => r.id === roleId) ??
+          userRoles?.find((r) => r.id === roleId);
+        const fallbackLabel =
+          roleId === toLower(TERM_ADMIN) ? t('label.admin-superuser') : roleId;
 
         return {
           id: roleId,
-          label: role ? getEntityName(role) : TERM_ADMIN,
+          label: role ? getEntityName(role) : fallbackLabel,
         };
       }),
-    [selectedRoles, roles]
+    [selectedRoles, roles, userRoles, t]
   );
 
   const handleRoleInserted = useCallback(
@@ -165,7 +169,14 @@ const UserProfileRoles = ({
       <Chip
         data={[
           ...(isUserAdmin
-            ? [{ id: 'admin', type: 'role', name: TERM_ADMIN }]
+            ? [
+                {
+                  id: 'admin',
+                  type: 'role',
+                  name: TERM_ADMIN,
+                  displayName: t('label.admin-superuser'),
+                },
+              ]
             : []),
           ...(userRoles ?? []),
         ]}
@@ -224,7 +235,7 @@ const UserProfileRoles = ({
       data-testid="user-profile-roles">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
         <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
-          <RoleIcon size={16} />
+          <ActivityOwnerChanged size={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography className="text-sm font-medium">
@@ -249,7 +260,7 @@ const UserProfileRoles = ({
                   data-testid="user-profile-edit-popover">
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
-                      <RoleIcon size={16} />
+                      <ActivityOwnerChanged size={16} />
                     </div>
                     <Typography className="user-profile-edit-popover-card-title">
                       {t('label.role-plural')}
@@ -282,7 +293,7 @@ const UserProfileRoles = ({
                     <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
-                      icon={ClosePopoverIcon}
+                      icon={CloseCircleFilled}
                       size="sm"
                       tooltip={t('label.cancel')}
                       onClick={handleCloseEditRole}
@@ -290,7 +301,7 @@ const UserProfileRoles = ({
                     <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-save-button"
-                      icon={SavePopoverIcon}
+                      icon={Save}
                       isLoading={isLoading}
                       size="sm"
                       tooltip={t('label.save')}

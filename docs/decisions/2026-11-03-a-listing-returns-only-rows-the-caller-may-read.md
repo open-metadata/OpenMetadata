@@ -1,12 +1,12 @@
 # A listing returns only rows the caller may read
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (the team answer expires)
 - **Deciders:** Mohit Yadav
 - **Guard:** `ListRowAuthorizationIT.aTableListingLeavesOutRowsADenyRuleRefusesAndStillFillsThePage`,
   `ListRowAuthorizationIT.aTestSuiteListingLeavesOutTestCasesTheirItemEndpointRefuses`,
   `ListRowAuthorizationIT.aQueryListingOfATableLeavesOutQueriesTheirItemEndpointRefuses`,
-  `ListCursorsTest`
+  `ListCursorsTest`, `RowDecisionGateTest`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
@@ -21,7 +21,9 @@ entities and keeps only those the caller may view.
   an owning team brings its deny rules to callers outside it, or when the caller's own policies do
   not grant the operations without a condition. A policy attached to no team, such as the seeded
   `TeamOnlyPolicy`, reaches a caller only through their own roles, so it makes rows checked only
-  for callers who hold it. A checked row is checked as its item endpoint checks it
+  for callers who hold it. Whether a team policy has such a rule is kept per policy generation and
+  for as long as the compiled policies, so a policy change made on another server reaches this one
+  within the same bound. A checked row is checked as its item endpoint checks it
   (`EntityResource.rowAuthorization`).
   By default that is the entity itself with the operations its requested fields need, on a copy
   loaded with the authorization fields; a test case is checked for ViewTests on the entity it

@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Skeleton,
   Table,
@@ -23,12 +24,12 @@ import {
 import {
   Edit01,
   FileShield02,
+  NoFilterFunnel,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
@@ -57,6 +58,7 @@ const TestDefinitionTable = ({
   onSortChange,
   onEnableToggle,
   onEdit,
+  onView,
   onDelete,
   hasActiveFilters = false,
   onClearFilters,
@@ -230,9 +232,14 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography className="tw:text-primary" data-testid={record.name}>
+        <Button
+          className="tw:max-w-full"
+          color="link-color"
+          data-testid={record.name}
+          size="sm"
+          onPress={() => onView(record)}>
           {getEntityName(record)}
-        </Typography>
+        </Button>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
@@ -315,7 +322,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon />
+                        <NoFilterFunnel />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )

@@ -20,7 +20,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Alert } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,10 +36,9 @@ import {
   getTokenExpiry,
   getTokenIssuedAtMs,
 } from '../../../../../../utils/BotsUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../../utils/ToastUtils';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
 
 interface BotTokenSectionProps {
@@ -74,11 +73,11 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
     const issuedAtMs = getTokenIssuedAtMs(jwtToken);
 
     if (issuedAtMs) {
-      return new Date(issuedAtMs).toLocaleString();
+      return formatDateTimeLong(issuedAtMs);
     }
 
     if (botUserData.updatedAt) {
-      return new Date(botUserData.updatedAt).toLocaleString();
+      return formatDateTimeLong(botUserData.updatedAt);
     }
 
     return '';
@@ -92,13 +91,6 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
       })),
     [t]
   );
-
-  const handleCopy = useCallback(() => {
-    if (jwtToken) {
-      void navigator.clipboard.writeText(jwtToken);
-      showSuccessToast(t('message.copied-to-clipboard'));
-    }
-  }, [jwtToken, t]);
 
   const handleGenerate = useCallback(async () => {
     setIsUpdating(true);
@@ -204,14 +196,12 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
                 type="password"
                 value={jwtToken}
               />
-              <Button
-                color="secondary"
-                data-testid="copy-token"
-                iconLeading={Copy01}
-                size="md"
-                onPress={handleCopy}>
-                {t('label.copy')}
-              </Button>
+              <CopyButton
+                label={t('label.copy')}
+                labelSize="md"
+                testId="copy-token"
+                value={jwtToken}
+              />
             </Box>
             <Box className="tw:gap-1.5" direction="col">
               <Box
@@ -220,7 +210,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
                 data-testid="token-expiry"
                 direction="row"
                 gap={2}>
-                <AlertTriangle className="tw:size-4 tw:shrink-0" />
+                <Alert className="tw:size-4 tw:shrink-0" />
                 <Typography size="text-xs">{expiryMessage}</Typography>
               </Box>
               {tokenCreatedOn && (

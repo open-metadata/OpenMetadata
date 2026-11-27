@@ -25,6 +25,7 @@ public final class OntologyPropertyMapper
         .withCharacteristics(request.getCharacteristics())
         .withPropertyChain(request.getPropertyChain())
         .withDisjointWith(request.getDisjointWith())
+        .withSuperProperties(request.getSuperProperties())
         .withDeprecated(request.getDeprecated())
         .withReplacedBy(request.getReplacedBy())
         .withProvider(request.getProvider());

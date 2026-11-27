@@ -13,7 +13,10 @@
 
 import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { TIER_CATEGORY } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
@@ -35,9 +38,11 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { ENTITY_LINK_SEPARATOR } from '../../../../utils/EntityPureUtils';
 import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { isTagsTaskType } from '../../../../utils/TaskActionUtils';
+import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
+import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -53,6 +58,7 @@ import {
   TaskDetailRow,
   TaskTypeBadge,
 } from './taskDetail.types';
+import { DEFAULT_TYPE_BADGE, TASK_TYPE_BADGE } from './taskLabel.utils';
 import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -113,110 +119,6 @@ const PII_SENSITIVE_TAG = 'PII.Sensitive';
 // utils' `getTierTags`: that module reaches the customization and permission
 // layers at import time, which this file must not drag into the task list.
 const TIER_TAG_PREFIX = `${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`;
-
-// Type → badge label / colour / icon. Colour carries meaning here (an incident
-// reads red, an access request blue), so it is declared per type rather than
-// derived from the category, which is coarser.
-const TASK_TYPE_BADGE: Record<
-  string,
-  {
-    labelKey: string;
-    color: TaskTypeBadge['color'];
-    icon: TaskTypeBadge['icon'];
-  }
-> = {
-  [TaskType.TestCaseResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.IncidentResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.DataAccessRequest]: {
-    labelKey: 'label.access-request',
-    color: 'blue',
-    icon: 'access',
-  },
-  [TaskType.TagUpdate]: {
-    labelKey: 'label.tag-request',
-    color: 'purple',
-    icon: 'tag',
-  },
-  [TaskType.OwnershipUpdate]: {
-    labelKey: 'label.ownership',
-    color: 'blue-light',
-    icon: 'ownership',
-  },
-  [TaskType.DescriptionUpdate]: {
-    labelKey: 'label.description',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.Suggestion]: {
-    labelKey: 'label.suggestion',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.TierUpdate]: {
-    labelKey: 'label.tier',
-    color: 'orange',
-    icon: 'tier',
-  },
-  [TaskType.DomainUpdate]: {
-    labelKey: 'label.domain',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.GlossaryApproval]: {
-    labelKey: 'label.glossary',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.RequestApproval]: {
-    labelKey: 'label.approval',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.CustomTask]: {
-    labelKey: 'label.custom-task',
-    color: 'gray',
-    icon: 'approval',
-  },
-  [TaskType.DataQualityReview]: {
-    labelKey: 'label.data-quality-review',
-    color: 'blue-light',
-    icon: 'approval',
-  },
-  [TaskType.PipelineReview]: {
-    labelKey: 'label.pipeline-review',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.MemoryConflictReview]: {
-    labelKey: 'label.memory-conflict',
-    color: 'orange',
-    icon: 'approval',
-  },
-  [TaskType.MetadataCompletion]: {
-    labelKey: 'label.missing-metadata',
-    color: 'warning',
-    icon: 'description',
-  },
-  [TaskType.RecognizerFeedbackApproval]: {
-    labelKey: 'label.recognizer-feedback',
-    color: 'purple',
-    icon: 'tag',
-  },
-};
-
-const DEFAULT_TYPE_BADGE = {
-  labelKey: 'label.task',
-  color: 'gray' as TaskTypeBadge['color'],
-  icon: 'approval' as TaskTypeBadge['icon'],
-};
 
 // A Metadata Completion task that carries a rejection asks for a revision, not for fields.
 const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
@@ -292,25 +194,21 @@ const textRow = (
 const getEntityFieldLabel = (field: string) =>
   getFeedChangeFieldLabel(field as EntityField) || field;
 
-const splitFieldPath = (fieldPath: string) =>
-  (fieldPath.includes(ENTITY_LINK_SEPARATOR)
-    ? fieldPath.split(ENTITY_LINK_SEPARATOR)
-    : Fqn.split(fieldPath)
-  )
-    .filter(Boolean)
-    .map((name) => Fqn.unquoteName(name));
-
+// A description or tag path reads as container › names › property; any other
+// suggestion path (a custom property's extension.name) as its own segments.
 export const getFieldPathLabel = (fieldPath?: string): string | undefined => {
-  const [container, ...rest] = fieldPath ? splitFieldPath(fieldPath) : [];
-  if (!container) {
+  if (!fieldPath) {
     return undefined;
   }
-  const field = rest.length > 1 ? rest.pop() : undefined;
+  const path = parseTaskFieldPath(fieldPath);
+  const [container, ...names] = path
+    ? [path.container?.split(FQN_SEPARATOR_CHAR)[0], ...path.names]
+    : Fqn.split(fieldPath).map((name) => Fqn.unquoteName(name));
 
   return [
-    getEntityFieldLabel(container),
-    ...rest,
-    ...(field ? [getEntityFieldLabel(field)] : []),
+    ...(container ? [getEntityFieldLabel(container)] : []),
+    ...names,
+    ...(path ? [getEntityFieldLabel(path.property)] : []),
   ].join(' › ');
 };
 
@@ -430,22 +328,25 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
 
   // Who resolved it reads in the line under the title ("Rejected by … on …"),
   // so the rows keep only when and why.
-  return [
-    ...textRow(
-      'resolvedOn',
-      'calendar',
-      t('label.resolved-on'),
-      resolution.resolvedOn
-    ),
-    ...(resolution.hasResolution
-      ? textRow(
-          'resolutionComment',
-          'type',
-          t(resolution.commentLabelKey),
-          resolution.comment
-        )
-      : []),
-  ];
+  const rows = textRow(
+    'resolvedOn',
+    'calendar',
+    t('label.resolved-on'),
+    resolution.resolvedOn
+  );
+  if (resolution.hasResolution) {
+    rows.push({
+      key: 'resolutionComment',
+      icon: 'type',
+      label: t(resolution.commentLabelKey),
+      value: {
+        kind: resolution.comment === NO_DATA_PLACEHOLDER ? 'text' : 'richText',
+        text: resolution.comment,
+      },
+    });
+  }
+
+  return rows;
 };
 
 const describeIncident = (
@@ -549,6 +450,37 @@ const describeDescriptionUpdate = (
   };
 };
 
+// A tag suggestion holds its tags as a JSON string; show them as a tags change.
+const getSuggestionBody = (
+  task: Task,
+  payload: Partial<SuggestionPayload>,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  if (isTagsTaskType(task)) {
+    // Approving adds the suggested tags to the current ones; list only what it adds.
+    const { currentTags, suggestedTags } = getNormalizedTaskPayload(task);
+    const current = new Set(tagNames(currentTags));
+    const after = tagNames(suggestedTags).filter((fqn) => !current.has(fqn));
+
+    return after.length
+      ? {
+          change: {
+            labelKey: 'label.tag-plural',
+            before: [],
+            after,
+            isText: false,
+          },
+        }
+      : {};
+  }
+
+  return payload.suggestedValue
+    ? {
+        callout: { label: t('label.suggestion'), text: payload.suggestedValue },
+      }
+    : {};
+};
+
 const describeSuggestion = (
   task: Task,
   t: Translate
@@ -572,9 +504,7 @@ const describeSuggestion = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.suggestedValue
-      ? { label: t('label.suggestion'), text: payload.suggestedValue }
-      : undefined,
+    ...getSuggestionBody(task, payload, t),
   };
 };
 
@@ -613,7 +543,7 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'text', text: t('label.no-owner') },
+            value: { kind: 'text', text: NO_DATA_PLACEHOLDER },
           },
       // Approving replaces the current owners with these, so the reviewer sees
       // both sides of the change before deciding.
@@ -811,14 +741,19 @@ export const deriveTaskAboutEntity = (
   const typed = (entity ?? {}) as EntityWithContext;
   const columns = typed.columns;
   const tags = typed.tags ?? [];
+  const isPiiSensitive = (tagList: TagLabel[] = []) =>
+    tagList.some((tag) => tag.tagFQN === PII_SENSITIVE_TAG);
+  const isEntityPii = isPiiSensitive(tags);
+  const piiColumnCount = isEntityPii
+    ? columns?.length
+    : columns?.filter((column) => isPiiSensitive(column.tags)).length;
 
   return {
     entity,
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
-    piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
-    ).length,
+    piiColumnCount,
+    isPii: isEntityPii || Boolean(piiColumnCount),
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,
@@ -838,13 +773,9 @@ type DescribedEntity = {
   columns?: DescribedField[];
 };
 
-const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
-const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
-
-// The paths that name the entity itself; any other path names one of its
-// fields, and one this cannot resolve (a topic's schema field, a container's
-// data-model column) shows nothing rather than the entity's values.
-const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+// A field this cannot resolve (a topic's schema field, a container's data-model
+// column) shows nothing rather than the entity's values.
+const COLUMNS_CONTAINER = 'columns';
 
 // Follows a column path's names down through nested columns.
 const findColumnByPath = (
@@ -860,42 +791,21 @@ const findColumnByPath = (
     { level: columns }
   ).found;
 
-// A nested column named on its own, without its parents.
-const findColumnByName = (
-  columns: DescribedField[] | undefined,
-  name: string
-): DescribedField | undefined =>
-  columns?.reduce<DescribedField | undefined>(
-    (found, column) =>
-      found ??
-      (column.name === name ? column : findColumnByName(column.children, name)),
-    undefined
-  );
-
 // What a field path names on its entity: the entity itself, or a column by its
-// path (`address.city`, `"a.b"` with its quotes dropped).
+// path of names.
 const getField = (
   entity: EntityUnion | undefined,
-  fieldPath: string | undefined,
-  columnPath: RegExp
+  fieldPath: string | undefined
 ): DescribedField | DescribedEntity | undefined => {
   const typed = entity as DescribedEntity | undefined;
-  const path = fieldPath ?? '';
-  if (ENTITY_LEVEL_PATHS.has(path)) {
+  const path = parseTaskFieldPath(fieldPath);
+  if (path && !path.container) {
     return typed;
   }
-  const column = columnPath.exec(path)?.[1];
-  const names = column
-    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
-    : [];
-  const byPath = findColumnByPath(typed?.columns, names);
 
-  return (
-    byPath ??
-    (names.length === 1
-      ? findColumnByName(typed?.columns, names[0])
-      : undefined)
-  );
+  return path?.container === COLUMNS_CONTAINER
+    ? findColumnByPath(typed?.columns, path.names)
+    : undefined;
 };
 
 // The description's Existing side: the payload's snapshot when it has one,
@@ -906,11 +816,7 @@ const withExistingDescription = (
   entity?: EntityUnion
 ): ActivityChange => {
   const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
-  const existing = getField(
-    entity,
-    fieldPath,
-    COLUMN_DESCRIPTION_PATH
-  )?.description?.trim();
+  const existing = getField(entity, fieldPath)?.description?.trim();
 
   return change.before.length || !existing
     ? change
@@ -928,7 +834,7 @@ const withKeptTags = (
   // Tasks often carry an empty currentTags by default rather than a
   // snapshot, so only a non-empty one stands in for the asset.
   const current = isEmpty(payload.currentTags)
-    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    ? getField(entity, payload.fieldPath)?.tags
     : payload.currentTags;
   const changed = new Set([...change.before, ...change.after]);
   const unchanged = tagNames(current).filter((name) => !changed.has(name));

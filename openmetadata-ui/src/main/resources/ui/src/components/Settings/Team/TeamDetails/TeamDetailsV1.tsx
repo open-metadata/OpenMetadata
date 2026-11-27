@@ -24,8 +24,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Download01,
+  LockUnlocked01,
   Plus,
   Restore,
+  Teams,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -42,14 +44,8 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
-import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
-import {
-  GLOSSARIES_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
-} from '../../../../constants/docs.constants';
+import { ROLE_DOCS, TEAMS_DOCS } from '../../../../constants/docs.constants';
 import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
@@ -666,7 +662,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.access-to-collaborate')}
-                  icon={IconOpenLock}
+                  icon={LockUnlocked01}
                   id="open-group-dropdown"
                   name={
                     <Grid className="layout-row layout-grid">
@@ -742,13 +738,13 @@ const TeamDetailsV1 = ({
           )}
           footer={
             <>
-              <Typography as="p">
+              <Typography as="p" color="secondary" size="text-xs">
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"
                   renderElement={
                     <a
                       aria-label={t('label.doc-plural-lowercase')}
-                      href={GLOSSARIES_DOCS}
+                      href={TEAMS_DOCS}
                       rel="noreferrer"
                       target="_blank"
                     />
@@ -1006,9 +1002,13 @@ const TeamDetailsV1 = ({
   );
 
   const teamActionButton = useMemo(() => {
-    const canManageTeamMembership =
+    const isMembershipTeam =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
-    const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
+    // Only admins join or leave a team that is not joinable, as the server enforces.
+    const canChangeOwnMembership =
+      Boolean(currentTeam.isJoinable) || isAdminUser;
+    const canManageTeamMembership = isMembershipTeam && canChangeOwnMembership;
+    const joinTeamButton = (
       <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
@@ -1033,9 +1033,11 @@ const TeamDetailsV1 = ({
     );
   }, [
     currentUser,
+    currentTeam.isJoinable,
     isAlreadyJoinedTeam,
     isGroupType,
     isAdminUser,
+    isOrganization,
     joinTeam,
     deleteUserHandler,
   ]);
@@ -1058,7 +1060,7 @@ const TeamDetailsV1 = ({
                 contrastBorder={false}
                 placeholder={
                   <>
-                    <IconTeams className="text-primary" width={20} />
+                    <Teams className="text-primary" size={20} />
                   </>
                 }
                 size="md"
@@ -1070,12 +1072,10 @@ const TeamDetailsV1 = ({
                 updateTeamHandler={updateTeamHandler}
               />
 
-              <div className="d-flex flex-1 items-center justify-end w-min-0">
-                <LearningIcon
-                  pageId={LEARNING_PAGE_IDS.TEAMS}
-                  title={t('label.team-plural')}
-                />
-              </div>
+              <LearningIcon
+                pageId={LEARNING_PAGE_IDS.TEAMS}
+                title={t('label.team-plural')}
+              />
             </div>
 
             <Box

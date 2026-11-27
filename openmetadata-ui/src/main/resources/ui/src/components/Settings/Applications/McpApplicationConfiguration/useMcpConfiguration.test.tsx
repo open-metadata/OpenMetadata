@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RJSFSchema } from '@rjsf/utils';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
@@ -19,8 +20,13 @@ import {
   SettingSource,
   SettingType,
 } from '../../../../generated/system/settingsSourceResponse';
-import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
+import {
+  getMcpConfig,
+  getMcpTools,
+  updateMcpConfig,
+} from '../../../../rest/mcpConfigAPI';
 import { getSettingsSource } from '../../../../rest/settingConfigAPI';
+import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useMcpConfiguration } from './useMcpConfiguration';
 
@@ -30,6 +36,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpTools: jest.fn(),
   updateMcpConfig: jest.fn(),
 }));
 
@@ -44,6 +51,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 const mockGetMcpConfig = getMcpConfig as jest.Mock;
+const mockGetMcpTools = getMcpTools as jest.Mock;
 const mockUpdateMcpConfig = updateMcpConfig as jest.Mock;
 const mockGetSettingsSource = getSettingsSource as jest.Mock;
 
@@ -53,6 +61,7 @@ const storedConfig = {
   maxResponseChars: 100000,
   readOnly: true,
   connectionTimeoutSecs: 30,
+  extensions: { distribution: { enabled: true } },
 };
 
 const mcpSource = (managedPaths: string[]): SettingSource => ({
@@ -70,13 +79,16 @@ const renderUseMcpConfiguration = () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  return renderHook(() => useMcpConfiguration(), { wrapper });
+  return renderHook(() => useMcpConfiguration(mcpSchema as RJSFSchema), {
+    wrapper,
+  });
 };
 
 describe('useMcpConfiguration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetMcpConfig.mockResolvedValue(storedConfig);
+    mockGetMcpTools.mockResolvedValue(['search_metadata', 'nlq_search']);
     mockGetSettingsSource.mockResolvedValue({ settings: [] });
     mockUpdateMcpConfig.mockImplementation(async (payload) => payload);
   });
@@ -162,9 +174,38 @@ describe('useMcpConfiguration', () => {
     expect(result.current.isSaving).toBe(false);
   });
 
+  it('saves the server switch and registration policy while preserving hidden settings', async () => {
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    const policy = {
+      enabled: false,
+      dynamicClientRegistrationEnabled: false,
+      allowedRedirectHosts: ['trusted.example'],
+      allowLoopbackRedirects: false,
+      allowNativeRedirects: false,
+    };
+    await act(async () => result.current.saveMcpConfig(policy));
+
+    expect(mockUpdateMcpConfig).toHaveBeenCalledWith({
+      ...storedConfig,
+      ...policy,
+    });
+    expect(result.current.formConfig).toMatchObject(policy);
+  });
+
+  it('blocks saves after a failed read so hidden settings cannot be lost', async () => {
+    mockGetMcpConfig.mockRejectedValue({ response: { status: 500 } });
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    await act(async () => result.current.saveMcpConfig({ enabled: false }));
+
+    expect(mockUpdateMcpConfig).not.toHaveBeenCalled();
+    expect(result.current.fetchFailed).toBe(true);
+  });
+
   it('disables fields the deployment manages', async () => {
     mockGetSettingsSource.mockResolvedValue({
-      settings: [mcpSource(['/allowedOrigins'])],
+      settings: [mcpSource(['/allowedOrigins', '/offeredTools'])],
     });
 
     const { result } = renderUseMcpConfiguration();
@@ -176,6 +217,9 @@ describe('useMcpConfiguration', () => {
     );
 
     expect(result.current.formUiSchema.baseUrl?.['ui:disabled']).toBeFalsy();
+    expect(result.current.formUiSchema.offeredTools?.['ui:disabled']).toBe(
+      true
+    );
     expect(result.current.isEveryFieldManaged).toBe(false);
   });
 
@@ -183,10 +227,17 @@ describe('useMcpConfiguration', () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [
         mcpSource([
+          '/enabled',
+          '/dynamicClientRegistrationEnabled',
+          '/allowedRedirectHosts',
+          '/allowLoopbackRedirects',
+          '/allowNativeRedirects',
           '/baseUrl',
           '/allowedOrigins',
           '/maxResponseChars',
           '/readOnly',
+          '/disabledTools',
+          '/offeredTools',
         ]),
       ],
     });
@@ -194,5 +245,47 @@ describe('useMcpConfiguration', () => {
     const { result } = renderUseMcpConfiguration();
 
     await waitFor(() => expect(result.current.isEveryFieldManaged).toBe(true));
+  });
+
+  it.each(['disabledTools', 'offeredTools'])(
+    'includes registered and saved names as options for %s',
+    async (field) => {
+      mockGetMcpConfig.mockResolvedValue({
+        ...storedConfig,
+        [field]: ['sparql_query'],
+      });
+
+      const { result } = renderUseMcpConfiguration();
+
+      await waitFor(() =>
+        expect(
+          (result.current.formSchema.properties?.[field] as RJSFSchema).items
+        ).toEqual({
+          type: 'string',
+          enum: ['search_metadata', 'nlq_search', 'sparql_query'],
+        })
+      );
+
+      expect(result.current.formConfig).toHaveProperty(field, ['sparql_query']);
+    }
+  );
+
+  it('falls back to typing tool names when the tool list fails to load', async () => {
+    const error = { response: { status: 500 } } as AxiosError;
+    mockGetMcpTools.mockRejectedValue(error);
+
+    const { result } = renderUseMcpConfiguration();
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+    expect(
+      result.current.formSchema.properties?.disabledTools
+    ).not.toHaveProperty('uiFieldType');
+    expect(result.current.formSchema.properties?.offeredTools).toEqual(
+      expect.objectContaining({ items: { type: 'string' } })
+    );
+    expect(
+      result.current.formSchema.properties?.offeredTools
+    ).not.toHaveProperty('uiFieldType');
   });
 });

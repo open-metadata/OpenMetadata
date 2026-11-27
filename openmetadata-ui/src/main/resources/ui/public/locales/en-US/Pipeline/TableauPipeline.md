@@ -22,6 +22,8 @@ $$section
 ### Username $(id="username")
 
 The name of the user whose credentials will be used to sign in.
+
+With Connected App Authentication, this is the Tableau user OpenMetadata signs in as, and ingestion runs with that user's permissions. On Tableau Cloud enter the user's email address. On Tableau Server, Tableau's documentation asks for the user name.
 $$
 
 $$section
@@ -46,6 +48,40 @@ $$section
 The personal access token value.
 
 For more information on how to get a Personal Access Token, you can visit the official <a href="https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm" target="_blank">docs</a>.
+$$
+
+### 3. Connected App Authentication
+
+OpenMetadata signs a short-lived JSON Web Token (JWT) with the secret of a Tableau connected app that uses direct trust, and signs in as the user in Username.
+
+To set it up, a site administrator:
+
+1. Creates a connected app under **Settings > Connected Apps > New Connected App > Direct Trust**, and chooses the projects it can access.
+2. Enables the app. Tableau's documentation states that a new connected app on Tableau Server starts disabled.
+3. Generates a secret and copies the Client ID, the Secret ID and the Secret Value.
+
+OpenMetadata requests these scopes: `tableau:content:read`, `tableau:users:read`, `tableau:server:read`, `tableau:flows:read`, `tableau:flow_runs:read`, `tableau:jobs:read`, `tableau:tasks:read`, and, so that Collate's reverse metadata can write workbook descriptions, owners and tags and view tags, `tableau:workbooks:update`, `tableau:workbook_tags:update`, `tableau:workbook_tags:delete`, `tableau:view_tags:update`, `tableau:view_tags:delete`. The token is valid for 5 minutes, so the clock of the host running the ingestion must be correct.
+
+Tableau Server needs 2025.3 or later, where Tableau added the connected app scopes for flows and flow runs. On older versions, use a Personal Access Token.
+
+For more information, visit the official <a href="https://help.tableau.com/current/online/en-us/connected_apps_direct.htm" target="_blank">docs</a>.
+
+$$section
+### Client ID $(id="clientId")
+
+The Client ID of the connected app, shown on the connected app's page.
+$$
+
+$$section
+### Secret ID $(id="secretId")
+
+The ID of the connected app secret.
+$$
+
+$$section
+### Secret Value $(id="secretValue")
+
+The value of the connected app secret.
 $$
 
 ## Connection Details

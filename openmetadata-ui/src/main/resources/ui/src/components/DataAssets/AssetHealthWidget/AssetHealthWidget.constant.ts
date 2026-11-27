@@ -12,7 +12,7 @@
  */
 import {
   Activity,
-  AlertTriangle,
+  Alert,
   File04,
   Shield01,
 } from '@openmetadata/ui-core-components/icons';
@@ -31,7 +31,7 @@ export const ASSET_HEALTH_CATEGORY_ICON: Record<
 > = {
   [AssetHealthCategory.Pipeline]: Activity,
   [AssetHealthCategory.DataQuality]: Shield01,
-  [AssetHealthCategory.DataObservability]: AlertTriangle,
+  [AssetHealthCategory.DataObservability]: Alert,
   [AssetHealthCategory.Contract]: File04,
 };
 

@@ -99,7 +99,7 @@ def get_profile_sample_config(
         default_sample_config=default_sample_config,
     )
 
-    return SampleConfig(profileSampleConfig=profile_sample_config)
+    return (default_sample_config or SampleConfig()).model_copy(update={"profileSampleConfig": profile_sample_config})
 
 
 def get_sample_query(entity: Table, entity_config: TableConfig | None) -> str | None:

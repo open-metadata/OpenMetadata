@@ -16,11 +16,11 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { ExpandPanel } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 import { RailItem } from './Rail';
 
 export interface SubRailProps {
@@ -36,7 +36,7 @@ const SubRail: React.FC<SubRailProps> = ({ items, onExpand }) => {
       <div className="ask-sub-rail__header">
         <ButtonUtility
           data-testid="ask-sub-rail-expand-btn"
-          icon={ExpandPanelIcon}
+          icon={ExpandPanel}
           size="lg"
           tooltip={t('label.expand')}
           tooltipPlacement="right"
@@ -67,15 +67,12 @@ const SubRail: React.FC<SubRailProps> = ({ items, onExpand }) => {
                   <Icon height={20} width={20} />
                 </AriaLink>
               ) : (
-                <TooltipTrigger>
-                  <button
-                    aria-label={item.label}
-                    className={itemClassName}
-                    data-testid={`ask-sub-rail-item-${item.key}`}
-                    type="button"
-                    onClick={item.onClick}>
-                    <Icon height={20} width={20} />
-                  </button>
+                <TooltipTrigger
+                  aria-label={item.label}
+                  className={itemClassName}
+                  data-testid={`ask-sub-rail-item-${item.key}`}
+                  onPress={item.onClick}>
+                  <Icon height={20} width={20} />
                 </TooltipTrigger>
               )}
             </Tooltip>

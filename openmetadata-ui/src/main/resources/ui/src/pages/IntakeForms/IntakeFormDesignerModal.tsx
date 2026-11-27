@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import { ENTITY_TYPE_LABEL_KEYS } from '../../utils/IntakeFormUtils';
 import IntakeFormDesignerBody, {
   IntakeFormDesignerBodyHandle,
@@ -62,9 +63,15 @@ const IntakeFormDesignerModal = ({
       {() => (
         <>
           <SlideoutMenu.Header onClose={onCancel}>
-            <Typography size="text-lg" weight="semibold">
-              {title}
-            </Typography>
+            <Box align="center" gap={2}>
+              <Typography size="text-lg" weight="semibold">
+                {title}
+              </Typography>
+              <DeprecatedFeatureBadge
+                description={t('message.intake-form-deprecated')}
+                featureName={t('label.intake-form-plural')}
+              />
+            </Box>
           </SlideoutMenu.Header>
 
           <SlideoutMenu.Content

@@ -49,6 +49,6 @@ public class StartsWithHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{startsWith }}")
                     .withExample(
-                        "{{#if (startsWith fieldName \"columns.\")}}Field is a column{{/if}}")));
+                        "{{#if (startsWith event.eventType \"entity\")}}Entity event{{/if}}")));
   }
 }

@@ -1,0 +1,31 @@
+{
+  "abbreviation": "ORG",
+  "attribution": "The Organization Ontology, W3C Recommendation 16 January 2014. Copyright W3C. The ontology file declares the Open Data Commons PDDL 1.0; the Recommendation text is under the W3C Document License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C ontology for organizational structure: organizations, units, roles, posts and membership, published verbatim.",
+  "id": "org",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "Open Data Commons PDDL 1.0",
+  "licenseUrl": "https://opendatacommons.org/licenses/pddl/1-0/",
+  "modules": [
+    {
+      "conceptCount": 9,
+      "dependencies": [],
+      "description": "Organizations, organizational units, sites, posts, roles and memberships.",
+      "format": "turtle",
+      "id": "org",
+      "name": "Organization ontology",
+      "relationshipCount": 17,
+      "resourcePath": "rdf/ontology-packs/org/org.ttl",
+      "selectedByDefault": true,
+      "sha256": "3e01f89a17475a88f8b1606ca0fae04800d34dbbf93adc6db12dc30929848729",
+      "sourceUrl": "https://www.w3.org/ns/org.ttl"
+    }
+  ],
+  "name": "W3C Organization Ontology",
+  "publisher": "W3C",
+  "sourceUrl": "https://www.w3.org/TR/vocab-org/",
+  "standard": "The Organization Ontology",
+  "version": "0.8"
+}

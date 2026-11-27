@@ -51,6 +51,7 @@ public class ChartBuilder {
    * Set custom extension data.
    */
   public ChartBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

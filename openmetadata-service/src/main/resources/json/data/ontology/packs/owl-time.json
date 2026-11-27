@@ -1,0 +1,31 @@
+{
+  "abbreviation": "Time",
+  "attribution": "Time Ontology in OWL, W3C Recommendation. Copyright 2006-2017 W3C, OGC. Licensed under CC BY 4.0. W3C and OGC liability, trademark and document use rules apply. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C and OGC ontology of temporal concepts: instants, intervals, durations and calendar-clock descriptions, published verbatim.",
+  "id": "owl-time",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "modules": [
+    {
+      "conceptCount": 20,
+      "dependencies": [],
+      "description": "Temporal entities, positions, durations, calendar and clock descriptions, and Allen interval relations.",
+      "format": "turtle",
+      "id": "owl-time",
+      "name": "OWL-Time",
+      "relationshipCount": 29,
+      "resourcePath": "rdf/ontology-packs/owl-time/owl-time.ttl",
+      "selectedByDefault": true,
+      "sha256": "251bd6970b0d7a5efa97ff681afe81a297df85deab3d860fa4f8eeba72d8f16c",
+      "sourceUrl": "https://www.w3.org/2006/time.ttl"
+    }
+  ],
+  "name": "OWL-Time",
+  "publisher": "W3C and OGC",
+  "sourceUrl": "https://www.w3.org/TR/owl-time/",
+  "standard": "Time Ontology in OWL",
+  "version": "2017-04-06"
+}

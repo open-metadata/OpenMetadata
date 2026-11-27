@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18next, { InitOptions } from 'i18next';
+import i18next, { i18n as I18n, InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import { SupportedLocales } from './LocalUtil.interface';
@@ -44,6 +44,39 @@ export const getInitOptions = (): InitOptions => {
       console.error(`i18next: key not found "${key}"`),
     saveMissing: true,
   };
+};
+
+// `pr-PR` is the app's code for Persian; the BCP 47 tag `fa-IR` is what
+// i18next, React Aria and the `lang` attribute resolve as RTL.
+const BCP47_LOCALE_OVERRIDES: Partial<Record<string, string>> = {
+  [SupportedLocales.Persian]: 'fa-IR',
+};
+
+export const getBcp47Locale = (language: string) =>
+  BCP47_LOCALE_OVERRIDES[language] ?? language;
+
+// React Aria takes the calendar and digits from the locale, as the app's own
+// date formatting does with the i18next code. Persian gets `fa-IR` for RTL,
+// pinned to the Gregorian calendar and Latin digits: plain `fa-IR` switches
+// core date pickers to the Persian calendar, which no other date in the app uses.
+const REACT_ARIA_LOCALE_OVERRIDES: Partial<Record<string, string>> = {
+  [SupportedLocales.Persian]: 'fa-IR-u-ca-gregory-nu-latn',
+};
+
+export const getReactAriaLocale = (language: string) =>
+  REACT_ARIA_LOCALE_OVERRIDES[language] ?? language;
+
+// Resolves from the selected language, not `resolvedLanguage`, which stays on
+// the fallback until the selected locale's catalog has loaded.
+export const getLanguageDirection = (i18n: Pick<I18n, 'dir' | 'language'>) =>
+  i18n.dir(getBcp47Locale(i18n.language));
+
+// The root element carries the language's direction so the whole layout
+// follows RTL locales, not only components that read the direction themselves.
+export const applyDocumentLanguage = (language: string) => {
+  const root = document.documentElement;
+  root.lang = getBcp47Locale(language);
+  root.dir = i18next.dir(root.lang);
 };
 
 // Returns the current locale to use in cronstrue

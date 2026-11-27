@@ -12,8 +12,15 @@ import org.flowable.task.service.delegate.DelegateTask;
 @Slf4j
 public class ApprovalTaskCompletionValidator implements TaskListener {
 
+  // Every deployed approval task already calls this listener on completion, so recording the
+  // decision here reaches existing workflows without redeploying them.
   @Override
   public void notify(DelegateTask delegateTask) {
+    validate(delegateTask);
+    RecordVotedApprovalImpl.record(delegateTask);
+  }
+
+  private void validate(DelegateTask delegateTask) {
     try {
       LOG.debug("[ApprovalValidator] Validating completion for task: {}", delegateTask.getId());
 

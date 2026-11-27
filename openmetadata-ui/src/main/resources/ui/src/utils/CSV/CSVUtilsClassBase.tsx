@@ -25,7 +25,7 @@ import {
   BookOpen02,
   Check,
   Code01,
-  Cube01,
+  DataProduct,
   Globe02,
   Italic01,
   List,
@@ -89,6 +89,10 @@ import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -116,7 +120,9 @@ import {
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { getSettingPath } from '../RouterUtils';
 import { getTermQuery } from '../SearchPureUtils';
+import { getSettingsHashForHref } from '../SettingsModalLinkUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -960,7 +966,7 @@ const getBulkEditPickerConfig = (
     case 'owner':
     case 'owners':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(GlobalSettingsMenuCategory.MEMBERS),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-owners-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -973,7 +979,10 @@ const getBulkEditPickerConfig = (
 
     case 'reviewers':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.USERS
+        ),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-reviewers-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -1003,7 +1012,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.DATA_PRODUCT,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-data-products-empty-description'),
-        emptyIcon: <Cube01 size={20} />,
+        emptyIcon: <DataProduct size={20} />,
         emptyTitle: t('message.bulk-edit-no-data-products-available'),
         hint: t('message.bulk-edit-data-products-empty-hint'),
         placeholder: t('message.bulk-edit-data-products-placeholder'),
@@ -1063,8 +1072,15 @@ const getBulkEditPickerConfig = (
   }
 };
 
+// In AI mode settings live in the settings modal, not on a page: open it over
+// the grid instead of a new tab, which would neither keep AI mode nor the edits.
 const openBulkEditPickerPath = (path: string) => {
-  window.open(path, '_blank', 'noopener,noreferrer');
+  const settingsHash = getSettingsHashForHref(path);
+  if (settingsHash === undefined) {
+    window.open(path, '_blank', 'noopener,noreferrer');
+  } else {
+    globalThis.location.hash = settingsHash;
+  }
 };
 
 const renderBulkEditPickerOptionMarker = (option: BulkEditPickerOption) => {
@@ -1276,6 +1292,7 @@ const InlineBulkEditReferencePickerEditor = ({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
               aria-label={config.searchPlaceholder}
+              autoComplete="off"
               placeholder={config.searchPlaceholder}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}

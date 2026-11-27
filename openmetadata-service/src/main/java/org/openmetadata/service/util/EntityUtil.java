@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -49,6 +50,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -58,11 +60,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
@@ -86,6 +85,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -163,9 +163,48 @@ public final class EntityUtil {
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
               && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null
-                      && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+              && Objects.equals(constraint1.getReferredColumns(), constraint2.getReferredColumns());
+
+  /**
+   * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
+   * column name, so that the FK mapping {@code columns[i] → referredColumns[i]} is preserved
+   * after normalization. When there is no column-for-column mapping ({@code referredColumns} is
+   * null or its size differs from {@code columns}), each list is sorted on its own as before.
+   */
+  public static void sortConstraintPairs(TableConstraint constraint) {
+    final List<String> columns = constraint.getColumns();
+    final List<String> referredColumns = constraint.getReferredColumns();
+    if (isPairedByPosition(columns, referredColumns)) {
+      sortPairsByLocalColumn(columns, referredColumns);
+    } else {
+      sortIfPresent(columns);
+      sortIfPresent(referredColumns);
+    }
+  }
+
+  private static boolean isPairedByPosition(List<String> columns, List<String> referredColumns) {
+    return columns != null && referredColumns != null && columns.size() == referredColumns.size();
+  }
+
+  private static void sortPairsByLocalColumn(List<String> columns, List<String> referredColumns) {
+    final List<Integer> order =
+        IntStream.range(0, columns.size())
+            .boxed()
+            .sorted(Comparator.comparing(columns::get))
+            .toList();
+    final List<String> sortedColumns = order.stream().map(columns::get).toList();
+    final List<String> sortedReferredColumns = order.stream().map(referredColumns::get).toList();
+    columns.clear();
+    columns.addAll(sortedColumns);
+    referredColumns.clear();
+    referredColumns.addAll(sortedReferredColumns);
+  }
+
+  private static void sortIfPresent(List<String> values) {
+    if (values != null) {
+      Collections.sort(values);
+    }
+  }
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
@@ -749,47 +788,6 @@ public final class EntityUtil {
     return String.join(Entity.SEPARATOR, strings);
   }
 
-  /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Column column, String columnField) {
-    // Remove table FQN from column FQN to get the local name
-    String localColumnName = column.getName();
-    return columnField == null
-        ? FullyQualifiedName.build("columns", localColumnName)
-        : FullyQualifiedName.build("columns", localColumnName, columnField);
-  }
-
-  /** Return schema field name of format "schemaFields".fieldName.fieldName */
-  public static String getSchemaField(Topic topic, Field field, String fieldName) {
-    // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localFieldName)
-        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
-  }
-
-  public static String getSchemaField(APIEndpoint apiEndpoint, Field field, String fieldName) {
-    // Remove APIEndpoint FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(
-            apiEndpoint.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("schemaFields", localFieldName)
-        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
-  }
-
-  /** Return searchIndex field name of format "fields".fieldName.fieldName */
-  public static String getSearchIndexField(
-      SearchIndex searchIndex, SearchIndexField field, String fieldName) {
-    // Remove topic FQN from schemaField FQN to get the local name
-    String localFieldName =
-        EntityUtil.getLocalColumnName(
-            searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
-    return fieldName == null
-        ? FullyQualifiedName.build("fields", localFieldName)
-        : FullyQualifiedName.build("fields", localFieldName, fieldName);
-  }
-
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
   public static String getRuleField(Rule rule, String ruleField) {
     return ruleField == null
@@ -811,6 +809,16 @@ public final class EntityUtil {
 
   public static Double previousVersion(Double version) {
     return Math.round((version - 0.1) * 10.0) / 10.0;
+  }
+
+  /**
+   * Sets who wrote {@code entity} and the bot of the current request, null for a direct or a system
+   * write. A write that rebuilds an entity from its stored copy must set both: the copy names the
+   * bot of the previous change. See ADR:2026-11-16-every-version-names-the-bot-of-the-request-that-wrote-it.
+   */
+  public static void recordWriter(EntityInterface<?> entity, String updatedBy) {
+    entity.setUpdatedBy(updatedBy);
+    entity.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
   }
 
   public static Double nextVersion(Double version) {
@@ -1120,8 +1128,12 @@ public final class EntityUtil {
     if (domainRestricted) {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
-        // The navbar selection narrows within the role's scope; it can never widen past it.
-        EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+        // The navbar selection narrows within the role's scope; it can never widen past it. Types
+        // the pick never narrows (e.g. a task list about an asset) keep the role's full scope.
+        EntityReference selected =
+            DomainFilterExclusions.isExcluded(entityType)
+                ? null
+                : resolveSelectedDomain(activeDomain(securityContext));
         boolean selectedAllowed =
             selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
         filter.addQueryParam(
@@ -1149,6 +1161,15 @@ public final class EntityUtil {
     if (!getSubjectContext(securityContext).isBot()) {
       applyNavbarDomain(securityContext, filter, entityType, parent);
     }
+  }
+
+  /**
+   * As above, for a count computed where no security context is at hand (e.g. a glossary's term
+   * count): the selection comes from the request, and there is none on bot or background threads.
+   */
+  public static void addNavbarDomainFilter(
+      ListFilter filter, String entityType, Supplier<ResourceContextInterface> parent) {
+    applyNavbarDomain(null, filter, entityType, parent);
   }
 
   // Global (navbar) domain filter: a view preference that narrows lists to the selected domain and
@@ -1256,7 +1277,7 @@ public final class EntityUtil {
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
   // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
-  private static String domainAndSubDomainIds(EntityReference domain) {
+  public static String domainAndSubDomainIds(EntityReference domain) {
     String fqn = domain.getFullyQualifiedName();
     if (nullOrEmpty(fqn)) {
       return domain.getId().toString();

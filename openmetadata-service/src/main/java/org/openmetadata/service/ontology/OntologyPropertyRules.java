@@ -26,7 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  */
 public final class OntologyPropertyRules {
   private static final int MAX_UNIT_LENGTH = 256;
-  private static final int MAX_ENUM_VALUES = 1000;
+  public static final int MAX_ENUM_VALUES = 1000;
 
   private OntologyPropertyRules() {}
 
@@ -48,6 +48,8 @@ public final class OntologyPropertyRules {
             () -> distinctIris(property.getRange(), "range"),
             () -> absoluteIris(property.getPropertyChain(), "propertyChain"),
             () -> distinctIris(property.getDisjointWith(), "disjointWith"),
+            () -> distinctIris(property.getSuperProperties(), "superProperties"),
+            () -> ownSuperProperty(property),
             () -> optionalIri(property.getInverse(), "inverse"),
             () -> optionalIri(property.getReplacedBy(), "replacedBy"),
             () -> kind(property),
@@ -57,6 +59,33 @@ public final class OntologyPropertyRules {
         .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
+  }
+
+  /**
+   * The datatype rules a data property meets before a draft applies. {@link
+   * OntologyClassHierarchy} enforces the same {@link OwlDatatypeSupport} map when the draft
+   * applies, so the import preview runs this first and names the reason instead of listing a
+   * property that apply refuses.
+   */
+  public static Violation datatypeViolation(final OntologyProperty property) {
+    if (property.getKind() != OntologyPropertyKind.DATA) {
+      return null;
+    }
+    final URI unsupported =
+        listOrEmpty(property.getRange()).stream()
+            .filter(iri -> !OwlDatatypeSupport.isSupported(iri))
+            .findFirst()
+            .orElse(null);
+    if (unsupported != null) {
+      return new Violation(
+          "range", "Data property ranges require supported OWL 2 datatypes: " + unsupported);
+    }
+    return listOrEmpty(property.getEnumValues()).stream()
+            .allMatch(OwlDatatypeSupport::isValidLiteral)
+        ? null
+        : new Violation(
+            "enumValues",
+            "Enum literals require supported OWL 2 datatypes and valid lexical values");
   }
 
   /** The message for an IRI that is missing or relative, or null when it is absolute. */
@@ -86,6 +115,14 @@ public final class OntologyPropertyRules {
         .orElse(null);
   }
 
+  private static Violation ownSuperProperty(final OntologyProperty property) {
+    final String iri = property.getIri() == null ? null : property.getIri().toString();
+    return listOrEmpty(property.getSuperProperties()).stream()
+            .anyMatch(superProperty -> superProperty.toString().equals(iri))
+        ? new Violation("superProperties", "A property cannot be its own superproperty")
+        : null;
+  }
+
   private static Violation distinctIris(final Collection<URI> iris, final String field) {
     final Violation violation = absoluteIris(iris, field);
     if (violation != null) {
@@ -97,6 +134,16 @@ public final class OntologyPropertyRules {
     return null;
   }
 
+  /** The characteristics a property of this kind may carry. */
+  public static EnumSet<RelationshipCharacteristic> allowedCharacteristics(
+      final OntologyPropertyKind kind) {
+    return switch (kind) {
+      case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
+      case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
+      case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
+    };
+  }
+
   private static Violation kind(final OntologyProperty property) {
     final OntologyPropertyKind kind = property.getKind();
     if (kind != OntologyPropertyKind.OBJECT
@@ -105,12 +152,7 @@ public final class OntologyPropertyRules {
           property.getInverse() != null ? "inverse" : "propertyChain",
           "Only object properties can have inverses or property chains");
     }
-    final EnumSet<RelationshipCharacteristic> allowed =
-        switch (kind) {
-          case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
-          case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
-          case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
-        };
+    final EnumSet<RelationshipCharacteristic> allowed = allowedCharacteristics(kind);
     if (!nullOrEmpty(property.getCharacteristics())
         && !allowed.containsAll(property.getCharacteristics())) {
       return new Violation(

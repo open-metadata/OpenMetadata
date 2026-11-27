@@ -20,7 +20,7 @@ import types
 from collections.abc import Callable, Iterable
 from copy import copy
 from datetime import date, datetime
-from functools import cache, wraps
+from functools import lru_cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
 from urllib.parse import SplitResult, urlsplit
@@ -74,6 +74,7 @@ from metadata.pii.constants import (
     SPACY_EN_MODEL,
     SUPPORTED_LANG,
 )
+from metadata.pii.model_loading import ClassificationModelLoadError
 from metadata.pii.model_registry import example_language_for_model, get_model_for_language
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
@@ -131,7 +132,7 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
     return False
 
 
-@cache
+@lru_cache(maxsize=32)
 def load_nlp_engine(
     model_name: str | None = None,
     supported_language: str | None = None,
@@ -149,7 +150,19 @@ def load_nlp_engine(
         "lang_code": supported_language,
         "model_name": model_name,
     }
-    return SpacyNlpEngine(models=[model])
+    nlp_engine = SpacyNlpEngine(models=[model])
+    try:
+        nlp_engine.load()
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(
+            model_name,
+            classification_language.value if classification_language else None,
+            supported_language,
+            "engine_load",
+        ) from exc
+    return nlp_engine
 
 
 def build_analyzer_engine(
@@ -195,25 +208,50 @@ def _load_spacy_model(
     If the model is not found locally, it will be downloaded.
     """
 
+    requested_language = classification_language.value if classification_language else None
+    language = requested_language or example_language_for_model(model_name)
     try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
     except OSError:
-        language = classification_language.value if classification_language else example_language_for_model(model_name)
-        guidance = f"metadata install-classification-models --languages {language}" if language else None
-        if guidance:
-            logger.warning(
-                "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
-                model_name,
-                guidance,
-            )
-        else:
-            logger.warning(
-                "Downloading %s language model for spaCy. Install this model manually before an offline run; "
-                "run `metadata install-classification-models --help` for supported mapped models.",
-                model_name,
-            )
-        download(model_name)
+        _download_spacy_model(model_name, requested_language, language)
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
+    else:
+        return
+
+    try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+
+
+def _download_spacy_model(model_name: str, requested_language: str | None, language: str | None) -> None:
+    guidance = f"metadata install-classification-models --languages {language}" if language else None
+    if guidance:
+        logger.warning(
+            "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
+            model_name,
+            guidance,
+        )
+    else:
+        logger.warning(
+            "Downloading %s language model for spaCy. Install this model manually before an offline run; "
+            "run `metadata install-classification-models --help` for supported mapped models.",
+            model_name,
+        )
+    try:
+        download(model_name)
+    except MemoryError:
+        raise
+    except SystemExit as exc:  # NOSONAR -- spaCy's third-party CLI downloader exits on failure; normalize only here.
+        if exc.code:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
@@ -815,7 +853,7 @@ class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
         # check digit = (10 - weighted_sum % 10) % 10.
         # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
         # weighted sum is divisible by 10 (check digit = 0) are always rejected.
-        text = re.sub(r"[^0-9]", "", pattern_text)
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
         if len(text) != 9:
             return False
         digits = [int(c) for c in text]
@@ -978,7 +1016,7 @@ class ValidatedPlPeselRecognizer(PlPeselRecognizer):
         # check digit = (10 - weighted_sum % 10) % 10.
         # Presidio's upstream omits the complement step, always returning False for valid PESELs
         # whose weighted sum is non-zero.
-        text = re.sub(r"[^0-9]", "", pattern_text)
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
         if len(text) != 11:
             return False
         digits = [int(c) for c in text]
@@ -1057,6 +1095,9 @@ class ValidatedFiPersonalIdentityCodeRecognizer(FiPersonalIdentityCodeRecognizer
         # Presidio's upstream uses strptime("%d%m%y") which applies POSIX 2-digit-year
         # rules and ignores the century separator, accepting e.g. 290200- (29 Feb 1900,
         # which never existed) as valid because 2000 *is* a leap year.
+        # Uppercasing can turn non-ASCII checksum characters into valid ASCII letters.
+        if not pattern_text.isascii():
+            return False
         text = pattern_text.upper()
         if len(text) != 11:
             return None

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable max-len */
 import { IncidentTimeMetricsType } from '../enums/DataQuality.enum';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
@@ -91,7 +90,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
         domain: undefined,
       });
     });
@@ -126,7 +125,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -163,7 +162,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -200,7 +199,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -256,7 +255,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -272,7 +271,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
   });
@@ -901,7 +900,11 @@ describe('dataQualityDashboardAPI', () => {
 
   describe('fetchCountOfIncidentStatusTypeByDays', () => {
     it('should call getDataQualityReport with correct query when no filters are provided', async () => {
-      const status = TestCaseResolutionStatusTypes.ACK;
+      const status = [
+        TestCaseResolutionStatusTypes.New,
+        TestCaseResolutionStatusTypes.ACK,
+        TestCaseResolutionStatusTypes.Assigned,
+      ];
 
       await fetchCountOfIncidentStatusTypeByDays(status);
 
@@ -910,7 +913,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [
-                { term: { testCaseResolutionStatusType: status } },
+                { terms: { testCaseResolutionStatusType: status } },
                 {
                   range: {
                     timestamp: {
@@ -930,7 +933,7 @@ describe('dataQualityDashboardAPI', () => {
     });
 
     it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
-      const status = TestCaseResolutionStatusTypes.Assigned;
+      const status = [TestCaseResolutionStatusTypes.Assigned];
       const filters = { ownerFqn: 'owner1' };
       (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
         term: {
@@ -946,7 +949,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [
-                { term: { testCaseResolutionStatusType: status } },
+                { terms: { testCaseResolutionStatusType: status } },
                 {
                   range: {
                     timestamp: {
@@ -971,7 +974,7 @@ describe('dataQualityDashboardAPI', () => {
     });
 
     it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
-      const status = TestCaseResolutionStatusTypes.New;
+      const status = [TestCaseResolutionStatusTypes.New];
       const filters = { tags: ['tag1'], tier: ['tier1'] };
       const tagsFilter = {
         nested: {
@@ -1001,7 +1004,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [
-                { term: { testCaseResolutionStatusType: status } },
+                { terms: { testCaseResolutionStatusType: status } },
                 {
                   range: {
                     timestamp: {
@@ -1023,7 +1026,7 @@ describe('dataQualityDashboardAPI', () => {
     });
 
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
-      const status = TestCaseResolutionStatusTypes.Resolved;
+      const status = [TestCaseResolutionStatusTypes.Resolved];
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
       const ownerFilter = {
         term: {
@@ -1060,7 +1063,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [
-                { term: { testCaseResolutionStatusType: status } },
+                { terms: { testCaseResolutionStatusType: status } },
                 {
                   range: {
                     timestamp: {
@@ -1083,7 +1086,7 @@ describe('dataQualityDashboardAPI', () => {
     });
 
     it('should call getDataQualityReport with correct query when date range is provided', async () => {
-      const status = TestCaseResolutionStatusTypes.Resolved;
+      const status = [TestCaseResolutionStatusTypes.Resolved];
       const filters = { startTs: 1729073964962, endTs: 1729678764965 };
 
       await fetchCountOfIncidentStatusTypeByDays(status, filters);
@@ -1093,7 +1096,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [
-                { term: { testCaseResolutionStatusType: status } },
+                { terms: { testCaseResolutionStatusType: status } },
                 {
                   range: {
                     timestamp: {

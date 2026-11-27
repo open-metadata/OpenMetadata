@@ -85,6 +85,8 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -93,8 +95,12 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 public class EntityCsvTest {
+  private static final String IMPORTING_BOT = "caip-bot";
   private static final List<CsvHeader> CSV_HEADERS;
   private static final String HEADER_STRING = "h1*,h2,h3" + LINE_SEPARATOR;
+  // The stray character after the closing quote makes Commons CSV fail while iterating records.
+  private static final String MALFORMED_QUOTED_CSV =
+      HEADER_STRING + "\"value1\"x,value2,value3" + LINE_SEPARATOR;
 
   static {
     Object[][] headers = {
@@ -501,6 +507,34 @@ public class EntityCsvTest {
     assertEquals(List.of("h1*", "h2", "h3"), records.get(0).toList());
     assertEquals(List.of("value1", "value2", ""), records.get(1).toList());
     assertEquals(List.of("value3", "value4", "value5"), records.get(2).toList());
+  }
+
+  @Test
+  void test_importMalformedCsvAbortsWithParserFailure() throws IOException {
+    TestCsv testCsv = new TestCsv();
+
+    assertParserFailureAbort(testCsv.importCsv(MALFORMED_QUOTED_CSV, true));
+  }
+
+  @Test
+  void test_recursiveImportOfMalformedCsvAbortsWithParserFailure() throws IOException {
+    // Mirrors the recursive import path of DatabaseRepository and DatabaseSchemaRepository.
+    TestCsv testCsv = new TestCsv();
+    List<CSVRecord> records = testCsv.parse(MALFORMED_QUOTED_CSV, true);
+
+    assertNull(records);
+    assertParserFailureAbort(testCsv.importCsv(records, true));
+  }
+
+  private static void assertParserFailureAbort(CsvImportResult importResult) {
+    assertEquals(ApiStatus.ABORTED, importResult.getStatus(), importResult.toString());
+    assertTrue(
+        importResult
+            .getAbortReason()
+            .startsWith(
+                "#PARSER_FAILURE: Failed to parse the CSV file: line 2 has characters after the"
+                    + " closing quote of a quoted value."),
+        importResult.getAbortReason());
   }
 
   @Test
@@ -1162,11 +1196,13 @@ public class EntityCsvTest {
       Mockito.when(repository.findMatchForImport(createdEntity)).thenReturn(null);
       Mockito.<EntityInterface<?>>when(repository.findMatchForImport(updatedEntity))
           .thenReturn(originalEntity);
-      Mockito.when(repository.createManyEntitiesForImport(List.of(createdEntity), "admin"))
+      // The batch writes name the bot importing for the user, never the importer itself.
+      ImpersonationContext.setImpersonatedBy(IMPORTING_BOT);
+      Mockito.when(repository.createManyEntitiesForImport(List.of(createdEntity), IMPORTING_BOT))
           .thenReturn(List.of(createdEntity));
       Mockito.when(
               repository.updateManyEntitiesForImport(
-                  List.of(originalEntity), List.of(updatedEntity), "admin", "admin"))
+                  List.of(originalEntity), List.of(updatedEntity), "admin", IMPORTING_BOT))
           .thenReturn(List.of(updatedEntity));
 
       testCsv.queueEntity(createRecord, createdEntity);
@@ -1178,6 +1214,8 @@ public class EntityCsvTest {
       assertEquals(2, testCsv.pendingChangeEvents.size());
       assertTrue(testCsv.pendingEntityOperations.isEmpty());
       assertTrue(testCsv.pendingEntityFQNs.isEmpty());
+    } finally {
+      ImpersonationContext.clear();
     }
   }
 
@@ -1216,7 +1254,7 @@ public class EntityCsvTest {
       Mockito.when(repository.findMatchForImport(failingEntity)).thenReturn(null);
       Mockito.when(
               repository.createManyEntitiesForImport(
-                  List.of(successfulEntity, failingEntity), "admin"))
+                  List.of(successfulEntity, failingEntity), null))
           .thenThrow(new IllegalStateException("batch insert failed"));
       Mockito.when(repository.createOrUpdate(null, successfulEntity, "admin"))
           .thenReturn(
@@ -1323,7 +1361,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
       Mockito.when(repository.findMatchForImport(dependentEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.eq("admin")))
+      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.isNull()))
           .thenReturn(List.of(firstEntity));
       Mockito.doNothing().when(repository).prepareInternal(firstEntity, false);
       Mockito.doThrow(
@@ -1487,7 +1525,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
       Mockito.when(repository.findMatchForImport(dependentEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.eq("admin")))
+      Mockito.when(repository.createManyEntitiesForImport(Mockito.anyList(), Mockito.isNull()))
           .thenReturn(List.of(firstEntity));
       Mockito.doNothing().when(repository).prepareInternal(firstEntity, false);
       Mockito.doThrow(
@@ -1508,6 +1546,54 @@ public class EntityCsvTest {
       assertEquals(1, testCsv.pendingChangeEvents.size());
       assertFalse(testCsv.pendingEntityFQNs.contains(firstEntity.getFullyQualifiedName()));
       assertTrue(testCsv.pendingEntityFQNs.contains(dependentEntity.getFullyQualifiedName()));
+    }
+  }
+
+  @Test
+  void test_authorizeRowRefusalFailsRowsWithoutReachingRulesOrPreparation() throws Exception {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.setDryRun(true);
+    testCsv.refuseRows();
+
+    Table originalEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Original");
+    originalEntity.setId(UUID.randomUUID());
+    Table updatedEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Updated");
+    Table createdEntity =
+        tableEntity("created_table", "service.db.schema.created_table", "Created");
+    CSVRecord updateRecord = singleRecord(testCsv, updatedEntity.getFullyQualifiedName(), "", "");
+    CSVRecord createRecord = singleRecord(testCsv, createdEntity.getFullyQualifiedName(), "", "");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    RuleEngine ruleEngine = mock(RuleEngine.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
+        MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
+      validatorUtil.when(() -> ValidatorUtil.validate(updatedEntity)).thenReturn(null);
+      validatorUtil.when(() -> ValidatorUtil.validate(createdEntity)).thenReturn(null);
+      Mockito.<EntityInterface<?>>when(repository.findMatchForImport(updatedEntity))
+          .thenReturn(originalEntity);
+      Mockito.when(repository.findMatchForImport(createdEntity)).thenReturn(null);
+
+      testCsv.queueEntity(updateRecord, updatedEntity);
+      testCsv.queueEntity(createRecord, createdEntity);
+
+      assertEquals(2, testCsv.importResult.getNumberOfRowsFailed());
+      assertEquals(0, testCsv.importResult.getNumberOfRowsPassed());
+      assertEquals(ApiStatus.FAILURE, testCsv.importResult.getStatus());
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(updateRecord));
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(createRecord));
+      assertTrue(testCsv.pendingEntityOperations.isEmpty());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluateUpdate(Mockito.any(), Mockito.any());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluate(Mockito.any());
+      Mockito.verify(repository, Mockito.never())
+          .prepareInternal(Mockito.any(), Mockito.anyBoolean());
     }
   }
 
@@ -1825,7 +1911,7 @@ public class EntityCsvTest {
           .thenReturn(createdChangeEvent);
 
       Mockito.when(repository.findMatchForImport(pendingEntity)).thenReturn(null);
-      Mockito.when(repository.createManyEntitiesForImport(List.of(pendingEntity), "admin"))
+      Mockito.when(repository.createManyEntitiesForImport(List.of(pendingEntity), null))
           .thenReturn(List.of(pendingEntity));
 
       testCsv.queueEntity(record, pendingEntity);
@@ -2743,6 +2829,7 @@ public class EntityCsvTest {
 
   private static class TestCsv extends EntityCsv<EntityInterface<?>> {
     private final Map<String, EntityInterface<?>> entitiesByTypeAndName = new HashMap<>();
+    private boolean refuseRows;
 
     protected TestCsv() {
       super(Entity.TABLE, CSV_HEADERS, "admin");
@@ -2752,6 +2839,17 @@ public class EntityCsvTest {
     @Override
     protected boolean checksRowWrites() {
       return false;
+    }
+
+    @Override
+    protected void authorizeRow(EntityInterface<?> original, EntityInterface<?> entity) {
+      if (refuseRows) {
+        throw new AuthorizationException("row denied by test policy");
+      }
+    }
+
+    private void refuseRows() {
+      this.refuseRows = true;
     }
 
     private void addEntity(String entityType, String fqn, EntityInterface<?> entity) {

@@ -113,7 +113,7 @@ const mockUseTestCaseStore = {
       })
     | undefined,
   testCasePermission: mockEntityPermissions,
-  setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
 };
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -420,7 +420,7 @@ describe('useTestCaseIncidentHeader', () => {
       MOCK_TEST_CASE_DATA.id,
       expect.arrayContaining([expect.objectContaining({ path: '/domains' })])
     );
-    expect(mockUseTestCaseStore.setTestCase).toHaveBeenCalled();
+    expect(mockUseTestCaseStore.mergeTestCase).toHaveBeenCalled();
   });
 
   it('should expose edit permissions from the test case permission', async () => {

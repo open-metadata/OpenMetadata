@@ -21,7 +21,9 @@ import {
 import {
   ChevronDown,
   Download01,
+  Expand05,
   FilterLines,
+  Minimize02,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -39,8 +41,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
@@ -51,6 +51,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import type { LineageTimeRange } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -184,6 +185,14 @@ const CustomControls: FC<{
       });
     },
     [setSelectedQuickFilters, onPageReset]
+  );
+
+  const handleTimeFilterChange = useCallback(
+    (range: LineageTimeRange) => {
+      onPageReset?.();
+      setTimeFilter(range);
+    },
+    [setTimeFilter, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -435,7 +444,7 @@ const CustomControls: FC<{
   );
 
   const fullScreenIcon = useMemo(
-    () => (isFullScreen ? ExitFullScreenIcon : FullscreenIcon),
+    () => (isFullScreen ? Minimize02 : Expand05),
     [isFullScreen]
   );
 
@@ -552,7 +561,7 @@ const CustomControls: FC<{
           <LineageTimeFilter
             endTime={timeFilter?.endTime}
             startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
+            onChange={handleTimeFilterChange}
           />
 
           <ButtonUtility

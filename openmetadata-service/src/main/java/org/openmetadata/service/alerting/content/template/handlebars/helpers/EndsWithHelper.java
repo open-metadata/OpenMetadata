@@ -47,6 +47,7 @@ public class EndsWithHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{endsWith }}")
-                    .withExample("{{#if (endsWith fieldName \".tags\")}}Field is tags{{/if}}")));
+                    .withExample(
+                        "{{#if (endsWith event.eventType \"Updated\")}}Update event{{/if}}")));
   }
 }

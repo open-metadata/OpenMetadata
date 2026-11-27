@@ -19,22 +19,14 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  Maximize01,
-  Minimize01,
-} from '@openmetadata/ui-core-components/icons';
+import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
-import { Duration } from 'luxon';
 import Qs from 'qs';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  ONE_MINUTE_IN_MILLISECOND,
-  PIPE_SYMBOL,
-} from '../../../constants/constants';
+import { PIPE_SYMBOL } from '../../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
@@ -42,15 +34,18 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  formatDuration,
+} from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
@@ -76,7 +71,6 @@ const QueryCard: FC<QueryCardProp> = ({
   const { fqn: datasetFQN } = useFqn();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
     [location.search]
@@ -106,23 +100,10 @@ const QueryCard: FC<QueryCardProp> = ({
       return undefined;
     }
 
-    if (durationInMilliSeconds < 1) {
-      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
-    }
-
-    const duration = Duration.fromObject({
-      milliseconds: durationInMilliSeconds,
-    });
-
-    let formatString;
-    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
-      formatString = "s.S 'sec'";
-    } else {
-      formatString = "m 'min' s 'sec'";
-    }
-
-    // Format the duration as a string using the chosen format string
-    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
+    return `${t('label.runs-for')} ${formatDuration(
+      durationInMilliSeconds,
+      2
+    )}`;
   }, [query]);
 
   const updateSqlQuery = async () => {
@@ -174,10 +155,22 @@ const QueryCard: FC<QueryCardProp> = ({
       className="layout-space layout-space-horizontal font-normal p-y-xs"
       gap={2}
       itemClassName="layout-space-item">
+      {query?.displayName && (
+        <>
+          <Typography data-testid="query-display-name" size="text-sm">
+            {query.displayName}
+          </Typography>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
+        </>
+      )}
       <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
-          <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
           <Typography className="text-sm" data-testid="query-run-duration">
             {duration}
           </Typography>
@@ -268,12 +261,10 @@ const QueryCard: FC<QueryCardProp> = ({
                 onClick={handleExpandClick}
                 {...getExpandButtonProps()}
               />
-              <ButtonUtility
-                data-testid="query-entity-copy-button"
-                icon={Copy01}
-                size="lg"
+              <CopyButton
+                testId="query-entity-copy-button"
                 tooltip={t('message.copy-to-clipboard')}
-                onClick={() => onCopyToClipBoard()}
+                value={query.query ?? ''}
               />
             </Box>
 

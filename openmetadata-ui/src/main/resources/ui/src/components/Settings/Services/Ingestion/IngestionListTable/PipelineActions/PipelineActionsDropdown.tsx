@@ -12,16 +12,19 @@
  */
 
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Deploy,
+  DotsVertical,
+  Edit01,
+  RefreshCw01,
+  RunProfiler,
+  Trash01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
-import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
-import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
-import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
-import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import {
   IngestionPipeline,
@@ -167,7 +170,7 @@ function PipelineActionsDropdown({
               icon: getLoadingStatus(
                 currTrigger,
                 id,
-                <RunIcon height={12} width={12} />
+                <RunProfiler size={12} />
               ),
               hidden: !triggerPermission,
               onClick: () =>
@@ -177,11 +180,7 @@ function PipelineActionsDropdown({
             },
             {
               label: t('label.re-deploy'),
-              icon: getLoadingStatus(
-                currDeploy,
-                id,
-                <ReloadIcon height={12} width={12} />
-              ),
+              icon: getLoadingStatus(currDeploy, id, <RefreshCw01 size={12} />),
               hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
@@ -192,11 +191,7 @@ function PipelineActionsDropdown({
         : [
             {
               label: t('label.deploy'),
-              icon: getLoadingStatus(
-                currDeploy,
-                id,
-                <DeployIcon height={12} width={12} />
-              ),
+              icon: getLoadingStatus(currDeploy, id, <Deploy size={12} />),
               hidden: !deployPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
@@ -231,7 +226,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.kill'),
         hidden: !editPermission,
-        icon: <KillIcon height={12} width={12} />,
+        icon: <XCircle size={12} />,
         onClick: () => {
           setIsKillModalOpen(true);
           setSelectedPipeline(ingestion);
@@ -274,7 +269,7 @@ function PipelineActionsDropdown({
         <ButtonUtility
           aria-label={t('label.more-action-plural')}
           data-testid="more-actions"
-          icon={MoreIcon}
+          icon={DotsVertical}
           isDisabled={moreActionButtonProps?.disabled}
           size="lg"
         />

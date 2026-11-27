@@ -610,6 +610,16 @@ const BulkEditEntity = ({
           type={activeAsyncImportJob.error ? 'error' : 'success'}
         />
       )}
+      {validationData?.abortReason && !isValidating && (
+        <div data-testid="bulk-edit-abort-reason">
+          <Banner
+            className="border-radius"
+            isLoading={false}
+            message={validationData.abortReason}
+            type="error"
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -670,6 +680,7 @@ const BulkEditEntity = ({
       {changedCellCount > 0 && renderEditedBadge()}
       <div className="bulk-edit-toolbar-actions">
         <Input
+          autoComplete="off"
           className="bulk-edit-search"
           data-testid="bulk-edit-search"
           icon={BulkEditSearchIcon}

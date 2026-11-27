@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Use when implementing new features or fixing bugs to enforce test-driven development. Guides the RED-GREEN-REFACTOR cycle for Java (JUnit), Python (pytest), and TypeScript (Jest/Playwright) in OpenMetadata.
+description: Use when implementing new features or fixing bugs to enforce test-driven development. Guides the RED-GREEN-REFACTOR cycle for Java (JUnit), Python (pytest), and TypeScript (Jest, browser tests, Playwright) in OpenMetadata.
 user-invocable: true
 argument-hint: "<feature or bug description>"
 ---
@@ -64,12 +64,13 @@ Now improve the code while keeping tests green:
 - Remove duplication
 - Improve naming
 - Extract methods if needed (but don't over-abstract)
-- Run the full test suite for the module to check for regressions
+- Reuse passing checks and run the affected regression tests after behavioral refactoring.
+- Expand to a module suite only for merge readiness or a named unresolved risk.
 
 ```bash
 # Java — format then test
 mvn spotless:apply
-mvn test -pl openmetadata-service
+mvn test -pl openmetadata-service -Dtest=<AffectedTestClass>
 
 # Python — format, lint, then test
 cd ingestion && make py_format && make py_format_check
@@ -94,7 +95,8 @@ Go back to RED with the next behavior. Each cycle should take minutes, not hours
 | Python connectors | Unit | `ingestion/tests/unit/` | `pytest` |
 | Python integration | Integration | `ingestion/tests/integration/` | `pytest` |
 | React components | Unit | Co-located `.test.ts` files | `yarn test` |
-| UI E2E flows | E2E | `playwright/e2e/` | `yarn playwright:run` |
+| UI page behaviour | Browser test | Co-located `.browser.test.tsx` | `yarn test:ui` |
+| Cross-feature UI journeys | E2E | `playwright/e2e/` | `yarn playwright:run` |
 
 ## Anti-Patterns to Avoid
 

@@ -74,8 +74,8 @@ class AuditPackGeneratorTest {
   @Test
   void signatureOf_differsByRequester() {
     UUID domainId = UUID.randomUUID();
-    AuditReport first = domainReport(domainId).withUpdatedBy("alice");
-    AuditReport second = domainReport(domainId).withUpdatedBy("bob");
+    AuditReport first = domainReport(domainId).withRequestedBy(requester());
+    AuditReport second = domainReport(domainId).withRequestedBy(requester());
 
     assertNotEquals(AuditPackGenerator.signatureOf(first), AuditPackGenerator.signatureOf(second));
   }
@@ -83,8 +83,9 @@ class AuditPackGeneratorTest {
   @Test
   void stampRequestSignature_isDeterministicAndRequestSpecific() {
     UUID domainId = UUID.randomUUID();
-    AuditReport first = domainReport(domainId).withUpdatedBy("alice");
-    AuditReport second = domainReport(domainId).withUpdatedBy("alice");
+    EntityReference requester = requester();
+    AuditReport first = domainReport(domainId).withRequestedBy(requester);
+    AuditReport second = domainReport(domainId).withRequestedBy(requester);
     AuditPackGenerator.stampRequestSignature(first);
     AuditPackGenerator.stampRequestSignature(second);
     assertNotNull(first.getRequestSignature());
@@ -94,9 +95,22 @@ class AuditPackGeneratorTest {
     AuditPackGenerator.stampRequestSignature(different);
     assertNotEquals(first.getRequestSignature(), different.getRequestSignature());
 
-    AuditReport differentRequester = domainReport(domainId).withUpdatedBy("bob");
+    AuditReport differentRequester = domainReport(domainId).withRequestedBy(requester());
     AuditPackGenerator.stampRequestSignature(differentRequester);
     assertNotEquals(first.getRequestSignature(), differentRequester.getRequestSignature());
+  }
+
+  @Test
+  void signatureKeepsRequesterIdentityWhenTheWorkerUpdatesTheReport() {
+    AuditReport report =
+        domainReport(UUID.randomUUID()).withRequestedBy(requester()).withUpdatedBy("alice");
+    String signature = AuditPackGenerator.signatureOf(report);
+    report.setUpdatedBy("admin");
+    assertEquals(signature, AuditPackGenerator.signatureOf(report));
+  }
+
+  private static EntityReference requester() {
+    return new EntityReference().withId(UUID.randomUUID()).withType("user");
   }
 
   @Nested

@@ -104,7 +104,7 @@
   },
   "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
@@ -112,14 +112,9 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts": {
@@ -132,14 +127,9 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts": {
@@ -204,7 +194,7 @@
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 4
     }
   },
   "playwright/e2e/Features/IngestionListNameSorting.spec.ts": {
@@ -225,11 +215,6 @@
   "playwright/e2e/Features/OnlineUsers.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
     }
   },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
@@ -342,7 +327,7 @@
   },
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
@@ -412,7 +397,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -783,11 +768,6 @@
       "count": 1
     }
   },
-  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
-    }
-  },
   "src/components/Alerts/ClassicAlertRuleSection.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 2
@@ -826,11 +806,6 @@
   "src/components/DataQuality/TestSuite/TestSuiteList/TestSuites.component.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
-    }
-  },
-  "src/components/Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget.test.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 2
     }
   },
   "src/components/Database/RetentionPeriod/RetentionPeriod.component.tsx": {
@@ -903,19 +878,9 @@
       "count": 1
     }
   },
-  "src/components/common/Table/TableV2Utils.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 2
-    }
-  },
   "src/components/observability/IncidentManager/IncidentGroups/IncidentGroups.constants.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 4
-    }
-  },
-  "src/constants/Color.constants.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
     }
   },
   "src/constants/Color.constants.ts": {
@@ -928,17 +893,7 @@
       "count": 2
     }
   },
-  "src/hooks/insights/useDataInsightChartColors.test.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 4
-    }
-  },
   "src/hooks/insights/useDataInsightChartColors.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
-    }
-  },
-  "src/hooks/useWorkflowEdgeManagement.test.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
     }
@@ -971,16 +926,6 @@
   "src/utils/WorkflowEdgeTheme.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
-    }
-  },
-  "src/utils/WorkflowSerializer.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 3
-    }
-  },
-  "src/utils/common/layout.utils.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
     }
   },
   "src/utils/common/layout.utils.ts": {

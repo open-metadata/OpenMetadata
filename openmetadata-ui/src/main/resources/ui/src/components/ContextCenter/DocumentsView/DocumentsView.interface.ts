@@ -35,10 +35,13 @@ export interface DocumentsViewProps {
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  /** Replaces the file with a read that carries every field the list asks for. */
+  onFileRefreshed?: (file: ContextFile) => void;
   onFileUpdated?: (file: ContextFile) => void;
   onOpenPreview?: (file: ContextFile) => void;
   onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
+  onClearSelection?: () => void;
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
@@ -56,6 +59,7 @@ export interface DocumentPreviewPanelProps {
   file: ContextFile;
   url: string;
   onClose: () => void;
+  onFileRefreshed?: (file: ContextFile) => void;
 }
 
 export interface FolderPickerMenuProps {
@@ -75,6 +79,7 @@ export interface FileActionsProps {
   isLoadingMoreFolders?: boolean;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onFileRefreshed?: (file: ContextFile) => void;
   onFileUpdated?: (file: ContextFile) => void;
   onLoadMoreFolders?: () => void;
 }
@@ -105,6 +110,7 @@ export interface FileRowProps {
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
+  onFileRefreshed?: (file: ContextFile) => void;
   onFileUpdated?: (file: ContextFile) => void;
   onOpenPreview?: (file: ContextFile) => void;
   onPreview?: (file: ContextFile) => void;

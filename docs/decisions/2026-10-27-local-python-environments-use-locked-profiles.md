@@ -1,9 +1,9 @@
 # Local Python commands use locked profiles and serialize model preparation
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-09-python-classification-models-use-explicit-profiles-and-caches
 - **Revisions:** v1 2026-10-27 (initial); v2 2026-10-28 (lock classification models)
 - **Deciders:** Pablo Takara
-- **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests
+- **Guard:** `ingestion/tests/tooling/test_python_tooling.py`; DB2 connection tests
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/36338
 
 ## Context

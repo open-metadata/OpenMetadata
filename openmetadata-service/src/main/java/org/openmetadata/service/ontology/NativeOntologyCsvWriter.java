@@ -1,6 +1,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.ontology.NativeOntologyCsvCodec.ROW_FORMAT;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVPrinter;
+import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -120,10 +122,17 @@ final class NativeOntologyCsvWriter {
     return row;
   }
 
+  /** A definition made through the API may have no display name; its name is what readers see. */
+  private static String labelOf(final OntologyDefinition definition) {
+    return nullOrEmpty(definition.getDisplayName())
+        ? definition.getName()
+        : definition.getDisplayName();
+  }
+
   private Map<Column, String> conceptRow(final OntologyConcept concept) {
     final Map<Column, String> row = row(RowKind.CONCEPT);
     put(row, Column.IRI, concept.getIri().toString());
-    put(row, Column.LABEL, concept.getDisplayName());
+    put(row, Column.LABEL, labelOf(concept));
     put(row, Column.DESCRIPTION, concept.getDescription());
     put(row, Column.CONCEPT_TYPE, concept.getConceptType().toString());
     put(
@@ -152,7 +161,7 @@ final class NativeOntologyCsvWriter {
   private Map<Column, String> propertyRow(final OntologyProperty property) {
     final Map<Column, String> row = row(RowKind.PROPERTY);
     put(row, Column.IRI, property.getIri().toString());
-    put(row, Column.LABEL, property.getDisplayName());
+    put(row, Column.LABEL, labelOf(property));
     put(row, Column.DESCRIPTION, property.getDescription());
     put(row, Column.PROPERTY_KIND, property.getKind().toString());
     put(row, Column.DOMAIN, sortedJoin(listOrEmpty(property.getDomain()), URI::toString));
@@ -180,6 +189,10 @@ final class NativeOntologyCsvWriter {
         row,
         Column.DISJOINT_WITH,
         sortedJoin(listOrEmpty(property.getDisjointWith()), URI::toString));
+    put(
+        row,
+        Column.SUPER_PROPERTIES,
+        sortedJoin(listOrEmpty(property.getSuperProperties()), URI::toString));
     put(row, Column.DEPRECATED, Boolean.TRUE.equals(property.getDeprecated()) ? "true" : null);
     put(
         row,

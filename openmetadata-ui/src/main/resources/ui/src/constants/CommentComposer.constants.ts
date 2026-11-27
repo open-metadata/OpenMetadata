@@ -12,6 +12,7 @@
  */
 
 import {
+  Link03,
   TextEditorBlockquote,
   TextEditorBold,
   TextEditorBulletedList,
@@ -19,7 +20,6 @@ import {
   TextEditorEmoji,
   TextEditorHashtag,
   TextEditorItalic,
-  TextEditorLink,
   TextEditorMention,
   TextEditorNumberedList,
   TextEditorStrikethrough,
@@ -45,7 +45,7 @@ export const FORMAT_BAR_ICONS: ReadonlyArray<
   ['.ql-code-block', TextEditorCode],
   ['.ql-list[value="ordered"]', TextEditorNumberedList],
   ['.ql-list[value="bullet"]', TextEditorBulletedList],
-  ['.ql-link', TextEditorLink],
+  ['.ql-link', Link03],
   ['.ql-insertMention', TextEditorMention],
   ['.ql-insertRef', TextEditorHashtag],
   ['.textarea-emoji-control', TextEditorEmoji],

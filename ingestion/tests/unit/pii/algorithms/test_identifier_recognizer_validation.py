@@ -24,6 +24,25 @@ from metadata.pii.algorithms.presidio_utils import (
     ValidatedPlPeselRecognizer,
 )
 
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "code"),
+    [
+        (SeparatorTolerantAuAcnRecognizer, "004085616"),
+        (ValidatedPlPeselRecognizer, "44051401458"),
+    ],
+)
+@pytest.mark.parametrize(
+    "unicode_digits", ["٠١٢٣٤٥٦٧٨٩", "\uff10\uff11\uff12\uff13\uff14\uff15\uff16\uff17\uff18\uff19"]
+)
+def test_identifier_checksums_use_only_ascii_digits(recognizer_class, code, unicode_digits):
+    recognizer = recognizer_class()
+    unicode_code = code.translate(str.maketrans("0123456789", unicode_digits))
+
+    assert recognizer.validate_result(unicode_code) is False
+    assert recognizer.validate_result(code + unicode_code) is True
+
+
 # ---------------------------------------------------------------------------
 # PlPeselRecognizer — complement step was missing
 # ---------------------------------------------------------------------------

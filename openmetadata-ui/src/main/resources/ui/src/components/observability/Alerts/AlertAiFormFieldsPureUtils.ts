@@ -13,7 +13,10 @@
 
 import { TFunction } from 'i18next';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
-import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
+import {
+  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
+  EXTERNAL_CATEGORY_OPTIONS,
+} from '../../../constants/Alerts.constants';
 import {
   ArgumentsInput,
   Effect,
@@ -23,16 +26,14 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import {
+  AlertAiFormChangeHandler,
+  AlertAiFormValue,
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
-import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
-import {
-  AlertAiFormFieldsProps,
-  AlertAiFormValue,
+  ModifiedEventSubscription,
   RuleSectionField,
-} from './AlertAiFormFields.interface';
+} from '../../../utils/AlertsClassBase.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 
 export type WebhookDestinationType =
   | SubscriptionType.Slack
@@ -96,7 +97,7 @@ export const getListValue = (value?: string | string[]) =>
 /** Reads the selected alert source from create/edit form values or existing alert details. */
 export const getAlertAiResources = (
   value: AlertAiFormValue,
-  alert?: AlertAiFormFieldsProps['alert']
+  alert?: ModifiedEventSubscription
 ) => {
   if ('resources' in value && value.resources) {
     return value.resources;
@@ -197,6 +198,33 @@ export const getAlertAiSectionVisibility = ({
 });
 
 /**
+ * A saved alert that is switched off keeps its fields read-only until it is switched back on; the
+ * switch itself and Save/Cancel stay active. A new alert stays editable when switched off, so it
+ * can still be filled in and saved disabled. A view-only form is read-only whatever the state.
+ */
+export const getAlertFieldAccess = ({
+  alert,
+  isEditMode = false,
+  isViewOnly,
+  value,
+}: {
+  alert?: ModifiedEventSubscription;
+  isEditMode?: boolean;
+  isViewOnly?: boolean;
+  value: AlertAiFormValue;
+}) => {
+  const isAlertEnabled = value.enabled !== false;
+  const isFieldDisabled =
+    Boolean(isViewOnly) || (isEditMode && !isAlertEnabled);
+
+  return {
+    isAlertEnabled,
+    isFieldDisabled,
+    areRulesReadOnly: isFieldDisabled || alert?.hasRulesWithoutSelections,
+  };
+};
+
+/**
  * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
  * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
  * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are
@@ -244,7 +272,7 @@ export const setValueAtPath = (
  */
 export const updateAlertAiValue = (
   _value: AlertAiFormValue,
-  onChange: AlertAiFormFieldsProps['onChange'] | undefined,
+  onChange: AlertAiFormChangeHandler | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {

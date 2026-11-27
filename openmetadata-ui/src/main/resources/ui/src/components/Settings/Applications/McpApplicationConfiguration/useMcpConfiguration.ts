@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
+import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isEmpty, omit, pick, uniq } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
 import { SettingType } from '../../../../generated/settings/settings';
 import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
-import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
+import {
+  getMcpConfig,
+  getMcpTools,
+  updateMcpConfig,
+} from '../../../../rest/mcpConfigAPI';
 import {
   applyManagedPathsToUiSchema,
   findSettingSource,
@@ -29,33 +34,77 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
+const MCP_TOOL_FIELDS = ['disabledTools', 'offeredTools'] as const;
+
 /**
  * Base URL and allowed origins are the two settings an operator has to be able to correct from
  * the product: an empty allowlist makes the MCP server reject every cross-origin request, and a
  * wrong base URL breaks the OAuth metadata behind a load balancer. The response cap depends on
  * which MCP clients connect, so it is set here too. Everything else in the stored
  * `mcpConfiguration` (timeouts, plus fields no code reads) stays out of the form but is merged
- * back on save, because the PUT replaces the whole setting. Read-only mode is an admin choice, so
- * it is edited here as well.
+ * back on save, because the PUT replaces the whole setting. Read-only mode and the two tool lists
+ * are admin choices, so they are edited here as well.
  */
 const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
+  'enabled',
+  'dynamicClientRegistrationEnabled',
+  'allowedRedirectHosts',
+  'allowLoopbackRedirects',
+  'allowNativeRedirects',
   'baseUrl',
   'allowedOrigins',
   'maxResponseChars',
   'readOnly',
+  ...MCP_TOOL_FIELDS,
 ];
 
 const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
+
+/**
+ * Which tools exist depends on the server: Collate adds its own and RDF tools are left out when RDF
+ * is off, so the options are fetched, like the reindex entity list. Saved names stay options, or one
+ * the server no longer registers would fail validation and block every save. With no list (it
+ * failed, or the server registered none) the picker would offer only "All", which saves nothing, so
+ * the field falls back to typing names, like Allowed Origins.
+ */
+const withMcpToolNames = (
+  schema: RJSFSchema,
+  toolNames: string[] | undefined,
+  config: MCPConfiguration
+): RJSFSchema => {
+  if (!toolNames) {
+    return schema;
+  }
+  const properties = { ...schema.properties };
+  for (const name of MCP_TOOL_FIELDS) {
+    const field = properties[name] as RJSFSchema | undefined;
+    if (field) {
+      properties[name] = isEmpty(toolNames)
+        ? omit(field, ['uiFieldType', 'expandAllValue'])
+        : {
+            ...field,
+            items: {
+              type: 'string',
+              enum: uniq([...toolNames, ...(config[name] ?? [])]),
+            },
+          };
+    }
+  }
+
+  return { ...schema, properties };
+};
 
 /**
  * The MCP app entity holds no configuration of its own. Everything the MCP server actually reads
  * lives in the `mcpConfiguration` system setting, so the form talks to `/system/mcp/config`
  * directly rather than going through the app entity's `appConfiguration`.
  */
-export const useMcpConfiguration = () => {
+export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   const { t } = useTranslation();
   const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
+  const [toolNames, setToolNames] = useState<string[]>();
   const [isFetching, setIsFetching] = useState<boolean>(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
   // whole setting. Held in a ref because they never affect rendering.
@@ -91,6 +140,7 @@ export const useMcpConfiguration = () => {
 
   const fetchMcpConfig = useCallback(async () => {
     setIsFetching(true);
+    setFetchFailed(false);
     try {
       applyConfig(await getMcpConfig());
     } catch (error) {
@@ -99,6 +149,7 @@ export const useMcpConfiguration = () => {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
         applyConfig({});
       } else {
+        setFetchFailed(true);
         showErrorToast(error as AxiosError);
       }
     } finally {
@@ -106,13 +157,31 @@ export const useMcpConfiguration = () => {
     }
   }, [applyConfig]);
 
+  const fetchMcpTools = useCallback(async () => {
+    try {
+      setToolNames(await getMcpTools());
+    } catch (error) {
+      setToolNames([]);
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchMcpConfig();
-  }, [fetchMcpConfig]);
+    void fetchMcpTools();
+  }, [fetchMcpConfig, fetchMcpTools]);
+
+  const formSchema = useMemo(
+    () => withMcpToolNames(jsonSchema, toolNames, formConfig),
+    [jsonSchema, toolNames, formConfig]
+  );
 
   const saveMcpConfig = useCallback(
     // Callers pass form data already run through `formatFormDataForSubmit`.
     async (formData: MCPConfiguration) => {
+      if (fetchFailed) {
+        return;
+      }
       setIsSaving(true);
       try {
         const payload = {
@@ -131,13 +200,15 @@ export const useMcpConfiguration = () => {
         setIsSaving(false);
       }
     },
-    [applyConfig, t]
+    [applyConfig, fetchFailed, t]
   );
 
   return {
     formConfig,
+    formSchema,
     formUiSchema,
     isEveryFieldManaged,
+    fetchFailed,
     isFetching,
     isSaving,
     sources,

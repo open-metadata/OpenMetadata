@@ -14,9 +14,8 @@
 import { PaginationCardWithControls } from '@openmetadata/ui-core-components';
 import { HTMLAttributes, useState } from 'react';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 
 interface PaginationComponentProps
@@ -37,7 +36,7 @@ const PaginationComponent = ({
   pageSize,
   defaultCurrent = 1,
   defaultPageSize = PAGE_SIZE_BASE,
-  hideOnSinglePage = true,
+  hideOnSinglePage = false,
   showSizeChanger,
   onChange,
   ...props
@@ -65,7 +64,7 @@ const PaginationComponent = ({
     onChange?.(nextPage, nextSize);
   };
 
-  if (hideOnSinglePage && totalPages <= 1) {
+  if (total === 0 || (hideOnSinglePage && totalPages <= 1)) {
     return null;
   }
 
@@ -74,7 +73,7 @@ const PaginationComponent = ({
       {...props}
       page={currentPage}
       pageSize={currentPageSize}
-      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+      pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
       total={totalPages}
       onPageChange={changePage}
       onPageSizeChange={

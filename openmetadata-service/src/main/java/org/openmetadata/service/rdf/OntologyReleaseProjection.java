@@ -35,6 +35,26 @@ import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
 
 /** The ontology-release-v1 RDF projection reads sealed SQL members without any live lookup. */
 public final class OntologyReleaseProjection {
+  /**
+   * Whether each asserted statement also gets an {@code owl:Axiom} naming the release member that
+   * states it. Exports keep them so a native export re-imports losslessly; the serving graph
+   * leaves them out (ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release).
+   */
+  public enum StatementSources {
+    ANNOTATED,
+    OMITTED
+  }
+
+  private final StatementSources sources;
+
+  public OntologyReleaseProjection() {
+    this(StatementSources.ANNOTATED);
+  }
+
+  public OntologyReleaseProjection(final StatementSources sources) {
+    this.sources = sources;
+  }
+
   public Model build(final OntologyRelease release, final List<OntologyReleaseMember> members) {
     return build(release, members, true);
   }
@@ -122,7 +142,7 @@ public final class OntologyReleaseProjection {
     return model;
   }
 
-  private static void write(
+  private void write(
       final Model target,
       final OntologyRelease release,
       final Definition definition,
@@ -156,7 +176,7 @@ public final class OntologyReleaseProjection {
         deprecation(fragment, subject, definition.value());
       }
       target.add(fragment);
-      if (!(definition.value() instanceof Ontology)) {
+      if (sources == StatementSources.ANNOTATED && !(definition.value() instanceof Ontology)) {
         final Resource source = target.createResource(memberIri);
         fragment
             .listStatements(subject, null, (RDFNode) null)

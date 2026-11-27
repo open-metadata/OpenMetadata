@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
@@ -26,10 +26,7 @@ import { PagingHandlerParams } from '../../../components/common/NextPrevious/Nex
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../components/common/StatusBadge/StatusBadgeV2.component';
 import TableV2 from '../../../components/common/Table/TableV2';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -39,6 +36,7 @@ import {
   WorkflowStatus,
 } from '../../../generated/governance/workflows/workflowInstance';
 import { Paging } from '../../../generated/type/paging';
+import { usePageSizeState } from '../../../hooks/paging/usePageSizeState';
 import { useFqn } from '../../../hooks/useFqn';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import {
@@ -48,6 +46,11 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
+import {
+  getApprovalOutcomeMessage,
+  getRunApprovals,
+} from '../../../utils/WorkflowApprovalOutcomeUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
@@ -67,7 +70,7 @@ export const WorkflowExecutionHistory: React.FC<
   const [loadError, setLoadError] = useState<AxiosError>();
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize] = usePageSizeState();
   const statusMapping = useMemo(() => getStatusMapping(t), [t]);
 
   const getStatusInfo = useCallback(
@@ -153,12 +156,27 @@ export const WorkflowExecutionHistory: React.FC<
           const { displayLabel, statusType } = getStatusInfo(status);
 
           return (
-            <StatusBadgeV2
-              dataTestId={`workflow-status-badge-${record.id}`}
-              label={displayLabel}
-              showIcon={false}
-              status={statusType}
-            />
+            <Box align="start" direction="col" gap={1}>
+              <StatusBadgeV2
+                dataTestId={`workflow-status-badge-${record.id}`}
+                label={displayLabel}
+                showIcon={false}
+                status={statusType}
+              />
+              {getRunApprovals(record).map((outcome) => {
+                const message = getApprovalOutcomeMessage(outcome);
+
+                return (
+                  <Typography
+                    color="secondary"
+                    data-testid={`workflow-approval-outcome-${record.id}`}
+                    key={outcome.id}
+                    size="text-xs">
+                    {t(message.key, { user: message.users })}
+                  </Typography>
+                );
+              })}
+            </Box>
           );
         },
       },
@@ -251,7 +269,7 @@ export const WorkflowExecutionHistory: React.FC<
             onReload={() => {
               // The retry reads the first page, so the pager must show page 1.
               setCurrentPage(1);
-              fetchExecutionHistory();
+              void fetchExecutionHistory();
             }}
           />
         )}
@@ -294,7 +312,7 @@ export const WorkflowExecutionHistory: React.FC<
           tableLayout="auto"
         />
       </div>
-      {paging.total > pageSize && (
+      {shouldShowPager(instances) && (
         <div className="tw:shrink-0">
           <NextPrevious
             currentPage={currentPage}

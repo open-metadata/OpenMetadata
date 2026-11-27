@@ -1,13 +1,22 @@
 package org.openmetadata.service.ontology;
 
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease.VersionBump;
+import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 final class OntologyReleasePublication {
   private static final int MAX_NOTES_LENGTH = 16_384;
@@ -17,6 +26,11 @@ final class OntologyReleasePublication {
   private OntologyReleasePublication() {}
 
   static void validate(final CaptureOntologyRelease request, final OntologyState state) {
+    validateRequest(request);
+    requireLatestRevision(request, state);
+  }
+
+  static void validateRequest(final CaptureOntologyRelease request) {
     if (request.getReleaseNotes() != null
         && request.getReleaseNotes().length() > MAX_NOTES_LENGTH) {
       throw new BadRequestException("Ontology release notes exceed the 16384 character limit");
@@ -24,10 +38,56 @@ final class OntologyReleasePublication {
     if (request.getVersionBump() != null && request.getExpectedLatestReleaseRevision() == null) {
       throw new BadRequestException("A semantic version bump requires the latest release revision");
     }
+  }
+
+  /**
+   * Checked after draft reuse: a second session holding the pre-capture revision is asking for the
+   * draft the first one just sealed, not for a competing version.
+   */
+  static void requireLatestRevision(
+      final CaptureOntologyRelease request, final OntologyState state) {
     if (request.getExpectedLatestReleaseRevision() != null
         && !Objects.equals(
             request.getExpectedLatestReleaseRevision(), state.getLastReleaseRevision())) {
       throw new PreconditionFailedException("Ontology releases changed; reload before capture");
+    }
+  }
+
+  /**
+   * Releases of the ontology that were activated at least once. A rollback leaves the newer
+   * release's version taken, so reuse is judged on every activation ever made, not on the active
+   * release alone.
+   */
+  private static List<OntologyRelease> published(final CollectionDAO dao, final UUID ontologyId) {
+    return dao.ontologyReleaseDAO().listPublished(ontologyId).stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .toList();
+  }
+
+  static Set<String> publishedVersions(final CollectionDAO dao, final UUID ontologyId) {
+    return published(dao, ontologyId).stream()
+        .map(OntologyRelease::getSemanticVersion)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
+  }
+
+  static void requireUnpublishedVersion(
+      final CollectionDAO dao, final UUID ontologyId, final OntologyRelease release) {
+    final String version = release.getSemanticVersion();
+    final boolean taken =
+        version != null
+            && published(dao, ontologyId).stream()
+                .anyMatch(
+                    other ->
+                        !other.getId().equals(release.getId())
+                            && version.equals(other.getSemanticVersion()));
+    if (taken) {
+      throw new ClientErrorException(
+          "Version "
+              + version
+              + " is already published by another release of this ontology. "
+              + "Capture again with an unused version.",
+          Response.Status.CONFLICT);
     }
   }
 

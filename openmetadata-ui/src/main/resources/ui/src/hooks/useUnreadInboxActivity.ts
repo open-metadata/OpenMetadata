@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../constants/Inbox.constants';
 import { ConversationFilterType } from '../generated/type/conversationFilterType';
 import { listConversations } from '../rest/conversationsAPI';
+import { getTaskCommentMentions } from '../utils/tasks/TaskMentions.utils';
 import { useApplicationStore } from './useApplicationStore';
 import { usePersonalSpaceStore } from './usePersonalSpaceStore';
 
@@ -37,19 +38,40 @@ const UNREAD_ACTIVITY_STALE_TIME = 30 * 1000;
 export const useUnreadInboxActivity = (): number => {
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
+  const userName = currentUser?.name;
   const seenTs = usePersonalSpaceStore((s) => s.inboxActivitySeenTs);
 
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: [...INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY, userId, seenTs],
-    queryFn: () =>
-      listConversations({
-        filterType: ConversationFilterType.Mentions,
-        userId,
-        limit: 1,
-        startTs: seenTs ?? undefined,
-      })
-        .then((res) => res.paging?.total ?? 0)
-        .catch(() => 0),
+    queryKey: [
+      ...INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY,
+      userId,
+      userName,
+      seenTs,
+    ],
+    queryFn: async () => {
+      const [conversations, tasks] = await Promise.allSettled([
+        listConversations({
+          filterType: ConversationFilterType.Mentions,
+          userId,
+          limit: 1,
+          startTs: seenTs ?? undefined,
+        }),
+        userName && seenTs !== null
+          ? getTaskCommentMentions(userName, {
+              startTs: seenTs + 1,
+              maxResults: 100,
+            })
+          : undefined,
+      ]);
+      const conversationCount =
+        conversations.status === 'fulfilled'
+          ? conversations.value.paging?.total ?? 0
+          : 0;
+      const taskCount =
+        tasks.status === 'fulfilled' ? tasks.value?.length ?? 0 : 0;
+
+      return conversationCount + taskCount;
+    },
     enabled: Boolean(userId) && seenTs !== null,
     staleTime: UNREAD_ACTIVITY_STALE_TIME,
   });

@@ -483,7 +483,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('Verify default page size', async () => {
       const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
       await expect(pageSizeDropdown).toBeVisible();
-      await expect(pageSizeDropdown).toContainText('25');
+      await expect(pageSizeDropdown).toContainText('15');
     });
 
     await test.step('Change page size', async () => {

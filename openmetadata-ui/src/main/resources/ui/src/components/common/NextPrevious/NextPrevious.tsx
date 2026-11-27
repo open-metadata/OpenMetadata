@@ -23,11 +23,7 @@ import {
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
@@ -55,15 +51,12 @@ const NextPrevious: FC<NextPreviousProps> = ({
   ...pagingProps
 }: NextPreviousProps) => {
   const { t } = useTranslation();
-  const {
-    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
-    onShowSizeChange,
-  } = (pagingProps ?? {}) as PagingProps;
+  const { pageSizeOptions = LIST_PAGE_SIZE_OPTIONS, onShowSizeChange } =
+    (pagingProps ?? {}) as PagingProps;
   const totalPages = computeTotalPages(pageSize, paging.total);
   const cursorTotalPages = Math.max(
     totalPages,
-    currentPage + (paging.after ? 1 : 0),
-    currentPage
+    currentPage + (!totalPages && paging.after ? 1 : 0)
   );
   const displayTotalPages = isNumberBased ? totalPages : cursorTotalPages;
 

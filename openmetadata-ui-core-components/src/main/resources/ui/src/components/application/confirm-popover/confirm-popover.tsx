@@ -250,7 +250,7 @@ export const ConfirmPopover = ({
         {/* A square turned 45°: its two bordered sides form the point, and half of it sits over the
             popover's edge so it covers the outline where the arrow joins the panel. Drawn here rather
             than through Popover's `arrow` prop, whose filled SVG other (legacy) popovers rely on. */}
-        <span className="tw:block tw:size-2.5 tw:translate-y-1/2 tw:rotate-45 tw:border-t tw:border-l tw:border-secondary_alt tw:bg-overlay-surface tw:in-placement-top:-translate-y-1/2 tw:in-placement-top:rotate-[225deg] tw:in-placement-left:translate-y-0 tw:in-placement-left:-translate-x-1/2 tw:in-placement-left:rotate-[135deg] tw:in-placement-right:translate-y-0 tw:in-placement-right:translate-x-1/2 tw:in-placement-right:-rotate-45" />
+        <span className="tw:block tw:size-2.5 tw:translate-y-1/2 tw:rotate-45 tw:border-t tw:border-l tw:border-secondary_alt tw:bg-floating tw:in-placement-top:-translate-y-1/2 tw:in-placement-top:rotate-[225deg] tw:in-placement-left:translate-y-0 tw:in-placement-left:-translate-x-1/2 tw:in-placement-left:rotate-[135deg] tw:in-placement-right:translate-y-0 tw:in-placement-right:translate-x-1/2 tw:in-placement-right:-rotate-45" />
       </AriaOverlayArrow>
       {asForm ? (
         <form

@@ -141,7 +141,7 @@ export const DatePicker = ({
         {/* The outline ported from the bare `tw:ring` was removed: the popover's
             overflow clip cut it along the straight edges but not around the rounded
             corners, so it rendered as corner artefacts. The shadow alone defines the edge. */}
-        <AriaDialog className="tw:flex tw:min-h-0 tw:flex-col tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl">
+        <AriaDialog className="tw:flex tw:min-h-0 tw:flex-col tw:rounded-2xl tw:bg-floating tw:shadow-raised">
           {({ close }) => (
             <>
               <div className="tw:flex tw:min-h-0 tw:overflow-y-auto tw:px-6 tw:py-5">

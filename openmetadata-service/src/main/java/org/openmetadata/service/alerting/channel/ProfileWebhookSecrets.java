@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -43,6 +44,7 @@ import org.openmetadata.service.fernet.Fernet;
  * same way: encrypted before the profile is stored, masked in every response, restored from the
  * stored profile when a request sends the mask back, and decrypted only to send.
  */
+@Slf4j
 public final class ProfileWebhookSecrets {
   private static final String SUBSCRIPTION = "subscription";
   private static final String PROFILE = "profile";
@@ -122,10 +124,42 @@ public final class ProfileWebhookSecrets {
                     written));
   }
 
-  /** A copy of the profile with every webhook secret decrypted: the profile as it is used to send. */
-  public static Profile decrypted(Profile profile) {
-    return transformWebhooks(
-        profile, (slot, config) -> ConfigSecrets.decrypt(config, WebhookSecrets.fieldsIn(config)));
+  /**
+   * A copy of the profile with every webhook secret decrypted: the profile as it is used to send. A
+   * webhook holding a value the configured keys do not decrypt is left out of the copy until the
+   * value is entered again, and the profile's other webhooks still send. {@code ownerName} names the
+   * user or team in the warning that says so.
+   */
+  public static Profile decrypted(String ownerName, Profile profile) {
+    Profile result = profile;
+    if (hasWebhooks(profile)) {
+      JsonNode tree = JsonUtils.valueToTree(profile);
+      ObjectNode subscriptions = (ObjectNode) tree.path(SUBSCRIPTION);
+      List<String> leftOut = new ArrayList<>();
+      subscriptions
+          .properties()
+          .forEach(
+              webhook -> {
+                if (webhook.getValue().isObject()
+                    && !opened(ownerName, webhook.getKey(), webhook.getValue())) {
+                  leftOut.add(webhook.getKey());
+                }
+              });
+      subscriptions.remove(leftOut);
+      result = JsonUtils.treeToValue(tree, Profile.class);
+    }
+    return result;
+  }
+
+  private static boolean opened(String ownerName, String slot, JsonNode config) {
+    boolean opened = true;
+    try {
+      ConfigSecrets.decrypt(config, WebhookSecrets.fieldsIn(config));
+    } catch (BadRequestException e) {
+      LOG.warn("The {} webhook of {} is left out of the send: {}", slot, ownerName, e.getMessage());
+      opened = false;
+    }
+    return opened;
   }
 
   /** A copy of the profile with every webhook secret masked. */

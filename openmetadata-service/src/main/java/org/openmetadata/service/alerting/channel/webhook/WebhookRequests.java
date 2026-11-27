@@ -35,7 +35,6 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.consumer.EventPublisherException;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.OAuth2TokenManager;
 
@@ -43,7 +42,8 @@ import org.openmetadata.service.util.OAuth2TokenManager;
 /**
  * How a request to a webhook is built and sent: its target, its query parameters, the headers the
  * user configured, its signature or OAuth2 token, and what its answer means for the destination.
- * Every channel that posts JSON to a URL sends through here.
+ * Every channel that posts JSON to a URL sends through here, with a configuration whose secrets
+ * {@code ConfigSecrets} has already decrypted for it.
  */
 public final class WebhookRequests {
   /**
@@ -81,10 +81,7 @@ public final class WebhookRequests {
         WebhookBearerAuth bearerAuth =
             JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
         if (bearerAuth != null && !nullOrEmpty(bearerAuth.getSecretKey())) {
-          String hmac =
-              "sha256="
-                  + CommonUtil.calculateHMAC(
-                      decryptWebhookSecretKey(bearerAuth.getSecretKey()), json);
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(bearerAuth.getSecretKey(), json);
           target.header("X-OM-Signature", hmac);
         }
       } else if (WebhookOAuth2Config.Type.OAUTH_2.value().equals(authType)) {
@@ -125,13 +122,6 @@ public final class WebhookRequests {
 
   private static boolean hasControlCharacters(String value) {
     return value != null && (value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0);
-  }
-
-  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
-    if (Fernet.getInstance().isKeyDefined()) {
-      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
-    }
-    return encryptedSecretkey;
   }
 
   public static void postWebhookMessage(

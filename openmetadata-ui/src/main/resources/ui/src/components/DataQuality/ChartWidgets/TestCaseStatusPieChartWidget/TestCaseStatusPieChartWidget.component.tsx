@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { All } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import {
@@ -109,7 +109,7 @@ const TestCaseStatusPieChartWidget = ({
         <div className="d-flex flex-column items-center">
           <div className="d-flex items-center gap-2">
             <div className="custom-chart-icon-background all-tests-icon icon-container">
-              <TestCaseIcon />
+              <All />
             </div>
             <Typography as="span" className="font-semibold text-sm">
               {t('label.test-case-result')}

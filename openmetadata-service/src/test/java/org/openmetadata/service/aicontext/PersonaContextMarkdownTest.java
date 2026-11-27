@@ -169,7 +169,7 @@ class PersonaContextMarkdownTest {
             .withDisplayName("Revenue");
     PersonaContextBuilder.SelectedEntity selected =
         new PersonaContextBuilder.SelectedEntity(
-            "33333333-3333-3333-3333-333333333333", Map.of(), aiContext, item, metric);
+            "33333333-3333-3333-3333-333333333333", Map.of(), aiContext, item, metric, List.of());
     PersonaContextDefinition definition =
         new PersonaContextDefinition().withCharacterBudget(50_000).withRules(List.of(selectedRule));
     PersonaContext context =
@@ -442,6 +442,6 @@ class PersonaContextMarkdownTest {
                                         .withName("order_id")
                                         .withDataType("BIGINT")))));
     return new PersonaContextBuilder.SelectedEntity(
-        "22222222-2222-2222-2222-222222222222", Map.of(), context, null, null);
+        "22222222-2222-2222-2222-222222222222", Map.of(), context, null, null, List.of());
   }
 }

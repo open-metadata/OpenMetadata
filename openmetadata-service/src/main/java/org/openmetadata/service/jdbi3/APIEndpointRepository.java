@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -190,20 +191,27 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public void setFields(APIEndpoint apiEndpoint, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(apiEndpoint);
-    if (apiEndpoint.getRequestSchema() != null) {
+    List<Field> schemaFields = schemaFieldsOf(apiEndpoint);
+    if (!schemaFields.isEmpty()) {
+      // Prefixed by the endpoint rather than by each schema, so the endpoint's own terms come back
+      // in the same read and its schema fields inherit them.
       populateEntityFieldTags(
           entityType,
-          apiEndpoint.getRequestSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName() + ".requestSchema",
+          schemaFields,
+          apiEndpoint.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
+    }
+  }
+
+  private static List<Field> schemaFieldsOf(APIEndpoint apiEndpoint) {
+    List<Field> schemaFields = new ArrayList<>();
+    if (apiEndpoint.getRequestSchema() != null) {
+      schemaFields.addAll(listOrEmpty(apiEndpoint.getRequestSchema().getSchemaFields()));
     }
     if (apiEndpoint.getResponseSchema() != null) {
-      populateEntityFieldTags(
-          entityType,
-          apiEndpoint.getResponseSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName() + ".responseSchema",
-          fields.contains(FIELD_TAGS));
+      schemaFields.addAll(listOrEmpty(apiEndpoint.getResponseSchema().getSchemaFields()));
     }
+    return schemaFields;
   }
 
   @Override
@@ -248,6 +256,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     // Then, if schemas are requested, also fetch schema field tags
     if (fields.contains("requestSchema") || fields.contains("responseSchema")) {
       fetchAndSetSchemaFieldTagsInBatch(apiEndpoints);
+      inheritEntityTermsOnFields(apiEndpoints, APIEndpointRepository::schemaFieldsOf, tagsMap);
     }
   }
 
@@ -639,7 +648,11 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (Field added : addedFields) {
@@ -655,8 +668,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           continue;
         }
 
-        String schemaFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String schemaFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);

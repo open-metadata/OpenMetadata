@@ -12,10 +12,10 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { CollapsePanel } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
@@ -26,6 +26,7 @@ import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';
 import SidebarBrand from './SidebarBrand';
 import { MainNavNode } from './sidebarCustomization';
+import SidebarSearchButton from './SidebarSearchButton';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
 
@@ -45,6 +46,8 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarMainFooter();
   const recentSlots = useAppModeSidebarRecent();
+  // Give the recent slot a heading and two rows to start with on short screens.
+  const flexBasis = 'calc(var(--tw-spacing) * 24)';
 
   const handleItemClick = useCallback(
     (item: MainNavItem) => handleNavItemClick({ item, navigate }),
@@ -65,7 +68,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
           <ButtonUtility
             className="ask-main-panel__collapse-btn"
             data-testid="ask-collapse-btn"
-            icon={CollapsePanelIcon}
+            icon={CollapsePanel}
             size="lg"
             tooltip={t('label.collapse')}
             type="button"
@@ -73,6 +76,8 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
           />
         </div>
       </header>
+
+      <SidebarSearchButton />
 
       <nav className="ask-main-panel__nav" data-testid="ask-main-panel-nav">
         {nodes.map((node) => {
@@ -112,7 +117,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         <div
           className="ask-main-panel__chats"
           data-testid="ask-recent-region"
-          data-tour-step="recent-chats">
+          style={{ /* style-guard-allow: unlayered flex wins */ flexBasis }}>
           {recentSlots.map(({ key, component: Slot }) => (
             <Slot key={key} />
           ))}

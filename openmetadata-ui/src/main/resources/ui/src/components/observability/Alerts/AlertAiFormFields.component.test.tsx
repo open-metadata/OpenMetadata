@@ -11,16 +11,6 @@
  *  limitations under the License.
  */
 
-/*
- * These rules are disabled for this test file only: the JSX below is throwaway
- * mock markup for `@openmetadata/ui-core-components`. The mocks intentionally
- * expose accessible names via label nesting (which the tests query by role and
- * text); adding htmlFor/id pairs would require unique per-instance ids and
- * aria-label would override those nesting-based names, breaking assertions.
- */
-/* eslint-disable jsx-a11y/label-has-for */
-/* eslint-disable jsx-a11y/control-has-associated-label */
-
 import {
   act,
   fireEvent,
@@ -49,15 +39,15 @@ import {
   type Destination,
 } from '../../../generated/events/eventSubscription';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from '../../../utils/AlertsClassBase.interface';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
@@ -167,7 +157,6 @@ jest.mock(
     __esModule: true,
     default: ({ markdown }: { markdown?: string }) => (
       <div
-        // eslint-disable-next-line react/no-danger -- test fixture markup
         dangerouslySetInnerHTML={{ __html: markdown ?? '' }}
         data-testid="field-doc-preview"
       />
@@ -196,6 +185,7 @@ jest.mock('../../../components/common/EntityDescription/Description', () => ({
 }));
 
 interface MockCoreProps {
+  'aria-label'?: string;
   children?: ReactNode;
   className?: string;
   'data-testid'?: string;
@@ -347,6 +337,33 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <option value={id}>{children}</option>
   );
 
+  const Card = ({
+    children,
+    className,
+    'data-testid': testId,
+  }: MockCoreProps) => (
+    <section className={className} data-testid={testId}>
+      {children}
+    </section>
+  );
+
+  Card.Content = ({ children }: MockCoreProps) => <div>{children}</div>;
+  Card.Header = ({
+    title,
+    subtitle,
+    extra,
+  }: {
+    title?: ReactNode;
+    subtitle?: ReactNode;
+    extra?: ReactNode;
+  }) => (
+    <div>
+      {title}
+      {subtitle}
+      {extra}
+    </div>
+  );
+
   return {
     Accordion: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionHeader: ({ children }: MockCoreProps) => <div>{children}</div>,
@@ -393,11 +410,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: MockCoreProps) => (
       <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     ),
-    Card: ({ children, className, 'data-testid': testId }: MockCoreProps) => (
-      <section className={className} data-testid={testId}>
-        {children}
-      </section>
-    ),
+    Card,
     Checkbox: ({ 'data-testid': testId, isSelected }: MockCoreProps) => (
       <input
         readOnly
@@ -533,10 +546,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(event) => onChange?.(event.target.value)}
       />
     ),
-    Toggle: ({ isDisabled, isSelected, label, onChange }: MockCoreProps) => (
+    Toggle: ({
+      'aria-label': ariaLabel,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+    }: MockCoreProps) => (
       <label>
         {label}
         <input
+          aria-label={ariaLabel}
           checked={Boolean(isSelected)}
           disabled={isDisabled}
           type="checkbox"
@@ -2486,5 +2506,89 @@ describe('AlertAi form field components', () => {
     });
 
     expect(document.querySelector('[data-field-doc]')).toBeNull();
+  });
+
+  describe('Enabled switch', () => {
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      resources: ['table'],
+    };
+    const renderFields = (
+      next: ModifiedCreateEventSubscription,
+      onChange = jest.fn(),
+      isEditMode = true
+    ) => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          isEditMode={isEditMode}
+          selection={selectionOf()}
+          value={next}
+          onChange={onChange}
+        />
+      );
+
+      return onChange;
+    };
+
+    it('keeps the fields editable and describes what an enabled alert sends', () => {
+      renderFields({ ...value, enabled: true });
+
+      expect(screen.getByLabelText('label.enabled')).toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-enabled-description'
+      );
+    });
+
+    it('keeps a new alert editable when it is switched off, so it can still be filled in', () => {
+      renderFields({ ...value, enabled: false }, jest.fn(), false);
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+    });
+
+    it('makes every field of a saved alert read-only and says a disabled alert sends nothing', () => {
+      renderFields({ ...value, enabled: false });
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).toBeDisabled();
+      expect(screen.getByTestId('description')).toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    });
+
+    it('switches the alert off through the form value', () => {
+      const onChange = renderFields({ ...value, enabled: true });
+
+      fireEvent.click(screen.getByLabelText('label.enabled'));
+
+      const updater = onChange.mock.calls[0][0];
+
+      expect(updater({ ...value, enabled: true }).enabled).toBe(false);
+    });
+
+    it('cannot be switched by someone who cannot edit the alert', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          canEditEnabled={false}
+          selection={selectionOf()}
+          value={{ ...value, enabled: true }}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByLabelText('label.enabled')).toBeDisabled();
+    });
   });
 });

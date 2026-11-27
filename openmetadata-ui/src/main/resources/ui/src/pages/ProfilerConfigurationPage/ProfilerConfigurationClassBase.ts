@@ -54,9 +54,9 @@ class ProfilerConfigurationClassBase {
     return undefined;
   }
 
-  public getSparkAgentField():
-    | ((props: FieldProps) => JSX.Element)
-    | undefined {
+  public getSparkAgentField(
+    _serviceType?: string
+  ): ((props: FieldProps) => JSX.Element) | undefined {
     return undefined;
   }
 }

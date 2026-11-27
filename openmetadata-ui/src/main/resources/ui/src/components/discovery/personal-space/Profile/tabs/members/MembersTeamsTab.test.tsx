@@ -203,8 +203,14 @@ describe('MembersTeamsTab', () => {
     expect(screen.queryByTestId('move-team-popover')).not.toBeInTheDocument();
   });
 
-  it('hides the pager when every sub-team fits on one page', () => {
+  it('shows the pager for a single page of sub-teams', () => {
     render(<MembersTeamsTab {...baseProps} teamsTotal={8} />);
+
+    expect(screen.getByTestId('next')).toBeInTheDocument();
+  });
+
+  it('hides the pager when there are no sub-teams', () => {
+    render(<MembersTeamsTab {...baseProps} teamsTotal={0} />);
 
     expect(screen.queryByTestId('next')).not.toBeInTheDocument();
   });

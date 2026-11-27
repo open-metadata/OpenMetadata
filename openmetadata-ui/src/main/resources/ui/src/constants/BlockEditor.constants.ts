@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { EditorOptions } from '@tiptap/core';
+import type { LinkOptions } from '@tiptap/extension-link';
 import { ReactComponent as IconDanger } from '../assets/svg/callout-danger.svg';
 import { ReactComponent as IconInfo } from '../assets/svg/callout-info.svg';
 import { ReactComponent as IconNote } from '../assets/svg/callout-note.svg';
@@ -73,6 +74,22 @@ export const LINK_INPUT_REGEX =
 
 export const LINK_PASTE_REGEX =
   /(?:^|\s)\[([^\]]*)?\]\((\S+)(?: ["“](.+)["”])?\)/gi;
+
+export const LINK_EXTENSION_OPTIONS: Partial<LinkOptions> = {
+  autolink: false,
+  // While editing, a click should surface the link popup (edit/open/unlink)
+  // instead of navigating away. tiptap v3 maps 'whenNotEditable' to true and
+  // its click handler only runs on editable editors, so that value opened
+  // every clicked link in a new tab. Read-only previews still open links
+  // through the anchor's own target="_blank".
+  openOnClick: false,
+  linkOnPaste: true,
+  HTMLAttributes: {
+    rel: 'noopener noreferrer nofollow',
+    target: '_blank',
+  },
+  validate: (href) => /^https?:\/\//.test(href),
+};
 
 export const UPLOADED_ASSETS_URL = '/api/v1/attachments/';
 

@@ -21,6 +21,15 @@ const mockUpdateParams = jest.fn();
 let mockHashState = { tab: 'bots', subPath: '', params: {} };
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    resolvedPageSize: 15,
+    savePageSize: jest.fn(),
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: mockHashState,
     setHash: mockSetHash,
@@ -125,7 +134,14 @@ describe('BotsPanel', () => {
     render(<BotsPanel onHeaderChange={mockOnHeaderChange} />);
     fireEvent.click(screen.getByTestId('bots-list-panel-mock'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('bots', 'my%20bot%2F100%25');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'bots',
+      'my%20bot%2F100%25',
+      undefined,
+      {
+        push: true,
+      }
+    );
   });
 
   it('does not reload the bots list when the Settings crumb is clicked', () => {

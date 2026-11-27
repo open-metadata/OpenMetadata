@@ -79,6 +79,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
 import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
 import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
 import org.openmetadata.service.events.ChangeEvents;
@@ -103,9 +104,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions,odcsPreservedFields";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions,odcsPreservedFields";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -528,9 +529,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     if (!nullOrEmpty(dataContract.getReviewers())) {
-      for (EntityReference reviewer : dataContract.getReviewers()) {
-        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
-      }
+      List<EntityReference> reviewersToValidate =
+          dataContract.getReviewers().stream()
+              .map(ref -> JsonUtils.deepCopy(ref, EntityReference.class))
+              .collect(Collectors.toList());
+      EntityRepository.validateReviewers(reviewersToValidate);
     }
   }
 
@@ -1228,6 +1231,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
+    IngestionPipelineRepository.validateTestSuiteConfig(pipeline, testSuite);
     refreshDeployedPipelineBeforeRun(pipeline, testSuite);
     prepareAndRunIngestionPipeline(pipeline, testSuite);
   }
@@ -1595,6 +1599,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
+      updated.setOdcsPreservedFields(
+          ODCSPreservedFields.bindNativeCustomProperties(
+              updated.getOdcsPreservedFields(), updated.getExtension()));
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1626,6 +1633,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                   "odcsElementExtensions",
                   original.getOdcsElementExtensions(),
                   updated.getOdcsElementExtensions()));
+      compareAndUpdate(
+          "odcsPreservedFields",
+          () ->
+              recordChange(
+                  "odcsPreservedFields",
+                  original.getOdcsPreservedFields(),
+                  updated.getOdcsPreservedFields()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1643,6 +1657,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       if (operation.isPut()) {
         if (updated.getOdcsQualityRules() == null) {
           updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsPreservedFields() == null) {
+          updated.setOdcsPreservedFields(original.getOdcsPreservedFields());
         }
         if (updated.getOdcsElementExtensions() == null) {
           updated.setOdcsElementExtensions(original.getOdcsElementExtensions());

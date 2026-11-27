@@ -1,5 +1,8 @@
 package org.openmetadata.service.ontology;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -16,9 +19,23 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
-/** Reads bounded, verified SQL snapshots without consulting mutable definition rows. */
+/**
+ * Reads bounded, verified SQL snapshots without consulting mutable definition rows. A sealed
+ * release never changes, so a verified member list is kept in a process-wide cache keyed by the
+ * release id and its content digest; every read still authorizes the members for its caller.
+ */
 public final class OntologyReleaseReader {
-  private static final int PAGE_SIZE = 100;
+  private static final int PAGE_SIZE = 1_000;
+  static final long MAX_CACHED_HEAP_BYTES = 128L * 1024 * 1024;
+  // Parsed trees and member objects occupy several times their serialized payload size.
+  private static final int HEAP_EXPANSION_FACTOR = 6;
+  private static final Cache<String, List<OntologyReleaseMember>> VERIFIED =
+      Caffeine.newBuilder()
+          .maximumWeight(MAX_CACHED_HEAP_BYTES)
+          .<String, List<OntologyReleaseMember>>weigher(
+              (key, members) -> (int) Math.min(Integer.MAX_VALUE, estimatedHeapBytes(members)))
+          .expireAfterAccess(Duration.ofMinutes(10))
+          .build();
   private final CollectionDAO dao;
 
   public OntologyReleaseReader(final CollectionDAO dao) {
@@ -28,6 +45,19 @@ public final class OntologyReleaseReader {
   public List<OntologyReleaseMember> read(
       final OntologyRelease release, final Consumer<List<? extends OntologyDefinition>> authorize) {
     authorize.accept(List.of(release));
+    final String key = release.getId() + ":" + release.getContentDigest();
+    final List<OntologyReleaseMember> cached = VERIFIED.getIfPresent(key);
+    if (cached != null) {
+      authorize.accept(cached.stream().map(member -> definition(release, member)).toList());
+      return cached;
+    }
+    final List<OntologyReleaseMember> members = load(release, authorize);
+    VERIFIED.put(key, members);
+    return members;
+  }
+
+  private List<OntologyReleaseMember> load(
+      final OntologyRelease release, final Consumer<List<? extends OntologyDefinition>> authorize) {
     final List<OntologyReleaseMember> members = new ArrayList<>();
     long bytes = 0;
     for (final MemberKind kind : MemberKind.values()) {
@@ -49,6 +79,11 @@ public final class OntologyReleaseReader {
     }
     OntologyReleaseManifest.verify(release, members);
     return List.copyOf(members);
+  }
+
+  private static long estimatedHeapBytes(final List<OntologyReleaseMember> members) {
+    return members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum()
+        * HEAP_EXPANSION_FACTOR;
   }
 
   public static void requireBounds(final int count, final long bytes) {

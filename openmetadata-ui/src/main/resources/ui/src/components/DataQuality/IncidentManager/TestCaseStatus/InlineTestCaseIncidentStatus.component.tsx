@@ -18,7 +18,6 @@ import {
   Dropdown,
   Input,
   Label,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -45,10 +44,12 @@ import {
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { isDescriptionContentEmpty } from '../../../../utils/BlockEditorPureUtils';
 import { reopenResolvedIncident } from '../../../../utils/DataQuality/IncidentManagerUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { ChipTrigger } from './InlineIncidentStatus/ChipTrigger.component';
 import { FailureReasonChipGroup } from './InlineIncidentStatus/FailureReasonChipGroup.component';
@@ -401,7 +402,7 @@ const InlineTestCaseIncidentStatus = ({
   };
 
   const handleResolvedSubmit = () => {
-    if (selectedReason && comment) {
+    if (selectedReason && !isDescriptionContentEmpty(comment)) {
       submitStatusChange(TestCaseResolutionStatusTypes.Resolved, {
         reason: selectedReason,
         comment,
@@ -521,6 +522,7 @@ const InlineTestCaseIncidentStatus = ({
         direction="col"
         gap={2}>
         <Input
+          autoComplete="off"
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
           size="sm"
@@ -537,7 +539,9 @@ const InlineTestCaseIncidentStatus = ({
     <>
       <IncidentStatusPopoverHeader
         cancelTestId="cancel-resolved-popover-button"
-        submitDisabled={!selectedReason || !comment || isLoading}
+        submitDisabled={
+          !selectedReason || isDescriptionContentEmpty(comment) || isLoading
+        }
         submitTestId="submit-resolved-popover-button"
         title={t('label.resolved')}
         onBack={handleBackToStatusMenu}
@@ -552,16 +556,18 @@ const InlineTestCaseIncidentStatus = ({
           onSelect={setSelectedReason}
         />
         <Label isRequired>{t('label.comment')}</Label>
-        <TextArea
-          data-testid="resolved-comment-textarea"
-          placeholder={t('message.enter-a-field', {
-            field: t('label.comment-lowercase'),
-          })}
-          rows={4}
-          textAreaClassName="tw:text-xs"
-          value={comment}
-          onChange={(value) => setComment(String(value ?? ''))}
-        />
+        <Box data-testid="resolved-comment-textarea" direction="col">
+          <RichTextEditor
+            aria-label={t('label.comment')}
+            initialValue={comment}
+            placeHolder={t('message.enter-a-field', {
+              field: t('label.comment-lowercase'),
+            })}
+            showMenu={false}
+            variant="comment"
+            onTextChange={setComment}
+          />
+        </Box>
       </Box>
     </>
   );

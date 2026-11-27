@@ -52,6 +52,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
@@ -710,6 +712,48 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(storedTeamIds(user).contains(open.getId()), "joining an open team stays allowed");
   }
 
+  /** A patch that leaves the user in a team twice is refused, through any operation. */
+  @Test
+  void test_patchUser_cannotListATeamTwiceThroughAnyOperation(TestNamespace ns) {
+    Team team = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("dupteam"), true));
+    User user =
+        ns.trackRoot(
+            Entity.USER, createEntity(selfLoginUserRequest().withTeams(List.of(team.getId()))));
+
+    for (String op : List.of("add", "ADD")) {
+      ArrayNode add = PATCH_MAPPER.createArrayNode();
+      add.addObject().put("op", op).put("path", "/teams/-").set("value", teamReference(team));
+      assertTeamListedTwiceIsRefused(user, add);
+    }
+    ArrayNode copy = PATCH_MAPPER.createArrayNode();
+    copy.addObject().put("op", "copy").put("from", "/teams/0").put("path", "/teams/-");
+    assertTeamListedTwiceIsRefused(user, copy);
+    assertTeamListedTwiceIsRefused(
+        user,
+        teamsPatch(
+            "/teams",
+            PATCH_MAPPER.createArrayNode().add(teamReference(team)).add(teamReference(team))));
+
+    ArrayNode reorder = PATCH_MAPPER.createArrayNode();
+    reorder.addObject().put("op", "move").put("from", "/teams/0").put("path", "/teams/-");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), reorder);
+    assertEquals(List.of(team.getId()), storedTeamIds(user), "moving a team is not a repeat");
+  }
+
+  private static void assertTeamListedTwiceIsRefused(User user, ArrayNode patch) {
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch));
+    assertEquals(400, refused.getStatusCode(), patch + " -> " + refused.getMessage());
+    assertTrue(refused.getMessage().contains("is already part of the team"), patch.toString());
+  }
+
   /** Leaving a closed team sheds its roles and policies, so it needs an admin too. */
   @Test
   void test_nonAdmin_cannotLeaveClosedTeam(TestNamespace ns) {
@@ -1069,6 +1113,57 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "directChildrenOf must not list a term whose own domain is outside the selection");
+
+    // The glossary's term count labels that list, so it must agree with it.
+    String counted = getAs(user, "/v1/glossaries/" + glossary.getId() + "?fields=termCount");
+    assertEquals(1, JsonUtils.readTree(counted).get("termCount").asInt());
+  }
+
+  @Test
+  void test_pickNarrowsClassificationTagsAndTheirCount(TestNamespace ns) {
+    // Tags follow the pick like other mostly global lists, and a classification's tag count labels
+    // that list, so it must agree with it on both the single and the batch path.
+    Domain picked = createAggregateDomain(ns.prefix("navTags"));
+    Domain other = createAggregateDomain(ns.prefix("navTagsOther"));
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.shortPrefix("navCls"));
+    createClassification.setDescription("classification with no domain");
+    var classification = SdkClients.adminClient().classifications().create(createClassification);
+    String noDomainTag = createTagIn(classification.getFullyQualifiedName(), "noDomain", null);
+    String pickedTag = createTagIn(classification.getFullyQualifiedName(), "inPick", picked);
+    String otherTag = createTagIn(classification.getFullyQualifiedName(), "inOther", other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String tags =
+        getAs(user, "/v1/tags?limit=100&parent=" + classification.getFullyQualifiedName());
+    assertTrue(tags.contains(noDomainTag), "a tag with no domain stays listed");
+    assertTrue(tags.contains(pickedTag), "a tag in the picked domain is listed");
+    assertFalse(tags.contains(otherTag), "a tag in another domain is not listed");
+
+    String single =
+        getAs(user, "/v1/classifications/" + classification.getId() + "?fields=termCount");
+    assertEquals(2, JsonUtils.readTree(single).get("termCount").asInt());
+    String listed = getAs(user, "/v1/classifications?limit=1000&fields=termCount");
+    int batchCount = -1;
+    for (var node : JsonUtils.readTree(listed).get("data")) {
+      if (classification.getId().toString().equals(node.get("id").asText())) {
+        batchCount = node.get("termCount").asInt();
+      }
+    }
+    assertEquals(2, batchCount, "the Tags page count must match the list under the pick");
+  }
+
+  private static String createTagIn(String classificationFqn, String name, Domain domain) {
+    CreateTag createTag = new CreateTag();
+    createTag.setName(name);
+    createTag.setClassification(classificationFqn);
+    createTag.setDescription("tag " + name);
+    if (domain != null) {
+      createTag.setDomains(List.of(domain.getFullyQualifiedName()));
+    }
+    return SdkClients.adminClient().tags().create(createTag).getId().toString();
   }
 
   @Test
@@ -2374,6 +2469,52 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNotNull(fetched.getDomains());
   }
 
+  /** A patch removing a user's own domain that a team also gives must not store it back. */
+  @Test
+  void test_removingOwnDomainAlsoGivenByTeamDropsIt(TestNamespace ns) throws Exception {
+    Domain shared = createUserDomain(ns, "sharedDomain");
+    Domain kept = createUserDomain(ns, "keptDomain");
+    Team team =
+        org.openmetadata.sdk.fluent.Teams.create(
+            new CreateTeam()
+                .withName(ns.prefix("sharedDomainTeam"))
+                .withDomains(List.of(shared.getFullyQualifiedName()))
+                .withDescription("Team giving the shared domain"));
+    String userName = ns.prefix("ownAndTeamDomainUser");
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(toValidEmail(userName))
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(shared.getFullyQualifiedName(), kept.getFullyQualifiedName()))
+                .withDescription("User with an own domain its team also gives"));
+    List<EntityReference> before = Users.get(user.getId().toString(), "domains").getDomains();
+    int sharedIndex = before.stream().map(EntityReference::getId).toList().indexOf(shared.getId());
+
+    SdkClients.adminClient()
+        .users()
+        .patch(
+            user.getId().toString(),
+            new ObjectMapper()
+                .readTree("[{\"op\":\"remove\",\"path\":\"/domains/%d\"}]".formatted(sharedIndex)));
+
+    List<UUID> ownDomains =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(kept.getId()), ownDomains);
+  }
+
+  private static Domain createUserDomain(TestNamespace ns, String suffix) {
+    return org.openmetadata.sdk.fluent.Domains.create(
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("User domain test"));
+  }
+
   @Test
   void test_versionConsolidationWithDeletedDomains(TestNamespace ns) {
 
@@ -3138,6 +3279,42 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             User.class);
 
     assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+  }
+
+  /**
+   * A login writes the row directly, so a read cached before the login must not hide it, and a
+   * second login inside the entity-update session window must still record its own time.
+   */
+  @Test
+  void test_login_recordsLoginAndActivityTimes(TestNamespace ns) throws Exception {
+    String userName = ns.shortPrefix("logintimes");
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withPassword(password)
+                .withConfirmPassword(password)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withIsBot(false));
+    String userId = user.getId().toString();
+    assertNull(Users.get(userId, "lastLoginTime,lastActivityTime").getLastLoginTime());
+
+    long beforeFirstLogin = System.currentTimeMillis();
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+    User afterFirst = Users.get(userId, "lastLoginTime,lastActivityTime");
+    assertNotNull(afterFirst.getLastLoginTime());
+    assertTrue(afterFirst.getLastLoginTime() >= beforeFirstLogin);
+    assertEquals(afterFirst.getLastLoginTime(), afterFirst.getLastActivityTime());
+
+    long firstLoginTime = afterFirst.getLastLoginTime();
+    Awaitility.await().until(() -> System.currentTimeMillis() > firstLoginTime);
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+    User afterSecond = Users.get(userId, "lastLoginTime,lastActivityTime,version");
+    assertTrue(afterSecond.getLastLoginTime() > firstLoginTime);
+    assertEquals(afterSecond.getLastLoginTime(), afterSecond.getLastActivityTime());
+    assertEquals(user.getVersion(), afterSecond.getVersion());
   }
 
   /** A user created by an admin with a password, so its stored record carries the hash. */

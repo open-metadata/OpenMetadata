@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, ReactNode, SetStateAction } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   ContextMemory,
@@ -24,6 +24,8 @@ import {
 export interface CreateMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called instead of onClose when a link out of the memory is followed; the URL is left alone. */
+  onNavigate?: () => void;
   onCreated: () => void;
   memoryToEdit?: ContextMemory;
   onUpdated?: () => void;
@@ -51,6 +53,7 @@ export interface MemoryModalHeaderProps {
   memoryToEdit?: ContextMemory;
   memorySource?: EntityReference;
   memorySourceLink?: string;
+  onNavigate: () => void;
   t: TFunc;
 }
 
@@ -67,12 +70,14 @@ export interface LinkedAssetsSectionProps {
   linkedAssets: DataAssetOption[];
   setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
   handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
+  onNavigate: () => void;
   t: TFunc;
 }
 
 export interface MemoryModalFooterProps {
   memoryToEdit?: ContextMemory;
   canDelete: boolean;
+  isDecidingStatus: boolean;
   isDeleting: boolean;
   isSubmitting: boolean;
   handleDelete: () => void;
@@ -81,6 +86,8 @@ export interface MemoryModalFooterProps {
   handleSwitchToEdit: () => void;
   showSubmitButton: boolean | undefined;
   isSubmitDisabled: boolean;
+  /** Approve and Reject, shown to an admin while the memory awaits a decision. */
+  statusActions?: ReactNode;
   submitLabel: string;
   t: TFunc;
 }

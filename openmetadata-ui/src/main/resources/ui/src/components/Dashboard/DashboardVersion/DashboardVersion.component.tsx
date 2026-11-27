@@ -13,11 +13,11 @@
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -123,7 +123,10 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               itemClassName="layout-space-item">
               <span>{getEntityName(record)}</span>
 
-              <IconExternalLink className="tw:ml-2 tw:shrink-0 tw:align-middle tw:size-3.5" />
+              <LinkExternal01
+                className="tw:ml-2 tw:shrink-0 tw:align-middle"
+                size={14}
+              />
             </Box>
           </Link>
         ),
@@ -296,7 +299,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 <Tabs
                   className="tw:gap-3"
                   data-testid="tabs"
-                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  selectedKey={getRenderedActiveTab(tabItems, tab)}
                   onSelectionChange={(key) => handleTabChange(String(key))}>
                   <Tabs.List size="sm" type="underline" variant="card">
                     {tabItems.map(({ key, label }) => (

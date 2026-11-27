@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
@@ -13,6 +14,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
@@ -153,24 +156,29 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return String.format("\"_source\": {%s}", addCondition(conditions));
   }
 
+  // A domain filter matches the domain and its sub-domains, as the navbar pick does.
   private String getDomainCondition() {
     String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
-      return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
+      return domainSubtreeCondition(domain, false);
     }
     return getNavbarDomainCondition();
   }
 
-  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  // The navbar pick optionally keeps items with no domain too.
   private String getNavbarDomainCondition() {
     String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
     if (nullOrEmpty(navDomain)) {
       return "";
     }
-    String fqn = escapeJsonString(navDomain);
+    return domainSubtreeCondition(
+        navDomain, Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM)));
+  }
+
+  private String domainSubtreeCondition(String domainFqn, boolean keepUnassigned) {
+    String fqn = escapeJsonString(domainFqn);
     String unassigned =
-        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+        keepUnassigned
             ? String.format(
                 ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
             : "";
@@ -179,19 +187,27 @@ public class SearchListFilter extends Filter<SearchListFilter> {
         FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
   }
 
+  // A document indexed before its deleted field existed counts as not deleted.
   private String getIncludeCondition(String entityType) {
-    boolean supportsDeleted = true;
-    if (entityType != null) {
-      Class<?> clazz = Entity.getEntityClassFromType(entityType);
-      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
-      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    String deletedField = deletedFieldOf(entityType);
+    String condition = "";
+    if (include == Include.DELETED && deletedField != null) {
+      condition = String.format("{\"term\": {\"%s\": \"true\"}}", deletedField);
+    } else if (include != Include.ALL && deletedField != null) {
+      condition =
+          String.format(
+              "{\"bool\": {\"must_not\": [{\"term\": {\"%s\": \"true\"}}]}}", deletedField);
     }
-    String deleted = "";
-    if (include != Include.ALL && supportsDeleted) {
-      deleted =
-          String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_DELETED, include == Include.DELETED);
+    return condition;
+  }
+
+  // The field each entity's capability names: an incident takes its deletion from its test case.
+  private static String deletedFieldOf(String entityType) {
+    if (entityType == null) {
+      return FIELD_DELETED;
     }
-    return deleted;
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability == null ? null : capability.deletedField();
   }
 
   private String getOwnerCondition() {
@@ -292,6 +308,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String dataProductFqn = getQueryParam("dataProductFqn");
     String followedBy = getQueryParam("followedBy");
     String columnName = getQueryParam("columnName");
+    String testDefinition = getQueryParam("testDefinition");
 
     if (tags != null) {
       String tagsList =
@@ -308,7 +325,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       conditions.add(
           String.format(
               "{\"term\":{\"tier.tagFQN\":\"%s\"}}",
-              escapeJsonString(tier.toLowerCase(java.util.Locale.ROOT))));
+              escapeJsonString(tier.toLowerCase(Locale.ROOT))));
     }
 
     if (serviceName != null) {
@@ -355,6 +372,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           String.format(
               "{\"term\": {\"%s\": \"%s\"}}",
               FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
+    }
+
+    // ADR:2026-11-12-test-cases-filter-by-test-definition-through-search-list
+    if (testDefinition != null && !testDefinition.isBlank()) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"testDefinition.fullyQualifiedName\": \"%s\"}}",
+              escapeJsonString(testDefinition.toLowerCase(Locale.ROOT))));
     }
 
     if (followedBy != null) {

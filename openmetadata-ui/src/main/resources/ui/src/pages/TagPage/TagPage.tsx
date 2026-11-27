@@ -14,11 +14,18 @@ import {
   Box,
   Button,
   Divider,
+  FeaturedIcon,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  ImageBrush,
+  Tag01,
+  TagOff,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -27,9 +34,6 @@ import { cloneDeep, isEmpty } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
-import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -58,7 +62,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
-import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../components/Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -69,9 +73,7 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  BLACK_COLOR,
   CERTIFICATION_CATEGORY,
-  DE_ACTIVE_COLOR,
   ROUTES,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -124,6 +126,13 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
+
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -542,7 +551,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={StyleIcon}
+                icon={ImageBrush}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -566,7 +575,7 @@ const TagPage = () => {
                     ? t('message.enable-tag-description')
                     : t('message.disable-tag-description')
                 }
-                icon={IconDisableTag}
+                icon={TagOff}
                 id="enable-disable-tag"
                 name={
                   tagItem?.disabled ? t('label.enable') : t('label.disable')
@@ -677,7 +686,7 @@ const TagPage = () => {
                   handleClosePanel={() => setPreviewAsset(undefined)}
                 />
               ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
               className:
                 'entity-summary-resizable-right-panel-container tag-resizable-panel-container',
             }}
@@ -686,8 +695,9 @@ const TagPage = () => {
       },
       {
         label: (
-          <TabsLabel
+          <ActivityFeedTabLabel
             count={feedCount.totalCount}
+            entityType={EntityType.TAG}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -766,17 +776,23 @@ const TagPage = () => {
     [tabItems]
   );
 
-  const icon = useMemo(() => {
-    if (tagItem?.style?.iconURL) {
-      return (
-        <div className="align-middle" data-testid="icon">
-          <Icon iconValue={tagItem.style.iconURL} size={36} />
-        </div>
-      );
-    }
-
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
-  }, [tagItem]);
+  const icon = useMemo(
+    () => (
+      <FeaturedIcon
+        color="gray"
+        icon={
+          tagItem?.style?.iconURL ? (
+            <Icon iconValue={tagItem.style.iconURL} size={20} />
+          ) : (
+            Tag01
+          )
+        }
+        size="md"
+        theme="surface"
+      />
+    ),
+    [tagItem]
+  );
 
   const badge = useMemo(() => {
     if (!tagItem) {
@@ -793,7 +809,13 @@ const TagPage = () => {
 
     const statusBadge =
       shouldShowStatus && entityStatus ? (
-        <EntityStatusBadge showDivider={false} status={entityStatus} />
+        <EntityStatusBadge
+          entityId={tagItem.id}
+          entityType={EntityType.TAG}
+          fqn={tagItem.fullyQualifiedName}
+          showDivider={false}
+          status={entityStatus}
+        />
       ) : null;
 
     const disabledBadge = tagItem.disabled ? (
@@ -858,9 +880,7 @@ const TagPage = () => {
     );
   }
 
-  const learningIcon = (
-    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
-  );
+  const learningIcon = <LearningIcon pageId={LEARNING_PAGE_IDS.TAGS} />;
 
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
@@ -909,6 +929,7 @@ const TagPage = () => {
         secondaryActions={haveAssetEditPermission ? manageDropdown : null}
         tabs={aiHeaderTabs}
         title={getEntityName(tagItem)}
+        variant="flat"
         onTabChange={activeTabHandler}
       />
     </div>
@@ -936,15 +957,14 @@ const TagPage = () => {
       className="data-classification"
       data-testid="data-classification"
       title={
-        <EntityHeaderTitle
-          badge={badge}
-          color={tagItem.style?.color ?? BLACK_COLOR}
+        <EntityPageTitle
+          actions={learningIcon}
+          badges={badge}
           deleted={tagItem.deleted}
           displayName={tagItem.displayName}
           icon={icon}
           name={tagItem.name}
-          serviceName={tagItem.name}
-          suffix={learningIcon}
+          testId={`${tagItem.name}-${tagItem.name}`}
         />
       }
     />

@@ -116,7 +116,7 @@ class RdfToolDescriptionVocabularyTest {
         .contains("Admin only")
         .doesNotContainIgnoringCase("bot");
     assertThat(tools.get("ontology_describe").description())
-        .contains("no 'resource') is open to every caller");
+        .contains("no 'resource') is open to every caller", "and so is a 'term'");
   }
 
   @Test
@@ -152,8 +152,7 @@ class RdfToolDescriptionVocabularyTest {
 
   private static String textOf(final McpSchema.Tool tool) {
     final StringBuilder text = new StringBuilder(tool.description());
-    tool.inputSchema()
-        .properties()
+    ((Map<?, ?>) tool.inputSchema().get("properties"))
         .values()
         .forEach(property -> text.append(' ').append(((Map<?, ?>) property).get("description")));
     return text.toString();

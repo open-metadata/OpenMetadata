@@ -108,8 +108,11 @@ export const useOntologyGraphEdit = ({
   );
 
   const selectTarget = useCallback(
-    (toId: string, at?: Point) => {
-      if (toId === armedFromId || toId === pendingRelation?.fromId) {
+    (toId: string, at?: Point, options?: { isPort?: boolean }) => {
+      const reselectsSource =
+        toId === pendingRelation?.fromId ||
+        (toId === armedFromId && options?.isPort !== false);
+      if (reselectsSource) {
         cancel();
         setPendingRelation(null);
 
@@ -136,6 +139,26 @@ export const useOntologyGraphEdit = ({
       cancel();
     },
     [armedAt, armedFromId, cancel, pendingRelation]
+  );
+
+  /** Completes a drag from its own source, so a release is never judged by stale armed state. */
+  const connect = useCallback(
+    (fromId: string, from: Point, toId: string, to: Point) => {
+      if (!isEditMode || fromId === toId) {
+        cancel();
+
+        return;
+      }
+      setPendingRelation({
+        from,
+        fromId,
+        to,
+        toId,
+        at: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
+      });
+      cancel();
+    },
+    [cancel, isEditMode]
   );
 
   const setCandidateTarget = useCallback(
@@ -208,6 +231,7 @@ export const useOntologyGraphEdit = ({
     pendingRelation,
     startArm,
     selectTarget,
+    connect,
     setCandidateTarget,
     cancel,
     confirmRelationType,

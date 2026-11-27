@@ -19,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -40,9 +45,23 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 
 class MemoryEvidenceHoldsTest {
 
+  private static final Path UI_CONSTANTS =
+      Path.of("../openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts");
+
   private final Query query = query();
   private final MemoryTable memories = new MemoryTable();
   private final MemoryEvidenceHolds holds = new MemoryEvidenceHolds(memories);
+
+  /** The Context Center finds the Query's id in the reason by RETIRED_QUERY_REASON's two parts. */
+  @Test
+  void theContextCenterReadsTheReasonAsItIsWritten() throws IOException {
+    Matcher parts =
+        Pattern.compile("RETIRED_QUERY_REASON = \\{\\s*prefix: '([^']*)',\\s*suffix: '([^']*)',")
+            .matcher(Files.readString(UI_CONSTANTS));
+
+    assertTrue(parts.find(), "RETIRED_QUERY_REASON is no longer a prefix and a suffix");
+    assertEquals(parts.group(1) + "%s" + parts.group(2), MemoryEvidenceHolds.EVIDENCE_RETIRED);
+  }
 
   @ParameterizedTest
   @EnumSource(

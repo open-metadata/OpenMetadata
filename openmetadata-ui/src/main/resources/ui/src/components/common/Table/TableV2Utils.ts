@@ -274,12 +274,14 @@ export function resolveShowClientPagination(
   } | null,
   filteredDataSourceLength: number
 ): boolean {
+  const rowCount = clientPagination?.serverTotal ?? filteredDataSourceLength;
+
   return Boolean(
     clientPagination &&
+      rowCount > 0 &&
       !(
         clientPagination.hideOnSinglePage &&
-        (clientPagination.serverTotal ?? filteredDataSourceLength) <=
-          clientPagination.pageSize
+        rowCount <= clientPagination.pageSize
       )
   );
 }

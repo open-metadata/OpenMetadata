@@ -47,9 +47,9 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   getColumnObjectByPath,
-  getTagTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskFieldColumns,
@@ -143,7 +143,7 @@ const UpdateTag = () => {
   };
 
   const getFieldPath = () => {
-    return getTagTaskFieldPath(field, value);
+    return buildTaskFieldPath(field, value, 'tags');
   };
 
   const onCreateTask = async (formValues: {

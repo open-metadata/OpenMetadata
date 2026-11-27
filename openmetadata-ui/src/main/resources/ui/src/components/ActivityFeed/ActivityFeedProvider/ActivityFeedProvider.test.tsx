@@ -266,6 +266,24 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
+  it('does not hand-roll the domain on the task list request', async () => {
+    mockUseDomainStore.mockImplementation((selector) =>
+      selector({ activeDomain: 'Engineering' })
+    );
+
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() => expect(listMyVisibleTasks).toHaveBeenCalled());
+
+    expect(listMyVisibleTasks).not.toHaveBeenCalledWith(
+      expect.objectContaining({ domain: expect.anything() })
+    );
+  });
+
   it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>
@@ -339,7 +357,7 @@ describe('ActivityFeedProvider', () => {
     expect(listConversations).not.toHaveBeenCalled();
   });
 
-  it('passes the active domain only to the activity endpoint', async () => {
+  it("does not narrow an asset's own activity by the active domain", async () => {
     mockUseDomainStore.mockImplementation((selector) =>
       selector({ activeDomain: 'Engineering' })
     );
@@ -354,7 +372,7 @@ describe('ActivityFeedProvider', () => {
       expect(getEntityActivityByFqn).toHaveBeenCalledWith(
         'table',
         'service.db.schema.table',
-        expect.objectContaining({ domain: 'Engineering' })
+        expect.not.objectContaining({ domain: expect.anything() })
       )
     );
 
@@ -1326,5 +1344,92 @@ describe('incident history paging', () => {
     fireEvent.click(screen.getByText('clear'));
 
     expect(screen.getByTestId('incident-rows')).toBeEmptyDOMElement();
+  });
+});
+
+const USER_A = { id: 'user-a', name: 'userA', type: 'user' };
+
+const TASK_ASSIGNED_TO_USER_AND_TEAM = {
+  id: 'task-reassign',
+  createdAt: 1,
+  assignees: [USER_A, { id: 'team-b', name: 'teamB', type: 'team' }],
+} as Task;
+
+const getAssigneeNames = (task?: Task) =>
+  (task?.assignees ?? []).map((assignee) => assignee.name).join(',');
+
+const TaskReassignConsumer = () => {
+  const { getTaskData, tasks, selectedTask, setActiveTask, updateTask } =
+    useActivityFeedProvider();
+
+  return (
+    <>
+      <button onClick={() => getTaskData()}>fetch</button>
+      <button onClick={() => setActiveTask(tasks[0])}>open</button>
+      <button
+        onClick={() =>
+          updateTask({
+            ...TASK_ASSIGNED_TO_USER_AND_TEAM,
+            assignees: [USER_A],
+          })
+        }>
+        reassign
+      </button>
+      <button
+        onClick={() =>
+          updateTask({ id: 'other-task', assignees: [] } as unknown as Task)
+        }>
+        update other
+      </button>
+      <output data-testid="list-assignees">{getAssigneeNames(tasks[0])}</output>
+      <output data-testid="selected-assignees">
+        {getAssigneeNames(selectedTask)}
+      </output>
+    </>
+  );
+};
+
+describe('updateTask keeps the open task drawer in sync', () => {
+  const renderAndOpenTask = async () => {
+    (listMyVisibleTasks as jest.Mock).mockResolvedValue({
+      data: [TASK_ASSIGNED_TO_USER_AND_TEAM],
+      paging: {},
+    });
+
+    render(
+      <ActivityFeedProvider>
+        <TaskReassignConsumer />
+      </ActivityFeedProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('fetch'));
+    });
+    fireEvent.click(screen.getByText('open'));
+
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      'userA,teamB'
+    );
+  };
+
+  it('shows the saved assignees in both the list and the open drawer', async () => {
+    await renderAndOpenTask();
+
+    fireEvent.click(screen.getByText('reassign'));
+
+    expect(screen.getByTestId('list-assignees')).toHaveTextContent(/^userA$/);
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      /^userA$/
+    );
+  });
+
+  it('leaves the open drawer alone when a different task is updated', async () => {
+    await renderAndOpenTask();
+
+    fireEvent.click(screen.getByText('update other'));
+
+    expect(screen.getByTestId('selected-assignees')).toHaveTextContent(
+      'userA,teamB'
+    );
   });
 });

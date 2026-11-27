@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseChangeSummary;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
+import org.openmetadata.schema.type.OntologyReleaseKindCounts;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyReleaseMemberChange;
@@ -178,7 +179,23 @@ public final class OntologyReleaseComparison {
         .withAdded(count(changes, OntologyReleaseChangeType.ADDED))
         .withChanged(count(changes, OntologyReleaseChangeType.CHANGED))
         .withRemoved(count(changes, OntologyReleaseChangeType.REMOVED))
-        .withDeprecated(count(changes, OntologyReleaseChangeType.DEPRECATED));
+        .withDeprecated(count(changes, OntologyReleaseChangeType.DEPRECATED))
+        .withKindCounts(kindCounts(changes));
+  }
+
+  private static OntologyReleaseKindCounts kindCounts(
+      final List<OntologyReleaseMemberChange> changes) {
+    return new OntologyReleaseKindCounts()
+        .withOntology(count(changes, MemberKind.ONTOLOGY))
+        .withConcept(count(changes, MemberKind.CONCEPT))
+        .withProperty(count(changes, MemberKind.PROPERTY))
+        .withAssociation(count(changes, MemberKind.ASSOCIATION))
+        .withAxiom(count(changes, MemberKind.AXIOM))
+        .withShape(count(changes, MemberKind.SHAPE));
+  }
+
+  private static int count(final List<OntologyReleaseMemberChange> changes, final MemberKind kind) {
+    return (int) changes.stream().filter(change -> change.getMemberKind() == kind).count();
   }
 
   private static int count(

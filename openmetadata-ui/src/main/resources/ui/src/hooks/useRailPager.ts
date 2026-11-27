@@ -26,6 +26,10 @@ const RAIL_PAGE_FRACTION = 0.9;
 // left at either end, which would otherwise keep a pager button enabled forever.
 const RAIL_SCROLL_EPSILON = 1;
 
+// The gap is the space between two items, so one page of travel spans it.
+const getPageWidth = (rail: HTMLElement): number =>
+  rail.clientWidth + (Number.parseFloat(getComputedStyle(rail).columnGap) || 0);
+
 export interface RailScrollState {
   next: boolean;
   previous: boolean;
@@ -39,6 +43,7 @@ export interface RailPager {
   syncScrollState: () => void;
   goToPrevious: () => void;
   goToNext: () => void;
+  goToPage: (index: number) => void;
 }
 
 /**
@@ -71,9 +76,7 @@ export const useRailPager = (itemCount: number): RailPager => {
         ? prev
         : { next, previous }
     );
-    // The gap is the space between two items, so one page of travel spans it.
-    const gap = Number.parseFloat(getComputedStyle(rail).columnGap) || 0;
-    const pageWidth = rail.clientWidth + gap;
+    const pageWidth = getPageWidth(rail);
     setPageIndex(pageWidth > 0 ? Math.round(rail.scrollLeft / pageWidth) : 0);
   }, []);
 
@@ -101,6 +104,21 @@ export const useRailPager = (itemCount: number): RailPager => {
 
   const goToPrevious = useCallback(() => scrollByPage(-1), [scrollByPage]);
   const goToNext = useCallback(() => scrollByPage(1), [scrollByPage]);
+  const goToPage = useCallback((index: number) => {
+    const rail = railRef.current;
+    if (!rail) {
+      return;
+    }
+    // Clamped to the end so the last page lands where the next button would
+    // leave it; scroll-snap settles it on an item's start either way.
+    rail.scrollTo?.({
+      behavior: 'smooth',
+      left: Math.min(
+        index * getPageWidth(rail),
+        rail.scrollWidth - rail.clientWidth
+      ),
+    });
+  }, []);
 
   return {
     railRef,
@@ -109,5 +127,6 @@ export const useRailPager = (itemCount: number): RailPager => {
     syncScrollState,
     goToPrevious,
     goToNext,
+    goToPage,
   };
 };

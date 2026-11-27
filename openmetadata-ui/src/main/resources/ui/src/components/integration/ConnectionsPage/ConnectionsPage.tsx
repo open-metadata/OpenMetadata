@@ -183,6 +183,7 @@ const ConnectionsPage: React.FC = () => {
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:w-[280px]">
               <Input
+                autoComplete="off"
                 fontSize="sm"
                 icon={Search}
                 inputClassName="tw:h-11! tw:py-0! tw:text-[15px]!"

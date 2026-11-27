@@ -441,12 +441,22 @@ class RillSource(DashboardServiceSource):
         if not dashboard_details.canvas or not dashboard_details.canvas.effective_spec:
             return
 
-        component_names = dict.fromkeys(dashboard_details.canvas.effective_spec.iter_component_names())
-        for component_name in component_names:
+        canvas_spec = dashboard_details.canvas.effective_spec
+        component_names = dict.fromkeys(canvas_spec.iter_component_names())
+        inline_components = set(canvas_spec.iter_component_names(inline_only=True))
+        for index, component_name in enumerate(component_names, start=1):
             try:
                 component = self._get_component(component_name)
                 spec = self._get_component_spec(component)
-                display_name = spec.display_name or component_name
+                title = spec.renderer_properties.get("title")
+                display_name = (spec.display_name or "").strip()
+                if not display_name and isinstance(title, str):
+                    display_name = title.strip()
+                if not display_name:
+                    renderer = (spec.renderer or "chart").replace("_", " ").capitalize()
+                    display_name = (
+                        f"{renderer} (widget {index})" if component_name in inline_components else component_name
+                    )
                 if filter_by_chart(self.source_config.chartFilterPattern, display_name):
                     self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
@@ -566,10 +576,12 @@ class RillSource(DashboardServiceSource):
         return [tables] if tables else []
 
     def _get_physical_table_targets(self, resource: RillResource) -> list[RillTableTarget]:
-        internal_model_names = {reference.name for reference in resource.meta.refs if reference.kind == MODEL_KIND}
+        internal_model_names = {
+            reference.name.casefold() for reference in resource.meta.refs if reference.kind == MODEL_KIND
+        }
 
         def is_internal(table_name: str) -> bool:
-            return table_name in internal_model_names or table_name in self.models
+            return table_name.casefold() in internal_model_names
 
         if resource.meta.name.kind == METRICS_VIEW_KIND:
             spec = self._get_metrics_view_spec(resource)
@@ -669,7 +681,13 @@ class RillSource(DashboardServiceSource):
             for reference in resource.meta.refs
             if reference.kind in {MODEL_KIND, METRICS_VIEW_KIND}
         )
-        for kind, upstream_name in references:
+        for kind, reference_name in references:
+            resources = self.models if kind == MODEL_KIND else self.metrics_views
+            upstream_name = reference_name
+            if reference_name not in resources:
+                upstream_name = next(
+                    (name for name in resources if name.casefold() == reference_name.casefold()), reference_name
+                )
             if filter_by_datamodel(
                 self.source_config.dataModelFilterPattern, self._datamodel_name(kind, upstream_name)
             ):

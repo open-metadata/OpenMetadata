@@ -36,6 +36,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
@@ -53,14 +55,20 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1PodSpec;
+import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.openapi.models.V1Status;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.ConnectException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -74,9 +82,12 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringSubstitutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -710,6 +721,69 @@ class K8sPipelineClientTest {
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
 
     assertSecurityContextIsSet(jobCaptor.getValue());
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "||",
+        "''||",
+        "null||",
+        "{\"type\":\"RuntimeDefault\"}|RuntimeDefault|",
+        "{\"type\":\"Unconfined\"}|Unconfined|",
+        "{\"type\":\"Localhost\",\"localhostProfile\":\"profiles/ingestion.json\"}|Localhost|profiles/ingestion.json"
+      },
+      delimiter = '|')
+  void testSeccompConfigurationFromYamlIsSetOnJob(
+      String seccompEnv, String type, String localhostProfile) throws Exception {
+    String seccompConfiguration =
+        Files.readAllLines(Path.of("..", "conf", "openmetadata.yaml")).stream()
+            .map(String::strip)
+            .filter(line -> line.startsWith("seccomp:"))
+            .findFirst()
+            .orElseThrow();
+    String yaml =
+        """
+        enabled: true
+        metadataApiEndpoint: http://localhost:8585/api
+        parameters:
+          namespace: openmetadata-pipelines
+          skipInit: true
+          %s
+        """
+            .formatted(seccompConfiguration);
+    StringSubstitutor substitutor =
+        new StringSubstitutor(seccompEnv == null ? Map.of() : Map.of("K8S_SECCOMP", seccompEnv));
+    substitutor.setEnableSubstitutionInVariables(true);
+    SubstitutingSourceProvider sourceProvider =
+        new SubstitutingSourceProvider(
+            ignored -> new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)),
+            substitutor);
+    PipelineServiceClientConfiguration config;
+    try (InputStream input = sourceProvider.open("seccomp-config")) {
+      config =
+          new ObjectMapper(new YAMLFactory())
+              .readValue(input, PipelineServiceClientConfiguration.class);
+    }
+    client = new K8sPipelineClient(config);
+    client.setBatchApi(batchApi);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipeline(createTestPipeline("test-pipeline", null), testService);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    V1SeccompProfile expected =
+        type == null ? null : new V1SeccompProfile().type(type).localhostProfile(localhostProfile);
+    assertEquals(expected, podSpec.getSecurityContext().getSeccompProfile());
+    assertEquals(expected, podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile());
+
+    CronOMJob cronOMJob = client.buildCronOMJob(createTestPipeline("test-pipeline", "0 * * * *"));
+    OMJob.OMJobSpec omJobSpec = cronOMJob.getSpec().getOmJobSpec();
+    assertEquals(expected, omJobSpec.getMainPodSpec().getSecurityContext().getSeccompProfile());
+    assertEquals(expected, omJobSpec.getExitHandlerSpec().getSecurityContext().getSeccompProfile());
   }
 
   @Test
@@ -2220,6 +2294,7 @@ class K8sPipelineClientTest {
 
     V1PodSecurityContext podSecurityContext = podSpec.getSecurityContext();
     assertNotNull(podSecurityContext);
+    assertNull(podSecurityContext.getSeccompProfile());
     assertTrue(podSecurityContext.getRunAsNonRoot());
     assertEquals(1000L, podSecurityContext.getRunAsUser());
     assertEquals(1000L, podSecurityContext.getRunAsGroup());
@@ -2228,6 +2303,7 @@ class K8sPipelineClientTest {
     V1SecurityContext containerSecurityContext =
         podSpec.getContainers().get(0).getSecurityContext();
     assertNotNull(containerSecurityContext);
+    assertNull(containerSecurityContext.getSeccompProfile());
     assertTrue(containerSecurityContext.getRunAsNonRoot());
     assertEquals(1000L, containerSecurityContext.getRunAsUser());
     assertFalse(containerSecurityContext.getAllowPrivilegeEscalation());

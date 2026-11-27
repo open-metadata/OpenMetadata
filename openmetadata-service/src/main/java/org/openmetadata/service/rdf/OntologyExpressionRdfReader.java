@@ -23,6 +23,31 @@ import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.service.exception.BadRequestException;
 
 final class OntologyExpressionRdfReader {
+  private static final Set<String> INTEGER_DATATYPES =
+      Set.of(
+          XSD.nonNegativeInteger.getURI(),
+          XSD.positiveInteger.getURI(),
+          XSD.integer.getURI(),
+          XSD.xint.getURI(),
+          XSD.xlong.getURI(),
+          XSD.xshort.getURI(),
+          XSD.xbyte.getURI(),
+          XSD.unsignedInt.getURI(),
+          XSD.unsignedLong.getURI(),
+          XSD.unsignedShort.getURI(),
+          XSD.unsignedByte.getURI());
+
+  /**
+   * A well-formed expression the native model has no way to state, such as a complement or an
+   * inverse property. The caller can skip the statement that holds it; every other failure means
+   * the expression itself is malformed.
+   */
+  static final class UnsupportedExpressionException extends RuntimeException {
+    UnsupportedExpressionException(final String message) {
+      super(message);
+    }
+  }
+
   private final Model model;
   private final Set<Statement> remaining;
   private final Set<Resource> visiting = new HashSet<>();
@@ -57,7 +82,7 @@ final class OntologyExpressionRdfReader {
         return restriction(resource, depth);
       }
       if (!takeType(resource, OWL2.Class) && !takeType(resource, RDFS.Datatype)) {
-        throw new BadRequestException("Unsupported blank-node ontology expression");
+        throw new UnsupportedExpressionException("Unsupported blank-node ontology expression");
       }
       for (final var pair :
           List.of(
@@ -72,20 +97,20 @@ final class OntologyExpressionRdfReader {
         final OntologyExpression expression = new OntologyExpression().withKind(pair.kind());
         if (pair.kind() == OntologyExpressionKind.ONE_OF) {
           expression.withIndividualIris(
-              items.stream().map(OntologyExpressionRdfReader::iri).toList());
+              items.stream().map(OntologyExpressionRdfReader::expressionIri).toList());
         } else {
           expression.withOperands(items.stream().map(item -> read(item, depth + 1)).toList());
         }
         return expression;
       }
-      throw new BadRequestException("Ontology expression has no supported constructor");
+      throw new UnsupportedExpressionException("Ontology expression has no supported constructor");
     } finally {
       visiting.remove(resource);
     }
   }
 
   private OntologyExpression restriction(final Resource resource, final int depth) {
-    final URI propertyIri = iri(require(resource, OWL2.onProperty));
+    final URI propertyIri = expressionIri(require(resource, OWL2.onProperty));
     final OntologyExpression result =
         new OntologyExpression()
             .withKind(OntologyExpressionKind.RESTRICTION)
@@ -113,13 +138,13 @@ final class OntologyExpressionRdfReader {
           if (value.isLiteral()) {
             result.withLiteral(literal(value.asLiteral()));
           } else {
-            result.withIndividualIri(iri(value));
+            result.withIndividualIri(expressionIri(value));
           }
         }
         case MIN, MAX, EXACT -> {
           if (!value.isLiteral()
               || !value.asLiteral().getLanguage().isEmpty()
-              || !XSD.nonNegativeInteger.getURI().equals(value.asLiteral().getDatatypeURI())) {
+              || !INTEGER_DATATYPES.contains(value.asLiteral().getDatatypeURI())) {
             throw new BadRequestException("Cardinality must be a non-negative integer");
           }
           try {
@@ -143,7 +168,7 @@ final class OntologyExpressionRdfReader {
       }
       return result;
     }
-    throw new BadRequestException("Restriction has no supported constraint");
+    throw new UnsupportedExpressionException("Restriction has no supported constraint");
   }
 
   List<RDFNode> list(final RDFNode head, final int depth) {
@@ -197,6 +222,14 @@ final class OntologyExpressionRdfReader {
       return true;
     }
     return false;
+  }
+
+  /** An IRI inside an expression; a blank node such as an inverse property is unsupported, not malformed. */
+  private static URI expressionIri(final RDFNode node) {
+    if (!node.isURIResource()) {
+      throw new UnsupportedExpressionException("Expected an absolute RDF IRI in the expression");
+    }
+    return iri(node);
   }
 
   static URI iri(final RDFNode node) {

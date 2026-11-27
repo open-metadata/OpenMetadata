@@ -58,6 +58,7 @@ public class UserBuilder {
    * Set custom extension data.
    */
   public UserBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

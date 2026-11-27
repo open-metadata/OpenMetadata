@@ -15,7 +15,7 @@ import type { UseFormSetValue } from 'react-hook-form';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../utils/AlertsClassBase.interface';
 import { getEntityName } from '../EntityNameUtils';
 
 export const getClassicAlertInitialValues = (
@@ -33,6 +33,7 @@ export const getClassicAlertInitialValues = (
   provider: alert.provider,
   owners: alert.owners,
   notificationTemplate: alert.notificationTemplate,
+  enabled: alert.enabled ?? true,
 });
 
 /**

@@ -620,7 +620,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    MetricAuthorization.authorizeMetricCreate(authorizer, securityContext, metric);
     return sanitizeRelations(securityContext, create(uriInfo, securityContext, metric));
   }
 
@@ -644,20 +643,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    preauthorizeHierarchyUpdate(securityContext, metric);
     return sanitizeRelations(securityContext, createOrUpdate(uriInfo, securityContext, metric));
-  }
-
-  private void preauthorizeHierarchyUpdate(SecurityContext securityContext, Metric metric) {
-    repository.setFullyQualifiedName(metric);
-    Metric original =
-        repository.findByNameOrNull(metric.getFullyQualifiedName(), Include.NON_DELETED);
-    repository.prepareInternal(metric, true);
-    if (original != null) {
-      original = repository.get(null, original.getId(), repository.getFields("parent,metricGroup"));
-    }
-    MetricAuthorization.authorizeHierarchyChange(authorizer, securityContext, original, metric);
-    MetricAuthorization.authorizeRequestedAssets(authorizer, securityContext, metric);
   }
 
   @PUT
@@ -687,11 +673,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateMetric> createRequests) {
-    for (CreateMetric create : listOrEmpty(createRequests)) {
-      preauthorizeHierarchyUpdate(
-          securityContext,
-          mapper.createToEntity(create, securityContext.getUserPrincipal().getName()));
-    }
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
@@ -855,11 +836,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    MetricAuthorization.authorizeMetricPatch(
-        authorizer,
-        securityContext,
-        patch,
-        () -> repository.get(null, id, repository.getPatchFields()));
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -889,11 +865,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    MetricAuthorization.authorizeMetricPatch(
-        authorizer,
-        securityContext,
-        patch,
-        () -> repository.getByName(null, fqn, repository.getPatchFields()));
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
@@ -1309,12 +1280,19 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     repository.get(null, id, repository.getFields("id"));
     List<MetricAssetDirection> linkedAssets = repository.getAssetsWithDirection(id);
     Set<UUID> visibleAssets = new HashSet<>();
+    Set<UUID> testVisibleAssets = new HashSet<>();
     for (MetricAssetDirection linked : linkedAssets) {
-      if (canViewAsset(securityContext, linked.getAsset())) {
-        visibleAssets.add(linked.getAsset().getId());
+      EntityReference asset = linked.getAsset();
+      if (canViewAsset(securityContext, asset)) {
+        visibleAssets.add(asset.getId());
+        // Data quality endpoints gate a table's tests behind VIEW_TESTS; VIEW_BASIC is not enough.
+        if (Entity.TABLE.equals(asset.getType())
+            && canAccessEntity(securityContext, asset, MetadataOperation.VIEW_TESTS)) {
+          testVisibleAssets.add(asset.getId());
+        }
       }
     }
-    return repository.getObservability(id, linkedAssets, visibleAssets);
+    return repository.getObservability(id, linkedAssets, visibleAssets, testVisibleAssets);
   }
 
   private boolean canViewAsset(SecurityContext securityContext, EntityReference asset) {
@@ -1323,7 +1301,19 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   private boolean canAccessEntity(
       SecurityContext securityContext, EntityReference entity, MetadataOperation operation) {
-    return MetricAuthorization.canAccess(authorizer, securityContext, entity, operation);
+    boolean result = true;
+    try {
+      OperationContext operationContext = new OperationContext(entity.getType(), operation);
+      authorizer.authorize(
+          securityContext,
+          operationContext,
+          new ResourceContext<>(entity.getType(), entity.getId(), entity.getFullyQualifiedName()));
+    } catch (AuthorizationException
+        | EntityNotFoundException
+        | IllegalArgumentException exception) {
+      result = false;
+    }
+    return result;
   }
 
   private AuthorizedBulk authorizeAssets(SecurityContext securityContext, BulkAssets request) {

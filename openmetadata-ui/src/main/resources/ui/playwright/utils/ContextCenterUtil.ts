@@ -105,6 +105,22 @@ export const selectDocumentByName = async (page: Page, fileName: string) => {
   await row.getByTestId('document-checkbox').click();
 };
 
+// Changing the search clears the selection, so a multi-select must come from one
+// search whose term matches every file (e.g. a uuid shared by their names).
+export const selectDocumentsBySharedTerm = async (
+  page: Page,
+  searchTerm: string,
+  fileNames: string[]
+) => {
+  await searchAndGetDocumentRow(page, searchTerm);
+  for (const fileName of fileNames) {
+    const row = getDocumentRowByName(page, fileName);
+    await expect(row).toBeVisible();
+    await row.scrollIntoViewIfNeeded();
+    await row.getByTestId('document-checkbox').click();
+  }
+};
+
 export const expectSelectedCount = async (page: Page, count: number) => {
   await expect(
     page.getByText(`${count} selected`, { exact: true })
@@ -178,6 +194,50 @@ export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
 export const MEMORIES_API = '/api/v1/contextCenter/memories';
+export const MEMORY_EXTRACTION_AVAILABILITY_API = `${MEMORIES_API}/extractionAvailability`;
+export const MEMORY_EXTRACTION_OFF_MESSAGE =
+  'Memory extraction is off — ask an admin to turn it on.';
+export const MEMORY_EXTRACTION_CANNOT_START_MESSAGE =
+  "Memory extraction is already queued or can't start for this document now.";
+
+export const expectMemoryExtractionOffTooltip = async (page: Page) => {
+  const trigger = page.getByTestId('memory-extraction-btn').locator('..');
+  const tooltip = page.getByRole('tooltip', {
+    name: MEMORY_EXTRACTION_OFF_MESSAGE,
+    exact: true,
+  });
+  // Enter from inside the document after React Aria observes pointer movement.
+  await page.mouse.move(10, 10);
+  await trigger.hover();
+  await expect(tooltip).toBeVisible();
+  await trigger.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(trigger).toBeFocused();
+  await expect(tooltip).toBeVisible();
+  await expect(trigger).toHaveAccessibleDescription(
+    MEMORY_EXTRACTION_OFF_MESSAGE
+  );
+  await page.keyboard.press('Escape');
+};
+
+/**
+ * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
+ * leaves an upload or a new article Not processed. A spec that relies on that says so first.
+ */
+export const expectMemoryExtractionOff = async (
+  apiContext: APIRequestContext
+) => {
+  const availability = await okJson<{ available: boolean; reason?: string }>(
+    await apiContext.get(MEMORY_EXTRACTION_AVAILABILITY_API),
+    'Read whether memory extraction is available'
+  );
+
+  expect(
+    availability,
+    'This spec needs a server with memory extraction off'
+  ).toEqual({ available: false, reason: 'ExtractionDisabled' });
+};
 
 /**
  * The per-page `data-testid` wait that follows every navigation is the real
@@ -1246,6 +1306,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
@@ -1288,7 +1360,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();

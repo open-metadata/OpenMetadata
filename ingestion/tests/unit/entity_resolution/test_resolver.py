@@ -529,6 +529,26 @@ def test_bigquery_concrete_precedence_and_decorator(sdk):
     assert ids(resolve_bigquery(metadata, "events_20260101")) == [family.id]
 
 
+def test_bigquery_lowercased_reference_resolves_to_its_one_case_variant(sdk):
+    # A query parser that lower-cases names still finds the table BigQuery spells Account
+    metadata, transport = sdk
+    account = table("my_service.my_db.my_schema.Account")
+    other_schema = table("my_service.my_db.other_schema.account")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (account, other_schema)}
+    transport.hits = [account.fullyQualifiedName.root, other_schema.fullyQualifiedName.root]
+    assert ids(resolve_bigquery(metadata, "account")) == [account.id]
+
+
+def test_bigquery_reference_matching_two_case_variants_resolves_to_none(sdk):
+    # BigQuery names are case-sensitive, so which one was meant can't be told
+    metadata, transport = sdk
+    upper = table("my_service.my_db.my_schema.Account")
+    shouting = table("my_service.my_db.my_schema.ACCOUNT")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (upper, shouting)}
+    transport.hits = list(transport.entities)
+    assert resolve_bigquery(metadata, "account") == ()
+
+
 def test_bigquery_placeholder_without_descriptor_is_not_a_family(sdk):
     metadata, transport = sdk
     ordinary = table("my_service.my_db.my_schema.events_yyyymmdd")
@@ -722,6 +742,30 @@ def add_bigquery_service(transport):
     )
 
 
+def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    elsewhere = table("my_service.my_db.other_schema.account")
+    transport.entities[elsewhere.fullyQualifiedName.root] = elsewhere
+    transport.hits = [elsewhere.fullyQualifiedName.root]
+    fetcher = HexQueryFetcher(metadata=metadata, lookback_days=7)
+
+    def tables_read(sql, prefix=None):
+        return ids(fetcher._extract_tables_from_query(sql, "my_service", "my_db", "my_schema", prefix))
+
+    # The query says which schema: a table of the same name in another one isn't it
+    assert tables_read("select * from my_db.my_schema.account") == []
+    # A bare name only has the session's schema, which may not be the table's
+    assert tables_read("select * from account") == [elsewhere.id]
+    # ...but which of several same-named tables it read can't be told
+    same_named = [table("my_service.my_db.raw.orders"), table("my_service.my_db.staging.orders")]
+    transport.entities.update({item.fullyQualifiedName.root: item for item in same_named})
+    transport.hits = [item.fullyQualifiedName.root for item in same_named]
+    assert tables_read("select * from orders") == []
+    # ...unless the configured prefix leaves only one of them
+    assert tables_read("select * from orders", "my_service.my_db.raw") == [same_named[0].id]
+
+
 def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):
     metadata, transport = sdk
     add_bigquery_service(transport)
@@ -824,7 +868,7 @@ def test_dbt_wildcards_emit_all_edges_or_preserve_previous_scope(sdk, count):
     transport.hits = [value.fullyQualifiedName.root for value in matches]
     source = DbtSource.__new__(DbtSource)
     source.metadata = metadata
-    source.source_config = SimpleNamespace(overrideLineage=True)
+    source.source_config = SimpleNamespace(overrideLineage=True, catalogMapping=None, searchAcrossDatabases=False)
     source.status = MagicMock()
     target = table("my_service.my_db.my_schema.summary")
     link = DataModelLink(
@@ -1045,6 +1089,349 @@ def test_dbt_family_resolution_requests_source_hash(sdk):
     assert source._search_table("my_service.my_db.my_schema.events_20260101").sourceHash == "existing_hash"
     table_requests = [(path, params) for path, params in transport.requests if path.startswith("/tables/")]
     assert table_requests[-1][1]["fields"] == ["sourceHash"]
+
+
+def wildcard_source_dbt(metadata, *parents, wildcard="events_*"):
+    source = DbtSource.__new__(DbtSource)
+    source.metadata = metadata
+    source.config = SimpleNamespace(serviceName="my_service")
+    source.source_config = SimpleNamespace(
+        tableFilterPattern=None,
+        schemaFilterPattern=None,
+        databaseFilterPattern=None,
+        catalogMapping=None,
+        searchAcrossDatabases=False,
+        overrideLineage=True,
+    )
+    source.status = MagicMock()
+    source.resolved_tables = LRUCache(16)
+    source.reported_unresolved_upstreams = set()
+    manifest_entities = {
+        f"source.project.raw.{identifier}": SimpleNamespace(
+            resource_type="source",
+            database="my_db",
+            schema_="my_schema",
+            name=identifier,
+            identifier=identifier,
+            source_name="raw",
+            config=None,
+        )
+        for identifier in (wildcard, *parents)
+    }
+    model = SimpleNamespace(depends_on=SimpleNamespace(nodes=list(manifest_entities)))
+    return source, manifest_entities, model
+
+
+def search_honours_escapes(transport, monkeypatch):
+    """Like Elasticsearch, an escaped `\\*` matches only a table literally named that way."""
+    search = transport.get
+    monkeypatch.setattr(
+        transport, "get", lambda path: search(path) if "\\*" not in unquote(path) else search("/search/query")
+    )
+
+
+def dbt_lineage_edges(source, manifest_entities, model):
+    """Run a model's upstream parsing and dbt lineage as yield_data_models links them."""
+    upstream = source.parse_upstream_nodes_with_names(manifest_entities, model, expand_wildcard_sources=True)
+    link = DataModelLink(
+        table_entity=table("my_service.my_db.my_schema.summary"),
+        upstream_table_ids={node.fqn: node.table_id for node in upstream if node.table_id},
+        datamodel=DataModel(modelType="DBT", upstream=[node.fqn for node in upstream]),
+    )
+    return {
+        outcome.right.lineage_request.edge.fromEntity.id.root: outcome.right.override_lineage
+        for outcome in source.create_dbt_lineage(link)
+    }
+
+
+def dbt_lineage_sources(source, manifest_entities, model):
+    return set(dbt_lineage_edges(source, manifest_entities, model))
+
+
+def test_dbt_wildcard_source_feeds_every_table_bigquery_reads(sdk):
+    # BigQuery reads `events_*` from every table named events_..., so a model selecting from that
+    # source depends on the daily and the intraday shard family alike
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    intraday = bigquery_family("events_intraday_yyyymmdd")
+    intraday.tableSharding.prefix = "events_intraday_"
+    transport.entities.update({item.fullyQualifiedName.root: item for item in (daily, intraday)})
+    transport.hits = [daily.fullyQualifiedName.root, intraday.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root, intraday.id.root}
+
+
+def test_dbt_wildcard_source_edges_carry_the_model_sql(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    upstream = source.parse_upstream_nodes_with_names(manifest_entities, model, expand_wildcard_sources=True)
+    link = DataModelLink(
+        table_entity=table("my_service.my_db.my_schema.summary"),
+        datamodel=DataModel(modelType="DBT", upstream=[node.fqn for node in upstream], sql="select * from events"),
+    )
+
+    [edge] = source.create_dbt_lineage(link)
+
+    assert edge.right.lineage_request.edge.lineageDetails.sqlQuery.root == "select * from events"
+
+
+def bigquery_family_in(service, database):
+    representative = {**bigquery_family().tableSharding.representative.model_dump(), "databaseName": database}
+    return table(
+        f"{service}.{database}.my_schema.events_yyyymmdd",
+        serviceType="BigQuery",
+        tableType="Sharded",
+        tableSharding=bigquery_family().tableSharding.model_copy(update={"representative": representative}),
+    )
+
+
+def answer_unscoped_search(transport, monkeypatch, *tables):
+    """The cross-service table search, which the fake transport otherwise answers with no hits."""
+    search = transport.get
+    found = {
+        "hits": {
+            "hits": [{"_source": {"fullyQualifiedName": item.fullyQualifiedName.root}} for item in tables],
+            "total": {"value": len(tables), "relation": "eq"},
+        }
+    }
+    monkeypatch.setattr(transport, "get", lambda path: found if path.startswith("/search/query") else search(path))
+
+
+@pytest.mark.parametrize("service", ["my_service", "other_service"])
+def test_dbt_wildcard_source_follows_the_catalog_mapping(sdk, monkeypatch, service):
+    # dbt ran against a dev project while OpenMetadata ingested the mapped one, possibly under another
+    # service; like every other dbt node, the mapped database is found there without searchAcrossDatabases
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family_in(service, "prod_db")
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root] if service == "my_service" else []
+    answer_unscoped_search(transport, monkeypatch, daily)
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    source.source_config.catalogMapping = {"my_db": "prod_db"}
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root}
+
+
+def test_dbt_wildcard_source_falls_back_to_the_manifest_database(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    source.source_config.catalogMapping = {"my_db": "prod_db"}
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root}
+
+
+def test_dbt_wildcard_source_stays_unresolved_where_one_table_is_required(sdk):
+    # A test or exposure attaches to one table; picking one of the matches would be a guess
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+
+    assert source.parse_upstream_nodes_with_names(manifest_entities, model) == []
+
+
+def dbt_model_lineage_overrides(source, manifest_entities, model, monkeypatch, query_parent):
+    """Both lineage stages of one model, as the topology runs them: dbt dependencies, then its SQL."""
+    from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+    from metadata.generated.schema.type.entityLineage import EntitiesEdge
+    from metadata.generated.schema.type.entityReference import EntityReference
+    from metadata.ingestion.api.models import Either
+    from metadata.ingestion.source.database.dbt import metadata as dbt_metadata
+
+    target = table("my_service.my_db.my_schema.summary")
+    parsed = AddLineageRequest(
+        edge=EntitiesEdge(
+            fromEntity=EntityReference(id=query_parent.id, type="table"),
+            toEntity=EntityReference(id=target.id, type="table"),
+        )
+    )
+    monkeypatch.setattr(dbt_metadata, "get_lineage_by_query", lambda *args, **kwargs: [Either(right=parsed)])
+    source.config.serviceConnection = SimpleNamespace(
+        root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="BigQuery")))
+    )
+    source.source_config.parsingTimeoutLimit = 10
+    upstream = source.parse_upstream_nodes_with_names(manifest_entities, model, expand_wildcard_sources=True)
+    link = DataModelLink(
+        table_entity=target,
+        upstream_table_ids={node.fqn: node.table_id for node in upstream if node.table_id},
+        datamodel=DataModel(modelType="DBT", upstream=[node.fqn for node in upstream], sql="select 1"),
+    )
+    outcomes = [*source.create_dbt_lineage(link), *source.create_dbt_query_lineage(link)]
+    return [
+        (outcome.right.lineage_request.edge.fromEntity.id.root, outcome.right.override_lineage) for outcome in outcomes
+    ]
+
+
+@pytest.mark.parametrize("wildcard", ["events_*", "events_2026*"])
+@pytest.mark.parametrize("override", [True, False])
+def test_dbt_incomplete_wildcard_source_adds_the_other_edges_without_overriding(sdk, monkeypatch, wildcard, override):
+    # Overriding without the wildcard's tables would delete their earlier edges, in either lineage stage;
+    # withholding every edge instead would freeze a model whose wildcard never resolves (over 100 tables,
+    # or dated)
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    shards = [table(f"my_service.my_db.my_schema.events_{index}") for index in range(101)]
+    orders = table("my_service.my_db.my_schema.orders")
+    transport.entities.update({value.fullyQualifiedName.root: value for value in (*shards, orders)})
+    transport.hits = [value.fullyQualifiedName.root for value in shards]
+    source, manifest_entities, model = wildcard_source_dbt(metadata, "orders", wildcard=wildcard)
+    source.source_config.overrideLineage = override
+
+    edges = dbt_model_lineage_overrides(source, manifest_entities, model, monkeypatch, orders)
+
+    assert edges == [(orders.id.root, False), (orders.id.root, False)]
+    assert source.status.warning.call_args[0][1].startswith(
+        f"dbt lineage incomplete for wildcard source 'my_service.my_db.my_schema.{wildcard}'"
+    )
+
+
+def test_dbt_complete_wildcard_source_lets_both_lineage_stages_override(sdk, monkeypatch):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    orders = table("my_service.my_db.my_schema.orders")
+    transport.entities.update({value.fullyQualifiedName.root: value for value in (daily, orders)})
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata, "orders")
+
+    edges = dbt_model_lineage_overrides(source, manifest_entities, model, monkeypatch, orders)
+
+    assert sorted(edges) == sorted([(daily.id.root, True), (orders.id.root, True), (orders.id.root, True)])
+
+
+def test_dbt_wildcard_source_is_expanded_once_per_run(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    dbt_lineage_sources(source, manifest_entities, model)
+    searches = len(transport.requests)
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root}
+    assert len(transport.requests) == searches
+
+
+def test_dbt_wildcard_source_matching_several_services_links_none(sdk, monkeypatch):
+    # The same dataset ingested under two services would otherwise feed the model from both copies
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    copies = [
+        table(
+            f"{service}.my_db.my_schema.events_yyyymmdd",
+            serviceType="BigQuery",
+            tableType="Sharded",
+            tableSharding=bigquery_family().tableSharding,
+        )
+        for service in ("prod_bq", "old_bq")
+    ]
+    transport.entities.update({item.fullyQualifiedName.root: item for item in copies})
+    search = transport.get
+    found = {
+        "hits": {
+            "hits": [{"_source": {"fullyQualifiedName": item.fullyQualifiedName.root}} for item in copies],
+            "total": {"value": 2, "relation": "eq"},
+        }
+    }
+    monkeypatch.setattr(transport, "get", lambda path: found if path.startswith("/search/query") else search(path))
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    source.source_config.searchAcrossDatabases = True
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == set()
+    assert "several services" in source.status.warning.call_args[0][1]
+
+
+def test_dbt_wildcard_source_reads_other_services_with_search_across_databases(sdk, monkeypatch):
+    # The GA4 export can be ingested under another BigQuery service than the one dbt runs on
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily, intraday = (
+        table(
+            f"other_service.my_db.my_schema.{prefix}yyyymmdd",
+            serviceType="BigQuery",
+            tableType="Sharded",
+            tableSharding=bigquery_family().tableSharding.model_copy(update={"prefix": prefix}),
+        )
+        for prefix in ("events_", "events_intraday_")
+    )
+    transport.entities.update({item.fullyQualifiedName.root: item for item in (daily, intraday)})
+    search = transport.get
+    found = {
+        "hits": {
+            "hits": [{"_source": {"fullyQualifiedName": item.fullyQualifiedName.root}} for item in (daily, intraday)],
+            "total": {"value": 2, "relation": "eq"},
+        }
+    }
+    monkeypatch.setattr(transport, "get", lambda path: found if path.startswith("/search/query") else search(path))
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    source.source_config.searchAcrossDatabases = True
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root, intraday.id.root}
+
+
+def test_dbt_wildcard_source_that_expands_to_nothing_takes_no_single_table(sdk, monkeypatch):
+    # A lookup of `events_*` as one table would link whichever match the search returned first. A
+    # complete search that finds nothing is no reason to keep stale edges, so the model still overrides
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = table("other_service.my_db.my_schema.events_20260102")
+    orders = table("my_service.my_db.my_schema.orders")
+    transport.entities.update({item.fullyQualifiedName.root: item for item in (daily, orders)})
+    transport.hits = [daily.fullyQualifiedName.root]
+    search_honours_escapes(transport, monkeypatch)
+    source, manifest_entities, model = wildcard_source_dbt(metadata, "orders")
+    source.source_config.searchAcrossDatabases = True
+
+    assert dbt_lineage_edges(source, manifest_entities, model) == {orders.id.root: True}
+    assert "no table in OpenMetadata matches the wildcard source" in source.status.warning.call_args[0][1]
+
+
+def test_dbt_wildcard_source_behind_an_ephemeral_model_feeds_lineage(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    daily = bigquery_family()
+    transport.entities[daily.fullyQualifiedName.root] = daily
+    transport.hits = [daily.fullyQualifiedName.root]
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    manifest_entities["model.project.stg_events"] = SimpleNamespace(
+        resource_type="model",
+        database="my_db",
+        schema_="my_schema",
+        name="stg_events",
+        alias=None,
+        config=SimpleNamespace(materialized="ephemeral"),
+        depends_on=model.depends_on,
+    )
+    model = SimpleNamespace(depends_on=SimpleNamespace(nodes=["model.project.stg_events"]))
+
+    assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root}
+
+
+def test_dbt_wildcard_source_without_wildcard_tables_links_nothing(sdk, monkeypatch):
+    # Outside BigQuery a `*` is no wildcard table, and searching for it would take any table it hits
+    metadata, transport = sdk
+    events_summary = table("my_service.my_db.my_schema.events_summary")
+    transport.entities[events_summary.fullyQualifiedName.root] = events_summary
+    transport.hits = [events_summary.fullyQualifiedName.root]
+    search_honours_escapes(transport, monkeypatch)
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+
+    assert source.parse_upstream_nodes_with_names(manifest_entities, model, expand_wildcard_sources=True) == []
+    assert dbt_lineage_sources(source, manifest_entities, model) == set()
 
 
 @pytest.mark.parametrize("service_name", [None, "*"])

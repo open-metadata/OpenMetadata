@@ -19,7 +19,10 @@ import {
   Dropdown,
   Owner,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronDown,
+  TrendDown01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -30,14 +33,11 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
+  LIST_PAGE_SIZE_OPTIONS,
   NO_DATA,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
@@ -116,7 +116,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     }))
   );
 
-  const { lineageConfig } = useLineageStore();
+  const {
+    lineageConfig,
+    timeFilter: { startTime, endTime },
+  } = useLineageStore();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();
@@ -146,7 +149,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     handlePageChange,
     handlePagingChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const paginationInfoKeyRef = useRef<string | null>(null);
 
@@ -467,7 +470,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <Button
             color="tertiary"
             data-testid="impact-on-dropdown"
-            iconLeading={TrendDownIcon}
+            iconLeading={TrendDown01}
             iconTrailing={ChevronDown}
             size="sm">
             <Transi18next
@@ -531,6 +534,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         columnFilter: columnFilterValue,
         direction: lineageDirection,
+        startTime,
+        endTime,
       });
 
       const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
@@ -566,6 +571,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         lineageDirection,
         columnFilterValue,
+        startTime,
+        endTime,
       });
       const shouldIncludePaginationInfo =
         paginationInfoKeyRef.current !== paginationInfoKey;
@@ -583,6 +590,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         query_filter: queryFilter,
         column_filter: columnFilterValue,
         include_pagination_info: shouldIncludePaginationInfo,
+        startTime,
+        endTime,
       });
 
       delete res.nodes[fqn];
@@ -644,6 +653,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     setLineagePagingInfo,
     setLoading,
     impactLevel,
+    startTime,
+    endTime,
   ]);
 
   // Table-level lineage: fetch on all dependencies
@@ -804,7 +815,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner isCompactView={false} owners={owners} showLabel={false} />
+          <Owner
+            isCompactView={false}
+            labelVariant="cell"
+            owners={owners}
+            showLabel={false}
+          />
         ),
       },
       {
@@ -1012,7 +1028,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       isNumberBased: true,
       showPagination,
       onShowSizeChange: handlePageSizeChange,
-      pagesizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pagesizeOptions: LIST_PAGE_SIZE_OPTIONS,
       pagingHandler: (data: PagingHandlerParams) => {
         handlePageChange(data.currentPage);
       },

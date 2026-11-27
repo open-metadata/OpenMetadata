@@ -68,9 +68,7 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -2415,7 +2413,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       currentPage: columnGridListing.currentPage,
       isNumberBased: true,
       isLoading: columnGridListing.loading,
-      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
       onShowSizeChange: columnGridListing.handlePageSizeChange,
     }),
     [
@@ -2799,6 +2797,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               {/* Search */}
               <div className="tw:shrink-0">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   placeholder={t('label.search-columns')}

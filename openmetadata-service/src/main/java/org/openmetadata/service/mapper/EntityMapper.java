@@ -36,7 +36,9 @@ public interface EntityMapper<T extends EntityInterface<?>, C extends CreateEnti
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
 
-    RuleEngine.getInstance().evaluate(entity);
+    if (!RuleEngine.dependsOnInheritedDomains(entity)) {
+      RuleEngine.getInstance().evaluate(entity);
+    }
     return entity;
   }
 

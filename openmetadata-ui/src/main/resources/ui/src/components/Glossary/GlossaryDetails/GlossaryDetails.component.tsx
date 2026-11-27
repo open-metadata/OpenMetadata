@@ -49,6 +49,9 @@ const GlossaryHeader = withSuspenseFallback(
   lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(() => import('../../activity-feed/ActivityFeed/ActivityFeedTabLabel'))
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import('../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component').then(
@@ -173,8 +176,9 @@ const GlossaryDetails = ({
             },
             {
               label: (
-                <TabsLabel
+                <ActivityFeedTabLabel
                   count={feedCount.totalCount}
+                  entityType={EntityType.GLOSSARY}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                   name={
@@ -210,9 +214,9 @@ const GlossaryDetails = ({
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
-    feedCount.conversationCount,
-    feedCount.totalTasksCount,
-    feedCount.openTaskCount,
+    // Activity and task reads resolve separately, and the tab body consumes
+    // the complete count object as well as the total shown in its label.
+    feedCount,
     fetchTaskCounts,
     activeTab,
     isVersionView,

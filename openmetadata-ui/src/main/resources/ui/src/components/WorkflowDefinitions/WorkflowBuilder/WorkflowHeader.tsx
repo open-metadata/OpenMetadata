@@ -50,9 +50,10 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   isSuspended = false,
 }) => {
   const { t } = useTranslation();
-  const { showDeleteButton, showEditButton } = useWorkflowModeContext();
-  // Suspending is allowed wherever the workflow can be edited; deleting is a separate capability.
-  const onToggleSuspend = showEditButton ? handleToggleSuspend : undefined;
+  const { showDeleteButton, showEditButton, isNoOp } = useWorkflowModeContext();
+  // System workflows expose settings without allowing their lifecycle to be suspended.
+  const onToggleSuspend =
+    showEditButton && !isNoOp ? handleToggleSuspend : undefined;
   const onDelete = showDeleteButton ? handleDeleteWorkflow : undefined;
 
   if (!onToggleSuspend && !onDelete) {
@@ -284,18 +285,14 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         <PageLayout.PageHeader
           actions={
             <>
-              {editTitleButton}
+              {suspendedBadge}
+              {systemBadge}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}
             </>
           }
-          badge={
-            <>
-              {suspendedBadge}
-              {systemBadge}
-            </>
-          }
+          badge={editTitleButton}
           breadcrumb={breadcrumb}
           data-testid="workflow-header"
           density="compact"
@@ -313,15 +310,18 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             ) : undefined
           }
           title={
-            <Typography
-              as="h3"
-              className="tw:m-0 tw:text-primary"
-              data-testid="workflow-title"
-              ellipsis={{ tooltip: true }}
-              size="text-xl"
-              weight="semibold">
-              {title}
-            </Typography>
+            // The ellipsis tooltip trigger is w-full; this wrapper keeps the edit button beside the text.
+            <div className="tw:min-w-0">
+              <Typography
+                as="h3"
+                className="tw:m-0 tw:text-primary"
+                data-testid="workflow-title"
+                ellipsis={{ tooltip: true }}
+                size="text-xl"
+                weight="semibold">
+                {title}
+              </Typography>
+            </div>
           }
           variant="gradient"
         />
@@ -332,17 +332,18 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
               {workflowIcon}
               <div className="tw:min-w-0" data-testid="workflow-title-section">
                 <div className="tw:flex tw:items-center tw:gap-2">
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1 tw:text-primary"
-                    data-testid="workflow-title"
-                    ellipsis={{ tooltip: true }}
-                    size="text-md"
-                    weight="semibold">
-                    {title}
-                  </Typography>
-                  {suspendedBadge}
-                  {systemBadge}
+                  <div className="tw:min-w-0">
+                    <Typography
+                      as="p"
+                      className="tw:m-0 tw:mb-1 tw:text-primary"
+                      data-testid="workflow-title"
+                      ellipsis={{ tooltip: true }}
+                      size="text-md"
+                      weight="semibold">
+                      {title}
+                    </Typography>
+                  </div>
+                  {editTitleButton}
                 </div>
                 {workflowName && (
                   <Typography
@@ -358,7 +359,8 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             </div>
 
             <div className="tw:flex tw:shrink-0 tw:gap-3 tw:items-center">
-              {editTitleButton}
+              {suspendedBadge}
+              {systemBadge}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}

@@ -29,10 +29,15 @@
    under `.dark-mode`, leaving light mode 100% on the original Explore styling.
    `!important` is required to beat the legacy classes and antd's own styles. */
 .dark-mode .assets-tab-container {
-  // Container + asset card surfaces (legacy `bg-white`).
-  &,
+  // Container is a panel surface; asset cards sit one muted step below it,
+  // like the Explore results and the domain Data Products tab
+  // (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
+  & {
+    background-color: var(--tw-background-color-surface) !important;
+  }
+
   .explore-search-card {
-    background-color: var(--color-bg-primary) !important;
+    background-color: var(--tw-background-color-primary_alt) !important;
   }
 
   // Container border only — asset cards keep their own hover/selected border.
@@ -40,9 +45,9 @@
     border-color: var(--color-border-secondary) !important;
   }
 
-  // Selected/highlighted asset card sits on a subtly raised surface.
+  // Selection is shown by the brand border; the fill stays on the muted step.
   .explore-search-card.highlight-card {
-    background-color: var(--color-bg-secondary) !important;
+    background-color: var(--tw-background-color-primary_alt) !important;
   }
 
   // Filter button.

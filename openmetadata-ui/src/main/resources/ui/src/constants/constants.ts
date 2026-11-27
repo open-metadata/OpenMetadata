@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircle02,
+  SuccessfulTests,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { CSSProperties } from 'react';
-import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
-import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -53,13 +55,29 @@ export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
+// usePaging keeps these in the query string. A paging action sets the page in state first and in
+// the URL in a later (transition) render, so a list that parses its filters from the query string
+// must leave these out, or the URL catching up refetches with the filters alone.
+export const PAGING_URL_PARAMS = [
+  'currentPage',
+  'pageSize',
+  'cursorType',
+  'cursorValue',
+];
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
-export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
+export const LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
+export const GRID_PAGE_SIZE_BASE = 12;
+export const GRID_PAGE_SIZE_OPTIONS = [GRID_PAGE_SIZE_BASE, 24, 48];
 export const PAGE_SIZE_EXTRA_LARGE = 100;
 export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
@@ -143,7 +161,6 @@ export const ROUTES = {
   PLATFORM_LINEAGE: '/lineage',
   PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
-  TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
@@ -213,7 +230,6 @@ export const ROUTES = {
   ENTITY_VERSION_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ENTITY_VERSION_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
-  USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_ROUTE_FQN}`,
@@ -502,9 +518,16 @@ export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
 };
 
 export const STATUS_ICON = {
-  success: IconSuccessBadge,
-  failed: IconFailedBadge,
-  completed: IconCompleteBadge,
+  success: CheckCircle02,
+  failed: XCircle,
+  completed: SuccessfulTests,
+};
+
+export const STATUS_ICON_CLASS: Partial<
+  Record<keyof typeof STATUS_ICON, string>
+> = {
+  success: 'tw:text-utility-green-500',
+  failed: 'tw:text-utility-error-600',
 };
 
 export const STATUS_LABEL = {
