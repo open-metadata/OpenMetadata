@@ -16,9 +16,9 @@ import UserProfileCard from './UserProfileCard';
 
 jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
   __esModule: true,
-  default: ({ compact }: { compact?: boolean }) => (
+  default: ({ variant }: { variant?: string }) => (
     <button data-testid="app-mode-switcher" type="button">
-      {compact ? 'compact' : 'full'}
+      {variant === 'pill' ? 'compact' : 'full'}
     </button>
   ),
 }));
