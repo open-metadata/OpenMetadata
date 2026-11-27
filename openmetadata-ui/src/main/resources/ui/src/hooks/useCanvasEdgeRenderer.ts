@@ -139,6 +139,11 @@ const drawEdgeArrow = (
   drawArrowMarker(ctx, pathData.targetX, pathData.targetY, angle, stroke);
 };
 
+const getEdgeLineDash = (
+  lineDash: number[] | undefined,
+  animated: boolean | undefined
+): number[] => lineDash ?? (animated ? [6, 4] : []);
+
 const getPathPaint = (
   style: ReturnType<typeof computeEdgeStyle>,
   colors: LineageEdgeColors,
@@ -334,7 +339,7 @@ export function useCanvasEdgeRenderer({
       ctx.strokeStyle = paint.stroke;
       ctx.globalAlpha = paint.opacity;
       ctx.lineWidth = paint.strokeWidth;
-      ctx.setLineDash(edge.animated ? [6, 4] : []);
+      ctx.setLineDash(getEdgeLineDash(paint.lineDash, edge.animated));
 
       const { path } = pathData;
       ctx.stroke(path);

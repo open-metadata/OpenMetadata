@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { Edge } from 'reactflow';
+import { DependencyType } from '../generated/type/entityLineage';
 import {
   clearEdgeStyleCache,
   computeEdgeStyle,
   computeEdgeVisualState,
+  INDIRECT_EDGE_LINE_DASH,
   invalidateEdgeStyles,
+  isIndirectEdge,
   LineageEdgeColors,
 } from './EdgeStyleUtils';
 
@@ -735,6 +738,116 @@ describe('EdgeStyleUtils', () => {
           'dimmed'
         );
       });
+    });
+  });
+
+  describe('dependencyType styling', () => {
+    it('styles DIRECT and undefined edges solid without lineDash', () => {
+      const directEdge: Edge = {
+        ...createMockEdge('edge-direct', 'e1', 'e2'),
+        data: {
+          edge: {
+            fromEntity: { id: 'e1' },
+            toEntity: { id: 'e2' },
+            dependencyType: DependencyType.Direct,
+          },
+        },
+      };
+      const unsetEdge = createMockEdge('edge-unset', 'e1', 'e2');
+
+      expect(isIndirectEdge(directEdge)).toBe(false);
+      expect(isIndirectEdge(unsetEdge)).toBe(false);
+
+      const directStyle = computeEdgeStyle(
+        directEdge,
+        new Set(),
+        new Set(),
+        new Set(),
+        undefined,
+        colors,
+        false
+      );
+      const unsetStyle = computeEdgeStyle(
+        unsetEdge,
+        new Set(),
+        new Set(),
+        new Set(),
+        undefined,
+        colors,
+        false
+      );
+
+      expect(directStyle.lineDash).toBeUndefined();
+      expect(directStyle.opacity).toBe(1);
+      expect(unsetStyle.lineDash).toBeUndefined();
+      expect(unsetStyle.opacity).toBe(1);
+    });
+
+    it('styles INDIRECT edges dashed with muted opacity and preserves hover/traced highlights', () => {
+      const indirectColors: LineageEdgeColors = {
+        ...colors,
+        indirect: '#a4a7ae',
+      };
+      const indirectEdge: Edge = {
+        ...createMockEdge('edge-indirect', 'e1', 'e2'),
+        data: {
+          edge: {
+            fromEntity: { id: 'e1' },
+            toEntity: { id: 'e2' },
+            dependencyType: DependencyType.Indirect,
+          },
+        },
+      };
+
+      expect(isIndirectEdge(indirectEdge)).toBe(true);
+
+      const defaultStyle = computeEdgeStyle(
+        indirectEdge,
+        new Set(),
+        new Set(),
+        new Set(),
+        undefined,
+        indirectColors,
+        false
+      );
+
+      expect(defaultStyle).toEqual({
+        stroke: '#a4a7ae',
+        opacity: 0.7,
+        strokeWidth: 2,
+        lineDash: INDIRECT_EDGE_LINE_DASH,
+      });
+
+      const hoveredStyle = computeEdgeStyle(
+        indirectEdge,
+        new Set(),
+        new Set(),
+        new Set(),
+        undefined,
+        indirectColors,
+        false,
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(hoveredStyle.stroke).toBe(indirectColors.primary);
+      expect(hoveredStyle.opacity).toBe(1);
+      expect(hoveredStyle.lineDash).toEqual(INDIRECT_EDGE_LINE_DASH);
+
+      const tracedStyle = computeEdgeStyle(
+        indirectEdge,
+        new Set(['e1', 'e2']),
+        new Set(),
+        new Set(),
+        undefined,
+        indirectColors,
+        false
+      );
+
+      expect(tracedStyle.stroke).toBe(indirectColors.primary);
+      expect(tracedStyle.opacity).toBe(1);
+      expect(tracedStyle.lineDash).toEqual(INDIRECT_EDGE_LINE_DASH);
     });
   });
 });

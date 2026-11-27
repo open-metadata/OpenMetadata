@@ -16,6 +16,27 @@ import type { Edge, Node } from 'reactflow';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getNodeHeight } from '../../CanvasUtils';
+import { isIndirectEdge } from '../../EdgeStyleUtils';
+
+export const DIRECT_EDGE_ELK_PRIORITY = '10';
+export const INDIRECT_EDGE_ELK_PRIORITY = '1';
+
+export const toElkEdge = (edge: Edge): ElkExtendedEdge => {
+  const priority = isIndirectEdge(edge)
+    ? INDIRECT_EDGE_ELK_PRIORITY
+    : DIRECT_EDGE_ELK_PRIORITY;
+
+  return {
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+    layoutOptions: {
+      'elk.priority': priority,
+      'elk.layered.priority.direction': priority,
+      'elk.layered.priority.shortness': priority,
+    },
+  };
+};
 
 /**
  * Lazy boundary for the ELK engine.
@@ -49,11 +70,7 @@ export const getELKLayoutedElements = async (
     };
   });
 
-  const elkEdges: ElkExtendedEdge[] = edges.map((edge) => ({
-    id: edge.id,
-    sources: [edge.source],
-    targets: [edge.target],
-  }));
+  const elkEdges: ElkExtendedEdge[] = edges.map(toElkEdge);
 
   try {
     const ELKLayout = await loadElkLayout();

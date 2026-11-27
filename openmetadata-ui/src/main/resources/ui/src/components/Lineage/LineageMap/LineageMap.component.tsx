@@ -81,6 +81,7 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../../generated/settings/settings';
+import { DependencyType } from '../../../generated/type/entityLineage';
 import { useUncontrolledNodeDrag } from '../../../hooks/lineage/useUncontrolledNodeDrag';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -103,6 +104,7 @@ import {
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
+import { toElkEdge } from '../../../utils/Lineage/Layout/ElkLayoutUtils';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -714,6 +716,84 @@ const getColumnsHavingLineage = (edges: LineageScene['edges']) => {
   return columnsHavingLineage;
 };
 
+const filterSceneByIndirectVisibility = (
+  scene: LineageScene,
+  showIndirectEdges: boolean
+): { nodes: LineageSceneNode[]; edges: LineageSceneEdge[] } => {
+  if (showIndirectEdges) {
+    return { nodes: scene.nodes, edges: scene.edges };
+  }
+
+  const keptEdges = scene.edges.filter(
+    (edge) => edge.dependencyType !== DependencyType.Indirect
+  );
+  if (keptEdges.length === scene.edges.length) {
+    return { nodes: scene.nodes, edges: scene.edges };
+  }
+
+  const rootIds = scene.nodes
+    .filter((node) => node.isOrigin || node.isFocus)
+    .map((node) => node.id);
+
+  if (rootIds.length === 0) {
+    const connected = new Set(
+      keptEdges.flatMap((edge) => [
+        getEndpointNodeId(edge.from),
+        getEndpointNodeId(edge.to),
+      ])
+    );
+
+    return {
+      nodes: scene.nodes.filter((node) => connected.has(node.id)),
+      edges: keptEdges,
+    };
+  }
+
+  const forward = new Map<string, string[]>();
+  const backward = new Map<string, string[]>();
+  for (const edge of keptEdges) {
+    const fromId = getEndpointNodeId(edge.from);
+    const toId = getEndpointNodeId(edge.to);
+    const outs = forward.get(fromId) ?? [];
+    outs.push(toId);
+    forward.set(fromId, outs);
+
+    const ins = backward.get(toId) ?? [];
+    ins.push(fromId);
+    backward.set(toId, ins);
+  }
+
+  const reachable = new Set<string>(rootIds);
+  const traverse = (adjacency: Map<string, string[]>) => {
+    const queue = [...rootIds];
+    const visited = new Set<string>(rootIds);
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) {
+        break;
+      }
+      for (const next of adjacency.get(current) ?? []) {
+        if (!visited.has(next)) {
+          visited.add(next);
+          reachable.add(next);
+          queue.push(next);
+        }
+      }
+    }
+  };
+  traverse(forward);
+  traverse(backward);
+
+  return {
+    nodes: scene.nodes.filter((node) => reachable.has(node.id)),
+    edges: keptEdges.filter(
+      (edge) =>
+        reachable.has(getEndpointNodeId(edge.from)) &&
+        reachable.has(getEndpointNodeId(edge.to))
+    ),
+  };
+};
+
 const layoutNodes = async (
   nodes: Node<SceneFlowNodeData>[],
   edges: Edge[],
@@ -725,11 +805,7 @@ const layoutNodes = async (
       width: getNodeWidth(node.data.sceneNode),
       height: getNodeHeight(node.data.sceneNode, node.data.sceneBand),
     })),
-    edges.map((edge) => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-    })),
+    edges.map(toElkEdge),
     SCENE_LAYOUT_OPTIONS[band]
   );
   const layoutedMap = new Map(
@@ -1556,46 +1632,51 @@ const LineageMapCanvas = ({
     setHoveredFieldId(undefined);
     setSelectedColumn(undefined);
     setTracedColumns(new Set());
-    const nodeById = new Map(scene.nodes.map((node) => [node.id, node]));
+    const showIndirectEdges = config.showIndirectEdges ?? true;
+    const { nodes: visibleSceneNodes, edges: visibleSceneEdges } =
+      filterSceneByIndirectVisibility(scene, showIndirectEdges);
+    const nodeById = new Map(visibleSceneNodes.map((node) => [node.id, node]));
     const nextEdges = toFlowEdges(
       nodeById,
-      scene.edges,
+      visibleSceneEdges,
       config.pipelineViewMode === PipelineViewMode.Node
     );
-    setColumnsHavingLineage(getColumnsHavingLineage(scene.edges));
+    setColumnsHavingLineage(getColumnsHavingLineage(visibleSceneEdges));
     setColumnsInCurrentPages(new Map());
 
-    const nextNodes: Node<SceneFlowNodeData>[] = scene.nodes.map((node) => {
-      const lineageNode = toLineageNode(node, t);
+    const nextNodes: Node<SceneFlowNodeData>[] = visibleSceneNodes.map(
+      (node) => {
+        const lineageNode = toLineageNode(node, t);
 
-      return {
-        connectable: false,
-        id: node.id,
-        type: EntityLineageNodeType.DEFAULT,
-        width: getNodeWidth(node),
-        height: getNodeHeight(node, scene.band),
-        position: { x: 0, y: 0 },
-        data: {
-          node: lineageNode,
-          sceneNode: node,
-          sceneBand: scene.band,
-          nodeWidth: getNodeWidth(node),
-          onSceneDrill: isPlatformLineage ? handleDrill : undefined,
-          onSceneNodeSelect: getRealEntityRef(node)
-            ? handleSceneNodeSelect
-            : undefined,
-          sceneDrillLabel: t('label.zoom-in'),
-          onSceneColumnHover: handleSceneColumnHover,
-          onSceneColumnSelect: handleSceneColumnSelect,
-          onSceneShowFields: handleShowSceneFields,
-          isRootNode: Boolean(node.isOrigin || node.isFocus),
-          hasOutgoers: false,
-          hasIncomers: false,
-          isUpstreamNode: false,
-          isDownstreamNode: false,
-        },
-      };
-    });
+        return {
+          connectable: false,
+          id: node.id,
+          type: EntityLineageNodeType.DEFAULT,
+          width: getNodeWidth(node),
+          height: getNodeHeight(node, scene.band),
+          position: { x: 0, y: 0 },
+          data: {
+            node: lineageNode,
+            sceneNode: node,
+            sceneBand: scene.band,
+            nodeWidth: getNodeWidth(node),
+            onSceneDrill: isPlatformLineage ? handleDrill : undefined,
+            onSceneNodeSelect: getRealEntityRef(node)
+              ? handleSceneNodeSelect
+              : undefined,
+            sceneDrillLabel: t('label.zoom-in'),
+            onSceneColumnHover: handleSceneColumnHover,
+            onSceneColumnSelect: handleSceneColumnSelect,
+            onSceneShowFields: handleShowSceneFields,
+            isRootNode: Boolean(node.isOrigin || node.isFocus),
+            hasOutgoers: false,
+            hasIncomers: false,
+            isUpstreamNode: false,
+            isDownstreamNode: false,
+          },
+        };
+      }
+    );
     setSceneNodes(nextNodes);
     let isMounted = true;
     layoutNodes(nextNodes, nextEdges, scene.band)
@@ -2293,6 +2374,7 @@ const LineageMap = ({
       ),
       nodesPerLayer: 200,
       pipelineViewMode: lineageConfig.pipelineViewMode,
+      showIndirectEdges: lineageConfig.showIndirectEdges ?? true,
     }),
     [lineageConfig]
   );

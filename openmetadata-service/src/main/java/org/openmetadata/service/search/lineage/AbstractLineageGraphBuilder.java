@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -542,7 +543,75 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
           "upstreamLineage.fromEntity.fqnHash",
           "upstreamLineage.fromEntity.fullyQualifiedName",
           "upstreamLineage.createdAt",
-          "upstreamLineage.updatedAt");
+          "upstreamLineage.updatedAt",
+          "upstreamLineage.dependencyType");
+
+  public record LineageWalkResult(
+      Map<Integer, List<String>> entitiesByDepth, Map<String, Boolean> hasDirectPath) {}
+
+  protected boolean recordDownstreamReachability(
+      final String targetFqn,
+      final List<EsLineageData> matchingEdges,
+      final Map<String, String> currentLevelByHash,
+      final Map<String, Boolean> hasDirectPath) {
+    boolean shouldEnqueue = false;
+    for (EsLineageData edge : matchingEdges) {
+      final String parentFqn =
+          edge.getFromEntity() != null
+              ? currentLevelByHash.get(edge.getFromEntity().getFqnHash())
+              : null;
+      final boolean parentDirect = parentFqn != null && Boolean.TRUE.equals(hasDirectPath.get(parentFqn));
+      final boolean pathIsDirect = parentDirect && LineageDependencyResolver.isDirectEdge(edge);
+      if (LineageDependencyResolver.recordReachability(hasDirectPath, targetFqn, pathIsDirect)) {
+        shouldEnqueue = true;
+      }
+    }
+    return shouldEnqueue;
+  }
+
+  protected boolean recordUpstreamReachability(
+      final String childFqn,
+      final EsLineageData edge,
+      final Map<String, Boolean> hasDirectPath) {
+    final boolean childDirect = Boolean.TRUE.equals(hasDirectPath.get(childFqn));
+    final boolean pathIsDirect = childDirect && LineageDependencyResolver.isDirectEdge(edge);
+    final String fromFqn =
+        edge.getFromEntity() != null ? edge.getFromEntity().getFullyQualifiedName() : null;
+    final boolean shouldEnqueue =
+        !nullOrEmpty(fromFqn)
+            && LineageDependencyResolver.recordReachability(hasDirectPath, fromFqn, pathIsDirect);
+    return shouldEnqueue;
+  }
+
+  protected NodeInformation withEffectiveDependencyType(
+      final NodeInformation nodeInfo, final String entityFqn, final Map<String, Boolean> hasDirectPath) {
+    final boolean isDirect = Boolean.TRUE.equals(hasDirectPath.get(entityFqn));
+    LineageDependencyResolver.setNodeDependencyType(
+        nodeInfo, LineageDependencyResolver.effectiveDependencyType(isDirect));
+    return nodeInfo;
+  }
+
+  protected Map<Integer, Integer> toFilteredDepthCounts(
+      final Map<Integer, Set<String>> entitiesByDepth,
+      final Map<String, Boolean> hasDirectPath,
+      final DependencyType dependencyType) {
+    final Map<Integer, Integer> depthCounts = new LinkedHashMap<>();
+    for (Map.Entry<Integer, Set<String>> entry : entitiesByDepth.entrySet()) {
+      int count = 0;
+      for (String entityFqn : entry.getValue()) {
+        final DependencyType effectiveType =
+            LineageDependencyResolver.effectiveDependencyType(
+                Boolean.TRUE.equals(hasDirectPath.get(entityFqn)));
+        if (LineageDependencyResolver.matchesFilter(effectiveType, dependencyType)) {
+          count++;
+        }
+      }
+      if (count > 0 || dependencyType == null) {
+        depthCounts.put(entry.getKey(), count);
+      }
+    }
+    return depthCounts;
+  }
 
   /**
    * The page's whole documents, with the fields the caller asked for. The root keeps the document

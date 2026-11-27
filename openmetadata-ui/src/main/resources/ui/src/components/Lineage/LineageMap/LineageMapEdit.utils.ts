@@ -189,6 +189,7 @@ export const toFlowEdge = (
     data: {
       dataTestId,
       edge: {
+        dependencyType: edge.dependencyType,
         description: edge.description,
         fromEntity: getFlowEntityRef(sourceNode),
         pipeline: edge.pipeline,
@@ -312,7 +313,9 @@ const toEdgeDetails = (
     columns: details?.columnsLineage,
     createdAt: details?.createdAt,
     createdBy: details?.createdBy,
+    dependencyType: details?.dependencyType ?? sceneEdge.dependencyType,
     description: details?.description ?? sceneEdge.description,
+    indirectColumns: details?.indirectColumns,
     pipeline,
     pipelineEntityType: getPipelineEntityType(pipeline),
     source: details?.source ? String(details.source) : sceneEdge.source,
@@ -393,7 +396,9 @@ export const buildLineagePayload = (
       toEntity: { id: toEntity.id, type: toEntity.type },
       lineageDetails: {
         columnsLineage,
+        dependencyType: existingDetails.dependencyType,
         description: existingDetails.description,
+        indirectColumns: existingDetails.indirectColumns,
         pipeline: existingDetails.pipeline,
         source: existingDetails.source,
         sqlQuery: existingDetails.sqlQuery ?? '',

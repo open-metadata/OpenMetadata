@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  Box,
   Button,
   ButtonGroup,
   ButtonGroupItem,
@@ -47,6 +48,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
+import { DependencyType } from '../../generated/type/entityLineage';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -89,7 +91,11 @@ import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.comp
 import { LineageNode } from '../Lineage/Lineage.interface';
 import { useLineageHandlers } from '../Lineage/Lineage/LineageHandlersContext';
 import { SourceType } from '../SearchedData/SearchedData.interface';
-import { EImpactLevel, LineageTableRow } from './LineageTable.interface';
+import {
+  DependencyTypeFilter,
+  EImpactLevel,
+  LineageTableRow,
+} from './LineageTable.interface';
 import LineageTableDescription from './LineageTableDescription';
 import { useLineageTableState } from './useLineageTableState';
 
@@ -134,12 +140,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     upstreamColumnLineageNodes,
     downstreamColumnLineageNodes,
     lineagePagingInfo,
+    dependencyTypeFilter,
     setFilterNodes,
     setLoading,
     setSearchValue,
     setImpactLevel: setSelectedImpactLevel,
     setColumnLineageNodes,
     setLineagePagingInfo,
+    setDependencyTypeFilter,
   } = useLineageTableState();
   const {
     currentPage,
@@ -460,57 +468,114 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     return filters.length > 0 ? filters.join(',') : undefined;
   }, [impactLevel, selectedQuickFilters, searchValue, columnLevelFilterKeys]);
 
+  const dependencyTypeOptions = useMemo(
+    () => [
+      { id: 'ALL' as DependencyTypeFilter, label: t('label.all') },
+      { id: DependencyType.Direct, label: t('label.direct') },
+      { id: DependencyType.Indirect, label: t('label.indirect') },
+    ],
+    [t]
+  );
+
+  const selectedDependencyTypeLabel = useMemo(() => {
+    const match = dependencyTypeOptions.find(
+      (option) => option.id === dependencyTypeFilter
+    );
+
+    return match?.label ?? t('label.all');
+  }, [dependencyTypeFilter, dependencyTypeOptions, t]);
+
   // Define table columns
   const extraTableFilters = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center w-full">
         <div>{streamButtonGroup}</div>
 
-        <Dropdown.Root>
-          <Button
-            color="tertiary"
-            data-testid="impact-on-dropdown"
-            iconLeading={TrendDown01}
-            iconTrailing={ChevronDown}
-            size="sm">
-            <Transi18next
-              i18nKey="label.impact-on-area"
-              renderElement={
-                <span className="tw:ml-1 tw:text-brand-secondary" />
-              }
-              values={{ area: t(`label.${impactLevel}`) }}
-            />
-          </Button>
-          <Dropdown.Popover>
-            <Dropdown.Menu
-              aria-label={t('label.impact-on')}
-              selectedKeys={new Set([impactLevel])}
-              selectionMode="single"
-              onAction={(key: Key) => {
-                flushSync(() => {
-                  setSelectedImpactLevel(key as EImpactLevel);
-                });
-                clearQuickFilterValues();
-                handlePageChange(1);
-              }}
-              onSelectionChange={() => void 0}>
-              {LINEAGE_IMPACT_OPTIONS.map((option) => (
-                <Dropdown.Item
-                  icon={LINEAGE_IMPACT_OPTION_ICONS[option.key]}
-                  id={option.key}
-                  key={option.key}
-                  label={option.label}
-                />
-              ))}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
+        <Box align="center" gap={2}>
+          <Dropdown.Root>
+            <Button
+              color="tertiary"
+              data-testid="dependency-type-filter-dropdown"
+              iconTrailing={ChevronDown}
+              size="sm">
+              {t('label.dependency-type')}:{' '}
+              <span className="tw:ml-1 tw:text-brand-secondary">
+                {selectedDependencyTypeLabel}
+              </span>
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu
+                aria-label={t('label.dependency-type')}
+                selectedKeys={new Set([dependencyTypeFilter])}
+                selectionMode="single"
+                onAction={(key: Key) => {
+                  flushSync(() => {
+                    setDependencyTypeFilter(key as DependencyTypeFilter);
+                  });
+                  handlePageChange(1);
+                }}
+                onSelectionChange={() => void 0}>
+                {dependencyTypeOptions.map((option) => (
+                  <Dropdown.Item
+                    id={option.id}
+                    key={option.id}
+                    label={option.label}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+
+          <Dropdown.Root>
+            <Button
+              color="tertiary"
+              data-testid="impact-on-dropdown"
+              iconLeading={TrendDown01}
+              iconTrailing={ChevronDown}
+              size="sm">
+              <Transi18next
+                i18nKey="label.impact-on-area"
+                renderElement={
+                  <span className="tw:ml-1 tw:text-brand-secondary" />
+                }
+                values={{ area: t(`label.${impactLevel}`) }}
+              />
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu
+                aria-label={t('label.impact-on')}
+                selectedKeys={new Set([impactLevel])}
+                selectionMode="single"
+                onAction={(key: Key) => {
+                  flushSync(() => {
+                    setSelectedImpactLevel(key as EImpactLevel);
+                  });
+                  clearQuickFilterValues();
+                  handlePageChange(1);
+                }}
+                onSelectionChange={() => void 0}>
+                {LINEAGE_IMPACT_OPTIONS.map((option) => (
+                  <Dropdown.Item
+                    icon={LINEAGE_IMPACT_OPTION_ICONS[option.key]}
+                    id={option.key}
+                    key={option.key}
+                    label={option.label}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
       </div>
     );
   }, [
     clearQuickFilterValues,
+    dependencyTypeFilter,
+    dependencyTypeOptions,
     handlePageChange,
     impactLevel,
+    selectedDependencyTypeLabel,
+    setDependencyTypeFilter,
     setSelectedImpactLevel,
     streamButtonGroup,
     t,
@@ -518,6 +583,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
+    const activeDependencyType =
+      dependencyTypeFilter === 'ALL' ? undefined : dependencyTypeFilter;
+
     const fetchColumnLevelNodes = async () => {
       const columnLevelConfig = {
         ...lineageConfig,
@@ -533,6 +601,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         config: columnLevelConfig,
         queryFilter,
         columnFilter: columnFilterValue,
+        dependencyType: activeDependencyType,
         direction: lineageDirection,
         startTime,
         endTime,
@@ -571,6 +640,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         lineageDirection,
         columnFilterValue,
+        dependencyType: activeDependencyType,
         startTime,
         endTime,
       });
@@ -589,6 +659,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         size: pageSize,
         query_filter: queryFilter,
         column_filter: columnFilterValue,
+        dependencyType: activeDependencyType,
         include_pagination_info: shouldIncludePaginationInfo,
         startTime,
         endTime,
@@ -606,11 +677,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         sortBy(
           map(
             res.nodes,
-            ({ entity, paging, nodeDepth }) =>
+            ({ entity, paging, nodeDepth, dependencyType }) =>
               ({
                 ...entity,
                 ...paging,
                 nodeDepth,
+                dependencyType,
               } as unknown as LineageNode)
           ),
           'nodeDepth'
@@ -645,6 +717,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     entityType,
     queryFilter,
     columnFilterValue,
+    dependencyTypeFilter,
     setColumnLineageNodes,
     handlePagingChange,
     currentPage,
@@ -776,6 +849,23 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           // Keep a fallback to 0 if depth is NaN for any unexpected reason
           <span>{Number.isNaN(Math.abs(depth)) ? 0 : Math.abs(depth)}</span>
         ),
+      },
+      {
+        title: t('label.dependency-type'),
+        dataIndex: 'dependencyType',
+        key: 'dependencyType',
+        render: (dependencyType?: DependencyType) => {
+          const isIndirect = dependencyType === DependencyType.Indirect;
+
+          return (
+            <Badge
+              color={isIndirect ? 'gray' : 'brand'}
+              data-testid="dependency-type-badge"
+              size="sm">
+              {t(isIndirect ? 'label.indirect' : 'label.direct')}
+            </Badge>
+          );
+        },
       },
       {
         title: t('label.description'),

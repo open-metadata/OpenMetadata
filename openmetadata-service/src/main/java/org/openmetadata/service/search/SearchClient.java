@@ -15,6 +15,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -1006,8 +1007,18 @@ public interface SearchClient
 
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
+  default SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, DependencyType dependencyType) throws IOException {
+    return searchLineage(lineageRequest);
+  }
+
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
+
+  default SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, DependencyType dependencyType) throws IOException {
+    return searchLineageWithDirection(lineageRequest);
+  }
 
   /**
    * The entity search lineage roots a graph on for {@code fqn}: the indexed document with that FQN,
@@ -1038,8 +1049,35 @@ public interface SearchClient
       Long endTime)
       throws IOException;
 
+  default LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime,
+      DependencyType dependencyType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
+  }
+
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException;
+
+  default SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, DependencyType dependencyType) throws IOException {
+    return searchLineageByEntityCount(request);
+  }
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
       throws IOException;

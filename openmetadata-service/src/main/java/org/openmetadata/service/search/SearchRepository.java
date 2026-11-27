@@ -144,6 +144,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -5179,7 +5180,15 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineage(
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
-    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return searchLineage(lineageRequest, subjectContext, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest,
+      SubjectContext subjectContext,
+      DependencyType dependencyType)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest, dependencyType);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
@@ -5202,7 +5211,16 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageWithDirection(
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
-    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return searchLineageWithDirection(lineageRequest, subjectContext, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest,
+      SubjectContext subjectContext,
+      DependencyType dependencyType)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineageWithDirection(lineageRequest, dependencyType);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
@@ -5232,6 +5250,29 @@ public class SearchRepository {
       Long startTime,
       Long endTime)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime,
+        null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime,
+      DependencyType dependencyType)
+      throws IOException {
     return searchClient.getLineagePaginationInfo(
         fqn,
         upstreamDepth,
@@ -5240,7 +5281,8 @@ public class SearchRepository {
         includeDeleted,
         entityType,
         startTime,
-        endTime);
+        endTime,
+        dependencyType);
   }
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
@@ -5250,7 +5292,16 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageByEntityCount(
       EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
-    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return searchLineageByEntityCount(request, subjectContext, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request,
+      SubjectContext subjectContext,
+      DependencyType dependencyType)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineageByEntityCount(request, dependencyType);
     return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
   }
 

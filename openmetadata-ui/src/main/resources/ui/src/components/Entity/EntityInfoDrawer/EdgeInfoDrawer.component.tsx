@@ -12,6 +12,8 @@
  */
 
 import {
+  Badge,
+  Box,
   ButtonUtility,
   Card,
   Dropdown,
@@ -38,7 +40,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import {
   ColumnLineage,
+  DependencyType,
   EntityReference as LineagePipelineReference,
+  IndirectColumn,
   LineageDetails,
   Source,
 } from '../../../generated/type/entityLineage';
@@ -187,6 +191,25 @@ const getPipelineOverviewItem = (
   };
 };
 
+const getDependencyTypeOverviewItem = (
+  edgeInfo: LineageDetails | undefined,
+  t: TFunction
+): OverviewDataItem => {
+  const isIndirect = edgeInfo?.dependencyType === DependencyType.Indirect;
+
+  return {
+    name: t('label.dependency-type'),
+    value: (
+      <Badge
+        color={isIndirect ? 'gray' : 'brand'}
+        data-testid="edge-dependency-type-badge"
+        size="sm">
+        {t(isIndirect ? 'label.indirect' : 'label.direct')}
+      </Badge>
+    ),
+  };
+};
+
 const getCreatedByOverviewItem = (
   edgeInfo: LineageDetails | undefined,
   t: TFunction
@@ -231,6 +254,7 @@ const buildEdgeOverviewData = (
       t
     ),
     getPipelineOverviewItem(pipeline, pipelineEntityType, t),
+    getDependencyTypeOverviewItem(edgeInfo, t),
     getCreatedByOverviewItem(edgeInfo, t),
     getUpdatedByOverviewItem(edgeInfo, t),
   ].filter((item): item is OverviewDataItem => Boolean(item));
@@ -464,11 +488,43 @@ const EdgeInfoDrawer = ({
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
           </Typography>
         </SectionWithEdit>
+        {edgeEntity?.indirectColumns?.length > 0 && (
+          <SectionWithEdit
+            className="tw:mt-4 tw:last:border-b-0"
+            showEditButton={false}
+            title={t('label.indirect-column-plural')}>
+            <Box data-testid="edge-indirect-columns" direction="col" gap={2}>
+              {(edgeEntity.indirectColumns as IndirectColumn[]).map(
+                (col, idx) => (
+                  <Box
+                    align="center"
+                    className="tw:justify-between"
+                    gap={2}
+                    key={`${col.fromColumn}-${
+                      col.transformationSubtype ?? idx
+                    }`}>
+                    <Typography
+                      className="tw:min-w-0 tw:truncate"
+                      size="text-xs">
+                      {getNameFromFQN(col.fromColumn)}
+                    </Typography>
+                    {col.transformationSubtype && (
+                      <Badge color="gray" size="xs">
+                        {col.transformationSubtype}
+                      </Badge>
+                    )}
+                  </Box>
+                )
+              )}
+            </Box>
+          </SectionWithEdit>
+        )}
       </>
     );
   }, [
     isColumnLineage,
     edgeEntity?.description,
+    edgeEntity?.indirectColumns,
     hasEditAccess,
     edgeEntity.source,
     mysqlQuery,

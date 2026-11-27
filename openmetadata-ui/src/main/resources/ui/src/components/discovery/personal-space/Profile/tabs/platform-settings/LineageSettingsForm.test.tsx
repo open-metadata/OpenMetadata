@@ -84,7 +84,11 @@ describe('LineageSettingsForm', () => {
       fireEvent.click(screen.getByTestId('save-button'));
     });
 
-    const expected = { ...STORED, upstreamDepth: 4 };
+    const expected = {
+      ...STORED,
+      upstreamDepth: 4,
+      showIndirectEdges: true,
+    };
 
     expect(updateSettingsConfig).toHaveBeenCalledWith({
       config_type: SettingType.LineageSettings,
@@ -118,7 +122,7 @@ describe('LineageSettingsForm', () => {
 
     expect(updateSettingsConfig).toHaveBeenCalledWith({
       config_type: SettingType.LineageSettings,
-      config_value: { ...stored, upstreamDepth: 1 },
+      config_value: { ...stored, upstreamDepth: 1, showIndirectEdges: true },
     });
   });
 
@@ -178,6 +182,9 @@ describe('LineageSettingsForm', () => {
     );
     expect(screen.getByTestId('pipeline-view-mode-value')).toHaveTextContent(
       'label.node'
+    );
+    expect(screen.getByTestId('show-indirect-edges-value')).toHaveTextContent(
+      'label.enabled'
     );
   });
 });

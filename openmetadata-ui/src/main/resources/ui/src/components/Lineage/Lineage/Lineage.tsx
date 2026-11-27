@@ -128,6 +128,7 @@ import { updateNodeType } from '../../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { positionNodesUsingElk } from '../../../utils/Lineage/Layout/ElkLayoutUtils';
+import { applyIndirectEdgeVisibility } from '../../../utils/Lineage/LineagePureUtils';
 import { addBaseNodeDepthToNodes } from '../../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -381,7 +382,9 @@ const buildColumnLineageDetails = (
         )
       : undefined,
     columnsLineage: updatedColumns,
+    dependencyType: currentEdge.dependencyType,
     description: currentEdge?.description ?? '',
+    indirectColumns: currentEdge.indirectColumns,
     sqlQuery: currentEdge?.sqlQuery,
     tempLineageTables: currentEdge.tempLineageTables,
   };
@@ -707,12 +710,18 @@ export const Lineage = ({
   const {
     preferences: { showLineageTempTables = true },
   } = useCurrentUserPreferences();
+  const showIndirectEdges = lineageConfig.showIndirectEdges ?? true;
   // What the canvas draws. `entityLineage` holds both the stored edges and the
   // temp-table hops expanded from them; edits read it, and every write is
   // pruned so both views stay consistent.
   const visibleLineage = useMemo(
-    () => applyTempTableVisibility(entityLineage, showLineageTempTables),
-    [entityLineage, showLineageTempTables]
+    () =>
+      applyIndirectEdgeVisibility(
+        applyTempTableVisibility(entityLineage, showLineageTempTables),
+        showIndirectEdges,
+        entityFqn
+      ),
+    [entityLineage, showLineageTempTables, showIndirectEdges, entityFqn]
   );
 
   const cachedEntityEdgesAndMaps = useMemo(() => {
@@ -818,9 +827,13 @@ export const Lineage = ({
         return;
       }
 
-      const lineageToDraw = applyTempTableVisibility(
-        pruneTempLineage(lineageData),
-        showLineageTempTables
+      const lineageToDraw = applyIndirectEdgeVisibility(
+        applyTempTableVisibility(
+          pruneTempLineage(lineageData),
+          showLineageTempTables
+        ),
+        showIndirectEdges,
+        entityFqn
       );
       const seen = new Set<string>();
       const allNodes = [
@@ -907,21 +920,27 @@ export const Lineage = ({
       setNodes,
       setEdges,
       setColumnsHavingLineage,
+      showIndirectEdges,
       showLineageTempTables,
       zoomValue,
     ]
   );
 
-  // Showing or hiding temp tables redraws what is loaded: no refetch, so
-  // expanded nodes and loaded pages stay.
+  // Showing or hiding temp tables or indirect edges redraws what is loaded:
+  // no refetch, so expanded nodes and loaded pages stay.
   const drawnTempTablesRef = useRef(showLineageTempTables);
+  const drawnIndirectEdgesRef = useRef(showIndirectEdges);
   useEffect(() => {
-    if (drawnTempTablesRef.current === showLineageTempTables) {
+    if (
+      drawnTempTablesRef.current === showLineageTempTables &&
+      drawnIndirectEdgesRef.current === showIndirectEdges
+    ) {
       return;
     }
     drawnTempTablesRef.current = showLineageTempTables;
+    drawnIndirectEdgesRef.current = showIndirectEdges;
     redrawLineage(entityLineage);
-  }, [entityLineage, redrawLineage, showLineageTempTables]);
+  }, [entityLineage, redrawLineage, showIndirectEdges, showLineageTempTables]);
 
   const updateLineageData = useCallback(
     (
@@ -1407,9 +1426,13 @@ export const Lineage = ({
         return true;
       });
 
-      const drawn = applyTempTableVisibility(
-        { ...entityLineage, nodes: allNodes, edges: updatedEdgeWithColumns },
-        showLineageTempTables
+      const drawn = applyIndirectEdgeVisibility(
+        applyTempTableVisibility(
+          { ...entityLineage, nodes: allNodes, edges: updatedEdgeWithColumns },
+          showLineageTempTables
+        ),
+        showIndirectEdges,
+        entityFqn
       );
       const { columnsHavingLineage: updatedColumnsHavingLineage } =
         createEdgesAndEdgeMaps(
@@ -1432,6 +1455,7 @@ export const Lineage = ({
       isColumnLevelLineage,
       removeEdgeById,
       setColumnsHavingLineage,
+      showIndirectEdges,
       showLineageTempTables,
     ]
   );
@@ -1778,9 +1802,13 @@ export const Lineage = ({
 
             setNodes((prev) => prev.map(applyNodeTypeUpdate));
 
-            const drawn = applyTempTableVisibility(
-              { ...entityLineage, nodes: allNodes, edges: allEdges },
-              showLineageTempTables
+            const drawn = applyIndirectEdgeVisibility(
+              applyTempTableVisibility(
+                { ...entityLineage, nodes: allNodes, edges: allEdges },
+                showLineageTempTables
+              ),
+              showIndirectEdges,
+              entityFqn
             );
             const { edges: createdEdges, columnsHavingLineage } =
               createEdgesAndEdgeMaps(
@@ -1814,6 +1842,7 @@ export const Lineage = ({
       setEdges,
       setColumnsHavingLineage,
       setTracedNodes,
+      showIndirectEdges,
       showLineageTempTables,
     ]
   );
@@ -2100,6 +2129,7 @@ export const Lineage = ({
         upstreamDepth: defaultLineageConfig.upstreamDepth,
         downstreamDepth: defaultLineageConfig.downstreamDepth,
         pipelineViewMode: defaultLineageConfig.pipelineViewMode,
+        showIndirectEdges: defaultLineageConfig.showIndirectEdges ?? true,
         nodesPerLayer: 50,
       });
       setActiveLayer(

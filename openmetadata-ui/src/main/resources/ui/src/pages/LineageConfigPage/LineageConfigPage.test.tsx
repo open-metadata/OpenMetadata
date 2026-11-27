@@ -81,7 +81,36 @@ describe('LineageConfigPage', () => {
 
     expect(updateSettingsConfig).toHaveBeenCalledWith({
       config_type: 'lineageSettings',
-      config_value: { ...savedConfig, upstreamDepth: 5 },
+      config_value: {
+        ...savedConfig,
+        upstreamDepth: 5,
+        showIndirectEdges: true,
+      },
+    });
+  });
+
+  it('defaults showIndirectEdges to true and persists toggling it off', async () => {
+    await act(async () => {
+      render(<LineageConfigPage pageTitle="lineage" />);
+    });
+
+    const toggle = screen.getByRole('switch', {
+      name: /label.show-indirect-dependencies/,
+    });
+
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'lineageSettings',
+      config_value: {
+        ...savedConfig,
+        showIndirectEdges: false,
+      },
     });
   });
 
@@ -105,7 +134,11 @@ describe('LineageConfigPage', () => {
 
     expect(updateSettingsConfig).toHaveBeenCalledWith({
       config_type: 'lineageSettings',
-      config_value: { ...storedConfig, upstreamDepth: 1 },
+      config_value: {
+        ...storedConfig,
+        upstreamDepth: 1,
+        showIndirectEdges: true,
+      },
     });
   });
 

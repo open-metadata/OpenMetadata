@@ -16,6 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { DependencyType } from '../../generated/type/entityLineage';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
@@ -176,6 +177,7 @@ const defaultMockState = {
   lineageDirection: LineageDirection.Downstream,
   lineagePagingInfo: mockLineagePagingInfo,
   nodeDepth: 1,
+  dependencyTypeFilter: 'ALL' as const,
   setFilterNodes: jest.fn(),
   setLoading: jest.fn(),
   setFilterSelectionActive: jest.fn(),
@@ -188,6 +190,7 @@ const defaultMockState = {
   setLineageDirection: jest.fn(),
   setLineagePagingInfo: jest.fn(),
   setNodeDepth: jest.fn(),
+  setDependencyTypeFilter: jest.fn(),
   resetFilters: jest.fn(),
   toggleFilterSelection: jest.fn(),
 } as unknown as ReturnType<typeof useLineageTableState>;
@@ -1306,6 +1309,72 @@ describe('LineageTable', () => {
 
       onPageReset?.();
 
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('Dependency Type column and filter', () => {
+    it('renders Direct and Indirect badges per row', () => {
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        filterNodes: [
+          {
+            ...mockLineageNodes[0],
+            dependencyType: DependencyType.Direct,
+          },
+          {
+            ...mockLineageNodes[1],
+            dependencyType: DependencyType.Indirect,
+          },
+        ],
+      } as unknown as ReturnType<typeof useLineageTableState>);
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const badges = screen.getAllByTestId('dependency-type-badge');
+
+      expect(badges).toHaveLength(2);
+      expect(badges[0]).toHaveTextContent('label.direct');
+      expect(badges[1]).toHaveTextContent('label.indirect');
+    });
+
+    it('passes active dependencyType filter to getLineageByEntityCount and updates filter from dropdown', async () => {
+      const setDependencyTypeFilter = jest.fn();
+      const handlePageChange = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 50 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        dependencyTypeFilter: DependencyType.Indirect,
+        setDependencyTypeFilter,
+      } as unknown as ReturnType<typeof useLineageTableState>);
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dependencyType: DependencyType.Indirect,
+          })
+        );
+      });
+
+      fireEvent.click(screen.getByTestId('dependency-type-filter-dropdown'));
+      fireEvent.click(
+        await screen.findByRole('menuitemradio', { name: 'label.direct' })
+      );
+
+      expect(setDependencyTypeFilter).toHaveBeenCalledWith(
+        DependencyType.Direct
+      );
       expect(handlePageChange).toHaveBeenCalledWith(1);
     });
   });

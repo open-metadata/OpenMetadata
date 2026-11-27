@@ -15,10 +15,119 @@ import { get, omit, pick } from 'lodash';
 import type { ColumnLevelLineageNode } from '../../components/Lineage/Lineage.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import type { Column } from '../../generated/entity/data/table';
+import { DependencyType } from '../../generated/type/entityLineage';
 import type { TagLabel } from '../../generated/type/tagLabel';
-import type { EdgeDetails, NodeData } from '../../interface/lineage.interface';
+import type {
+  EdgeDetails,
+  EntityLineageResponse,
+  NodeData,
+} from '../../interface/lineage.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import type { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+
+export const isIndirectEdgeDetails = (
+  edge?: Pick<EdgeDetails, 'dependencyType'>
+): boolean => edge?.dependencyType === DependencyType.Indirect;
+
+const addAdjacencyEdge = (
+  adjacency: Map<string, string[]>,
+  source: string,
+  target: string
+) => {
+  const neighbors = adjacency.get(source) ?? [];
+  neighbors.push(target);
+  adjacency.set(source, neighbors);
+};
+
+const traverseReachable = (
+  rootId: string,
+  adjacency: Map<string, string[]>,
+  reachable: Set<string>
+) => {
+  const queue = [rootId];
+  const visited = new Set<string>([rootId]);
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) {
+      break;
+    }
+    for (const next of adjacency.get(current) ?? []) {
+      if (!visited.has(next)) {
+        visited.add(next);
+        reachable.add(next);
+        queue.push(next);
+      }
+    }
+  }
+};
+
+const collectReachableNodeIds = (
+  rootId: string,
+  keptEdges: EdgeDetails[]
+): Set<string> => {
+  const forward = new Map<string, string[]>();
+  const backward = new Map<string, string[]>();
+  for (const edge of keptEdges) {
+    addAdjacencyEdge(forward, edge.fromEntity.id, edge.toEntity.id);
+    addAdjacencyEdge(backward, edge.toEntity.id, edge.fromEntity.id);
+  }
+
+  const reachable = new Set<string>([rootId]);
+  traverseReachable(rootId, forward, reachable);
+  traverseReachable(rootId, backward, reachable);
+
+  return reachable;
+};
+
+/**
+ * Filters out INDIRECT lineage edges and any nodes reachable only through
+ * those hidden indirect edges when `showIndirectEdges` is `false`.
+ */
+export const applyIndirectEdgeVisibility = <T extends EntityLineageResponse>(
+  lineage: T,
+  showIndirectEdges: boolean,
+  rootFqn?: string
+): T => {
+  if (showIndirectEdges) {
+    return lineage;
+  }
+
+  const edges = lineage.edges ?? [];
+  if (!edges.some(isIndirectEdgeDetails)) {
+    return lineage;
+  }
+
+  const keptEdges = edges.filter((edge) => !isIndirectEdgeDetails(edge));
+  const nodes = lineage.nodes ?? [];
+  const rootId =
+    lineage.entity?.id ??
+    (rootFqn
+      ? nodes.find((node) => node.fullyQualifiedName === rootFqn)?.id
+      : undefined);
+
+  if (!rootId) {
+    const connectedIds = new Set(
+      keptEdges.flatMap((edge) => [edge.fromEntity.id, edge.toEntity.id])
+    );
+
+    return {
+      ...lineage,
+      nodes: nodes.filter((node) => connectedIds.has(node.id)),
+      edges: keptEdges,
+    };
+  }
+
+  const reachable = collectReachableNodeIds(rootId, keptEdges);
+
+  return {
+    ...lineage,
+    nodes: nodes.filter((node) => reachable.has(node.id)),
+    edges: keptEdges.filter(
+      (edge) =>
+        reachable.has(edge.fromEntity.id) && reachable.has(edge.toEntity.id)
+    ),
+  };
+};
 
 const buildColumnTagMap = <T>(
   entityData: T & { columns?: Column[] }

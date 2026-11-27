@@ -54,6 +54,7 @@ interface LineageFormValues {
   downstreamDepth: string;
   lineageLayer: SelectOption | null;
   pipelineViewMode: SelectOption | null;
+  showIndirectEdges: boolean;
 }
 
 const LineageSettingsForm = ({
@@ -77,6 +78,7 @@ const LineageSettingsForm = ({
       downstreamDepth: '',
       lineageLayer: null,
       pipelineViewMode: null,
+      showIndirectEdges: true,
     },
   });
 
@@ -108,6 +110,7 @@ const LineageSettingsForm = ({
       pipelineViewMode: config?.pipelineViewMode
         ? { id: config.pipelineViewMode }
         : null,
+      showIndirectEdges: config?.showIndirectEdges ?? true,
     });
   }, [config, form]);
 
@@ -157,6 +160,15 @@ const LineageSettingsForm = ({
         'field-pipeline-view-mode',
         viewModeOptions
       ),
+      {
+        name: 'showIndirectEdges',
+        label: t('label.show-indirect-dependencies'),
+        type: FieldTypes.SWITCH,
+        doc:
+          docs.showIndirectEdges ??
+          t('message.lineage-show-indirect-dependencies-hint'),
+        props: { 'data-testid': 'field-show-indirect-edges' },
+      },
     ];
   }, [docs, layerOptions, t, viewModeOptions]);
 
@@ -176,6 +188,7 @@ const LineageSettingsForm = ({
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer?.id as LineageLayer,
           pipelineViewMode: values.pipelineViewMode?.id as PipelineViewMode,
+          showIndirectEdges: values.showIndirectEdges,
         },
       });
       showSuccessToast(

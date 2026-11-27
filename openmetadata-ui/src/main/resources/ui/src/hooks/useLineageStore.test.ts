@@ -39,6 +39,7 @@ describe('useLineageStore', () => {
       downstreamDepth: 3,
       nodesPerLayer: 50,
       pipelineViewMode: PipelineViewMode.Node,
+      showIndirectEdges: true,
     });
     expect(result.current.tracedColumns).toEqual(new Set());
     expect(result.current.tracedNodes).toEqual(new Set());

@@ -71,6 +71,7 @@ import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -463,6 +464,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, DependencyType dependencyType) throws IOException {
+    return ensureLineageBuilder().searchLineage(lineageRequest, dependencyType);
+  }
+
+  @Override
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     return searchManager.searchWithNLQ(request, subjectContext);
   }
@@ -477,6 +484,12 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, DependencyType dependencyType) throws IOException {
+    return ensureLineageBuilder().searchLineageWithDirection(lineageRequest, dependencyType);
   }
 
   @Override
@@ -495,6 +508,30 @@ public class ElasticSearchClient implements SearchClient {
       Long startTime,
       Long endTime)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime,
+        null);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime,
+      DependencyType dependencyType)
+      throws IOException {
     return ensureLineageBuilder()
         .getLineagePaginationInfo(
             fqn,
@@ -504,13 +541,20 @@ public class ElasticSearchClient implements SearchClient {
             includeDeleted,
             entityType,
             startTime,
-            endTime);
+            endTime,
+            dependencyType);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
     return ensureLineageBuilder().searchLineageByEntityCount(request);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, DependencyType dependencyType) throws IOException {
+    return ensureLineageBuilder().searchLineageByEntityCount(request, dependencyType);
   }
 
   @Override

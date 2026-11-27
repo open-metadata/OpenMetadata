@@ -36,11 +36,13 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder;
+import org.openmetadata.service.search.lineage.LineageDependencyResolver;
 import org.openmetadata.service.search.lineage.LineageQueryContext;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1327,5 +1329,117 @@ class OSLineageGraphBuilderTest {
       assertEquals(2, result.getPaginationInfo().getDownstreamDepthInfo().size());
       assertEquals(2, result.getPaginationInfo().getDownstreamDepthInfo().get(1).getEntityCount());
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void searchLineageByEntityCount_transitiveDiamondDependencyTypeAnnotationAndFiltering()
+      throws IOException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<OsUtils> osUtilsMock = mockStatic(OsUtils.class);
+        MockedStatic<LineageUtil> lineageUtilMock =
+            mockStatic(LineageUtil.class, Mockito.CALLS_REAL_METHODS)) {
+
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubOsUtilsGetSearchRequest(osUtilsMock);
+
+      String directA = "service.database.schema.direct_a";
+      String indirectB = "service.database.schema.indirect_b";
+      String diamondC = "service.database.schema.diamond_c";
+      String pureIndirectD = "service.database.schema.pure_indirect_d";
+
+      Map<String, Object> rootDoc = entityDoc(ROOT_FQN, List.of());
+      Map<String, Object> docA =
+          entityDoc(directA, List.of(typedLineageEdge(ROOT_FQN, directA, DependencyType.DIRECT)));
+      Map<String, Object> docB =
+          entityDoc(
+              indirectB, List.of(typedLineageEdge(ROOT_FQN, indirectB, DependencyType.INDIRECT)));
+      Map<String, Object> docC =
+          entityDoc(
+              diamondC,
+              List.of(
+                  typedLineageEdge(directA, diamondC, DependencyType.DIRECT),
+                  typedLineageEdge(indirectB, diamondC, DependencyType.DIRECT)));
+      Map<String, Object> docD =
+          entityDoc(
+              pureIndirectD,
+              List.of(typedLineageEdge(indirectB, pureIndirectD, DependencyType.DIRECT)));
+
+      osUtilsMock
+          .when(
+              () ->
+                  OsUtils.searchEntityByKey(
+                      any(OpenSearchClient.class),
+                      any(),
+                      anyString(),
+                      anyString(),
+                      any(),
+                      anyList()))
+          .thenReturn(rootDoc);
+
+      Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      List<Hit<JsonData>> depth1WalkHits = List.of(hitFor(docs, docA), hitFor(docs, docB));
+      List<Hit<JsonData>> depth2WalkHits = List.of(hitFor(docs, docC), hitFor(docs, docD));
+      List<Hit<JsonData>> allPageHits =
+          List.of(hitFor(docs, docA), hitFor(docs, docB), hitFor(docs, docC), hitFor(docs, docD));
+      List<Hit<JsonData>> indirectPageHits = List.of(hitFor(docs, docB), hitFor(docs, docD));
+
+      osUtilsMock
+          .when(() -> OsUtils.jsonDataToMap(any(JsonData.class)))
+          .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
+      stubOsClientSearch();
+      when(hitsMetadata.hits())
+          .thenReturn(
+              depth1WalkHits,
+              depth2WalkHits,
+              allPageHits,
+              depth1WalkHits,
+              depth2WalkHits,
+              indirectPageHits);
+      lineageUtilMock
+          .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
+          .then(invocation -> null);
+
+      OSLineageGraphBuilder builder = new OSLineageGraphBuilder(esClient);
+      EntityCountLineageRequest request =
+          new EntityCountLineageRequest()
+              .withFqn(ROOT_FQN)
+              .withDirection(LineageDirection.DOWNSTREAM)
+              .withMaxDepth(2)
+              .withNodeDepth(2)
+              .withIncludeDeleted(false)
+              .withFrom(0)
+              .withSize(10)
+              .withIncludeSourceFields(Set.of())
+              .withIsConnectedVia(false);
+
+      SearchLineageResult unfiltered = builder.searchLineageByEntityCount(request, null);
+      assertEquals(
+          DependencyType.DIRECT,
+          LineageDependencyResolver.getNodeDependencyType(unfiltered.getNodes().get(directA)));
+      assertEquals(
+          DependencyType.INDIRECT,
+          LineageDependencyResolver.getNodeDependencyType(unfiltered.getNodes().get(indirectB)));
+      assertEquals(
+          DependencyType.DIRECT,
+          LineageDependencyResolver.getNodeDependencyType(unfiltered.getNodes().get(diamondC)));
+      assertEquals(
+          DependencyType.INDIRECT,
+          LineageDependencyResolver.getNodeDependencyType(
+              unfiltered.getNodes().get(pureIndirectD)));
+
+      SearchLineageResult indirectOnly =
+          builder.searchLineageByEntityCount(request, DependencyType.INDIRECT);
+      assertTrue(indirectOnly.getNodes().containsKey(ROOT_FQN));
+      assertTrue(indirectOnly.getNodes().containsKey(indirectB));
+      assertTrue(indirectOnly.getNodes().containsKey(pureIndirectD));
+      assertFalse(indirectOnly.getNodes().containsKey(directA));
+      assertFalse(indirectOnly.getNodes().containsKey(diamondC));
+    }
+  }
+
+  private EsLineageData typedLineageEdge(
+      String fromFqn, String toFqn, DependencyType dependencyType) {
+    return lineageEdge(fromFqn, toFqn).withDependencyType(dependencyType);
   }
 }

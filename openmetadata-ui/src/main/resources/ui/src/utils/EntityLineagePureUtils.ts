@@ -676,7 +676,7 @@ export const pruneTempLineage = (
 
 export const getLineageConfigFormValues = (
   config: LineageConfig
-): Omit<LineageConfigFormValues, 'showTempTables'> => ({
+): Omit<LineageConfigFormValues, 'showTempTables' | 'showIndirectEdges'> => ({
   upstreamDepth: String(config.upstreamDepth ?? ''),
   downstreamDepth: String(config.downstreamDepth ?? ''),
   nodesPerLayer: String(config.nodesPerLayer ?? ''),

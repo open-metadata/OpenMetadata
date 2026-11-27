@@ -200,6 +200,7 @@ export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
   'name',
   'owners',
   'nodeDepth',
+  'dependencyType',
   'toEntity',
   'fromEntity',
   'toColumn',
