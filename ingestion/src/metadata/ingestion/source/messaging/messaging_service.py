@@ -144,12 +144,12 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: MessagingServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
-        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.connection
+        if self._connection is None:
+            self.connection_obj = get_connection(self.service_connection)
         with close_on_failure(self._connection):
             self.test_connection()
+            self.connection = self._connection.client if self._connection else self.connection_obj
+        self.connection_obj = self.connection
 
     @property
     def name(self) -> str:

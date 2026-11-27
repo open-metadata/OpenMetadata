@@ -71,6 +71,18 @@ export const OnIcon: StoryObj = {
   ),
 };
 
+export const Light: StoryObj = {
+  parameters: { theme: 'both' },
+  render: () => (
+    <Tooltip
+      description="Glossary Approval Workflow"
+      title="Approved by ana.lopez"
+      variant="light">
+      <span>Hover over this status</span>
+    </Tooltip>
+  ),
+};
+
 export const ButtonWithTooltip: StoryObj = {
   render: () => (
     <Button color="secondary" tooltip="Built-in tooltip via the tooltip prop">

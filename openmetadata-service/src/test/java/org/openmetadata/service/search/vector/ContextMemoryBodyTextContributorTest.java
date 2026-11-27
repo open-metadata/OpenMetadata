@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 class ContextMemoryBodyTextContributorTest {
@@ -46,6 +47,24 @@ class ContextMemoryBodyTextContributorTest {
     assertTrue(body.contains("question: How do I find certified tables?"));
     assertTrue(body.contains("answer: Filter the Explore page by Certification."));
     assertTrue(body.contains("description: Detailed notes"));
+  }
+
+  @Test
+  void extractDoesNotIncludeSourceFileLabels() {
+    ContextMemory memory =
+        baseMemory()
+            .withQuestion("What is the refund window?")
+            .withAnswer("Thirty days")
+            .withSourceFile(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.CONTEXT_FILE)
+                    .withName("private-acquisition-plan")
+                    .withDisplayName("Private acquisition plan"));
+
+    assertEquals(
+        "question: What is the refund window?; answer: Thirty days",
+        ContextMemoryBodyTextContributor.extractBodyText(memory));
   }
 
   @Test

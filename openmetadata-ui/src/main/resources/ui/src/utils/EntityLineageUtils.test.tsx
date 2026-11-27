@@ -687,6 +687,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: '',
         childrenHeading: '',
         childrenCount: 0,
       });
@@ -702,6 +703,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: '',
         childrenHeading: '',
         childrenCount: 0,
       });
@@ -723,6 +725,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -739,6 +742,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 0,
       });
@@ -758,6 +762,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: flattenChildren,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 1,
       });
@@ -778,6 +783,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: charts,
+        childHeading: 'label.chart',
         childrenHeading: 'label.chart-plural',
         childrenCount: 2,
       });
@@ -794,6 +800,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.chart',
         childrenHeading: 'label.chart-plural',
         childrenCount: 0,
       });
@@ -814,6 +821,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: mlFeatures,
+        childHeading: 'label.feature',
         childrenHeading: 'label.feature-plural',
         childrenCount: 2,
       });
@@ -830,6 +838,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.feature',
         childrenHeading: 'label.feature-plural',
         childrenCount: 0,
       });
@@ -851,6 +860,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -873,6 +883,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 2,
       });
@@ -888,6 +899,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.column',
         childrenHeading: 'label.column-plural',
         childrenCount: 0,
       });
@@ -910,6 +922,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -925,6 +938,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -947,6 +961,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -969,6 +984,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -992,6 +1008,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: responseFields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 1,
       });
@@ -1007,6 +1024,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -1027,6 +1045,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: fields,
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 2,
       });
@@ -1043,6 +1062,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
+        childHeading: 'label.field',
         childrenHeading: 'label.field-plural',
         childrenCount: 0,
       });
@@ -1062,6 +1082,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [node],
+        childHeading: 'label.metric',
         childrenHeading: 'label.metric',
         childrenCount: 0,
       });

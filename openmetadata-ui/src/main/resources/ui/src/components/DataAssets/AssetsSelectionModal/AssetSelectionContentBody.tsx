@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Box, Button, Checkbox } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  Box,
+  Button,
+  Checkbox,
+  Toggle,
+} from '@openmetadata/ui-core-components';
 import { Loading01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useState } from 'react';
@@ -30,6 +36,8 @@ export interface AssetSelectionContentBodyProps
     | 'assetsFilter'
     | 'search'
     | 'setSearch'
+    | 'isExactName'
+    | 'onExactNameChange'
     | 'items'
     | 'failedStatus'
     | 'dryRunWarnings'
@@ -61,6 +69,8 @@ type AssetSelectionHeaderProps = Pick<
   | 'infoBannerText'
   | 'search'
   | 'setSearch'
+  | 'isExactName'
+  | 'onExactNameChange'
   | 'failedStatus'
   | 'exportJob'
   | 'assetJobResponse'
@@ -94,6 +104,8 @@ const AssetSelectionHeader = ({
   infoBannerText,
   search,
   setSearch,
+  isExactName,
+  onExactNameChange,
   failedStatus,
   exportJob,
   assetJobResponse,
@@ -122,15 +134,25 @@ const AssetSelectionHeader = ({
         </Alert>
       )}
 
-      <Searchbar
-        removeMargin
-        showClearSearch
-        placeholder={t('label.search-entity', {
-          entity: t('label.asset-plural'),
-        })}
-        searchValue={search}
-        onSearch={setSearch}
-      />
+      <Box align="center" gap={4}>
+        <Searchbar
+          removeMargin
+          showClearSearch
+          containerClassName="tw:min-w-0 tw:flex-1"
+          placeholder={t('label.search-entity', {
+            entity: t('label.asset-plural'),
+          })}
+          searchValue={search}
+          onSearch={setSearch}
+        />
+        <Toggle
+          className="tw:shrink-0"
+          data-testid="exact-name-toggle"
+          isSelected={isExactName}
+          label={t('label.exact-name')}
+          onChange={onExactNameChange}
+        />
+      </Box>
 
       <Box align="center" data-testid="asset-filters" gap={4} justify="between">
         <ExploreQuickFilters
@@ -190,6 +212,9 @@ const AssetSelectionList = ({
   getErrorStatusAndMessage,
 }: AssetSelectionListProps) => {
   const { t } = useTranslation();
+  const isAllSelected = items.every(({ _source }) =>
+    selectedItems?.has(_source.id ?? '')
+  );
 
   return (
     // p-1 keeps the cards' shadow inside the scroll container's clip.
@@ -202,6 +227,8 @@ const AssetSelectionList = ({
         // Non-scrolling wrapper: Card's overflow-hidden would otherwise let the scroll flex shrink it to 0.
         <Box direction="col" gap={3}>
           <Checkbox
+            isDisabled={isLoading}
+            isSelected={isAllSelected}
             label={t('label.select-field', {
               field: t('label.all'),
             })}
@@ -249,6 +276,8 @@ const AssetSelectionContentBody = ({
   infoBannerText,
   search,
   setSearch,
+  isExactName,
+  onExactNameChange,
   items,
   failedStatus,
   dryRunWarnings,
@@ -288,9 +317,11 @@ const AssetSelectionContentBody = ({
         filters={filters}
         handleQuickFiltersValueSelect={handleQuickFiltersValueSelect}
         infoBannerText={infoBannerText}
+        isExactName={isExactName}
         quickFilterQuery={quickFilterQuery}
         search={search}
         setSearch={setSearch}
+        onExactNameChange={onExactNameChange}
       />
 
       <AssetSelectionList

@@ -18,6 +18,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
@@ -946,7 +947,21 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
+      Set.of(
+          "tier",
+          "certification",
+          "metricGroup",
+          "primaryEntity",
+          "sourceEntity",
+          "sourceFile",
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "parentId",
+          "chunkIndex",
+          "chunkCount");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 
@@ -974,6 +989,15 @@ public interface SearchClient
       throws IOException {
     throw new UnsupportedOperationException(
         "rawSearchRequest is not supported by " + getClass().getSimpleName());
+  }
+
+  /**
+   * Renders this engine's typed query builders as query DSL JSON, for callers that compose raw
+   * requests for {@link #rawSearchRequest}.
+   */
+  default SearchQueryDsl getQueryDsl() {
+    throw new UnsupportedOperationException(
+        "getQueryDsl is not supported by " + getClass().getSimpleName());
   }
 
   default ExecutorService getAsyncExecutor() {

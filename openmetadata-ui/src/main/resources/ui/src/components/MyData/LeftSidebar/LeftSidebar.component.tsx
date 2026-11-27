@@ -34,6 +34,7 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
 import { LeftSidebarItem as SidebarEntry } from '../../../interface/sidebar.interface';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import {
   getSidebarActiveKeys,
@@ -52,7 +53,7 @@ const LeftSidebar = () => {
   const {
     preferences: { isSidebarCollapsed },
   } = useCurrentUserPreferences();
-  const isDirectionRTL = i18n.dir() === 'rtl';
+  const isDirectionRTL = getLanguageDirection(i18n) === 'rtl';
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [collapsedMenuKey, setCollapsedMenuKey] = useState<string>();
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -267,7 +268,7 @@ const LeftSidebar = () => {
         'tw:w-57 tw:min-w-57 tw:max-w-57': !isSidebarCollapsed,
       })}
       data-testid="left-sidebar"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage

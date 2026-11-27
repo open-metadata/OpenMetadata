@@ -12,7 +12,7 @@
  */
 import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFValidationError, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
 import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
@@ -139,16 +139,13 @@ const classificationLanguageEnumNames = (
 ).map((v) => capitalize(v));
 
 /**
- * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
- * section, whose children are unmounted until it is expanded. Without their own boundary they
- * suspend the form-wide one below, which swaps the entire form for a loader; the scroll container
- * then collapses, the browser clamps scrollTop to 0, and the form repaints at the top. Wrapping
- * localises the suspension so expanding a section keeps the scroll position.
+ * Collapsed sections keep these fields mounted (hidden, not unmounted) so `transformErrors` still
+ * reports their validation errors. If their chunk resolves late, their own boundary shows a local
+ * loader instead of suspending the form-wide one below, which would swap the entire form for a
+ * loader, collapse the scroll container and repaint the form at the top.
  *
  * Wrapped at module scope, not inside the `useMemo` registries: `withSuspenseFallback` returns a
  * new component per call, so wrapping per render would remount the field on every re-render.
- * The remaining lazy fields/templates all render at initial mount, where a form-wide loader is
- * the correct behaviour, so they are deliberately left alone.
  */
 const SuspendedFilterPatternField = withSuspenseFallback(FilterPatternField);
 const SuspendedProfileSampleConfigField = withSuspenseFallback(
@@ -193,12 +190,17 @@ const IngestionWorkflowForm = forwardRef<
   const formRef = useRef<Form<IngestionWorkflowData>>(null);
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
+  const [failedSubmit, setFailedSubmit] = useState<{
+    count: number;
+    firstError?: RJSFValidationError;
+  }>({ count: 0 });
   const { t } = useTranslation();
 
   const schema = useMemo(() => {
     const workflowSchema = getSchemaByWorkflowType(
       pipeLineType,
-      serviceCategory
+      serviceCategory,
+      serviceData?.serviceType
     );
 
     return serviceData?.serviceType === 'BigQuery'
@@ -320,7 +322,9 @@ const IngestionWorkflowForm = forwardRef<
       OneOfField: CoreOneOfField,
     };
 
-    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField(
+      serviceData?.serviceType
+    );
 
     if (
       !isUndefined(SparkAgentField) &&
@@ -334,7 +338,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return fields;
-  }, [pipeLineType]);
+  }, [pipeLineType, serviceData?.serviceType]);
 
   // RJSF getWidget only accepts function/forwardRef/memo widgets; React.lazy
   // widgets are objects and throw "Unsupported widget definition". Wrap each in a
@@ -376,6 +380,19 @@ const IngestionWorkflowForm = forwardRef<
     [onFocus, schema]
   );
 
+  const handleError = (errors: RJSFValidationError[]) =>
+    setFailedSubmit((prev) => ({
+      count: prev.count + 1,
+      firstError: errors[0],
+    }));
+
+  useEffect(() => {
+    if (failedSubmit.firstError) {
+      formRef.current?.focusOnError(failedSubmit.firstError);
+      document.activeElement?.scrollIntoView({ block: 'center' });
+    }
+  }, [failedSubmit]);
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = formatAdditionalProperties(cloneDeep(e.formData));
@@ -415,12 +432,14 @@ const IngestionWorkflowForm = forwardRef<
       }>
       <FormReadyNotifier onReady={onReady} />
       <Form
-        focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
         customValidate={validateOwnerConfigMaps}
         fields={customFields}
-        formContext={{ handleFocus: handleFieldFocus }}
+        formContext={{
+          failedSubmitCount: failedSubmit.count,
+          handleFocus: handleFieldFocus,
+        }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -438,6 +457,7 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
+        onError={handleError}
         onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width

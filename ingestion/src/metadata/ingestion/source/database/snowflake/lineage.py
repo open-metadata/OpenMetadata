@@ -40,6 +40,9 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    container_lookup_paths,
+)
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.connection import (
     probe_access_history_available,
@@ -47,6 +50,7 @@ from metadata.ingestion.source.database.snowflake.connection import (
 from metadata.ingestion.source.database.snowflake.identifiers import (
     quote_account_usage_schema,
 )
+from metadata.ingestion.source.database.snowflake.lineage_utils import get_view_lineage_parser
 from metadata.ingestion.source.database.snowflake.models import (
     AccessHistoryRow,
     CopyHistoryRow,
@@ -68,6 +72,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.db_utils import ViewLineageParserFactory
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -337,6 +342,10 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             yield from self._yield_access_history_lineage()  # pyright: ignore[reportReturnType]
             return
         yield from super().yield_query_lineage()
+
+    def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
+        """Resolve `IDENTIFIER('<name>')` tables before parsing view lineage."""
+        return get_view_lineage_parser
 
     def _iter(self, *args, **kwargs) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Run the base lineage producers, then append semantic view lineage.
@@ -693,11 +702,13 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
     def _resolve_container_by_path(self, stage_location: str) -> Container | None:
         try:
-            results = self.metadata.es_search_container_by_path(full_path=stage_location) or []
-            return results[0] if results else None
+            for path in container_lookup_paths(stage_location):
+                results = self.metadata.es_search_container_by_path(full_path=path) or []
+                if results:
+                    return results[0]
         except Exception as exc:
             logger.debug("Failed to resolve Container for path `%s`: %s", stage_location, exc)
-            return None
+        return None
 
     @staticmethod
     def _split_snowflake_fqn(snowflake_fqn: str) -> tuple[str, str, str] | None:

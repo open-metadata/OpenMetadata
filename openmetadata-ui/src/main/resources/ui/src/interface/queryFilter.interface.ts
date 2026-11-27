@@ -32,6 +32,18 @@ export interface EsWildCard {
   };
 }
 
+export interface EsRegexp {
+  regexp: {
+    [key: string]: { value: string; case_insensitive?: boolean };
+  };
+}
+
+export interface EsMatchPhrase {
+  match_phrase: {
+    [key: string]: string;
+  };
+}
+
 export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];

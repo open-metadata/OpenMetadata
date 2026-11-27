@@ -25,8 +25,8 @@ import {
   getMcpTools,
   updateMcpConfig,
 } from '../../../../rest/mcpConfigAPI';
-import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { getSettingsSource } from '../../../../rest/settingConfigAPI';
+import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useMcpConfiguration } from './useMcpConfiguration';
 
@@ -173,6 +173,35 @@ describe('useMcpConfiguration', () => {
     expect(result.current.isSaving).toBe(false);
   });
 
+  it('saves the server switch and registration policy while preserving hidden settings', async () => {
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    const policy = {
+      enabled: false,
+      dynamicClientRegistrationEnabled: false,
+      allowedRedirectHosts: ['trusted.example'],
+      allowLoopbackRedirects: false,
+      allowNativeRedirects: false,
+    };
+    await act(async () => result.current.saveMcpConfig(policy));
+
+    expect(mockUpdateMcpConfig).toHaveBeenCalledWith({
+      ...storedConfig,
+      ...policy,
+    });
+    expect(result.current.formConfig).toMatchObject(policy);
+  });
+
+  it('blocks saves after a failed read so hidden settings cannot be lost', async () => {
+    mockGetMcpConfig.mockRejectedValue({ response: { status: 500 } });
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    await act(async () => result.current.saveMcpConfig({ enabled: false }));
+
+    expect(mockUpdateMcpConfig).not.toHaveBeenCalled();
+    expect(result.current.fetchFailed).toBe(true);
+  });
+
   it('disables fields the deployment manages', async () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [mcpSource(['/allowedOrigins'])],
@@ -194,6 +223,11 @@ describe('useMcpConfiguration', () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [
         mcpSource([
+          '/enabled',
+          '/dynamicClientRegistrationEnabled',
+          '/allowedRedirectHosts',
+          '/allowLoopbackRedirects',
+          '/allowNativeRedirects',
           '/baseUrl',
           '/allowedOrigins',
           '/maxResponseChars',

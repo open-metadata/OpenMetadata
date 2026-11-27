@@ -40,7 +40,9 @@ import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload'
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { isTagsTaskType } from '../../../../utils/TaskActionUtils';
 import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
+import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -56,6 +58,7 @@ import {
   TaskDetailRow,
   TaskTypeBadge,
 } from './taskDetail.types';
+import { DEFAULT_TYPE_BADGE, TASK_TYPE_BADGE } from './taskLabel.utils';
 import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -116,110 +119,6 @@ const PII_SENSITIVE_TAG = 'PII.Sensitive';
 // utils' `getTierTags`: that module reaches the customization and permission
 // layers at import time, which this file must not drag into the task list.
 const TIER_TAG_PREFIX = `${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`;
-
-// Type → badge label / colour / icon. Colour carries meaning here (an incident
-// reads red, an access request blue), so it is declared per type rather than
-// derived from the category, which is coarser.
-const TASK_TYPE_BADGE: Record<
-  string,
-  {
-    labelKey: string;
-    color: TaskTypeBadge['color'];
-    icon: TaskTypeBadge['icon'];
-  }
-> = {
-  [TaskType.TestCaseResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.IncidentResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.DataAccessRequest]: {
-    labelKey: 'label.access-request',
-    color: 'blue',
-    icon: 'access',
-  },
-  [TaskType.TagUpdate]: {
-    labelKey: 'label.tag-request',
-    color: 'purple',
-    icon: 'tag',
-  },
-  [TaskType.OwnershipUpdate]: {
-    labelKey: 'label.ownership',
-    color: 'blue-light',
-    icon: 'ownership',
-  },
-  [TaskType.DescriptionUpdate]: {
-    labelKey: 'label.description',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.Suggestion]: {
-    labelKey: 'label.suggestion',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.TierUpdate]: {
-    labelKey: 'label.tier',
-    color: 'orange',
-    icon: 'tier',
-  },
-  [TaskType.DomainUpdate]: {
-    labelKey: 'label.domain',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.GlossaryApproval]: {
-    labelKey: 'label.glossary',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.RequestApproval]: {
-    labelKey: 'label.approval',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.CustomTask]: {
-    labelKey: 'label.custom-task',
-    color: 'gray',
-    icon: 'approval',
-  },
-  [TaskType.DataQualityReview]: {
-    labelKey: 'label.data-quality-review',
-    color: 'blue-light',
-    icon: 'approval',
-  },
-  [TaskType.PipelineReview]: {
-    labelKey: 'label.pipeline-review',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.MemoryConflictReview]: {
-    labelKey: 'label.memory-conflict',
-    color: 'orange',
-    icon: 'approval',
-  },
-  [TaskType.MetadataCompletion]: {
-    labelKey: 'label.missing-metadata',
-    color: 'warning',
-    icon: 'description',
-  },
-  [TaskType.RecognizerFeedbackApproval]: {
-    labelKey: 'label.recognizer-feedback',
-    color: 'purple',
-    icon: 'tag',
-  },
-};
-
-const DEFAULT_TYPE_BADGE = {
-  labelKey: 'label.task',
-  color: 'gray' as TaskTypeBadge['color'],
-  icon: 'approval' as TaskTypeBadge['icon'],
-};
 
 // A Metadata Completion task that carries a rejection asks for a revision, not for fields.
 const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
@@ -429,22 +328,25 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
 
   // Who resolved it reads in the line under the title ("Rejected by … on …"),
   // so the rows keep only when and why.
-  return [
-    ...textRow(
-      'resolvedOn',
-      'calendar',
-      t('label.resolved-on'),
-      resolution.resolvedOn
-    ),
-    ...(resolution.hasResolution
-      ? textRow(
-          'resolutionComment',
-          'type',
-          t(resolution.commentLabelKey),
-          resolution.comment
-        )
-      : []),
-  ];
+  const rows = textRow(
+    'resolvedOn',
+    'calendar',
+    t('label.resolved-on'),
+    resolution.resolvedOn
+  );
+  if (resolution.hasResolution) {
+    rows.push({
+      key: 'resolutionComment',
+      icon: 'type',
+      label: t(resolution.commentLabelKey),
+      value: {
+        kind: resolution.comment === NO_DATA_PLACEHOLDER ? 'text' : 'richText',
+        text: resolution.comment,
+      },
+    });
+  }
+
+  return rows;
 };
 
 const describeIncident = (
@@ -548,6 +450,37 @@ const describeDescriptionUpdate = (
   };
 };
 
+// A tag suggestion holds its tags as a JSON string; show them as a tags change.
+const getSuggestionBody = (
+  task: Task,
+  payload: Partial<SuggestionPayload>,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  if (isTagsTaskType(task)) {
+    // Approving adds the suggested tags to the current ones; list only what it adds.
+    const { currentTags, suggestedTags } = getNormalizedTaskPayload(task);
+    const current = new Set(tagNames(currentTags));
+    const after = tagNames(suggestedTags).filter((fqn) => !current.has(fqn));
+
+    return after.length
+      ? {
+          change: {
+            labelKey: 'label.tag-plural',
+            before: [],
+            after,
+            isText: false,
+          },
+        }
+      : {};
+  }
+
+  return payload.suggestedValue
+    ? {
+        callout: { label: t('label.suggestion'), text: payload.suggestedValue },
+      }
+    : {};
+};
+
 const describeSuggestion = (
   task: Task,
   t: Translate
@@ -571,9 +504,7 @@ const describeSuggestion = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.suggestedValue
-      ? { label: t('label.suggestion'), text: payload.suggestedValue }
-      : undefined,
+    ...getSuggestionBody(task, payload, t),
   };
 };
 
@@ -810,14 +741,19 @@ export const deriveTaskAboutEntity = (
   const typed = (entity ?? {}) as EntityWithContext;
   const columns = typed.columns;
   const tags = typed.tags ?? [];
+  const isPiiSensitive = (tagList: TagLabel[] = []) =>
+    tagList.some((tag) => tag.tagFQN === PII_SENSITIVE_TAG);
+  const isEntityPii = isPiiSensitive(tags);
+  const piiColumnCount = isEntityPii
+    ? columns?.length
+    : columns?.filter((column) => isPiiSensitive(column.tags)).length;
 
   return {
     entity,
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
-    piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
-    ).length,
+    piiColumnCount,
+    isPii: isEntityPii || Boolean(piiColumnCount),
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,

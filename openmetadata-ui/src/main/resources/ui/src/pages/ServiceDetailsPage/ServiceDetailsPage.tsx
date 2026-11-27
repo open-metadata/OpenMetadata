@@ -57,7 +57,6 @@ import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
@@ -301,6 +300,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isForbidden, setIsForbidden] = useState(false);
   // Seeded to match `isLoading` above: the fetch is kicked off from an effect that waits on the
   // airflow status, so a `false` seed lets the agents tab read an empty list as "no agents".
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] = useState(
@@ -1053,14 +1053,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }
       );
       setServiceDetails(response);
+      setIsForbidden(false);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
       setFilters({ showDeletedTables: response.deleted ?? false });
     } catch (error) {
-      // Error
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
+      // 403 renders the permission placeholder in place, e.g. another domain's service
+      setIsForbidden(
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      );
     } finally {
       setIsLoading(false);
     }
@@ -1492,19 +1493,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
-  const isTestingDisabled = useMemo(
-    () =>
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
+  const isTestingDisabled = useMemo(() => {
+    const isOpenMetadataService =
+      isMetadataService && decodedServiceFQN === OPEN_METADATA;
+
+    return (
+      !isExtraInfoLoaded ||
       !flags.canEditAll ||
-      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
-      isUndefined(connectionDetails),
-    [
-      flags.canEditAll,
-      serviceCategory,
-      decodedServiceFQN,
-      connectionDetails,
-      isMetadataService,
-    ]
-  );
+      isOpenMetadataService ||
+      isUndefined(connectionDetails)
+    );
+  }, [
+    isExtraInfoLoaded,
+    flags.canEditAll,
+    serviceCategory,
+    decodedServiceFQN,
+    connectionDetails,
+    isMetadataService,
+  ]);
 
   const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
     useMemo(() => {
@@ -1803,9 +1812,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
   const extraInfoData = useMemo(() => {
-    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
-  }, [serviceDetails]);
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
 
   const testConnectionTab = useMemo(() => {
     return (
@@ -2102,7 +2114,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
   }, []);
 
   const isCustomService = useMemo(
@@ -2118,13 +2132,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return <EntityDetailsPageSkeleton />;
   }
 
-  if (!flags.hasViewAccess) {
+  if (!flags.hasViewAccess || isForbidden) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
-            entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+            // A 403 keeps the previous service's details, so name the one requested.
+            entity: `${
+              isForbidden ? decodedServiceFQN : getEntityName(serviceDetails)
+            } ${t('label.service')}`,
           })}
         />
       </div>

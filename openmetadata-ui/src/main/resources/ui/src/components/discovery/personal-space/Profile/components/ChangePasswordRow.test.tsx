@@ -155,11 +155,19 @@ describe('ChangePasswordRow', () => {
     expect(mockShowSuccessToast).not.toHaveBeenCalled();
   });
 
-  it('should discard the typed values when cancelled', () => {
+  it('asks before Cancel discards the typed values', async () => {
     render(<ChangePasswordRow isSelf username="john" />);
     openForm();
     fillValidForm();
     fireEvent.click(screen.getByTestId('cancel-change-password-button'));
+
+    expect(
+      screen.getByTestId('new-password-input').querySelector('input')
+    ).toHaveValue(VALID_PASSWORD);
+
+    fireEvent.click(
+      await screen.findByTestId('unsaved-changes-popover-confirm')
+    );
     openForm();
 
     expect(

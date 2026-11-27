@@ -20,8 +20,12 @@ const ProfileHashLink: FC<ProfileHashLinkProps> = ({
   target,
   onNavigate,
   children,
+  className,
+  title,
 }) => (
   <Link
+    className={className}
+    title={title}
     to={toHashLocation(target)}
     onClick={(e) => {
       // Let the browser handle modifier/middle clicks so the hash link opens in

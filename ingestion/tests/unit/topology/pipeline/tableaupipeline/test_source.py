@@ -22,9 +22,14 @@ from fnmatch import fnmatchcase
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import MysqlConnection
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
@@ -35,6 +40,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauMetadataApiError,
 )
@@ -230,6 +236,59 @@ class TestDeletion:
 
         assert list(source.mark_pipelines_as_deleted()) == []
         source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_partial_flow_listing_deletes_nothing(self, tableau_source):
+        """Flows not listed yet would look deleted in Tableau."""
+        source, client = tableau_source
+        client.flow_listing_complete = False
+
+        assert list(source.mark_pipelines_as_deleted()) == []
+        source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_partial_flow_listing_fails_the_run(self, tableau_source, monkeypatch):
+        """Whatever the success threshold: one failed page is a single error among
+        every flow that was listed before it. The runner records the producer's
+        error and still runs the post-process, so this runs the real topology."""
+        source, client = tableau_source
+        source.metadata.config = None
+
+        def listing_failing_on_page_two(keep=lambda _: True):
+            client.flow_listing_complete = False
+            yield FLOW_SALES
+            raise RuntimeError("page 2 of /flows failed")
+
+        monkeypatch.setattr(client, "get_pipelines", listing_failing_on_page_two)
+
+        with pytest.raises(WorkflowFatalError, match="could not be listed"):
+            list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_not_called()
+        assert [failure.name for failure in source.status.failures] == ["Producer get_pipeline"]
+
+    def test_a_partial_extract_listing_fails_the_run(self, tableau_source, monkeypatch):
+        """The client catches a failed extract refresh listing, so nothing reaches
+        the runner; the run must still fail."""
+        source, client = tableau_source
+        source.metadata.config = None
+
+        def listing_with_a_failed_task_page(keep=lambda _: True):
+            yield FLOW_SALES
+            client.extract_refresh_listing_complete = False
+
+        monkeypatch.setattr(client, "get_pipelines", listing_with_a_failed_task_page)
+
+        with pytest.raises(WorkflowFatalError, match="could not be listed"):
+            list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_a_complete_flow_listing_lets_the_run_finish(self, tableau_source):
+        source, _ = tableau_source
+        source.metadata.config = None
+
+        list(source._iter())
+
+        source.metadata.delete_stale_entities.assert_called_once()
 
     def test_a_complete_listing_marks_missing_pipelines_deleted(self, tableau_source):
         source, _ = tableau_source
@@ -518,6 +577,47 @@ class TestTableResolution:
         )
 
         assert source._resolve_table_entity(excel_orders) is None
+
+    def test_a_file_is_not_taken_for_a_bigquery_table_of_the_same_name(self, tableau_source):
+        """An uploaded Excel sheet comes back with no database and no schema, or
+        with its file as an excel-direct database; BigQuery's database is left
+        to the search, so the sheet's name alone would find the table."""
+        source, _ = tableau_source
+        source.source_config.lineageInformation.dbServiceNames = ["bq"]
+        catalog = Catalog()
+        catalog.add_service(
+            "bq",
+            BigQueryConnection.model_validate(
+                {"credentials": {"gcpConfig": {"type": "gcp_credential_path", "path": "/dev/null"}}}
+            ),
+        )
+        catalog.wire(source)
+        orders = catalog.add(Table, "bq.project.issue26161.orders_26161")
+        bigquery_orders = TableauLineageTable(
+            id="t-bq",
+            name="orders_26161",
+            full_name="[project.issue26161].[orders_26161]",
+            schema_="issue26161",
+            database=TableauLineageDatabase(name="cb2bc729", connection_type="bigquery"),
+        )
+        assert source._resolve_upstream_tables(bigquery_orders) == [orders]
+
+        files = (None,) + tuple(
+            TableauLineageDatabase(name="qa_orders", connection_type=connection_type)
+            for connection_type in (
+                "excel-direct",
+                "textscan",
+                "semistructpassivestore-direct",
+                "ogrdirect",
+                "cloudfile:onedrive-excel-direct",
+            )
+        )
+        for database in files:
+            sheet = TableauLineageTable(
+                id="t-sheet", name="orders_26161", full_name="[orders_26161$]", schema_="", database=database
+            )
+            assert source._resolve_upstream_tables(sheet) == []
+            assert source._downstream_table_refs(sheet) == []
 
     def test_custom_sql_naming_only_the_table_finds_the_one_table_of_that_name(self, tableau_source):
         source, _ = tableau_source

@@ -35,6 +35,9 @@ final class MergedMetricMigrationTestSupport {
   private static final String METRIC_GROUP = "metricGroup";
   private static final String METRIC = "metric";
   private static final int HAS_RELATION = 10;
+  private static final int PARENT_OF_RELATION = 9;
+  private static final String TEST_CASE = "testCase";
+  private static final String TEST_CASE_ID = "00000000-0000-0000-0000-000000000301";
   private static final String INCIDENT_STATE_ID = "00000000-0000-0000-0000-000000000101";
   private static final String FIRST_RECORD_ID = "00000000-0000-0000-0000-000000000201";
   private static final String LATEST_RECORD_ID = "00000000-0000-0000-0000-000000000203";
@@ -184,24 +187,34 @@ final class MergedMetricMigrationTestSupport {
         .execute();
   }
 
+  // The 2.1.0 incident backfill skips an incident whose latest record has no parentOf row from
+  // its test case, as one left behind by a hard-deleted test case.
   private static void seedRelationshipRows(Handle handle, MergedMetricMigrationFixture fixture) {
     insertRelationship(handle, fixture, "group-a", "metric-a");
     insertRelationship(handle, fixture, "group-b", "metric-b");
+    insertEdge(
+        handle,
+        fixture,
+        new Edge(TEST_CASE_ID, LATEST_RECORD_ID, TEST_CASE, JSON_SCHEMA, PARENT_OF_RELATION));
   }
 
   private static void insertRelationship(
       Handle handle, MergedMetricMigrationFixture fixture, String groupId, String metricId) {
+    insertEdge(handle, fixture, new Edge(groupId, metricId, METRIC_GROUP, METRIC, HAS_RELATION));
+  }
+
+  private static void insertEdge(Handle handle, MergedMetricMigrationFixture fixture, Edge edge) {
     handle
         .createUpdate(
             "INSERT INTO "
                 + fixture.relationshipTable()
                 + " (fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:groupId, :metricId, :fromEntity, :toEntity, :relation)")
-        .bind("groupId", groupId)
-        .bind("metricId", metricId)
-        .bind("fromEntity", METRIC_GROUP)
-        .bind("toEntity", METRIC)
-        .bind("relation", HAS_RELATION)
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
+        .bind("fromId", edge.fromId())
+        .bind("toId", edge.toId())
+        .bind("fromEntity", edge.fromEntity())
+        .bind("toEntity", edge.toEntity())
+        .bind("relation", edge.relation())
         .execute();
   }
 
@@ -365,7 +378,11 @@ final class MergedMetricMigrationTestSupport {
     assertEquals(
         2,
         handle
-            .createQuery("SELECT COUNT(*) FROM " + fixture.relationshipTable())
+            .createQuery(
+                "SELECT COUNT(*) FROM "
+                    + fixture.relationshipTable()
+                    + " WHERE fromEntity = :fromEntity")
+            .bind("fromEntity", METRIC_GROUP)
             .mapTo(Integer.class)
             .one());
   }
@@ -471,6 +488,9 @@ final class MergedMetricMigrationTestSupport {
           handle.execute("DROP TABLE IF EXISTS " + fixture.resolutionStatusTable());
         });
   }
+
+  private record Edge(
+      String fromId, String toId, String fromEntity, String toEntity, int relation) {}
 
   private record IncidentRecord(
       String id,

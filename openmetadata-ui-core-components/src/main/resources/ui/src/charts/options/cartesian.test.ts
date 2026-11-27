@@ -737,6 +737,34 @@ describe('buildLineOption', () => {
     expect(right.splitLine).toMatchObject({ show: false });
   });
 
+  it('puts a horizontal second value axis on top without grid lines', () => {
+    const option = buildBarOption(
+      {
+        ...base,
+        layout: 'horizontal',
+        series: [
+          { key: 'passed', name: 'Passed' },
+          { key: 'failed', name: 'Failed', yAxisIndex: 1 },
+        ],
+        yAxis: [{ label: 'Passed' }, { label: 'Failed' }],
+      },
+      LIGHT_CHART_THEME
+    );
+    const xAxes = option.xAxis as XAXisComponentOption[];
+
+    expect(
+      xAxes.map((a) => [
+        a.position,
+        a.name,
+        (a.splitLine as { show: boolean }).show,
+      ])
+    ).toEqual([
+      ['bottom', 'Passed', true],
+      ['top', 'Failed', false],
+    ]);
+    expect(seriesOf(option)[1].xAxisIndex).toBe(1);
+  });
+
   it('draws reference lines on their own hidden series, not a data series', () => {
     const option = buildLineOption(
       {

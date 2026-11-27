@@ -47,8 +47,8 @@ jest.mock('../../../../utils/StringUtils', () => ({
   formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
-jest.mock('../../../common/CopyToClipboardButton/CopyToClipboardButton', () =>
-  jest.fn().mockReturnValue(<>CopyToClipboardButton</>)
+jest.mock('../../../common/CopyButton/CopyButton', () =>
+  jest.fn().mockReturnValue(<>CopyButton</>)
 );
 
 jest.mock('../../../../utils/ApplicationUtils', () => ({

@@ -16,7 +16,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { useResolvedTheme } from '../../../../context/UntitledUIThemeProvider/theme-provider';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import BrandImage from '../../../common/BrandImage/BrandImage';
 
 export interface SidebarBrandProps {
   /**
@@ -35,34 +38,65 @@ export interface SidebarBrandProps {
  * (`getSidebarLogo()`); the collapsed 32px rail shows the compact monogram
  * (`getSidebarMonogram()`). These sidebar-specific getters let a build swap
  * the sidebar brand without touching the NavBar/login logo.
+ *
+ * An admin-set custom logo (Platform Settings → Theme) wins over the build's
+ * mark; `BrandImage` then picks its light or dark variant for the active theme.
  */
 const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { applicationConfig } = useApplicationStore();
   const Logo = brandClassBase.getSidebarLogo().svg;
   const Monogram = brandClassBase.getSidebarMonogram().svg;
+  const isRail = variant === 'rail';
+  const {
+    customLogoUrlPath,
+    customLogoDarkUrlPath,
+    customMonogramUrlPath,
+    customMonogramDarkUrlPath,
+  } = applicationConfig?.customLogoConfig ?? {};
+  const isDark = useResolvedTheme() === 'dark';
+  const [lightUrl, darkUrl] = isRail
+    ? [customMonogramUrlPath, customMonogramDarkUrlPath]
+    : [customLogoUrlPath, customLogoDarkUrlPath];
+  // Same choice BrandImage makes; when it resolves to nothing, keep the build's
+  // sidebar mark rather than BrandImage's generic default.
+  const hasCustomLogo = Boolean((isDark && darkUrl) || lightUrl);
+
+  const renderBrand = () => {
+    if (hasCustomLogo) {
+      return (
+        <BrandImage
+          className={classNames('tw:w-auto tw:max-w-full tw:object-contain', {
+            'tw:h-7': isRail,
+            'tw:h-10': !isRail,
+          })}
+          height={isRail ? 28 : 40}
+          isMonoGram={isRail}
+          width="auto"
+        />
+      );
+    }
+
+    // Collapsed rail: the compact monogram, kept to its 53x64 aspect so it
+    // doesn't squish into an oval. Expanded panel: the full wordmark; the
+    // `__logo-btn svg` rule height-constrains it and width follows its aspect.
+    return isRail ? <Monogram height={28} width={23} /> : <Logo />;
+  };
 
   return (
     <button
       aria-label={t('label.home')}
       className={classNames('ask-logo-btn', {
-        'ask-main-panel__logo-btn': variant === 'panel',
-        'ask-rail__logo-btn': variant === 'rail',
+        'ask-main-panel__logo-btn': !isRail,
+        'ask-rail__logo-btn': isRail,
       })}
       data-testid="ask-logo-btn"
       type="button"
       // Home is `/`, the landing page. `/my-data` is the personal-space My Data
       // page in app mode, which the user menu opens.
       onClick={() => navigate(ROUTES.HOME)}>
-      {variant === 'rail' ? (
-        // Collapsed rail: the compact monogram, kept to its 53x64 aspect so it
-        // doesn't squish into an oval.
-        <Monogram height={28} width={23} />
-      ) : (
-        // Expanded panel: the full wordmark. The `__logo-btn svg` rule height-
-        // constrains it; width follows the logo's own aspect.
-        <Logo />
-      )}
+      {renderBrand()}
     </button>
   );
 };

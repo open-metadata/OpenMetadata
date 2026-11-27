@@ -19,7 +19,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -38,8 +37,9 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
  * it has already routed to, so no spelling of the URL can reach the method without passing here.
  *
  * <p>Keyed off {@link CatalogSecurityContext#impersonatedUser()} rather than {@link
- * ImpersonationContext}: that ThreadLocal is audit attribution, and the MCP server sets it to its
- * own bot on every tool call, which has nothing to do with an {@code X-Impersonate-User} request.
+ * ImpersonationContext}: that ThreadLocal is audit attribution, and the MCP server sets it on every
+ * tool call, to its own bot unless the call carries {@code X-Impersonate-User}, so on its own it
+ * does not say a request is an impersonation.
  */
 @Slf4j
 @Provider
@@ -51,7 +51,7 @@ public class ImpersonationRestrictionFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    String impersonatingBot = impersonatingBot(requestContext.getSecurityContext());
+    String impersonatingBot = SecurityUtil.getImpersonatingBot(requestContext.getSecurityContext());
     if (impersonatingBot == null) {
       return;
     }
@@ -69,11 +69,5 @@ public class ImpersonationRestrictionFilter implements ContainerRequestFilter {
     return resourceInfo.getResourceClass().getSimpleName()
         + "."
         + resourceInfo.getResourceMethod().getName();
-  }
-
-  private static String impersonatingBot(SecurityContext securityContext) {
-    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
-        ? catalogSecurityContext.impersonatedUser()
-        : null;
   }
 }

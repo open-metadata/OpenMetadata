@@ -681,10 +681,6 @@
           }
         }
       },
-      "searchIndexSettings": {
-        "type": "object",
-        "enabled": false
-      },
       "indexType": {
         "type": "text"
       },
@@ -766,6 +762,10 @@
         "normalizer": "lowercase_normalizer"
       },
       "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
+      },
+      "searchIndexSettings": {
         "type": "object",
         "enabled": false
       }

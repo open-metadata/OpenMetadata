@@ -3759,6 +3759,95 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testODCSImportAndReimportPreservesAndUpdatesReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    EntityReference user1 = shared().USER1_REF;
+    EntityReference user2 = shared().USER2_REF;
+
+    String initialYaml =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.0
+            status: draft
+            team:
+              members:
+                - username: %s
+                  role: owner
+                - username: %s
+                  role: reviewer
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            UUID.randomUUID(),
+            ns.prefix("reviewer_odcs"),
+            user1.getName(),
+            user2.getName(),
+            table.getName());
+
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(initialYaml, table.getId(), "table", false);
+    assertEquals(
+        List.of(user1.getId()), imported.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        imported.getReviewers().stream().map(EntityReference::getId).toList());
+
+    DataContract fetched =
+        client.dataContracts().getByEntityId(table.getId(), "table", "owners,reviewers");
+    assertEquals(
+        List.of(user2.getId()),
+        fetched.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Re-import in merge mode without reviewers: existing reviewers and owners must be preserved
+    String reimportWithoutTeam =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.1
+            status: active
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            imported.getId(), ns.prefix("reviewer_odcs"), table.getName());
+
+    DataContract merged =
+        client
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                reimportWithoutTeam, table.getId(), "table", "merge", false);
+    assertEquals(
+        List.of(user1.getId()), merged.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        merged.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Export back to ODCS and verify reviewer role is emitted
+    ODCSDataContract exported = client.dataContracts().exportToODCS(merged.getId());
+    assertTrue(
+        exported.getTeam().getMembers().stream()
+            .anyMatch(
+                member ->
+                    user2.getName().equals(member.getUsername())
+                        && "reviewer".equals(member.getRole())));
+  }
+
+  @Test
   void testImportedContractExportsAcrossVersionsWithRenamedTargetAndDescriptions(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -3917,12 +4006,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
       }
     }
     DataContract stored = client.dataContracts().get(imported.getId().toString());
+    // The import stores a rule whose assertion no native number holds as a custom odcs wrapper,
+    // and the export embeds such a wrapper whole, so the edit replaces it with a native SQL rule.
     ODCSQualityRule edited =
-        stored.getOdcsQualityRules().stream()
-            .filter(rule -> "precise_response".equals(rule.getName()))
-            .findFirst()
-            .orElseThrow();
-    edited.setMustBe(7.0);
+        new ODCSQualityRule()
+            .withName("precise_response")
+            .withType(ODCSQualityRule.Type.SQL)
+            .withQuery("SELECT ratio")
+            .withMustBe(7.0);
     client
         .dataContracts()
         .createOrUpdate(
@@ -4283,39 +4374,44 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testIncompatiblePreservedMetadataBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns)
-      throws Exception {
+  void testIncompatibleStoredRuleBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns) {
     Table table = createTestTable(ns);
-    String yaml =
-        """
-        apiVersion: v3.1.0
-        kind: DataContract
-        id: %s
-        name: %s
-        version: '1.0.0'
-        status: active
-        futureSection: {retained: true}
-        """
-            .formatted(UUID.randomUUID(), ns.prefix("incompatible_odcs"));
+    // Unknown imported fields travel in a source-metadata annotation and never block export
+    // (ADR:2026-11-09-odcs-imports-validate-declared-published-profiles); a native rule v3.1.0
+    // cannot express, on a contract with no import metadata, blocks every route.
     OpenMetadataClient client = SdkClients.adminClient();
-    DataContract imported =
-        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    DataContract contract =
+        client
+            .dataContracts()
+            .createOrUpdate(
+                new CreateDataContract()
+                    .withName(ns.prefix("incompatible_odcs"))
+                    .withEntity(table.getEntityReference())
+                    .withOdcsQualityRules(
+                        List.of(
+                            new ODCSQualityRule()
+                                .withName("legacy_rule")
+                                .withType(ODCSQualityRule.Type.LIBRARY)
+                                .withMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES)
+                                .withMustBe(1.0))));
     for (String route :
         List.of(
-            "/v1/dataContracts/" + imported.getId() + "/odcs",
-            "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
-            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
-            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+            "/v1/dataContracts/" + contract.getId() + "/odcs",
+            "/v1/dataContracts/" + contract.getId() + "/odcs/yaml",
+            "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs",
+            "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs/yaml")) {
       OpenMetadataException error =
           assertThrows(
               OpenMetadataException.class,
               () -> client.getHttpClient().executeForString(HttpMethod.GET, route, null));
       assertEquals(400, error.getStatusCode());
-      assertTrue(error.getMessage().contains("futureSection"), error.getMessage());
+      assertTrue(error.getMessage().contains("Cannot export ODCS"), error.getMessage());
+      assertTrue(error.getMessage().contains("metric"), error.getMessage());
     }
-    DataContract stored =
-        client.dataContracts().get(imported.getId().toString(), "odcsPreservedFields");
-    assertEquals(imported.getOdcsPreservedFields(), stored.getOdcsPreservedFields());
+    DataContract stored = client.dataContracts().get(contract.getId().toString());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
+        stored.getOdcsQualityRules().getFirst().getMetric());
   }
 
   @Test

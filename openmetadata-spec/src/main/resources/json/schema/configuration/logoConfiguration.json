@@ -7,16 +7,24 @@
   "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
   "properties": {
     "customLogoUrlPath": {
-    "description": "Login Page Logo Image Url",
-    "type": "string"
+      "description": "Login Page Logo Image Url",
+      "type": "string"
+    },
+    "customLogoDarkUrlPath": {
+      "description": "Logo Image Url used when the dark theme is active. Falls back to customLogoUrlPath.",
+      "type": "string"
     },
     "customFaviconUrlPath": {
       "description": "Favicon Page Logo Image Url",
       "type": "string"
     },
     "customMonogramUrlPath": {
-    "description": "Navigation Bar Logo Image Url",
-    "type": "string"
+      "description": "Navigation Bar Logo Image Url",
+      "type": "string"
+    },
+    "customMonogramDarkUrlPath": {
+      "description": "Navigation Bar Logo Image Url used when the dark theme is active. Falls back to customMonogramUrlPath.",
+      "type": "string"
     }
   },
   "additionalProperties": false

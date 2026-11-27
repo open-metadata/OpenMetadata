@@ -19,6 +19,7 @@ import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.AuditReportFormat;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
 
@@ -43,6 +44,7 @@ public class AuditReportMapper implements EntityMapper<AuditReport, CreateAuditR
         .withStatus(AuditReportStatus.Queued)
         .withAsOfDate(create.getAsOfDate())
         .withIncludeRedacted(create.getIncludeRedacted())
+        .withRequestedBy(Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED))
         .withRequestedAt(System.currentTimeMillis());
   }
 

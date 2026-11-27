@@ -278,6 +278,40 @@ describe('SchemaVersionUtils', () => {
     });
 
     describe('Edge cases', () => {
+      it('keeps rendering when added and deleted field diffs are malformed', () => {
+        const originalSchema = createMockMessageSchema([
+          createMockField('testField', 'VARCHAR(255)'),
+        ]);
+        const changeDescription = createMockChangeDescription(
+          [createMockFieldChange('schemaFields', '', '{invalid')],
+          [createMockFieldChange('schemaFields', '{invalid', '')]
+        );
+
+        expect(() =>
+          getVersionedSchema(originalSchema, changeDescription)
+        ).not.toThrow();
+        expect(getVersionedSchema(originalSchema, changeDescription)).toEqual(
+          originalSchema
+        );
+      });
+
+      it('ignores schema diffs with malformed nested fields', () => {
+        const originalSchema = createMockMessageSchema([
+          createMockField('testField', 'VARCHAR(255)'),
+        ]);
+        const changeDescription = createMockChangeDescription([
+          createMockFieldChange(
+            'schemaFields',
+            '',
+            '[{"name":"testField","children":{}}]'
+          ),
+        ]);
+
+        expect(getVersionedSchema(originalSchema, changeDescription)).toEqual(
+          originalSchema
+        );
+      });
+
       it('should handle empty schema fields', () => {
         const originalSchema = createMockMessageSchema([]);
         const changeDescription = createMockChangeDescription(

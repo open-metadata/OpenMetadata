@@ -96,16 +96,20 @@ public final class RdfLiveWritePause {
   }
 
   /**
-   * Refuses a serving write while another job holds the pause. Called inside the transaction that
-   * holds the serving-dataset row lock, so a write either finishes before the pause's flush or
-   * sees the pause.
+   * Whether a serving write may go ahead while another job may hold the pause. A held-back writer
+   * that can still wait gets {@code false} and waits again; any other is refused. Called inside the
+   * transaction that holds the serving-dataset row lock, so a write either finishes before the
+   * pause's flush or sees the pause. The pause is read once, so the answer cannot change between
+   * deciding to wait and deciding to refuse.
    */
-  static void requireWritable(
-      final Handle handle, final long now, final RdfWriteDelivery delivery) {
-    final Optional<String> holder = holder(handle, now);
-    if (holder.isPresent() && !delivery.holds(holder.get())) {
-      throw new RdfStorageMaintenanceException(holder.get(), RETRY_AFTER);
+  static boolean isWritable(
+      final Handle handle, final long now, final RdfWriteDelivery delivery, final boolean canWait) {
+    final Optional<String> heldBackBy =
+        holder(handle, now).filter(holder -> !delivery.holds(holder));
+    if (heldBackBy.isPresent() && !canWait) {
+      throw new RdfStorageMaintenanceException(heldBackBy.get(), RETRY_AFTER);
     }
+    return heldBackBy.isEmpty();
   }
 
   /** Whether storage maintenance currently holds writes to the serving dataset. */

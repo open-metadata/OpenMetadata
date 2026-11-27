@@ -77,26 +77,6 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
     this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
 
     // TODO: Implement Backfill by using DataAsset Version.
-    //    if (backfill.isPresent()) {
-    //      Long oldestPossibleTimestamp = TimestampUtils.getStartOfDayTimestamp(timestamp -
-    // TimestampUtils.subtractDays(timestamp, retentionDays));
-    //      this.endTimestamp =
-    // TimestampUtils.getEndOfDayTimestamp(Collections.max(List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
-    //      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(Collections.max(
-    //
-    //     List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()),
-    //     oldestPossibleTimestamp)));
-    //
-    //      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp)))
-    // {
-    //        LOG.warn("CostAnalysis Backfill won't happen because the set date is before the limit
-    // of {}", oldestPossibleTimestamp);
-    //      }
-    //    } else {
-    //      this.endTimestamp =
-    // TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
-    //      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
-    //    }
 
     this.batchSize = batchSize;
     this.costAnalysisConfig = costAnalysisConfig;

@@ -103,10 +103,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }: MockTableBodyProps<T>) => (
     <div>
       {items.length
-        ? items.map((item, index) => (
-            // eslint-disable-next-line react/no-array-index-key -- test mock over generic items, no stable id
-            <div key={index}>{children(item)}</div>
-          ))
+        ? items.map((item, index) => <div key={index}>{children(item)}</div>)
         : renderEmptyState()}
     </div>
   );
@@ -232,6 +229,15 @@ jest.mock(
   })
 );
 
+jest.mock('../../Alerts/AlertStatusBadge/AlertStatusBadge', () => ({
+  __esModule: true,
+  default: ({ enabled }: { enabled?: boolean }) => (
+    <span data-testid="alert-status-badge">
+      {enabled === false ? 'label.disabled' : 'label.active'}
+    </span>
+  ),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) =>
@@ -342,6 +348,32 @@ describe('ObservabilityAlertsAiTable', () => {
     expect(screen.getByTestId('alert-name').parentElement).toHaveClass(
       'tw:w-[30%]!',
       'tw:max-w-0'
+    );
+  });
+
+  it('shows a Disabled status for an alert that is switched off', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: false }]}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.disabled'
+    );
+  });
+
+  it('shows an Active status for an enabled alert', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: true }]}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.active'
     );
   });
 

@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
@@ -112,6 +113,8 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
 
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    entityRepository.patch(null, entity.getId(), user, patch);
+    // governance-bot as impersonator marks this as the workflow's own write, so the event
+    // consumer does not start the entity's workflows again for it.
+    entityRepository.patch(null, entity.getId(), user, patch, null, GOVERNANCE_BOT);
   }
 }

@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,6 +81,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -100,6 +102,8 @@ import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
@@ -124,6 +128,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private final AuditReportSearchVisibility auditReportVisibility =
+      new AuditReportSearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -212,7 +218,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(
                         restrictToOrgWideMemories(
                             OpenSearchRbacQueries.withAccessPolicies(
-                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator),
+                            subjectContext)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -257,7 +264,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .query(
                 restrictToOrgWideMemories(
                     OpenSearchRbacQueries.withAccessPolicies(
-                        query, subjectContext, rbacConditionEvaluator)));
+                        query, subjectContext, rbacConditionEvaluator),
+                    subjectContext));
     List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
     if (!sourceExcludes.isEmpty()) {
       request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
@@ -593,10 +601,85 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    OMQueryBuilder memoryVisibility =
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext,
+                statuses,
+                matchingListingAnchors(index, requestBuilder, subjectContext, statuses))
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      OpenSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      OpenSearchRequestBuilder candidates =
+          new OpenSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((OpenSearchQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, OpenSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, OpenSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(Map.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   @Override
@@ -1063,8 +1146,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * must fail closed. Non-memory documents are unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
+    return restrictToOrgWideMemories(query, null);
+  }
+
+  private Query restrictToOrgWideMemories(Query query, SubjectContext subjectContext) {
     Query memoryFilter =
-        ((OpenSearchQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+        ((OpenSearchQueryBuilder)
+                new OpenSearchQueryBuilderFactory()
+                    .boolQuery()
+                    .must(
+                        List.of(
+                            contextMemoryVisibility.buildOrgWideOnlyFilter(),
+                            auditReportVisibility.buildVisibilityFilter(subjectContext))))
+            .buildV2();
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
@@ -1170,7 +1264,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       String transformedQuery)
-      throws com.fasterxml.jackson.core.JsonProcessingException {
+      throws IOException {
     OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
     String queryToProcess = OsUtils.parseJsonQuery(transformedQuery);
     requestBuilder.query(Query.of(q -> q.wrapper(w -> w.query(queryToProcess))));
@@ -1178,9 +1272,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-    applyQueryFilter(requestBuilder, request);
+    applyMemoryVisibilityAndQueryFilter(request, subjectContext, requestBuilder, true);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
@@ -1195,6 +1287,40 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private static String[] toArrayOrNull(List<String> fields) {
     return nullOrEmpty(fields) ? null : fields.toArray(String[]::new);
+  }
+
+  /**
+   * A search of the memory index alone checks the anchors of the memories it matches, as the Context
+   * Center listing does, so a reader finds an anchored memory without pinning its anchor. Other
+   * searches keep the pinned-anchor rule, and so does the memory bucket of a count over several
+   * indexes ({@code listsMemoryAnchors} false), so its total matches what that search lists. The
+   * query filter goes first because the anchors are collected from the memories the full query
+   * matches.
+   * ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
+   */
+  private void applyMemoryVisibilityAndQueryFilter(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      boolean listsMemoryAnchors)
+      throws IOException {
+    if (listsMemoryAnchors
+        && ContextMemorySearchVisibility.isMemoryOnlySearch(request.getIndex())) {
+      final List<ContextMemoryStatus> statuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+      applyQueryFilter(requestBuilder, request);
+      applyContextMemoryVisibility(
+          subjectContext,
+          requestBuilder,
+          contextMemoryVisibility.buildListingVisibilityFilter(
+              subjectContext,
+              statuses,
+              matchingListingAnchors(
+                  request.getIndex(), requestBuilder, subjectContext, statuses)));
+    } else {
+      applyContextMemoryVisibility(
+          subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
+      applyQueryFilter(requestBuilder, request);
+    }
   }
 
   private void applyContextMemoryVisibility(
@@ -1215,6 +1341,18 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
+    requestBuilder
+        .filter(
+            ((OpenSearchQueryBuilder) auditReportVisibility.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1455,7 +1593,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     try {
       return new SearchEntityTypeCounts(
               Entity.getSearchRepository(),
-              (perType, configured) -> prepareCountQuery(perType, subjectContext, configured),
+              (perType, configured) ->
+                  prepareCountQuery(
+                      perType,
+                      subjectContext,
+                      configured,
+                      ContextMemorySearchVisibility.isMemoryOnlySearch(index)),
               (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
               hint -> doSearch(hint, subjectContext, settings, clusterAlias))
           .search(request, index, settings);
@@ -1467,10 +1610,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private ObjectNode prepareCountQuery(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
-      SearchSettings settings)
+      SearchSettings settings,
+      boolean listsMemoryAnchors)
       throws IOException {
     SearchRequest prepared =
-        buildSearchRequestBuilder(request, subjectContext, settings, clusterAlias)
+        buildSearchRequestBuilder(
+                request, subjectContext, settings, clusterAlias, listsMemoryAnchors)
             .build(request.getIndex());
     return SearchEntityTypeCounts.toJson(
         client._transport().jsonpMapper().jsonProvider(),
@@ -1503,7 +1648,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .trackTotalHits(false)
             .timeout("30s")
             .preference(SearchUtils.searchPreferenceFor(subjectContext))
-            .contextMemoryVisibilityResolved();
+            .contextMemoryVisibilityResolved()
+            .auditReportVisibilityResolved();
     body.path("aggs")
         .fields()
         .forEachRemaining(
@@ -1576,7 +1722,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
       return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
@@ -1594,7 +1740,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
     return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
   }
 
@@ -1715,7 +1861,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias)
+      String clusterAlias,
+      boolean listsMemoryAnchors)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1749,10 +1896,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-
-    applyQueryFilter(requestBuilder, request);
+    applyMemoryVisibilityAndQueryFilter(
+        request, subjectContext, requestBuilder, listsMemoryAnchors);
 
     // Apply post filter
     if (!nullOrEmpty(request.getPostFilter())) {

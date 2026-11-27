@@ -1,10 +1,9 @@
 # Counted parents are reindexed when a child changes
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-11-14 (a context file counts toward no parent)
 - **Deciders:** Vishnu Jain
-- **Guard:** `FolderResourceIT#test_folderKeepsItsChildrenCountInSearchThroughAPlainEdit`,
-  `GlossaryTermResourceIT#test_parentTermChildrenCountFollowsItsChildrenInSearch`,
+- **Guard:** `GlossaryTermResourceIT#test_parentTermChildrenCountFollowsItsChildrenInSearch`,
   `MetricGroupResourceIT#searchCountsSurviveChildCreateAndPlainEdits`,
   `MetricGroupResourceIT#patchMovesRefreshEveryParentAMetricPassesThrough`,
   `MetricGroupResourceIT#csvReparentRefreshesBothParentsChildrenCount`
@@ -45,3 +44,12 @@ Metrics had their own copy of the refresh; glossary terms and folders had none.
   delete removes the edge.
 - Restoring a glossary subtree refreshes the live ancestors once per restored term. Those
   refreshes change nothing, since the count includes soft-deleted terms, but restore is rare.
+
+## Amendment
+
+### v2 2026-11-14 — a context file counts toward no parent
+
+Folders no longer index `childrenCount`
+(ADR:2026-10-29-search-documents-load-computed-counts-on-every-write v2), so a context file names
+no counting parent, and a file's create, delete, restore or move no longer reindexes its folder.
+Metrics and glossary terms are unchanged.

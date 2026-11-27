@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
@@ -32,6 +33,7 @@ import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -49,6 +51,7 @@ import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -59,6 +62,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -109,12 +113,18 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.clients.pipeline.noop.NoopClient;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.JobExecutionContextImpl;
 import org.quartz.spi.OperableTrigger;
@@ -1979,6 +1989,249 @@ public class AppsResourceIT {
       } catch (Exception ignored) {
       }
     }
+  }
+
+  @Test
+  void test_externalAppScheduleTimezone_syncsToPipelineAndRejectsUnknownZone(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extSchedTz");
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+
+    try {
+      AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression("17 4 * * *")
+                      .withTimezone(" Europe/Tallinn "));
+
+      App installedApp = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertEquals(
+          "Europe/Tallinn",
+          installedApp.getAppSchedule().getTimezone(),
+          "The zone id must be stored trimmed; Kubernetes rejects a padded spec.timeZone");
+
+      String pipelineFqn = "OpenMetadata." + appName;
+      IngestionPipeline pipeline =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          "Europe/Tallinn",
+          pipeline.getAirflowConfig().getPipelineTimezone(),
+          "Bound pipeline must run in the app schedule timezone");
+
+      String appId = installedApp.getId().toString();
+      String changeZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"America/New_York\"}]";
+      httpClient.executeForString(
+          HttpMethod.PATCH, "/v1/apps/" + appId, changeZonePatch, patchOptions);
+
+      IngestionPipeline pipelineAfterChange =
+          SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn);
+      assertEquals(
+          "America/New_York", pipelineAfterChange.getAirflowConfig().getPipelineTimezone());
+
+      String badZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"Mars/Olympus\"}]";
+      assertThrows(
+          Exception.class,
+          () ->
+              httpClient.executeForString(
+                  HttpMethod.PATCH, "/v1/apps/" + appId, badZonePatch, patchOptions),
+          "An unknown zone id must be rejected");
+      assertEquals(
+          "America/New_York",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected patch must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_rejectedSchedulePatchKeepsInternalAppScheduled(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("keepSchedule");
+    RequestOptions patchOptions =
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+    JobKey job = new JobKey(appName, APPS_JOB_GROUP);
+
+    try {
+      App installedApp = installScheduledInternalApp(httpClient, appName);
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      assertTrue(
+          scheduler.checkExists(job), "Installing a scheduled internal app registers its job");
+
+      String badZonePatch =
+          "[{\"op\":\"replace\",\"path\":\"/appSchedule/timezone\",\"value\":\"Mars/Olympus\"}]";
+      assertThrows(
+          Exception.class,
+          () ->
+              httpClient.executeForString(
+                  HttpMethod.PATCH, "/v1/apps/" + installedApp.getId(), badZonePatch, patchOptions),
+          "An unknown zone id must be rejected");
+      assertTrue(
+          scheduler.checkExists(job),
+          "A rejected patch must leave the stored schedule running instead of unscheduling the app");
+      assertEquals(
+          "Europe/Tallinn",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected patch must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_rejectedSchedulePutKeepsInternalAppScheduled(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("keepSchedulePut");
+    JobKey job = new JobKey(appName, APPS_JOB_GROUP);
+
+    try {
+      App installedApp = installScheduledInternalApp(httpClient, appName);
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      assertTrue(
+          scheduler.checkExists(job), "Installing a scheduled internal app registers its job");
+
+      CreateApp badZone =
+          new CreateApp()
+              .withName(appName)
+              .withAppConfiguration(installedApp.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression("17 4 * * *")
+                      .withTimezone("Mars/Olympus"));
+      assertThrows(
+          Exception.class,
+          () -> httpClient.execute(HttpMethod.PUT, "/v1/apps", badZone, App.class),
+          "An unknown zone id must be rejected");
+      assertTrue(
+          scheduler.checkExists(job),
+          "A rejected PUT must leave the stored schedule running instead of unscheduling the app");
+      assertEquals(
+          "Europe/Tallinn",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected PUT must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  private App installScheduledInternalApp(HttpClient httpClient, String appName) throws Exception {
+    CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(appName)
+            .withDisplayName("Keep Schedule Test App")
+            .withDescription("Validates that a rejected edit keeps the Quartz job")
+            .withFeatures("schedule restore")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://www.example.com")
+            .withPrivacyPolicyUrl("https://www.example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAppType(AppType.Internal)
+            .withScheduleType(ScheduleType.Scheduled)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(new HashMap<>())
+            .withPermission(NativeAppPermission.All);
+    AppMarketPlaceDefinition marketPlaceDef =
+        httpClient.execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            marketPlaceReq,
+            AppMarketPlaceDefinition.class);
+
+    CreateApp createApp =
+        new CreateApp()
+            .withName(marketPlaceDef.getName())
+            .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+            .withAppSchedule(
+                new AppSchedule()
+                    .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                    .withCronExpression("17 4 * * *")
+                    .withTimezone("Europe/Tallinn"));
+    return httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+  }
+
+  @Test
+  void test_uninstallExternalApp_hardDeletesItsPipelineAndBot(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extUninstall");
+    String pipelineFqn = "OpenMetadata." + appName;
+    String botName = appName + "Bot";
+    installExternalApp(httpClient, appName);
+    assertNotNull(SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    assertNotNull(SdkClients.adminClient().bots().getByName(botName));
+
+    Apps.uninstall(appName, true);
+
+    assertNotFound(() -> Apps.getByName(appName));
+    assertNotFound(() -> SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    assertNotFound(() -> SdkClients.adminClient().bots().getByName(botName));
+    assertNotFound(
+        () -> httpClient.execute(HttpMethod.GET, "/v1/users/name/" + botName, null, User.class));
+  }
+
+  @Test
+  void test_uninstallExternalApp_keepsItsBotWhenThePipelineDeleteFails(TestNamespace ns)
+      throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("extUninstallFails");
+    String pipelineFqn = "OpenMetadata." + appName;
+    installExternalApp(httpClient, appName);
+    IngestionPipelineRepository pipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    // NoopClient throws on every undeploy, so the pipeline delete fails after its row is deleted.
+    pipelineRepository.setPipelineServiceClient(
+        new NoopClient(new PipelineServiceClientConfiguration()));
+    try {
+      InvalidRequestException failure =
+          assertThrows(InvalidRequestException.class, () -> Apps.uninstall(appName, true));
+      assertTrue(
+          failure.getMessage().contains("NoopClient does not implement the delete method"),
+          failure.getMessage());
+    } finally {
+      pipelineRepository.setPipelineServiceClient(
+          PipelineServiceClientFactory.createPipelineServiceClient(null));
+    }
+
+    assertNotNull(Apps.getByName(appName, "bot").getBot(), "the app keeps its bot");
+    assertNotFound(() -> SdkClients.adminClient().ingestionPipelines().getByName(pipelineFqn));
+    // With its pipeline already gone, uninstalling the app again completes.
+    Apps.uninstall(appName, true);
+    assertNotFound(() -> Apps.getByName(appName));
+  }
+
+  private void installExternalApp(HttpClient httpClient, String appName) throws Exception {
+    AppMarketPlaceDefinition marketPlaceDef = createExternalAppMarketplace(httpClient, appName);
+    CreateApp createApp =
+        new CreateApp()
+            .withName(marketPlaceDef.getName())
+            .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+    httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+  }
+
+  private static void assertNotFound(Executable lookup) {
+    OpenMetadataException exception = assertThrows(OpenMetadataException.class, lookup);
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
   }
 
   private AppMarketPlaceDefinition createExternalAppMarketplace(

@@ -222,6 +222,12 @@
       "type": "boolean",
       "default": true
     },
+    "supportsUsageExtraction": {
+      "title": "Supports Usage Extraction",
+      "description": "Supports Usage Extraction.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsDBTExtraction": {
       "description": "Supports DBT Extraction.",
       "type": "boolean",

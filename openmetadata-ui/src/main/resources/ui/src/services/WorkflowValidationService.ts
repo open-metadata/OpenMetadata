@@ -37,6 +37,7 @@ import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 import {
   getGitSinkTriggerConfig,
   isGitSinkNode,
+  isIncidentSettingsWorkflow,
 } from '../utils/WorkflowConfigUtils';
 import {
   getNodeConfiguration,
@@ -794,6 +795,26 @@ export const buildWorkflowForSave = async (
 
   const startNode = nodes.find((node) => node.type === NodeType.StartEvent);
   const startNodeConfig = (startNode?.data || {}) as NodeConfigWithMetadata;
+
+  if (workflowDefinition && isIncidentSettingsWorkflow(workflowDefinition)) {
+    // System incident stages are not round-trippable through the generic graph editor.
+    return {
+      name: workflowDefinition.name,
+      displayName: workflowDefinition.displayName,
+      description: workflowDefinition.description,
+      trigger: workflowDefinition.trigger,
+      nodes: workflowDefinition.nodes,
+      edges: workflowDefinition.edges,
+      owners: workflowDefinition.owners,
+      config: {
+        storeStageStatus: false,
+        ...workflowDefinition.config,
+        ...(startNodeConfig.autoAssignOwners !== undefined && {
+          autoAssignOwners: startNodeConfig.autoAssignOwners,
+        }),
+      },
+    };
+  }
 
   const currentNodeIds = new Set(nodes.map((n) => n.id));
   const validEdges = edges.filter(

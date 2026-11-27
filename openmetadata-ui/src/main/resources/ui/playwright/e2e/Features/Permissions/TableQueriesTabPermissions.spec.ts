@@ -77,9 +77,10 @@ const scenarioRules: Record<ScenarioName, PolicyRulesType[]> = {
   allowed: DATA_CONSUMER_RULES,
 };
 
-const queryText = `select id from pw_queries_tab_${uuid()}`;
-
 // Created in beforeAll: under fullyParallel the hook can run more than once per worker.
+// The query text must be regenerated too: the query is named by the checksum of its text
+// under the shared service and outlives the table's hard delete, so a reused text 409s.
+let queryText: string;
 let table: TableClass;
 let scenarios: Record<ScenarioName, { policy: PolicyClass; role: RolesClass }>;
 
@@ -158,6 +159,7 @@ test.describe(
   () => {
     test.beforeAll('Create table, query and roles', async ({ browser }) => {
       table = new TableClass();
+      queryText = `select id from pw_queries_tab_${uuid()}`;
       scenarios = {} as typeof scenarios;
 
       const { apiContext, afterAction } = await performAdminLogin(browser);

@@ -29,6 +29,10 @@
         "description": "Test case failure resolution comment.",
         "type": "string"
       },
+      "assignee": {
+        "description": "Assignee of the incident at resolution.",
+        "$ref": "../type/entityReference.json"
+      },
       "resolvedBy": {
         "description": "User who resolved the test case failure.",
         "$ref": "../type/entityReference.json"

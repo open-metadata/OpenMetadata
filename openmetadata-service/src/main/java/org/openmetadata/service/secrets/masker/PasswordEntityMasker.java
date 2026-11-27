@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets.masker;
 
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,8 +116,11 @@ public class PasswordEntityMasker extends EntityMasker {
             SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
+        rejectMasksWithoutStoredSecret(toUnmaskConfig, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
+      } catch (EntityMaskException e) {
+        throw e;
       } catch (Exception e) {
         String message =
             SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
@@ -138,7 +142,10 @@ public class PasswordEntityMasker extends EntityMasker {
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalIngestionPipeline, NEW_KEY, passwordsMap);
+        rejectMasksWithoutStoredSecret(ingestionPipeline, passwordsMap);
         unmaskPasswordFields(ingestionPipeline, NEW_KEY, passwordsMap);
+      } catch (EntityMaskException e) {
+        throw e;
       } catch (Exception e) {
         throw new EntityMaskException(
             String.format(
@@ -203,6 +210,25 @@ public class PasswordEntityMasker extends EntityMasker {
                   ? passwordsMap.getOrDefault(fieldKey, PASSWORD_MASK)
                   : Fernet.getInstance().decryptIfApplies((String) value);
           setField(holder, fieldName, value, valueToSet);
+        });
+  }
+
+  /**
+   * A masked value only means "keep the stored secret", so it is refused where nothing is stored
+   * under the same key (e.g. a list element that was renamed) instead of saving the mask itself.
+   */
+  private void rejectMasksWithoutStoredSecret(Object config, Map<String, String> passwordsMap) {
+    walkPasswordFields(
+        config,
+        NEW_KEY,
+        (holder, fieldName, fieldKey, value) -> {
+          if (PASSWORD_MASK.equals(value) && !passwordsMap.containsKey(fieldKey)) {
+            throw new EntityMaskException(
+                Response.Status.BAD_REQUEST,
+                String.format(
+                    "Field [%s] is masked but has no stored value to keep. Send the actual value.",
+                    fieldKey));
+          }
         });
   }
 
@@ -272,7 +298,7 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void walkCollection(Collection<?> collection, String key, PasswordFieldVisitor visitor) {
-    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+    List<String> elementKeys = ReflectionUtil.getCollectionElementIdentities(collection);
     int index = 0;
     for (Object element : collection) {
       if (isTraversable(element)) {

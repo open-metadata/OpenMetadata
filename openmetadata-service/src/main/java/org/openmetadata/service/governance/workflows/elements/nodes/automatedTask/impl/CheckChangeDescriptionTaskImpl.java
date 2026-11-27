@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -49,7 +50,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
           new BatchEntities.NodeExecution(
               batchExecutionExpr, execution, varHandler, inputNamespaces),
           batchContinuingOutcomeExpr,
-          entityLink -> checkChangeDescription(changeRules, entityLink, null),
+          entityLink -> checkChangeDescription(changeRules, entityLink, TriggeringEvent.NONE),
           () -> checkRelatedEntity(varHandler, inputNamespaces, changeRules));
     } catch (Exception exc) {
       LOG.error(
@@ -67,10 +68,18 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
         (String)
             varHandler.getNamespacedVariable(
                 inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
-    return checkChangeDescription(
-        changeRules,
-        entityLinkStr,
-        varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
+    return checkChangeDescription(changeRules, entityLinkStr, TriggeringEvent.from(varHandler));
+  }
+
+  /** The version the triggering event produced and the event's type, as the trigger passed them. */
+  private record TriggeringEvent(Object version, Object type) {
+    static final TriggeringEvent NONE = new TriggeringEvent(null, null);
+
+    static TriggeringEvent from(WorkflowVariableHandler varHandler) {
+      return new TriggeringEvent(
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE));
+    }
   }
 
   /**
@@ -93,7 +102,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   }
 
   private boolean checkChangeDescription(
-      ChangeRules changeRules, String entityLinkStr, Object triggeringVersion) {
+      ChangeRules changeRules, String entityLinkStr, TriggeringEvent triggeringEvent) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
@@ -102,12 +111,15 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     // change of the version its event produced. No change description means a create event -> true.
     ChangeDescription changeDescription =
         changeRules.changeRequest() == null
-            ? TriggeringChange.of(entity, triggeringVersion)
+            ? TriggeringChange.of(entity, triggeringEvent.version())
             : ChangeRequestService.proposedChangeDescription(
                 changeRules.changeRequest().changeRequestId());
     if (changeDescription == null) {
-      LOG.debug("No changeDescription found (likely a create event), returning true");
-      return true;
+      // A change-request run with no pending revision, or a create, has nothing narrower to judge.
+      // An update whose edit was undone within its session reverts the entity to a version without
+      // a change before this node reads it; that is not a create.
+      return changeRules.changeRequest() != null
+          || TriggeringChange.mayCarryNoChange(triggeringEvent.type());
     }
 
     String condition = changeRules.condition();

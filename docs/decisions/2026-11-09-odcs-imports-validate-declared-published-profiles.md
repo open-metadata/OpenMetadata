@@ -1,9 +1,9 @@
 # ODCS imports validate the declared published profile before native conversion
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-10 (cross-version metadata transport)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-10 (cross-version metadata transport) · v3 2026-11-12 (accepted legacy rules export embedded)
 - **Deciders:** Teddy Crepineau
-- **Guard:** ODCSVersionedImportTest; DataContractResourceIT#testVersionedODCSImportMatrix; DataContractResourceIT#testVersionedODCSInvalidDocumentsHaveNoSideEffects
+- **Guard:** ODCSVersionedImportTest; ODCSCrossVersionRoundTripTest#unrepresentableRootRulesRoundTripThroughTheirEmbeddedDeclaration; DataContractResourceIT#testVersionedODCSImportMatrix; DataContractResourceIT#testVersionedODCSInvalidDocumentsHaveNoSideEffects
 - **Related:** [#37202](https://github.com/open-metadata/OpenMetadata/issues/37202); ADR:2026-11-05-odcs-exports-use-versioned-schema-backed-mappers
 
 ## Context
@@ -97,3 +97,20 @@ annotation in exported ODCS when the target has no direct representation for sou
 `ODCSCrossVersionRoundTripTest` covers all 36 source/target combinations and reverse imports,
 including arbitrary future metadata, multi-part descriptions, native edits/deletions and annotation
 identity protection. The HTTP matrix validates all six export targets after each versioned import.
+
+## Amendment — accepted legacy rules export as their embedded declaration
+
+In a document without `schema`, import accepts legacy root quality rules that name a `column` but
+that v3.1.0 cannot express, such as a custom rule without `engine`/`implementation` or an
+unpublished metric, by embedding them in a `custom` rule with engine `odcs`. Export restored their
+source form, so the v3.1.0 export of a contract the import had just accepted failed the published
+schema (HTTP 400).
+
+For a contract carrying import metadata (`odcsPreservedFields`), v3.1.0 materialization now embeds
+every rule that the published `DataQuality` schema rejects but the legacy reader schema accepts, in
+the same declaration shape the import uses, so re-import restores the stored rule unchanged. The
+signal is the contract's import metadata, not each rule's origin: a rule added natively to an
+imported contract is embedded the same way. Contracts without import metadata are unchanged: an
+unrepresentable natively stored rule is still reported and the export rejected
+(`ODCSExportServiceTest`). Earlier profiles already exported these rules validly and are
+unaffected.

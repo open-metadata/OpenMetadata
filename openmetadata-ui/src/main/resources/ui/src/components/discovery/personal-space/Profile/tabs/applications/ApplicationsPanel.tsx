@@ -19,6 +19,10 @@ import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppDetail from './AppDetail';
@@ -64,9 +68,14 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (next: ApplicationsView) =>
-      setHash(APPLICATIONS_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+    (next: ApplicationsView, options?: SettingsNavigateOptions) =>
+      setHash(
+        APPLICATIONS_HASH_TAB,
+        viewToSubPath(next),
+        undefined,
+        settingsHashOptions(view, next, options)
+      ),
+    [setHash, view]
   );
 
   const handleHeaderChange = useCallback(

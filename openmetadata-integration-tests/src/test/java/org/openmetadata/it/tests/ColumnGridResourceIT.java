@@ -11,7 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -32,6 +36,8 @@ import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -44,6 +50,10 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -208,6 +218,103 @@ public class ColumnGridResourceIT {
     assertNotNull(page1.getColumns(), "Columns should not be null");
     assertFalse(page1.getColumns().isEmpty(), "Should have columns in first page");
     assertTrue(page1.getColumns().size() <= 2, "Should respect page size limit");
+  }
+
+  /**
+   * Browsing table columns and topic fields together pages through each name exactly once, with
+   * names that differ only in case in one row.
+   */
+  @Test
+  void test_getColumnGrid_browseAcrossColumnFieldsServesEachColumnOnce(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        Domains.create(
+            new CreateDomain()
+                .withName(ns.prefix("browse_domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Scopes the multi-field browse walk"));
+    List<String> domains = List.of(domain.getFullyQualifiedName());
+    String prefix = (ns.shortPrefix() + "_browse_").toLowerCase(Locale.ROOT);
+    String c0 = prefix + "c0";
+    String c1 = prefix + "c1";
+    String c2 = prefix + "c2";
+    String c3 = prefix + "c3";
+    String c4 = prefix + "c4";
+    String c5 = prefix + "c5";
+    String c6 = prefix + "c6";
+    String c8 = prefix + "c8";
+
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("browse_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    Stream.of(c0, c2, c4, c6, c8)
+                        .map(
+                            name ->
+                                Columns.build(name)
+                                    .withType(ColumnDataType.VARCHAR)
+                                    .withLength(255)
+                                    .create())
+                        .toList())
+                .withDomains(domains));
+    client
+        .topics()
+        .create(
+            new CreateTopic()
+                .withName(ns.prefix("browse_topic"))
+                .withService(MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName())
+                .withPartitions(1)
+                .withMessageSchema(
+                    new MessageSchema()
+                        .withSchemaType(SchemaType.JSON)
+                        .withSchemaFields(
+                            Stream.of(c1, c3, c5, c8.toUpperCase(Locale.ROOT))
+                                .map(
+                                    name ->
+                                        new Field()
+                                            .withName(name)
+                                            .withDataType(FieldDataType.STRING))
+                                .toList()))
+                .withDomains(domains));
+
+    String query = "entityTypes=table,topic&domainId=" + domain.getId();
+    waitForSearchIndexRefresh(ns);
+    await("Wait for the table and the topic to be indexed")
+        .atMost(Duration.ofSeconds(45))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertEquals(8, getColumnGrid(client, query + "&size=100").getColumns().size()));
+    assertEquals(8, getColumnGrid(client, query + "&size=3").getTotalUniqueColumns());
+
+    List<List<String>> pages = new ArrayList<>();
+    ColumnGridItem shared = null;
+    String cursor = null;
+    do {
+      String cursorParam =
+          cursor == null ? "" : "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8);
+      ColumnGridResponse page = getColumnGrid(client, query + "&size=3" + cursorParam);
+      pages.add(
+          page.getColumns().stream()
+              .map(item -> item.getColumnName().toLowerCase(Locale.ROOT))
+              .sorted()
+              .toList());
+      shared =
+          page.getColumns().stream()
+              .filter(item -> c8.equalsIgnoreCase(item.getColumnName()))
+              .findFirst()
+              .orElse(shared);
+      cursor = page.getCursor();
+    } while (cursor != null && pages.size() <= 3);
+
+    assertEquals(List.of(List.of(c0, c1, c2), List.of(c3, c4, c5), List.of(c6, c8)), pages);
+    assertNotNull(shared);
+    assertEquals(2, shared.getTotalOccurrences());
   }
 
   @Test

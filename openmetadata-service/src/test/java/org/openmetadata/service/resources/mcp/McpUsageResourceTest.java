@@ -41,8 +41,8 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.security.AuthorizationException;
@@ -53,7 +53,7 @@ class McpUsageResourceTest {
   private Authorizer authorizer;
   private McpUsageResource resource;
   private MockedConstruction<AppRepository> appRepositoryConstruction;
-  private MockedStatic<ApplicationContext> appContextStatic;
+  private MockedStatic<Entity> entityStatic;
   private SecurityContext adminContext;
   private SecurityContext userContext;
 
@@ -63,13 +63,8 @@ class McpUsageResourceTest {
     appRepositoryConstruction =
         Mockito.mockConstruction(AppRepository.class, (mock, ctx) -> stubRepo(mock));
 
-    ApplicationContext appContext = mock(ApplicationContext.class);
-    AbstractNativeApplication nativeApp = mock(AbstractNativeApplication.class);
-    when(nativeApp.getApp())
-        .thenReturn(new App().withId(UUID.randomUUID()).withName(McpAppConstants.MCP_APP_NAME));
-    when(appContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(nativeApp);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(appContext);
+    entityStatic = Mockito.mockStatic(Entity.class);
+    stubMcpAppLookup(new App().withId(UUID.randomUUID()).withName(McpAppConstants.MCP_APP_NAME));
 
     resource = new McpUsageResource(authorizer);
     adminContext = stubSecurityContext("admin");
@@ -79,7 +74,7 @@ class McpUsageResourceTest {
   @AfterEach
   void tearDown() {
     appRepositoryConstruction.close();
-    appContextStatic.close();
+    entityStatic.close();
   }
 
   @Test
@@ -332,15 +327,20 @@ class McpUsageResourceTest {
 
   @Test
   void mcpAppNotInitializedReturnsZeroCounts() {
-    appContextStatic.close();
-    ApplicationContext emptyContext = mock(ApplicationContext.class);
-    when(emptyContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(null);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(emptyContext);
+    stubMcpAppLookup(null);
 
     Response response = resource.getSummary(adminContext, null, null);
 
     assertThat(bodyAsMap(response).get("total")).isEqualTo(0L);
+  }
+
+  private void stubMcpAppLookup(App app) {
+    entityStatic
+        .when(
+            () ->
+                Entity.findEntityByNameOrNull(
+                    Entity.APPLICATION, McpAppConstants.MCP_APP_NAME, Include.ALL))
+        .thenReturn(app);
   }
 
   private void stubRepo(AppRepository mock) {

@@ -1,6 +1,6 @@
 # Athena partitioned Iceberg tables retain the Iceberg table type
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-11-athena-partitioned-iceberg-and-delta-keep-table-type
 - **Revisions:** v1 2026-10-12 (initial)
 - **Deciders:** harshsoni2024
 - **Guard:** `TestAthenaPartitionedIcebergTableType` in `ingestion/tests/unit/topology/database/test_athena.py`

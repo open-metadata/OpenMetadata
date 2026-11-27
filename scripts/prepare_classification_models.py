@@ -182,14 +182,10 @@ def import_archive(archive, cache_dir):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    matrix = commands.add_parser("matrix")
-    matrix.add_argument("--project", type=Path, required=True)
     discovery = commands.add_parser("discover")
     discovery.add_argument("--project", type=Path, required=True)
     verification = commands.add_parser("verify")
     verification.add_argument("--project", type=Path, required=True)
-    cleaning = commands.add_parser("clean")
-    cleaning.add_argument("--project", type=Path, required=True)
     preparation = commands.add_parser("prepare")
     preparation.add_argument("--requirement", required=True)
     preparation.add_argument("--uv-version", required=True)
@@ -198,16 +194,12 @@ def main():
     importing.add_argument("--archive", type=Path, required=True)
     importing.add_argument("--cache-dir", type=Path, required=True)
     args = parser.parse_args()
-    if args.command == "matrix":
-        sys.stdout.write(json.dumps(python_matrix(args.project)) + "\n")
-    elif args.command == "discover":
+    if args.command == "discover":
         sys.stdout.write(json.dumps(discover(args.project)) + "\n")
     elif args.command == "prepare":
         prepare(args.requirement, args.uv_version, args.output)
     elif args.command == "verify":
         verify(args.project)
-    elif args.command == "clean":
-        subprocess.run(["uv", "cache", "clean", *[r["name"] for r in discover(args.project)["include"]]], check=True)
     else:
         import_archive(args.archive, args.cache_dir)
 

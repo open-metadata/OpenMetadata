@@ -163,6 +163,15 @@ test.describe.serial(
       expect(graphPerformanceConfig.cacheTTLSeconds).toBe(600);
 
       try {
+        // Compare against what the server returns, not what was sent: a
+        // database upgraded from before 1.12 has no graphPerformanceConfig, so
+        // the partial one sent above comes back with the schema defaults.
+        const { graphPerformanceConfig } = (
+          await (await apiContext.get(settingsUrl)).json()
+        ).config_value;
+
+        expect(graphPerformanceConfig.cacheTTLSeconds).toBe(600);
+
         await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
         await page.getByTestId('field-upstream').fill('2');
         const saveRes = page.waitForResponse(

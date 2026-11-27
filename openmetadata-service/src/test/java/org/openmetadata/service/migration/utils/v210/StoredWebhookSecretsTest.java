@@ -5,24 +5,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.BoundCiphertext;
-import org.openmetadata.service.secrets.SecretOwner;
 
 class StoredWebhookSecretsTest {
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
-  private static final UUID SLACK = UUID.randomUUID();
-  private static final UUID SIGNED = UUID.randomUUID();
-  private static final UUID OAUTH = UUID.randomUUID();
-  private static final UUID STORED_TWICE = UUID.randomUUID();
-  private static final UUID HEADER = UUID.randomUUID();
-  private static final UUID EMAIL = UUID.randomUUID();
+  private static final String OTHER_KEY = "ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ5x4uDcWn7mY=";
+  // Written with KEY by the 2.1 pre-release that encrypted each secret for its holder: the client
+  // secret and the endpoint of the destination BOUND_DESTINATION, and the signing key of the
+  // generic webhook of the user BOUND_USER.
+  private static final UUID BOUND_DESTINATION =
+      UUID.fromString("6f1c2a5e-8d4b-4c3a-9e7f-1a2b3c4d5e6f");
+  private static final UUID BOUND_USER = UUID.fromString("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
+  private static final String BOUND_CLIENT_SECRET =
+      "fernet:bound:gAAAAABq-NEZOSjN4Q906mjL3JJOo4jBS2NjWeMjetHbUepul_nzLH6XlOgxh4_Cxhmd0qOuH0o8nUnK4f6C270vJ_5Tuqj-Iw==";
+  private static final String BOUND_ENDPOINT =
+      "fernet:bound:gAAAAABq-NEZwdFgT9p1EIUzz6hV5yVK8FNa5bTHD5d03J1991QcrHbZd35JL67X5Numb8mKyRRc4-Q4Vcdj5KOPU6zDFjJekA1kfOkRv8WhQEqZvLmw70A=";
+  private static final String BOUND_SIGNING_KEY =
+      "fernet:bound:gAAAAABq-NEZgtwg2IfiGiAcoGfwHzaeNtwr55H1ABD7cSwZGdWCjl4Eqv47pG4VeZReXtIN6p1bHABzLrbjpHSBQ7e3kivm3Q==";
 
   private StoredWebhookSecrets secrets;
 
@@ -32,170 +36,176 @@ class StoredWebhookSecretsTest {
     secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
   }
 
-  @Test
-  void anAlertKeepsTheCredentialsReleasesBefore21EncryptedAndLeavesTheRestToEnterAgain() {
-    String storedTwice = legacy("a value stored twice");
-    String header = legacy("a header value");
-    JsonNode alert = alert(storedTwice, header);
-
-    assertTrue(secrets.bindAlert(alert, storedTwice::equals));
-    String once = JsonUtils.pojoToJson(alert);
-    assertFalse(secrets.bindAlert(alert, storedTwice::equals));
-    assertEquals(once, JsonUtils.pojoToJson(alert));
-
-    assertEquals("https://hooks.slack.com/x", opened(alert, 0, SLACK, "/endpoint"));
-    assertEquals("hmac-key", opened(alert, 1, SIGNED, "/authType/secretKey"));
-    assertEquals("client", opened(alert, 2, OAUTH, "/authType/clientId"));
-    assertEquals("oauth-secret", opened(alert, 2, OAUTH, "/authType/clientSecret"));
-    assertEquals(storedTwice, configAt(alert, 3, "/authType/clientSecret"));
-    assertEquals(header, configAt(alert, 4, "/headers/Authorization"));
-    assertEquals("a@example.com", configAt(alert, 5, "/receivers/0"));
-    alert.path("destinations").forEach(d -> assertTrue(d.path("enabled").asBoolean()));
-    String recorded = alert.at("/changeDescription/fieldsUpdated/0/newValue").asText();
-    assertTrue(recorded.contains(StoredWebhookSecrets.MASK), recorded);
-    assertFalse(recorded.contains(storedTwice), recorded);
+  @AfterEach
+  void tearDown() {
+    Fernet.getInstance().setFernetKey((String) null);
   }
 
   @Test
-  void aProfileBindsWhatWasEnteredAndCarriesNoCiphertextOver() {
-    UUID userId = UUID.randomUUID();
-    String header = legacy("a header value");
+  void anAlertStoredInTheClearIsEncryptedAndCiphertextIsKeptAsStored() {
+    String signingKey = Fernet.getInstance().encrypt("hmac-key");
+    String clientSecret = Fernet.getInstance().encrypt("oauth-secret");
+    JsonNode alert =
+        alert(
+            """
+            [{"id": "%s", "type": "Slack", "enabled": true,
+              "config": {"endpoint": "https://hooks.slack.com/x"}},
+             {"id": "%s", "type": "Webhook", "enabled": true,
+              "config": {"endpoint": "https://e/1", "headers": {"Authorization": "a token"},
+                         "authType": {"type": "bearer", "secretKey": "%s"}}},
+             {"id": "%s", "type": "Webhook", "enabled": true,
+              "config": {"endpoint": "https://e/2", "authType": {"type": "oauth2",
+                         "tokenUrl": "https://t", "clientId": "c", "clientSecret": "%s"}}},
+             {"id": "%s", "type": "Email", "enabled": true,
+              "config": {"receivers": ["a@example.com"]}}]"""
+                .formatted(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    signingKey,
+                    UUID.randomUUID(),
+                    clientSecret,
+                    UUID.randomUUID()));
+
+    assertTrue(secrets.encryptAlert(alert));
+
+    assertEquals("https://hooks.slack.com/x", opened(configAt(alert, 0, "/endpoint")));
+    assertEquals("a token", opened(configAt(alert, 1, "/headers/Authorization")));
+    assertEquals(signingKey, configAt(alert, 1, "/authType/secretKey"));
+    assertEquals("c", opened(configAt(alert, 2, "/authType/clientId")));
+    assertEquals(clientSecret, configAt(alert, 2, "/authType/clientSecret"));
+    assertEquals("a@example.com", configAt(alert, 3, "/receivers/0"));
+    String recorded = alert.at("/changeDescription/fieldsUpdated/0/newValue").asText();
+    assertTrue(recorded.contains(StoredWebhookSecrets.MASK), recorded);
+    assertFalse(recorded.contains("a token"), recorded);
+  }
+
+  // Releases before 2.1 sent the endpoint and header values as stored, so whatever is stored there
+  // is encrypted as it is and still sent as it was; only the credentials they encrypted stay.
+  @Test
+  void ciphertextAtAFieldSentAsStoredIsEncryptedAsItIs() {
+    String endpoint = Fernet.getInstance().encrypt("https://hooks.example.com/x");
+    String header = Fernet.getInstance().encrypt("a header value");
+    String signingKey = Fernet.getInstance().encrypt("hmac-key");
+    JsonNode alert =
+        alert(
+            """
+            [{"id": "%s", "type": "Webhook", "enabled": true,
+              "config": {"endpoint": "%s", "headers": {"Authorization": "%s"},
+                         "authType": {"type": "bearer", "secretKey": "%s"}}}]"""
+                .formatted(UUID.randomUUID(), endpoint, header, signingKey));
+
+    assertTrue(secrets.encryptAlert(alert));
+
+    assertEquals(endpoint, opened(configAt(alert, 0, "/endpoint")));
+    assertEquals(header, opened(configAt(alert, 0, "/headers/Authorization")));
+    assertEquals(signingKey, configAt(alert, 0, "/authType/secretKey"));
+  }
+
+  @Test
+  void aValueBoundToItsDestinationIsEncryptedAgainWithTheServerKey() {
+    JsonNode alert = alertBoundBefore(BOUND_DESTINATION);
+
+    assertTrue(secrets.encryptAlert(alert));
+
+    assertEquals("a client secret", opened(configAt(alert, 0, "/authType/clientSecret")));
+    assertEquals("https://hooks.example.com/bound", opened(configAt(alert, 0, "/endpoint")));
+  }
+
+  // A bound value opens only for the holder it was written for, and only with the key it was
+  // written with: anywhere else it stays as stored and is entered again.
+  @Test
+  void aBoundValueThatDoesNotOpenStaysAsStored() {
+    JsonNode anotherDestination = alertBoundBefore(UUID.randomUUID());
+    secrets.encryptAlert(anotherDestination);
+    Fernet.getInstance().setFernetKey(OTHER_KEY);
+    JsonNode anotherKey = alertBoundBefore(BOUND_DESTINATION);
+    new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys()).encryptAlert(anotherKey);
+
+    for (JsonNode alert : new JsonNode[] {anotherDestination, anotherKey}) {
+      assertEquals(BOUND_CLIENT_SECRET, configAt(alert, 0, "/authType/clientSecret"));
+      assertEquals(BOUND_ENDPOINT, configAt(alert, 0, "/endpoint"));
+    }
+  }
+
+  @Test
+  void aProfileIsEncryptedWithTheServerKeyAsAnAlertIs() {
+    String header = Fernet.getInstance().encrypt("a header value");
     String profile =
         """
         {"subscription": {
           "generic": {"endpoint": "https://hooks.example.com/g",
-                      "authType": {"type": "oauth2", "tokenUrl": "https://t", "clientId": "c",
-                                   "clientSecret": "entered in the clear"}},
+                      "authType": {"type": "bearer", "secretKey": "%s"}},
           "slack": {"endpoint": "https://hooks.slack.com/s",
-                    "headers": {"Authorization": "%s"}}}}"""
-            .formatted(header);
+                    "headers": {"Authorization": "%s"}},
+          "msTeams": {"endpoint": "https://hooks.example.com/t",
+                      "authType": {"type": "oauth2", "tokenUrl": "https://t", "clientId": "c",
+                                   "clientSecret": "entered in the clear"}}}}"""
+            .formatted(BOUND_SIGNING_KEY, header);
     JsonNode user =
         JsonUtils.readTree(
             """
             {"id": "%s", "name": "u", "profile": %s,
              "changeDescription": {"fieldsUpdated": [
                {"name": "profile", "oldValue": "{}", "newValue": %s}]}}"""
-                .formatted(userId, profile, JsonUtils.pojoToJson(profile)));
+                .formatted(BOUND_USER, profile, JsonUtils.pojoToJson(profile)));
 
-    assertTrue(secrets.bindProfileEntity("user", user));
+    assertTrue(secrets.encryptProfileEntity("user", user));
 
-    SecretOwner generic =
-        SecretOwner.builder("user").id(userId).literal("webhook").literal("generic").build();
-    String bound = user.at("/profile/subscription/generic/authType/clientSecret").asText();
+    assertEquals("a signing key", opened(webhookAt(user, "generic", "/authType/secretKey")));
+    assertEquals(header, opened(webhookAt(user, "slack", "/headers/Authorization")));
     assertEquals(
-        Optional.of("entered in the clear"),
-        BoundCiphertext.decrypt(generic, "/authType/clientSecret", bound));
-    assertEquals(header, user.at("/profile/subscription/slack/headers/Authorization").asText());
+        "entered in the clear", opened(webhookAt(user, "msTeams", "/authType/clientSecret")));
     String recorded = user.at("/changeDescription/fieldsUpdated/0/newValue").asText();
     assertTrue(recorded.contains(StoredWebhookSecrets.MASK), recorded);
     assertFalse(recorded.contains("entered in the clear"), recorded);
   }
 
   @Test
-  void theFrozenRulesAndTheServerOpenEachOthersValues() {
-    UUID destination = UUID.randomUUID();
-    SecretOwner owner = SecretOwner.builder("alertdestination").id(destination).build();
-    String written = BoundCiphertext.encrypt(owner, "/endpoint", "https://hooks.example.com/x");
-
-    assertEquals(
-        Optional.of("https://hooks.example.com/x"),
-        secrets.openBound(
-            StoredWebhookSecrets.alertDestinationOwner(destination), "/endpoint", written));
-  }
-
-  @Test
   void aStoredChangeEventOfAnAlertKeepsOnlyTheMask() {
-    String secret = legacy("an event value");
+    String secret = Fernet.getInstance().encrypt("an event value");
     JsonNode event =
         JsonUtils.readTree(
             """
             {"entityType": "eventsubscription",
              "entity": %s}"""
-                .formatted(JsonUtils.pojoToJson(JsonUtils.pojoToJson(alert(secret, secret)))));
+                .formatted(JsonUtils.pojoToJson(JsonUtils.pojoToJson(alertWithHeader(secret)))));
 
     assertTrue(StoredWebhookSecrets.maskChangeEvent(event, StoredWebhookSecrets::maskAlert));
     assertFalse(event.path("entity").asText().contains(secret));
   }
 
-  @Test
-  void theCopyCheckReadsEveryTableButTheLargeOnesThatCannotHoldASecret() {
-    List.of(
-            "dbservice_entity",
-            "llm_service_entity",
-            "ingestion_pipeline_entity",
-            "user_entity",
-            "team_entity",
-            "workflow_definition_entity",
-            "installed_apps",
-            "apps_marketplace",
-            "automations_workflow",
-            "openmetadata_settings",
-            "test_suite",
-            "user_session",
-            "user_tokens",
-            "context_plugin_entity",
-            "a_table_a_distribution_adds")
-        .forEach(table -> assertTrue(StoredCiphertextCopies.isRead(table), table));
-    List.of(
-            "table_entity",
-            "glossary_term_entity",
-            "event_subscription_entity",
-            "entity_extension",
-            "change_event",
-            "successful_sent_change_events",
-            "consumers_dlq",
-            "entity_relationship",
-            "agent_execution_entity",
-            "mcp_execution_entity",
-            "entity_extension_time_series",
-            "workflow_instance_state_time_series")
-        .forEach(table -> assertFalse(StoredCiphertextCopies.isRead(table), table));
-  }
-
-  private String opened(JsonNode alert, int index, UUID destination, String field) {
-    String value = configAt(alert, index, field);
-    assertTrue(value.startsWith(StoredWebhookSecrets.BOUND_PREFIX), value);
-    SecretOwner owner = SecretOwner.builder("alertdestination").id(destination).build();
-    return BoundCiphertext.decrypt(owner, field, value).orElseThrow();
+  private static String opened(String value) {
+    assertTrue(Fernet.isTokenized(value), value);
+    assertFalse(value.startsWith(StoredWebhookSecrets.BOUND_PREFIX), value);
+    return Fernet.getInstance().decrypt(value);
   }
 
   private static String configAt(JsonNode alert, int index, String field) {
     return alert.path("destinations").get(index).path("config").at(field).asText();
   }
 
-  private static String legacy(String secret) {
-    return Fernet.getInstance().encrypt(secret);
+  private static String webhookAt(JsonNode entity, String slot, String field) {
+    return entity.at("/profile/subscription/" + slot).at(field).asText();
   }
 
-  private static JsonNode alert(String storedTwice, String header) {
-    String destinations =
+  private static JsonNode alertBoundBefore(UUID destinationId) {
+    return alert(
         """
-        [{"id": "%s", "type": "Slack", "enabled": true,
-          "config": {"endpoint": "https://hooks.slack.com/x"}},
-         {"id": "%s", "type": "Webhook", "enabled": true,
-          "config": {"endpoint": "https://e/1", "authType": {"type": "bearer", "secretKey": "%s"}}},
-         {"id": "%s", "type": "Webhook", "enabled": true,
-          "config": {"endpoint": "https://e/2", "authType": {"type": "oauth2",
-                     "tokenUrl": "https://t", "clientId": "%s", "clientSecret": "%s"}}},
-         {"id": "%s", "type": "Webhook", "enabled": true,
-          "config": {"endpoint": "https://e/3", "authType": {"type": "oauth2",
-                     "tokenUrl": "https://t", "clientId": "c", "clientSecret": "%s"}}},
-         {"id": "%s", "type": "Webhook", "enabled": true,
-          "config": {"endpoint": "https://e/4", "headers": {"Authorization": "%s"}}},
-         {"id": "%s", "type": "Email", "enabled": true,
-          "config": {"receivers": ["a@example.com"]}}]"""
-            .formatted(
-                SLACK,
-                SIGNED,
-                legacy("hmac-key"),
-                OAUTH,
-                legacy("client"),
-                legacy("oauth-secret"),
-                STORED_TWICE,
-                storedTwice,
-                HEADER,
-                header,
-                EMAIL);
+        [{"id": "%s", "type": "Webhook", "enabled": true,
+          "config": {"endpoint": "%s", "authType": {"type": "oauth2", "tokenUrl": "https://t",
+                     "clientId": "c", "clientSecret": "%s"}}}]"""
+            .formatted(destinationId, BOUND_ENDPOINT, BOUND_CLIENT_SECRET));
+  }
+
+  private static JsonNode alertWithHeader(String header) {
+    return alert(
+        """
+        [{"id": "%s", "type": "Webhook", "enabled": true,
+          "config": {"endpoint": "https://e/4", "headers": {"Authorization": "%s"}}}]"""
+            .formatted(UUID.randomUUID(), header));
+  }
+
+  private static JsonNode alert(String destinations) {
     return JsonUtils.readTree(
         """
         {"id": "%s", "name": "legacy", "destinations": %s,

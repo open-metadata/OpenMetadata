@@ -327,10 +327,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test.beforeAll(async ({ browser }) => {
     // A beforeAll hook inherits the 60s test timeout, which the projection poll below would consume
     // on its own — leaving nothing for table.create() and killing the hook under exactly the delay
-    // the poll exists to absorb. A failed beforeAll fails the whole suite, so the budgets come from
-    // ontology-rdf.setup.ts, which already calibrated this projection: 180s hook around a 120s poll.
-    // This project depends on ['setup', 'entity-data-setup'] and not on ontology-rdf-setup, so it
-    // gets no prior RDF health gate and has to tolerate a cold projection here.
+    // the poll exists to absorb. A failed beforeAll fails the whole suite, so the hook gets 180s
+    // around a 120s poll. This project depends only on ['setup', 'entity-data-setup'], so it gets
+    // no prior RDF health gate and has to tolerate a cold projection here.
     test.setTimeout(180_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     table = new TableClass();
@@ -422,9 +421,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     // inside the predicate makes a failing explore call look like a call that
     // never happened, and the wait then times out without naming the HTTP error.
     //
-    // The project waits on ontology-rdf-setup, so the projection is known to be
-    // writing by the time beforeAll builds the fixture table — but that table's
-    // own write still has to drain, and it reaches the store as a bare node
+    // beforeAll's projection poll proves the store is writing by the time it
+    // builds the fixture table — but that table's own write still has to drain, and it reaches the store as a bare node
     // before its relationships follow. Reopen until the drain has caught up
     // rather than asserting on whichever half of it exists on the first paint.
     let graph!: GraphData;

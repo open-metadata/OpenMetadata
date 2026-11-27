@@ -56,7 +56,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
-import { useTestCaseStore } from './useTestCase.store';
+import { keepFetchedOnlyFields, useTestCaseStore } from './useTestCase.store';
 
 export interface UseTestCaseDetailPageProps {
   isVersionPage?: boolean;
@@ -98,7 +98,7 @@ export interface UseTestCaseDetailPageResult {
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
   handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
-  setTestCase: (testCase: TestCase) => void;
+  mergeTestCase: (testCase: TestCase) => void;
 }
 
 /**
@@ -131,6 +131,7 @@ export const useTestCaseDetailPage = ({
   const {
     setIsLoading,
     setTestCase,
+    mergeTestCase,
     testCase,
     reset,
     setTestCasePermission,
@@ -333,7 +334,7 @@ export const useTestCaseDetailPage = ({
 
       try {
         const res = await updateTestCaseById(id, patch);
-        setEntityDetails(res);
+        setEntityDetails((prev) => keepFetchedOnlyFields(prev, res));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -348,9 +349,7 @@ export const useTestCaseDetailPage = ({
 
     try {
       const restoredTestCase = await restoreTestCase(testCase.id);
-      // The restore response omits fields the page fetched separately, such as
-      // testCaseResult; keep them so the Last run banner doesn't reset.
-      setEntityDetails((prev) => ({ ...prev, ...restoredTestCase }));
+      setEntityDetails((prev) => keepFetchedOnlyFields(prev, restoredTestCase));
       showSuccessToast(
         t('server.restore-entity-success', {
           entity: testCase.displayName ?? testCase.name,
@@ -534,6 +533,6 @@ export const useTestCaseDetailPage = ({
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   };
 };

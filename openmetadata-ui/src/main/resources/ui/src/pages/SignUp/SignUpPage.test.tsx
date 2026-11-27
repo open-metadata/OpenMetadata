@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
+import { ROUTES } from '../../constants/constants';
 import { createUser } from '../../rest/userAPI';
 import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
@@ -22,12 +23,13 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 
-let letExpectedUserName = {
+let letExpectedUserName: Record<string, string> = {
   name: 'sample123',
   email: 'sample123@sample.com',
 };
 
 const mockShowErrorToast = jest.fn();
+const mockNavigate = jest.fn();
 
 const DEFAULT_NEW_USER = { name: '', email: '', picture: '' };
 
@@ -36,6 +38,7 @@ let mockNewUser: Record<string, string> | undefined = DEFAULT_NEW_USER;
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     setIsSigningUp: jest.fn(),
+    updateCurrentUser: jest.fn(),
     newUser: mockNewUser,
   })),
 }));
@@ -68,7 +71,7 @@ jest.mock('../../utils/AuthProvider.util', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Navigate: jest.fn(({ to }) => <div data-testid="navigate">{to}</div>),
 }));
 
@@ -121,6 +124,33 @@ describe('SignUp page', () => {
     });
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should sign up an SSO user whose profile carries extra claims and land on home', async () => {
+    const picture = 'https://example.com/avatar.png';
+    letExpectedUserName = {
+      displayName: 'Sample User',
+      name: 'sample123',
+      email: 'sample123@sample.com',
+      picture,
+      locale: 'en-AU',
+    };
+    (getImages as jest.Mock).mockReturnValueOnce({ image: picture });
+
+    render(<SignUp />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-button'));
+    });
+
+    expect(createUser).toHaveBeenLastCalledWith({
+      name: 'sample123',
+      displayName: 'Sample User',
+      email: 'sample123@sample.com',
+      teams: [],
+      profile: { images: { image: picture } },
+    });
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.HOME);
   });
 
   it('Error should be thrown if createUser API fails', async () => {

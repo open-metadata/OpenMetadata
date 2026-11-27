@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
@@ -47,6 +47,10 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { shouldShowPager } from '../../../utils/PaginationUtils';
+import {
+  getApprovalOutcomeMessage,
+  getRunApprovals,
+} from '../../../utils/WorkflowApprovalOutcomeUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
@@ -152,12 +156,27 @@ export const WorkflowExecutionHistory: React.FC<
           const { displayLabel, statusType } = getStatusInfo(status);
 
           return (
-            <StatusBadgeV2
-              dataTestId={`workflow-status-badge-${record.id}`}
-              label={displayLabel}
-              showIcon={false}
-              status={statusType}
-            />
+            <Box align="start" direction="col" gap={1}>
+              <StatusBadgeV2
+                dataTestId={`workflow-status-badge-${record.id}`}
+                label={displayLabel}
+                showIcon={false}
+                status={statusType}
+              />
+              {getRunApprovals(record).map((outcome) => {
+                const message = getApprovalOutcomeMessage(outcome);
+
+                return (
+                  <Typography
+                    color="secondary"
+                    data-testid={`workflow-approval-outcome-${record.id}`}
+                    key={outcome.id}
+                    size="text-xs">
+                    {t(message.key, { user: message.users })}
+                  </Typography>
+                );
+              })}
+            </Box>
           );
         },
       },

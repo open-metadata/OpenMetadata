@@ -8,259 +8,1894 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Test Microstrategy using the topology
+MicroStrategy client and source, against a fake MicroStrategy Library REST API.
+
+The payloads are trimmed from responses of the public MicroStrategy demo server.
 """
 
-from datetime import datetime
+from __future__ import annotations
+
+import json
+import time
+from collections import OrderedDict
 from types import SimpleNamespace
-from unittest import TestCase
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
+import requests
 
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardService,
-    DashboardServiceType,
+from metadata.generated.schema.entity.data.table import DataType
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.delete import SourceListing
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.source.dashboard.microstrategy.client import (
+    CACHE_SIZE,
+    CubeSql,
+    MicroStrategyApiError,
+    MicroStrategyClient,
+    strip_engine_steps,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.microstrategy.metadata import (
-    MicrostrategySource,
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    read_columns,
+    read_projections,
+    table_matches,
 )
-from metadata.ingestion.source.dashboard.microstrategy.models import (
-    MstrChapter,
-    MstrDashboard,
-    MstrDashboardDetails,
-    MstrOwner,
-    MstrPage,
-    MstrProject,
-    MstrVisualization,
-)
+from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource, remember
+from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard, MstrDataset
 
-mock_micro_config = {
-    "source": {
-        "type": "microstrategy",
-        "serviceName": "local_stitch_test",
-        "serviceConnection": {
-            "config": {
-                "type": "MicroStrategy",
-                "hostPort": "https://demo.microstrategy.com",
-                "username": "username",
-                "password": "password",
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+CLIENT_MODULE = "metadata.ingestion.source.dashboard.microstrategy.client"
+API = "/MicroStrategyLibrary/api"
+
+TUTORIAL = {
+    "acg": 5,
+    "id": "B7CA92F04B9FAE8D941C3E9B7E0CD754",
+    "name": "MicroStrategy Tutorial",
+    "status": 0,
+    "alias": "",
+    "description": "MicroStrategy Tutorial project",
+    "dateCreated": "2015-06-30T21:55:35.000+0000",
+    "dateModified": "2026-10-31T05:22:01.000+0000",
+    "owner": {"name": "Administrator", "id": "54F3D26011D2896560009A8E67019608"},
+}
+# No description key: the API leaves it out when a project has none.
+MOBILE = {"id": "EC70648611E7A2F962E90080EFD58751", "name": "MobileDashboards", "status": 0, "acg": 255}
+
+OWNER_ID = "54F3D26011D2896560009A8E67019608"
+USER_ID = "3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"
+
+
+def _search_row(dossier_id: str, name: str, project_id: str, description: str | None = None) -> dict:
+    row = {
+        "name": name,
+        "id": dossier_id,
+        "type": 55,
+        "subtype": 14081,
+        "dateCreated": "2020-02-19T10:07:01.000+0000",
+        "dateModified": "2024-11-06T14:14:42.000+0000",
+        "version": "3E367000E84DD4AA9B501EAD892EB2E1",
+        "acg": 199,
+        "owner": {"name": "Administrator", "id": OWNER_ID, "expired": False},
+        "extType": 0,
+        "viewMedia": 1879072805,
+        "certifiedInfo": {"certified": False},
+        "templateInfo": {"template": False, "lastModifiedBy": {}},
+        "projectId": project_id,
+        "embedded": False,
+        "managed": False,
+        "mdTenantId": 1,
+    }
+    if description:
+        row["description"] = description
+    return row
+
+
+OFFICE_ROYALE = _search_row(
+    "27D332AC6D43352E0928B9A1FCAF4AB0", "Office Royale Sales", TUTORIAL["id"], "Sales of the Office Royale chain"
+)
+AIRLINE = _search_row("233AE5EF48F48E84B4626D8E0E8806DE", "Airline Flight Analysis", TUTORIAL["id"])
+BROKEN = _search_row("3A6A3B1E4A8F46E2B57F4E1C2A9D0B11", "Legacy Layout", TUTORIAL["id"])
+# Report Services documents, a document template and a theme: same type and subtype as a
+# dossier, told apart only by viewMedia. Their dossier definition answers HTTP 500.
+DOCUMENTS = [
+    {**_search_row("B6375786480EECC3D2B57CB081AE32E9", "Light Theme Document", TUTORIAL["id"]), "viewMedia": view_media}
+    for view_media in (805306485, 134217845, 402653188, 134217728, 268435711)
+]
+
+ATTRIBUTE_STORE = {
+    "id": "4D03EE044D33671811F9ADA6B84668E9",
+    "name": "Store",
+    "type": "attribute",
+    "forms": [
+        {"id": "45C11FA478E745FEA08D781CEA190FE5", "name": "ID", "dataType": "integer", "baseFormType": "number"},
+        {"id": "CCFBE2A5EADB4F50941FB879CCF1721C", "name": "Name", "dataType": "nVarChar", "baseFormType": "text"},
+        {"id": "A96BB2BD440623B8CBE59299C5F8CF04", "name": "Rating", "dataType": "real", "baseFormType": "number"},
+        {"id": "2FCF90264BCCA73839D2489007A90013", "name": "Image", "baseFormType": "url"},
+    ],
+}
+OFFICE_ROYALE_CUBE = "F6C63ED59D41BF792A2C72B65070FE58"
+METRIC_REVENUE = {"id": "89C18AB411E63ED105690080EF7548DB", "name": "Revenue", "type": "metric"}
+
+# Both dossiers have a page K53 holding a visualization W63, as on the demo server.
+DEFINITIONS = {
+    OFFICE_ROYALE["id"]: {
+        "id": OFFICE_ROYALE["id"],
+        "name": OFFICE_ROYALE["name"],
+        "currentChapter": "K1",
+        "chapters": [
+            {
+                "key": "K1",
+                "name": "Chapter 1",
+                "pages": [
+                    {
+                        "key": "K53",
+                        "name": "Overview",
+                        "visualizations": [
+                            {"key": "W63", "name": "Revenue by Store", "visualizationType": "vertical_bar"},
+                            {"key": "W64", "name": "Revenue Trend", "visualizationType": "line_chart"},
+                        ],
+                    }
+                ],
             }
-        },
-        "sourceConfig": {"config": {"type": "DashboardMetadata", "includeOwners": True}},
+        ],
+        "datasets": [
+            {
+                "id": OFFICE_ROYALE_CUBE,
+                "name": "Store Sales",
+                "availableObjects": [ATTRIBUTE_STORE, METRIC_REVENUE],
+                "rows": [],
+                "columns": [],
+                "pageBy": [],
+            }
+        ],
     },
-    "sink": {"type": "metadata-rest", "config": {}},
-    "workflowConfig": {
-        "loggerLevel": "DEBUG",
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
-        },
+    AIRLINE["id"]: {
+        "id": AIRLINE["id"],
+        "name": AIRLINE["name"],
+        "currentChapter": "K1",
+        "chapters": [
+            {
+                "key": "K1",
+                "name": "Chapter 1",
+                "pages": [
+                    {
+                        "key": "K53",
+                        "name": "Flights",
+                        "visualizations": [{"key": "W63", "name": "Delays", "visualizationType": "grid"}],
+                    }
+                ],
+            }
+        ],
+        "datasets": [{"id": "E238CE7C486FB7EBB07452BD5E6CFF03", "name": "Flights", "availableObjects": []}],
     },
 }
+DEFINITION_ERROR = {
+    "code": "ERR001",
+    "message": "class com.microstrategy.rest.impl.model.dossier.Chapter cannot be cast to class "
+    "com.microstrategy.rest.impl.model.dossier.Page",
+    "ticketId": "e441694720c84451b419f529045336c2",
+}
+CUBE_STATEMENT = """select\t`a16`.`CATEGORY_ID`  `CATEGORY_ID`,
+\tmax(`a111`.`CATEGORY_DESC`)  `CATEGORY0`,
+\tsum(`a11`.`qty_sold`)  `WJXBFS1`
+from\t`order_detail`\t`a11`
+\tjoin\t`tutorial_wh`.`lu_item`\t`a16`
+\t  on \t(`a11`.`ITEM_ID` = `a16`.`ITEM_ID`)
+\tjoin\t`tutorial_wh`.`lu_category`\t`a111`
+\t  on \t(`a16`.`CATEGORY_ID` = `a111`.`CATEGORY_ID`)
+group by\t`a16`.`CATEGORY_ID`"""
+CUBE_SQL = (
+    CUBE_STATEMENT
+    + """
 
-MOCK_PROJECT_LIST = [
-    MstrProject(
-        acg=5,
-        id="B7CA92F04B9FAE8D941C3E9B7E0CD754",
-        name="MicroStrategy Tutorial",
-        status=0,
-        alias="",
-        description="fun",
-        dateCreated=datetime(2015, 6, 30, 21, 55, 35),
-        dateModified=datetime(2024, 10, 1, 21, 42, 50),
-        owner=MstrOwner(name="Administrator", id="54F3D26011D2896560009A8E67019608"),
-    )
-]
-
-MOCK_DASHBORD_LIST = [
-    MstrDashboard(
-        name="Library of Demos",
-        id="925FB4A311EA52FF3EA80080EF059105",
-        type=55,
-        description="abc",
-        subtype=14081,
-        dateCreated="2020-02-19T10:07:01.000+0000",
-        dateModified="2024-11-06T14:14:42.000+0000",
-        version="3E367000E84DD4AA9B501EAD892EB2E1",
-        acg=199,
-        owner=MstrOwner(name="Administrator", id="54F3D26011D2896560009A8E67019608"),
-        extType=0,
-        viewMedia=1879072805,
-        certifiedInfo={"certified": False},
-        templateInfo={"template": False, "lastModifiedBy": {}},
-        projectId="EC70648611E7A2F962E90080EFD58751",
-        projectName="MicroStrategy Tutorial",
-    )
-]
+[Analytical engine calculation steps:
+\t1.  Perform cross-tabbing
+]"""
+)
 
 
-class MicroStrategyUnitTest(TestCase):
+class FakeMicroStrategy:
     """
-    Implements the necessary methods to extract
-    MicroStrategy Unit Testtest_dbt
+    Answers the client's HTTP calls like a MicroStrategy Library server. Search results are
+    scoped by the X-MSTR-ProjectID header, as on a real server.
     """
 
-    @patch("metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection")
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def setUp(self, create_connection, test_connection) -> None:
-        test_connection.return_value = False
-        create_connection.return_value.client = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_micro_config)
-        self.microstrategy = MicrostrategySource.create(
-            mock_micro_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+    def __init__(self) -> None:
+        self.projects: list[dict] = [TUTORIAL, MOBILE]
+        self.dossiers: dict[str, list[dict]] = {TUTORIAL["id"]: [OFFICE_ROYALE, AIRLINE], MOBILE["id"]: []}
+        self.definitions: dict[str, dict] = dict(DEFINITIONS)
+        self.overrides: dict[str, Callable[[], tuple[int, Any]]] = {}
+        self.logins = 0
+        self.calls: list[SimpleNamespace] = []
+        self.api = API
+
+    def login(self, url: str, json: dict, **_: Any) -> requests.Response:
+        self.logins += 1
+        self.calls.append(SimpleNamespace(method="POST", path=urlparse(url).path, params={}, headers={}, body=json))
+        return _response(
+            204, None, {"X-MSTR-AuthToken": f"token-{self.logins}", "Content-Security-Policy": "object-src 'none'"}
         )
-        self.microstrategy.client = SimpleNamespace()
 
-    def test_get_dashboards_list(self):
-        """
-        Get the dashboards
-        """
-        self.microstrategy.client.is_project_name = lambda *_: False
-        self.microstrategy.client.get_projects_list = lambda *_: MOCK_PROJECT_LIST
-        self.microstrategy.client.get_dashboards_list = lambda *_: MOCK_DASHBORD_LIST
-        fetched_dashboards_list = self.microstrategy.get_dashboards_list()
-        self.assertEqual(list(fetched_dashboards_list), MOCK_DASHBORD_LIST)
+    def request(self, session: requests.Session, method: str, url: str, **opts: Any) -> requests.Response:
+        path = urlparse(str(url)).path.removeprefix(self.api)
+        headers = opts.get("headers") or {}
+        params = opts.get("params") or {}
+        self.calls.append(SimpleNamespace(method=method, path=path, params=params, headers=headers, body=None))
+        if path in self.overrides:
+            status, body = self.overrides[path]()
+        else:
+            status, body = self._route(path, headers, params)
+        return _response(status, body)
 
-    def test_include_owners_flag_enabled(self):
-        """
-        Test that when includeOwners is True, owner information is processed
-        """
-        # Mock the source config to have includeOwners = True
-        self.microstrategy.source_config.includeOwners = True
+    def _route(self, path: str, headers: dict, params: dict) -> tuple[int, Any]:
+        if path == "/projects":
+            return 200, self.projects
+        if path.startswith("/projects/"):
+            name = requests.utils.unquote(path.removeprefix("/projects/"))
+            match = [p for p in self.projects if p["name"] == name]
+            return (200, match[0]) if match else (404, {"code": "ERR004", "message": "not found"})
+        if path == "/searches/results":
+            rows = self.dossiers.get(headers.get("X-MSTR-ProjectID"), [])
+            offset, limit = int(params["offset"]), int(params["limit"])
+            return 200, {"totalItems": len(rows), "result": rows[offset : offset + limit]}
+        if path.startswith("/v2/dossiers/"):
+            dossier_id = path.split("/")[3]
+            if dossier_id in self.definitions:
+                return 200, self.definitions[dossier_id]
+            return 500, DEFINITION_ERROR
+        if path.startswith("/v2/cubes/"):
+            return 200, {"sqlStatement": CUBE_SQL}
+        if path == f"/users/{OWNER_ID}/addresses":
+            return 200, {
+                "addresses": [
+                    {"name": "Remote Diagnostics", "deliveryMode": "EMAIL", "value": "diag@example.com"},
+                    {"name": "Default", "deliveryMode": "EMAIL", "value": "owner@example.com", "isDefault": True},
+                ]
+            }
+        if path == "/sessions":
+            return 200, {"username": "Guest"}
+        return 404, {"code": "ERR004", "message": f"unexpected {path}"}
 
-        # Test that owner information is processed when includeOwners is True
-        self.assertTrue(self.microstrategy.source_config.includeOwners)
-
-    def test_include_owners_flag_disabled(self):
-        """
-        Test that when includeOwners is False, owner information is not processed
-        """
-        # Mock the source config to have includeOwners = False
-        self.microstrategy.source_config.includeOwners = False
-
-        # Test that owner information is not processed when includeOwners is False
-        self.assertFalse(self.microstrategy.source_config.includeOwners)
-
-    def test_include_owners_flag_in_config(self):
-        """
-        Test that the includeOwners flag is properly set in the configuration
-        """
-        # Check that the mock configuration includes the includeOwners flag
-        config = mock_micro_config["source"]["sourceConfig"]["config"]
-        self.assertIn("includeOwners", config)
-        self.assertTrue(config["includeOwners"])
-
-    def test_include_owners_flag_affects_owner_processing(self):
-        """
-        Test that the includeOwners flag affects how owner information is processed
-        """
-        # Test with includeOwners = True
-        self.microstrategy.source_config.includeOwners = True
-        self.assertTrue(self.microstrategy.source_config.includeOwners)
-
-        # Test with includeOwners = False
-        self.microstrategy.source_config.includeOwners = False
-        self.assertFalse(self.microstrategy.source_config.includeOwners)
-
-    def test_include_owners_flag_with_owner_data(self):
-        """
-        Test that when includeOwners is True, owner data from dashboard is accessible
-        """
-        # Mock the source config to have includeOwners = True
-        self.microstrategy.source_config.includeOwners = True
-
-        # Test that we can access owner information from the mock dashboard
-        dashboard = MOCK_DASHBORD_LIST[0]
-        self.assertIsNotNone(dashboard.owner)
-        self.assertEqual(dashboard.owner.name, "Administrator")
-        self.assertEqual(dashboard.owner.id, "54F3D26011D2896560009A8E67019608")
-
-    def test_chart_source_state_populated(self):
-        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        MOCK_DASHBOARD_SERVICE = DashboardService(  # noqa: N806
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            name="mock_microstrategy",
-            fullyQualifiedName=FullyQualifiedEntityName("mock_microstrategy"),
-            connection=DashboardConnection(),
-            serviceType=DashboardServiceType.MicroStrategy,
-        )
-        self.microstrategy.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
-        mock_details = MstrDashboardDetails(
-            id="dash1",
-            name="Test Dashboard",
-            projectId="proj1",
-            projectName="Test Project",
-            currentChapter="ch1",
-            chapters=[
-                MstrChapter(
-                    key="ch1",
-                    name="Chapter 1",
-                    pages=[
-                        MstrPage(
-                            key="pg1",
-                            name="Page 1",
-                            visualizations=[
-                                MstrVisualization(key="v1", name="Chart A", visualizationType="grid"),
-                                MstrVisualization(key="v2", name="Chart B", visualizationType="bar"),
-                            ],
-                        )
-                    ],
-                )
-            ],
-            datasets=[],
-        )
-        self.microstrategy.chart_source_state = set()
-        list(self.microstrategy.yield_dashboard_chart(mock_details))
-        assert len(self.microstrategy.chart_source_state) == 2
-        for fqn in self.microstrategy.chart_source_state:
-            assert "mock_microstrategy" in fqn
+    def requests_to(self, path_prefix: str) -> list[SimpleNamespace]:
+        return [call for call in self.calls if call.path.startswith(path_prefix)]
 
 
-def test_microstrategy_connection_logs_out_on_close():
-    """The owner carries the API-session logout, so closing the owner logs out."""
-    from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
-        MicroStrategyConnection as MicroStrategyConnectionConfig,
-    )
-    from metadata.ingestion.source.dashboard.microstrategy.connection import (
-        MicroStrategyConnection,
-    )
-
-    service_connection = MicroStrategyConnectionConfig(
-        hostPort="https://demo.microstrategy.com", username="username", password="password"
-    )
-    with patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls:
-        client = mock_client_cls.return_value
-        connection = MicroStrategyConnection(service_connection)
-        assert connection.client is client
-        connection.close()
-        client.close_api_session.assert_called_once()
+def _response(status: int, body: Any, headers: dict | None = None) -> requests.Response:
+    response = requests.Response()
+    response.status_code = status
+    response.reason = "OK" if status < 400 else "Error"
+    response.url = "https://mstr.example.com"
+    response._content = json.dumps(body).encode() if body is not None else b""
+    response.headers.update(headers or {})
+    return response
 
 
-def test_microstrategy_logs_out_when_init_test_connection_fails():
-    """A test-connection failure in __init__ still logs out the API session the
-    client opened when it was built."""
+@pytest.fixture
+def server():
+    fake = FakeMicroStrategy()
     with (
-        patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls,
-        patch(
-            "metadata.ingestion.source.dashboard.dashboard_service.run_test_connection",
-            side_effect=RuntimeError("cannot connect"),
-        ),
-        pytest.raises(RuntimeError),
+        patch(f"{CLIENT_MODULE}.requests.post", side_effect=fake.login),
+        patch.object(requests.Session, "request", autospec=True, side_effect=fake.request),
     ):
-        client = mock_client_cls.return_value
-        MicrostrategySource.create(mock_micro_config["source"], MagicMock())
+        yield fake
 
-    client.close_api_session.assert_called_once()
+
+def _connection(**overrides) -> MicroStrategyConnection:
+    return MicroStrategyConnection(hostPort="https://mstr.example.com", username="u", password="p", **overrides)
+
+
+@pytest.fixture
+def client(server):
+    return MicroStrategyClient(_connection())
+
+
+def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategySource:
+    """A source over the real client, with the OpenMetadata side mocked"""
+    source = MicrostrategySource.__new__(MicrostrategySource)
+    source.client = client
+    source.metadata = MagicMock()
+    source.metadata.get_by_name.return_value = None
+    source.service_connection = client.config
+    source.source_config = SimpleNamespace(
+        includeOwners=True,
+        includeDataModels=True,
+        projectFilterPattern=None,
+        dashboardFilterPattern=None,
+        chartFilterPattern=None,
+        dataModelFilterPattern=None,
+        markDeletedDashboards=True,
+        markDeletedCharts=True,
+        markDeletedDataModels=True,
+        **source_config,
+    )
+    source.status = MagicMock()
+    source.dashboard_listing = SourceListing()
+    source.datamodel_listing = SourceListing()
+    source.listing_failed = False
+    source.definition_failed = False
+    source.charts_unknown = False
+    source._dialects = OrderedDict()
+    source._service_databases = OrderedDict()
+    source._tables_with_columns = OrderedDict()
+    source._source_tables = OrderedDict()
+    source.context = MagicMock()
+    source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
+    return source
+
+
+def _details(source: MicrostrategySource, row: dict) -> Any:
+    listed = MstrDashboard.model_validate({**row, "projectName": TUTORIAL["name"]})
+    return source.get_dashboard_details(listed)
+
+
+class TestClient:
+    def test_search_is_scoped_by_the_project_header_and_paged(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = [OFFICE_ROYALE, AIRLINE, BROKEN]
+
+        listed = list(client.iter_search_results(TUTORIAL["id"], page_size=2))
+
+        assert [d.id for d in listed] == [OFFICE_ROYALE["id"], AIRLINE["id"], BROKEN["id"]]
+        searches = server.requests_to("/searches/results")
+        assert [s.params["offset"] for s in searches] == [0, 2]
+        assert all(s.headers["X-MSTR-ProjectID"] == TUTORIAL["id"] for s in searches)
+        assert all("project_id" not in s.params for s in searches)
+        assert all(s.params["result.hidden"] is False for s in searches)
+
+    def test_paging_without_total_items_stops_on_a_short_page(self, server, client):
+        rows = [OFFICE_ROYALE, AIRLINE, BROKEN]
+
+        def page() -> tuple[int, Any]:
+            offset = int(server.calls[-1].params["offset"])
+            return 200, {"result": rows[offset : offset + 2]}
+
+        server.overrides["/searches/results"] = page
+
+        assert len(list(client.iter_search_results(TUTORIAL["id"], page_size=2))) == 3
+
+    def test_only_the_auth_token_is_forwarded_from_the_login(self, server, client):
+        client.get_projects_list()
+
+        headers = server.requests_to("/projects")[0].headers
+        assert headers["X-MSTR-AuthToken"] == "token-1"
+        assert "Content-Security-Policy" not in headers
+
+    def test_a_failed_listing_raises_instead_of_returning_nothing(self, server, client):
+        server.overrides["/projects"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+
+        with pytest.raises(MicroStrategyApiError):
+            client.get_projects_list()
+
+    def test_an_expired_session_logs_in_again_once(self, server, client):
+        answers = iter([(401, {"code": "ERR009", "message": "The user's session has expired"})])
+        server.overrides["/projects"] = lambda: next(answers, (200, [TUTORIAL]))
+
+        projects = client.get_projects_list()
+
+        assert [p.name for p in projects] == [TUTORIAL["name"]]
+        assert server.logins == 2
+        assert server.requests_to("/projects")[-1].headers["X-MSTR-AuthToken"] == "token-2"
+
+    def test_a_malformed_project_is_skipped_and_counted(self, server, client):
+        server.projects = [TUTORIAL, MOBILE, {"name": "No id"}]
+
+        projects = client.get_projects_list()
+
+        assert [p.name for p in projects] == [TUTORIAL["name"], MOBILE["name"]]
+        assert client.skipped_objects == 1
+
+    def test_project_name_reads_one_project(self, server):
+        client = MicroStrategyClient(_connection(projectName="MicroStrategy Tutorial"))
+
+        assert [p.id for p in client.get_projects_list()] == [TUTORIAL["id"]]
+        assert server.requests_to("/projects/MicroStrategy%20Tutorial")
+
+    def test_anonymous_login_sends_no_credentials(self, server):
+        MicroStrategyClient(MicroStrategyConnection(hostPort="https://mstr.example.com", loginMode="8"))
+
+        assert server.calls[0].body == {"loginMode": 8, "applicationType": 35}
+
+    @pytest.mark.parametrize(
+        "library_path", ["MicroStrategyLibrary2", "/MicroStrategyLibrary2/", " MicroStrategyLibrary2 "]
+    )
+    def test_a_custom_library_path_replaces_the_default(self, server, library_path):
+        server.api = "/MicroStrategyLibrary2/api"
+        client = MicroStrategyClient(_connection(libraryPath=library_path))
+
+        assert [project.id for project in client.get_projects_list()] == [TUTORIAL["id"], MOBILE["id"]]
+        assert server.calls[0].path == "/MicroStrategyLibrary2/api/auth/login"
+        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary2"
+
+    def test_a_login_404_points_at_the_library_path(self, server):
+        with (
+            patch(f"{CLIENT_MODULE}.requests.post", return_value=_response(404, {"code": "ERR404"})),
+            pytest.raises(MicroStrategyApiError, match=r"HTTP 404.*check the Host and Port and the Library Path"),
+        ):
+            MicroStrategyClient(_connection())
+
+    @pytest.mark.parametrize("library_path", [None, "", "/", "  "])
+    def test_an_empty_library_path_falls_back_to_the_default(self, server, library_path):
+        client = MicroStrategyClient(_connection(libraryPath=library_path))
+
+        assert server.calls[0].path == "/MicroStrategyLibrary/api/auth/login"
+        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary"
+
+    def test_cube_sql_is_read_once_per_cube_and_failures_are_cached(self, server, client):
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
+        server.overrides["/v2/cubes/C2/sqlView"] = lambda: (400, {"code": "ERR010", "message": "local file"})
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
+
+        assert len(server.requests_to("/v2/cubes/")) == 2
+
+    def test_an_error_body_without_a_message_raises_the_api_error(self, server, client):
+        # The body the demo server answers for a document's dossier definition.
+        server.overrides["/v2/dossiers/D1/definition"] = lambda: (
+            500,
+            {"code": "ERR001", "ticketId": "fdf739c16f914747a33e9040a72bbe88"},
+        )
+
+        with pytest.raises(MicroStrategyApiError, match="ERR001"):
+            client.get_dashboard_details(TUTORIAL["id"], "D1")
+
+    @pytest.mark.parametrize(
+        ("prompts", "warning"),
+        [
+            ([], "Dataset R1 is a report on warehouse tables, not on an Intelligent Cube"),
+            ([{"key": "P1", "required": True}], "Dataset R1 is a prompted report on warehouse tables"),
+        ],
+    )
+    def test_a_report_on_warehouse_tables_has_no_sql_and_is_not_requested_again(
+        self, server, client, caplog, prompts, warning
+    ):
+        _report_route(server, "R1", source=None)
+        server.overrides["/reports/R1/prompts"] = lambda: (200, prompts)
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+
+        assert len(server.requests_to("/v2/cubes/R1")) == 1
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert warning in caplog.text
+
+    def test_a_report_on_an_intelligent_cube_reads_the_cube_sql_once(self, server, client):
+        _report_route(server, "R1", source="C9")
+
+        # The SQL comes with the cube it was read from.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+        # Another dossier using the cube itself reads it from the cache.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C9") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert len(server.requests_to("/v2/cubes/C9/sqlView")) == 1
+
+    # A Live cube is a dataset of its own, or the source of a report dataset.
+    @pytest.mark.parametrize("dataset_id", ["L1", "R1"])
+    def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog, dataset_id):
+        _report_route(server, "R1", source="L1")
+        server.overrides["/v2/cubes/L1/sqlView"] = lambda: (
+            400,
+            {
+                "code": "ERR010",
+                "message": "(SQLEngine got an Exception from DFC: DE93362; Live Intelligent Cubes cannot be published.)",
+            },
+        )
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
+
+        assert len(server.requests_to("/v2/cubes/L1")) == 1
+        assert len(server.requests_to("/v2/reports/")) == (dataset_id == "R1")
+        assert "Cube L1 is a Live Intelligent Cube" in caplog.text
+        assert "Could not read" not in caplog.text
+
+    def test_a_report_whose_source_cannot_be_read_has_no_sql(self, server, client, caplog):
+        _report_route(server, "R1", source=None)
+        server.overrides["/v2/reports/R1"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+
+        assert "Could not read the source of report R1" in caplog.text
+        assert "warehouse tables" not in caplog.text
+
+    @pytest.mark.parametrize(
+        "sql, expected",
+        [
+            (CUBE_SQL, CUBE_STATEMENT),
+            (CUBE_STATEMENT + "\n\n[Analytical engine calculation steps:\n]", CUBE_STATEMENT),
+            (CUBE_STATEMENT + " [Analytical engine calculation steps:\n]", CUBE_STATEMENT),
+            (CUBE_STATEMENT, CUBE_STATEMENT),
+            (None, None),
+            ("", ""),
+        ],
+    )
+    def test_engine_steps_are_stripped_from_the_cube_sql(self, sql, expected):
+        assert strip_engine_steps(sql) == expected
+
+    def test_the_engine_steps_block_fails_parsing_until_stripped(self):
+        raw = LineageParser(CUBE_SQL, dialect=Dialect.MYSQL)
+        stripped = LineageParser(strip_engine_steps(CUBE_SQL), dialect=Dialect.MYSQL)
+
+        assert not raw.query_parsing_success
+        assert stripped.query_parsing_success
+        assert sorted(str(table) for table in stripped.source_tables) == [
+            "<default>.order_detail",
+            "tutorial_wh.lu_category",
+            "tutorial_wh.lu_item",
+        ]
+
+    def test_owner_email_is_the_default_address(self, client):
+        assert client.get_owner_email(OWNER_ID) == "owner@example.com"
+
+
+def test_remember_keeps_the_most_recent_entries_only():
+    cache = OrderedDict()
+    for key in range(CACHE_SIZE + 2):
+        remember(cache, key, key)
+
+    assert len(cache) == CACHE_SIZE
+    assert 0 not in cache and 1 not in cache
+    assert CACHE_SIZE + 1 in cache
+
+
+class TestSource:
+    def test_projects_are_filtered_before_their_dossiers_are_searched(self, server, client):
+        source = _source(client)
+        source.source_config.projectFilterPattern = SimpleNamespace(includes=["Mobile.*"], excludes=None)
+
+        assert list(source.get_dashboards_list()) == []
+        assert {s.headers["X-MSTR-ProjectID"] for s in server.requests_to("/searches/results")} == {MOBILE["id"]}
+
+    def test_dossiers_are_labelled_with_the_project_they_were_listed_under(self, client):
+        source = _source(client)
+
+        listed = list(source.get_dashboards_list())
+
+        assert [(d.name, d.projectName) for d in listed] == [
+            (OFFICE_ROYALE["name"], TUTORIAL["name"]),
+            (AIRLINE["name"], TUTORIAL["name"]),
+        ]
+        assert source.dashboard_listing.is_complete
+        assert not source.dashboard_listing.has_failed
+
+    def test_the_listing_confirms_nothing_to_ingest_only_when_everything_was_filtered(self, client):
+        source = _source(client)
+        assert list(source.get_dashboards_list())
+        assert not source.dashboard_listing.confirms_nothing_to_ingest
+
+        source = _source(client)
+        source.source_config.dashboardFilterPattern = SimpleNamespace(includes=None, excludes=[".*"])
+        assert list(source.get_dashboards_list()) == []
+        assert source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_documents_are_skipped_without_reading_their_definition(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = [OFFICE_ROYALE, *DOCUMENTS]
+        source = _source(client)
+
+        listed = list(source.get_dashboards_list())
+
+        assert [d.id for d in listed] == [OFFICE_ROYALE["id"]]
+        assert server.requests_to("/v2/dossiers/") == []
+        assert source.status.filter.call_count == len(DOCUMENTS)
+        source.status.warning.assert_called_once()
+        assert f"Skipped {len(DOCUMENTS)} " in source.status.warning.call_args.args[1]
+        assert source.dashboard_listing.is_complete
+        assert not source.listing_failed
+
+    def test_a_project_holding_only_documents_confirms_nothing_to_ingest(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = DOCUMENTS
+        source = _source(client)
+
+        assert list(source.get_dashboards_list()) == []
+        assert source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_a_result_without_view_media_is_read_as_a_dossier(self, server, client):
+        row = {key: value for key, value in AIRLINE.items() if key != "viewMedia"}
+        server.dossiers[TUTORIAL["id"]] = [row]
+
+        assert [d.id for d in _source(client).get_dashboards_list()] == [AIRLINE["id"]]
+
+    def test_no_visible_project_is_not_a_confirmation(self, server, client):
+        server.projects = []
+        source = _source(client)
+
+        assert list(source.get_dashboards_list()) == []
+        assert not source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_a_dossier_that_does_not_parse_keeps_every_stale_dashboard(self, server, client):
+        server.dossiers[TUTORIAL["id"]] = [OFFICE_ROYALE, {"name": "No id"}]
+        source = _source(client)
+
+        assert [d.id for d in source.get_dashboards_list()] == [OFFICE_ROYALE["id"]]
+        assert source.listing_failed
+        assert not source.dashboard_listing.is_complete
+
+    def test_a_failed_project_search_keeps_every_stale_entity(self, server, client):
+        server.projects = [MOBILE, TUTORIAL]
+        server.overrides["/searches/results"] = lambda: (500, {"code": "ERR001", "message": "Search failed"})
+        source = _source(client)
+
+        assert list(source.get_dashboards_list()) == []
+
+        assert source.listing_failed
+        assert source.dashboard_listing.has_failed
+        assert not source.dashboard_listing.is_complete
+        assert source.status.failed.call_count == 2
+        with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
+            assert list(source.mark_dashboards_as_deleted()) == []
+            assert list(source.mark_charts_as_deleted()) == []
+            assert list(source.mark_datamodels_as_deleted()) == []
+        delete.assert_not_called()
+
+    def test_a_complete_run_deletes_stale_entities(self, client):
+        source = _source(client)
+        source.dashboard_source_state = set()
+        list(source.get_dashboards_list())
+
+        with patch(
+            "metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source", return_value=iter([])
+        ) as delete:
+            list(source.mark_dashboards_as_deleted())
+
+        delete.assert_called_once()
+
+    def test_charts_of_different_dossiers_do_not_collide(self, client):
+        source = _source(client)
+        names = []
+        for row in (OFFICE_ROYALE, AIRLINE):
+            details = _details(source, row)
+            names += [either.right.name.root for either in source.yield_dashboard_chart(details)]
+
+        assert names == [
+            f"{OFFICE_ROYALE['id']}_K53W63",
+            f"{OFFICE_ROYALE['id']}_K53W64",
+            f"{AIRLINE['id']}_K53W63",
+        ]
+
+    def test_charts_name_their_existing_dashboard(self, client):
+        # A chart update that leaves out its dashboards unlinks them from it.
+        source = _source(client)
+        source.metadata.get_by_name.return_value = SimpleNamespace(
+            fullyQualifiedName=SimpleNamespace(root=f"mstr.{OFFICE_ROYALE['id']}"),
+        )
+
+        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+
+        assert [[d.root for d in chart.dashboards] for chart in charts] == [[f"mstr.{OFFICE_ROYALE['id']}"]] * 2
+        assert all(chart.description is None and chart.tags is None for chart in charts)
+
+    def test_a_failed_dashboard_lookup_leaves_the_dossier_and_its_charts_as_they_are(self, client):
+        # A failed OpenMetadata read must not turn into an empty chart list, which would unlink
+        # the dossier's charts and let stale deletion remove them.
+        source = _source(client)
+        source.dashboard_source_state = set()
+        source.metadata.get_by_name.side_effect = APIError({"code": 503, "message": "unavailable"})
+        details = _details(source, OFFICE_ROYALE)
+
+        assert list(source.yield_dashboard_chart(details)) == []
+        assert list(source.yield_dashboard(details)) == []
+
+        assert source.charts_unknown
+        assert source.dashboard_source_state == {f"mstr.{OFFICE_ROYALE['id']}"}
+        with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
+            assert list(source.mark_charts_as_deleted()) == []
+        delete.assert_not_called()
+
+    def test_a_failed_lookup_for_an_unreadable_dossier_keeps_its_dashboard(self, client):
+        source = _source(client)
+        source.dashboard_source_state = set()
+        source.metadata.get_by_name.side_effect = APIError({"code": 503, "message": "unavailable"})
+
+        assert list(source.yield_dashboard(_details(source, BROKEN))) == []
+        assert source.dashboard_source_state == {f"mstr.{BROKEN['id']}"}
+
+    def test_charts_of_a_new_dossier_name_no_dashboard(self, client):
+        source = _source(client)
+
+        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+
+        assert all(chart.dashboards is None for chart in charts)
+
+    def test_dashboard_carries_description_and_owner(self, client):
+        source = _source(client)
+        owners = EntityReferenceList(root=[])
+        source.metadata.get_reference_by_email.return_value = owners
+
+        dashboard = next(iter(source.yield_dashboard(_details(source, OFFICE_ROYALE)))).right
+
+        assert dashboard.description.root == "Sales of the Office Royale chain"
+        assert dashboard.owners is owners
+        assert dashboard.project == TUTORIAL["name"]
+        assert dashboard.sourceUrl.root == (
+            f"https://mstr.example.com/MicroStrategyLibrary/app/{TUTORIAL['id']}/{OFFICE_ROYALE['id']}"
+        )
+        source.metadata.get_reference_by_email.assert_called_once_with("owner@example.com")
+
+    def test_dashboard_url_uses_the_library_path(self, server):
+        server.api = "/MicroStrategyLibrary2/api"
+        source = _source(MicroStrategyClient(_connection(libraryPath="MicroStrategyLibrary2")))
+
+        dashboard = next(iter(source.yield_dashboard(_details(source, OFFICE_ROYALE)))).right
+
+        assert dashboard.sourceUrl.root.startswith("https://mstr.example.com/MicroStrategyLibrary2/app/")
+
+    def test_a_dossier_whose_definition_fails_is_still_ingested(self, server, client):
+        source = _source(client)
+        server.dossiers[TUTORIAL["id"]] = [BROKEN]
+
+        details = _details(source, BROKEN)
+        dashboards = [either.right for either in source.yield_dashboard(details)]
+
+        assert source.definition_failed
+        assert [d.name.root for d in dashboards] == [BROKEN["id"]]
+        assert dashboards[0].charts == []
+        assert list(source.yield_dashboard_chart(details)) == []
+        assert list(source.yield_datamodel(details)) == []
+        with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
+            assert list(source.mark_datamodels_as_deleted()) == []
+        delete.assert_not_called()
+
+    def test_an_existing_dashboard_keeps_its_charts_when_its_definition_fails(self, client):
+        source = _source(client)
+        source.dashboard_source_state = set()
+        source.chart_source_state = set()
+        linked = SimpleNamespace(fullyQualifiedName=f"mstr.{BROKEN['id']}_K1_W1")
+        source.metadata.get_by_name.return_value = SimpleNamespace(charts=SimpleNamespace(root=[linked]))
+
+        (dashboard,) = [either.right for either in source.yield_dashboard(_details(source, BROKEN))]
+
+        assert [chart.root for chart in dashboard.charts] == [linked.fullyQualifiedName]
+        assert dashboard.owners is not None
+        assert source.dashboard_source_state == {f"mstr.{BROKEN['id']}"}
+        assert linked.fullyQualifiedName in source.chart_source_state
+
+    def test_datamodel_columns(self, client):
+        source = _source(client)
+
+        datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
+
+        store, revenue = datamodel.columns
+        assert [(c.name.root, c.dataType, c.dataTypeDisplay) for c in store.children] == [
+            ("ID", DataType.INT, "integer"),
+            ("Name", DataType.VARCHAR, "nVarChar"),
+            ("Rating", DataType.FLOAT, "real"),
+            ("Image", DataType.UNKNOWN, None),
+        ]
+        assert (revenue.name.root, revenue.dataTypeDisplay, revenue.children) == ("Revenue", "Metric", None)
+        assert datamodel.project == TUTORIAL["name"]
+
+    def test_repeated_columns_get_unique_names(self, server, client):
+        long_name = "M" * 256
+        objects = [
+            METRIC_REVENUE,
+            METRIC_REVENUE,
+            {**METRIC_REVENUE, "id": "4C05177011D3E877C000B3B2D86C964F"},
+            {"id": "A1", "name": long_name, "type": "metric"},
+            {"id": "A2", "name": long_name, "type": "metric"},
+        ]
+        definition = DEFINITIONS[OFFICE_ROYALE["id"]]
+        server.definitions[OFFICE_ROYALE["id"]] = {
+            **definition,
+            "datasets": [{**definition["datasets"][0], "availableObjects": objects}],
+        }
+        source = _source(client)
+
+        datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
+
+        names = [column.name.root for column in datamodel.columns]
+        # Suffixes follow the object ids, not the listing order: 4C05… sorts before 89C1….
+        assert names == ["Revenue (2)", "Revenue", long_name, "M" * 252 + " (2)"]
+        assert [column.displayName for column in datamodel.columns] == ["Revenue", "Revenue", long_name, long_name]
+
+    def test_a_column_keeps_its_name_when_the_objects_are_listed_in_another_order(self, server, client):
+        attribute = {"id": "4C05177011D3E877C000B3B2D86C964F", "name": "Revenue", "type": "attribute", "forms": []}
+        definition = DEFINITIONS[OFFICE_ROYALE["id"]]
+        names_by_id = []
+        for objects in ([METRIC_REVENUE, attribute], [attribute, METRIC_REVENUE]):
+            server.definitions[OFFICE_ROYALE["id"]] = {
+                **definition,
+                "datasets": [{**definition["datasets"][0], "availableObjects": objects}],
+            }
+            source = _source(client)
+            datamodel = next(iter(source.yield_datamodel(_details(source, OFFICE_ROYALE)))).right
+            names_by_id.append(
+                {obj["id"]: column.name.root for obj, column in zip(objects, datamodel.columns, strict=True)}
+            )
+
+        assert names_by_id[0] == names_by_id[1] == {attribute["id"]: "Revenue", METRIC_REVENUE["id"]: "Revenue (2)"}
+
+    def test_cube_sql_is_parsed_once_for_every_prefix_and_dossier(self, client):
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: (prefix, None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else None
+        details = _details(source, OFFICE_ROYALE)
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.LineageParser", wraps=LineageParser
+        ) as parser:
+            for prefix in ("mysql_dev", "mysql_pro", "mysql_dev"):
+                list(source.yield_dashboard_lineage_details(details, prefix))
+
+        assert parser.call_count == 1
+
+    def test_a_table_of_another_database_is_not_searched_in_the_prefix(self, client):
+        source = _source(client)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        searched = []
+
+        def tables_for(table_name: str, **_: Any) -> list:
+            searched.append(table_name)
+            return []
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            tables = ("project-a.sales.orders", "project-b.sales.stores", "sales.items")
+            list(source._source_table_entities(tables, "bq_pro", "project-a", None, None))
+
+        assert searched == ["project-a.sales.orders", "sales.items"]
+
+    def test_a_bigquery_table_is_searched_only_under_the_prefix_naming_its_project(self, server, client):
+        server.overrides[f"/v2/cubes/{OFFICE_ROYALE_CUBE}/sqlView"] = lambda: (
+            200,
+            {
+                "sqlStatement": "select a11.ORDER_ID ORDER_ID, sum(a11.AMOUNT) WJXBFS1\n"
+                "from `project-x-pro`.`sales`.`orders` a11\n"
+                "join `project-y-pro.sales.stores` a12 on (a11.STORE_ID = a12.STORE_ID)\n"
+                "group by a11.ORDER_ID"
+            },
+        )
+        source = _source(client)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: (
+            service if "." not in fqn else SimpleNamespace(id=SimpleNamespace(root=USER_ID))
+        )
+        details = _details(source, OFFICE_ROYALE)
+        searched = []
+
+        def tables_for(service_names: str, table_name: str, **_: Any) -> list:
+            searched.append((service_names, table_name))
+            return []
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            for prefix in ("bq_x.project-x-pro", "bq_y.project-y-pro"):
+                list(source.yield_dashboard_lineage_details(details, prefix))
+
+        assert searched == [("bq_x", "project-x-pro.sales.orders"), ("bq_y", "project-y-pro.sales.stores")]
+
+    def test_a_bare_service_prefix_is_searched_only_for_the_projects_it_holds(self, client):
+        source = _source(client)
+        projects = {"bq_x": ["Project-X-Pro"], "bq_y": ["project-y-pro", "project-y-dev"]}
+        source.metadata.list_all_entities.side_effect = lambda entity, params: [
+            SimpleNamespace(name=SimpleNamespace(root=name)) for name in projects[params["service"]]
+        ]
+        searched = []
+
+        def tables_for(service_names: str, table_name: str, **_: Any) -> list:
+            searched.append((service_names, table_name))
+            return []
+
+        tables = ("project-x-pro.sales.orders", "project-y-pro.sales.stores", "sales.items")
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            for service in ("bq_x", "bq_y", "bq_x"):
+                list(source._source_table_entities(tables, service, None, None, None))
+
+        assert searched == [
+            ("bq_x", "project-x-pro.sales.orders"),
+            ("bq_x", "sales.items"),
+            ("bq_y", "project-y-pro.sales.stores"),
+            ("bq_y", "sales.items"),
+            ("bq_x", "project-x-pro.sales.orders"),
+            ("bq_x", "sales.items"),
+        ]
+        assert source.metadata.list_all_entities.call_count == 2
+
+    def test_a_service_whose_databases_cannot_be_listed_is_searched_for_every_table(self, client):
+        source = _source(client)
+        source.metadata.list_all_entities.side_effect = APIError({"message": "timeout"})
+
+        assert source._may_hold("project-x-pro.sales.orders", "bq_x", None)
+        assert source._service_databases == {}
+
+    def test_a_failed_service_lookup_is_tried_again(self, client):
+        source = _source(client)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        source.metadata.get_by_name.side_effect = [APIError({"message": "timeout"}), service]
+
+        assert source._dialect_of("bq_pro") is None
+        assert source._dialect_of("bq_pro") is not None
+        assert source._dialect_of("bq_pro") is not None
+        assert source.metadata.get_by_name.call_count == 2
+
+    def test_lineage_from_the_cube_sql(self, client):
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("mysql_tutorial", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        datamodel = SimpleNamespace(id=SimpleNamespace(root="3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"))
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else datamodel
+
+        def table(name: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                id=SimpleNamespace(root="7c1e0e6a-5d3f-4c1b-8d7a-2b9e4f6a1c0" + str(len(name) % 10)),
+                name=SimpleNamespace(root=name),
+                databaseSchema=SimpleNamespace(name="tutorial_wh"),
+                database=SimpleNamespace(name="default"),
+            )
+
+        searched = []
+
+        def tables_for(table_name: str, **_: Any) -> list:
+            searched.append(table_name)
+            return [table(table_name.rsplit(".", maxsplit=1)[-1])]
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=tables_for,
+        ):
+            edges = list(source.yield_dashboard_lineage_details(_details(source, OFFICE_ROYALE), "mysql_tutorial"))
+            assert list(source.yield_dashboard_lineage_details(_details(source, OFFICE_ROYALE), None)) == []
+
+        assert sorted(searched) == ["<default>.order_detail", "tutorial_wh.lu_category", "tutorial_wh.lu_item"]
+        assert len(edges) == 3
+        assert all(edge.right.edge.toEntity.type == "dashboardDataModel" for edge in edges)
+
+
+# The SQL views of a schema-based Intelligent Cube and of a Data Import cube, as a MicroStrategy
+# server answers them for BigQuery (project renamed).
+SCHEMA_CUBE_SQL = """select\t`a11`.`order_id`  `order_id`,
+\t`a11`.`product_id`  `product_id`,
+\tmax(`a13`.`product_name`)  `product_name`,
+\t`a12`.`status`  `status`,
+\tsum(`a11`.`quantity`)  `WJXBFS1`
+from\t`project-x`.`sales`.`order_items`\t`a11`
+\tjoin\t`project-x`.`sales`.`orders`\t`a12`
+\t  on \t(`a11`.`order_id` = `a12`.`order_id`)
+\tjoin\t`project-x`.`sales`.`products`\t`a13`
+\t  on \t(`a11`.`product_id` = `a13`.`product_id`)
+group by\t1,
+\t2,
+\t4"""
+DATA_IMPORT_SQL = """
+select\t`orders`.`order_id` `order_id`,
+\t`orders`.`status` `status`
+from\t`project-x`.`sales`.`orders`\t `orders`
+
+
+select\t`order_items`.`order_item_id` `order_item_id`,
+\t`order_items`.`order_id` `order_id`,
+\t`order_items`.`unit_price` `unit_price`
+from\t`project-x`.`sales`.`order_items`\t `order_items`
+"""
+# A schema cube whose metric aliases MicroStrategy derives from the metric names, as on servers
+# set to do so; a metric computed over a derived table keeps a generated alias inside it.
+RANK_SQL = """select\tmax(`pa11`.`REVENUERANK`)  `REVENUERANK`,
+\tsum(`pa12`.`WJXBFS1`)  `LINECOUNT`
+from\t(select\t`a11`.`region_id`  `region_id`,
+\t\tsum(`a11`.`revenue`)  `REVENUERANK`
+\tfrom\t`project-x`.`sales`.`order_lines`\t`a11`
+\tgroup by\t1
+\t)\t`pa11`
+\tjoin\t(select\t`a11`.`region_id`  `region_id`,
+\t\tcount(distinct `a11`.`line_id`)  `WJXBFS1`
+\tfrom\t`project-x`.`sales`.`order_lines`\t`a11`
+\tgroup by\t1
+\t)\t`pa12`
+\t  on \t(`pa11`.`region_id` = `pa12`.`region_id`)"""
+SCHEMA_CUBE = "E4793A9AC5455CFBE8106FA2B22D7AF6"
+IMPORT_CUBE = "F87325B1B54ECAF0E42113AD060B2300"
+ID_FORM = {"id": "45C11FA478E745FEA08D781CEA190FE5", "name": "ID"}
+NAME_FORM = {"id": "CCFBE2A5EADB4F50941FB879CCF1721C", "name": "Name"}
+LOGICAL_TABLES = {"T_OI": "order_items", "T_O": "orders", "T_P": "products"}
+MODEL_ATTRIBUTES = {
+    "A_ORDER": [(ID_FORM, "order_id", ["T_OI", "T_O"])],
+    "A_PRODUCT": [(ID_FORM, "product_id", ["T_OI", "T_P"]), (NAME_FORM, "product_name", ["T_P"])],
+    "A_STATUS": [(ID_FORM, "status", ["T_O"])],
+}
+MODEL_FACTS = {
+    "F_QTY": ("quantity", ["T_OI"]),
+    "F_UNIT": ("unit_price", ["T_OI"]),
+    "F_REV": ("revenue", ["T_OI"]),
+}
+# Each metric's expression references these (subtype, id, name).
+MODEL_METRICS = {
+    "M_QTY": [("fact", "F_QTY", "Quantity")],
+    # A metric built in Workstation: its tree shows only an embedded aggregation, its tokens the fact.
+    "M_UI_QTY": [("function", "F_SUM", "Sum"), ("fact", "F_QTY", "Quantity")],
+    "M_PRICE": [("fact", "F_PRICE", "Unit Price")],
+    "M_AVG": [("metric", "M_PRICE", "Total Unit Price"), ("metric", "M_QTY", "Total Quantity")],
+    "M_LOOP": [("metric", "M_LOOP_BACK", "Loop back")],
+    "M_LOOP_BACK": [("metric", "M_LOOP", "Loop")],
+    "M_PCT_QTY": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE": [("metric", "M_PCT_QTY", "% Margin")],
+    "M_REV_SHARE": [("metric", "M_PCT_REV", "% Revenue")],
+    "M_PCT_REV": [("fact", "F_QTY", "Quantity")],
+    "M_RANK": [("fact", "F_QTY", "Quantity")],
+    "M_REV": [("fact", "F_REV", "Revenue")],
+    "M_MARGIN": [("fact", "F_REV", "Revenue")],
+    "M_REV_C": [("fact", "F_UNIT", "Unit Price")],
+    "M_NET_C": [("fact", "F_QTY", "Quantity")],
+    "M_REV_N": [("fact", "F_UNIT", "Unit Price")],
+    "M_PART_C": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE_C": [("metric", "M_PART_C", "Part")],
+}
+# The column alias set on a metric, which the SQL names its projection after in place of its name.
+MODEL_METRIC_ALIASES = {"M_REV_C": "NETAMOUNT", "M_NET_C": "REVENUE", "M_PART_C": "PARTQTY"}
+
+
+def _report_route(server: FakeMicroStrategy, report_id: str, source: str | None) -> None:
+    """A dataset that is a report: the SQL view refuses it, and its definition names its cube"""
+    server.overrides[f"/v2/cubes/{report_id}/sqlView"] = lambda: (
+        400,
+        {
+            "code": "ERR006",
+            "message": f"Cannot get the SQL view of object '{report_id}'. Only cube is supported to get SQL view.",
+            "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
+        },
+    )
+    server.overrides[f"/v2/reports/{report_id}"] = lambda: (
+        200,
+        {"id": report_id, "name": "report", "source": {"id": source, "name": "cube"} if source else None},
+    )
+
+
+def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> None:
+    for cube, subtype in cube_subtypes.items():
+        server.overrides[f"/objects/{cube}"] = lambda subtype=subtype: (200, {"type": 3, "subtype": subtype})
+    for attribute, forms in MODEL_ATTRIBUTES.items():
+        body = {
+            "forms": [
+                {
+                    **form,
+                    "expressions": [
+                        {
+                            "expression": {"tree": {"type": "column_reference", "columnName": column}},
+                            "tables": [{"objectId": table, "subType": "logical_table"} for table in tables],
+                        }
+                    ],
+                }
+                for form, column, tables in forms
+            ]
+        }
+        server.overrides[f"/model/attributes/{attribute}"] = lambda body=body: (200, body)
+    for table_id, name in LOGICAL_TABLES.items():
+        server.overrides[f"/model/tables/{table_id}"] = lambda name=name: (
+            200,
+            {"physicalTable": {"namespace": "project-x.sales", "tableName": name}},
+        )
+    for fact, (column, tables) in MODEL_FACTS.items():
+        body = {
+            "expressions": [
+                {
+                    "expression": {"tree": {"type": "column_reference", "columnName": column}},
+                    "tables": [{"objectId": table, "subType": "logical_table"} for table in tables],
+                }
+            ]
+        }
+        server.overrides[f"/model/facts/{fact}"] = lambda body=body: (200, body)
+    for metric, references in MODEL_METRICS.items():
+        # The resolved tokens of the expression, as showExpressionAs=tokens answers them.
+        tokens = [{"type": "character", "value": "("}] + [
+            {
+                "type": "object_reference",
+                "value": name,
+                "target": {"objectId": object_id, "subType": sub_type, "name": name},
+            }
+            for sub_type, object_id, name in references
+        ]
+        body = {"expression": {"tokens": tokens}}
+        if metric in MODEL_METRIC_ALIASES:
+            body["columnNameAlias"] = MODEL_METRIC_ALIASES[metric]
+        server.overrides[f"/model/metrics/{metric}"] = lambda body=body: (200, body)
+
+
+def _dataset(cube_id: str, objects: list[dict]) -> MstrDataset:
+    return MstrDataset.model_validate({"id": cube_id, "name": "cube", "availableObjects": objects})
+
+
+def _table(name: str, columns: list[str]) -> SimpleNamespace:
+    fqn = f"bq.project-x.sales.{name}"
+    return SimpleNamespace(
+        id=SimpleNamespace(root="5a1f0e6a-5d3f-4c1b-8d7a-2b9e4f6a1c01"),
+        name=SimpleNamespace(root=name),
+        fullyQualifiedName=SimpleNamespace(root=fqn),
+        databaseSchema=SimpleNamespace(name="sales"),
+        database=SimpleNamespace(name="project-x"),
+        columns=[
+            SimpleNamespace(name=SimpleNamespace(root=c), fullyQualifiedName=SimpleNamespace(root=f"{fqn}.{c}"))
+            for c in columns
+        ],
+    )
+
+
+def _data_model(source: MicrostrategySource, dataset: MstrDataset) -> SimpleNamespace:
+    """The data model the source builds for the dataset, with FQNs as the server assigns them"""
+    model_fqn = f"mstr.model.{dataset.id}"
+
+    def column(built: Any) -> SimpleNamespace:
+        fqn = f"{model_fqn}.{built.name.root}"
+        children = [
+            SimpleNamespace(
+                name=child.name, fullyQualifiedName=SimpleNamespace(root=f"{fqn}.{child.name.root}"), children=None
+            )
+            for child in built.children or []
+        ]
+        return SimpleNamespace(name=built.name, fullyQualifiedName=SimpleNamespace(root=fqn), children=children)
+
+    return SimpleNamespace(
+        id=SimpleNamespace(root="3f2a8a31-1c55-4f0e-9a1c-5f6e8f1f9a01"),
+        columns=[column(built) for built in source._get_column_info(dataset)],
+    )
+
+
+def _pairs(lineage: list) -> list[tuple[list[str], str]]:
+    return sorted(
+        ([c.root.rsplit(".", 1)[-1] for c in pair.fromColumns], pair.toColumn.root.split(".model.", 1)[1])
+        for pair in lineage
+    )
+
+
+class TestColumnLineage:
+    def test_projections_are_matched_on_the_columns_they_read_not_their_aliases(self):
+        # CATEGORY0 and WJXBFS1 are aliases MicroStrategy generates.
+        reads = read_columns(CUBE_STATEMENT, Dialect.MYSQL)
+
+        assert ("tutorial_wh.lu_category", "category_desc") in reads
+        assert ("order_detail", "qty_sold") in reads
+        assert not any(column in {"category0", "wjxbfs1"} for _, column in reads)
+
+    def test_every_pass_of_a_multi_pass_sql_is_read(self):
+        reads = read_columns(DATA_IMPORT_SQL, Dialect.BIGQUERY)
+
+        assert {table for table, _ in reads} == {"project-x.sales.orders", "project-x.sales.order_items"}
+        assert ("project-x.sales.order_items", "unit_price") in reads
+
+    def test_a_note_or_an_unparsable_pass_is_skipped_and_the_other_passes_are_read(self):
+        sql = "[We could not obtain the source]\n\nselect a.x x from `p`.`d`.`t` a\n\nselect from ((\n"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x")}
+
+    def test_a_nested_query_resolves_its_columns_against_its_own_aliases(self):
+        sql = "select a.id id, (select max(a.amount) from `p`.`s`.`refunds` a) amount from `p`.`s`.`orders` a"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "id"), ("p.s.refunds", "amount")}
+
+    def test_a_pass_that_opens_with_comments_is_read(self):
+        sql = "select a.x x from `p`.`d`.`t` a\n\n-- custom SQL\n/* by the analyst */\nselect b.y y from `p`.`d`.`u` b"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y")}
+
+    def test_an_unclosed_comment_is_not_sql_and_is_read_in_linear_time(self):
+        started = time.monotonic()
+
+        assert read_columns("/*" + " /* x" * 20000, Dialect.BIGQUERY) == frozenset()
+        assert read_columns("select a.x x from `p`.`d`.`t` a\n\n/*" + "/*\n\n" * 20000, Dialect.BIGQUERY) == {
+            ("p.d.t", "x")
+        }
+        assert read_columns("\n\n/**/" * 20000 + "x", Dialect.BIGQUERY) == frozenset()
+        assert time.monotonic() - started < 2
+
+    def test_a_blank_line_inside_a_comment_or_quoted_text_does_not_split_a_pass(self):
+        sql = (
+            "select a.x x from `p`.`d`.`t` a\n\n/* analyst\n\nnote */\nselect b.y y from `p`.`d`.`u` b\n\n"
+            "select c.z z from `p`.`d`.`v` c where c.n = '\n\nselect'"
+        )
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y"), ("p.d.v", "z")}
+
+    def test_a_blank_line_inside_a_cte_or_subquery_does_not_split_a_pass(self):
+        sql = (
+            "with c as (\n\nselect o.order_id from `p`.`s`.`orders` o\n)\nselect order_id from c\n\n"
+            "select x.n from (\n\nselect i.n from `p`.`s`.`items` i\n) x"
+        )
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "order_id"), ("p.s.items", "n")}
+
+    def test_a_parenthesis_inside_a_bracket_quoted_name_does_not_join_passes(self):
+        sql = "select a.[Amount (USD] from sales.orders a\n\nselect b.id from sales.items b"
+
+        assert read_columns(sql, Dialect.TSQL) == {("sales.orders", "amount (usd"), ("sales.items", "id")}
+
+    def test_a_correlated_reference_reaches_the_outer_table(self):
+        sql = "select a.id id, (select a.price) price from `p`.`s`.`orders` a"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "id"), ("p.s.orders", "price")}
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            # An alias the inner query defines as a derived table hides the outer table.
+            "select a.id id, (select a.price from (select r.cost price from `p`.`s`.`refunds` r) a) price "
+            "from `p`.`s`.`orders` a",
+            "select b.id id, (select b.x from (select 1 x) b) x from `p`.`s`.`orders` b",
+        ],
+    )
+    def test_a_derived_table_alias_never_resolves_to_an_outer_table(self, sql):
+        reads = read_columns(sql, Dialect.BIGQUERY)
+
+        assert not {column for table, column in reads if table == "p.s.orders"} - {"id"}
+
+    @pytest.mark.parametrize(
+        ("sql", "expected"),
+        [
+            ("with my_table as (select 1 as id) select c.id from my_table c cross join sales.my_table t", set()),
+            (
+                "with my_table as (select 1 as id) select t.id from my_table c cross join sales.my_table t",
+                {("sales.my_table", "id")},
+            ),
+            ("with my_table as (select id from my_table) select id from my_table", {("my_table", "id")}),
+            ("with recursive my_table as (select id from my_table) select id from my_table", set()),
+            ("with w as (select t.y from s.t t), t as (select 1 as y) select y from w", {("s.t", "y")}),
+            ("with w as (select y from t), t as (select 1 as y) select y from t", {("t", "y")}),
+            (
+                "with first_pass as (select id from orders), orders as (select 1 as id) select id from first_pass",
+                {("orders", "id")},
+            ),
+        ],
+    )
+    def test_a_cte_is_never_read_as_the_table_it_is_named_after(self, sql, expected):
+        assert read_columns(sql, Dialect.ANSI) == expected
+
+    @pytest.mark.parametrize(
+        ("sql", "dialect", "expected"),
+        [
+            (
+                "select o.id, el from p.d.orders o cross join unnest(o.arr) as el",
+                Dialect.BIGQUERY,
+                {("p.d.orders", "id")},
+            ),
+            (
+                "select el.id from p.d.items el where el.id in (select el.id from p.d.orders o, unnest(o.arr) el)",
+                Dialect.BIGQUERY,
+                {("p.d.items", "id")},
+            ),
+            ("select x from p.d.orders cross join Orders u", Dialect.BIGQUERY, set()),
+            ("select x from p.d.orders cross join (values (1, 2)) as v(id, x)", Dialect.ANSI, set()),
+            ("select o.id from p.d.orders o cross join (values (1)) as v(o)", Dialect.POSTGRES, {("p.d.orders", "id")}),
+            ("select c from db.tbl lateral view explode(arr) t as c", Dialect.HIVE, set()),
+            ("select tbl.x, c from db.tbl lateral view explode(arr) t as c", Dialect.SPARKSQL, {("db.tbl", "x")}),
+        ],
+    )
+    def test_an_unnest_or_values_source_is_never_read_as_a_table(self, sql, dialect, expected):
+        assert read_columns(sql, dialect) == expected
+
+    @pytest.mark.parametrize(
+        ("sql", "expected"),
+        [
+            ("select s1.my_table.id from s1.my_table cross join s2.my_table", {("s1.my_table", "id")}),
+            ("select s2.my_table.id from s1.my_table cross join s2.my_table", {("s2.my_table", "id")}),
+            ("select my_table.id from s1.my_table cross join s2.my_table", set()),
+        ],
+    )
+    def test_same_named_tables_are_told_apart_by_their_qualifiers(self, sql, expected):
+        assert read_columns(sql, Dialect.ANSI) == expected
+
+    @pytest.mark.parametrize(
+        ("dialect", "literal"),
+        [(Dialect.BIGQUERY, r"'O\'Reilly'"), (Dialect.MYSQL, r"'O\'Reilly'"), (Dialect.POSTGRES, r"'C:\'")],
+    )
+    def test_quoted_text_follows_the_dialect_escapes_when_splitting_passes(self, dialect, literal):
+        sql = f"select a.x x from p.d.t a where a.n = {literal}\n\nselect b.y y from p.d.u b where b.n = 'foo'"
+
+        assert read_columns(sql, dialect) == {("p.d.t", "x"), ("p.d.u", "y")}
+
+    def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_PRODUCT", "name": "Product", "type": "attribute", "forms": [NAME_FORM]},
+                {"id": "M_QTY", "name": "Total Quantity", "type": "metric"},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        order_items = source._column_lineage(
+            "P", dataset, reads, _table("order_items", ["order_id", "product_id", "quantity"]), model
+        )
+        products = source._column_lineage(
+            "P", dataset, reads, _table("products", ["product_id", "product_name"]), model
+        )
+
+        # product_id is read from order_items, but the dataset holds only Product's Name form;
+        # the metric's alias is generated, so it maps through the fact it aggregates.
+        # An attribute maps to its own column: the lineage view draws no edge to a nested form.
+        assert _pairs(order_items) == [
+            (["order_id"], f"{SCHEMA_CUBE}.Order"),
+            (["quantity"], f"{SCHEMA_CUBE}.Total Quantity"),
+        ]
+        assert _pairs(products) == [(["product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_every_form_of_an_attribute_maps_to_one_attribute_column(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [{"id": "A_PRODUCT", "name": "Product", "type": "attribute", "forms": [ID_FORM, NAME_FORM]}],
+        )
+        reads = read_columns(
+            "select a13.product_id product_id, a13.product_name product_name from `project-x`.`sales`.`products` a13",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P", dataset, reads, _table("products", ["product_id", "product_name"]), _data_model(source, dataset)
+        )
+
+        assert _pairs(lineage) == [(["product_id", "product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_a_projection_alias_reads_the_columns_of_its_own_query(self):
+        _, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        # The outer REVENUERANK reads the derived table; the inner one reads the warehouse.
+        assert aliases["revenuerank"] == {("project-x.sales.order_lines", "revenue")}
+        assert aliases["wjxbfs1"] == {("project-x.sales.order_lines", "line_id")}
+        assert "linecount" not in aliases
+
+    def test_a_schema_metric_maps_to_the_projection_named_after_it(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_RANK", "name": "Revenue Rank", "type": "metric"}])
+        cube_reads, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["region_id", "revenue", "line_id"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["revenue"], f"{SCHEMA_CUBE}.Revenue Rank")]
+        # Its definition is read for its column alias, and none is set, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
+
+    def test_a_metric_the_sql_does_not_name_maps_through_what_it_is_built_from(self, server, client):
+        # Average Price is Total Unit Price / Total Quantity: the SQL names the first, and the
+        # second, under a generated alias, is followed to its fact.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_AVG", "name": "Average Price", "type": "metric"}])
+        cube_reads, aliases = read_projections(
+            "select a11.order_id order_id, sum(a11.quantity) WJXBFS1, sum(a11.unit_price) TOTALUNITPRICE"
+            " from `project-x`.`sales`.`order_items` a11 group by 1",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["order_id", "quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity", "unit_price"], f"{SCHEMA_CUBE}.Average Price")]
+        # The SQL names Total Unit Price, so its fact is never read.
+        assert server.requests_to("/model/facts/F_PRICE") == []
+
+    def test_a_metric_built_in_workstation_maps_through_the_fact_its_tokens_resolve(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_UI_QTY", "name": "Units", "type": "metric"}])
+        cube_reads, aliases = read_projections(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["order_id", "quantity"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity"], f"{SCHEMA_CUBE}.Units")]
+        assert server.requests_to("/model/metrics/M_UI_QTY")[0].params["showExpressionAs"] == "tokens"
+
+    def test_a_metric_name_another_object_shares_matches_no_alias(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_VAR", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT", "name": "% Margin", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN from `project-x`.`sales`.`order_lines` a11", Dialect.BIGQUERY
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert lineage == []
+
+    def test_a_referenced_metric_whose_name_another_object_shares_is_followed_to_its_definition(self, server, client):
+        # Margin Share is built from % Margin, whose name Margin shares: the MARGIN projection may be
+        # Margin's, so both are followed to their facts instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_MARGIN", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+                {"id": "M_SHARE", "name": "Margin Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.% Margin"),
+            (["quantity"], f"{SCHEMA_CUBE}.Margin Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Margin"),
+        ]
+
+    def test_a_referenced_metric_outside_the_dataset_takes_no_alias_a_dataset_object_owns(self, server, client):
+        # Revenue Share is built from % Revenue, which the dataset does not hold: REVENUE is Revenue's
+        # projection, so % Revenue is followed to its fact instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV", "name": "Revenue", "type": "metric"},
+                {"id": "M_REV_SHARE", "name": "Revenue Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) REVENUE, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Revenue Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
+    def test_a_metric_maps_to_the_projection_its_column_alias_names_not_its_name(self, server, client):
+        # Revenue is aliased NETAMOUNT and Net Amount is aliased REVENUE: each name matches the
+        # other metric's projection, and only the column aliases tell them apart.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_C", "name": "Revenue", "type": "metric"},
+                {"id": "M_NET_C", "name": "Net Amount", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) NETAMOUNT, sum(a11.quantity) REVENUE from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Net Amount"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
+    def test_a_referenced_metric_maps_to_the_projection_its_column_alias_names(self, server, client):
+        # Share is built from Part, which the dataset does not hold and whose column alias is PARTQTY.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_N", "name": "Revenue", "type": "metric"},
+                {"id": "M_SHARE_C", "name": "Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) REVENUE, sum(a11.quantity) PARTQTY from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Share"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+        # Both are matched on their projections, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
+
+    def test_a_metric_that_cannot_be_read_still_keeps_its_name_from_other_metrics(self, server, client):
+        # Margin cannot be read, so its column alias is unknown: the MARGIN projection may be its own,
+        # and % Margin is followed to its fact instead of taking it.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/metrics/M_BROKEN"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_BROKEN", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity"], f"{SCHEMA_CUBE}.% Margin")]
+
+    def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        for metric in ("M_D1", "M_D2"):
+            server.overrides[f"/model/metrics/{metric}"] = lambda: (
+                404,
+                {"code": "ERR004", "message": "The object does not exist in the metadata"},
+            )
+
+        for metric in ("M_D1", "M_D2", "M_D1"):
+            assert client.get_metric_parts("P", metric) is None
+
+        assert not client.modeling_denied
+        assert len(server.requests_to("/model/metrics/")) == 2
+        assert caplog.text.count("further metrics that cannot be read are logged at debug level") == 1
+
+    def test_a_metric_that_references_itself_is_read_once(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+
+        parts = client.get_metric_parts("P", "M_LOOP")
+
+        assert parts.metrics == {("M_LOOP_BACK", "Loop back")}
+        assert parts.facts == set()
+        assert len(server.requests_to("/model/metrics/")) == 2
+
+    def test_without_modeling_privileges_a_metric_gets_no_column_lineage(self, server, client, caplog):
+        # Revenue Rank's projection is named after it, but unread, its column alias is unknown, so the
+        # projection may be another metric's.
+        server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})
+        server.overrides["/model/metrics/M_TX"] = lambda: (
+            403,
+            {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+        )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_TX", "name": "Line Count", "type": "metric"},
+                {"id": "M_RANK", "name": "Revenue Rank", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["region_id", "revenue", "line_id"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert lineage == []
+        assert client.modeling_denied
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+
+    def test_a_data_import_cube_is_matched_on_the_names_it_derives_from_columns(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE,
+            [
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "M1", "name": "Unit Price", "type": "metric"},
+                {"id": "M2", "name": "Row Count - order_items", "type": "metric"},
+            ],
+        )
+        reads = read_columns(DATA_IMPORT_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            reads,
+            _table("order_items", ["order_item_id", "order_id", "unit_price"]),
+            _data_model(source, dataset),
+        )
+
+        assert _pairs(lineage) == [
+            (["order_id"], f"{IMPORT_CUBE}.Order Id"),
+            (["unit_price"], f"{IMPORT_CUBE}.Unit Price"),
+        ]
+        assert server.requests_to("/model/") == []
+
+    @pytest.mark.parametrize(
+        ("names", "columns", "expected"),
+        [
+            # Names in other scripts are kept apart, not reduced to the same empty key.
+            (["数量", "金额"], ["数量", "金额"], [(["数量"], "数量"), (["金额"], "金额")]),
+            # Two columns that normalize alike: only the one of the same name is linked.
+            (["ab", "A B"], ["ab", "a_b"], [(["ab"], "ab")]),
+            # One object, two columns that normalize to its name: neither is a safe guess.
+            (["A B"], ["ab", "a_b"], []),
+            # Two objects of the same name: which one reads the column cannot be told.
+            (["id", "id", "name"], ["id", "name"], [(["name"], "name")]),
+        ],
+    )
+    def test_a_data_import_object_is_linked_only_to_the_one_column_it_is_named_after(
+        self, server, client, names, columns, expected
+    ):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE, [{"id": f"M{i}", "name": name, "type": "metric"} for i, name in enumerate(names)]
+        )
+        reads = frozenset(("project-x.sales.t", column) for column in columns)
+
+        lineage = source._column_lineage("P", dataset, reads, _table("t", columns), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(cols, f"{IMPORT_CUBE}.{target}") for cols, target in expected]
+
+    def test_an_object_listed_twice_is_still_matched_on_its_name(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE,
+            [
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = frozenset({("project-x.sales.t", "order_id")})
+
+        lineage = source._column_lineage("P", dataset, reads, _table("t", ["order_id"]), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]
+
+    def test_a_refused_table_read_stops_modeling_calls_and_warns_once(self, server, client, caplog):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        for table_id in LOGICAL_TABLES:
+            server.overrides[f"/model/tables/{table_id}"] = lambda: (
+                403,
+                {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+            )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_STATUS", "name": "Status", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        for name in ("order_items", "orders"):
+            assert source._column_lineage("P", dataset, reads, _table(name, ["order_id", "status"]), model) == []
+
+        assert source.client.modeling_denied
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+        assert len(server.requests_to("/model/")) == 2
+
+    def test_without_modeling_privileges_a_schema_cube_keeps_table_lineage_and_warns_once(self, server, client, caplog):
+        server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})
+        for attribute in MODEL_ATTRIBUTES:
+            server.overrides[f"/model/attributes/{attribute}"] = lambda: (
+                403,
+                {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+            )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_ORDER", "name": "Order", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_STATUS", "name": "Status", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+        model = _data_model(source, dataset)
+
+        for name in ("order_items", "orders"):
+            assert source._column_lineage("P", dataset, reads, _table(name, ["order_id", "status"]), model) == []
+
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+        assert len(server.requests_to("/model/attributes/")) == 1
+
+    def test_a_column_lineage_failure_keeps_the_table_lineage(self, client):
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="Mysql"))
+        datamodel = SimpleNamespace(id=SimpleNamespace(root=USER_ID), columns=[])
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: service if "." not in fqn else datamodel
+        source._column_lineage = MagicMock(side_effect=RuntimeError("boom"))
+
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=lambda table_name, **_: [_table(table_name.rsplit(".", 1)[-1], [])],
+        ):
+            edges = list(source.yield_dashboard_lineage_details(_details(source, OFFICE_ROYALE), "bq"))
+
+        assert len(edges) == 3
+        assert all(edge.right and edge.right.edge.lineageDetails.columnsLineage is None for edge in edges)
+
+    def test_a_table_of_another_schema_or_project_is_never_linked(self):
+        assert table_matches("db1.public.orders", "orders", "public", "db1")
+        assert not table_matches("db2.public.orders", "orders", "public", "db1")
+        assert not table_matches("crm.customers", "customers", "sales", "project-x")
+        assert table_matches("orders", "orders", "public", "db1")
+
+    def test_a_form_on_a_same_named_table_of_another_namespace_is_not_linked(self, server, client):
+        # Lead reads crm.customers.id and Customer reads sales.customers.id; the SQL reads only the latter.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/tables/T_CRM"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.crm", "tableName": "customers"}},
+        )
+        server.overrides["/model/tables/T_SALES"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.sales", "tableName": "customers"}},
+        )
+        same_named = {"A_LEAD": ("T_CRM",), "A_CUSTOMER": ("T_SALES",)}
+        for attribute, (table,) in same_named.items():
+            body = {
+                "forms": [
+                    {
+                        **ID_FORM,
+                        "expressions": [
+                            {
+                                "expression": {"tree": {"type": "column_reference", "columnName": "id"}},
+                                "tables": [{"objectId": table}],
+                            }
+                        ],
+                    }
+                ]
+            }
+            server.overrides[f"/model/attributes/{attribute}"] = lambda body=body: (200, body)
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_LEAD", "name": "Lead", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_CUSTOMER", "name": "Customer", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns("select a11.id id from `project-x`.`sales`.`customers` a11", Dialect.BIGQUERY)
+
+        lineage = source._column_lineage("P", dataset, reads, _table("customers", ["id"]), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(["id"], f"{SCHEMA_CUBE}.Customer")]
+
+    def test_the_table_prefix_names_the_physical_table_as_the_sql_does(self, server, client):
+        server.overrides["/model/tables/T_LU"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "tutorial", "tablePrefix": "tutorial_wh.", "tableName": "lu_category"}},
+        )
+
+        assert client.get_physical_table("P", "T_LU") == "tutorial_wh.lu_category"
+
+    def test_another_modeling_failure_is_not_read_as_a_missing_privilege(self, server, client, caplog):
+        for attribute in ("A1", "A2"):
+            server.overrides[f"/model/attributes/{attribute}"] = lambda: (
+                500,
+                {"code": "ERR001", "message": "Internal error"},
+            )
+
+        for attribute in ("A1", "A2", "A1"):
+            assert client.get_attribute_form_columns("P", attribute) is None
+
+        assert not client.modeling_denied
+        assert len(server.requests_to("/model/attributes/")) == 2
+        assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
+
+    # A report built on the Data Import cube is matched like the cube: on names, also once the
+    # report and parse caches have evicted it while the SQL cache still holds it.
+    @pytest.mark.parametrize(("dataset_id", "evicted"), [(IMPORT_CUBE, False), ("R1", False), ("R1", True)])
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id, evicted):
+        _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
+        _report_route(server, "R1", source=IMPORT_CUBE)
+        server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        dataset = _dataset(dataset_id, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
+        details = _details(source, OFFICE_ROYALE).model_copy(update={"datasets": [dataset]})
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        model = _data_model(source, dataset)
+        model.id = SimpleNamespace(root=USER_ID)
+        # The lineage search returns tables without columns; the source reads them once.
+        bare = _table("order_items", [])
+        bare.columns = None
+        full = _table("order_items", ["order_item_id", "order_id", "unit_price"])
+
+        def get_by_name(entity, fqn, **_):
+            return {"bq": service, f"mstr.model.{dataset_id}": model, full.fullyQualifiedName.root: full}.get(fqn)
+
+        source.metadata.get_by_name.side_effect = get_by_name
+        source.metadata.list_all_entities.return_value = [SimpleNamespace(name=SimpleNamespace(root="project-x"))]
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=lambda table_name, **_: [bare] if table_name.endswith("order_items") else [],
+        ):
+            if evicted:
+                list(source.yield_dashboard_lineage_details(details, "bq"))
+                client._report_cubes.clear()
+                source._source_tables.clear()
+                assert dataset_id in client._cube_sql
+            results = list(source.yield_dashboard_lineage_details(details, "bq"))
+
+        assert [either.left for either in results if either.left] == []
+        (edge,) = [either.right for either in results]
+        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{dataset_id}.Order Id")]

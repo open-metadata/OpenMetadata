@@ -63,6 +63,7 @@ public final class MockOidcProvider implements AutoCloseable {
   private final AtomicReference<IssuerParameter> issuerParameter =
       new AtomicReference<>(IssuerParameter.NOT_ADVERTISED);
   private final AtomicReference<MockResponseGate> nextJwksGate = new AtomicReference<>();
+  private final AtomicReference<String> nextAuthorizationError = new AtomicReference<>();
 
   private MockOidcProvider(MockHttp.LoopbackServer server, OidcProviderProfile profile) {
     this.server = server;
@@ -131,6 +132,19 @@ public final class MockOidcProvider implements AutoCloseable {
 
   public void answerRefreshesWith(RefreshOutcome outcome) {
     tokenEndpoint.answerRefreshesWith(outcome);
+  }
+
+  /** The next code exchange fails the way {@code failure} describes; later ones redeem codes. */
+  public void answerNextCodeExchangeWith(RefreshOutcome failure) {
+    tokenEndpoint.answerNextCodeExchangeWith(failure);
+  }
+
+  /**
+   * The next authorization request is answered with the OAuth {@code error}, as a provider does
+   * when the user declines consent or may not use the application ({@code access_denied}).
+   */
+  public void refuseNextAuthorization(String error) {
+    nextAuthorizationError.set(error);
   }
 
   /**
@@ -227,6 +241,10 @@ public final class MockOidcProvider implements AutoCloseable {
   }
 
   private Map<String, String> authorizationResult(Map<String, String> query) {
+    String refusal = nextAuthorizationError.getAndSet(null);
+    if (refusal != null) {
+      return Map.of(ERROR, refusal);
+    }
     MockOidcIdentity user = signedInUser.get();
     return user == null ? Map.of(ERROR, LOGIN_REQUIRED) : Map.of(CODE, issueCode(user, query));
   }

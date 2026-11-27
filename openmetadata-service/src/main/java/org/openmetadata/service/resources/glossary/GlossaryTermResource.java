@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +92,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermPendingLabels;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository.MovePlan;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository.TermSearch;
@@ -104,6 +106,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -328,9 +331,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         Entity.GLOSSARY_TERM,
         () -> termListParent(parentTermParam, listGlossaryId, parentTermFQNParam));
 
-    return addHref(
+    return addPermissions(
         uriInfo,
-        readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after));
+        securityContext,
+        addHref(
+            uriInfo,
+            readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after)));
   }
 
   @GET
@@ -437,7 +443,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
     retainReadableRows(securityContext, fields, result);
-    return addHref(uriInfo, result);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, result));
   }
 
   // An unknown provider is a bad request rather than a filter that silently matches nothing.
@@ -602,7 +608,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
+    java.util.Map<String, Integer> result =
+        repository.getAllGlossaryTermsWithAssetsCount(
+            parent, DefaultAuthorizer.getSubjectContext(securityContext));
     return Response.ok(result).build();
   }
 
@@ -1101,7 +1109,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
                 termContext)),
         AuthorizationLogic.ANY);
-    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+    BulkOperationResult result = repository.validateGlossaryTagsAddition(id, request);
+    return Response.ok()
+        .entity(repository.viewableRowsOnly(securityContext, viewPermissionFilter, result))
+        .build();
   }
 
   @PUT
@@ -1130,6 +1141,56 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         repository.bulkRemoveGlossaryToAssets(
             id, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
+  }
+
+  @GET
+  @Path("/{id}/pendingAssets")
+  @Operation(
+      operationId = "listGlossaryTermPendingAssets",
+      summary = "List assets this glossary term is pending on",
+      description =
+          "A write that applies a glossary term that is not Approved holds the term back as pending."
+              + " This lists the assets its approval will show it on: each asset holding a pending"
+              + " target, its own or one of its fields'. Pass the after cursor a page returns to get"
+              + " the next.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Assets the term is pending on",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
+      })
+  public ResultList<EntityReference> listGlossaryTermPendingAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Number of pending targets to read for the page (1 to 1000)")
+          @DefaultValue("100")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Cursor the previous page returned") @QueryParam("after")
+          String after) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    GlossaryTerm term = repository.get(uriInfo, id, repository.getFields(""));
+    ResultList<EntityReference> page =
+        GlossaryTermPendingLabels.pendingAssets(term.getFullyQualifiedName(), after, limit);
+    // A term can be pending on assets the caller may not see; only the viewable ones are listed.
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, page.getData());
+    List<EntityReference> shown =
+        page.getData().stream().filter(asset -> viewable.contains(asset.getId())).toList();
+    return new ResultList<>(shown, null, page.getPaging().getAfter(), shown.size());
   }
 
   @GET
@@ -1309,17 +1370,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
-            () -> {
-              try {
-                GlossaryTerm movedGlossaryTerm =
-                    repository.moveGlossaryTerm(id, moveRequest, userName);
-                WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
-                    jobId, securityContext, movedGlossaryTerm);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendMoveOperationFailedNotification(
-                    jobId, securityContext, glossaryTerm, e.getMessage());
-              }
-            });
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    GlossaryTerm movedGlossaryTerm =
+                        repository.moveGlossaryTerm(id, moveRequest, userName);
+                    WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                        jobId, securityContext, movedGlossaryTerm);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                        jobId, securityContext, glossaryTerm, e.getMessage());
+                  }
+                }));
 
     return Response.accepted()
         .entity(

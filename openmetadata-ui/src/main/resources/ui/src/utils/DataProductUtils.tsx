@@ -12,6 +12,7 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 
 import { DataProduct as DataProductIcon } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
@@ -67,6 +68,12 @@ const ActivityFeedProvider = withSuspenseFallback(
   )
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -197,8 +204,7 @@ const getDataProductPreviewSecondPanel = (
       key={previewAsset.details.id ?? previewAsset.details.fullyQualifiedName}
     />
   ),
-  minWidth: 400,
-  flex: 0.33,
+  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
   className:
     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
 });
@@ -222,8 +228,9 @@ const getDataProductNonVersionTabs = ({
 }: DataProductNonVersionTabsProps) => [
   {
     label: (
-      <TabsLabel
+      <ActivityFeedTabLabel
         count={feedCount.totalCount}
+        entityType={EntityType.DATA_PRODUCT}
         id={EntityTabs.ACTIVITY_FEED}
         isActive={activeTab === EntityTabs.ACTIVITY_FEED}
         name={

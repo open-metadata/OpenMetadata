@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -409,18 +409,20 @@ describe('ExplorePageV1', () => {
     );
   });
 
-  it('navigates with a pathname built from the route tab when sort value changes', async () => {
+  it('navigates once with both sort field and order when the sort changes', async () => {
     const mockNavigate = jest.fn();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
-    let capturedCallback: ((sortVal: string) => void) | undefined;
+    let capturedCallback:
+      | ((sortVal: string, sortOrderVal: string) => void)
+      | undefined;
     (ExploreV1 as jest.Mock).mockImplementationOnce(
       ({
-        onChangeSortValue,
+        onChangeSort,
       }: {
-        onChangeSortValue?: (sortVal: string) => void;
+        onChangeSort?: (sortVal: string, sortOrderVal: string) => void;
       }) => {
-        capturedCallback = onChangeSortValue;
+        capturedCallback = onChangeSort;
 
         return <p>ExploreV1</p>;
       }
@@ -430,9 +432,10 @@ describe('ExplorePageV1', () => {
     await screen.findByText('ExploreV1');
 
     act(() => {
-      capturedCallback?.('name.keyword');
+      capturedCallback?.('name.keyword', 'asc');
     });
 
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
     expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
       getExploreTabPath('tables')
     );
@@ -442,43 +445,32 @@ describe('ExplorePageV1', () => {
     );
 
     expect(searchParams.get('sort')).toBe('name.keyword');
+    expect(searchParams.get('sortOrder')).toBe('asc');
     expect(searchParams.get('currentPage')).toBe('1');
   });
 
-  it('navigates with a pathname built from the route tab when sort order changes', async () => {
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
-
-    let capturedCallback: ((sortOrderVal: string) => void) | undefined;
-    (ExploreV1 as jest.Mock).mockImplementationOnce(
-      ({
-        onChangeSortOder,
-      }: {
-        onChangeSortOder?: (sortOrderVal: string) => void;
-      }) => {
-        capturedCallback = onChangeSortOder;
-
-        return <p>ExploreV1</p>;
-      }
-    );
+  it('drops a sort order the selected field does not offer before searching', async () => {
+    // A header search keeps sortOrder=asc from a previous "A to Z" pick while resetting the
+    // field to relevance, which only offers best-match-first (desc).
+    mockLocation.search = '?search=orders&sort=_score&sortOrder=asc';
 
     render(<ExplorePageV1 {...mockProps} />);
     await screen.findByText('ExploreV1');
 
-    act(() => {
-      capturedCallback?.('asc');
-    });
-
-    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
-      getExploreTabPath('tables')
+    expect(ExploreV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortValue: '_score', sortOrder: 'desc' }),
+      expect.anything()
     );
 
-    const searchParams = new URLSearchParams(
-      mockNavigate.mock.calls[0][0].search
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ sortField: '_score', sortOrder: 'desc' })
+      )
     );
 
-    expect(searchParams.get('sortOrder')).toBe('asc');
-    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sortOrder: 'asc' })
+    );
   });
 
   describe('search count revalidation', () => {

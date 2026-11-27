@@ -65,6 +65,33 @@ describe('AlertAiDiagnosticTab', () => {
     ).toHaveTextContent('label.yes');
   });
 
+  it.each([
+    [false, 'label.disabled'],
+    [true, 'label.enabled'],
+  ])(
+    'shows whether the alert is enabled (enabled: %s)',
+    async (enabled, status) => {
+      mockGetDiagnosticInfo.mockResolvedValue({
+        currentOffset: 10,
+        enabled,
+        hasProcessedAllEvents: true,
+        latestOffset: 12,
+      });
+
+      render(<AlertAiDiagnosticTab fqn="my.alert" />);
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('diagnostic-value-label.status')
+        ).toHaveTextContent(status)
+      );
+
+      expect(
+        screen.getByLabelText('message.alert-status-description')
+      ).toBeInTheDocument();
+    }
+  );
+
   it('shows a placeholder and a toast when the diagnostics fail to load', async () => {
     mockGetDiagnosticInfo.mockRejectedValue(new Error('boom'));
 

@@ -12,15 +12,23 @@
  */
 
 import { Include } from '../generated/type/include';
-import { getContextFileById } from './assetAPI';
+import {
+  extractFileMemories,
+  getContextFileById,
+  listContextFiles,
+} from './assetAPI';
 import APIClient from './axiosClient';
 
 jest.mock('./axiosClient', () => ({
   __esModule: true,
-  default: { get: jest.fn().mockResolvedValue({ data: {} }) },
+  default: {
+    get: jest.fn().mockResolvedValue({ data: {} }),
+    post: jest.fn(),
+  },
 }));
 
 const mockGet = APIClient.get as jest.Mock;
+const mockPost = APIClient.post as jest.Mock;
 
 describe('getContextFileById', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -44,5 +52,70 @@ describe('getContextFileById', () => {
     await getContextFileById('file-1');
 
     expect(mockGet.mock.calls[0][1].params.include).toBeUndefined();
+  });
+});
+
+// The status badge shows Not processed from the server's neverExtracted, which a
+// read returns only when asked for it.
+describe('neverExtracted on file reads', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('is requested when a file is fetched by id', async () => {
+    await getContextFileById('file-1');
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'neverExtracted'
+    );
+  });
+
+  it('is requested when files are listed', async () => {
+    mockGet.mockResolvedValueOnce({ data: { data: [], paging: {} } });
+
+    await listContextFiles();
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'neverExtracted'
+    );
+  });
+});
+
+// Extract and Retry are offered to a file's owners, which a read returns only when asked for them.
+describe('owners on file reads', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('are requested when a file is fetched by id', async () => {
+    await getContextFileById('file-1');
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'owners'
+    );
+  });
+
+  it('are requested when files are listed', async () => {
+    mockGet.mockResolvedValueOnce({ data: { data: [], paging: {} } });
+
+    await listContextFiles();
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'owners'
+    );
+  });
+});
+
+describe('extractFileMemories', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('asks the server to extract the file and returns the file it now reads', async () => {
+    const queued = {
+      id: 'file-1',
+      name: 'report.pdf',
+      processingStatus: 'ExtractingContext',
+    };
+    mockPost.mockResolvedValueOnce({ data: queued });
+
+    expect(await extractFileMemories('file-1')).toEqual(queued);
+    expect(mockPost).toHaveBeenCalledWith(
+      '/contextCenter/drive/files/file-1/extract'
+    );
   });
 });

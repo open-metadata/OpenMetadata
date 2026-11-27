@@ -23,6 +23,7 @@ import {
   PendingChanges,
   StackQuality,
   StackSearch,
+  StopCircle,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined, reduce } from 'lodash';
@@ -236,6 +237,10 @@ export const getIconFromStatus = (status?: string) => {
       break;
     case AgentStatus.Pending:
       Icon = PendingChanges;
+
+      break;
+    case AgentStatus.Stopped:
+      Icon = StopCircle;
 
       break;
   }

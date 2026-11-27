@@ -25,7 +25,6 @@ import {
   ChevronDown,
   ChevronRight,
   CloseCircleFilled,
-  Copy01,
   DotFilled,
   ExclamationCircleFilled,
   Lightbulb03,
@@ -40,6 +39,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import CopyButton from '../components/common/CopyButton/CopyButton';
 import Loader from '../components/common/Loader/Loader';
 import {
   ConnectionStepState,
@@ -51,6 +51,7 @@ import {
   TestConnectionStepResult,
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
+import { formatDuration } from './date-time/DateTimeUtils';
 
 const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
 const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
@@ -656,7 +657,7 @@ function renderCapabilityStepLog(
         {(result.resultSummary || result.message) &&
           renderColoredLines(
             `  ${result.resultSummary || result.message}${
-              result.durationMs ? ` (${result.durationMs} ms)` : ''
+              result.durationMs ? ` (${formatDuration(result.durationMs)})` : ''
             }`,
             getSummaryColorClass(result.passed),
             'sum-'
@@ -924,7 +925,7 @@ export function ConnectionRawLogSection(
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;
             const timing = result.durationMs
-              ? ` (${result.durationMs} ms)`
+              ? ` (${formatDuration(result.durationMs)})`
               : '';
             const parts: JSX.Element[] = [];
 
@@ -986,7 +987,6 @@ export function ConnectionFooterActions(
     isTestingConnection: boolean;
     onCancel: () => void;
     onConfirm: () => void;
-    onCopyToClipBoard: () => void;
     onTestConnection: () => void;
     rawLog: string;
     t: TranslateFn;
@@ -998,7 +998,6 @@ export function ConnectionFooterActions(
     isTestingConnection,
     onCancel,
     onConfirm,
-    onCopyToClipBoard,
     onTestConnection,
     rawLog,
     t,
@@ -1041,16 +1040,13 @@ export function ConnectionFooterActions(
 
   return (
     <>
-      <Button
+      <CopyButton
         className="tw:mr-auto"
-        color="secondary"
-        data-testid="copy-log-button"
-        iconLeading={Copy01}
         isDisabled={!rawLog}
-        size="sm"
-        onClick={() => onCopyToClipBoard()}>
-        {t('label.copy-log')}
-      </Button>
+        label={t('label.copy-log')}
+        testId="copy-log-button"
+        value={rawLog}
+      />
       {!isConnectionTimeout && !isTestingConnection && isFailed && (
         <Button
           color="link-color"

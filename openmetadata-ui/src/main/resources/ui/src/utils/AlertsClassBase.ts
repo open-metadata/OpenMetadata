@@ -265,6 +265,7 @@ class AlertsClassBase {
 
     return {
       ...initialData,
+      enabled: data.enabled ?? initialData.enabled,
       description,
       displayName: alertDisplayName,
       name: alertName,

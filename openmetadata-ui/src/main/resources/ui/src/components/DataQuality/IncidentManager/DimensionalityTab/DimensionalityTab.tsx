@@ -290,8 +290,8 @@ const DimensionalityTab = () => {
           description={
             <TransWithComponents
               components={{
-                0: <span className="tw:text-sm" />,
-                1: <span className="tw:text-sm" />,
+                0: <span />,
+                1: <span />,
                 2: <Link to={pipelineLink} />,
               }}
               i18nKey="message.no-dimension-description"

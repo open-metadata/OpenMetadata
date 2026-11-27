@@ -20,6 +20,10 @@ import { useTranslation } from 'react-i18next';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import BotAddForm from './BotAddForm';
 import BotDetailPanel from './BotDetailPanel';
@@ -71,19 +75,20 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
   }, [hashState.tab, hashState.subPath]);
 
   const onNavigate = useCallback(
-    (nextView: BotsView) => {
+    (nextView: BotsView, navOptions?: SettingsNavigateOptions) => {
       setView(nextView);
+      const options = settingsHashOptions(view, nextView, navOptions);
 
       if (nextView.type === 'detail') {
-        setHash('bots', encodeURIComponent(nextView.fqn));
+        setHash('bots', encodeURIComponent(nextView.fqn), undefined, options);
       } else if (nextView.type === 'add') {
-        setHash('bots', 'add');
+        setHash('bots', 'add', undefined, options);
       } else {
-        setHash('bots');
+        setHash('bots', undefined, undefined, options);
         setListRefreshKey((k) => k + 1);
       }
     },
-    [setHash]
+    [setHash, view]
   );
 
   useEffect(() => {
