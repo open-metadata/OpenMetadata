@@ -210,6 +210,9 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setFields(Table table, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(table);
+    table
+        .withDatabaseSchema(currentReference(table.getDatabaseSchema()))
+        .withDatabase(currentReference(table.getDatabase()));
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
           fields.contains("usageSummary")
@@ -239,6 +242,9 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
     // Bulk fetch and set default fields for all tables
     fetchAndSetDefaultFields(entities);
+    refreshStoredReferences(
+        entities, DATABASE_SCHEMA, Table::getDatabaseSchema, Table::setDatabaseSchema);
+    refreshStoredReferences(entities, Entity.DATABASE, Table::getDatabase, Table::setDatabase);
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
