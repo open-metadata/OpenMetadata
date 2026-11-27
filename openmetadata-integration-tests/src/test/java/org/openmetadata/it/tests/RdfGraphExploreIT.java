@@ -49,14 +49,20 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.ontology.OntologyBindingGraphLinks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -278,6 +284,64 @@ public class RdfGraphExploreIT {
     assertEquals("rdf", graph.path("source").asText());
     JsonNode focal = findNodeByEntityId(graph, table.getId());
     assertNotNull(focal, "focal table node should still be present");
+  }
+
+  @Test
+  void exploreShowsAConceptBindingOnlyWhileTheTableIsBound(final TestNamespace ns)
+      throws Exception {
+    final Table table = createTableInRdf(ns, "rdfExploreBound");
+    final Ontology ontology = BaseOntologyApprovalIT.createOntology(ns, "exploreBindings");
+    final OntologyConcept patient =
+        BaseOntologyApprovalIT.declareClass(
+            ontology, "Patient", URI.create("urn:" + ns.shortPrefix() + ":Patient"));
+    try {
+      OntologyBindingFixtures.bind(patient, table, List.of(), 0L);
+
+      final JsonNode bound = explore(table.getId(), ENTITY_TYPE_TABLE, 2);
+      final JsonNode concept = findNodeByEntityId(bound, patient.getId());
+      assertNotNull(concept, () -> "explore should include the bound concept: " + bound);
+      assertEquals(Entity.ONTOLOGY_CONCEPT, concept.path("type").asText());
+      assertTrue(hasBoundAssetEdge(bound, patient.getId(), table.getId()));
+      assertTrue(
+          bound
+              .path("filterOptions")
+              .path("relationshipTypes")
+              .findValuesAsText("id")
+              .contains(OntologyBindingGraphLinks.BOUND_ASSET));
+
+      final JsonNode fromConcept = explore(patient.getId(), Entity.ONTOLOGY_CONCEPT, 1);
+      assertTrue(hasBoundAssetEdge(fromConcept, patient.getId(), table.getId()));
+
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/ontologyConcepts/"
+                  + patient.getId()
+                  + "/bindings/table/"
+                  + table.getId()
+                  + "?expectedRevision=1",
+              null,
+              OntologyConceptBindingsResponse.class);
+
+      final JsonNode unbound = explore(table.getId(), ENTITY_TYPE_TABLE, 2);
+      assertEquals(null, findNodeByEntityId(unbound, patient.getId()));
+      assertFalse(hasBoundAssetEdge(unbound, patient.getId(), table.getId()));
+    } finally {
+      BaseOntologyIT.deleteRoots(ns);
+    }
+  }
+
+  private boolean hasBoundAssetEdge(
+      final JsonNode graph, final UUID conceptId, final UUID assetId) {
+    for (final JsonNode edge : graph.path("edges")) {
+      if (OntologyBindingGraphLinks.BOUND_ASSET.equals(edge.path("relationType").asText())
+          && edge.path("from").asText().endsWith("/" + Entity.ONTOLOGY_CONCEPT + "/" + conceptId)
+          && edge.path("to").asText().endsWith("/" + assetId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // NOTE: A per-method "503 when RDF disabled" assertion is intentionally omitted here. The

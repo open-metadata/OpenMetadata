@@ -153,9 +153,12 @@ public class AutoCloseIncidentIT {
         "Resolution reason should be AutoResolved");
 
     // Verify the Task was resolved by autoResolveIncident
-    Task resolvedTask = client.tasks().get(task.getId().toString(), "resolution");
+    Task resolvedTask = client.tasks().get(task.getId().toString(), "resolution,comments");
     assertEquals(TaskEntityStatus.Completed, resolvedTask.getStatus());
     assertNotNull(resolvedTask.getResolution());
+    assertTrue(
+        resolvedTask.getComments() == null || resolvedTask.getComments().isEmpty(),
+        "An automatic resolution must not post a system marker as a comment");
 
     // Workflow should reach FINISHED (outbox delivers Completed to ManualTask)
     String workflowInstanceId = task.getWorkflowInstanceId().toString();

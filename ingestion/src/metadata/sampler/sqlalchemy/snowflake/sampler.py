@@ -55,7 +55,7 @@ class SnowflakeSampler(SQASampler):
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(self.sampling_method_type(static.profileSample or 100))
 
-        return selectable.tablesample(func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS")))
+        return selectable.tablesample(func.ROW(text(f"{int(static.profileSample or 100 if static else 100)} ROWS")))
 
     def _process_sample_value(self, column: Column, value: Any) -> Any:
         """The driver returns VARIANT, OBJECT (both profiled as VARIANT) and ARRAY values as JSON text.

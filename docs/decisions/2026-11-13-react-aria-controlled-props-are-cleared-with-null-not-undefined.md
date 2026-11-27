@@ -1,7 +1,7 @@
 # React Aria controlled props are cleared with null, not undefined
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-17 (example component removed)
 - **Deciders:** Chirag Madlani
 - **Guard:** ESLint `openmetadata-ui-patterns/no-undefined-controlled-prop` (error)
 - **Related:** #37771, #37772
@@ -25,6 +25,10 @@ passes nothing, from its first render to its last.
 ## Consequences
 The lint rule catches a literal `undefined` fallback in a JSX prop. It cannot see a variable whose type
 merely includes `undefined` (`useState<string>()` passed straight through); review those, and prefer
-initialising such state to `null`. A component that deliberately flips — `CopyToClipboardButton`
-forcing its tooltip open after a copy while leaving hover to React Aria — disables the rule on that
-line with the reason beside it.
+initialising such state to `null`. A component that deliberately flips — a tooltip forced open
+after an action while hover is left to React Aria — disables the rule on that line with the reason
+beside it.
+
+## Amendment
+v2 2026-11-17: the original example, `CopyToClipboardButton`, was removed by
+ADR:2026-11-17-copy-actions-use-the-shared-copy-button; the rule and its exception are unchanged.

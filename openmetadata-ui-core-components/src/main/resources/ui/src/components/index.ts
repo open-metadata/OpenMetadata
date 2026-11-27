@@ -173,6 +173,7 @@ export * from './application/popover/popover';
 export * from './application/confirm-popover/confirm-popover';
 export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
+export * from './application/scroll-shadow/scroll-shadow';
 export * from './application/table/table';
 export {
   GridList,

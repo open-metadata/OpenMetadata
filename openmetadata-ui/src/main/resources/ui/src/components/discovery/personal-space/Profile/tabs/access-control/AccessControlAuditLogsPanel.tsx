@@ -659,7 +659,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
   return (
     <Box
-      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6"
+      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-8"
       data-testid="audit-logs-page"
       direction="col">
       {/* Card wrapping filters + log list */}

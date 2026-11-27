@@ -53,11 +53,16 @@ class TestCaseSnapshotStoreTest {
 
   @Test
   void deploymentsWithoutCheckpointsLeaveCoverageUnknown() throws IOException {
-    final SearchClient client = mock(SearchClient.class);
-    when(client.rawSearchRequest(any(), any(), any()))
-        .thenReturn(new SearchClient.RawSearchResponse(404, "missing"));
-    final TestCaseSnapshotStore store = new TestCaseSnapshotStore(client, "");
+    final TestCaseSnapshotStore store =
+        new TestCaseSnapshotStore(checkpointLookup("index_not_found_exception"), "");
     assertEquals(Map.of(), store.loadCoverage(List.of(table()), 0, 1).counts());
+  }
+
+  @Test
+  void unreadableCheckpointFailsInsteadOfReportingNoTests() throws IOException {
+    final TestCaseSnapshotStore store =
+        new TestCaseSnapshotStore(checkpointLookup("index_closed_exception"), "");
+    assertThrows(IOException.class, () -> store.loadCoverage(List.of(table()), 0, 1));
   }
 
   @Test
@@ -138,6 +143,20 @@ class TestCaseSnapshotStoreTest {
     assertThrows(
         IOException.class, () -> new TestCaseSnapshotStore(client, "").completeCapture(0, null));
     assertFalse(checkpointExists.get());
+  }
+
+  /** OpenSearch and Elasticsearch answer {@code _mget} on a missing or closed index per document. */
+  private static SearchClient checkpointLookup(String errorType) throws IOException {
+    final SearchClient client = mock(SearchClient.class);
+    final String document =
+        JsonUtils.pojoToJson(
+            Map.of(
+                "_index", "di-test-case-snapshot-checkpoints",
+                "_id", "checkpoint",
+                "error", Map.of("type", errorType, "reason", "di-test-case-snapshot-checkpoints")));
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenReturn(new SearchClient.RawSearchResponse(200, "{\"docs\":[" + document + "]}"));
+    return client;
   }
 
   private static Map<String, Object> snapshot(long day) {

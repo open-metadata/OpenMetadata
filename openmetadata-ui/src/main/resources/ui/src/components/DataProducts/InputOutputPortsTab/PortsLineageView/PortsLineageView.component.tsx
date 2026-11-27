@@ -13,7 +13,7 @@
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactFlow, {
   Background,
@@ -64,18 +64,7 @@ const PortsLineageView = ({
   const { t } = useTranslation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
   const reactFlowInstance = useReactFlow();
-
-  const handleToggleFullScreen = useCallback(() => {
-    if (onToggleFullScreen) {
-      onToggleFullScreen();
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 });
-        reactFlowInstance.zoomTo(0.4);
-      }, 100);
-    }
-  }, [onToggleFullScreen, reactFlowInstance]);
 
   const hasAnyPorts =
     dataProduct && (inputPortsData.length > 0 || outputPortsData.length > 0);
@@ -192,15 +181,21 @@ const PortsLineageView = ({
     }
   }, [buildNodesAndEdges, hasAnyPorts]);
 
+  const hasNodes = nodes.length > 0;
+
+  // React Flow keeps the old viewport transform when its container resizes, so
+  // refit on every fullscreen change — the parent's Escape handler included.
   useEffect(() => {
-    if (nodes.length > 0 && !isInitialized && reactFlowInstance) {
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 });
-        reactFlowInstance.zoomTo(0.4);
-        setIsInitialized(true);
-      }, 100);
+    if (!hasNodes) {
+      return;
     }
-  }, [nodes, isInitialized, reactFlowInstance]);
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+      reactFlowInstance.zoomTo(0.4);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [hasNodes, isFullScreen, reactFlowInstance]);
 
   const containerHeight = useMemo(() => {
     if (isFullScreen) {
@@ -245,7 +240,7 @@ const PortsLineageView = ({
                 ? t('label.exit-full-screen')
                 : t('label.full-screen')
             }
-            onClick={handleToggleFullScreen}
+            onClick={onToggleFullScreen}
           />
         </div>
       )}

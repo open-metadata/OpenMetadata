@@ -99,6 +99,11 @@ export interface ProfileHeaderOverride {
   /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
   iconNode?: React.ReactNode;
   onBreadcrumbAction?: (id: Key) => void;
+  /**
+   * Crumbs that stay inside the open editor (a sub page's link back to its
+   * form), so they skip the unsaved-changes guard the other crumbs go through.
+   */
+  inEditorBreadcrumbIds?: Key[];
   /** Action buttons rendered on the right of the header title row. */
   actions?: React.ReactNode;
   /** When set, renders in place of the title text (e.g. an inline rename input). */

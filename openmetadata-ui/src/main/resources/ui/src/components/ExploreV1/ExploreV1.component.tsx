@@ -16,7 +16,6 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
   Card as CoreCard,
   Dialog,
   Divider,
@@ -32,12 +31,10 @@ import {
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
+  AdvancedSearch,
   ChevronDown,
   Download01,
-  FilterFunnel01,
   InfoCircle,
-  SortAscending,
-  SortDescending,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -50,7 +47,7 @@ import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilterChips/ExploreQueryFilterChips.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
-import SortingDropDown from '../../components/Explore/SortingDropDown';
+import ExploreSortDropdown from '../../components/Explore/ExploreSortDropdown/ExploreSortDropdown';
 import {
   LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
@@ -61,7 +58,6 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
@@ -620,9 +616,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   searchIndex,
   sortOrder,
   currentPage = 1,
-  onChangeSortOder,
   sortValue,
-  onChangeSortValue,
+  onChangeSort,
   onChangeShowDeleted,
   onChangeSearchIndex,
   showDeleted,
@@ -895,10 +890,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     setShowSummaryPanel(false);
   };
 
-  const isAscSortOrder = useMemo(
-    () => sortOrder === SORT_ORDER.ASC,
-    [sortOrder]
-  );
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
@@ -1248,7 +1239,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
       <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
-        <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
+        <div className="tw:@container tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
               considered; basis 0 keeps both columns on one line and lets the
@@ -1281,24 +1272,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
               dividers — which are `self-stretch` — grow with it, towering over
               the controls they separate. */}
           <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
-            <ButtonUtility
-              data-testid="sort-order-button"
-              icon={isAscSortOrder ? SortAscending : SortDescending}
-              size="lg"
-              tooltip={t('label.sort-order')}
-              onClick={() =>
-                onChangeSortOder(
-                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                )
-              }
-            />
-
-            <Divider className="tw:my-2" orientation="vertical" />
-
-            <SortingDropDown
+            <ExploreSortDropdown
               fieldList={translatedSortingFields}
-              handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
+              sortOrder={sortOrder}
+              onChange={onChangeSort}
             />
 
             <Divider className="tw:my-2" orientation="vertical" />
@@ -1337,7 +1315,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Dropdown.Item>
 
                   <Dropdown.Item
-                    icon={FilterFunnel01}
+                    icon={AdvancedSearch}
                     label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />

@@ -76,8 +76,6 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
-const STUDIO_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
@@ -91,6 +89,7 @@ type GraphEmptyStateKind =
   | 'filtered-active-empty'
   | 'onboarding-empty'
   | 'no-terms-empty'
+  | 'data-empty'
   | 'null-state'
   | 'no-matching-relation'
   | 'content';
@@ -129,9 +128,9 @@ function OntologyOnboardingEmptyState() {
         footer={
           <Button
             color="primary"
-            data-testid="ontology-view-all"
-            href={ROUTES.ONTOLOGY_EXPLORER}>
-            {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
+            data-testid="ontology-onboarding-view-glossary"
+            href={ROUTES.GLOSSARY}>
+            {t('label.view-entity', { entity: t('label.glossary') })}
           </Button>
         }
         title={t('message.ontology-empty-title')}
@@ -246,6 +245,22 @@ function FilteredActiveGraphEmptyState() {
       description={t('message.no-data-available-for-selected-filter')}
       testId="ontology-graph-empty"
     />
+  );
+}
+
+function DataLayerGraphEmptyState() {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+      data-testid="ontology-data-empty">
+      <NoDataPlaceholder
+        description={t('message.ontology-data-empty-hint')}
+        icon={<Cube02 className="tw:text-fg-brand-primary" />}
+        title={t('label.no-assets-linked-yet')}
+      />
+    </div>
   );
 }
 
@@ -468,6 +483,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       if (hasActiveFilter) {
         return 'filtered-active-empty';
       }
+      if (explorationMode === 'data') {
+        return 'data-empty';
+      }
 
       return scope === 'global' ? 'onboarding-empty' : 'no-terms-empty';
     };
@@ -536,6 +554,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       'filtered-active-empty': FilteredActiveGraphEmptyState,
       'onboarding-empty': OntologyOnboardingEmptyState,
       'no-terms-empty': NoTermsGraphEmptyState,
+      'data-empty': DataLayerGraphEmptyState,
       'no-matching-relation': NoRelationsForFilterGraphEmptyState,
     };
 
@@ -690,7 +709,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // the toolbar + graph; isolated as an IIFE so its && chains don't add to the
   // component's own complexity.
   const showOnboardingEmptyState = (() => {
+    // An empty data layer only means no term has linked assets yet; it must
+    // keep the toolbar, or the layer switch back to the model goes with it.
     const hasEmptyConceptGraph =
+      explorationMode === 'model' &&
       !loading &&
       graphDataToShow !== null &&
       graphDataToShow.nodes.length === 0;
@@ -887,9 +909,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       {!showOnboardingEmptyState ? renderGraphToolbar() : null}
       <div
         className={classNames(
-          scope === 'global'
-            ? STUDIO_GRAPH_BACKDROP_CLASS
-            : DEFAULT_GRAPH_BACKDROP_CLASS,
+          DEFAULT_GRAPH_BACKDROP_CLASS,
           'tw:overflow-hidden'
         )}>
         {renderGraphContent()}
@@ -1006,7 +1026,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           className={classNames(
             'tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
             scope === 'global'
-              ? 'tw:border-0'
+              ? 'tw:rounded-lg tw:border-0'
               : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100'
           )}>
           {renderGraphSurfaceSection()}

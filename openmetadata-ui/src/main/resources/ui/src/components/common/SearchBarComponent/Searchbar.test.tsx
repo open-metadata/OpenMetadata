@@ -22,7 +22,8 @@ jest.mock('../Loader/Loader', () => {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: unknown) => fn, // Make debounce execute immediately
+  // Run immediately; `cancel` is called on unmount.
+  debounce: (fn: () => void) => Object.assign(fn, { cancel: jest.fn() }),
 }));
 
 const mockSetFilters = jest.fn();

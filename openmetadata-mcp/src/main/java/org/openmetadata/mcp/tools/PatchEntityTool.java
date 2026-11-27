@@ -38,6 +38,9 @@ import org.openmetadata.service.util.RestUtil;
  * repository. The parts that are easy to get wrong - {@code /owners} replaces the whole list where
  * {@code /owners/-} appends to it - are taught in the tool description, where the model reads them,
  * rather than enforced by second-guessing a well-formed patch.
+ *
+ * <p>The reply confirms the write rather than echoing the entity
+ * (ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation).
  */
 @Slf4j
 public class PatchEntityTool implements McpTool {
@@ -56,7 +59,8 @@ public class PatchEntityTool implements McpTool {
   //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
   //   contextFile          Private/Shared visibility, owner-only restriction of sharing
-  //   document             requirePublic - private doc types are not editable
+  //   document             requirePublic - private doc types are not editable; authorizeAdmin
+  //                        on email templates
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
@@ -116,7 +120,7 @@ public class PatchEntityTool implements McpTool {
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
 
-    // The response carries the patched entity, so this write answers a read as well: apply the
+    // The response echoes the changed fields, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
     // policy model.
     CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
@@ -141,6 +145,7 @@ public class PatchEntityTool implements McpTool {
     return McpResponseUtils.markHeld(
         McpResponseUtils.compactPatch(
             CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+            entityType,
             response.changeType()),
         response.pendingChangeRequestId());
   }

@@ -77,9 +77,14 @@ describe('DomainTag', () => {
   });
 
   it('should render a tooltip trigger when tooltip is passed', () => {
-    render(<DomainTag label="Engineering" tooltip="Engineering domain" />);
+    const { container } = render(
+      <DomainTag label="Engineering" tooltip="Engineering domain" />
+    );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    // A badge's tooltip trigger is a plain span, kept out of the tab order
+    // so it never nests a button inside a clickable parent.
+    expect(container.firstChild).toHaveClass('tw:inline-flex', 'tw:min-w-0');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('should apply the disabled styling classes when disabled is true', () => {

@@ -296,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -327,6 +328,20 @@ public class UserRepository extends EntityRepository<User> {
       user.setDefaultDomain(
           Entity.getEntityReferenceById(
               Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
+    }
+  }
+
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
     }
   }
 
@@ -409,12 +424,21 @@ public class UserRepository extends EntityRepository<User> {
     return ProfileWebhookSecrets.masked(entity);
   }
 
+  /**
+   * Records a login with a single-row JSON update rather than an entity patch. A patch inside the
+   * EntityUpdater session window consolidates changes by reloading the user with every field,
+   * including {@code owns}, which costs one lookup per asset the user's teams own. The direct write
+   * emits no change event and does not reindex the user; see
+   * ADR:2026-10-30-user-writes-keep-login-and-activity-times.
+   */
+  @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    String fqn = quoteName(canonicalUserName(orginalUser.getName()));
+    LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
+    // @BindFQN hashes the fqn, so it is passed unhashed
+    daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
+    // The row changed under the entity cache: drop the cached copy so reads see the new value
+    invalidateCacheForEntity(USER, orginalUser.getId(), orginalUser.getFullyQualifiedName());
 
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login

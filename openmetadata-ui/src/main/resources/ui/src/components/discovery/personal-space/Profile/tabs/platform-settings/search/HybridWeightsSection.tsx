@@ -51,7 +51,7 @@ const HybridWeightsSection = ({
           color="primary"
           data-testid="hybrid-weights-save-btn"
           isDisabled={isDisabled || weight === savedWeight}
-          size="sm"
+          size="xs"
           onPress={() => onSave(weight)}>
           {t('label.save')}
         </Button>

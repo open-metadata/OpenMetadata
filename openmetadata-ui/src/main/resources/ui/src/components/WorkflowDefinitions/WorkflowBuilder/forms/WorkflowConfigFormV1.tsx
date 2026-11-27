@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { Toggle } from '@openmetadata/ui-core-components';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
+import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 import { ApprovalModeSection } from './ApprovalModeSection';
@@ -43,6 +46,7 @@ interface WorkflowConfigFormV1Props {
   addDataAssetFilter: (dataAsset?: string) => void;
   onUpdateDataAssetFilter: (dataAssetId: number, value: string) => void;
   removeDataAssetFilter: (dataAssetId: number) => void;
+  showAutoAssignOwners?: boolean;
 }
 
 function getEventTriggerEntityType(
@@ -70,11 +74,32 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   addDataAssetFilter,
   onUpdateDataAssetFilter,
   removeDataAssetFilter,
+  showAutoAssignOwners = false,
 }) => {
+  const { t } = useTranslation();
+  const { canSave, isNoOp, showEditButton, enterEditMode } =
+    useWorkflowModeContext();
+  const canStartIncidentSettingsEdit = isNoOp && showEditButton;
   const lockCoreStartFields = !allowFullStartNodeConfiguration;
   const canEditFiltersAndPeriodicSchedule =
     allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
   const lockFilterSections = !canEditFiltersAndPeriodicSchedule;
+
+  const ownerAssignmentToggle = showAutoAssignOwners ? (
+    <Toggle
+      data-testid="auto-assign-owners-toggle"
+      hint={t('message.auto-assign-owners-help')}
+      isDisabled={!canSave && !canStartIncidentSettingsEdit}
+      isSelected={config.autoAssignOwners !== false}
+      label={t('label.auto-assign-owners')}
+      onChange={(isSelected: boolean) => {
+        if (canStartIncidentSettingsEdit) {
+          enterEditMode();
+        }
+        updateConfig('autoAssignOwners', isSelected);
+      }}
+    />
+  ) : null;
 
   return (
     <div data-testid="workflow-config-form-v1">
@@ -169,6 +194,8 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           }
         />
       )}
+
+      {ownerAssignmentToggle}
     </div>
   );
 };

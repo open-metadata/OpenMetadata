@@ -53,9 +53,21 @@ jest.mock('../../../../../../rest/miscAPI', () => ({
   deleteEntity: (...args: unknown[]) => mockDeleteEntity(...args),
 }));
 
-jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', name: 'admin' } }),
-}));
+jest.mock('../../../../../../hooks/useApplicationStore', () => {
+  const state = {
+    currentUser: { id: 'me', name: 'admin' },
+    userProfilePics: { user1: { name: 'user1', displayName: 'User One' } },
+    updateUserProfilePics: jest.fn(),
+  };
+
+  return {
+    useApplicationStore: Object.assign(
+      (selector?: (s: unknown) => unknown) =>
+        selector ? selector(state) : state,
+      { getState: () => state }
+    ),
+  };
+});
 
 jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
@@ -113,6 +125,20 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => {
 
 import MembersUsersPanel from './MembersUsersPanel';
 
+const usersPage = (paging: Record<string, unknown>) => ({
+  data: [
+    {
+      id: '1',
+      name: 'user1',
+      displayName: 'User One',
+      fullyQualifiedName: 'user1',
+      teams: [],
+      roles: [],
+    },
+  ],
+  paging,
+});
+
 const renderComponent = (isAdmin = false) =>
   render(
     <MemoryRouter>
@@ -123,6 +149,7 @@ const renderComponent = (isAdmin = false) =>
 describe('MembersUsersPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetUsers.mockResolvedValue(usersPage({ total: 1 }));
     mockDeleteEntity.mockResolvedValue({ status: 200, data: {} });
   });
 
@@ -205,22 +232,9 @@ describe('MembersUsersPanel', () => {
   });
 
   it('pages forward with the next cursor from the Next button', async () => {
-    const page = (paging: Record<string, unknown>) => ({
-      data: [
-        {
-          id: '1',
-          name: 'user1',
-          displayName: 'User One',
-          fullyQualifiedName: 'user1',
-          teams: [],
-          roles: [],
-        },
-      ],
-      paging,
-    });
     mockGetUsers
-      .mockResolvedValueOnce(page({ after: 'cursor-2', total: 100 }))
-      .mockResolvedValueOnce(page({ before: 'cursor-1', total: 100 }));
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(usersPage({ before: 'cursor-1', total: 100 }));
     renderComponent(true);
 
     const next = await screen.findByTestId('next');
@@ -235,16 +249,101 @@ describe('MembersUsersPanel', () => {
       )
     );
 
-    expect(await screen.findByTestId('page-indicator')).toHaveTextContent(
-      'label.page 2'
-    );
-    expect(screen.getByTestId('previous')).toBeEnabled();
+    await waitFor(() => expect(screen.getByTestId('previous')).toBeEnabled());
+
     // Only the page and size reach the URL; the cursor stays in state.
     expect(mockSetHashPage).toHaveBeenLastCalledWith(
       2,
       undefined,
       undefined,
       15
+    );
+  });
+
+  it('goes back with the page-3 before cursor from the Previous button', async () => {
+    mockGetUsers
+      .mockResolvedValueOnce(usersPage({ after: 'cursor-2', total: 100 }))
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-3', before: 'before-2', total: 100 })
+      )
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-4', before: 'before-3', total: 100 })
+      )
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-3', before: 'before-2', total: 100 })
+      );
+    renderComponent();
+
+    const next = await screen.findByTestId('next');
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(3));
+
+    fireEvent.click(screen.getByTestId('previous'));
+
+    await waitFor(() =>
+      expect(mockGetUsers).toHaveBeenLastCalledWith(
+        expect.objectContaining({ before: 'before-3' })
+      )
+    );
+
+    expect(mockSetHashPage).toHaveBeenLastCalledWith(
+      2,
+      undefined,
+      undefined,
+      15
+    );
+  });
+
+  it('keeps the newest page when an older page responds last', async () => {
+    const named = (name: string, paging: Record<string, unknown>) => ({
+      ...usersPage(paging),
+      data: [{ ...usersPage({}).data[0], id: name, name }],
+    });
+    const heldPageTwo: Array<(value: unknown) => void> = [];
+    let pageTwoCalls = 0;
+    mockGetUsers.mockImplementation(({ after }: { after?: string }) => {
+      if (after === 'cursor-2') {
+        pageTwoCalls++;
+
+        // Page 2's own load hangs; the walk to page 3 gets an answer.
+        return pageTwoCalls === 1
+          ? new Promise((resolve) => heldPageTwo.push(resolve))
+          : Promise.resolve(
+              named('walk-user', { after: 'cursor-3', total: 100 })
+            );
+      }
+
+      return Promise.resolve(
+        after === 'cursor-3'
+          ? named('page-three-user', { after: 'cursor-4', total: 100 })
+          : named('page-one-user', { after: 'cursor-2', total: 100 })
+      );
+    });
+    renderComponent();
+    await screen.findByTestId('page-one-user');
+
+    // Next stays clickable while page 2 loads, so page 3 is reached by walking.
+    fireEvent.click(screen.getByTestId('next'));
+    await waitFor(() => expect(pageTwoCalls).toBe(1));
+    fireEvent.click(screen.getByTestId('next'));
+
+    expect(await screen.findByTestId('page-three-user')).toBeInTheDocument();
+
+    await act(async () =>
+      heldPageTwo.forEach((resolve) =>
+        resolve(named('page-two-user', { after: 'cursor-3', total: 100 }))
+      )
+    );
+
+    expect(screen.getByTestId('page-three-user')).toBeInTheDocument();
+    expect(screen.queryByTestId('page-two-user')).not.toBeInTheDocument();
+    // The walk to page 3 asks only for cursors, not the row fields.
+    expect(mockGetUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ after: 'cursor-2', fields: undefined })
     );
   });
 
@@ -270,6 +369,16 @@ describe('MembersUsersPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('users-list-table')).toBeInTheDocument();
     });
+  });
+
+  it('shows the display name in the name column and the email beside it', async () => {
+    renderComponent();
+
+    const nameCell = await screen.findByTestId('user1');
+
+    expect(nameCell).toHaveTextContent('User One');
+    expect(screen.getByText('label.email')).toBeInTheDocument();
+    expect(screen.queryByText('label.username')).not.toBeInTheDocument();
   });
 
   // Regression: the add-user button is published as a header action and the

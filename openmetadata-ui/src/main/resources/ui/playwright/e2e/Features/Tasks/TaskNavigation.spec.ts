@@ -582,7 +582,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
   test('clicking task notification while on entity task tab refreshes the task list', async ({
     page,
   }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     await test.step('Log in and navigate to entity page', async () => {
       await adminUser.signIn(page);

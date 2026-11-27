@@ -21,11 +21,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  RefreshCcw01,
-  Stars01,
-} from '@openmetadata/ui-core-components/icons';
+import { RefreshCcw01, Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
   ReactNode,
@@ -37,7 +33,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CACHE_STATE_BADGE_COLOR } from '../../../../constants/PersonaAIContext.constants';
-import { useClipboard } from '../../../../hooks/useClipBoard';
 import {
   getPersonaAIContextDocument,
   PersonaContextDocument,
@@ -45,6 +40,7 @@ import {
 } from '../../../../rest/PersonaAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import './context-preview-modal.less';
@@ -257,7 +253,6 @@ export const ContextPreviewModal = ({
   const [activeHeading, setActiveHeading] = useState(0);
   const [contentReady, setContentReady] = useState(false);
   const markdown = contextDocument?.markdown ?? '';
-  const { hasCopied, onCopyToClipBoard } = useClipboard(markdown);
 
   useEffect(() => {
     onDocumentLoadedRef.current = onDocumentLoaded;
@@ -562,14 +557,11 @@ export const ContextPreviewModal = ({
                     onClick={() => fetchPreview(true)}>
                     {t('label.refresh')}
                   </Button>
-                  <Button
-                    color="secondary"
-                    data-testid="copy-persona-context"
-                    iconLeading={Copy01}
-                    size="sm"
-                    onClick={() => onCopyToClipBoard()}>
-                    {hasCopied ? t('label.copied') : t('label.copy')}
-                  </Button>
+                  <CopyButton
+                    label={t('label.copy')}
+                    testId="copy-persona-context"
+                    value={markdown}
+                  />
                   <CloseButton size="md" onClick={onClose} />
                 </Box>
               </Box>

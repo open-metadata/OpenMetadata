@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -145,7 +147,7 @@ class CreateTaskTest {
 
     List<EntityReference> resolved =
         CreateTask.resolveExistingTaskAssignees(
-            existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
+            existingTask, List.of(workflowAssignee), List.of(workflowAssignee), "review");
 
     assertNull(resolved);
   }
@@ -173,7 +175,7 @@ class CreateTaskTest {
 
     List<EntityReference> resolved =
         CreateTask.resolveExistingTaskAssignees(
-            existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
+            existingTask, List.of(workflowAssignee), List.of(workflowAssignee), "review");
 
     assertNull(resolved);
   }
@@ -191,9 +193,38 @@ class CreateTaskTest {
         new Task().withId(UUID.randomUUID()).withWorkflowStageId("review").withAssignees(null);
 
     List<EntityReference> resolved =
-        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
+        CreateTask.resolveExistingTaskAssignees(
+            existingTask, List.of(workflowAssignee), null, "review");
 
     assertEquals(List.of(workflowAssignee), resolved);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"assigned,new", "assigned,ack", "ack,new"})
+  void returningIncidentClearsAssigneesInTheStageUpdate(String currentStage, String targetStage) {
+    Task existingTask =
+        new Task()
+            .withType(TaskEntityType.TestCaseResolution)
+            .withWorkflowStageId(currentStage)
+            .withAssignees(users(1));
+
+    assertEquals(
+        List.of(),
+        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(), List.of(), targetStage));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"new,ack", "new,assigned", "ack,resolved", "assigned,resolved", "new,new"})
+  void staleEmptyAssigneesDoNotClearLaterAssignments(String currentStage, String targetStage) {
+    List<EntityReference> assignees = users(1);
+    Task existingTask =
+        new Task()
+            .withType(TaskEntityType.TestCaseResolution)
+            .withWorkflowStageId(currentStage)
+            .withAssignees(assignees);
+    assertEquals(
+        assignees,
+        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(), List.of(), targetStage));
   }
 
   @Test

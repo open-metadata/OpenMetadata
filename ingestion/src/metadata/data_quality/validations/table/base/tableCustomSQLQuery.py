@@ -45,6 +45,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     # The user's query is executed as written, so the sampler never sees it.
     BYPASSES_SAMPLER = True
 
+    # `threshold` here is the result the query is expected to return, compared through the test
+    # case's own `operator`, not a deviation the verdict tolerates.
+    THRESHOLD_IS_TOLERANCE = False
+
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
 

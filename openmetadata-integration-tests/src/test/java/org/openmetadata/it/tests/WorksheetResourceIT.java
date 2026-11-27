@@ -49,6 +49,7 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
 
   public WorksheetResourceIT() {
     supportsPatch = true;
+    supportsAsyncDelete = true;
     supportsFollowers = false;
     supportsTags = true;
     supportsDataProducts = false;

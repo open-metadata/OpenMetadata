@@ -21,9 +21,10 @@ public interface DeploymentSettingPreparer {
   /**
    * Validates a reconciled value the way an API write of the setting would, without calling
    * external systems, and returns the JSON to store. Throws what an API write would on invalid
-   * values.
+   * values. {@code stored} is the value in the database the reconciled one replaces, with its
+   * secrets decrypted: what it already holds is not checked again.
    */
-  String prepareReconciled(SettingsType settingsType, JsonNode value);
+  String prepareReconciled(SettingsType settingsType, JsonNode value, JsonNode stored);
 
   /** Applies the checks a first start always ran on a seeded value, and returns the JSON to store. */
   String prepareSeed(SettingsType settingsType, JsonNode value);

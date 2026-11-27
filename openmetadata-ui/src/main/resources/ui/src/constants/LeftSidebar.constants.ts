@@ -30,7 +30,8 @@ import {
   Grid01,
   Home02,
   IncidentManager02,
-  Lightbulb01,
+  Insights,
+  LayersThree01,
   LogOut01,
   Marketplace,
   Memories,
@@ -43,19 +44,7 @@ import {
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
-
-type UntitledIconType = React.ComponentType<{
-  size?: number;
-  strokeWidth?: number;
-  style?: React.CSSProperties;
-}>;
-
-const DataProductIcon = createIconWithStroke(
-  DataProduct as UntitledIconType,
-  1.2
-);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
@@ -142,7 +131,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       PLACEHOLDER_ROUTE_TAB,
       DataInsightTabs.DATA_ASSETS
     ),
-    icon: Lightbulb01,
+    icon: Insights,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
@@ -169,7 +158,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.DATA_PRODUCT,
         title: 'label.data-product-plural',
         redirect_url: ROUTES.DATA_PRODUCT,
-        icon: DataProductIcon,
+        icon: DataProduct,
         dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
       },
     ],
@@ -191,7 +180,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.ONTOLOGY_EXPLORER,
         title: 'label.ontology-explorer',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: OntologyStudioIcon,
+        icon: LayersThree01,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {

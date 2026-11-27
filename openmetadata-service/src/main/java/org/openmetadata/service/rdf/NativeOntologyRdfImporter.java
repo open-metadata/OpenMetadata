@@ -989,14 +989,7 @@ public final class NativeOntologyRdfImporter {
         case Added<OntologyAxiom> added -> {
           final OntologyAxiom axiom =
               identified(added, OntologyAxiom.class, axiomNames)
-                  .withDisplayName(
-                      "Imported "
-                          + added
-                              .parsed()
-                              .getAxiomType()
-                              .value()
-                              .replace('_', ' ')
-                              .toLowerCase(Locale.ROOT))
+                  .withDisplayName(sentence(added.parsed()))
                   .withDescription("Imported from native " + family)
                   .withProvenance(RelationProvenance.IMPORTED);
           final List<URI> needs = referencedNewConcepts(added.parsed());

@@ -881,6 +881,7 @@ const TableV2 = <T extends object>(
     scroll,
     renderToolbar,
     fullWidthRowRender,
+    paddedEmptyState = true,
     'aria-label': ariaLabel = 'data-table',
     ...rest
   }: TableV2Props<T>,
@@ -2031,7 +2032,11 @@ const TableV2 = <T extends object>(
                     // absolute/inset-0 and fills its nearest positioned
                     // ancestor); the padding is the placeholder's breathing
                     // room and belongs to whatever fills the slot.
-                    <div className="tw:relative tw:min-h-40 tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                    <div
+                      className={classNames(
+                        'tw:relative tw:min-h-40 tw:text-center tw:text-sm tw:text-fg-tertiary',
+                        { 'tw:py-8': paddedEmptyState }
+                      )}>
                       {
                         // AntD fell back to its own <Empty> illustration, not
                         // bare text, so a table with no rows read as an empty

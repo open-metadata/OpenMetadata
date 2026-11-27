@@ -13,17 +13,16 @@
 
 import {
   Autocomplete,
-  ButtonUtility,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
+import CopyButton from '../../../CopyButton/CopyButton';
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
   const isFilterPatternField = (id: string) => {
@@ -61,17 +60,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
   const options = generateOptions();
-  const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
-    JSON.stringify(value)
-  );
-
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      await onCopyToClipBoard();
-    },
-    [value, onCopyToClipBoard]
-  );
+  const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
@@ -156,16 +145,11 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
           </Autocomplete>
         </div>
-        <ButtonUtility
-          icon={Copy01}
+        <CopyButton
           size="sm"
-          tooltip={
-            hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            e.stopPropagation();
-            handleCopy(e);
-          }}
+          testId="copy-array-field"
+          tooltip={t('label.copy')}
+          value={JSON.stringify(value)}
         />
       </Grid.Item>
     </Grid>

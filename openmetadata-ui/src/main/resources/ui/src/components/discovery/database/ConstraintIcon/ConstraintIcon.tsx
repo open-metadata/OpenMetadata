@@ -34,6 +34,8 @@ const ConstraintIcon = ({
   showOnlyIcon,
 }: ConstraintIconProps) => {
   const { t } = useTranslation();
+  const isCompositeUnique =
+    constraintType === ConstraintType.Unique && !showOnlyIcon;
 
   const { icon: IconComponent, title } = useMemo(() => {
     switch (constraintType) {
@@ -87,7 +89,11 @@ const ConstraintIcon = ({
           width={19}
         />
       )}
-      <Tooltip placement="bottom" title={title}>
+      <Tooltip
+        placement="bottom"
+        title={
+          isCompositeUnique ? t('label.composite-unique-constraint') : title
+        }>
         <IconComponent
           aria-hidden={false}
           aria-label={constraintType}

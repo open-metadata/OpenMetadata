@@ -27,6 +27,7 @@ import {
   resolveFocusNodeId,
   transformToG6Format,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { conceptEntityType } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
@@ -108,7 +109,8 @@ export const useKnowledgeGraphExplorer = ({
   const result = getExplorerResult(assetResult, ontology, mode);
   const rootEntityId =
     mode === 'ontology' ? ontology.concept?.id ?? '' : entityId;
-  const rootEntityType = mode === 'ontology' ? 'glossaryTerm' : entityType;
+  const rootEntityType =
+    mode === 'ontology' ? conceptEntityType(ontology.concept) : entityType;
   const rootId = resolveFocusNodeId(
     result.unfiltered?.nodes ?? [],
     rootEntityId

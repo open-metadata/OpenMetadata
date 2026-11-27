@@ -13,7 +13,34 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
+import { User } from '../../../generated/entity/teams/user';
 import UserPopOverCard from './UserPopOverCard';
+
+const mockStoreState: { userProfilePics: Record<string, User> } = {
+  userProfilePics: {},
+};
+
+const mockUseUserProfile = jest.fn(
+  ({ name }: { name: string; permission: boolean }) => [
+    null,
+    false,
+    mockStoreState.userProfilePics[name],
+  ]
+);
+
+const mockTeams: Record<string, { name: string; displayName?: string }> = {};
+
+jest.mock('../../../hooks/popover/useEntityPopoverData', () => ({
+  useEntityPopoverData: (name: string) => ({
+    data: mockTeams[name],
+    loading: false,
+  }),
+}));
+
+jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
+  useUserProfile: (args: { name: string; permission: boolean }) =>
+    mockUseUserProfile(args),
+}));
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
@@ -51,6 +78,11 @@ jest.mock('./TeamPopoverTitle.component', () => ({
 }));
 
 describe('UserPopOverCard Component', () => {
+  afterEach(() => {
+    mockStoreState.userProfilePics = {};
+    mockUseUserProfile.mockClear();
+  });
+
   it('should render with default props', () => {
     render(<UserPopOverCard userName="testUser" />);
 
@@ -111,5 +143,139 @@ describe('UserPopOverCard Component', () => {
     fireEvent.click(screen.getByTestId('testUser'));
 
     expect(onTitleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('should show the stored display name when no displayName is passed', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(<UserPopOverCard showUserName userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+  });
+
+  it('should prefer the displayName prop over the stored user', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Stored Name' } as User,
+    };
+
+    render(
+      <UserPopOverCard
+        showUserName
+        displayName="Prop Name"
+        userName="testUser"
+      />
+    );
+
+    expect(screen.getByText('Prop Name')).toBeInTheDocument();
+    expect(screen.queryByText('Stored Name')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to the user name when the stored user has no display name', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', id: 'testUser', email: '' } as User,
+    };
+
+    render(<UserPopOverCard showUserName userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('testUser');
+  });
+
+  it('should fall back to the user name before the user is loaded', () => {
+    render(<UserPopOverCard showUserName userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('testUser');
+  });
+
+  it('should not use a stored user for a team', () => {
+    mockStoreState.userProfilePics = {
+      testTeam: { name: 'testTeam', displayName: 'Some User' } as User,
+    };
+
+    render(
+      <UserPopOverCard showUserName type={OwnerType.TEAM} userName="testTeam" />
+    );
+
+    expect(screen.getByTestId('testTeam')).toHaveTextContent('testTeam');
+    expect(screen.queryByText('Some User')).not.toBeInTheDocument();
+  });
+
+  it('should show the team display name for a team', () => {
+    mockTeams.testTeam = { name: 'testTeam', displayName: 'Data Platform' };
+
+    render(
+      <UserPopOverCard showUserName type={OwnerType.TEAM} userName="testTeam" />
+    );
+
+    expect(screen.getByTestId('testTeam')).toHaveTextContent('Data Platform');
+
+    delete mockTeams.testTeam;
+  });
+
+  it('should render children instead of the resolved name', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(
+      <UserPopOverCard showUserName userName="testUser">
+        <span>Custom Child</span>
+      </UserPopOverCard>
+    );
+
+    expect(screen.getByText('Custom Child')).toBeInTheDocument();
+    expect(screen.queryByText('Test User')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to the stored name when displayName is empty', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(<UserPopOverCard showUserName displayName="" userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+  });
+
+  it('should resolve the user even when no avatar is shown', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(
+      <UserPopOverCard
+        showUserName
+        showUserProfile={false}
+        userName="testUser"
+      />
+    );
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'testUser', permission: true })
+    );
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+  });
+
+  it('should not fetch the user when a display name is passed', () => {
+    render(
+      <UserPopOverCard
+        showUserName
+        displayName="Test User"
+        userName="testUser"
+      />
+    );
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ permission: false })
+    );
+  });
+
+  it('should not fetch the user when it only renders an avatar', () => {
+    render(<UserPopOverCard userName="testUser" />);
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ permission: false })
+    );
   });
 });

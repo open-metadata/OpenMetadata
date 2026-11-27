@@ -68,7 +68,8 @@
       },
       {
         "tests": [
-          "org/openmetadata/it/tests/search/scale/**"
+          "org/openmetadata/it/tests/search/scale/**",
+          "org/openmetadata/it/tests/dataquality/scale/**"
         ],
         "where": "nightly: openmetadata-nightly k8s-java-it (scale-it)"
       }
@@ -302,6 +303,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CoreRelationship*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deadlock*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deletion*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/FqnKeyedRow*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Filter.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/HikariCP*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MemoryCount*",
@@ -335,6 +337,8 @@
         "Entity*IT",
         "ChildField*IT",
         "*Pagination*IT",
+        "*FqnKeyed*IT",
+        "*Keyset*IT",
         "*SoftDelete*IT",
         "*Restore*IT",
         "*Transaction*IT",
@@ -487,6 +491,7 @@
         "*Index*IT",
         "*Reindex*IT",
         "*Alias*IT",
+        "*UpdateChildren*IT",
         "*Highlight*IT",
         "*Embedding*IT",
         "*Vector*IT",
@@ -621,8 +626,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/secrets/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/**/*Secret*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AzureTokenProvider*"
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*"
       ],
       "tests": [
         "*Secret*IT",
@@ -753,14 +757,10 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReuseTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptSqlGeneratorTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseReviewListTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackSlicePlanTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseManifestTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReaderTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseDAOTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseCaptureTest.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyCapacityPerfIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyEveryPackInstallIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/RdfLibraryPackActivationIT.java",
@@ -868,6 +868,8 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/entityProfiles/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentGroup*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentOpenInterval*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuite*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinition*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityProfile*",
@@ -879,7 +881,8 @@
         "openmetadata-service/src/main/resources/json/data/dataQualityDimension/**",
         "openmetadata-spec/src/main/resources/json/schema/tests/**",
         "openmetadata-spec/src/main/resources/json/schema/api/tests/**",
-        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json"
+        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json",
+        "bootstrap/sql/migrations/native/2.1.1/**"
       ],
       "tests": [
         "*TestCase*IT",
@@ -1107,6 +1110,7 @@
       ],
       "tests": [
         "*Migration*IT",
+        "org/openmetadata/it/tests/migration/**",
         "*SeedData*IT",
         "*Operations*IT",
         "*DbTune*IT"
@@ -1186,6 +1190,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemory*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/PromptTemplate*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AiGovernance*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AuditReport*",
         "openmetadata-service/src/main/resources/json/data/aiGovernance/**",
         "openmetadata-spec/src/main/resources/json/schema/entity/ai/**",
         "openmetadata-spec/src/main/resources/json/schema/entity/context/**",
@@ -1201,6 +1206,7 @@
         "AI*IT",
         "*Agent*IT",
         "*ContextMemory*IT",
+        "*ContextProcessing*IT",
         "*LLM*IT",
         "*PromptTemplate*IT",
         "*Ai*IT",
@@ -1322,6 +1328,7 @@
         "org/openmetadata/it/search/**/*Test.java",
         "org/openmetadata/it/server/*Test.java",
         "org/openmetadata/it/util/*Test.java",
+        "org/openmetadata/it/util/*IT.java",
         "*SmokeIT"
       ]
     }

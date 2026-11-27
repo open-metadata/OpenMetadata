@@ -195,8 +195,12 @@ const MarketplaceEditor = ({
           entity: t('label.data-marketplace'),
         })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsSaving(false);
     }

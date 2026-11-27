@@ -28,4 +28,13 @@ describe('ImageRenderer', () => {
     expect(img).toHaveAttribute('src', 'blob:test-url');
     expect(img).toHaveAttribute('alt', 'pic.png');
   });
+
+  it('keeps an accessible name when the file has no name', () => {
+    render(<ImageRenderer content={new Blob()} objectUrl="blob:test-url" />);
+
+    expect(screen.getByRole('img', { name: 'label.image' })).toHaveAttribute(
+      'src',
+      'blob:test-url'
+    );
+  });
 });

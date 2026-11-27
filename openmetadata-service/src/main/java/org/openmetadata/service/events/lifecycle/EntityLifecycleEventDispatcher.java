@@ -605,6 +605,11 @@ public class EntityLifecycleEventDispatcher {
         reference != null ? reference.getType() : null);
   }
 
+  public void enqueueOntologyEmbedding(EntityReference reference, Runnable refresh) {
+    orderedLaneExecutor.submit(
+        reference.getId(), laneTask(reference, EventType.ENTITY_UPDATED, refresh));
+  }
+
   private OrderedLaneTask laneTask(
       EntityReference reference, EventType eventType, Runnable handlerExecution) {
     return new OrderedLaneTask(

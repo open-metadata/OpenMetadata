@@ -59,6 +59,7 @@ import {
   getCronDefaultValue,
   getDefaultScheduleValue,
 } from '../../utils/CronExpressionUtils';
+import { getBrowserTimezone } from '../../utils/date-time/DateTimeUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
@@ -77,6 +78,9 @@ const AppInstall = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
+  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(
+    getBrowserTimezone
+  );
   // `undefined` is a valid on-demand selection, so initialization needs its own flag.
   const isScheduleInitialized = useRef(false);
   const [isScheduleValid, setIsScheduleValid] = useState(true);
@@ -216,7 +220,7 @@ const AppInstall = () => {
         scheduleTimeline: isEmpty(cron)
           ? ScheduleTimeline.None
           : ScheduleTimeline.Custom,
-        ...(cron ? { cronExpression: cron } : {}),
+        ...(cron ? { cronExpression: cron, timezone: timezoneValue } : {}),
       },
       name: fqn,
       description: appData?.description,
@@ -307,8 +311,10 @@ const AppInstall = () => {
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
+              timezone={timezoneValue}
               value={scheduleValue}
               onChange={setScheduleValue}
+              onTimezoneChange={setTimezoneValue}
               onValidityChange={setIsScheduleValid}
             />
             <div className="tw:mt-4 tw:flex tw:justify-end tw:gap-3">
@@ -346,6 +352,7 @@ const AppInstall = () => {
     defaultValue,
     isSavingLoading,
     isScheduleValid,
+    timezoneValue,
     openScheduleStep,
     scheduleValue,
   ]);

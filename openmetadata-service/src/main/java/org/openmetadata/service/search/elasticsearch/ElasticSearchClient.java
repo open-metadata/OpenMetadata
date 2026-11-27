@@ -87,8 +87,10 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryDsl;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -240,6 +242,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Object getLowLevelClient() {
     return lowLevelClient;
+  }
+
+  @Override
+  public SearchQueryDsl getQueryDsl() {
+    return new ElasticQueryDsl(newClient._transport().jsonpMapper());
   }
 
   @Override

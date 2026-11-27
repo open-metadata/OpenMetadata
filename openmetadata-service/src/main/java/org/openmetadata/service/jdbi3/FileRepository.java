@@ -243,6 +243,11 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
+
+  @Override
   public void restorePatchAttributes(File original, File updated) {
     updated.withService(original.getService()).withDirectory(original.getDirectory());
   }

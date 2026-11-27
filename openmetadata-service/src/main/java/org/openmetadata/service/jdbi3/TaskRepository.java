@@ -24,6 +24,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -53,6 +55,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
@@ -69,7 +72,10 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TaskCloseRequest;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -83,6 +89,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskFieldTarget;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
@@ -96,6 +103,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
@@ -218,15 +226,17 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * A listing paged by creation time compares its cursor against createdAt, so the cursor carries
-   * createdAt in the slot the name cursor uses. Listings that never ask for that order keep the
-   * name cursor, which the search reindex seeds by offset.
+   * Timestamp listings carry the selected timestamp in the name cursor's slot. The search reindex
+   * still uses the name cursor that it seeds by offset.
    */
   @Override
   public String getCursorValue(Task entity, ListFilter filter) {
-    return TaskListOrder.isRequestedBy(filter)
-        ? getCursorValue(String.valueOf(entity.getCreatedAt()), String.valueOf(entity.getId()))
-        : super.getCursorValue(entity, filter);
+    if (!TaskListOrder.isRequestedBy(filter)) {
+      return super.getCursorValue(entity, filter);
+    }
+    Long timestamp =
+        TaskListOrder.usesUpdatedAt(filter) ? entity.getUpdatedAt() : entity.getCreatedAt();
+    return getCursorValue(String.valueOf(timestamp), String.valueOf(entity.getId()));
   }
 
   public ResultList<Task> listDataAccessRequests(
@@ -283,9 +293,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     if (requestedDomainId != null) {
       String effectiveDomainId =
-          domainAccessControl && domainId != null
-              ? intersectDomainIds(requestedDomainId, domainId)
-              : requestedDomainId;
+          domainId != null ? intersectDomainIds(requestedDomainId, domainId) : requestedDomainId;
       filter.addQueryParam("domainId", effectiveDomainId);
       domainId = effectiveDomainId;
     }
@@ -770,18 +778,40 @@ public class TaskRepository extends EntityRepository<Task> {
    * Add a comment to a task.
    * Anyone who can view the task can add comments.
    */
-  public Task addComment(Task task, org.openmetadata.schema.type.TaskComment comment) {
-    Task original = JsonUtils.deepCopy(task, Task.class);
-    List<org.openmetadata.schema.type.TaskComment> comments =
-        new java.util.ArrayList<>(listOrEmpty(task.getComments()));
+  public Task addComment(Task task, TaskComment comment) {
+    return executeInTransaction(
+        () -> {
+          // The caller's snapshot may predate a comment or task edit that already committed.
+          Task current = lockTaskForComment(task);
+          Task original = JsonUtils.deepCopy(current, Task.class);
+          appendComment(current, comment);
+          PostCommitActionQueue.runOrDefer(() -> postUpdate(original, current));
+          return current;
+        });
+  }
+
+  private Task lockTaskForComment(Task task) {
+    UUID taskId = task.getId();
+    Task current = dao.jsonToEntity(dao.findJsonByIdForUpdate(taskId, NON_DELETED), taskId);
+    Fields fields = getFields("*");
+    setFieldsInternal(current, fields);
+    setInheritedFields(current, fields);
+    current.setHref(task.getHref());
+    return current;
+  }
+
+  private void appendComment(Task task, TaskComment comment) {
+    List<TaskComment> comments = new ArrayList<>(listOrEmpty(task.getComments()));
     comments.add(comment);
     task.setComments(comments);
     task.setCommentCount(comments.size());
     task.setUpdatedAt(System.currentTimeMillis());
     if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
-      task.setUpdatedBy(comment.getAuthor().getName());
+      EntityUtil.recordWriter(task, comment.getAuthor().getName());
     }
     storeEntity(task, true);
+    storeMentions(task, comment.getMessage());
+    invalidate(task);
 
     // Record the new comment in the change delta so the event is self-describing: the notification
     // pipeline resolves mentions from this comment only, and the email template renders it as a
@@ -796,16 +826,6 @@ public class TaskRepository extends EntityRepository<Task> {
                     new FieldChange()
                         .withName(FIELD_COMMENTS)
                         .withNewValue(comment.getMessage()))));
-
-    // Store mentions from the comment message
-    storeMentions(task, comment.getMessage());
-
-    // storeEntity is the raw persistence path; fire postUpdate so search/lifecycle
-    // handlers stay consistent. The task/entityUpdated change event that drives
-    // mention notifications is emitted from the resource response header.
-    postUpdate(original, task);
-
-    return task;
   }
 
   /**
@@ -849,34 +869,19 @@ public class TaskRepository extends EntityRepository<Task> {
    * Only the comment author can edit their own comment.
    */
   public Task editComment(Task task, UUID commentId, String newMessage, String userName) {
-    List<org.openmetadata.schema.type.TaskComment> comments =
-        new java.util.ArrayList<>(listOrEmpty(task.getComments()));
-
-    boolean found = false;
-    for (int i = 0; i < comments.size(); i++) {
-      org.openmetadata.schema.type.TaskComment comment = comments.get(i);
-      if (comment.getId().equals(commentId)) {
-        // Check permission - only author can edit
-        if (!isCommentAuthor(comment, userName)) {
-          throw new AuthorizationException(
-              String.format("User %s is not authorized to edit this comment", userName));
-        }
-        // Update the comment
-        comment.setMessage(newMessage);
-        comments.set(i, comment);
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      throw new IllegalArgumentException("Comment not found: " + commentId);
-    }
-
-    task.setComments(comments);
-    task.setUpdatedAt(System.currentTimeMillis());
-    storeEntity(task, true);
-    return task;
+    return executeInTransaction(
+        () -> {
+          Task current = lockTaskForComment(task);
+          TaskComment comment = findComment(current, commentId);
+          if (!isCommentAuthor(comment, userName)) {
+            throw new AuthorizationException(
+                String.format("User %s is not authorized to edit this comment", userName));
+          }
+          comment.setMessage(newMessage);
+          storeCommentMutation(current);
+          storeMentions(current, newMessage);
+          return current;
+        });
   }
 
   /**
@@ -884,37 +889,37 @@ public class TaskRepository extends EntityRepository<Task> {
    * The comment author or an admin can delete a comment.
    */
   public Task deleteComment(Task task, UUID commentId, String userName, boolean isAdmin) {
-    List<org.openmetadata.schema.type.TaskComment> comments =
-        new java.util.ArrayList<>(listOrEmpty(task.getComments()));
-
-    boolean found = false;
-    for (int i = 0; i < comments.size(); i++) {
-      org.openmetadata.schema.type.TaskComment comment = comments.get(i);
-      if (comment.getId().equals(commentId)) {
-        // Check permission - author or admin can delete
-        if (!isAdmin && !isCommentAuthor(comment, userName)) {
-          throw new AuthorizationException(
-              String.format("User %s is not authorized to delete this comment", userName));
-        }
-        comments.remove(i);
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      throw new IllegalArgumentException("Comment not found: " + commentId);
-    }
-
-    task.setComments(comments);
-    task.setCommentCount(comments.size());
-    task.setUpdatedAt(System.currentTimeMillis());
-    storeEntity(task, true);
-    return task;
+    return executeInTransaction(
+        () -> {
+          Task current = lockTaskForComment(task);
+          TaskComment comment = findComment(current, commentId);
+          if (!isAdmin && !isCommentAuthor(comment, userName)) {
+            throw new AuthorizationException(
+                String.format("User %s is not authorized to delete this comment", userName));
+          }
+          List<TaskComment> comments = new ArrayList<>(getComments(current));
+          comments.remove(comment);
+          current.setComments(comments);
+          current.setCommentCount(comments.size());
+          storeCommentMutation(current);
+          return current;
+        });
   }
 
-  private boolean isCommentAuthor(
-      org.openmetadata.schema.type.TaskComment comment, String userName) {
+  private TaskComment findComment(Task task, UUID commentId) {
+    return getComments(task).stream()
+        .filter(comment -> commentId.equals(comment.getId()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Comment not found: " + commentId));
+  }
+
+  private void storeCommentMutation(Task task) {
+    task.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(task, true);
+    invalidate(task);
+  }
+
+  private boolean isCommentAuthor(TaskComment comment, String userName) {
     EntityReference author = comment.getAuthor();
     return author != null && author.getName() != null && author.getName().equals(userName);
   }
@@ -957,9 +962,59 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
-    return TaskWorkflowHandler.getInstance()
-        .resolveTask(
-            task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    boolean clearingIncidentAssignment =
+        task.getType() == TaskEntityType.TestCaseResolution
+            && (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId)
+                || (IncidentWorkflowStages.ACK_TRANSITION_ID.equals(transitionId)
+                    && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(task.getWorkflowStageId())));
+    List<EntityReference> previousAssignees = List.of();
+    if (clearingIncidentAssignment) {
+      Task current = get(null, task.getId(), getFields("*"));
+      requireIncidentReturnTransition(current, transitionId);
+      previousAssignees = listOrEmpty(current.getAssignees());
+      ObjectNode payload =
+          resolvedPayload == null
+              ? JsonUtils.getObjectMapper().createObjectNode()
+              : (ObjectNode) JsonUtils.valueToTree(resolvedPayload);
+      payload.putArray("assignees");
+      resolvedPayload = payload;
+      task = current;
+    }
+    try {
+      return TaskWorkflowHandler.getInstance()
+          .resolveTask(
+              task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    } catch (RuntimeException failure) {
+      // The stage callback clears assignment in the same write as the stage change. If it never
+      // commits, restore only the process variables; the persisted assignment is still intact.
+      if (clearingIncidentAssignment) {
+        Task current = get(null, task.getId(), getFields("*"));
+        if (Objects.equals(current.getWorkflowStageId(), task.getWorkflowStageId())) {
+          WorkflowHandler handler = WorkflowHandler.getInstance();
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.TASK_ASSIGNEES,
+              JsonUtils.pojoToJson(previousAssignees));
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED,
+              previousAssignees.isEmpty());
+        }
+      }
+      throw failure;
+    }
+  }
+
+  private static void requireIncidentReturnTransition(Task task, String transitionId) {
+    if (isTerminalStatus(task.getStatus())) {
+      rejectReopeningIncident(task);
+    }
+    if (TaskWorkflowLifecycleResolver.findTransition(task, transitionId) == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s cannot transition to %s from its current stage; its workflow does not support this transition",
+              task.getId(), transitionId));
+    }
   }
 
   /**
@@ -971,10 +1026,21 @@ public class TaskRepository extends EntityRepository<Task> {
       return task;
     }
     Task original = get(null, task.getId(), getFields("*"));
+    rejectReopeningIncident(original);
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(TaskEntityStatus.Open);
     updated.setResolution(null);
     return persistLifecycleChange(original, updated, user);
+  }
+
+  // A resolved incident is final: a later failure of the same test case opens a new incident task.
+  private static void rejectReopeningIncident(Task task) {
+    if (task.getType() == TaskEntityType.TestCaseResolution) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s is resolved and cannot be reopened; a new test failure opens a new incident",
+              task.getId()));
+    }
   }
 
   /**
@@ -994,7 +1060,7 @@ public class TaskRepository extends EntityRepository<Task> {
     reopened.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
     reopened.setWorkflowStageDisplayName("Starting");
     reopened.setAvailableTransitions(List.of());
-    reopened.setUpdatedBy(user);
+    EntityUtil.recordWriter(reopened, user);
     reopened.setUpdatedAt(System.currentTimeMillis());
     storeEntity(reopened, true);
     postUpdate(openSnapshot, reopened);
@@ -1036,6 +1102,61 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public Task closeTask(Task task, String user, String comment) {
     return TaskWorkflowHandler.getInstance().closeTask(task, user, comment);
+  }
+
+  /**
+   * Close a task on a user's request and end the workflow process waiting on it, per
+   * ADR:2026-11-17-closing-a-workflow-task-ends-only-the-process-holding-it. Not for a close made
+   * from inside a running workflow command, where deleting the process would end the command that
+   * is executing.
+   */
+  public Task closeTaskAndCancelWorkflowRun(Task task, String user, String comment) {
+    Task closed = closeTask(task, user, comment);
+    if (closed.getWorkflowInstanceId() != null) {
+      endWorkflowProcess(closed, user);
+    }
+    return closed;
+  }
+
+  /**
+   * Best effort: the task is already closed, so a failure leaves its process running and is logged
+   * rather than failing the close.
+   */
+  private void endWorkflowProcess(Task closed, String user) {
+    try {
+      boolean endedRun =
+          WorkflowInstanceTerminator.forCurrentEngine(
+                  (WorkflowInstanceRepository)
+                      Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+              .endClosedTaskProcess(
+                  new TaskCloseRequest(closed.getId(), closed.getWorkflowInstanceId(), user));
+      if (endedRun) {
+        closeOtherOpenTasksOfRun(closed, user);
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Closed task {} but could not end its workflow process: {}",
+          closed.getId(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  /**
+   * Closes the tasks the ended run still had open about the same entity, such as an approval in a
+   * parallel branch. Flowable keeps each task's id as a process-wide variable, so parallel branches
+   * of one process overwrite each other's and only the run identifies its other tasks.
+   */
+  private void closeOtherOpenTasksOfRun(Task closed, String user) {
+    if (closed.getAbout() != null && closed.getCategory() != null) {
+      String comment = "Task %s was closed by %s".formatted(closed.getId(), user);
+      listNonTerminalTasksByEntityAndCategory(
+              closed.getAbout().getFullyQualifiedName(), closed.getCategory())
+          .stream()
+          .filter(task -> closed.getWorkflowInstanceId().equals(task.getWorkflowInstanceId()))
+          .filter(task -> !closed.getId().equals(task.getId()))
+          .forEach(task -> closeTask(task, user, comment));
+    }
   }
 
   /**
@@ -1398,7 +1519,7 @@ public class TaskRepository extends EntityRepository<Task> {
     updated.setApprovedBy(approver);
     updated.setApprovedById(approver.getId() != null ? approver.getId().toString() : null);
     updated.setApprovedAt(System.currentTimeMillis());
-    updated.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(updated, updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
     storeEntity(updated, true);
     postUpdate(original, updated);
@@ -1458,7 +1579,38 @@ public class TaskRepository extends EntityRepository<Task> {
                   resolution.getResolvedAt())));
     }
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    return persistLifecycleChange(original, updated, updatedBy);
+    return executeInTransaction(
+        () -> {
+          Task resolved = persistLifecycleChange(original, updated, updatedBy);
+          return addIncidentResolutionComment(original, resolved, resolution, updatedBy);
+        });
+  }
+
+  private Task addIncidentResolutionComment(
+      Task original, Task resolved, TaskResolution resolution, String updatedBy) {
+    String note = resolution.getComment();
+    String previousNote =
+        original.getResolution() == null ? null : original.getResolution().getComment();
+    if (resolved.getType() != TaskEntityType.TestCaseResolution
+        || nullOrEmpty(note)
+        || note.equals(previousNote)
+        || (TestCaseResultRepository.AUTO_RESOLVED_COMMENT.equals(note)
+            && WorkflowEventConsumer.GOVERNANCE_BOT.equals(updatedBy))) {
+      return resolved;
+    }
+    Task commented =
+        addComment(
+            resolved,
+            new TaskComment()
+                .withId(UUID.randomUUID())
+                .withMessage(resolution.getComment())
+                .withAuthor(resolution.getResolvedBy())
+                .withCreatedAt(resolution.getResolvedAt()));
+    // Resolution has no response-header event: publish the normal comment delta for mentions.
+    if (!WorkflowHandler.isMigrationContext()) {
+      storeChangeEventForAsyncOperation(commented, EventType.ENTITY_UPDATED, false, updatedBy);
+    }
+    return commented;
   }
 
   /** Project durable workflow votes, retrying when a concurrent task update wins. */
@@ -1641,6 +1793,12 @@ public class TaskRepository extends EntityRepository<Task> {
     }
   }
 
+  /** The run managing a task, or null for an unknown task or one no run manages. */
+  public UUID findWorkflowInstanceId(UUID taskId) {
+    Task task = findCommittedTask(taskId);
+    return task == null ? null : task.getWorkflowInstanceId();
+  }
+
   public List<Task> listNonTerminalTasksByEntityAndCategory(
       String entityFqn, TaskCategory category) {
     return daoCollection
@@ -1782,6 +1940,9 @@ public class TaskRepository extends EntityRepository<Task> {
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
       variables.put(
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.AUTO_ASSIGN_OWNERS,
+          TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(workflowDefinition));
 
       WorkflowHandler.getInstance()
           .triggerByKey(
@@ -2023,6 +2184,9 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
+        if (isTerminalStatus(original.getStatus()) && !isTerminalStatus(updated.getStatus())) {
+          rejectReopeningIncident(original);
+        }
         // Only stamp a fallback Completed resolution when the task is actually moving to a
         // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
         // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)

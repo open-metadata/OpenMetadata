@@ -157,6 +157,7 @@ jest.mock(
 );
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Check: () => <span />,
   CheckCircle: () => <span />,
   Copy01: () => <span />,
   Edit01: () => <span />,
@@ -694,7 +695,7 @@ describe('PersonaDetail', () => {
     );
     expect(screen.getByTestId('copy-persona-link')).toHaveAttribute(
       'aria-label',
-      'message.link-copy-to-clipboard'
+      'label.copied'
     );
   });
 

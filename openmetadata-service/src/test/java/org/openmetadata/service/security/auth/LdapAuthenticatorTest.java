@@ -15,27 +15,56 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.unboundid.ldap.sdk.Filter;
+import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.SearchRequest;
+import com.unboundid.ldap.sdk.SearchResult;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 class LdapAuthenticatorTest {
+
+  private Object previousLoginAttempts;
+
+  /** Failed-login counting reads the settings store; each test gets its own counter instead. */
+  @BeforeEach
+  void installLoginAttemptCache() throws Exception {
+    Field instance = loginAttemptCacheInstance();
+    previousLoginAttempts = instance.get(null);
+    instance.set(null, new LoginAttemptCache(3, 600));
+  }
+
+  @AfterEach
+  void restoreLoginAttemptCache() throws Exception {
+    loginAttemptCacheInstance().set(null, previousLoginAttempts);
+  }
+
+  private static Field loginAttemptCacheInstance() throws Exception {
+    Field instance = LoginAttemptCache.class.getDeclaredField("INSTANCE");
+    instance.setAccessible(true);
+    return instance;
+  }
 
   @Test
   void buildGroupMemberFilterUsesEqualityWhenRecursiveMembershipIsDisabled() {
@@ -69,6 +98,73 @@ class LdapAuthenticatorTest {
     assertEquals("1.2.840.113556.1.4.1941", filter.getMatchingRuleID());
     assertEquals("cn=john,ou=users,dc=example,dc=com", filter.getAssertionValue());
     assertFalse(filter.getDNAttributes());
+  }
+
+  /**
+   * An email that isn't in the directory gets the same 401 as a wrong password, so the status code
+   * does not reveal which accounts exist. It was a 500.
+   */
+  @Test
+  void lookUserInProviderAnswersAnUnknownUserLikeAWrongPassword() throws Exception {
+    LdapAuthenticator authenticator = newAuthenticator(true);
+    LDAPConnectionPool pool = mock(LDAPConnectionPool.class);
+    SearchResult noEntries = mock(SearchResult.class);
+    when(noEntries.getSearchEntries()).thenReturn(List.of());
+    when(pool.search(any(SearchRequest.class))).thenReturn(noEntries);
+    setField(authenticator, "ldapLookupConnectionPool", pool);
+    setField(
+        authenticator,
+        "ldapConfiguration",
+        new LdapConfiguration().withUserBaseDN("ou=people,dc=example,dc=com"));
+
+    try (MockedStatic<SecurityConfigurationManager> securityConfigMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      securityConfigMock
+          .when(SecurityConfigurationManager::getCurrentAuthConfig)
+          .thenReturn(new AuthenticationConfiguration());
+
+      CustomExceptionMessage refusal =
+          assertThrows(
+              CustomExceptionMessage.class,
+              () -> authenticator.lookUserInProvider("nobody@example.com", "secret"));
+
+      assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), refusal.getResponse().getStatus());
+    }
+  }
+
+  /**
+   * Repeated attempts for an unknown email lock it out like an existing account's, so the lockout
+   * message does not tell the two apart either.
+   */
+  @Test
+  void anUnknownUserIsLockedOutLikeAnExistingOne() throws Exception {
+    LdapAuthenticator authenticator = newAuthenticator(true);
+    LDAPConnectionPool pool = mock(LDAPConnectionPool.class);
+    SearchResult noEntries = mock(SearchResult.class);
+    when(noEntries.getSearchEntries()).thenReturn(List.of());
+    when(pool.search(any(SearchRequest.class))).thenReturn(noEntries);
+    setField(authenticator, "ldapLookupConnectionPool", pool);
+    setField(
+        authenticator,
+        "ldapConfiguration",
+        new LdapConfiguration().withUserBaseDN("ou=people,dc=example,dc=com"));
+
+    try (MockedStatic<SecurityConfigurationManager> securityConfigMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      securityConfigMock
+          .when(SecurityConfigurationManager::getCurrentAuthConfig)
+          .thenReturn(new AuthenticationConfiguration());
+
+      for (int attempt = 0; attempt < 3; attempt++) {
+        assertThrows(
+            CustomExceptionMessage.class,
+            () -> authenticator.lookUserInProvider("nobody@example.com", "secret"));
+      }
+
+      assertThrows(
+          AuthenticationException.class,
+          () -> authenticator.checkIfLoginBlocked("nobody@example.com"));
+    }
   }
 
   @Test

@@ -488,6 +488,33 @@ class TestMultiThreadedOperations:
 
         assert summary["db_queries"]["SELECT"]["_default"]["count"] == 1
 
+    def test_new_run_drops_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        metrics.set_run_context(run_id="run-1")
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the run-1 item
+        assert taken.wait(timeout=5)
+
+        metrics.set_run_context(run_id="run-2")
+        # Only now, after the new run has started, does the worker record the run-1 item
+        release.set()
+        metrics.record_operation("db_queries", "INSERT", 2.0)
+
+        summary = metrics.get_summary()
+
+        assert "SELECT" not in summary["db_queries"]
+        assert summary["db_queries"]["INSERT"]["_default"]["count"] == 1
+
     def test_multiple_operations_per_thread(self) -> None:
         metrics = OperationMetricsState()
 

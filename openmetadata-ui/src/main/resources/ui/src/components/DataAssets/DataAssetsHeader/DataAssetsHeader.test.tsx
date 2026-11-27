@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -42,6 +43,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -145,17 +147,14 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  isRecordedLifeCycleTimestamp: jest.requireActual(
+    '../../../utils/DataAssetsHeader.utils'
+  ).isRecordedLifeCycleTimestamp,
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
-  ExtraInfoLabel: jest
-    .fn()
-    .mockImplementation(({ label, value, dataTestId }) => (
-      <div data-testid={dataTestId}>
-        {label && <span>{label}</span>}
-        <div>{value}</div>
-      </div>
-    )),
+  ExtraInfoLabel: jest.requireActual('../../../utils/DataAssetsHeader.utils')
+    .ExtraInfoLabel,
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,
@@ -415,6 +414,70 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(screen.queryByTestId('metric-header-info')).not.toBeInTheDocument();
+  });
+
+  it('shows when the asset was last updated at its source', async () => {
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: twoHoursAgo } },
+        }}
+      />
+    );
+
+    const metadataRow = within(
+      screen.getByTestId('data-asset-header-metadata')
+    );
+    const sourceUpdated = metadataRow.getByTestId('source-updated-at');
+
+    expect(
+      metadataRow.getByText('label.updated-at-source')
+    ).toBeInTheDocument();
+    expect(sourceUpdated).toHaveTextContent('2 hours ago');
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    fireEvent.mouseMove(document);
+    await user.hover(sourceUpdated);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      formatDateTime(twoHoursAgo)
+    );
+  });
+
+  it('hides the source update time when the source never reported one', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { created: { timestamp: 1743724800000 } },
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByText('label.updated-at-source')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
+  });
+
+  it('hides the year-0001 placeholder older ingestion clients stored as the update time', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: -62135596800000 } },
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
   });
 
   it('should render an explicitly supplied breadcrumb trail', () => {

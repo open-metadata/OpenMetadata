@@ -200,6 +200,9 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
     .mockImplementation((_entityType, fqn) => `/topic/${fqn}`),
+  getEntityDetailsUrl: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `http://localhost/topic/${fqn}`),
 }));
 
 describe('Topic Schema', () => {

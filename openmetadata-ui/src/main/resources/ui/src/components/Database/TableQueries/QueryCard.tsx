@@ -19,11 +19,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  Maximize01,
-  Minimize01,
-} from '@openmetadata/ui-core-components/icons';
+import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -38,7 +34,6 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -50,6 +45,7 @@ import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
@@ -75,7 +71,6 @@ const QueryCard: FC<QueryCardProp> = ({
   const { fqn: datasetFQN } = useFqn();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
     [location.search]
@@ -266,12 +261,10 @@ const QueryCard: FC<QueryCardProp> = ({
                 onClick={handleExpandClick}
                 {...getExpandButtonProps()}
               />
-              <ButtonUtility
-                data-testid="query-entity-copy-button"
-                icon={Copy01}
-                size="lg"
+              <CopyButton
+                testId="query-entity-copy-button"
                 tooltip={t('message.copy-to-clipboard')}
-                onClick={() => onCopyToClipBoard()}
+                value={query.query ?? ''}
               />
             </Box>
 
