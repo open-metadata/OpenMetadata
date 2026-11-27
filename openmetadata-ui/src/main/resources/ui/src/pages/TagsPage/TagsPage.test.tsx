@@ -59,7 +59,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
   Link: jest
     .fn()
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),

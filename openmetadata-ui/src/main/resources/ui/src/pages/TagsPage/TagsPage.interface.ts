@@ -20,12 +20,12 @@ import { CreateTag } from '../../generated/api/classification/createTag';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
+import { ClassificationTagIdentity } from '../../interface/governance/classification/Classification.types';
 
 export type DeleteTagDetailsType = {
   id: string;
   name: string;
-  categoryName?: string;
-  isCategory: boolean;
+  classification: ClassificationTagIdentity;
   status?: LoadingState;
 };
 
@@ -103,6 +103,8 @@ export interface ClassificationFormDrawerProps {
 export interface TagFormDrawerProps {
   open: boolean;
   editTag?: Tag;
+  parentFqn?: string;
+  sessionId?: number;
   form: UseFormReturn<TagFormValues>;
   isTier: boolean;
   isLoading: boolean;

@@ -40,6 +40,15 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Tag01: jest.fn(() => null),
 }));
 
+jest.mock('react-i18next', () => {
+  const t = (key: string, values: { name: string; parentFqn: string }) =>
+    key === 'label.tag-name-with-parent'
+      ? `${values.name} (${values.parentFqn})`
+      : key;
+
+  return { useTranslation: () => ({ t }) };
+});
+
 const makeRawResult = (fqn: string): RawTagResult => ({
   label: fqn,
   value: fqn,
@@ -125,6 +134,37 @@ describe('useClassificationTreeData', () => {
     expect(second).toEqual(
       expect.objectContaining({ hasMore: false, nextCursor: undefined })
     );
+  });
+
+  it('distinguishes equal leaf names by their full parent FQNs', async () => {
+    const personalEmail = 'Personal."Direct.Contact".Primary.Email';
+    const workEmail = 'Personal.Work.Primary.Email';
+    (tagClassBase.getTags as jest.Mock).mockResolvedValue({
+      data: [
+        makeRawResult('Personal.Email'),
+        makeRawResult(personalEmail),
+        makeRawResult(workEmail),
+      ],
+    });
+    const { result } = renderHook(() => useClassificationTreeData());
+
+    const { nodes } = await result.current({ searchTerm: 'Email' });
+
+    expect(nodes).toMatchObject([
+      { label: 'Email Display', data: { tagFQN: 'Personal.Email' } },
+      {
+        id: personalEmail,
+        label: 'Email Display (Personal."Direct.Contact".Primary)',
+        value: personalEmail,
+        data: { tagFQN: personalEmail, displayName: 'Email Display' },
+      },
+      {
+        id: workEmail,
+        label: 'Email Display (Personal.Work.Primary)',
+        value: workEmail,
+        data: { tagFQN: workEmail, displayName: 'Email Display' },
+      },
+    ]);
   });
 
   it('uses searchTerm when provided', async () => {
