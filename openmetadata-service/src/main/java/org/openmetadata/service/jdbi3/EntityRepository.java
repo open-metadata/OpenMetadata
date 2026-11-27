@@ -5360,6 +5360,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
+  /** The ops a PATCH by {@code user} would make, gated or not, without storing anything. */
+  public final List<MutationOp> previewPatchOps(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = preparePatched(original, patch, user, null);
+    // The updater cleans a changed description before saving it; preview the text that is saved.
+    if (!Objects.equals(updated.getDescription(), original.getDescription())) {
+      updated.setDescription(
+          org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription()));
+    }
+    return ApprovalGate.previewOps(
+        original, updated, Edit.patch(JsonUtils.extractPatchedFields(patch)));
+  }
+
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
