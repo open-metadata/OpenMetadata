@@ -11989,6 +11989,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/ServiceAutoPilotButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionsPage/ConnectionsListView.tsx"
       ],
       "specs": [
