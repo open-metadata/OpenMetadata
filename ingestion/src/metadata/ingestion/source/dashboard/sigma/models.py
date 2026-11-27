@@ -146,6 +146,7 @@ class NodeDetails(BaseModel):
 
 
 class DataModel(BaseModel):
+    path: str | None = None
     dataModelId: str  # noqa: N815
     dataModelUrlId: str | None = None  # noqa: N815
     name: str | None = None

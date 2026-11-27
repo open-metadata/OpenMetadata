@@ -52,38 +52,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
-
-      - name: Caching Yarn dependencies
-        uses: actions/cache@v6
-        id: yarn-cache
-        with:
-          path: ~/.yarn/berry/cache
-          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
-          restore-keys: |
-            yarn4-pkg-cache-${{ runner.os }}-
-
-      - name: Install Antlr4 CLI
-        run: sudo make install_antlr_cli
-
-      - name: Install Yarn Packages
+      - name: Install UI dependencies
         id: yarn_install
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: |
-          # Retry transient registry failures (5xx on tarball fetches) —
-          # Yarn retries each request, but not a sustained outage.
-          for attempt in 1 2 3; do
-            YARN_HTTP_TIMEOUT=100000 yarn install && break
-            if [[ "$attempt" -eq 3 ]]; then
-              echo "yarn install failed after 3 attempts" >&2
-              exit 1
-            fi
-            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
-            sleep $((attempt * 15))
-          done
+        uses: ./.github/actions/setup-ui
 
       # test:cov-summary writes only json-summary; Sonar reads lcov.info.
       - name: Run Coverage

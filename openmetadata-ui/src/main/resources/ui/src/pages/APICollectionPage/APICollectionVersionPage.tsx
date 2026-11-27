@@ -418,7 +418,7 @@ const APICollectionVersionPage = () => {
                   <Tabs
                     className="tw:gap-3"
                     data-testid="tabs"
-                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    selectedKey={getRenderedActiveTab(tabs, tab)}
                     onSelectionChange={(key) => handleTabChange(String(key))}>
                     <Tabs.List size="sm" type="underline" variant="card">
                       {tabs.map(({ key, label }) => (
@@ -462,6 +462,7 @@ const APICollectionVersionPage = () => {
     version,
     backHandler,
     tabs,
+    tab,
     versionHandler,
     versionList,
     domainDisplayName,

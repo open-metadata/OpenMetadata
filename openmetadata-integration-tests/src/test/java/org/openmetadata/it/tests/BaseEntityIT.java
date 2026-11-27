@@ -46,6 +46,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.governance.EntityLifecycleStages;
 import org.openmetadata.schema.api.governance.EntityTypeLifecycle;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -59,6 +60,9 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -4070,33 +4074,66 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
   protected boolean supportsLineage = false;
 
   /**
-   * Test: Lineage fluent API
-   * Equivalent to: testLineageFluentAPI in EntityResourceTest
+   * Test: an edge into this entity type is stored, read back through the lineage API on both
+   * ends, and removed by delete. Uses the database-backed lineage endpoint, so it needs no search
+   * index wait.
    */
   @Test
   void testLineageFluentAPI(TestNamespace ns) {
-    if (!supportsLineage) return;
+    Assumptions.assumeTrue(supportsLineage, getEntityType() + " does not run lineage tests");
+    T upstream = createEntity(createRequest(ns.prefix("lineageUpstream"), ns));
+    T downstream = createEntity(createMinimalRequest(ns));
+    EntityReference from = lineageReference(upstream);
+    EntityReference to = lineageReference(downstream);
 
-    // Create entity
-    K createRequest = createMinimalRequest(ns);
-    T entity = createEntity(createRequest);
-    assertNotNull(entity, "Entity should be created for lineage test");
+    SdkClients.adminClient()
+        .lineage()
+        .addLineage(
+            new AddLineage().withEdge(new EntitiesEdge().withFromEntity(from).withToEntity(to)));
 
-    try {
-      // Test lineage retrieval
-      org.openmetadata.sdk.api.Lineage.LineageGraph lineage =
-          org.openmetadata.sdk.api.Lineage.of(getEntityType(), entity.getId().toString())
-              .upstream(1)
-              .downstream(1)
-              .includeDeleted(false)
-              .fetch();
+    assertLineageEdgeVisibleFromBothEnds(from, to);
+    SdkClients.adminClient()
+        .lineage()
+        .deleteLineage(from.getType() + ":" + from.getId(), to.getType() + ":" + to.getId());
+    assertFalse(
+        hasLineageEdge(fetchEntityLineage(from, "0", "1").getDownstreamEdges(), from, to),
+        "Deleted lineage edge must not be returned");
+  }
 
-      assertNotNull(lineage, "Lineage graph should not be null");
+  private EntityReference lineageReference(T entity) {
+    return new EntityReference().withId(entity.getId()).withType(getEntityType());
+  }
 
-    } catch (Exception e) {
-      // Lineage retrieval may fail for newly created entities without edges
-      // This is acceptable
-    }
+  private void assertLineageEdgeVisibleFromBothEnds(EntityReference from, EntityReference to) {
+    EntityLineage fromSide = fetchEntityLineage(from, "0", "1");
+    EntityLineage toSide = fetchEntityLineage(to, "1", "0");
+    assertTrue(
+        hasLineageEdge(fromSide.getDownstreamEdges(), from, to),
+        "Upstream entity must list the edge downstream");
+    assertTrue(
+        fromSide.getNodes().stream().anyMatch(node -> to.getId().equals(node.getId())),
+        "Upstream entity lineage must include the downstream node");
+    assertTrue(
+        hasLineageEdge(toSide.getUpstreamEdges(), from, to),
+        "Downstream entity must list the edge upstream");
+  }
+
+  private EntityLineage fetchEntityLineage(
+      EntityReference entity, String upstreamDepth, String downstreamDepth) {
+    String response =
+        SdkClients.adminClient()
+            .lineage()
+            .getEntityLineage(
+                entity.getType(), entity.getId().toString(), upstreamDepth, downstreamDepth);
+    return JsonUtils.readValue(response, EntityLineage.class);
+  }
+
+  private static boolean hasLineageEdge(
+      List<Edge> edges, EntityReference from, EntityReference to) {
+    return edges.stream()
+        .anyMatch(
+            edge ->
+                from.getId().equals(edge.getFromEntity()) && to.getId().equals(edge.getToEntity()));
   }
 
   // ===================================================================

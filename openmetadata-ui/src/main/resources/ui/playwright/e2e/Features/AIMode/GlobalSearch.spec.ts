@@ -68,6 +68,8 @@ test.describe(
       test.setTimeout(120_000);
       const token = uuid();
       table = new TableClass();
+      // One token, so the search matches only this table and it stays on page one after sorting.
+      table.entity.displayName = `pwgstable${token}`;
       glossary = new Glossary();
       glossaryTerm = new GlossaryTerm(glossary, undefined, `pwgsterm${token}`);
       domain = new Domain({
