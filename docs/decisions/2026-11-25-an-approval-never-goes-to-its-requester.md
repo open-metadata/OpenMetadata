@@ -1,7 +1,7 @@
 # An approval never goes to its requester
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-25 (initial)
+- **Revisions:** v1 2026-11-25 (initial); v2 2026-11-27 (owner fallback)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `WorkflowDefinitionResourceIT.test_editorWhoIsTheOnlyApproverIsNeverAskedToApprove`,
   `WorkflowDefinitionResourceIT.test_editorIsLeftOffTheApprovalWhenSomeoneElseCanApprove`,
@@ -39,3 +39,22 @@ review, which is the documented meaning of `none`. Revisit only if `none` itself
 On upgrade, an existing workflow under `none` stops opening these tasks: an edit by the entity's
 only approver, which used to wait for an admin to step in, is approved automatically. A workflow
 that relied on that wait switches the node to `assignAdmins`.
+
+## Amendment — 2026-11-27: the owner fallback
+
+A task created with no assignee falls back to the asset's owners. Under `assignAdmins`, when the
+requester is the only admin, the task stays open with no assignee and that fallback could assign the
+requester. The fallback now never assigns the task's creator, the requester of a workflow task, for
+every task, not only approvals. Guard: `TaskRepositoryAssigneesTest.neverFallsBackToTheTaskCreator`,
+`WorkflowDefinitionResourceIT.test_taskWithoutAssigneesNeverFallsBackToItsCreator`.
+
+The workflow builder shows each strategy with its outcome, including the owner fallback, and on a
+task workflow (`noOp` trigger) shows `none` as sending the open task to the asset's owners.
+
+On 2.0 these outcomes hold for an entity workflow's first approval step. A later step reads the
+earlier step's task id: it counts as workflow-managed, copies that task's assignees and reuses that
+task, so under `none` it keeps a task open instead of approving. Main fixes this with the
+lifecycle-gate changes (#34693), which 2.0 does not have. The task's creator on 2.0 is the asset's
+last editor, so if someone other than the requester last edited the asset, the owner fallback skips
+that editor rather than the requester.
+

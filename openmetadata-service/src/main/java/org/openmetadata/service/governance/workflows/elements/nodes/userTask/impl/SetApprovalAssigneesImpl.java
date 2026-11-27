@@ -181,7 +181,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         assigneeList.addAll(admins);
         if (assigneeList.isEmpty()) {
           LOG.warn(
-              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; task left unassigned",
+              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; the task falls back to the asset's owners other than the requester",
               execution.getProcessInstanceId());
         }
       }

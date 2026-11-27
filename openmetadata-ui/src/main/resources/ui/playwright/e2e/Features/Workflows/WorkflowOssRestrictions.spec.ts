@@ -14,7 +14,12 @@
 import { expect, test as base, type Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { performAdminLogin } from '../../../utils/admin';
-import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
+import {
+  chooseSelectOption,
+  clickOutside,
+  redirectToHomePage,
+  uuid,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -42,6 +47,12 @@ async function navigateToWorkflowsListPage(page: Page) {
   await listResponse;
   await waitForAllLoadersToDisappear(page);
 }
+
+// The edit test switches the approval step to Assign admins. The workflow runs only on a table
+// update that changes this field, which no table has, so tables other workers create or edit while
+// it is deployed never open an admin task. A trigger filter would do the same, but it disables the
+// start node's add-filter button that a test below checks.
+const NO_SUCH_TABLE_FIELD = 'pwOssNoSuchField';
 
 async function navigateToWorkflowDetailPage(page: Page, name: string) {
   await navigateToWorkflowsListPage(page);
@@ -127,9 +138,9 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
               type: 'eventBasedEntity',
               config: {
                 entityTypes: ['table'],
-                events: ['Created'],
+                events: ['Updated'],
                 exclude: [],
-                include: [],
+                include: [NO_SUCH_TABLE_FIELD],
                 filter: {},
               },
               output: ['relatedEntity', 'updatedBy'],
@@ -369,7 +380,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await expect(sidebar).not.toBeVisible();
       });
 
-      test('editing a form field and saving node config then workflow fires PUT API with updated data', async ({
+      test('editing the threshold and the no-approver strategy then saving fires PUT API with both', async ({
         page,
       }) => {
         await redirectToHomePage(page);
@@ -384,9 +395,27 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await expect(thresholdInput).toBeEnabled();
         await thresholdInput.fill('2');
 
+        const strategyTrigger = sidebar
+          .getByTestId('user-approval-empty-assignee-strategy-select')
+          .getByRole('button');
+
+        await expect(strategyTrigger).toBeEnabled();
+        await chooseSelectOption(
+          strategyTrigger,
+          page.getByTestId(
+            'user-approval-empty-assignee-strategy-assignAdmins'
+          ),
+          strategyTrigger.filter({ hasText: 'Assign to admins' })
+        );
+
         await sidebar.getByTestId('save-node-configuration-button').click();
         await expect(sidebar).not.toBeVisible();
 
+        const saveRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/governance/workflowDefinitions') &&
+            request.method() === 'PUT'
+        );
         const saveResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
@@ -395,10 +424,41 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         );
 
         await page.getByTestId('save-workflow-button').click();
+
+        const savedWorkflow = (await saveRequest).postDataJSON();
+
+        expect(savedWorkflow.trigger.config.include).toEqual([
+          NO_SUCH_TABLE_FIELD,
+        ]);
+
+        const savedApprovalNode = (
+          savedWorkflow.nodes as Array<{
+            name: string;
+            config?: {
+              approvalThreshold?: number;
+              assignees?: { emptyAssigneeStrategy?: string };
+            };
+          }>
+        ).find((node) => node.name === 'ApprovalTask');
+
+        expect(savedApprovalNode?.config?.approvalThreshold).toBe(2);
+        expect(
+          savedApprovalNode?.config?.assignees?.emptyAssigneeStrategy
+        ).toBe('assignAdmins');
+
         await saveResponse;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('edit-workflow-button')).toBeVisible();
+
+        await navigateToWorkflowDetailPage(page, workflowName);
+        const reopenedSidebar = await openTaskNodeSidebar(page);
+
+        await expect(
+          reopenedSidebar
+            .getByTestId('user-approval-empty-assignee-strategy-select')
+            .getByRole('button')
+        ).toContainText('Assign to admins');
       });
     });
 

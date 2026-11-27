@@ -113,6 +113,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -13640,6 +13641,31 @@ public class WorkflowDefinitionResourceIT {
 
     Task task =
         awaitOpenApprovalTaskAssignedTo(admin, contract.getFullyQualifiedName(), colleague.getId());
+    assertEquals(Set.of(colleague.getName()), assigneeNames(task));
+  }
+
+  @Test
+  void test_taskWithoutAssigneesNeverFallsBackToItsCreator(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User steward = createPlainUser(admin, "steward");
+    User colleague = createPlainUser(admin, "colleague");
+    DataContract contract =
+        createContract(
+            ns, List.of(steward.getEntityReference(), colleague.getEntityReference()), List.of());
+
+    Task task =
+        SdkClients.createClient(steward.getName(), steward.getEmail(), new String[] {})
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("owner-fallback"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(
+                        "<#E::dataContract::%s>".formatted(contract.getFullyQualifiedName())));
+
+    // With no assignees given, the task goes to the contract's owners, never to the steward who
+    // filed it: a filer cannot resolve their own task.
     assertEquals(Set.of(colleague.getName()), assigneeNames(task));
   }
 

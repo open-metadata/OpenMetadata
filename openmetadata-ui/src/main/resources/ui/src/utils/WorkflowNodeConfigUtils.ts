@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EmptyAssigneeStrategy } from '../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import {
@@ -233,7 +234,7 @@ export const configureNodeInputOutput = (
         | {
             addReviewers?: boolean;
             addOwners?: boolean;
-            emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+            emptyAssigneeStrategy?: EmptyAssigneeStrategy;
             candidates?: Array<{
               id: string;
               type: string;
@@ -247,7 +248,8 @@ export const configureNodeInputOutput = (
         addReviewers: assigneesFromNode?.addReviewers ?? true,
         addOwners: assigneesFromNode?.addOwners ?? false,
         emptyAssigneeStrategy:
-          assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
+          assigneesFromNode?.emptyAssigneeStrategy ??
+          EmptyAssigneeStrategy.None,
         candidates: assigneesFromNode?.candidates ?? [],
       };
       config.config.approvalThreshold =
