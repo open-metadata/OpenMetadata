@@ -31,8 +31,8 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
-import { isEmpty, isNull } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneDeep, isEmpty, isEqual, isNull, omitBy } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
@@ -59,6 +59,11 @@ const NEW_SEMANTIC = { enabled: true, rule: '' } as SemanticsRule;
 
 const parseTree = (jsonTree?: string) =>
   jsonTree ? (JSON.parse(jsonTree) as JsonTree) : undefined;
+
+// Inputs register as '' after the snapshot is taken, so a blank field and an
+// absent one are the same unedited value.
+const withoutBlankFields = (semantic?: SemanticsRule) =>
+  omitBy(semantic, (value) => value === undefined || value === '');
 
 const toNegatedRule = (rule: string) => {
   if (!rule) {
@@ -99,14 +104,40 @@ export const ContractSemanticFormTab: React.FC<{
   const form = useForm<ContractSemanticFormValues>({
     defaultValues: { semantics: [] },
   });
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: 'semantics',
   });
   const semantics = useWatch({ control: form.control, name: 'semantics' });
   const { isDirty } = form.formState;
 
+  // Every edit streams to the parent live, so the open card's pre-edit values
+  // are kept here for Cancel to restore; otherwise a cancelled edit would still
+  // be committed by the contract Save.
+  const editSnapshotRef = useRef<SemanticsRule>();
+
   const queryBuilderFields = useMemo(() => getSematicRuleFields(), []);
+
+  const openEditor = useCallback(
+    (index: number) => {
+      editSnapshotRef.current = cloneDeep(form.getValues(`semantics.${index}`));
+      setEditingKey(index);
+    },
+    [form]
+  );
+
+  const discardOpenEdits = useCallback(() => {
+    const snapshot = editSnapshotRef.current;
+    if (!isNull(editingKey) && snapshot) {
+      const current = form.getValues(`semantics.${editingKey}`);
+      if (!isEqual(withoutBlankFields(current), withoutBlankFields(snapshot))) {
+        update(editingKey, snapshot);
+        onChange({ semantics: form.getValues('semantics') });
+      }
+      form.clearErrors(`semantics.${editingKey}`);
+    }
+    editSnapshotRef.current = undefined;
+  }, [editingKey, form, onChange, update]);
 
   useEffect(() => {
     form.reset({
@@ -114,7 +145,7 @@ export const ContractSemanticFormTab: React.FC<{
         ? [{ enabled: true } as SemanticsRule]
         : initialValues?.semantics,
     });
-    setEditingKey(0);
+    openEditor(0);
   }, [initialValues]);
 
   useEffect(() => {
@@ -127,20 +158,41 @@ export const ContractSemanticFormTab: React.FC<{
 
   const handleAddSemantic = () => {
     append(NEW_SEMANTIC);
-    setEditingKey(fields.length);
+    openEditor(fields.length);
+  };
+
+  // Switching to another card's editor discards the open card's unsaved edits,
+  // the same as Cancel.
+  const handleEditSemantic = (index: number) => {
+    discardOpenEdits();
+    openEditor(index);
+  };
+
+  const handleCancelEdit = () => {
+    discardOpenEdits();
+    setEditingKey(null);
   };
 
   const handleDeleteSemantic = useCallback(
     (index: number) => {
       remove(index);
+      if (editingKey === index) {
+        editSnapshotRef.current = undefined;
+        setEditingKey(null);
+      } else if (!isNull(editingKey) && index < editingKey) {
+        setEditingKey(editingKey - 1);
+      }
       onChange({ semantics: form.getValues('semantics') });
     },
-    [form, onChange, remove]
+    [editingKey, form, onChange, remove]
   );
 
   // handleSubmit, unlike trigger, marks the form submitted, so each later change
   // re-validates and clears or re-shows its error, as the antd form did.
-  const handleSaveRule = form.handleSubmit(() => setEditingKey(null));
+  const handleSaveRule = form.handleSubmit(() => {
+    editSnapshotRef.current = undefined;
+    setEditingKey(null);
+  });
 
   const renderCardTitle = (index: number) => (
     <div className="semantic-form-item-title-container">
@@ -172,7 +224,7 @@ export const ContractSemanticFormTab: React.FC<{
           icon={Edit01}
           size="lg"
           tooltip={t('label.edit')}
-          onClick={() => setEditingKey(index)}
+          onClick={() => handleEditSemantic(index)}
         />
         <ButtonUtility
           color="tertiary-destructive"
@@ -266,7 +318,7 @@ export const ContractSemanticFormTab: React.FC<{
           </Button>
 
           <div className="tw:flex tw:items-center tw:gap-3">
-            <Button color="secondary" onPress={() => setEditingKey(null)}>
+            <Button color="secondary" onPress={handleCancelEdit}>
               {t('label.cancel')}
             </Button>
             <Button
