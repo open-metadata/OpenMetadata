@@ -179,8 +179,10 @@ class OmniDocument(BaseModel):
 
     @field_validator("labels", mode="before")
     @classmethod
-    def _labels_from_names(cls, labels: list | None) -> list:
-        return [{"name": label} if isinstance(label, str) else label for label in labels or []]
+    def _labels_from_names(cls, labels: object) -> object:
+        if not isinstance(labels, list):
+            return labels
+        return [{"name": label} if isinstance(label, str) else label for label in labels]
 
     @property
     def label_names(self) -> list[str]:

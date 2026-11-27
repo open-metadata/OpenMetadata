@@ -878,14 +878,24 @@ def test_documents_response_accepts_string_labels():
 
     page = {
         "records": [
-            {"identifier": "a", "name": "Funnel", "hasDashboard": True, "labels": ["GSE"]},
-            {"identifier": "b", "name": "Sales", "hasDashboard": True, "labels": ["Humara", {"name": "Executive"}]},
+            {"identifier": "a", "name": "Funnel", "hasDashboard": True, "labels": ["Finance"]},
+            {"identifier": "b", "name": "Sales", "hasDashboard": True, "labels": ["Sales", {"name": "Executive"}]},
             {"identifier": "c", "name": "Unlabelled", "hasDashboard": True, "labels": None},
         ],
         "pageInfo": {"hasNextPage": False},
     }
     response = DocumentsResponse.model_validate(page)
-    assert [d.label_names for d in response.records] == [["GSE"], ["Humara", "Executive"], []]
+    assert [d.label_names for d in response.records] == [["Finance"], ["Sales", "Executive"], []]
+
+
+def test_document_rejects_labels_that_are_not_a_list():
+    """A bare string is neither one label nor a list of its characters."""
+    from pydantic import ValidationError
+
+    from metadata.ingestion.source.dashboard.omni.models import OmniDocument
+
+    with pytest.raises(ValidationError):
+        OmniDocument.model_validate({"identifier": "demo", "labels": "ops"})
 
 
 def test_yield_tags_emits_document_labels(omni_source):
