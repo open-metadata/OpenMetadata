@@ -15,6 +15,7 @@ import {
   Button,
   Checkbox,
   Input,
+  Select,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -25,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityReference } from '../../../../generated/entity/teams/user';
+import { EmptyAssigneeStrategy } from '../../../../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { AssigneeCandidate } from '../../../../interface/WorkflowTypes.interface';
@@ -37,6 +39,11 @@ import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
+import {
+  EMPTY_ASSIGNEE_STRATEGY_OPTIONS,
+  NONE_IN_TASK_WORKFLOW_OPTION,
+  SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES,
+} from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
   node: Node;
@@ -67,7 +74,7 @@ const DEFAULT_USER_APPROVAL_TRANSITIONS = [
 interface AssigneesConfigSlice {
   addReviewers?: boolean;
   addOwners?: boolean;
-  emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy?: EmptyAssigneeStrategy;
   candidates?: AssigneeCandidate[];
 }
 
@@ -78,14 +85,15 @@ interface UserApprovalInitialState {
   rejectionThreshold: number;
   addReviewers: boolean;
   addOwners: boolean;
-  emptyAssigneeStrategy: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy: EmptyAssigneeStrategy;
   candidates: EntityReference[];
 }
 
 const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
   addReviewers: assignees.addReviewers ?? true,
   addOwners: assignees.addOwners ?? false,
-  emptyAssigneeStrategy: assignees.emptyAssigneeStrategy ?? 'none',
+  emptyAssigneeStrategy:
+    assignees.emptyAssigneeStrategy ?? EmptyAssigneeStrategy.None,
   candidates: Array.isArray(assignees.candidates) ? assignees.candidates : [],
 });
 
@@ -120,12 +128,16 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [rejectionThreshold, setRejectionThreshold] = useState(1);
   const [addReviewers, setAddReviewers] = useState(true);
   const [addOwners, setAddOwners] = useState(false);
-  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState<
-    'none' | 'assignAdmins'
-  >('none');
+  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState(
+    EmptyAssigneeStrategy.None
+  );
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
   const { t } = useTranslation();
-  const { isFormDisabled } = useWorkflowModeContext();
+  const { isFormDisabled, isNoOp } = useWorkflowModeContext();
+  const strategyOption = (strategy: EmptyAssigneeStrategy) =>
+    isNoOp && strategy === EmptyAssigneeStrategy.None
+      ? NONE_IN_TASK_WORKFLOW_OPTION
+      : EMPTY_ASSIGNEE_STRATEGY_OPTIONS[strategy];
 
   useEffect(() => {
     if (!node?.data) {
@@ -262,7 +274,8 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
           />
         </div>
 
-        <div className="tw:mb-6">
+        {/* No bottom margin: the Additional approvers FormField below already ends with one. */}
+        <div>
           <div className="tw:flex tw:flex-col tw:gap-4">
             <div className="tw:flex tw:items-center tw:gap-2">
               <Typography
@@ -331,6 +344,33 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
               </ModeAwareFormField>
             </FormField>
           </div>
+        </div>
+
+        <div className="tw:mb-6">
+          <Select
+            data-testid="user-approval-empty-assignee-strategy-select"
+            hint={t(strategyOption(emptyAssigneeStrategy).hintKey)}
+            isDisabled={isFormDisabled}
+            label={t('label.if-no-one-else-can-approve')}
+            value={emptyAssigneeStrategy}
+            onChange={(key) =>
+              setEmptyAssigneeStrategy(key as EmptyAssigneeStrategy)
+            }>
+            {SELECTABLE_EMPTY_ASSIGNEE_STRATEGIES.map((strategy) => (
+              <Select.Item
+                data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
+                id={strategy}
+                key={strategy}
+                label={t(strategyOption(strategy).labelKey)}
+              />
+            ))}
+          </Select>
+          <Typography
+            as="p"
+            className="tw:mt-2 tw:text-tertiary"
+            size="text-sm">
+            {t('message.empty-assignee-strategy-description')}
+          </Typography>
         </div>
       </div>
 
