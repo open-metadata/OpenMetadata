@@ -125,6 +125,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -8866,6 +8867,12 @@ public class WorkflowDefinitionResourceIT {
 
     awaitRequestStatus(request.get("id").asText(), "Applied");
     assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    DataProduct applied = admin.dataProducts().get(product.getId().toString());
+    assertEquals(EntityUtil.nextVersion(product.getVersion()), applied.getVersion());
+    assertEquals(product.getUpdatedBy(), applied.getUpdatedBy());
+    assertEquals(
+        product.getDescription(),
+        admin.dataProducts().getVersion(product.getId(), product.getVersion()).getDescription());
   }
 
   @Test
@@ -8927,6 +8934,7 @@ public class WorkflowDefinitionResourceIT {
     DataProduct applied = admin.dataProducts().get(product.getId().toString(), "");
     assertEquals("held together", applied.getDescription());
     assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(EntityUtil.nextVersion(product.getVersion()), applied.getVersion());
     assertEquals(
         List.of("description", INPUT_PORTS), changedFields(applied.getChangeDescription()));
   }
@@ -18615,6 +18623,64 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(Set.of(colleague.getName()), assigneeNames(task));
   }
 
+  @Test
+  void test_secondApprovalStepWithNobodyToAskApprovesOnItsOwn(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User steward = createPlainUser(admin, "steward");
+    User colleague = createPlainUser(admin, "colleague");
+    // The colleague is the other owner, so the owners step asks them. The step that follows asks
+    // no owners, reviewers or named users, so it has nobody to ask.
+    DataContract contract =
+        createContract(
+            ns, List.of(steward.getEntityReference(), colleague.getEntityReference()), List.of());
+    String workflowName = createTwoStepContractApprovalWorkflow(contract);
+
+    editDescriptionAs(steward, contract);
+    Task ownersTask =
+        awaitOpenApprovalTaskAssignedTo(admin, contract.getFullyQualifiedName(), colleague.getId());
+    SdkClients.createClient(colleague.getName(), colleague.getEmail(), new String[] {})
+        .tasks()
+        .resolve(
+            ownersTask.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    // The first step's task id stays in the run; the second step must still approve under "none"
+    // instead of opening a task for the asset's owners.
+    JsonNode instance = awaitOnlyInstanceEnded(admin, workflowName);
+    assertEquals(
+        WorkflowInstance.WorkflowStatus.FINISHED.value(),
+        instance.path("status").asText(),
+        instance.toString());
+    assertTrue(
+        listOpenApprovalTasks(admin, contract.getFullyQualifiedName()).getData().isEmpty(),
+        "the second step has nobody to ask, so it must not open a task");
+  }
+
+  @Test
+  void test_taskWithoutAssigneesNeverFallsBackToItsCreator(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User steward = createPlainUser(admin, "steward");
+    User colleague = createPlainUser(admin, "colleague");
+    DataContract contract =
+        createContract(
+            ns, List.of(steward.getEntityReference(), colleague.getEntityReference()), List.of());
+
+    Task task =
+        SdkClients.createClient(steward.getName(), steward.getEmail(), new String[] {})
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("owner-fallback"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(
+                        "<#E::dataContract::%s>".formatted(contract.getFullyQualifiedName())));
+
+    // With no assignees given, the task goes to the contract's owners, never to the steward who
+    // filed it: a filer cannot resolve their own task.
+    assertEquals(Set.of(colleague.getName()), assigneeNames(task));
+  }
+
   private static User createPlainUser(OpenMetadataClient admin, String role) {
     String name = "%s_%s".formatted(role, UUID.randomUUID().toString().substring(0, 8));
     return admin
@@ -18700,6 +18766,79 @@ public class WorkflowDefinitionResourceIT {
                 source.addOwners,
                 source.addReviewers,
                 strategy.value());
+    createWorkflow((ObjectNode) MAPPER.readTree(json), workflowName);
+    return workflowName;
+  }
+
+  private String createTwoStepContractApprovalWorkflow(DataContract contract) throws Exception {
+    ensureWorkflowEventConsumerIsActive(SdkClients.adminClient());
+    String workflowName = "twoStepApproval" + UUID.randomUUID().toString().substring(0, 8);
+    String onlyThisContract =
+        "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}"
+            .formatted(contract.getFullyQualifiedName());
+    String json =
+        """
+        {
+          "name": "%s",
+          "description": "Owners approve, then a step that asks nobody",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataContract"],
+              "events": ["Updated"],
+              "exclude": ["reviewers"],
+              "filter": %s
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "StartNode"},
+            {"type": "endEvent", "subType": "endEvent", "name": "EndNode"},
+            {
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "name": "OwnersApproval",
+              "config": {
+                "assignees": {"addOwners": true, "addReviewers": false, "candidates": []},
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["updatedBy"],
+              "branches": ["true", "false"]
+            },
+            {
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "name": "NobodyToAskApproval",
+              "config": {
+                "assignees": {
+                  "addOwners": false,
+                  "addReviewers": false,
+                  "candidates": [],
+                  "emptyAssigneeStrategy": "none"
+                },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["updatedBy"],
+              "branches": ["true", "false"]
+            }
+          ],
+          "edges": [
+            {"from": "StartNode", "to": "OwnersApproval"},
+            {"from": "OwnersApproval", "to": "NobodyToAskApproval", "condition": "approve"},
+            {"from": "OwnersApproval", "to": "EndNode", "condition": "reject"},
+            {"from": "NobodyToAskApproval", "to": "EndNode", "condition": "approve"},
+            {"from": "NobodyToAskApproval", "to": "EndNode", "condition": "reject"}
+          ]
+        }
+        """
+            .formatted(
+                workflowName, JsonUtils.pojoToJson(Map.of("dataContract", onlyThisContract)));
     createWorkflow((ObjectNode) MAPPER.readTree(json), workflowName);
     return workflowName;
   }

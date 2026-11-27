@@ -52,12 +52,37 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
+  @Test
+  void recordWriterNamesTheBotOfTheCurrentRequestOverTheStoredOne() {
+    Table stored = new Table().withUpdatedBy("alice").withImpersonatedBy("previous-bot");
+    ImpersonationContext.setImpersonatedBy("caip-bot");
+    try {
+      EntityUtil.recordWriter(stored, "bob");
+    } finally {
+      ImpersonationContext.clear();
+    }
+
+    assertEquals("bob", stored.getUpdatedBy());
+    assertEquals("caip-bot", stored.getImpersonatedBy());
+  }
+
+  @Test
+  void recordWriterClearsTheStoredBotForADirectWrite() {
+    Table stored = new Table().withUpdatedBy("alice").withImpersonatedBy("previous-bot");
+
+    EntityUtil.recordWriter(stored, "bob");
+
+    assertEquals("bob", stored.getUpdatedBy());
+    assertNull(stored.getImpersonatedBy());
+  }
+
   @Test
   void testTableConstraintMatch_nullReferredColumns() {
     final TableConstraint missing = constraintWithReferences(null);

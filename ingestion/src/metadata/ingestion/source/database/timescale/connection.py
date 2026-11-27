@@ -13,6 +13,8 @@
 Source connection handler for TimescaleDB
 """
 
+from functools import partial
+
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -31,13 +33,10 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.strategies import AzureAdStrategy, BasicAuthStrategy
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.postgres.connection import check_query_history
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DATABASE,
-    POSTGRES_TEST_GET_QUERIES,
     POSTGRES_TEST_GET_TAGS,
-)
-from metadata.ingestion.source.database.postgres.utils import (
-    get_postgres_time_column_name,
 )
 from metadata.utils.constants import THREE_MIN
 
@@ -64,19 +63,18 @@ class TimescaleConnection(BaseConnection[TimescaleConnectionConfig, Engine]):
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
-        queries = {
-            "GetQueries": POSTGRES_TEST_GET_QUERIES.format(
-                time_column_name=get_postgres_time_column_name(engine=self.client),
-                query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
-            ),
-            "GetDatabases": POSTGRES_GET_DATABASE,
-            "GetTags": POSTGRES_TEST_GET_TAGS,
-        }
+        engine = self.client
         return test_connection_db_common(
             metadata=metadata,
-            engine=self.client,
+            engine=engine,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
-            queries=queries,
+            queries={
+                "GetDatabases": POSTGRES_GET_DATABASE,
+                "GetTags": POSTGRES_TEST_GET_TAGS,
+            },
+            additional_checks={
+                "GetQueries": partial(check_query_history, engine, self.service_connection.queryStatementSource),
+            },
         )

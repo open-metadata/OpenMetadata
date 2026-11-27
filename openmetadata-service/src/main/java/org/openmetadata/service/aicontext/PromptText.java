@@ -12,8 +12,17 @@
  */
 package org.openmetadata.service.aicontext;
 
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.Range;
+import org.jsoup.nodes.TextNode;
+import org.jsoup.parser.Parser;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
@@ -109,6 +118,11 @@ public final class PromptText {
           "(?i)<img\\b(?:[^<>\"']|\"[^\"<]*+\"|'[^'<]*+')*+>"
               + "|!\\[[^\\]\\[\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
 
+  private static final Pattern ENCODED_IMAGE_START =
+      Pattern.compile("(?i)&(?:lt|#0*60|#x0*3c);img\\b|!\\[");
+  private static final Pattern HTML_ENTITY =
+      Pattern.compile("&(?:[a-zA-Z][a-zA-Z0-9]*+|#(?:[0-9]++|[xX][0-9a-fA-F]++));");
+
   private PromptText() {}
 
   /**
@@ -130,7 +144,132 @@ public final class PromptText {
    * double-encoded stays encoded and no markup is rebuilt from it.
    */
   public static String forContentRead(String richText) {
-    final String decoded = StringEscapeUtils.unescapeHtml4(forPrompt(richText));
+    return stripDecodedImages(StringEscapeUtils.unescapeHtml4(forPrompt(richText)));
+  }
+
+  /** Keeps the usual rich-text output when the article contains visible text. */
+  public static String forArticleRead(String richText) {
+    return readArticleHtml(forPrompt(richText));
+  }
+
+  /** Skips leading blocks left empty by image removal so the budget reaches readable text. */
+  public static String forBudgetedArticleRead(String richText) {
+    String html = forPrompt(richText);
+    String result;
+    if (html != null && hasHtmlTag(html)) {
+      Element body = Parser.htmlParser().setTrackPosition(true).parseInput(html, "").body();
+      result = readFromFirstReadableBlock(html, body);
+    } else {
+      result = readArticleHtml(html);
+    }
+    return result;
+  }
+
+  private static String readFromFirstReadableBlock(String html, Element body) {
+    String result = "";
+    boolean hasSkippedEmptyBlock = false;
+    for (Node child : body.childNodes()) {
+      if (hasReadableArticleText(child)) {
+        Range source = child.sourceRange();
+        // Slice the encoded source so literal markup and the remaining HTML retain their form.
+        String included =
+            hasSkippedEmptyBlock && source.isTracked()
+                ? html.substring(source.startPos()).stripLeading()
+                : html;
+        result = decodeArticleHtml(included);
+        break;
+      }
+      hasSkippedEmptyBlock |= child instanceof Element;
+    }
+    return result;
+  }
+
+  private static boolean hasReadableArticleText(Node node) {
+    String text =
+        switch (node) {
+          case Element element -> element.text();
+          case TextNode textNode -> textNode.text();
+          default -> "";
+        };
+    return hasReadableCharacters(stripDecodedImages(text));
+  }
+
+  private static String readArticleHtml(String html) {
+    String rendered = decodeArticleHtml(html);
+    // Inspect the encoded markup so literal examples such as &lt;div&gt; count as text.
+    String plain =
+        html != null && hasHtmlTag(html)
+            ? stripDecodedImages(Jsoup.parseBodyFragment(html).body().text())
+            : rendered;
+    return hasReadableCharacters(plain) ? rendered : "";
+  }
+
+  private static String decodeArticleHtml(String html) {
+    return stripDecodedImages(StringEscapeUtils.unescapeHtml4(html));
+  }
+
+  private static boolean hasReadableCharacters(String text) {
+    return text != null
+        && text.codePoints().anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
+  }
+
+  /** Image spans in the source can cross word-based index chunk boundaries. */
+  public static BitSet inlineImagePositions(String source, int start) {
+    BitSet positions = new BitSet();
+    Matcher images = DECODED_IMAGE.matcher(source).region(start, source.length());
+    while (images.find()) {
+      positions.set(images.start(), images.end());
+    }
+    if (source.indexOf('&', start) >= 0
+        && ENCODED_IMAGE_START.matcher(source).region(start, source.length()).find()) {
+      markEncodedImages(source, start, positions);
+    }
+    if (source.indexOf("data-is-image", start) >= 0) {
+      markImageAttachments(source.substring(start), start, positions);
+    }
+    return positions;
+  }
+
+  private static void markEncodedImages(String source, int start, BitSet positions) {
+    StringBuilder decoded = new StringBuilder(source.length() - start);
+    int[] originalOffsets = new int[source.length() - start + 1];
+    Matcher entities = HTML_ENTITY.matcher(source).region(start, source.length());
+    int cursor = start;
+    while (entities.find()) {
+      appendSource(decoded, originalOffsets, source, cursor, entities.start());
+      int first = decoded.length();
+      decoded.append(StringEscapeUtils.unescapeHtml4(entities.group()));
+      Arrays.fill(originalOffsets, first, decoded.length(), entities.start());
+      cursor = entities.end();
+    }
+    appendSource(decoded, originalOffsets, source, cursor, source.length());
+    originalOffsets[decoded.length()] = source.length();
+    Matcher images = DECODED_IMAGE.matcher(decoded);
+    while (images.find()) {
+      positions.set(originalOffsets[images.start()], originalOffsets[images.end()]);
+    }
+  }
+
+  private static void appendSource(
+      StringBuilder decoded, int[] originalOffsets, String source, int start, int end) {
+    for (int index = start; index < end; index++) {
+      originalOffsets[decoded.length()] = index;
+      decoded.append(source.charAt(index));
+    }
+  }
+
+  private static void markImageAttachments(String html, int offset, BitSet positions) {
+    Parser parser = Parser.htmlParser().setTrackPosition(true);
+    for (Element image :
+        parser.parseInput(html, "").select("div[data-type=file-attachment][data-is-image=true]")) {
+      Range tag = image.sourceRange();
+      if (tag.isTracked()) {
+        positions.set(offset + tag.startPos(), offset + tag.endPos());
+      }
+    }
+  }
+
+  private static String stripDecodedImages(String decoded) {
     return decoded == null ? null : DECODED_IMAGE.matcher(decoded).replaceAll("");
   }
 

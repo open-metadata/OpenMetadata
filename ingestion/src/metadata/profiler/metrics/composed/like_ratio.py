@@ -44,7 +44,7 @@ class LikeRatio(ComposedMetric):
 
     def fn(self, res: dict[str, Any]) -> float | None:
         """
-        Safely compute null ratio based on the profiler
+        Safely compute LIKE ratio based on the profiler
         results of other Metrics
         """
         res_count = res.get(Count.name())

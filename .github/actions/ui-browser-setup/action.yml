@@ -1,67 +1,9 @@
 name: UI browser tests setup
-description: Node, ANTLR, yarn deps and Playwright Chromium for the Vitest browser suite.
+description: UI setup plus Playwright Chromium for the Vitest browser suite.
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v5
-      with:
-        node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-    - name: Restore Yarn dependencies
-      uses: actions/cache/restore@v6
-      with:
-        path: ~/.cache/yarn
-        key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
-        restore-keys: |
-          yarn-pkg-cache-${{ runner.os }}-
-    # The UI's postinstall needs the antlr4 CLI. `make install_antlr_cli` tries
-    # apt first, which took ~10 min on slow runners; use the Makefile's pinned
-    # jar (same version and checksum) from a cache instead.
-    # Pull requests only restore caches; merge-queue and manual runs save them.
-    - name: Restore ANTLR CLI
-      id: antlr-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: ~/.cache/antlr-cli
-        key: antlr-cli-4.9.2-bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd
-    - name: Install ANTLR CLI
-      if: steps.antlr-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        mkdir -p ~/.cache/antlr-cli
-        jar=$(mktemp)
-        sum="bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  $jar"
-        # Google's Central mirror first: repo1 throttles shared CI IPs with 429s (see Makefile install_antlr_cli).
-        for base in https://maven-central.storage-download.googleapis.com/maven2 https://repo1.maven.org/maven2; do
-          curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
-            --connect-timeout 15 --max-time 60 \
-            --output "$jar" "$base/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar" \
-            && echo "$sum" | sha256sum --check && break
-        done
-        echo "$sum" | sha256sum --check
-        { printf '%s\n' '#!/usr/bin/java -jar'; cat "$jar"; } > ~/.cache/antlr-cli/antlr4
-        chmod 755 ~/.cache/antlr-cli/antlr4
-    - name: Save ANTLR CLI
-      if: steps.antlr-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
-      uses: actions/cache/save@v6
-      with:
-        path: ~/.cache/antlr-cli
-        key: antlr-cli-4.9.2-bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd
-    - name: Put ANTLR CLI on PATH
-      shell: bash
-      run: |
-        echo "$HOME/.cache/antlr-cli" >> "$GITHUB_PATH"
-        "$HOME/.cache/antlr-cli/antlr4" 2>&1 | grep -q 'Version 4.9.2'
-    - name: Install Yarn packages
-      shell: bash
-      working-directory: openmetadata-ui/src/main/resources/ui
-      # The registry occasionally answers 502; retry rather than fail the job.
-      run: |
-        for attempt in 1 2 3; do
-          yarn install --frozen-lockfile --network-timeout 120000 && exit 0
-          echo "yarn install failed (attempt $attempt), retrying"
-          sleep 15
-        done
-        exit 1
+    - uses: ./.github/actions/setup-ui
     # Chromium is cached per Playwright version; the runner image already has
     # headless Chromium's system libraries, so no `--with-deps` (its apt fetch
     # from a slow mirror once cost a run ~10 minutes).

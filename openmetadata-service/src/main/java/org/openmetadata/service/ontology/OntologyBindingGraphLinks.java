@@ -147,15 +147,23 @@ public final class OntologyBindingGraphLinks {
     node.put("entityId", entity.getId().toString());
     node.put("type", entity.getType());
     node.put("group", entity.getType().toLowerCase(Locale.ROOT));
-    node.put(
+    putTextIfPresent(
+        node,
         "label",
         entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
             ? entity.getDisplayName()
             : entity.getName());
-    node.put("name", entity.getName());
-    node.put("fullyQualifiedName", entity.getFullyQualifiedName());
+    putTextIfPresent(node, "name", entity.getName());
+    putTextIfPresent(node, "fullyQualifiedName", entity.getFullyQualifiedName());
     if (entity.getDescription() != null && !entity.getDescription().isBlank()) {
       node.put("description", entity.getDescription());
+    }
+  }
+
+  private static void putTextIfPresent(
+      final ObjectNode node, final String field, final String value) {
+    if (value != null) {
+      node.put(field, value);
     }
   }
 

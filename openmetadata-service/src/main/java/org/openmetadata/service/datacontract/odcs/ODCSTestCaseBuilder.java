@@ -238,10 +238,15 @@ final class ODCSTestCaseBuilder {
           unsupported(
               rule,
               String.format(
-                  "OpenMetadata measures refresh frequency in hours or longer; the rule uses '%s'.",
+                  "OpenMetadata cannot express refresh frequency in '%s'.",
                   unit == null ? "no unit" : unit));
     } else if (frequency.isEmpty()) {
-      outcome = unsupportedComparison(rule);
+      outcome =
+          unsupported(
+              rule,
+              String.format(
+                  "The comparison (%s) does not specify a supported positive whole number in the 32-bit integer range.",
+                  ODCSRuleOperators.describe(rule)));
     } else {
       String column = ruleOnTarget.column();
       outcome =

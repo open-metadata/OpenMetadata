@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -554,6 +556,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
     if (ingestionPipeline.getAirflowConfig() != null
         && ingestionPipeline.getAirflowConfig().getPipelineTimezone() != null) {
       String timezone =
@@ -561,6 +564,33 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       ingestionPipeline
           .getAirflowConfig()
           .setPipelineTimezone(timezone == null ? TimezoneUtil.UTC : timezone);
+    }
+  }
+
+  static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface<?> parent) {
+    if (!PipelineType.TEST_SUITE.equals(pipeline.getPipelineType())) {
+      return;
+    }
+    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
+    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
+    if (!(parent instanceof TestSuite suite)
+        || !PipelineType.TEST_SUITE.value().equals(configType)) {
+      throw new BadRequestException(
+          "TestSuite pipeline requires a test suite and TestSuite config");
+    }
+    validateTestSuiteTable(suite, config.get("entityFullyQualifiedName"));
+  }
+
+  private static void validateTestSuiteTable(TestSuite suite, Object tableFqn) {
+    if (Boolean.TRUE.equals(suite.getBasic())) {
+      final EntityReference table = suite.getBasicEntityReference();
+      final String expected = table == null ? null : table.getFullyQualifiedName();
+      if (nullOrEmpty(expected) || (tableFqn != null && !expected.equals(tableFqn))) {
+        throw new BadRequestException("TestSuite pipeline table must match its test suite");
+      }
+    } else if (tableFqn != null) {
+      throw new BadRequestException(
+          "Logical test suite pipelines must omit entityFullyQualifiedName");
     }
   }
 
@@ -595,9 +625,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void restorePatchAttributes(
-      final IngestionPipeline original, final IngestionPipeline updated) {
-    super.restorePatchAttributes(original, updated);
+  protected void validatePatch(
+      IngestionPipeline original, IngestionPipeline updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
     updated.setService(original.getService());
   }
 
@@ -2011,9 +2041,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
     assertOwnsRunnerName(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse toggleIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    assertOwnsRunnerName(ingestionPipeline);
+    return pipelineServiceClient.toggleIngestion(ingestionPipeline);
   }
 
   /**
@@ -2094,6 +2133,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       RunOptions options) {
+    validateTestSuiteConfig(ingestionPipeline, service);
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)

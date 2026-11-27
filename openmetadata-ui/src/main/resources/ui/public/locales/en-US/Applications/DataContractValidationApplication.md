@@ -4,6 +4,10 @@ The Data Contract Validation application is designed to validate data contracts 
 
 ## SLA validation
 
+Choose **Minute** under **SLA → Refresh Frequency** for sub-hour freshness requirements. Native JSON and YAML use an integer interval and the singular unit, for example `"refreshFrequency": {"interval": 15, "unit": "minute"}` inside `sla`. The check passes when the most recent recorded refresh is at most 15 minutes old at evaluation time. The application schedule still controls when validation runs.
+
+ODCS uses the `freshness` SLA property with numeric `value: 15` and `unit: minute`. Imports also accept `minutes`, `mins`, and `m`. Upgrade clients that deserialize the native refresh unit before saving minute SLAs, since older clients may reject the new enum value.
+
 For tables, SLA validation uses refresh information already stored in OpenMetadata: the latest profile of the SLA column, collected system metrics, or the table's life cycle metadata, in that order. It does not query the source data during validation or create a freshness data quality test. Requirements without enough recorded information are shown as not evaluated.
 
 Profiler results reflect the data seen when the profiler ran. If an ETL updates a table hourly but the profiler runs daily or before the hourly load, validation can report a missed SLA even when the source data is current. Latency also reflects the age of the newest data when it was profiled. These results depend on the profiler's timing as well as the ETL's timing.

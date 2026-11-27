@@ -16,7 +16,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { ExpandPanel } from '@openmetadata/ui-core-components/icons';
+import { ExpandPanel, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
@@ -28,6 +28,8 @@ import {
   useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
+import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
+import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
 import SidebarBrand from './SidebarBrand';
@@ -143,6 +145,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarRailFooter();
   const recentSlots = useAppModeSidebarRecentRail();
+  const openSearch = useGlobalSearchStore((state) => state.openSearch);
 
   const toRailItem = (item: MainNavItem): RailItem => ({
     key: item.key,
@@ -178,6 +181,18 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
       </div>
 
       <nav className="ask-rail__nav">
+        <RailNavButton
+          item={{
+            key: 'search',
+            icon: Search,
+            label: t('label.name-with-shortcut', {
+              name: t('label.search'),
+              shortcut: OPEN_SEARCH_SHORTCUT,
+            }),
+            onClick: () => openSearch('all'),
+            isActive: false,
+          }}
+        />
         {nodes.map((node) =>
           node.type === 'more' ? (
             <MoreNavPopover items={node.children} key="more" variant="rail" />

@@ -241,8 +241,8 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 ### Failure handling
 
 - **A failure never becomes success, zero or empty.**
-  - Check returned statuses: `SystemRepository.createOrUpdate` returns a 500 `Response` instead of
-    throwing.
+  - Check returned statuses: `SystemRepository.createOrUpdate` returned a 500 `Response` instead
+    of throwing.
   - Validate the JSON shape instead of trusting `JsonNode.asLong()` defaults: a missing `hits.total`
     was reported as 0.
   - A failed or unknown read is not "nothing exists": `{}`, `set()` or `undefined` read downstream as

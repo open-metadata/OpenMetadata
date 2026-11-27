@@ -184,6 +184,21 @@ const resolveApprovalMode = (
     ? startNodeConfig.approvalMode
     : existingTriggerConfig?.approvalMode;
 
+const resolveTriggeringBots = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  hasUserChanges: boolean
+) => {
+  if (hasUserChanges && Array.isArray(startNodeConfig.triggeringBots)) {
+    // An explicitly cleared list means no bot starts the workflow and must not fall back to the saved list.
+    return startNodeConfig.triggeringBots.length > 0
+      ? startNodeConfig.triggeringBots
+      : undefined;
+  }
+
+  return existingTriggerConfig?.triggeringBots;
+};
+
 const buildEventBasedTriggerConfig = (
   startNodeConfig: NodeConfigWithMetadata,
   existingTriggerConfig: Record<string, unknown> | undefined,
@@ -247,6 +262,15 @@ const buildEventBasedTriggerConfig = (
   );
   if (approvalMode) {
     finalTriggerConfig.approvalMode = approvalMode;
+  }
+
+  const triggeringBots = resolveTriggeringBots(
+    startNodeConfig,
+    existingTriggerConfig,
+    hasUserChanges
+  );
+  if (triggeringBots) {
+    finalTriggerConfig.triggeringBots = triggeringBots;
   }
 
   return finalTriggerConfig;
