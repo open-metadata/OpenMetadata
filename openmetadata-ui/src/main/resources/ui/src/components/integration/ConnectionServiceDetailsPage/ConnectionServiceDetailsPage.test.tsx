@@ -476,6 +476,18 @@ jest.mock('./useServiceAssetCounts', () => ({
     mockUseServiceAssetCounts(...args),
 }));
 
+let mockIsAdminUser = true;
+jest.mock('../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
+}));
+
+let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
+  id: 'user-1',
+};
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
+}));
+
 let mockAgentCounts = { metadata: 0, collateAI: 0 };
 const mockUseServiceAgents = jest.fn();
 jest.mock('./useServiceAgents', () => ({
@@ -615,6 +627,8 @@ describe('ConnectionServiceDetailsPage', () => {
     mockFooterInset = 0;
     jest.clearAllMocks();
     mockTabParam = DATA_ASSETS_TAB_KEY;
+    mockIsAdminUser = true;
+    mockCurrentUser = { id: 'user-1' };
     mockServiceCategory = 'databaseServices';
     mockFqn = 'test-service';
     mockPermissions.database = {};
@@ -981,52 +995,59 @@ describe('ConnectionServiceDetailsPage', () => {
   });
 
   // As classic: metadata and security services have no child assets, so no data-assets or
-  // insights tab.
-  describe.each(['metadataServices', 'securityServices'])('%s', (category) => {
+  // insights tab; a security service has no agents either.
+  describe.each([
+    [
+      'metadataServices',
+      ['label.agent-plural', 'label.connection'],
+      'service-agents-tab',
+    ],
+    ['securityServices', ['label.connection'], 'edit-connection-button'],
+  ])('%s', (category, expectedTabs, defaultTabTestId) => {
     beforeEach(() => {
       mockServiceCategory = category;
       mockTabParam = undefined;
     });
 
-    it('offers no data-assets or insights tab and opens on the agents', async () => {
+    it('offers no data-assets or insights tab, as classic', async () => {
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-agents-tab')).toBeInTheDocument()
+        expect(screen.getByTestId(defaultTabTestId)).toBeInTheDocument()
       );
 
-      expect(tabLabels()).toEqual(['label.agent-plural', 'label.connection']);
+      expect(tabLabels()).toEqual(expectedTabs);
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
       expect(getDatabases).not.toHaveBeenCalled();
     });
 
-    it('lands a data-assets deep link on the agents instead', async () => {
+    it('lands a data-assets deep link on the default tab instead', async () => {
       mockTabParam = 'dataAssets';
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('service-agents-tab')).toBeInTheDocument()
+        expect(screen.getByTestId(defaultTabTestId)).toBeInTheDocument()
       );
 
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
     });
 
-    // Classic also hides the connection from those who may not edit it, leaving the agents.
-    it('offers a read-only user only the agents, without the connection', async () => {
+    // Classic also hides the connection from those who may not edit it.
+    it('offers a read-only user no connection tab, as classic', async () => {
       mockServicePermission = { ViewAll: true, ViewBasic: true };
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
-      await waitFor(() =>
-        expect(screen.getByTestId('service-agents-tab')).toBeInTheDocument()
-      );
-
-      expect(tabLabels()).toEqual(['label.agent-plural']);
+      expect(
+        within(screen.getByRole('tablist'))
+          .queryAllByRole('button')
+          .map((tab) => tab.textContent)
+      ).toEqual(expectedTabs.filter((label) => label !== 'label.connection'));
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
     });
   });
@@ -1701,6 +1722,41 @@ describe('ConnectionServiceDetailsPage', () => {
         'label.database-plural',
         'label.connection',
       ]);
+    });
+
+    it('offers the agents only to admins and the owners, as classic', async () => {
+      mockIsAdminUser = false;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('service-insights-tab')).toBeInTheDocument()
+      );
+
+      expect(tabLabels()).not.toContain('label.agent-plural');
+    });
+
+    it.each([
+      ['owns the service', { id: 'owner-1' }],
+      ['is in an owner team', { id: 'user-2', teams: [{ id: 'team-1' }] }],
+    ])('offers the agents to a non-admin who %s', async (_, user) => {
+      mockIsAdminUser = false;
+      mockCurrentUser = user;
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        owners: [
+          { id: 'owner-1', type: 'user' },
+          { id: 'team-1', type: 'team' },
+        ],
+      });
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => expect(tabLabels()).toContain('label.agent-plural'));
     });
 
     it('badges the agents tab with the metadata and AI agents together', async () => {

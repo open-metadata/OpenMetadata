@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../../constants/ServiceInsightsTab.constants';
@@ -79,6 +79,10 @@ export const useServiceAgents = ({
   const { t } = useTranslation();
   const serviceFqn = serviceDetails?.fullyQualifiedName ?? '';
   const isServiceDeleted = serviceDetails?.deleted ?? false;
+  // The page stays mounted when it navigates to another service, so a response that lands after the
+  // switch belongs to the previous service and must not be stored.
+  const currentFqnRef = useRef(serviceFqn);
+  currentFqnRef.current = serviceFqn;
 
   const {
     isPending: isAgentActionPending,
@@ -133,14 +137,20 @@ export const useServiceAgents = ({
           pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
           limit,
         });
-        setIngestionPipelines(response.data ?? []);
-        handleIngestionPagingChange(response.paging ?? ({} as Paging));
+        if (currentFqnRef.current === serviceFqn) {
+          setIngestionPipelines(response.data ?? []);
+          handleIngestionPagingChange(response.paging ?? ({} as Paging));
+        }
       } catch (error) {
-        setIngestionPipelines([]);
-        handleIngestionPagingChange({} as Paging);
-        showErrorToast(error as AxiosError);
+        if (currentFqnRef.current === serviceFqn) {
+          setIngestionPipelines([]);
+          handleIngestionPagingChange({} as Paging);
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsIngestionPipelineLoading(false);
+        if (currentFqnRef.current === serviceFqn) {
+          setIsIngestionPipelineLoading(false);
+        }
       }
     },
     [serviceFqn, serviceCategory, handleIngestionPagingChange]
@@ -160,12 +170,18 @@ export const useServiceAgents = ({
         serviceFqn,
         getEntityTypeFromServiceCategory(serviceCategory)
       );
-      setCollateAgentsList(data);
-      handleCollateAgentPagingChange({ total: data.length });
+      if (currentFqnRef.current === serviceFqn) {
+        setCollateAgentsList(data);
+        handleCollateAgentPagingChange({ total: data.length });
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (currentFqnRef.current === serviceFqn) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsCollateAgentLoading(false);
+      if (currentFqnRef.current === serviceFqn) {
+        setIsCollateAgentLoading(false);
+      }
     }
   }, [
     fetchAiAgents,
@@ -195,24 +211,35 @@ export const useServiceAgents = ({
         ),
       });
       const mainInstanceState = workflowInstances.data[0];
-      if (mainInstanceState?.id) {
-        const workflowInstanceStates = await getWorkflowInstanceStateById(
-          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-          mainInstanceState.id,
-          { startTs, endTs }
-        );
-        setWorkflowStatesData({
-          mainInstanceState,
-          subInstanceStates: workflowInstanceStates.data,
-        });
+      const subInstanceStates = mainInstanceState?.id
+        ? (
+            await getWorkflowInstanceStateById(
+              SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+              mainInstanceState.id,
+              { startTs, endTs }
+            )
+          ).data
+        : undefined;
+      if (currentFqnRef.current !== serviceFqn) {
+        return undefined;
       }
+      // Cleared when the service has no run, so a service never shows another's states.
+      setWorkflowStatesData(
+        mainInstanceState && subInstanceStates
+          ? { mainInstanceState, subInstanceStates }
+          : undefined
+      );
 
       // Returned as well as stored: the trigger acts on the status it just read.
       return mainInstanceState;
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (currentFqnRef.current === serviceFqn) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsWorkflowStatusLoading(false);
+      if (currentFqnRef.current === serviceFqn) {
+        setIsWorkflowStatusLoading(false);
+      }
     }
 
     return undefined;

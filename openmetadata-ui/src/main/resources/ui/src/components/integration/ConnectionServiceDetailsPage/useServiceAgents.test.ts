@@ -175,6 +175,80 @@ describe('useServiceAgents', () => {
     expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
   });
 
+  it("drops the previous service's AutoPilot run when the page moves to a service with none", async () => {
+    (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+      ({ entityLink }: { entityLink: string }) =>
+        Promise.resolve({
+          data: entityLink.includes('service-a') ? [runningInstance] : [],
+        })
+    );
+    const { result, rerender } = renderHook(
+      ({ serviceDetails }: { serviceDetails: ServicesType }) =>
+        useServiceAgents({
+          serviceCategory: ServiceCategory.DATABASE_SERVICES,
+          serviceDetails,
+          fetchAiAgents: false,
+        }),
+      {
+        initialProps: {
+          serviceDetails: { fullyQualifiedName: 'service-a' } as ServicesType,
+        },
+      }
+    );
+    await waitFor(() =>
+      expect(result.current.workflowStatesData).toBeDefined()
+    );
+
+    rerender({
+      serviceDetails: { fullyQualifiedName: 'service-b' } as ServicesType,
+    });
+
+    await waitFor(() =>
+      expect(result.current.workflowStatesData).toBeUndefined()
+    );
+    await waitFor(() =>
+      expect(result.current.autoPilotAction.isDisabled).toBe(false)
+    );
+  });
+
+  it("ignores a previous service's pipelines that land after the switch", async () => {
+    let resolveA: (value: unknown) => void = () => undefined;
+    (getIngestionPipelines as jest.Mock).mockImplementation(
+      ({ serviceFilter }: { serviceFilter: string }) =>
+        serviceFilter === 'service-a'
+          ? new Promise((resolve) => {
+              resolveA = resolve;
+            })
+          : Promise.resolve({ data: [{ id: 'b1' }], paging: { total: 1 } })
+    );
+    const { result, rerender } = renderHook(
+      ({ serviceDetails }: { serviceDetails: ServicesType }) =>
+        useServiceAgents({
+          serviceCategory: ServiceCategory.DATABASE_SERVICES,
+          serviceDetails,
+          fetchAiAgents: false,
+        }),
+      {
+        initialProps: {
+          serviceDetails: { fullyQualifiedName: 'service-a' } as ServicesType,
+        },
+      }
+    );
+
+    rerender({
+      serviceDetails: { fullyQualifiedName: 'service-b' } as ServicesType,
+    });
+    await waitFor(() =>
+      expect(result.current.ingestionPipelines).toEqual([{ id: 'b1' }])
+    );
+
+    await act(async () => {
+      resolveA({ data: [{ id: 'a1' }], paging: { total: 1 } });
+    });
+
+    expect(result.current.ingestionPipelines).toEqual([{ id: 'b1' }]);
+  });
+
   describe('AutoPilot action', () => {
     it('is enabled once the status is known and no run is in flight', async () => {
       const { result } = renderAgents();

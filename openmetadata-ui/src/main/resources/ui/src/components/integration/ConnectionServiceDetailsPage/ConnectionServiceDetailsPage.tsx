@@ -58,7 +58,9 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
+import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ConfigData, ServicesType } from '../../../interface/service.interface';
@@ -143,7 +145,7 @@ interface DetailsTab {
   badgeComponent?: FC<PluginEntityDetailsContext>;
 }
 
-// OSS built-in tabs. A plugin (e.g. Collate's summary/insights/agents) contributes the rest via
+// OSS built-in tabs. A plugin (e.g. Collate's summary) contributes the rest via
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
 // contribution land before or after these without either side knowing about the other.
 const INSIGHTS_TAB_ORDER = 20;
@@ -211,6 +213,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
+  const { isAdminUser } = useAuth();
+  const { currentUser } = useApplicationStore();
 
   const [activeTab, setActiveTab] = useState<TabKey>(
     () => tab ?? DATA_ASSETS_TAB_KEY
@@ -699,6 +703,14 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     serviceDetails,
     fetchAiAgents: hasAiAgentsWidget,
   });
+  // As classic: the agents are shown to the service's owners (or their teams) and admins, and
+  // never on a security service.
+  const ownerIds = serviceDetails.owners?.map((owner) => owner.id) ?? [];
+  const showAgentsTab =
+    serviceCategory !== ServiceCategory.SECURITY_SERVICES &&
+    (isAdminUser ||
+      ownerIds.includes(currentUser?.id ?? '') ||
+      Boolean(currentUser?.teams?.some((team) => ownerIds.includes(team.id))));
   const totalAgentsCount =
     agentsState.agentCounts[ServiceAgentSubTabs.METADATA] +
     agentsState.agentCounts[ServiceAgentSubTabs.COLLATE_AI];
@@ -788,7 +800,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
     );
 
-  // Contributed tabs (e.g. Collate's summary/insights/agents, ordered 10/20/30) sort ahead of the
+  // Contributed tabs (e.g. Collate's summary, ordered 10) sort ahead of the
   // OSS built-ins by design — `order` is the only coupling between this page and what a plugin adds,
   // so either side can change independently. A contribution with no `order` sorts after every built
   // in tab but keeps its registration order relative to other order-less contributions.
@@ -804,12 +816,16 @@ const ConnectionServiceDetailsPage: React.FC = () => {
             },
           ]
         : []),
-      {
-        key: EntityTabs.AGENTS,
-        label: t('label.agent-plural'),
-        order: AGENTS_TAB_ORDER,
-        badge: totalAgentsCount || undefined,
-      },
+      ...(showAgentsTab
+        ? [
+            {
+              key: EntityTabs.AGENTS,
+              label: t('label.agent-plural'),
+              order: AGENTS_TAB_ORDER,
+              badge: totalAgentsCount || undefined,
+            },
+          ]
+        : []),
       ...(hasDataAssetsTab
         ? [
             {
@@ -864,6 +880,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     assetCounts,
     hasDataAssetsTab,
     totalAgentsCount,
+    showAgentsTab,
   ]);
 
   const allTabKeys = useMemo(
