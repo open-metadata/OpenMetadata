@@ -41,6 +41,7 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -48,6 +49,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 class McpReadOnlyModeTest {
 
   private static final String TOKEN = "token";
+  private static final String SEARCH_METADATA = "search_metadata";
+  private static final String SEMANTIC_SEARCH = "semantic_search";
 
   private static final Set<String> WITHHELD_TOOLS =
       Set.of(
@@ -134,10 +137,61 @@ class McpReadOnlyModeTest {
 
   @Test
   void theServerClientsReachHidesWriteToolsInReadOnlyMode() {
+    List<String> listed = listTools(READ_ONLY);
+
+    WITHHELD_TOOLS.forEach(tool -> assertFalse(listed.contains(tool), tool + " is a write tool"));
+    assertTrue(listed.contains(SEARCH_METADATA));
+  }
+
+  @Test
+  void nonEmptyAllowlistOffersOnlyExactMatches() {
+    assertEquals(List.of(SEARCH_METADATA), listTools(configOffering(SEARCH_METADATA, "semantic")));
+  }
+
+  @Test
+  void emptyAllowlistOffersEveryRegisteredTool() {
+    assertEquals(
+        Set.copyOf(names(new McpServer().getTools())), Set.copyOf(listTools(configOffering())));
+  }
+
+  @Test
+  void reuseDisabledToolErrorWhenACallIsOutsideTheAllowlist() {
+    var toolContext = succeedingToolContext();
+    var disabled = new MCPConfiguration().withDisabledTools(Set.of(SEMANTIC_SEARCH));
+
+    var refused = call(toolContext, SEMANTIC_SEARCH, configOffering(SEARCH_METADATA));
+
+    assertTrue(refused.isError());
+    assertEquals(call(toolContext, SEMANTIC_SEARCH, disabled), refused);
+  }
+
+  @Test
+  void disabledToolsStillWinOverTheAllowlist() {
+    var config =
+        configOffering(SEARCH_METADATA, SEMANTIC_SEARCH).withDisabledTools(Set.of(SEMANTIC_SEARCH));
+
+    assertEquals(List.of(SEARCH_METADATA), listTools(config));
+    assertTrue(call(succeedingToolContext(), SEMANTIC_SEARCH, config).isError());
+  }
+
+  @Test
+  void readOnlyModeStillWinsOverTheAllowlist() {
+    var config = configOffering(SEARCH_METADATA, "patch_entity").withReadOnly(true);
+
+    assertEquals(List.of(SEARCH_METADATA), listTools(config));
+    assertTrue(call(succeedingToolContext(), "patch_entity", config).isError());
+  }
+
+  private static MCPConfiguration configOffering(String... names) {
+    return JsonUtils.convertValueLenient(
+        Map.of("offeredTools", List.of(names)), MCPConfiguration.class);
+  }
+
+  private static List<String> listTools(MCPConfiguration config) {
     McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
     McpServer mcpServer = new McpServer();
     McpStatelessSyncServer server =
-        McpServer.buildServer(transport, mcpServer.buildServerCapabilities(), () -> READ_ONLY);
+        McpServer.buildServer(transport, mcpServer.buildServerCapabilities(), () -> config);
     mcpServer.addToolsToServer(server, mcpServer.getTools());
     ArgumentCaptor<McpStatelessServerHandler> handler =
         ArgumentCaptor.forClass(McpStatelessServerHandler.class);
@@ -151,9 +205,7 @@ class McpReadOnlyModeTest {
                 new McpSchema.JSONRPCRequest(McpSchema.METHOD_TOOLS_LIST, 1))
             .block();
 
-    List<String> listed = names(((McpSchema.ListToolsResult) response.result()).tools());
-    WITHHELD_TOOLS.forEach(tool -> assertFalse(listed.contains(tool), tool + " is a write tool"));
-    assertTrue(listed.contains("search_metadata"));
+    return names(((McpSchema.ListToolsResult) response.result()).tools());
   }
 
   @Test
