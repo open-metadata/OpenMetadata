@@ -42,13 +42,14 @@ class PandasRunner:
     """
     Runner for pandas-based data quality tests.
 
-    This class does not extend list, but implements __iter__ and __call__ to
-    maintain backwards compatibility with existing validators that expect
-    self.runner to be iterable like a List[DataFrame]. It also provides
-    access to the raw (unpartitioned, unsampled) dataset via the raw_dataset property.
+    This class is not a list subclass. It implements __iter__ and __call__ to
+    maintain backwards compatibility with existing validators that iterate over
+    self.runner as if it were a List[DataFrame]; indexing, slicing and other
+    list methods are not supported. It also provides access to the raw
+    (unpartitioned, unsampled) dataset via the raw_dataset property.
 
     Usage:
-        - for df in self.runner: - works (backwards compatible)
+        - for df in self.runner, self.runner() - works (backwards compatible)
         - self.runner.dataset - returns the processed dataset (same as iterating)
         - self.runner.raw_dataset - returns the raw, unpartitioned/unsampled dataset
     """
@@ -77,7 +78,8 @@ class PandasRunner:
     def dataset(self) -> Iterator["DataFrame"]:
         """Get the processed dataset (may be partitioned/sampled).
 
-        Returns the runner itself as a list for API consistency with QueryRunner.
+        Returns an iterator over the dataframes, equivalent to calling
+        the runner, for API consistency with QueryRunner.
         """
         return self._dataset()
 
