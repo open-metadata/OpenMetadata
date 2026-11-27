@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -48,8 +50,10 @@ import org.openmetadata.schema.api.lineage.openlineage.UnresolvedEntity;
 import org.openmetadata.schema.configuration.OpenLineageEventType;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.IndirectColumn;
 import org.openmetadata.schema.type.LineageDetails;
 
 @Slf4j
@@ -63,6 +67,20 @@ public class OpenLineageMapper {
   /** What every edge of one event shares. */
   private record EdgeDetails(
       String description, EntityReference pipeline, String sqlQuery, long eventTimeMs) {}
+
+  /** Display text and structured type/subtype extracted for one input column transformation. */
+  private record ColumnTransformation(
+      String function, String transformationType, String transformationSubtype) {}
+
+  /** Per-output column lineage and dataset-level indirect columns extracted from a facet. */
+  private record ExtractedColumnLineage(
+      List<ColumnLineage> columns, List<IndirectColumn> indirectColumns) {}
+
+  /** Column-level lineage payload attached to a single upstream-to-downstream edge. */
+  private record EdgeColumnData(
+      List<ColumnLineage> columns,
+      List<IndirectColumn> indirectColumns,
+      DependencyType dependencyType) {}
 
   /**
    * The stored columns of one dataset, which say how a field is written in a column FQN. A field
@@ -170,12 +188,19 @@ public class OpenLineageMapper {
     List<AddLineage> lineageRequests = new ArrayList<>();
     outputs.forEach(
         (output, outputRef) -> {
-          List<ColumnLineage> columnLineages =
+          ExtractedColumnLineage extracted =
               extractColumnLineage(output, inputsByName, inputColumns, outputRef);
           for (EntityReference inputRef : inputs.values()) {
+            String inputFqn = inputRef.getFullyQualifiedName();
             List<ColumnLineage> relevantColumnLineage =
-                filterColumnLineageForInput(columnLineages, inputRef.getFullyQualifiedName());
-            lineageRequests.add(buildEdge(details, inputRef, outputRef, relevantColumnLineage));
+                filterColumnLineageForInput(extracted.columns(), inputFqn);
+            List<IndirectColumn> relevantIndirectColumns =
+                filterIndirectColumnsForInput(extracted.indirectColumns(), inputFqn);
+            DependencyType dependencyType =
+                computeDependencyType(relevantColumnLineage, relevantIndirectColumns);
+            EdgeColumnData columnData =
+                new EdgeColumnData(relevantColumnLineage, relevantIndirectColumns, dependencyType);
+            lineageRequests.add(buildEdge(details, inputRef, outputRef, columnData));
           }
         });
     return lineageRequests;
@@ -185,14 +210,17 @@ public class OpenLineageMapper {
       EdgeDetails details,
       EntityReference inputRef,
       EntityReference outputRef,
-      List<ColumnLineage> columnLineage) {
+      EdgeColumnData columnData) {
     LineageDetails lineageDetails =
         new LineageDetails()
             .withSource(LineageDetails.Source.OPEN_LINEAGE)
             .withDescription(details.description())
             .withPipeline(details.pipeline())
             .withSqlQuery(details.sqlQuery())
-            .withColumnsLineage(columnLineage.isEmpty() ? null : columnLineage)
+            .withColumnsLineage(columnData.columns().isEmpty() ? null : columnData.columns())
+            .withIndirectColumns(
+                columnData.indirectColumns().isEmpty() ? null : columnData.indirectColumns())
+            .withDependencyType(columnData.dependencyType())
             .withCreatedAt(details.eventTimeMs())
             .withUpdatedAt(details.eventTimeMs())
             .withCreatedBy(OPEN_LINEAGE_USER)
@@ -326,81 +354,224 @@ public class OpenLineageMapper {
     return null;
   }
 
-  private List<ColumnLineage> extractColumnLineage(
+  private ExtractedColumnLineage extractColumnLineage(
       OpenLineageOutputDataset output,
       Map<String, EntityReference> inputsByName,
       Map<String, DatasetColumns> inputColumns,
       EntityReference outputRef) {
-
+    ColumnLineageFacet columnLineageFacet = resolveColumnLineageFacet(output);
     List<ColumnLineage> columnLineages = new ArrayList<>();
+    List<IndirectColumn> indirectColumns = new ArrayList<>();
+    if (columnLineageFacet != null) {
+      if (columnLineageFacet.getFields() != null) {
+        columnLineages =
+            extractFieldLineages(
+                columnLineageFacet.getFields(), inputsByName, inputColumns, outputRef);
+      }
+      if (!nullOrEmpty(columnLineageFacet.getDataset())) {
+        indirectColumns =
+            extractDatasetIndirectColumns(
+                columnLineageFacet.getDataset(), inputsByName, inputColumns);
+      }
+    }
+    return new ExtractedColumnLineage(columnLineages, indirectColumns);
+  }
 
-    // Check outputFacets first (OpenLineage spec location), fall back to dataset facets
-    ColumnLineageFacet columnLineageFacet = null;
+  private static ColumnLineageFacet resolveColumnLineageFacet(OpenLineageOutputDataset output) {
     OutputDatasetFacets outputFacets = output.getOutputFacets();
-    if (outputFacets != null) {
-      columnLineageFacet = outputFacets.getColumnLineage();
+    ColumnLineageFacet facet = outputFacets != null ? outputFacets.getColumnLineage() : null;
+    if (facet == null && output.getFacets() != null) {
+      facet = output.getFacets().getColumnLineage();
     }
-    if (columnLineageFacet == null && output.getFacets() != null) {
-      columnLineageFacet = output.getFacets().getColumnLineage();
-    }
-    if (columnLineageFacet == null || columnLineageFacet.getFields() == null) {
-      return columnLineages;
-    }
+    return facet;
+  }
 
+  private List<ColumnLineage> extractFieldLineages(
+      Fields fieldsWrapper,
+      Map<String, EntityReference> inputsByName,
+      Map<String, DatasetColumns> inputColumns,
+      EntityReference outputRef) {
+    List<ColumnLineage> columnLineages = new ArrayList<>();
     DatasetColumns outputColumns = readColumns(outputRef);
-
-    Fields fieldsWrapper = columnLineageFacet.getFields();
     Map<String, ColumnLineageField> fields = fieldsWrapper.getAdditionalProperties();
     for (Map.Entry<String, ColumnLineageField> entry : fields.entrySet()) {
-      String outputColumnName = entry.getKey();
       ColumnLineageField fieldInfo = entry.getValue();
-
-      if (fieldInfo.getInputFields() == null || fieldInfo.getInputFields().isEmpty()) {
-        continue;
+      if (fieldInfo != null && !nullOrEmpty(fieldInfo.getInputFields())) {
+        appendFieldLineages(
+            columnLineages,
+            outputColumns.columnFqn(entry.getKey()),
+            fieldInfo,
+            inputsByName,
+            inputColumns);
       }
+    }
+    return columnLineages;
+  }
 
-      Map<String, List<String>> columnsByFunction = new LinkedHashMap<>();
-      for (InputField inputField : fieldInfo.getInputFields()) {
+  private void appendFieldLineages(
+      List<ColumnLineage> columnLineages,
+      String toColumn,
+      ColumnLineageField fieldInfo,
+      Map<String, EntityReference> inputsByName,
+      Map<String, DatasetColumns> inputColumns) {
+    Map<ColumnTransformation, List<String>> columnsByTransform = new LinkedHashMap<>();
+    for (InputField inputField : fieldInfo.getInputFields()) {
+      String inputOlName =
+          buildOpenLineageDatasetName(inputField.getNamespace(), inputField.getName());
+      EntityReference inputRef = inputsByName.get(inputOlName);
+      if (inputRef != null) {
+        DatasetColumns input =
+            inputColumns.computeIfAbsent(inputOlName, name -> readColumns(inputRef));
+        columnsByTransform
+            .computeIfAbsent(
+                extractColumnTransformation(inputField, fieldInfo), ignored -> new ArrayList<>())
+            .add(input.columnFqn(inputField.getField()));
+      }
+    }
+    columnsByTransform.forEach(
+        (transformation, columns) ->
+            columnLineages.add(
+                new ColumnLineage()
+                    .withToColumn(toColumn)
+                    .withFromColumns(columns)
+                    .withFunction(transformation.function())
+                    .withTransformationType(transformation.transformationType())
+                    .withTransformationSubtype(transformation.transformationSubtype())));
+  }
+
+  private List<IndirectColumn> extractDatasetIndirectColumns(
+      List<InputField> datasetFields,
+      Map<String, EntityReference> inputsByName,
+      Map<String, DatasetColumns> inputColumns) {
+    Set<IndirectColumn> indirectColumns = new LinkedHashSet<>();
+    for (InputField inputField : datasetFields) {
+      if (inputField != null && StringUtils.isNotBlank(inputField.getField())) {
         String inputOlName =
             buildOpenLineageDatasetName(inputField.getNamespace(), inputField.getName());
         EntityReference inputRef = inputsByName.get(inputOlName);
         if (inputRef != null) {
           DatasetColumns input =
               inputColumns.computeIfAbsent(inputOlName, name -> readColumns(inputRef));
-          columnsByFunction
-              .computeIfAbsent(columnFunction(inputField, fieldInfo), ignored -> new ArrayList<>())
-              .add(input.columnFqn(inputField.getField()));
+          appendDatasetIndirectColumns(
+              indirectColumns,
+              input.columnFqn(inputField.getField()),
+              inputField.getTransformations());
         }
       }
-
-      String toColumn = outputColumns.columnFqn(outputColumnName);
-      columnsByFunction.forEach(
-          (function, columns) ->
-              columnLineages.add(
-                  new ColumnLineage()
-                      .withToColumn(toColumn)
-                      .withFromColumns(columns)
-                      .withFunction(function)));
     }
-
-    return columnLineages;
+    return new ArrayList<>(indirectColumns);
   }
 
-  private static String columnFunction(InputField inputField, ColumnLineageField fieldInfo) {
+  private static void appendDatasetIndirectColumns(
+      Set<IndirectColumn> indirectColumns,
+      String fromColumn,
+      List<InputFieldTransformation> transformations) {
+    List<InputFieldTransformation> usable =
+        nullOrEmpty(transformations)
+            ? List.of()
+            : transformations.stream()
+                .filter(Objects::nonNull)
+                .filter(OpenLineageMapper::hasTransformationDetail)
+                .toList();
+    if (usable.isEmpty()) {
+      indirectColumns.add(
+          new IndirectColumn()
+              .withFromColumn(fromColumn)
+              .withTransformationType(DependencyType.INDIRECT.value()));
+    } else {
+      for (InputFieldTransformation transformation : usable) {
+        indirectColumns.add(toIndirectColumn(fromColumn, transformation));
+      }
+    }
+  }
+
+  private static boolean hasTransformationDetail(InputFieldTransformation transformation) {
+    return StringUtils.isNotBlank(transformation.getType())
+        || StringUtils.isNotBlank(transformation.getSubtype())
+        || StringUtils.isNotBlank(transformation.getDescription());
+  }
+
+  private static IndirectColumn toIndirectColumn(
+      String fromColumn, InputFieldTransformation transformation) {
+    String type =
+        StringUtils.isNotBlank(transformation.getType())
+            ? transformation.getType().strip()
+            : DependencyType.INDIRECT.value();
+    String subtype =
+        StringUtils.isNotBlank(transformation.getSubtype())
+            ? transformation.getSubtype().strip()
+            : null;
+    String description =
+        StringUtils.isNotBlank(transformation.getDescription())
+            ? transformation.getDescription().strip()
+            : null;
+    return new IndirectColumn()
+        .withFromColumn(fromColumn)
+        .withTransformationType(type)
+        .withTransformationSubtype(subtype)
+        .withDescription(description);
+  }
+
+  private static ColumnTransformation extractColumnTransformation(
+      InputField inputField, ColumnLineageField fieldInfo) {
+    List<InputFieldTransformation> usable = usableTransformations(inputField);
+    String function = formatColumnFunction(usable, fieldInfo);
+    String transformationType = null;
+    String transformationSubtype = null;
+    if (!usable.isEmpty()) {
+      InputFieldTransformation primary = primaryTransformation(usable);
+      transformationType = primary.getType().strip();
+      transformationSubtype =
+          StringUtils.isNotBlank(primary.getSubtype()) ? primary.getSubtype().strip() : null;
+    } else if (isDependencyTypeValue(fieldInfo.getTransformationType())) {
+      transformationType = fieldInfo.getTransformationType().strip().toUpperCase(Locale.ROOT);
+    }
+    return new ColumnTransformation(function, transformationType, transformationSubtype);
+  }
+
+  private static List<InputFieldTransformation> usableTransformations(InputField inputField) {
+    List<InputFieldTransformation> result = List.of();
     if (!nullOrEmpty(inputField.getTransformations())) {
-      String function =
+      result =
           inputField.getTransformations().stream()
               .filter(Objects::nonNull)
               .filter(transformation -> StringUtils.isNotBlank(transformation.getType()))
+              .toList();
+    }
+    return result;
+  }
+
+  private static InputFieldTransformation primaryTransformation(
+      List<InputFieldTransformation> usable) {
+    return usable.stream()
+        .filter(
+            transformation ->
+                DependencyType.DIRECT.value().equalsIgnoreCase(transformation.getType().strip()))
+        .findFirst()
+        .orElse(usable.getFirst());
+  }
+
+  private static boolean isDependencyTypeValue(String value) {
+    return StringUtils.isNotBlank(value)
+        && (DependencyType.DIRECT.value().equalsIgnoreCase(value.strip())
+            || DependencyType.INDIRECT.value().equalsIgnoreCase(value.strip()));
+  }
+
+  private static String formatColumnFunction(
+      List<InputFieldTransformation> usable, ColumnLineageField fieldInfo) {
+    String function;
+    if (!usable.isEmpty()) {
+      function =
+          usable.stream()
               .map(OpenLineageMapper::describeTransformation)
               .collect(Collectors.joining(", "));
-      if (!function.isEmpty()) {
-        return function;
-      }
+    } else {
+      function =
+          StringUtils.isNotBlank(fieldInfo.getTransformationDescription())
+              ? fieldInfo.getTransformationDescription()
+              : StringUtils.defaultIfBlank(fieldInfo.getTransformationType(), null);
     }
-    return StringUtils.isNotBlank(fieldInfo.getTransformationDescription())
-        ? fieldInfo.getTransformationDescription()
-        : StringUtils.defaultIfBlank(fieldInfo.getTransformationType(), null);
+    return function;
   }
 
   private static String describeTransformation(InputFieldTransformation transformation) {
@@ -432,11 +603,61 @@ public class OpenLineageMapper {
             new ColumnLineage()
                 .withFromColumns(relevantFromColumns)
                 .withToColumn(cl.getToColumn())
-                .withFunction(cl.getFunction());
+                .withFunction(cl.getFunction())
+                .withTransformationType(cl.getTransformationType())
+                .withTransformationSubtype(cl.getTransformationSubtype());
         filtered.add(filteredCl);
       }
     }
     return filtered;
+  }
+
+  private static List<IndirectColumn> filterIndirectColumnsForInput(
+      List<IndirectColumn> allIndirectColumns, String inputFqn) {
+    List<IndirectColumn> filtered = new ArrayList<>();
+    String prefix = inputFqn + ".";
+    for (IndirectColumn indirectColumn : allIndirectColumns) {
+      if (indirectColumn.getFromColumn() != null
+          && indirectColumn.getFromColumn().startsWith(prefix)) {
+        filtered.add(indirectColumn);
+      }
+    }
+    return filtered;
+  }
+
+  static DependencyType computeDependencyType(
+      List<ColumnLineage> columns, List<IndirectColumn> indirectColumns) {
+    DependencyType resolved;
+    if (nullOrEmpty(columns) && nullOrEmpty(indirectColumns)) {
+      resolved = null;
+    } else if (hasDirectSignal(columns, indirectColumns)) {
+      resolved = DependencyType.DIRECT;
+    } else {
+      resolved = DependencyType.INDIRECT;
+    }
+    return resolved;
+  }
+
+  private static boolean hasDirectSignal(
+      List<ColumnLineage> columns, List<IndirectColumn> indirectColumns) {
+    boolean directColumn =
+        !nullOrEmpty(columns)
+            && columns.stream()
+                .anyMatch(
+                    column ->
+                        !DependencyType.INDIRECT
+                            .value()
+                            .equalsIgnoreCase(column.getTransformationType()));
+    boolean directDataset =
+        !nullOrEmpty(indirectColumns)
+            && indirectColumns.stream()
+                .anyMatch(
+                    indirect ->
+                        StringUtils.isNotBlank(indirect.getTransformationType())
+                            && !DependencyType.INDIRECT
+                                .value()
+                                .equalsIgnoreCase(indirect.getTransformationType()));
+    return directColumn || directDataset;
   }
 
   private static String buildOpenLineageDatasetName(String namespace, String name) {

@@ -46,6 +46,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
@@ -1566,6 +1567,106 @@ class LineageSceneResolverTest {
 
   private static String id(String value) {
     return uuid(value).toString();
+  }
+
+  @Test
+  void assetScenePropagatesEdgeDependencyType() {
+    EsLineageData indirectEdge =
+        edge("orders-sales", ORDERS, Entity.TABLE, SALES_DASHBOARD, Entity.DASHBOARD)
+            .withDependencyType(DependencyType.INDIRECT);
+    EsLineageData directEdge =
+        edge("customers-exec", CUSTOMERS, Entity.TABLE, EXEC_DASHBOARD, Entity.DASHBOARD)
+            .withDependencyType(DependencyType.DIRECT);
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("id")),
+                dashboard(SALES_DASHBOARD),
+                dashboard(EXEC_DASHBOARD)),
+            List.of(indirectEdge, directEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(null, null, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    Map<String, DependencyType> typesByUnderlying =
+        scene.getEdges().stream()
+            .collect(
+                Collectors.toMap(
+                    e -> e.getUnderlyingEdgeIds().getFirst(),
+                    LineageSceneEdge::getDependencyType));
+    assertEquals(DependencyType.INDIRECT, typesByUnderlying.get("orders-sales"));
+    assertEquals(DependencyType.DIRECT, typesByUnderlying.get("customers-exec"));
+  }
+
+  @Test
+  void layerSceneRollupKeepsIndirectOnlyWhenAllEdgesAreIndirect() {
+    EsLineageData indirectOne =
+        edge("orders-sales", ORDERS, Entity.TABLE, SALES_DASHBOARD, Entity.DASHBOARD)
+            .withDependencyType(DependencyType.INDIRECT);
+    EsLineageData indirectTwo =
+        edge("orders-exec", ORDERS, Entity.TABLE, EXEC_DASHBOARD, Entity.DASHBOARD)
+            .withDependencyType(DependencyType.INDIRECT);
+    SearchLineageResult allIndirectLineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                dashboard(SALES_DASHBOARD),
+                dashboard(EXEC_DASHBOARD)),
+            List.of(indirectOne, indirectTwo));
+
+    LineageScene allIndirectScene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.LAYER, allIndirectLineage, 200);
+
+    assertEquals(1, allIndirectScene.getEdges().size());
+    assertEquals(
+        DependencyType.INDIRECT, allIndirectScene.getEdges().getFirst().getDependencyType());
+
+    EsLineageData directTwo =
+        edge("orders-exec", ORDERS, Entity.TABLE, EXEC_DASHBOARD, Entity.DASHBOARD)
+            .withDependencyType(DependencyType.DIRECT);
+    SearchLineageResult mixedLineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                dashboard(SALES_DASHBOARD),
+                dashboard(EXEC_DASHBOARD)),
+            List.of(indirectOne, directTwo));
+
+    LineageScene mixedScene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.LAYER, mixedLineage, 200);
+
+    assertEquals(1, mixedScene.getEdges().size());
+    assertEquals(DependencyType.DIRECT, mixedScene.getEdges().getFirst().getDependencyType());
+  }
+
+  @Test
+  void fieldScenePropagatesColumnTransformationDependencyType() {
+    EsLineageData columnEdge =
+        edge("orders-customers", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE)
+            .withDependencyType(DependencyType.DIRECT)
+            .withColumns(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of(ORDERS + ".id"))
+                        .withToColumn(CUSTOMERS + ".customer_id")
+                        .withTransformationType("INDIRECT")
+                        .withTransformationSubtype("JOIN")));
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("customer_id"))),
+            List.of(columnEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.FIELD, lineage, 200);
+
+    assertEquals(1, scene.getEdges().size());
+    assertEquals(DependencyType.INDIRECT, scene.getEdges().getFirst().getDependencyType());
   }
 
   private static UUID uuid(String value) {

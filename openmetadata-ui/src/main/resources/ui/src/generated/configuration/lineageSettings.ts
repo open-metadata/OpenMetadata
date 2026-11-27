@@ -31,6 +31,11 @@ export interface LineageSettings {
      */
     pipelineViewMode: PipelineViewMode;
     /**
+     * Whether indirect lineage edges (e.g., JOIN, WHERE/FILTER, GROUP BY, ORDER BY, QUALIFY,
+     * WINDOW) are shown by default in lineage views.
+     */
+    showIndirectEdges?: boolean;
+    /**
      * Upstream Depth for Lineage.
      */
     upstreamDepth: number;

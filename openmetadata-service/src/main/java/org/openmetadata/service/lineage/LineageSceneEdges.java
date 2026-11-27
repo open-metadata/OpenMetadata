@@ -40,6 +40,7 @@ import org.openmetadata.schema.api.lineage.LineageSceneField;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
@@ -236,14 +237,39 @@ final class LineageSceneEdges {
           }
           String from = fromEndpoint.fieldId(fromColumn);
           String to = toEndpoint.fieldId(toColumn);
-          addRollup(edgeByKey, edge, from, to, LineageBand.FIELD, false);
+          addRollup(
+              edgeByKey,
+              edge,
+              from,
+              to,
+              LineageBand.FIELD,
+              false,
+              columnDependencyType(column, edge));
         }
       }
       return;
     }
     boolean rollup = band == LineageBand.LAYER || !fromEndpoint.isAsset() || !toEndpoint.isAsset();
     addRollup(
-        edgeByKey, edge, fromEndpoint.ref().nodeId(), toEndpoint.ref().nodeId(), band, rollup);
+        edgeByKey,
+        edge,
+        fromEndpoint.ref().nodeId(),
+        toEndpoint.ref().nodeId(),
+        band,
+        rollup,
+        edge.getDependencyType());
+  }
+
+  private static DependencyType columnDependencyType(ColumnLineage column, EsLineageData edge) {
+    DependencyType resolved;
+    if (DependencyType.INDIRECT.value().equalsIgnoreCase(column.getTransformationType())) {
+      resolved = DependencyType.INDIRECT;
+    } else if (DependencyType.DIRECT.value().equalsIgnoreCase(column.getTransformationType())) {
+      resolved = DependencyType.DIRECT;
+    } else {
+      resolved = edge.getDependencyType();
+    }
+    return resolved;
   }
 
   static boolean shouldExpandTemporaryLineage(
@@ -271,7 +297,7 @@ final class LineageSceneEdges {
       }
       String from = temporaryLineageNodeId(nodes, nodeIdsByFqn, hop.getFromEntity());
       String to = temporaryLineageNodeId(nodes, nodeIdsByFqn, hop.getToEntity());
-      addRollup(edgeByKey, edge, from, to, LineageBand.ASSET, false);
+      addRollup(edgeByKey, edge, from, to, LineageBand.ASSET, false, edge.getDependencyType());
     }
   }
 
@@ -322,12 +348,14 @@ final class LineageSceneEdges {
       String from,
       String to,
       LineageBand band,
-      boolean rollup) {
-    if (Objects.equals(from, to)) {
-      return;
+      boolean rollup,
+      DependencyType dependencyType) {
+    if (!Objects.equals(from, to)) {
+      String key = from + "->" + to + ":" + band.value();
+      edgeByKey
+          .computeIfAbsent(key, ignored -> new RollupEdge(from, to, band, rollup))
+          .add(edge, dependencyType);
     }
-    String key = from + "->" + to + ":" + band.value();
-    edgeByKey.computeIfAbsent(key, ignored -> new RollupEdge(from, to, band, rollup)).add(edge);
   }
 
   record Endpoint(Ref ref, SceneAsset asset) {
@@ -382,6 +410,8 @@ final class LineageSceneEdges {
     private String sqlQuery;
     private String description;
     private EntityReference pipeline;
+    private DependencyType dependencyType;
+    private boolean hasRecordedDependencyType;
 
     private RollupEdge(String from, String to, LineageBand band, boolean rollup) {
       this.from = from;
@@ -390,7 +420,7 @@ final class LineageSceneEdges {
       this.rollup = rollup;
     }
 
-    private void add(EsLineageData edge) {
+    private void add(EsLineageData edge, DependencyType incomingDependencyType) {
       if (seenEdgeIdentities.add(concreteEdgeIdentity(edge))) {
         String identity = firstNonBlank(edge.getDocUniqueId(), edge.getDocId());
         underlyingEdgeIds.add(nullOrEmpty(identity) ? concreteEdgeIdentity(edge) : identity);
@@ -401,7 +431,23 @@ final class LineageSceneEdges {
         if (pipeline == null && edge.getPipeline() != null) {
           pipeline = entityReferenceValue(edge.getPipeline());
         }
+        dependencyType = mergeDependencyType(incomingDependencyType);
+        hasRecordedDependencyType = true;
       }
+    }
+
+    private DependencyType mergeDependencyType(DependencyType incoming) {
+      DependencyType resolved;
+      if (!hasRecordedDependencyType) {
+        resolved = incoming;
+      } else if (dependencyType == DependencyType.INDIRECT && incoming == DependencyType.INDIRECT) {
+        resolved = DependencyType.INDIRECT;
+      } else if (dependencyType == null && incoming == null) {
+        resolved = null;
+      } else {
+        resolved = DependencyType.DIRECT;
+      }
+      return resolved;
     }
 
     // A stored container edge carries the number of asset edges it stands for, so a stored
@@ -441,7 +487,8 @@ final class LineageSceneEdges {
           .withSqlQuery(isSingleEdge ? sqlQuery : null)
           .withDescription(isSingleEdge ? description : null)
           .withPipeline(isSingleEdge ? pipeline : null)
-          .withUnderlyingEdgeIds(underlyingEdgeIds);
+          .withUnderlyingEdgeIds(underlyingEdgeIds)
+          .withDependencyType(dependencyType);
     }
   }
 }
