@@ -6,8 +6,9 @@
   responses stop filling the cap) · v4 2026-11-25 (the pin carries the image's cap, so the
   deployment files set only the heap)
 - **Deciders:** OpenMetadata RDF maintainers
-- **Guard:** open-metadata/jena `ReasoningSettingsTest`, `ReadinessTest`, `LimitsTest`,
-  `WorkerProcessIT` and the image smoke test's "direct buffers are capped" check
+- **Guard:** the open-metadata/jena image smoke test's "direct buffers are capped" and "responses
+  neither force System.gc() nor pile up direct buffers" checks. The worker tests that guarded the
+  reasoning half left the fork with it (v2).
 - **Related:** [Fuseki-native reasoning plan](../plans/2026-10-07-fuseki-native-reasoning.md)
   (phase 1, task 6; "Packaging and sizing"), [rdf-scale-validation.md](../rdf-scale-validation.md),
   ADR:2026-10-14-fuseki-image-of-record
