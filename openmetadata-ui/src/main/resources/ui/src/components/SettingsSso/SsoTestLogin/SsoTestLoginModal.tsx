@@ -226,7 +226,9 @@ export const SsoTestLoginContent = ({
         {outcome}
         {isWaiting && (
           <Box align="center" data-testid="sso-test-login-loading" gap={3}>
-            <Loader size="small" />
+            {/* The small loader centres itself with margin: auto, which in this row pushes
+                the text away; inline style, since Tailwind can't beat the Less rule. */}
+            <Loader size="small" style={{ margin: 0 }} />
             <Typography as="span" size="text-sm">
               {isCheckingConfiguration
                 ? t('message.sso-test-login-checking-configuration')

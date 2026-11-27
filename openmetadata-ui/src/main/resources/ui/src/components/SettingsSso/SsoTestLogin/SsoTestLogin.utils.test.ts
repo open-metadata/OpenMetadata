@@ -19,11 +19,12 @@ import {
 } from '../../../generated/system/testLoginResult';
 import enUS from '../../../locale/languages/en-us.json';
 import {
+  STAGE_LABEL_KEYS,
   getChangedPaths,
   isBrowserTestLogin,
   isTestLoginSettled,
+  labelConfigurationPaths,
   requiresTestLogin,
-  STAGE_LABEL_KEYS,
   toConnectionStepState,
 } from './SsoTestLogin.utils';
 
@@ -176,5 +177,37 @@ describe('STAGE_LABEL_KEYS', () => {
     labelKeys.forEach((labelKey) => {
       expect(get(enUS, labelKey)).toEqual(expect.any(String));
     });
+  });
+});
+
+describe('labelConfigurationPaths', () => {
+  const uiSchema = {
+    authenticationConfiguration: {
+      oidcConfiguration: { id: { 'ui:title': 'OIDC Client ID' } },
+    },
+  };
+
+  it('names a field by its form label', () => {
+    expect(
+      labelConfigurationPaths(
+        'Invalid security configuration: [authenticationConfiguration.oidcConfiguration.id must not be null]',
+        uiSchema
+      )
+    ).toBe('Invalid security configuration: [OIDC Client ID must not be null]');
+  });
+
+  it('falls back to the readable last segment when the form has no label', () => {
+    expect(
+      labelConfigurationPaths(
+        'authorizerConfiguration.adminPrincipals is required',
+        uiSchema
+      )
+    ).toBe('Admin Principals is required');
+  });
+
+  it('leaves a message without configuration paths unchanged', () => {
+    expect(labelConfigurationPaths('Client ID is required', uiSchema)).toBe(
+      'Client ID is required'
+    );
   });
 });

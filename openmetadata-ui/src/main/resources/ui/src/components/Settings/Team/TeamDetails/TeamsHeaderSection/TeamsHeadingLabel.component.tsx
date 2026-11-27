@@ -71,11 +71,13 @@ const TeamsHeadingLabel = ({
 
   const onHeadingSave = async (): Promise<void> => {
     if (isEmpty(heading)) {
-      return showErrorToast(
+      showErrorToast(
         t('label.field-required', {
           field: t('label.display-name'),
         })
       );
+
+      return;
     }
     if (currentTeam) {
       setIsLoading(true);
