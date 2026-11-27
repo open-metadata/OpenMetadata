@@ -52,12 +52,57 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
+  @Test
+  void recordWriterNamesTheBotOfTheCurrentRequestOverTheStoredOne() {
+    Table stored = new Table().withUpdatedBy("alice").withImpersonatedBy("previous-bot");
+    ImpersonationContext.setImpersonatedBy("caip-bot");
+    try {
+      EntityUtil.recordWriter(stored, "bob");
+    } finally {
+      ImpersonationContext.clear();
+    }
+
+    assertEquals("bob", stored.getUpdatedBy());
+    assertEquals("caip-bot", stored.getImpersonatedBy());
+  }
+
+  @Test
+  void recordWriterClearsTheStoredBotForADirectWrite() {
+    Table stored = new Table().withUpdatedBy("alice").withImpersonatedBy("previous-bot");
+
+    EntityUtil.recordWriter(stored, "bob");
+
+    assertEquals("bob", stored.getUpdatedBy());
+    assertNull(stored.getImpersonatedBy());
+  }
+
+  @Test
+  void testTableConstraintMatch_nullReferredColumns() {
+    final TableConstraint missing = constraintWithReferences(null);
+    final TableConstraint populated = constraintWithReferences(List.of("schema.parent.id"));
+    final TableConstraint empty = constraintWithReferences(List.of());
+
+    assertTrue(EntityUtil.tableConstraintMatch.test(missing, constraintWithReferences(null)));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, populated));
+    assertFalse(EntityUtil.tableConstraintMatch.test(populated, missing));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, empty));
+    assertFalse(EntityUtil.tableConstraintMatch.test(empty, missing));
+  }
+
+  private static TableConstraint constraintWithReferences(List<String> references) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+        .withColumns(List.of("parent_id"))
+        .withReferredColumns(references);
+  }
+
   @Test
   void test_isDescriptionRequired() {
     assertFalse(
@@ -1014,6 +1059,61 @@ class EntityUtilTest {
       // A sub-domain of an allowed domain is within scope too.
       assertEquals("'" + salesEmea.getId() + "'", subNarrowed.getQueryParam("domainId"));
       assertEquals("true", subNarrowed.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_restrictedUserKeepsTheFullScopeForTypesThePickNeverNarrows() {
+    // A task list about an asset shows every task on it; for a domain-only user the role still
+    // limits it to their domains, but the pick must not (e.g. count and list would disagree).
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Finance");
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    org.openmetadata.schema.entity.teams.User analyst =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(sales);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (EntityReference domain : List.of(finance, sales)) {
+        entity
+            .when(() -> Entity.getEntityReferenceById("domain", domain.getId(), NON_DELETED))
+            .thenReturn(domain);
+      }
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(analyst, null));
+      ListFilter tables = new ListFilter();
+      ListFilter tasks = new ListFilter();
+
+      ActiveDomainContext.setActiveDomain(sales);
+      EntityUtil.addDomainQueryParam(securityContext, tables, "table");
+      EntityUtil.addDomainQueryParam(securityContext, tasks, Entity.TASK);
+      ActiveDomainContext.clear();
+
+      assertEquals("'" + sales.getId() + "'", tables.getQueryParam("domainId"));
+      String taskScope = tasks.getQueryParam("domainId");
+      assertTrue(taskScope.contains(finance.getId().toString()), taskScope);
+      assertTrue(taskScope.contains(sales.getId().toString()), taskScope);
+      assertEquals("true", tasks.getQueryParam("domainAccessControl"));
     }
   }
 

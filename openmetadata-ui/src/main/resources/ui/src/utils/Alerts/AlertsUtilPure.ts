@@ -63,27 +63,6 @@ export const getFunctionDisplayName = (func: string): string => {
   return displayNameByFunction[func] ?? '';
 };
 
-export const getAlertActionTypeDisplayName = (
-  alertActionType: SubscriptionType
-) => {
-  switch (alertActionType) {
-    case SubscriptionType.ActivityFeed:
-      return t('label.activity-feed-plural');
-    case SubscriptionType.Email:
-      return t('label.email');
-    case SubscriptionType.Webhook:
-      return t('label.webhook');
-    case SubscriptionType.Slack:
-      return t('label.slack');
-    case SubscriptionType.MSTeams:
-      return t('label.ms-team-plural');
-    case SubscriptionType.GChat:
-      return t('label.g-chat');
-    default:
-      return '';
-  }
-};
-
 export const getDisplayNameForEntities = (entity: string) => {
   switch (entity) {
     case 'kpi':
@@ -352,9 +331,20 @@ export const getChangeEventDataFromTypedEvent = (
   };
 };
 
+const alertStatusOf = (enabled?: boolean) => {
+  const statusKey = enabled ? 'label.enabled' : 'label.disabled';
+
+  return isUndefined(enabled) ? undefined : t(statusKey);
+};
+
 export const getDiagnosticItems = (
   diagnosticData: EventSubscriptionDiagnosticInfo | undefined
 ) => [
+  {
+    key: t('label.status'),
+    value: alertStatusOf(diagnosticData?.enabled),
+    description: t('message.alert-status-description'),
+  },
   {
     key: t('label.latest-offset'),
     value: diagnosticData?.latestOffset,
@@ -388,7 +378,7 @@ export const getDiagnosticItems = (
 ];
 
 /** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
-export const formatDiagnosticValue = (value?: number | boolean) => {
+export const formatDiagnosticValue = (value?: number | boolean | string) => {
   if (isBoolean(value)) {
     return t(value ? 'label.yes' : 'label.no');
   }

@@ -20,6 +20,7 @@ import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -49,6 +50,7 @@ import { getEncodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -84,13 +86,20 @@ const DataProductsPage = () => {
     enabled: Boolean(dataProductFqn),
   });
 
+  const dataProductErrorStatus = (dataProductError as AxiosError | undefined)
+    ?.response?.status;
+  const isForbidden = dataProductErrorStatus === ClientErrors.FORBIDDEN;
+
   useEffect(() => {
-    const status = (dataProductError as AxiosError | undefined)?.response
-      ?.status;
-    if (dataProductError && status !== 404) {
+    // 404 and 403 render their own placeholder, so they need no toast.
+    if (
+      dataProductError &&
+      dataProductErrorStatus !== ClientErrors.NOT_FOUND &&
+      !isForbidden
+    ) {
       showErrorToast(dataProductError as AxiosError);
     }
-  }, [dataProductError]);
+  }, [dataProductError, dataProductErrorStatus, isForbidden]);
 
   const setDataProduct = useCallback(
     (
@@ -325,6 +334,19 @@ const DataProductsPage = () => {
 
   if (dataProductLoading) {
     return <Loader />;
+  }
+
+  if (!dataProduct && isForbidden) {
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-product'),
+          })}
+        />
+      </div>
+    );
   }
 
   if (!dataProduct) {

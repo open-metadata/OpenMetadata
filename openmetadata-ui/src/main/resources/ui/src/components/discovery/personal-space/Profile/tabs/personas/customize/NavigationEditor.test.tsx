@@ -100,6 +100,19 @@ describe('NavigationEditor', () => {
     );
   });
 
+  it('renders a real focusable drag handle button with slot="drag" on each row', () => {
+    renderEditor();
+
+    const handles = screen.getAllByRole('button', { name: 'label.move' });
+
+    expect(handles.length).toBeGreaterThan(1);
+
+    handles.forEach((handle) => {
+      expect(handle).toHaveAttribute('slot', 'drag');
+      expect(handle).not.toHaveAttribute('aria-hidden');
+    });
+  });
+
   it('reflects hidden items persisted in the document', () => {
     renderEditor(
       buildDocument({

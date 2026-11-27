@@ -1,0 +1,13 @@
+name: Set up Python
+description: Select Python and install the pinned uv executable once per runner.
+inputs:
+  python-version:
+    description: Python interpreter to install.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ inputs.python-version }}
+    - uses: ./.github/actions/setup-uv

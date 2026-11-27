@@ -146,7 +146,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // EditStatus governs the Incident Manager (test case resolution status, severity and incident
     // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
     // incident management without granting edit rights on the test case itself.
-    return listOf(MetadataOperation.EDIT_STATUS);
+    // The failed-rows sample DELETE authorizes DeleteTestCaseFailedRowsSample by name, and EditAll
+    // does not subsume it (ADR:2026-11-22-deleting-a-failed-rows-sample-is-its-own-grant).
+    // Advertising it lets policies grant it on testCase and lets the permissions API evaluate it
+    // per test case, owners included.
+    return listOf(
+        MetadataOperation.EDIT_STATUS, MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
   }
 
   /**
@@ -523,7 +528,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "data product filter to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("dataProductFqn")
-          String dataProductFqn)
+          String dataProductFqn,
+      @Parameter(
+              description =
+                  "Filter test cases by the fully qualified name of their test definition",
+              schema = @Schema(type = "string"))
+          @QueryParam("testDefinition")
+          String testDefinition)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
@@ -552,6 +563,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             endTimestamp,
             columnName,
             dataProductFqn);
+    searchListFilter.addQueryParam("testDefinition", testDefinition);
 
     // Execute search
     return executeTestCaseSearch(
@@ -955,9 +967,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     // Only the FQN before authorizing: prepare creates the table's test suite if it is missing.
     repository.setFullyQualifiedName(test);
-    List<AuthRequest> requests = createOrUpdateRequests(test);
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    repository.prepareInternal(test, true);
+    boolean testCaseExists =
+        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+    authorizer.authorizeRequests(
+        securityContext, createOrUpdateRequests(test, testCaseExists), AuthorizationLogic.ANY);
+    repository.prepareInternal(test, testCaseExists);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -965,13 +979,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   /**
-   * A new test case is checked as a create, an existing one as an update. Checked by FQN first:
-   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get the update
-   * requests, which look the test case up by name.
+   * A new test case is checked as a create, an existing one as an update. AuthorizationLogic.ANY
+   * evaluates every request, so a new test case must not get the update requests, which look the
+   * test case up by name.
    */
-  private List<AuthRequest> createOrUpdateRequests(TestCase test) {
-    boolean testCaseExists =
-        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+  private List<AuthRequest> createOrUpdateRequests(TestCase test, boolean testCaseExists) {
     return testCaseExists
         ? TestCaseWriteAuthRequests.forUpdate(test)
         : TestCaseWriteAuthRequests.forCreate(test);

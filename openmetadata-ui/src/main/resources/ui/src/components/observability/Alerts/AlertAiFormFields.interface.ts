@@ -43,7 +43,11 @@ export type AlertAiFormValidationErrors = Record<string, string>;
 
 export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
+  /** False for a user who cannot edit the alert: the Enabled switch is then read-only. */
+  canEditEnabled?: boolean;
   inlineAlert?: InlineAlertProps;
+  /** Editing a saved alert: only then does switching it off make the other fields read-only. */
+  isEditMode?: boolean;
   isViewOnly?: boolean;
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
   // state so rapid edits don't clobber each other. The value form stays assignable to the

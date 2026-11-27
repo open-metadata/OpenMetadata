@@ -259,7 +259,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
             .orElseThrow();
     assertEquals(baseIri + "knows", propertyOperation.getProperty().getIri().toString());
     assertEquals(OntologyAxiomType.SUBCLASS_OF, axiomOperation.getAxiom().getAxiomType());
-    assertEquals("Imported subclass of", axiomOperation.getAxiom().getDisplayName());
+    assertEquals("Customer is a kind of Party", axiomOperation.getAxiom().getDisplayName());
     assertEquals("Imported from native RDF", axiomOperation.getAxiom().getDescription());
     assertEquals(
         before.getWorkingRevision(),

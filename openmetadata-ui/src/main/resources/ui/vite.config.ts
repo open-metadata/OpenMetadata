@@ -14,8 +14,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
-import type { PreRenderedAsset } from 'rollup';
-import { defineConfig, loadEnv, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption, type Rolldown } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
@@ -30,7 +29,8 @@ import {
 
 // Test Login reuses the registered /callback redirect URI. In a packaged deployment the backend
 // owns that path; under `yarn start` Vite serves the SPA there instead. Forward only the callbacks
-// whose state carries the Test Login marker, so every real login still reaches the SPA.
+// whose state carries the Test Login marker, and SAML POSTs handled by the backend.
+// Ordinary OIDC GET callbacks still reach the SPA.
 const TEST_LOGIN_STATE_PREFIX = 'omtest:';
 const isTestLoginCallback = (url = ''): boolean =>
   new URL(url, 'http://localhost').searchParams
@@ -129,10 +129,6 @@ export default defineConfig(async ({ mode }) => {
         process: 'process/browser',
         Quill: path.resolve(__dirname, 'node_modules/quill'),
         '@': path.resolve(__dirname, 'src'),
-        '@deuex-solutions/react-tour': path.resolve(
-          __dirname,
-          'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
-        ),
         // Luxon ships both an ESM (build/es6/luxon.mjs) and a CJS (build/node/luxon.js)
         // entry. Without this alias, transitive deps that `require('luxon')` (via the
         // CJS path) and our own ESM `import { DateTime } from 'luxon'` end up pulling
@@ -208,8 +204,11 @@ export default defineConfig(async ({ mode }) => {
         },
         '/callback': {
           target: devServerTarget,
-          changeOrigin: true,
-          bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
+          changeOrigin: false,
+          bypass: (req) =>
+            req.method === 'POST' || isTestLoginCallback(req.url)
+              ? undefined
+              : req.url,
         },
       },
       watch: {
@@ -300,7 +299,7 @@ export default defineConfig(async ({ mode }) => {
           entryFileNames: isPlaywrightBuild
             ? 'assets/app-entry-[hash].js'
             : 'assets/[name]-[hash].js',
-          assetFileNames: (assetInfo: PreRenderedAsset) => {
+          assetFileNames: (assetInfo: Rolldown.PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
             const ext = fileName ? path.extname(fileName).toLowerCase() : '';
@@ -380,7 +379,6 @@ export default defineConfig(async ({ mode }) => {
         'antlr4',
         '@azure/msal-browser',
         '@azure/msal-react',
-        '@deuex-solutions/react-tour',
         // Force-prebundle react-hook-form so it shares the single optimized
         // React instance. Through a symlinked node_modules (worktree/linked
         // dev setups) Vite otherwise serves it raw via `@fs`, pulling a second
@@ -415,6 +413,8 @@ export default defineConfig(async ({ mode }) => {
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),
+      'process.env.DEV_SERVER_TARGET': JSON.stringify(devServerTarget),
+      'process.env.SSO_SERVER_URL': JSON.stringify(env.VITE_SSO_SERVER_URL || ''),
       global: 'globalThis',
     },
   };

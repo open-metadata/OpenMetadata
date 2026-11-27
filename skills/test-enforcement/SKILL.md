@@ -1,13 +1,13 @@
 ---
 name: test-enforcement
-description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and Playwright E2E tests for UI changes.
+description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 user-invocable: true
 argument-hint: "[PR number, branch name, or file paths]"
 ---
 
 # Test Enforcement for OpenMetadata
 
-Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and Playwright E2E tests for UI changes.
+Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 
 ## When to Use
 
@@ -48,7 +48,7 @@ Classify each changed file:
 | `openmetadata-spec/src/main/resources/json/schema/` | Schema | Regeneration verification + downstream tests |
 | `openmetadata-integration-tests/` | Integration tests | Self — verify they pass |
 | `ingestion/src/metadata/` | Python ingestion | pytest unit tests (90% coverage) |
-| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + Playwright E2E |
+| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + browser tests for page behaviour + Playwright only for cross-feature journeys (`.claude/rules/frontend-browser-tests.md`) |
 | `bootstrap/sql/migrations/` | Database | Integration tests verifying migration |
 
 ### Step 2: Check Java Service Coverage
@@ -205,6 +205,10 @@ ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/
 
 #### 4c. Determine if new Playwright tests are needed
 
+**First decide the layer** (`.claude/rules/frontend-browser-tests.md`): a page's own behaviour (paging,
+forms, pickers, permission-driven controls, empty/error states) gets a Vitest browser test
+(`*.browser.test.tsx`), not a Playwright test. The rest of this step is for real journeys.
+
 **New Playwright tests ARE needed when:**
 - A new page or major UI section was added
 - User-facing workflow was changed (e.g., entity creation flow)
@@ -313,7 +317,8 @@ Produce a summary for the PR:
 |-------|--------|--------|----------------|
 | openmetadata-service | Line coverage | 90% | JaCoCo with `-P static-code-analysis` |
 | openmetadata-integration-tests | API endpoint coverage | 100% of changed endpoints | Manual check against resource classes |
-| Playwright | Feature coverage | All new/changed user-facing flows | Spec file existence + test pass |
+| Browser tests (UI page behaviour) | Page behaviour coverage | New/changed page behaviour | `yarn test:ui:coverage` |
+| Playwright | Feature coverage | New/changed cross-feature UI journeys | Spec file existence + test pass |
 | Jest | Component coverage | 90% lines | `yarn test --coverage` |
 | Python ingestion | Line coverage | 90% | `pytest --cov` |
 
@@ -323,6 +328,7 @@ Produce a summary for the PR:
 openmetadata-service/src/test/java/org/openmetadata/         # Java unit tests
 openmetadata-integration-tests/src/test/java/org/openmetadata/it/  # Integration tests
 openmetadata-ui/.../ui/src/**/*.test.{ts,tsx}                 # Jest unit tests
+openmetadata-ui/.../ui/src/**/*.browser.test.tsx               # Vitest browser tests (page behaviour)
 openmetadata-ui/.../ui/playwright/e2e/                        # Playwright E2E
 ingestion/tests/unit/                                         # Python unit tests
 ingestion/tests/integration/                                  # Python integration tests

@@ -17,7 +17,6 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -192,7 +191,7 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     boolean mayCarryNoChange() {
-      return type == null || EventType.ENTITY_CREATED.value().equals(type);
+      return TriggeringChange.mayCarryNoChange(type);
     }
   }
 

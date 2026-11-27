@@ -1,9 +1,9 @@
 # The Ontology visual builder extends its existing query shape and caps results at a chosen limit
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Ontology Studio maintainers
-- **Guard:** `OntologyNativeQuery.utils.test.ts` (one condition at the default limit equals the existing canonical query; extra conditions and limits extend it)
+- **Guard:** `OntologyNativeQuery.utils.test.ts` *(openmetadata-collate)* (one condition at the default limit equals the existing canonical query; extra conditions and limits extend it)
 - **Related:** [#37606](https://github.com/open-metadata/OpenMetadata/issues/37606), [#37607](https://github.com/open-metadata/OpenMetadata/pull/37607)
 
 ## Context
@@ -29,3 +29,7 @@ query or anything on the server.
 No server or contract change is needed, and existing single-condition queries behave as before.
 Multi-condition and Properties queries are covered by UI tests only; a different shape for the
 single-condition query, other limits or OR between conditions need an amendment here.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

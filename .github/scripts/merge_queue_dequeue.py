@@ -35,6 +35,7 @@ NOT_REQUIRED = (
 RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
 # These jobs report upstream outcomes rather than run tests, in Collate and OpenMetadata.
 SUMMARY_CHECKS = {
+    "backend-checks-status",
     "caip-playwright-summary",
     "integration-tests-mysql-elasticsearch",
     "integration-tests-postgres-elasticsearch-redis",

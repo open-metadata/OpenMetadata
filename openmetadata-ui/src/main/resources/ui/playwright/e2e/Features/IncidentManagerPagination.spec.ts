@@ -34,8 +34,8 @@ test.describe('Incident Manager pagination', () => {
   test.beforeAll(async ({ browser }) => {
     // Seed incidents directly via the API — these tests only need many incidents
     // to exist, not a real ingestion pipeline run. This keeps setup fast and
-    // deterministic and off the Airflow-dependent path. `test.slow()` does not
-    // extend a hook's timeout, so set an explicit budget for creating 22 test
+    // deterministic and off the Airflow-dependent path. `test.slow()` in a hook
+    // uses up the first test's slow(), so set an explicit budget for creating 22 test
     // cases + results and waiting for them to be indexed.
     test.setTimeout(3 * 60 * 1000);
     const { apiContext, afterAction } = await performAdminLogin(browser);

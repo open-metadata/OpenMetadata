@@ -32,6 +32,11 @@ jest.mock('../../../../hooks/authHooks', () => ({
   })),
 }));
 
+jest.mock(
+  '../../../platform/settings/mcp/McpClientsTable/McpClientsTable',
+  () => jest.fn().mockReturnValue(<div>MockMcpClientsTable</div>)
+);
+
 jest.mock('../McpApplicationConfiguration/McpApplicationConfiguration', () =>
   jest.fn().mockReturnValue(<div>MockMcpApplicationConfiguration</div>)
 );

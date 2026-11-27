@@ -372,7 +372,7 @@ describe('MetadataAgentsView', () => {
       runId: 'run-old',
       status: 'failed',
       startedAt: 'Nov 1 · 10:00',
-      duration: 1,
+      durationMs: 60_000,
       totals: { records: 0, filtered: 0, updated: 0, warnings: 0, errors: 1 },
       steps: [],
     };

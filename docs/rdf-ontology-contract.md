@@ -117,6 +117,86 @@ downstream of the source column take 330 ms in memory, and 11 pages of 250 rows 
 
 `om:hasChildColumn` is stored for nested table columns; traversing to their owning asset needs no inference.
 
+## Table keys
+
+Each table constraint is an `om:TableConstraint` whose `om:ConstraintMember`s give its columns in
+order. A foreign key pairs columns by position when the filtered column lists have equal length.
+When their lengths differ, the constraint reports `om:hasConstrainedColumn` and
+`om:hasReferredColumn` membership without stating any column pairings.
+
+```sparql
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT ?position ?column ?referred WHERE {
+  ?table om:fullyQualifiedName "svc.db.sales.order_lines" ;
+         om:hasConstraint ?key .
+  ?key om:constraintType "FOREIGN_KEY" ;
+       om:hasConstraintMember ?member .
+  ?member om:memberPosition ?position ;
+          om:memberColumn ?column ;
+          om:memberReferredColumn ?referred .
+} ORDER BY ?key ?position
+```
+
+`om:isUnique true` means the column alone is unique. Each member of a composite primary key
+carries `om:isPrimaryKey` and needs an independent single-column key to carry `om:isUnique`.
+Join on every member of the composite key.
+Only tables project `om:hasConstraint` from column-level PRIMARY_KEY markers. See
+ADR:2026-11-13-column-uniqueness-means-the-column-alone-is-unique.
+
+## Quality evidence
+
+The graph carries the latest profile of each table and column, and the latest result and open
+incident of each test case, on live writes and on reindex alike. History stays in the profile and
+test results APIs. See ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence.
+
+```turtle
+<table> om:profileRowCount 1200.0 ;
+    om:profiledAt "2026-11-18T06:00:00Z"^^xsd:dateTime .
+<https://open-metadata.org/entity/column/svc.db.schema.orders.amount>
+    om:profileNullProportion 0.04 ;
+    om:profileMin -3.0 ;
+    om:profiledAt "2026-11-18T06:00:00Z"^^xsd:dateTime .
+
+<testCase> om:testsEntity <table> ;
+    om:testsColumn <https://open-metadata.org/entity/column/svc.db.schema.orders.amount> ;
+    om:belongsToTestSuite <https://open-metadata.org/entity/testSuite/...> ;
+    om:hasTestDefinition <https://open-metadata.org/entity/testDefinition/...> ;
+    om:latestResultStatus "Failed" ;
+    om:latestResultAt "2026-11-18T06:05:00Z"^^xsd:dateTime ;
+    om:hasTestResult <testCase/result/latest> ;
+    om:hasOpenIncident <testCase/incident/open> .
+<testCase/result/latest> a om:TestCaseResult ;
+    om:failedRows 12 ;
+    om:minBound 0.0 ;
+    om:hasResultValue <testCase/result/latest/value/0> .
+<testCase/result/latest/value/0> a om:TestResultValue ;
+    rdfs:label "min" ;
+    dqv:value "-3" .
+<testCase/incident/open> a om:TestCaseIncident ;
+    om:incidentState "Assigned" ;
+    om:incidentSeverity "Severity2" ;
+    om:incidentAssignee <https://open-metadata.org/entity/user/...> .
+```
+
+Columns measure values, nulls, distinct and unique counts, mean, min and max (numeric columns only)
+and string lengths. Tables measure rows, columns and size. A newer profile, result or incident
+state replaces the previous one exactly. Deleting a table, column or test case removes its evidence.
+A live table refresh requeues its test cases when its columns or their tags change. When a tested
+column is dropped or renamed and its old path no longer resolves, the test case loses its
+`om:testsColumn` link, result, and incident. Columns tagged `PII.Sensitive`, and fields beneath one,
+carry no profile. Tests on those columns carry no result or incident, as for an API caller
+without PII access. Anyone who may query the graph can read this evidence. Per-asset filtering
+is deferred. This query finds failing tests on a table.
+
+```sparql
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT ?test ?status ?ranAt WHERE {
+  ?table om:fullyQualifiedName "svc.db.schema.orders" .
+  ?test om:testsEntity ?table ; om:latestResultStatus ?status ; om:latestResultAt ?ranAt .
+  FILTER(?status != "Success")
+}
+```
+
 ## Domain membership
 
 An asset's `domains` are projected as `om:belongsToDomain`, the predicate already used
@@ -128,18 +208,48 @@ each entity removes it, and a full rebuild removes it everywhere.
 Glossary terms retain configurable relations, external mappings and their existing tag assignments.
 The unreleased `realizedIn`, class-kind and property-authoring fields have been removed. Native
 ontology definitions use their own entities and approved release graph. Native asset links and
-property-to-column assignments live separately in `ontology.conceptBindings` entity extensions.
-The concept bindings API returns only currently authorized targets; its revision is independent of
-semantic working revisions, release digests and RDF import/export. See
+property-to-column assignments live separately in `ontology_concept_binding` rows; the per-concept
+revision stays in the `ontology.conceptBindings` extension. The concept bindings API returns only
+currently authorized targets; its revision is independent of semantic working revisions, release
+digests and RDF import/export. See
 ADR:2026-10-17-glossaries-do-not-own-ontology-models and
+ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
+
+### Concept bindings in the knowledge graph
+
+The serving knowledge graph also states the bindings of concepts of an active release:
+
+```turtle
+<https://example.org/onto/Customer> om:boundAsset <https://open-metadata.org/entity/table/{id}> .
+<https://example.org/onto/email> om:boundColumn
+    <https://open-metadata.org/entity/column/warehouse.db.sales.customers.cust_email> .
+```
+
+The subjects are the IRIs the active release graph gives the concept and the property, so one
+query joins the business model and the catalog:
+
+```sparql
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT ?asset ?column WHERE {
+  <https://example.org/onto/Customer> om:boundAsset ?asset .
+  <https://example.org/onto/email> om:boundColumn ?column .
+  ?asset om:hasColumn/om:hasChildColumn* ?column .
+}
+```
+
+A binding to a concept outside every active release, an assignment to an unreleased property and
+an assignment whose column path no longer resolves are left out. The asset owns these edges: its
+writes replace them and deleting it removes them. Unlike the bindings API, the graph does not leave
+out links to assets the reader cannot view. See
 ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
 
 Native library preview uses the verified pack catalog and selected modules, then the same native
 change-set preview/apply path as file import. Plain SKOS preferred labels and definitions project
 onto native display names and descriptions; canonical export uses `rdfs:label` and `rdfs:comment`.
-Conflicting annotations are rejected. SKOS relation predicates retain their exact IRIs as object
-property assertions. In particular, `skos:broader` is not an OWL subclass and does not confer
-property inheritance. See ADR:2026-10-19-native-ontology-imports-use-working-drafts.
+Conflicting annotations keep the SKOS value; the RDFS one is skipped and reported. SKOS relation
+predicates retain their exact IRIs as object property assertions. In particular, `skos:broader` is
+not an OWL subclass and does not confer property inheritance. See
+ADR:2026-10-19-native-ontology-imports-use-working-drafts.
 
 ## Custom extension values
 
@@ -215,6 +325,24 @@ extension data from older writers, and refreshes the ontology in the serving
 dataset. Query extensions using the fixed key/value vocabulary above. The rebuild
 uses the configured dataset strategy and durable live-write recovery process.
 
+## Self-description for agents
+
+Every predicate the projection stores carries an `rdfs:comment` written for a model reading it
+cold: what is on the other side of the edge or in the value, and when it matters. Every class the
+projection types nodes with is declared with a comment. `rdfs:domain` and `rdfs:range` are asserted
+only where they hold for every use; a predicate shared by several entity types says so in its
+comment and leaves its domain open. Fallback `om:<field>` literals take their wording from the
+field's JSON Schema description, and say when the value is JSON text rather than a graph edge.
+
+Read one entry instead of the whole file with the MCP tool `ontology_describe` and `term`, a
+prefixed name such as `om:Table` or a full IRI. A class comes back with every property whose declared
+domain is the class or one of its superclasses, in full, and with every shared property recorded for
+it by label and comment; a property comes back on its own. A shared property is one with an open
+domain: `schema:domainIncludes` records each class the projection writes it on, as an annotation that
+entails nothing, so `om:hasColumn` and `om:downstream` appear in the entry for `om:Table`. Like the
+full ontology, a term read needs no permission. The largest class entry, `om:Table`, fits within
+the 80,000-byte default response budget. See ADR:2026-11-18-ontology-terms-describe-themselves-and-read-one-at-a-time.
+
 ## Regression coverage
 
 `RdfColumnLineageTraversalTest` builds a graph of about 5,000 column mappings through the two
@@ -232,6 +360,12 @@ issue #34307), and requires explicit annotations for unprojected
 terms. A Java syntax-tree scan additionally checks constant predicates in
 conditional mapper branches. The tests never derive the writer's predicate list
 from the ontology itself.
+
+`RdfOntologyDescriptionContractTest` fails when a stored predicate or a projected class has no
+comment, when a projected subject falls outside a declared domain or, for a shared predicate,
+outside its recorded `schema:domainIncludes` classes, and when a value contradicts a declared range:
+a literal under a class range, or a datatype other than a declared `xsd:` range. No term is
+exempt.
 
 When adding a projection, update the ontology and extend the structured fixture
 if needed. New schema fields are sampled automatically. Unregistered writer

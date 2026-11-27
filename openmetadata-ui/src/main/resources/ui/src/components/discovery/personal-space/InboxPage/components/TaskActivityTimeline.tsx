@@ -28,6 +28,7 @@ import { Task } from '../../../../../generated/entity/tasks/task';
 import { TestCaseResolutionStatus } from '../../../../../generated/tests/testCaseResolutionStatus';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { formatInboxDateTime } from '../inbox.utils';
+import { getProposingAgent } from '../taskDetail.utils';
 import {
   buildTaskTimeline,
   TaskCreatedEventText,
@@ -129,8 +130,13 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
 }) => {
   const { t } = useTranslation();
   const entries = useMemo(
-    () => buildTaskTimeline(task, { incidentStatuses, createdEvent }),
-    [task, incidentStatuses, createdEvent]
+    () =>
+      buildTaskTimeline(task, {
+        incidentStatuses,
+        createdEvent,
+        proposingAgent: getProposingAgent(task, t),
+      }),
+    [task, incidentStatuses, createdEvent, t]
   );
 
   const renderEntry = (entry: TaskTimelineEntry) => {

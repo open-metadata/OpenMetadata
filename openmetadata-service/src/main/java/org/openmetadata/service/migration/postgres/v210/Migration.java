@@ -24,6 +24,7 @@ import static org.openmetadata.service.migration.utils.v210.DataContractEntityRe
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
+import static org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration.repairHealthyDataAssetsCharts;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
 import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
@@ -37,14 +38,17 @@ import static org.openmetadata.service.migration.utils.v210.OntologyConceptBindi
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
+import static org.openmetadata.service.migration.utils.v210.ServiceLineagePipelineHopRepairMigration.repairPipelineServiceHopRefcounts;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -52,12 +56,14 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
+import org.openmetadata.service.migration.utils.v210.ServiceLineagePipelineHopRepairMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
@@ -145,6 +151,17 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
         () -> clearNonPipelineEdgePipelines(handle, POSTGRES));
+    // The v1126/v1131 backfill wrote pipeline-service hop rows with a hard-coded assetEdges=1
+    // instead of the count of contributing child edges, so the first delete of any one contributor
+    // removed the hop while the other children still needed it. The v2.0.3 repair skipped
+    // pipeline-service pairs, so already-upgraded instances keep the wrong count. Recompute it
+    // from the child edges themselves (a fixed point). DB-agnostic, so it also runs on MySQL.
+    // Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceLineagePipelineHopRepairMigration.STEP_NAME,
+        () -> repairPipelineServiceHopRefcounts(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -157,6 +174,7 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    repairHealthyDataAssetsCharts();
     // Alerts name their consumer by its registered id, no longer by its Java class.
     runOnce(
         migrationDAO,
@@ -169,19 +187,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
-    // New writes encrypt each webhook secret for the alert destination or profile webhook that
-    // holds it; this does the same for what is already stored. Each destination's id owns its
-    // secrets, so this runs after the destination id step. Idempotent.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.PROFILE_STEP_NAME,
-        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, POSTGRES));
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.ALERT_STEP_NAME,
-        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, POSTGRES));
+    // New writes encrypt each webhook secret with the configured Fernet keys; these do the same
+    // for what is already stored. A value a 2.1 pre-release encrypted with a key derived from its
+    // destination's id is encrypted again, so they run after the destination id step. Each runs
+    // once, in one transaction with the marker that records it.
+    WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, getVersion(), POSTGRES);
+    WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, getVersion(), POSTGRES);
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.
@@ -213,6 +224,14 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
         });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        IncidentWorkflowTransitionMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
+        });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnPostgres(handle);
     UnsupportedNotificationTemplates.review(handle);
@@ -223,5 +242,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         OntologyRolesMigration.STEP_NAME,
         () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
+    // Released versions stored a Context Center file edited inside a folder under its bare name;
+    // each such file is given the FQN its folder derives again.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ContextFileFqnRepair.STEP_NAME,
+        () -> ContextFileFqnRepair.repairAll(handle, POSTGRES));
+    // A database that recorded 2.1.0 before the 2.0.9 masking step existed never runs 2.0.9's data
+    // migration again, so the plain text secrets in its service version history are masked here.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceVersionSecretsMasking.STEP_NAME,
+        () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, POSTGRES));
   }
 }

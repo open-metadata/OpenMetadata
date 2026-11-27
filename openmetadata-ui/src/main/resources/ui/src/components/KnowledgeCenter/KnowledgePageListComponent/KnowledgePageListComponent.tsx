@@ -28,6 +28,7 @@ import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -159,17 +160,11 @@ const KnowledgePageAccessDenied = () => {
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
       <PermissionPlaceholder
-        description={
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<b />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.article-plural'),
-              }),
-            }}
-          />
-        }
+        description={t('message.no-access-placeholder', {
+          entity: t('label.view-entity', {
+            entity: t('label.article-plural'),
+          }),
+        })}
         icon={<Lock01 />}
         title={t('label.access-denied')}
       />
@@ -190,6 +185,16 @@ const KnowledgePageNoSearchResults = () => {
     </div>
   );
 };
+
+const KnowledgePageListErrorState = ({
+  onReload,
+}: {
+  onReload: () => void;
+}) => (
+  <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
+    <SomethingWentWrongPlaceholder onReload={onReload} />
+  </div>
+);
 
 interface KnowledgePageAddItem {
   key: string;
@@ -279,13 +284,17 @@ const KnowledgePageEmptyState = ({
 type KnowledgePageListViewState =
   | 'loading'
   | 'noAccess'
+  | 'error'
   | 'noSearchResults'
   | 'empty'
   | 'list';
 
 /**
  * The listing's early-return states are mutually exclusive and checked in
- * priority order: a load in flight always wins, then access, then the two
+ * priority order: a load in flight always wins, then access, then a
+ * load-failure (distinct from a genuine empty list — a failed fetch must
+ * not be reported as empty to the parent, since the parent would then hide
+ * the sidebar/toolbar behind the onboarding placeholder), then the two
  * empty variants — search-empty first, since an unfiltered empty list is a
  * different state (offering to create the first page).
  */
@@ -295,13 +304,17 @@ const resolveKnowledgePageListViewState = (
   isPermissionsLoading: boolean,
   hasViewPermission: boolean,
   knowledgePages: KnowledgePage[],
-  isFiltered: boolean
+  isFiltered: boolean,
+  hasFetchFailed: boolean
 ): KnowledgePageListViewState => {
   if (isLoading || isCreatingNewPage || isPermissionsLoading) {
     return 'loading';
   }
   if (!hasViewPermission) {
     return 'noAccess';
+  }
+  if (hasFetchFailed) {
+    return 'error';
   }
   if (isEmpty(knowledgePages) && isFiltered) {
     return 'noSearchResults';
@@ -340,6 +353,13 @@ const KnowledgePageListComponent = forwardRef<
     const [elementRef, isInView] = useElementInView({});
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+    // Mirrors the parent's `permissionFetchFailed` contract: a failed list GET
+    // is a distinct state from a fetch that legitimately returned zero pages,
+    // so the parent must not be told the list is "empty" (it would then hide
+    // the sidebar/toolbar behind the onboarding placeholder). Reset to `false`
+    // at the start of every fetch; only the latest in-flight request may set
+    // it back to `true` from the catch block.
+    const [hasFetchFailed, setHasFetchFailed] = useState<boolean>(false);
     const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
     const [paging, setPaging] = useState<Paging>({ total: 0 });
     const [pageOffset, setPageOffset] = useState<number>(0);
@@ -422,6 +442,11 @@ const KnowledgePageListComponent = forwardRef<
       } else {
         setIsLoading(true);
       }
+      // Clear any prior failure when a fetch starts: a retry, a
+      // search/sort/filter change, or a permission re-load all begin a fresh
+      // attempt, so a stale failure flag must not poison the new attempt's
+      // empty-state reporting.
+      setHasFetchFailed(false);
       try {
         if (useSearchPath) {
           await fetchFilteredKnowledgePages(offset, requestId);
@@ -430,6 +455,12 @@ const KnowledgePageListComponent = forwardRef<
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+        // Only the latest request may commit failure state, mirroring the
+        // `finally` guard — a slow stale failure must not flip the latest
+        // (possibly already-successful) view back to the error placeholder.
+        if (requestId === latestRequestId.current) {
+          setHasFetchFailed(true);
+        }
       } finally {
         if (requestId === latestRequestId.current) {
           setIsLoading(false);
@@ -630,17 +661,29 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       if (!isLoading && !isPermissionsLoading && !isFiltered) {
-        onEmptyStateChange?.(isEmpty(knowledgePages));
+        // A failed fetch is indistinguishable from "fetched zero" by
+        // `knowledgePages` alone (the setter never runs on rejection, so it
+        // stays `[]`). Suppress the empty report in that case so the parent
+        // keeps the layout (sidebar/toolbar) visible and the in-place error
+        // placeholder can offer a retry — mirroring how the parent already
+        // excludes `permissionFetchFailed` from this decision.
+        onEmptyStateChange?.(!hasFetchFailed && isEmpty(knowledgePages));
       }
     }, [
       isLoading,
       isPermissionsLoading,
       isFiltered,
       knowledgePages,
+      hasFetchFailed,
       onEmptyStateChange,
     ]);
 
     useEffect(() => {
+      // A failed page leaves the error view up; don't auto-retry it on every
+      // isLoadingMore flip — Reload restarts from offset 0 instead.
+      if (hasFetchFailed) {
+        return;
+      }
       const hasMore = knowledgePages.length < paging.total;
       const canLoadMore = isInView && hasMore && !isLoadingMore && !isLoading;
       if (canLoadMore && hasViewPermission) {
@@ -654,6 +697,7 @@ const KnowledgePageListComponent = forwardRef<
       knowledgePages.length,
       isLoadingMore,
       isLoading,
+      hasFetchFailed,
       hasViewPermission,
     ]);
 
@@ -731,7 +775,8 @@ const KnowledgePageListComponent = forwardRef<
       isPermissionsLoading,
       hasViewPermission,
       knowledgePages,
-      isFiltered
+      isFiltered,
+      hasFetchFailed
     );
 
     if (viewState === 'loading') {
@@ -740,6 +785,17 @@ const KnowledgePageListComponent = forwardRef<
 
     if (viewState === 'noAccess') {
       return <KnowledgePageAccessDenied />;
+    }
+
+    if (viewState === 'error') {
+      return (
+        <KnowledgePageListErrorState
+          onReload={() => {
+            setPageOffset(0);
+            fetchKnowledgePages(0);
+          }}
+        />
+      );
     }
 
     if (viewState === 'noSearchResults') {

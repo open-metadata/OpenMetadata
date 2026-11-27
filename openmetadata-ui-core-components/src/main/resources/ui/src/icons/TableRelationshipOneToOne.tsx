@@ -32,11 +32,14 @@ export const TableRelationshipOneToOne: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g
+      clipPath="url(#table-relationship-one-to-one_a)"
+      stroke="currentColor"
+      strokeWidth={1.3}>
       <path d="M10 10h9m-5.143-3.215v6.429m2.571-6.429v6.429M10 10H1m5.143 3.214V6.785m-2.571 6.429V6.785" />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="table-relationship-one-to-one_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>

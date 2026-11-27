@@ -96,9 +96,4 @@ public class TestCaseLineageResolver implements EntityLineageResolver {
 
     return parents;
   }
-
-  @Override
-  public String getEntityType() {
-    return Entity.TEST_CASE;
-  }
 }

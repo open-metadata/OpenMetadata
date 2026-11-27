@@ -23,7 +23,6 @@ FULL_PROJECTS = {
     "ImportExport",
     "DataAssetRulesEnabled",
     "DataAssetRulesDisabled",
-    "SearchRBAC",
     "DomainIsolation",
     "search-nightly",
     "Reindex",
@@ -33,7 +32,6 @@ FULL_PROJECTS = {
     "AdvancedSearch",
     "visual-regression",
     "Knowledge Graph",
-    "Ontology RDF",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -43,14 +41,11 @@ PROJECT_LANES = {
     "ImportExport": "import-export",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
-    "SearchRBAC": "search-rbac",
     # DomainIsolation and search-nightly share the single-worker global-state
     # runner: each is a few minutes of tests behind ~3 minutes of environment
     # setup. DomainIsolation toggles enableAccessControl inside each file's own
     # beforeAll/afterAll, and SearchSettings restores defaults in its afterAll,
-    # so with one worker no setting leaks across files. SearchRBAC stays apart
-    # because it enables RBAC in a separate setup project, leaving a window in
-    # which another file could turn it off before SearchRBAC.spec.ts runs.
+    # so with one worker no setting leaks across files.
     "DomainIsolation": "global-state",
     "search-nightly": "global-state",
     "Reindex": "reindex",
@@ -64,7 +59,6 @@ PROJECT_LANES = {
     # in; rdf needs Fuseki and an RDF-enabled server seeded from scratch.
     "visual-regression": "visual",
     "Knowledge Graph": "rdf",
-    "Ontology RDF": "rdf",
 }
 GATED_LANES = {"visual", "rdf"}
 PROJECT_DEPENDENCIES = {
@@ -75,7 +69,6 @@ LANE_WORKERS = {
     "import-export": 2,
     "ingestion": 1,
     "reindex": 1,
-    "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
 # Chromium shard budget, derived from the predicted→actual execution tail
@@ -662,7 +655,6 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         "import-export",
         "ingestion",
         "reindex",
-        "search-rbac",
         # Visual states own their page and HTTP fixtures. Split the growing
         # catalog within the existing budget instead of lengthening its job.
         "visual",
@@ -795,7 +787,7 @@ def main() -> None:
         if not any(selector_matches_unit(selector, unit) for unit in discovered_units)
     ]
     # An unmatched selector whose spec file exists on disk has simply had all of
-    # its tests filtered out of this lane by the tag grep (e.g. an @ontology-rdf
+    # its tests filtered out of this lane by the tag grep (e.g. a @knowledge-graph
     # spec picked up by change-detection but only runnable in the dedicated RDF
     # lane). Warn and skip it. A selector whose spec file does NOT exist is a
     # stale/typo'd path that matches nothing anywhere — keep failing on that.

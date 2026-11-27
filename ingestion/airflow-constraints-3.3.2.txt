@@ -1,6 +1,6 @@
 
 #
-# Security overrides: certifi, dnspython, filelock, oauthlib, snowflake-connector-python, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector, sqlparse, pyarrow.
+# Security overrides: certifi, dnspython, filelock, oauthlib, snowflake-connector-python, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector, sqlparse, pyarrow, pydantic.
 # Re-apply these overrides after regenerating from upstream: ADR:2026-10-23-ingestion-images-pin-python-security-packages-in-tree
 # This constraints file was automatically generated on 2026-09-17T09:17:15.849003
 # via `uv pip install --resolution highest` for the "v3-3-test" branch of Airflow.
@@ -291,7 +291,7 @@ deprecation==2.1.0
 dill==0.4.1
 distlib==0.4.3
 distro==1.9.0
-dnspython==2.9.0
+dnspython==2.9.2
 docker==7.2.0
 docopt==0.6.2
 docstring_parser==0.18.0
@@ -513,16 +513,16 @@ openlineage_sql==1.53.0
 openpyxl==3.1.5
 opensearch-protobufs==1.2.0
 opensearch-py==3.2.0
-opentelemetry-api==1.45.1
-opentelemetry-exporter-otlp-proto-common==1.45.1
-opentelemetry-exporter-otlp-proto-grpc==1.45.1
-opentelemetry-exporter-otlp-proto-http==1.45.1
-opentelemetry-exporter-otlp==1.45.1
-opentelemetry-exporter-prometheus==0.66b1
-opentelemetry-proto==1.45.1
+opentelemetry-api==1.45.2
+opentelemetry-exporter-otlp-proto-common==1.45.2
+opentelemetry-exporter-otlp-proto-grpc==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-exporter-otlp==1.45.2
+opentelemetry-exporter-prometheus==0.66b2
+opentelemetry-proto==1.45.2
 opentelemetry-resourcedetector-gcp==1.14.0
-opentelemetry-sdk==1.45.1
-opentelemetry-semantic-conventions==0.66b1
+opentelemetry-sdk==1.45.2
+opentelemetry-semantic-conventions==0.66b2
 opsgenie-sdk==2.1.5
 oracledb==26.0.0
 ordered-set==4.1.0
@@ -576,8 +576,8 @@ pydantic-ai-slim==2.43.0
 pydantic-extra-types==2.11.1
 pydantic-graph==2.43.0
 pydantic-settings==2.15.0
-pydantic==2.13.5
-pydantic_core==2.46.5
+pydantic==2.14.4
+pydantic_core==2.50.5
 pydata-google-auth==1.9.1
 pydruid==0.6.9
 pyexasol==2.4.1
@@ -685,7 +685,7 @@ tiktoken==0.14.0
 tinycss2==1.5.1
 tokenizers==0.23.2
 tomlkit==0.15.1
-tornado==6.5.9
+tornado==6.6.1
 tqdm==4.70.1
 traitlets==5.16.1
 trino==0.339.0

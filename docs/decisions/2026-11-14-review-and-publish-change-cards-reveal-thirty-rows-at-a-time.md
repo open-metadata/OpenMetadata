@@ -1,9 +1,9 @@
 # The Review & publish change cards reveal thirty rows at a time
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-14 (initial)
+- **Revisions:** v1 2026-11-14 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** UI team
-- **Guard:** `OntologyReleaseChangeCards.test.tsx` — "shows 30 rows and loads 30 more on each Load more"
+- **Guard:** `OntologyReleaseChangeCards.test.tsx` *(openmetadata-collate)* — "shows 30 rows and loads 30 more on each Load more"
 - **Related:** open-metadata/OpenMetadata#37814, ADR:2026-11-13-concept-drawer-reveals-relationships-ten-at-a-time, ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
 
 ## Context
@@ -35,3 +35,7 @@ ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48 sets the paged-list s
 - A card keeps its revealed count when the filter or search changes.
 - Revisit if the change list moves to a server-paged endpoint per kind. That list would follow the
   15/25/50 scale instead.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

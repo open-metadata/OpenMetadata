@@ -1,9 +1,9 @@
 # Ontology definition status is derived from releases
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration); v4 2026-10-25 (distinguish available and unavailable review locks); v5 2026-11-14 (the ontology counts itself before its first release)
+- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-23 (clarify publication response and working-change counts); v3 2026-10-25 (separate deprecation counts at stack integration); v4 2026-10-25 (distinguish available and unavailable review locks); v5 2026-11-14 (the ontology counts itself before its first release); v6 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyPublicationStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`, `OntologyUnpublishedCount.utils.test.ts`
+- **Guard:** `OntologyDefinitionStatusResolverTest`, `OntologyPublicationStatusResolverTest`, `OntologyDerivedStatusStorageTest`, `IndependentOntologyStatusIT`, `OntologyUnpublishedCount.utils.test.ts` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members, #35981, #36184
 
 ## Context
@@ -104,3 +104,5 @@ hide the ontology's own row by the same rule. Every Studio count reads one helpe
 `getUnpublishedCount`, so the Publish button, the Draft badge, the all-ontologies total and the
 dialog agree. This amendment changes no API or stored count; if the server stops counting the
 ontology itself, the helper's subtraction must go in the same change.
+
+v6 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

@@ -3916,222 +3916,6 @@
     }
   },
   {
-    "id": "ontology-scope-menu",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "role": "menu"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-new-form",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-create-dialog"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-create"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "inViewport": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ]
-  },
-  {
-    "id": "ontology-new-validation",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-create-dialog"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-create"
-      },
-      {
-        "action": "fill",
-        "testId": "ontology-create-name",
-        "value": "VisualOntology"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-create-advanced-toggle"
-      },
-      {
-        "action": "fill",
-        "testId": "ontology-create-namespace",
-        "value": "invalid prefix"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "inViewport": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "containsText": ["Enter a valid concept IRI."]
-  },
-  {
-    "id": "ontology-native-graph",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-graph-search"
-    }
-  },
-  {
-    "id": "ontology-tree",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "role": "treegrid",
-      "name": "Concepts"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "submode-tab-tree"
-      }
-    ]
-  },
-  {
-    "id": "ontology-library",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-library"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-library-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publish-changes",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-modal"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publish-releases",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-modal"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-publication-tab-releases"
-      }
-    ]
-  },
-  {
-    "id": "ontology-export-dialog",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-release-export-dialog"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-import-export-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-export-menu-item"
-      }
-    ]
-  },
-  {
-    "id": "ontology-query",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-new-query"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "mode-tab-query"
-      }
-    ]
-  },
-  {
     "id": "workflow-graph",
     "group": "Governance states",
     "path": "/workflows/visual_approval_workflow/workflow",
@@ -4379,7 +4163,7 @@
       }
     ],
     "initialReady": {
-      "testId": "data-quality-add-button-menu"
+      "testId": "entity-health-pie-chart-widget"
     }
   },
   {
@@ -8863,7 +8647,7 @@
     },
     "id": "custom-property-config-no-search-results",
     "ready": {
-      "text": "No Properties found"
+      "text": "No Properties Found"
     },
     "actions": [
       {
@@ -9866,93 +9650,6 @@
     "initialReady": {
       "testId": "custom-property-table"
     },
-    "id": "custom-property-config-table-column-limit",
-    "ready": {
-      "text": "Maximum 3 Columns are allowed"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "add-custom-property-btn"
-      },
-      {
-        "action": "fill",
-        "role": "textbox",
-        "name": "Name",
-        "within": "custom-property-name",
-        "value": "VisualInvalidConfiguration"
-      },
-      {
-        "action": "click",
-        "testId": "custom-property-type"
-      },
-      {
-        "action": "click",
-        "role": "option",
-        "name": "Table"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Source"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Purpose"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Owner"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Retention"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "custom-property-save"
-      }
-    ]
-  },
-  {
-    "group": "Custom property configuration",
-    "path": "/my-data#custom-properties/table",
-    "state": "custom-properties",
-    "initialReady": {
-      "testId": "custom-property-table"
-    },
     "id": "custom-property-config-enum-created-values-menu",
     "ready": {
       "role": "listbox",
@@ -10622,7 +10319,7 @@
     "ready": {
       "testId": "announcements-empty"
     },
-    "text": "No Announcements found"
+    "text": "No Announcements Found"
   },
   {
     "id": "classic-settings-notifications-announcements-add",

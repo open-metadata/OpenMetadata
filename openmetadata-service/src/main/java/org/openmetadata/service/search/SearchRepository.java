@@ -121,6 +121,7 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -169,6 +170,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -180,6 +182,7 @@ import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
@@ -219,6 +222,14 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  private static final String REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT =
+      """
+      if (!params.preserveCurrent || ctx._source.fingerprint != params.fingerprint) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field);
+        }
+      }
+      """;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
@@ -991,8 +1002,6 @@ public class SearchRepository {
       vectorServiceInitialized = true;
       this.vectorServiceInitError = null;
 
-      ensureHybridSearchPipeline();
-
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
           resolveEmbeddingProvider(llmConfig),
@@ -1013,79 +1022,41 @@ public class SearchRepository {
     return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
   }
 
-  public void ensureHybridSearchPipeline() {
-    if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
-      return;
-    }
-    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
-    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
-    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
-      return;
-    }
-    double[] weights = resolveHybridWeights();
-    updateHybridSearchPipeline(weights[0], weights[1]);
-  }
+  /** The weights of the keyword and the semantic leg of hybrid search. */
+  public record HybridWeights(double keyword, double semantic) {}
 
   /**
-   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
-   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
-   * OpenSearch.
-   *
-   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
-   * settings, so inlining is what makes an admin's weight change take effect on the next query
-   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
-   * role is not allowed to write anyway.
+   * The effective hybrid weights: search settings when present, else configuration, else 0.6 and
+   * 0.4. Read on each call, so an admin's change applies to the next search.
    */
-  public Optional<String> getHybridRrfPipelineDefinition() {
-    if (!isVectorEmbeddingEnabled()
-        || !vectorServiceInitialized
-        || !(vectorIndexService instanceof OpenSearchVectorService)) {
-      return Optional.empty();
-    }
-    double[] weights = resolveHybridWeights();
-    return Optional.of(
-        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
-  }
-
-  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
-  private double[] resolveHybridWeights() {
-    ElasticSearchConfiguration cfg = getSearchConfiguration();
-    NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
+  public HybridWeights getHybridWeights() {
+    NaturalLanguageSearchConfiguration nlConfig =
+        Objects.requireNonNullElseGet(
+            getSearchConfiguration().getNaturalLanguageSearch(),
+            NaturalLanguageSearchConfiguration::new);
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
         nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+    GlobalSettings global = searchSettingsGlobals();
+    if (global != null && global.getKeywordWeight() != null) {
+      keywordWeight = global.getKeywordWeight();
+    }
+    if (global != null && global.getSemanticWeight() != null) {
+      semanticWeight = global.getSemanticWeight();
+    }
+    return new HybridWeights(keywordWeight, semanticWeight);
+  }
 
+  private static GlobalSettings searchSettingsGlobals() {
+    GlobalSettings global = null;
     try {
-      SearchSettings ss =
+      SearchSettings settings =
           SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-      if (ss != null && ss.getGlobalSettings() != null) {
-        if (ss.getGlobalSettings().getKeywordWeight() != null) {
-          keywordWeight = ss.getGlobalSettings().getKeywordWeight();
-        }
-        if (ss.getGlobalSettings().getSemanticWeight() != null) {
-          semanticWeight = ss.getGlobalSettings().getSemanticWeight();
-        }
-      }
+      global = settings == null ? null : settings.getGlobalSettings();
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-    return new double[] {keywordWeight, semanticWeight};
-  }
-
-  public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      openSearchVectorService.ensureHybridSearchPipeline(keywordWeight, semanticWeight);
-    } else {
-      LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
-    }
-  }
-
-  public Optional<String> checkHybridSearchPipeline() {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      double[] weights = resolveHybridWeights();
-      return openSearchVectorService.checkHybridSearchPipeline(weights[0], weights[1]);
-    }
-    return Optional.empty();
+    return global;
   }
 
   public IndexMapping getIndexMapping(String entityType) {
@@ -1338,7 +1309,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
@@ -1410,6 +1381,10 @@ public class SearchRepository {
   public void createEntityIndex(EntityInterface<?> entity) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot create index.");
+      return;
+    }
+
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
       return;
     }
 
@@ -1876,6 +1851,15 @@ public class SearchRepository {
       if (nullOrEmpty(entityType)) {
         return;
       }
+      if (OntologyTermSearch.isTerm(entityType)) {
+        refreshOntologyTerms(
+            entities.stream()
+                .filter(Objects::nonNull)
+                .map(EntityInterface::getEntityReference)
+                .distinct()
+                .toList());
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
@@ -2096,6 +2080,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -2163,7 +2151,7 @@ public class SearchRepository {
           SearchIndex searchIndex =
               searchIndexFactory.buildIndex(
                   entityType, withFieldsLoadedOnWrite(entityType, entity));
-          doc = searchIndex.buildSearchIndexDoc();
+          doc = withRetiredFieldsRemoved(searchIndex, searchIndex.buildSearchIndexDoc());
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
                   doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
@@ -2177,6 +2165,9 @@ public class SearchRepository {
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        invalidateMemoryEmbedding(entity);
+      }
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2244,6 +2235,19 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * An update merges into the stored document, so a field the index retired is removed rather than
+   * left as an earlier release wrote it.
+   */
+  private static Map<String, Object> withRetiredFieldsRemoved(
+      SearchIndex searchIndex, Map<String, Object> doc) {
+    Set<String> retired = searchIndex.getRetiredFields();
+    if (!retired.isEmpty()) {
+      doc.put(SearchClient.FIELDS_TO_REMOVE, List.copyOf(retired));
+    }
+    return doc;
+  }
+
   public void bulkIndexPipelineExecutions(
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
@@ -2274,14 +2278,113 @@ public class SearchRepository {
     }
   }
 
+  private boolean refreshIfOntologyTerm(EntityReference reference) {
+    if (!OntologyTermSearch.isTerm(reference.getType())) {
+      return false;
+    }
+    refreshOntologyTerm(reference);
+    return true;
+  }
+
+  public void refreshOntologyTerm(EntityReference reference) {
+    refreshOntologyTerms(List.of(reference));
+  }
+
+  public void refreshOntologyTerms(List<EntityReference> references) {
+    final var pending =
+        references.stream()
+            .filter(ref -> getIndexMapping(ref.getType()) != null)
+            .filter(
+                ref ->
+                    !shouldSkipStreamingIndexing(
+                        ref.getType(),
+                        ref.getId().toString(),
+                        ref.getFullyQualifiedName(),
+                        "refreshOntologyTerm"))
+            .toList();
+    try {
+      writeOntologyTerms(pending);
+    } catch (IOException | RuntimeException failure) {
+      pending.forEach(
+          ref ->
+              SearchIndexRetryQueue.enqueue(
+                  ref.getId().toString(),
+                  ref.getFullyQualifiedName(),
+                  ref.getType(),
+                  SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure)));
+      LOG.error("Failed to refresh {} ontology search terms", pending.size(), failure);
+    }
+  }
+
+  public void reindexOntologyTerm(EntityReference reference) throws IOException {
+    if (getIndexMapping(reference.getType()) != null) {
+      writeOntologyTerms(List.of(reference));
+    }
+  }
+
+  private void writeOntologyTerms(List<EntityReference> references) throws IOException {
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> getWriteFanoutTargets(getIndexMapping(ref.getType()).getIndexName(clusterAlias)),
+            null,
+            null);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(
+          ref ->
+              EntityLifecycleEventDispatcher.getInstance()
+                  .enqueueOntologyEmbedding(
+                      ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
+    }
+  }
+
+  public boolean writeSpecializedIndexBatch(
+      String entityType, List<?> entities, String target, ReindexContext context)
+      throws IOException {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      return false;
+    }
+    final var references =
+        entities.stream()
+            .map(entity -> ((EntityInterface<?>) entity).getEntityReference())
+            .toList();
+    final String source =
+        context == null ? target : context.getOriginalIndex(entityType).orElse(target);
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> List.of(target),
+            vectorIndexService,
+            source);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(ref -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref, List.of(target)));
+    }
+    return true;
+  }
+
+  void sweepOntologyChunks(String entityType) throws IOException {
+    OntologyChunkIndex.sweep(searchClient, clusterAlias, entityType);
+  }
+
   public void updateEntity(EntityReference entityReference) {
+    updateEntity(entityReference, Include.NON_DELETED);
+  }
+
+  public void updateEntity(EntityReference entityReference, Include include) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntity(entityReference),
+            () -> updateEntity(entityReference, include),
             "updateEntity",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
             entityReference.getType()))) {
+      return;
+    }
+    if (refreshIfOntologyTerm(entityReference)) {
       return;
     }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
@@ -2294,9 +2397,38 @@ public class SearchRepository {
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+            null,
+            entityReference.getId(),
+            entityRepository.getOnlySupportedFields(fields),
+            include,
+            false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())
+        && vectorEmbeddingHandler != null
+        && !Boolean.TRUE.equals(entity.getDeleted())) {
+      vectorEmbeddingHandler.updateEmbedding(entity);
+    }
+  }
+
+  private void invalidateMemoryEmbedding(EntityInterface<?> entity) {
+    if (vectorEmbeddingHandler != null) {
+      vectorEmbeddingHandler.invalidateStaleEmbedding(entity);
+    } else {
+      boolean preserveCurrent =
+          !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);
+      searchClient.updateEntity(
+          getWriteIndexName(getIndexMapping(Entity.CONTEXT_MEMORY)),
+          entity.getId().toString(),
+          Map.of(
+              "preserveCurrent",
+              preserveCurrent,
+              "fingerprint",
+              preserveCurrent ? VectorDocBuilder.computeFingerprintForEntity(entity) : "",
+              SearchClient.FIELDS_TO_REMOVE,
+              List.copyOf(ContextMemoryIndex.VECTOR_FIELDS)),
+          REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT);
+    }
   }
 
   /**
@@ -2439,6 +2571,9 @@ public class SearchRepository {
         continue;
       }
 
+      if (refreshIfOntologyTerm(entity.getEntityReference())) {
+        continue;
+      }
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -4173,6 +4308,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -4275,6 +4414,10 @@ public class SearchRepository {
   public void softDeleteOrRestoreEntityIndex(EntityInterface<?> entity, boolean delete) {
     if (entity == null) {
       LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
       return;
     }
 

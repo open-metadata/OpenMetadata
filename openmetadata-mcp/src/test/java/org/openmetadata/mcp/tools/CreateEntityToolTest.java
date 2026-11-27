@@ -53,7 +53,9 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -187,6 +189,100 @@ class CreateEntityToolTest {
                         .execute(
                             mock(Authorizer.class), mock(Limits.class), securityContext, params)));
 
+    verify(repository, never()).create(any(), any(), anyString(), any());
+  }
+
+  /** As TeamResource: the roles a new team hands its members are never set while impersonating. */
+  @Test
+  void anImpersonatedCallerCannotCreateATeamWithDefaultRoles() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Team.class);
+    CatalogSecurityContext securityContext = securityContext();
+    when(securityContext.impersonatedUser()).thenReturn("automation-bot");
+    Map<String, Object> params = teamWithADefaultRole();
+
+    AuthorizationException refused =
+        assertThrows(
+            AuthorizationException.class,
+            () ->
+                withRepository(
+                    Entity.TEAM,
+                    repository,
+                    () ->
+                        new CreateEntityTool()
+                            .execute(
+                                mock(Authorizer.class),
+                                mock(Limits.class),
+                                securityContext,
+                                params)));
+
+    assertTrue(refused.getMessage().contains("roles or policies"));
+    verify(repository, never()).create(any(), any(), anyString(), any());
+  }
+
+  /** As TeamResource: only an admin may hand a new team's members a role. */
+  @Test
+  void aNonAdminCannotCreateATeamWithDefaultRoles() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Team.class);
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("Principal: non-admin is not admin"))
+        .when(authorizer)
+        .authorizeAdmin(any(CatalogSecurityContext.class));
+    Map<String, Object> params = teamWithADefaultRole();
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            withRepository(
+                Entity.TEAM,
+                repository,
+                () ->
+                    new CreateEntityTool()
+                        .execute(authorizer, mock(Limits.class), securityContext(), params)));
+
+    verify(repository, never()).create(any(), any(), anyString(), any());
+  }
+
+  private static Map<String, Object> teamWithADefaultRole() {
+    Map<String, Object> params = params(Entity.TEAM);
+    params.put(
+        "attributes",
+        Map.of(
+            "teamType",
+            "Group",
+            "defaultRoles",
+            List.of(Map.of("id", UUID.randomUUID().toString(), "type", Entity.ROLE))));
+    return params;
+  }
+
+  /** Neither type has a dedicated create flow, so this guard is the only thing that refuses it. */
+  @Test
+  void anImpersonatedCallerCannotCreateAPolicyOrARole() {
+    assertImpersonatedCreateRefused(Entity.POLICY, Policy.class);
+    assertImpersonatedCreateRefused(Entity.ROLE, Role.class);
+  }
+
+  private static void assertImpersonatedCreateRefused(
+      String entityType, Class<? extends EntityInterface<?>> entityClass) {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(entityClass);
+    CatalogSecurityContext securityContext = securityContext();
+    when(securityContext.impersonatedUser()).thenReturn("automation-bot");
+
+    AuthorizationException refused =
+        assertThrows(
+            AuthorizationException.class,
+            () ->
+                withRepository(
+                    entityType,
+                    repository,
+                    () ->
+                        new CreateEntityTool()
+                            .execute(
+                                mock(Authorizer.class),
+                                mock(Limits.class),
+                                securityContext,
+                                params(entityType))));
+
+    assertTrue(refused.getMessage().contains(entityType));
     verify(repository, never()).create(any(), any(), anyString(), any());
   }
 
@@ -974,6 +1070,18 @@ class CreateEntityToolTest {
                     .findFirst()
                     .orElseThrow(() -> new EntityNotFoundException("not found: " + asked));
               });
+      // A team's parents are loaded by id for the parent edit check, as on REST.
+      entities
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenAnswer(
+              lookup ->
+                  persisted.stream()
+                      .filter(candidate -> candidate.getType().equals(lookup.getArgument(0)))
+                      .filter(candidate -> candidate.getId().equals(lookup.getArgument(1)))
+                      .findFirst()
+                      .orElseThrow(
+                          () ->
+                              new EntityNotFoundException("not found: " + lookup.getArgument(1))));
       rules.when(RuleEngine::getInstance).thenReturn(mock(RuleEngine.class));
 
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);

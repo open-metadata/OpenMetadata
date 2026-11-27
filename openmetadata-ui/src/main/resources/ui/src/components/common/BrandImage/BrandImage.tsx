@@ -12,6 +12,7 @@
  */
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useResolvedTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 
@@ -36,20 +37,26 @@ const BrandImage: FC<BrandImageProps> = ({
 }) => {
   const { applicationConfig } = useApplicationStore();
   const { t } = useTranslation();
+  const isDark = useResolvedTheme() === 'dark';
 
   const { defaultLogo, logoSource } = useMemo(() => {
-    const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-      applicationConfig?.customLogoConfig ?? {};
+    const {
+      customLogoUrlPath = '',
+      customLogoDarkUrlPath = '',
+      customMonogramUrlPath = '',
+      customMonogramDarkUrlPath = '',
+    } = applicationConfig?.customLogoConfig ?? {};
     const monoGram = brandClassBase.getMonogram().src;
     const logo = brandClassBase.getLogo().src;
 
     const defaultLogo = isMonoGram ? monoGram : logo;
-    const logoSource = isMonoGram
-      ? customMonogramUrlPath || monoGram
-      : customLogoUrlPath || logo;
+    const [lightUrl, darkUrl] = isMonoGram
+      ? [customMonogramUrlPath, customMonogramDarkUrlPath]
+      : [customLogoUrlPath, customLogoDarkUrlPath];
+    const customUrl = (isDark && darkUrl) || lightUrl;
 
-    return { defaultLogo, logoSource };
-  }, [isMonoGram, applicationConfig?.customLogoConfig]);
+    return { defaultLogo, logoSource: customUrl || defaultLogo };
+  }, [isMonoGram, isDark, applicationConfig?.customLogoConfig]);
 
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- image load lifecycle, not interaction

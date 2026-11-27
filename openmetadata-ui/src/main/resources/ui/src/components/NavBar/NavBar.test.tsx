@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
@@ -228,6 +228,22 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
+  });
+
+  it('runs a help item from the keyboard, not only from a click', async () => {
+    const onAction = jest.fn();
+    (getHelpDropdownItems as jest.Mock).mockReturnValueOnce([
+      { key: 'tour', label: <span>Tour</span>, onAction },
+    ]);
+    render(<NavBarComponent />);
+
+    fireEvent.click(screen.getByTestId('help-icon'));
+    const item = await screen.findByRole('menuitem', { name: 'Tour' });
+    act(() => item.focus());
+    fireEvent.keyDown(item, { key: 'Enter' });
+    fireEvent.keyUp(item, { key: 'Enter' });
+
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 
   // The landing page carries neither a search bar nor a domain control of its

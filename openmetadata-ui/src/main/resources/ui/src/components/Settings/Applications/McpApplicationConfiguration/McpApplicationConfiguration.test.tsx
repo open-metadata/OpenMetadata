@@ -45,6 +45,8 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpClients: jest.fn().mockResolvedValue([]),
+  revokeMcpClient: jest.fn(),
   getMcpTools: jest.fn().mockResolvedValue(['search_metadata']),
   updateMcpConfig: jest.fn(),
 }));
@@ -168,10 +170,10 @@ describe('McpApplicationConfiguration', () => {
     await renderComponent();
 
     expect(mockGetMcpConfig).toHaveBeenCalledTimes(1);
-    // connectTimeout/path/enabled/mcpServerName are stored but not editable, and the schema sets
+    // connectTimeout/path/mcpServerName are stored but not editable, and the schema sets
     // additionalProperties:false, so passing them to the form would fail validation.
     expect(screen.getByTestId('form-data')).toHaveTextContent(
-      '{"allowedOrigins":["http://localhost:8585"],"maxResponseChars":50000}'
+      '{"enabled":true,"allowedOrigins":["http://localhost:8585"],"maxResponseChars":50000}'
     );
   });
 
@@ -212,7 +214,7 @@ describe('McpApplicationConfiguration', () => {
     });
     expect(showSuccessToast).toHaveBeenCalled();
     expect(screen.getByTestId('form-data')).toHaveTextContent(
-      '{"allowedOrigins":["https://app.example.com"]}'
+      '{"enabled":true,"allowedOrigins":["https://app.example.com"]}'
     );
   });
 
@@ -265,6 +267,11 @@ describe('McpApplicationConfiguration', () => {
     [
       'every field the form shows',
       [
+        '/enabled',
+        '/dynamicClientRegistrationEnabled',
+        '/allowedRedirectHosts',
+        '/allowLoopbackRedirects',
+        '/allowNativeRedirects',
         '/baseUrl',
         '/allowedOrigins',
         '/maxResponseChars',

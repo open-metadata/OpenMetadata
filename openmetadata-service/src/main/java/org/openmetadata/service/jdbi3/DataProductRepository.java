@@ -309,7 +309,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.setDomains(updatedDomains);
     updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
     updated.setUpdatedAt(System.currentTimeMillis());
-    updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
+    if (updatedBy != null) {
+      EntityUtil.recordWriter(updated, updatedBy);
+    }
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
@@ -478,15 +480,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
   }
 
-  @Transaction
   private BulkOperationResult bulkPortsOperation(
-      String dataProductNameOrId,
-      BulkAssets request,
-      Relationship relationship,
-      boolean isAdd,
-      ChangeActor actor) {
-    DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, actor);
+      final String dataProductNameOrId,
+      final BulkAssets request,
+      final Relationship relationship,
+      final boolean isAdd,
+      final ChangeActor actor) {
+    final UUID dataProductId = resolveDataProduct(dataProductNameOrId).getId();
+    return executeInTransaction(
+        () -> {
+          // Lock before the first consistent read so the snapshot includes the prior port edit.
+          if (dao.findJsonByIdForUpdate(dataProductId, NON_DELETED) == null) {
+            throw EntityNotFoundException.byId(dataProductId.toString());
+          }
+          return executeBulkPortsOperation(dataProductId, request, relationship, isAdd, actor);
+        });
   }
 
   private DataProduct resolveDataProduct(String nameOrId) {
@@ -501,22 +509,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   // Every eligible port of the request is held, as one change request, when an approval workflow
   // gates the data product's ports for this user; otherwise they are written at once.
   private BulkOperationResult executeBulkPortsOperation(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final BulkAssets request,
       final Relationship relationship,
       final boolean isAdd,
       final ChangeActor actor) {
     final List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-    final List<PortRow> rows = checkPorts(dataProduct.getId(), assets, relationship, isAdd);
+    final List<PortRow> rows = checkPorts(dataProductId, assets, relationship, isAdd);
     final List<EntityReference> eligible =
         rows.stream().filter(PortRow::eligible).map(PortRow::ref).toList();
     final String held =
-        eligible.isEmpty()
-            ? null
-            : holdPorts(dataProduct.getId(), eligible, relationship, isAdd, actor);
+        eligible.isEmpty() ? null : holdPorts(dataProductId, eligible, relationship, isAdd, actor);
     if (held == null && !eligible.isEmpty()) {
-      writePorts(dataProduct, eligible, relationship, isAdd, actor.userName());
+      writePorts(dataProductId, eligible, relationship, isAdd, actor);
     }
     return portsResult(rows, held);
   }
@@ -662,19 +668,38 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void writePorts(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final List<EntityReference> ports,
       final Relationship relationship,
       final boolean isAdd,
-      final String updatedBy) {
-    linkPorts(dataProduct, ports, relationship, isAdd);
-    final DataProduct stored = get(null, dataProduct.getId(), getFields("*"));
-    recordPortChange(
-        stored,
-        portChangeDescription(
-            stored.getVersion(), Map.of(new PortChange(relationship, isAdd), ports)),
-        updatedBy,
-        false);
+      final ChangeActor actor) {
+    final List<EntityReference> changed = changedPorts(dataProductId, ports, relationship, isAdd);
+    if (!changed.isEmpty()) {
+      final DataProduct stored = get(null, dataProductId, getPutFields(), NON_DELETED, false);
+      linkPorts(stored, changed, relationship, isAdd);
+      recordPortChange(
+          stored,
+          portChangeDescription(
+              stored.getVersion(), Map.of(new PortChange(relationship, isAdd), changed)),
+          new PortWriter(actor.userName(), actor.impersonatedBy()),
+          false);
+    }
+  }
+
+  private List<EntityReference> changedPorts(
+      final UUID productId,
+      final List<EntityReference> ports,
+      final Relationship relationship,
+      final boolean isAdd) {
+    final Set<UUID> existing = relatedIds(productId, relationship);
+    final List<EntityReference> changed = new ArrayList<>();
+    for (final EntityReference port : ports) {
+      final boolean changesSet = isAdd ? existing.add(port.getId()) : existing.remove(port.getId());
+      if (changesSet) {
+        changed.add(port);
+      }
+    }
+    return changed;
   }
 
   private void linkPorts(
@@ -712,16 +737,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return combined;
   }
 
-  // {@code joinsFieldChange}: the same approval has just published field changes at this version,
-  // so the port changes join that version's change description rather than replace it.
+  private record PortWriter(String updatedBy, String impersonatedBy) {}
+
   private void recordPortChange(
       final DataProduct dataProduct,
       final ChangeDescription change,
-      final String updatedBy,
+      final PortWriter writer,
       final boolean joinsFieldChange) {
+    final Double previousVersion = dataProduct.getVersion();
+    if (!joinsFieldChange) {
+      startPortVersion(dataProduct);
+    }
+    joinPortChange(dataProduct, change, joinsFieldChange);
+    dataProduct.setUpdatedBy(writer.updatedBy());
+    dataProduct.setImpersonatedBy(writer.impersonatedBy());
+    storeEntityWithVersion(dataProduct, true, previousVersion);
     final ChangeEvent changeEvent =
-        getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
+        getChangeEvent(dataProduct, change, DATA_PRODUCT, previousVersion);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private void startPortVersion(final DataProduct dataProduct) {
+    storeVersions(List.of(dataProduct));
+    dataProduct.setVersion(EntityUtil.nextVersion(dataProduct.getVersion()));
+    dataProduct.setUpdatedAt(System.currentTimeMillis());
+    dataProduct.setIncrementalChangeDescription(null);
+  }
+
+  // {@code joinsFieldChange}: the same approval has just published field changes at this version,
+  // so the port changes join that version's change description rather than replace it.
+  private static void joinPortChange(
+      final DataProduct dataProduct,
+      final ChangeDescription change,
+      final boolean joinsFieldChange) {
     final ChangeDescription current = dataProduct.getChangeDescription();
     if (joinsFieldChange && current != null) {
       current.getFieldsAdded().addAll(change.getFieldsAdded());
@@ -729,9 +777,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } else {
       dataProduct.setChangeDescription(change);
     }
-    dataProduct.setUpdatedBy(updatedBy);
-    storeEntity(dataProduct, true);
-    invalidate(dataProduct);
+  }
+
+  private static boolean hasPortChanges(final ChangeDescription change) {
+    return change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsAdded()).stream(),
+                listOrEmpty(change.getFieldsDeleted()).stream())
+            .anyMatch(field -> PORT_FIELDS_BY_NAME.containsKey(field.getName()));
   }
 
   private static BulkOperationResult portsResult(final List<PortRow> rows, final String held) {
@@ -839,14 +892,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final String requestedBy,
       final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
-    final DataProduct dataProduct = get(null, entityId, getFields("*"));
+    final DataProduct dataProduct = get(null, entityId, getPutFields(), NON_DELETED, false);
     final Map<PortChange, List<EntityReference>> changes = portsByChange(ops);
     changes.forEach(
         (change, ports) -> linkPorts(dataProduct, ports, change.relationship(), change.isAdd()));
     recordPortChange(
         dataProduct,
         portChangeDescription(dataProduct.getVersion(), changes),
-        requestedBy,
+        new PortWriter(requestedBy, null),
         withFieldChanges);
   }
 
@@ -1101,6 +1154,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected boolean consolidateChanges(
+        DataProduct original, DataProduct updated, Operation operation) {
+      // The field updater cannot replay port edits, which live in dedicated relationships.
+      return !hasPortChanges(original.getChangeDescription())
+          && super.consolidateChanges(original, updated, operation);
     }
 
     @Override

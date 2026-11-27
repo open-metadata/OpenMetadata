@@ -73,7 +73,7 @@ interface OntologyAuthoringInspectorProps {
   readonly node: OntologyNode;
   readonly nodes: OntologyNode[];
   readonly relationTypes: RelationshipType[];
-  readonly onCreateRelation: (
+  readonly onCreateRelation?: (
     fromId: string,
     toId: string,
     relationType: string
@@ -394,7 +394,7 @@ const OntologyAuthoringInspector = ({
     }
     setIsSavingRelationship(true);
     try {
-      await onCreateRelation(node.id, selectedTargetId, selectedRelationType);
+      await onCreateRelation?.(node.id, selectedTargetId, selectedRelationType);
       closeRelationshipForm();
     } finally {
       setIsSavingRelationship(false);

@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { TEST_DEFINITION_COLUMN_BY_SORT_FIELD } from '../../../constants/TestDefinition.constants';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { useTestDefinitionData } from './useTestDefinitionData';
 import { useTestDefinitionFilters } from './useTestDefinitionFilters';
@@ -102,6 +105,26 @@ export const useTestDefinitionListPage = () => {
     handleFormCancel,
   } = useTestDefinitionModals({ setTestDefinitions, resetPagingAndRefetch });
 
+  const [viewedDefinition, setViewedDefinition] = useState<TestDefinition>();
+  const canEditViewedDefinition = viewedDefinition
+    ? getDerivedPermissionFlags(
+        testDefinitionPermissions[viewedDefinition.name] ??
+          DEFAULT_ENTITY_PERMISSION
+      ).canEditAll
+    : false;
+  const openDetails = useCallback(
+    (record: TestDefinition) => setViewedDefinition(record),
+    []
+  );
+  const closeDetails = useCallback(() => setViewedDefinition(undefined), []);
+  const editFromDetails = useCallback(
+    (record: TestDefinition) => {
+      setViewedDefinition(undefined);
+      handleEdit(record);
+    },
+    [handleEdit]
+  );
+
   const handlePageChangeCallback = ({
     cursorType,
     currentPage: page,
@@ -177,5 +200,10 @@ export const useTestDefinitionListPage = () => {
     handleFormSuccess,
     handleFormCancel,
     fetchTestDefinitions,
+    viewedDefinition,
+    canEditViewedDefinition,
+    openDetails,
+    closeDetails,
+    editFromDetails,
   };
 };

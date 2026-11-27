@@ -35,6 +35,7 @@ import {
   getOwnerVersionLabel,
   getParameterValueDiffRows,
   getSummary,
+  renderVersionButton,
 } from './EntityVersionUtils';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -838,5 +839,15 @@ describe('getCommonExtraInfoForVersionDetails tier label', () => {
     );
 
     expect(tierDisplayName).toBe('Tier1');
+  });
+
+  describe('renderVersionButton', () => {
+    it('ignores malformed and unexpected version entries', () => {
+      expect(renderVersionButton('{invalid', '1.0', jest.fn())).toBeNull();
+      expect(renderVersionButton('{}', '1.0', jest.fn())).toBeNull();
+      expect(
+        renderVersionButton('{"version":"invalid"}', '1.0', jest.fn())
+      ).toBeNull();
+    });
   });
 });

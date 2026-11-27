@@ -759,6 +759,37 @@ class JwtFilterTest {
     verify(impersonating, never()).setSecurityContext(any());
   }
 
+  /** MCP applies X-Impersonate-User as REST does: a bot acts as the target it is granted. */
+  @Test
+  void mcpContextActsAsTheTargetABotImpersonates() {
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
+    User target = new User().withName(USER).withEmail(emailOf(USER));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<ImpersonationAuthorizer> grant = mockStatic(ImpersonationAuthorizer.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, USER, "", Include.NON_DELETED))
+          .thenReturn(target);
+
+      CatalogSecurityContext context = omFilter.getCatalogSecurityContext(jwt, null, USER);
+
+      assertEquals(USER, context.getUserPrincipal().getName());
+      assertEquals(BOT, context.impersonatedUser());
+      grant.verify(() -> ImpersonationAuthorizer.authorize(BOT, target));
+    }
+  }
+
+  @Test
+  void mcpContextRefusesImpersonationFromATokenThatIsNotABot() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+
+    assertThrows(
+        ImpersonationDeniedException.class,
+        () -> omFilter.getCatalogSecurityContext(pat, null, BOT));
+  }
+
   @ParameterizedTest
   @EnumSource(EntryPoint.class)
   void everyEntryPointRejectsARevokedPersonalAccessToken(EntryPoint entryPoint) {
@@ -835,6 +866,53 @@ class JwtFilterTest {
 
     assertEquals(userName, principal.getName());
     assertEquals(email, principal.getEmail());
+  }
+
+  /**
+   * tokenValidationAlgorithm names the identity provider's algorithm: the tokens OpenMetadata
+   * issued keep verifying with the one it signed them with when it changes.
+   */
+  @Test
+  void ownTokensStayValidUnderAnotherProviderAlgorithm() throws Exception {
+    String userName = "algorithm_user";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                new HashSet<>(),
+                false,
+                emailOf(userName),
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+    Field providerAlgorithm = JwtFilter.class.getDeclaredField("tokenValidationAlgorithm");
+    providerAlgorithm.setAccessible(true);
+    providerAlgorithm.set(filter, AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) filter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+  }
+
+  @Test
+  void ownKeyIdWithoutAnRsaSignatureIsRejected() {
+    String forged =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer(OpenMetadataSigningKey.ISSUER)
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim("email", emailOf(USER))
+            .sign(Algorithm.HMAC256(generator.getPublicKey().getEncoded()));
+
+    assertRejectedBy(
+        omFilter, forged, "Not Authorized! Invalid token. Unsupported signing algorithm.");
   }
 
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */

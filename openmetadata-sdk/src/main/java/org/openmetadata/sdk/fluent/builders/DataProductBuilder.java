@@ -51,6 +51,7 @@ public class DataProductBuilder {
    * Set custom extension data.
    */
   public DataProductBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,12 +15,15 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
@@ -41,6 +45,32 @@ class OpenSearchVectorServiceRequestTest {
     genericClient = mock(OpenSearchGenericClient.class);
     when(client.generic()).thenReturn(genericClient);
     service = new OpenSearchVectorService(client, null);
+  }
+
+  @Test
+  void routesOntologyVectorQueriesOutsideTheAssetAlias() throws IOException {
+    final var embeddings = mock(EmbeddingClient.class);
+    when(embeddings.embedQuery("orders")).thenReturn(new float[] {0.1f, 0.2f});
+    final var client = mock(OpenSearchClient.class);
+    when(client.generic()).thenReturn(genericClient);
+    final var vectors = new OpenSearchVectorService(client, embeddings);
+    final var response = response(200, "{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              final Request request = invocation.getArgument(0);
+              final var body = request.getBody().orElseThrow().bodyAsString();
+              if (body.contains("ontologyConcept")) {
+                assertTrue(request.getEndpoint().contains("/ontology_embeddings_chunks/_search"));
+              } else {
+                assertTrue(request.getEndpoint().contains("/dataAssetEmbeddings/_search"));
+                assertFalse(body.contains("glossaryTerm"));
+              }
+              return response;
+            });
+    vectors.search("orders", Map.of(), 10, 0, 20, 0, null, null);
+    vectors.search(
+        "orders", Map.of("entityType", List.of("ontologyConcept")), 10, 0, 20, 0, null, null);
   }
 
   @Test

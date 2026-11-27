@@ -599,27 +599,6 @@ export const goToAssetsTab = async (
   await waitForAllLoadersToDisappear(page);
 };
 
-export const verifyAssetsInDomain = async (
-  page: Page,
-  domain: Domain['data'],
-  tables: TableClass[],
-  expectedVisible: boolean
-) => {
-  await goToAssetsTab(page, domain);
-
-  for (const table of tables) {
-    const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(
-      `[data-testid="table-data-card_${tableFqn}"]`
-    );
-    if (expectedVisible) {
-      await expect(tableCard).toBeVisible({ timeout: 10000 });
-    } else {
-      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
-    }
-  }
-};
-
 /**
  * Fill the fields AddDomainForm shares between domains, subdomains and data
  * products.
@@ -2082,6 +2061,14 @@ export const verifyPortCounts = async (
     });
 };
 
+// The modal runs an unfiltered search as it opens. Waiting on any search can
+// resolve on that one, and the typed search then re-renders the cards under the
+// checkbox click, which lands on a card's service link instead.
+const isPortAssetSearch = (query: string) => (res: Response) =>
+  res.request().method() === 'GET' &&
+  new URL(res.url()).pathname.endsWith('/api/v1/search/query') &&
+  new URL(res.url()).searchParams.get('q') === query;
+
 /**
  * Adds an input port to a data product via UI.
  */
@@ -2108,11 +2095,7 @@ export const addInputPortToDataProduct = async (
     .getByTestId('asset-selection-modal')
     .getByTestId('searchbar');
 
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
-  );
+  const searchRes = page.waitForResponse(isPortAssetSearch(displayName));
   await searchBar.fill(displayName);
   await searchRes;
 
@@ -2155,11 +2138,7 @@ export const addOutputPortToDataProduct = async (
     .getByTestId('asset-selection-modal')
     .getByTestId('searchbar');
 
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
-  );
+  const searchRes = page.waitForResponse(isPortAssetSearch(displayName));
   await searchBar.fill(displayName);
   await searchRes;
 

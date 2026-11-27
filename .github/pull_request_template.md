@@ -110,22 +110,6 @@ Without `gh`, drop `--update-pr` and paste `playwright/output/local-pr-results.m
 <!-- local-playwright-results:start -->
 <!-- local-playwright-results:end -->
 
-#### Visual regression baselines
-<!--
-- [ ] My change alters what a screen renders, and I refreshed the affected baselines under
-      `playwright/e2e/VisualRegression/__snapshots__/` in this PR.
-- [ ] Not applicable (no rendering change).
-
-PR checks do not run the visual lane; the merge queue does, and a stale baseline blocks it. Baselines
-are captured on the Linux renderer with the regular UI bundle, so do not regenerate them on macOS.
-Dispatch the Playwright workflow on your branch (the visual lane runs on every manual run), review
-each `-diff.png`, then commit the first-attempt `-actual.png` over its baseline:
-
-  gh workflow run playwright-postgresql-e2e.yml --ref <branch> -f full_suite=false
-
-List the refreshed baselines and the run URL here.
--->
-
 #### Manual testing performed
 <!--
 List the manual test steps you performed before requesting review. Example:
@@ -154,7 +138,7 @@ Standalone fixes, refactors, styling, localization, docs, tests and backend-only
 #
 ### Checklist:
 <!-- add an x in [] if done, don't mark items that you didn't do !-->
-- [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/developers/contribute) document.
+- [x] I have read [**CONTRIBUTING.md**](https://github.com/open-metadata/OpenMetadata/blob/main/CONTRIBUTING.md) (the pre-review gate) and the [contributor docs](https://docs.open-metadata.org/developers/contribute).
 - [ ] My PR title is `Fixes <issue-number>: <short explanation>`
 - [ ] My PR is linked to a GitHub issue via `Fixes #<issue-number>` above.
 - [ ] I have commented on my code, particularly in hard-to-understand areas.

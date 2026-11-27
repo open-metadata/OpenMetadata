@@ -142,9 +142,18 @@ class StorageSampler(SamplerInterface):
             if df_iterator:
                 df = next(df_iterator)
                 col_names = [col.name for col in columns] if columns else df.columns.tolist()
+                import pandas as pd  # pylint: disable=import-outside-toplevel
+
+                # Missing values become None, as in DatalakeSampler._fetch_rows: a NaT
+                # left in a row makes the sample data fail to serialize.
                 rows = [
-                    [self._truncate_cell(cell) for cell in row]
-                    for row in df[col_names].values.tolist()[: self.sample_limit]
+                    [
+                        None
+                        if pd.api.types.is_scalar(cell) and pd.isna(cell)
+                        else self._truncate_cell(self._array_to_list(cell))
+                        for cell in row
+                    ]
+                    for row in df[col_names].iloc[: self.sample_limit].astype(object).values.tolist()
                 ]
                 return TableData(columns=col_names, rows=rows)
 

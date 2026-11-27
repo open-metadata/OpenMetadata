@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.snowflake.connection import (
 from metadata.ingestion.source.database.snowflake.identifiers import (
     quote_account_usage_schema,
 )
+from metadata.ingestion.source.database.snowflake.lineage_utils import get_view_lineage_parser
 from metadata.ingestion.source.database.snowflake.models import (
     AccessHistoryRow,
     CopyHistoryRow,
@@ -71,6 +72,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
 from metadata.utils import fqn
+from metadata.utils.db_utils import ViewLineageParserFactory
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -340,6 +342,10 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             yield from self._yield_access_history_lineage()  # pyright: ignore[reportReturnType]
             return
         yield from super().yield_query_lineage()
+
+    def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
+        """Resolve `IDENTIFIER('<name>')` tables before parsing view lineage."""
+        return get_view_lineage_parser
 
     def _iter(self, *args, **kwargs) -> Iterable[LineageSourceRecord]:
         """Run the base lineage producers, then append semantic view lineage.

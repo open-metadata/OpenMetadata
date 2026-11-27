@@ -16,6 +16,12 @@ Salesforce Data 360 pipeline constants
 # the stored connection carries an explicit null.
 DEFAULT_PAGINATION_LIMIT = 10
 
+# Status Data 360 reports for an object that is switched off.
+INACTIVE_STATUS = "INACTIVE"
+
+# Data Transform type that runs continuously and keeps no run history.
+STREAMING_DATA_TRANSFORM = "STREAMING"
+
 
 class MetadataTypesConstant:
     DATASTREAMS = "dataStreams"

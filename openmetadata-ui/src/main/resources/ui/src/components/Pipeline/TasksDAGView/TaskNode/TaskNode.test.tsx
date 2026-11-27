@@ -22,7 +22,7 @@ jest.mock('reactflow', () => ({
 const mockProps = {
   data: {
     label: 'Test Label',
-    taskStatus: 'Success',
+    taskStatus: 'Successful',
   },
 } as NodeProps;
 
@@ -43,10 +43,31 @@ describe('TaskNode', () => {
     expect(await screen.findByText(mockProps.data.label)).toBeInTheDocument();
   });
 
-  it('should append class based on status', async () => {
-    render(<TaskNode {...mockProps} />);
-    const status = await screen.findByTestId('node-label-status');
+  it.each([
+    ['Successful', 'tw:bg-visualization-green-3'],
+    ['Failed', 'tw:bg-visualization-red-3'],
+    ['Pending', 'tw:bg-visualization-yellow-2'],
+  ])(
+    'colours the status dot for %s with a theme token',
+    async (taskStatus, tokenClass) => {
+      render(
+        <TaskNode {...mockProps} data={{ ...mockProps.data, taskStatus }} />
+      );
 
-    expect(status).toHaveClass(mockProps.data.taskStatus);
+      expect(await screen.findByTestId('node-label-status')).toHaveClass(
+        'tw:size-2.5',
+        'tw:rounded-full',
+        tokenClass
+      );
+    }
+  );
+
+  it('uses theme surface and text tokens on the node', async () => {
+    render(<TaskNode {...mockProps} />);
+
+    expect(await screen.findByTestId('task-node-container')).toHaveClass(
+      'tw:bg-surface',
+      'tw:text-primary'
+    );
   });
 });

@@ -13,6 +13,7 @@
 
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
@@ -21,6 +22,7 @@ import {
   hashSubPathToView,
   nonNegativeNumberRules,
   toOptionalNumber,
+  toSettingsHistoryView,
   viewToSubPath,
 } from './PlatformSettings.utils';
 
@@ -211,6 +213,39 @@ describe('PlatformSettings.utils', () => {
           { id: 'item', label: 'Table' },
         ],
       });
+    });
+  });
+
+  describe('toSettingsHistoryView', () => {
+    const viewing = {
+      type: 'page',
+      page: 'lineage',
+      isEditing: false,
+    } as const;
+    const editing = { ...viewing, isEditing: true } as const;
+
+    it('treats only an open editor as a form view', () => {
+      expect(toSettingsHistoryView(editing)).toEqual({ type: 'edit' });
+      expect(toSettingsHistoryView(viewing)).toEqual({ type: 'page' });
+      expect(toSettingsHistoryView({ type: 'landing' })).toEqual({
+        type: 'landing',
+      });
+    });
+
+    it('pushes opening an editor and replaces leaving it', () => {
+      const push = (
+        from: Parameters<typeof toSettingsHistoryView>[0],
+        to: Parameters<typeof toSettingsHistoryView>[0]
+      ) =>
+        settingsHashOptions(
+          toSettingsHistoryView(from),
+          toSettingsHistoryView(to)
+        ).push;
+
+      expect(push(viewing, editing)).toBe(true);
+      expect(push(editing, viewing)).toBe(false);
+      expect(push(editing, { type: 'landing' })).toBe(false);
+      expect(push({ type: 'landing' }, viewing)).toBe(true);
     });
   });
 });

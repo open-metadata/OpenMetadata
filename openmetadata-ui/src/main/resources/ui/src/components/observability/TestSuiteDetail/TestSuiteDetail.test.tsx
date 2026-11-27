@@ -181,6 +181,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Modal,
     ModalOverlay,
     Owner,
+    PageLayout: jest.requireActual('@openmetadata/ui-core-components')
+      .PageLayout,
     Tabs,
     Tooltip,
     Typography,
@@ -330,11 +332,11 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument();
   });
 
-  it('should keep the detail header card on the shell header band', () => {
+  it('should keep the detail header card on the page header band', () => {
     render(<TestSuiteDetail />);
 
-    // AI padding standard: the header band sits at the shell's 8px padding,
-    // 8px outside the 16px-inset tab content, like the other shell pages.
+    // The header band sits at the page layout's own padding, like the other
+    // observability pages.
     expect(screen.getByTestId('test-suite-header-container')).not.toHaveClass(
       'tw:mx-4'
     );

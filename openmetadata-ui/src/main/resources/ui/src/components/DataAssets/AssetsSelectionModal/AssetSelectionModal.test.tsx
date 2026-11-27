@@ -207,6 +207,37 @@ describe('AssetSelectionModal', () => {
     );
   });
 
+  it('forwards useQueryPost to the asset-selection hook', () => {
+    render(
+      <AssetSelectionModal
+        open
+        useQueryPost
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    expect(useAssetSelectionState).toHaveBeenCalledWith(
+      expect.objectContaining({ useQueryPost: true })
+    );
+  });
+
+  it('omits useQueryPost (so the hook defaults to GET) when the prop is not set', () => {
+    render(
+      <AssetSelectionModal
+        open
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // The hook must keep its default GET behavior for non-metric callers, so the modal
+    // must NOT pass `useQueryPost` through unless the caller opted in.
+    expect(useAssetSelectionState).toHaveBeenCalledWith(
+      expect.not.objectContaining({ useQueryPost: true })
+    );
+  });
+
   it('should always render the default add-entity title', () => {
     render(
       <AssetSelectionModal

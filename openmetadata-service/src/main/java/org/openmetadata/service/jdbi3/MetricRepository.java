@@ -162,6 +162,12 @@ public class MetricRepository extends EntityRepository<Metric> {
     fieldFetchers.put(FIELD_METRIC_GROUP, this::fetchAndSetMetricGroups);
   }
 
+  /** A metric's FQN is its bare name, so "sales.revenue" nests under the FQN "sales". */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(Metric metric) {
     metric.setFullyQualifiedName(metric.getName());
@@ -1319,17 +1325,20 @@ public class MetricRepository extends EntityRepository<Metric> {
    */
   public Predicate<EntityReference> groupInDomainPick(
       Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    // A batch lookup rejects an empty id list (e.g. a picked domain with no metrics).
     Set<UUID> holdingPickedMetric =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                pickedMetrics.stream().map(UUID::toString).toList(),
-                Relationship.HAS.ordinal(),
-                Entity.METRIC_GROUP,
-                NON_DELETED)
-            .stream()
-            .map(relationship -> UUID.fromString(relationship.getFromId()))
-            .collect(java.util.stream.Collectors.toSet());
+        pickedMetrics.isEmpty()
+            ? Set.of()
+            : daoCollection
+                .relationshipDAO()
+                .findFromBatch(
+                    pickedMetrics.stream().map(UUID::toString).toList(),
+                    Relationship.HAS.ordinal(),
+                    Entity.METRIC_GROUP,
+                    NON_DELETED)
+                .stream()
+                .map(relationship -> UUID.fromString(relationship.getFromId()))
+                .collect(java.util.stream.Collectors.toSet());
     return group ->
         pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
             || holdingPickedMetric.contains(group.getId());

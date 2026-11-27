@@ -1,0 +1,253 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: ci-pr
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch: null
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    name: Select workloads
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    outputs:
+      python-lowest: ${{ steps.versions.outputs.lowest }}
+      python-highest: ${{ steps.versions.outputs.highest }}
+      ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
+      airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
+      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
+      # ui-unit implies ui: Jest waits for checkstyle on pull requests.
+      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' || steps.ui-filter.outputs.ui-unit == 'true' }}
+      ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        # The default checkout (a PR's merge commit) is the commit this workflow
+        # file came from, so its filter files always exist; a PR head branched
+        # before a filter file was added would not have it. paths-filter lists a
+        # PR's changed files through the API, so it needs no PR head.
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            .github/python-ci/paths.yml
+            .github/ui-ci/paths.yml
+            ingestion/pyproject.toml
+            scripts/python_ci.py
+            scripts/prepare_classification_models.py
+          sparse-checkout-cone-mode: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          filters: .github/python-ci/paths.yml
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: ui-filter
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          filters: .github/ui-ci/paths.yml
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+
+  # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
+  # after an earlier one fails so a single push reports every selected failure. The job runs
+  # even when nothing is selected or planning fails, so the required checks are always reported.
+  python:
+    name: python
+    needs: plan
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      checks: write
+    outputs:
+      gate: ${{ steps.gate.outcome }}
+    env:
+      # Fork PRs get a read-only token and cannot create check runs; py-tests-status covers them.
+      CAN_REPORT_CHECKS: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: ${{ needs.plan.outputs.static == 'true' }}
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Python static checks
+        id: static
+        if: ${{ needs.plan.outputs.static == 'true' }}
+        uses: ./.github/actions/python-static-checks
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+          check-types: ${{ needs.plan.outputs.python }}
+      - name: Run Python unit tests
+        id: unit
+        if: ${{ !cancelled() && needs.plan.outputs.python == 'true' }}
+        uses: ./.github/actions/python-unit
+        with:
+          python-version: ${{ needs.plan.outputs.python-highest }}
+          prepare-models: 'true'
+      - name: Run Airflow API tests
+        id: airflow
+        if: ${{ !cancelled() && needs.plan.outputs.airflow-apis == 'true' }}
+        uses: ./.github/actions/python-airflow-apis
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+      # The step result feeds py-tests-status; failing suites already fail the job.
+      - name: Verify selected Python workloads
+        id: gate
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          NEEDS_JSON: |
+            {
+              "plan": {"result": "${{ needs.plan.result }}"},
+              "py-checkstyle": {"result": "${{ steps.static.outcome }}"},
+              "python-unit": {"result": "${{ steps.unit.outcome }}"},
+              "airflow-apis": {"result": "${{ steps.airflow.outcome }}"}
+            }
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}"
+            }
+        run: |
+          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
+            $expected | length > 0 and
+            (keys == ($needs | keys)) and
+            all(to_entries[]; . as $job |
+              ($job.value == "success" or $job.value == "skipped") and
+              $needs[$job.key].result == $job.value)
+          '
+        shell: bash
+      - name: Report py-checkstyle
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: py-checkstyle
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.static.outcome || 'skipped' }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Report airflow-apis
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' && steps.airflow.outcome != 'skipped' && steps.airflow.outcome != '' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: airflow-apis
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.airflow.outcome }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # Required check, published as a job so fork PRs report it too. It must verify on every PR:
+  # a job skipped by `if` reports success and would override a failing check of the same name.
+  py-tests-status:
+    name: py-tests-status
+    needs:
+      - plan
+      - python
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Verify selected Python workloads
+        env:
+          NEEDS_JSON: |
+            {
+              "plan": {"result": "${{ needs.plan.result }}"},
+              "python": {"result": "${{ needs.python.result }}"},
+              "python-gate": {"result": "${{ needs.python.outputs.gate }}"}
+            }
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "python": "success",
+              "python-gate": "success"
+            }
+        run: |
+          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
+            $expected | length > 0 and
+            (keys == ($needs | keys)) and
+            all(to_entries[]; . as $job |
+              ($job.value == "success" or $job.value == "skipped") and
+              $needs[$job.key].result == $job.value)
+          '
+        shell: bash
+
+  # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
+  # Jest and the browser tests out to parallel shards.
+  ui:
+    name: ui
+    needs: plan
+    if: ${{ needs.plan.outputs.ui == 'true' }}
+    permissions:
+      contents: read
+      # The browser tests download the impact map from earlier runs.
+      actions: read
+    uses: ./.github/workflows/ui-ci.yml
+    with:
+      unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
+
+  # Required check for the UI. Like py-tests-status it must run on every
+  # non-draft PR: a job skipped by `if` reports success.
+  ui-tests-status:
+    name: ui-tests-status
+    needs: [plan, ui]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions/ci-status-gate
+      - uses: ./.github/actions/ci-status-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          expected: |
+            {
+              "plan": "success",
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+            }
+
+  # TEMPORARY: the merge-rules ruleset still requires these two names. Remove
+  # both once it requires ui-tests-status instead.
+  ui-checkstyle:
+    name: ui-checkstyle
+    needs: ui-tests-status
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success
+
+  ui-coverage:
+    name: ui-coverage
+    needs: ui-tests-status
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success

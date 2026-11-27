@@ -19,7 +19,8 @@ import { getPipelineByFqn } from '../pipelineAPI';
 // Inlined here (not imported from {@code PipelineDetailsUtils}) to avoid the kind of
 // circular import that broke production bundles for Dashboard (see {@code dashboardQuery.ts}
 // for the detailed write-up). Keep this list in sync with
-// {@code PipelineDetailsUtils.defaultFields}.
+// {@code PipelineDetailsUtils.defaultFields}. The sync is enforced by
+// {@code pipelineQuery.test.ts}.
 const PIPELINE_DEFAULT_FIELDS = [
   TabSpecificField.FOLLOWERS,
   TabSpecificField.TAGS,
@@ -32,8 +33,19 @@ const PIPELINE_DEFAULT_FIELDS = [
   TabSpecificField.EXTENSION,
 ].join(',');
 
+/**
+ * Strip all whitespace from a {@code fields} parameter so logically-equivalent field lists —
+ * e.g. {@code "followers,tags"} and {@code "followers, tags"} — collapse to the same React
+ * Query cache slot. The detail page and the hover-prefetch build their {@code fields} strings
+ * in different files with inconsistent spacing; normalizing at this key boundary (rather than
+ * forcing every caller to agree on a canonical string) keeps the prefetch slot reusable
+ * regardless of how a caller formats the list. The backend tolerates either form
+ * ({@code EntityUtil.Fields} strips spaces server-side), so only the cache key needs this.
+ */
+export const normalizeFields = (fields: string) => fields.replace(/\s+/g, '');
+
 export const pipelineQueryKey = (fqn: string, fields: string) =>
-  ['pipeline', fqn, fields] as const;
+  ['pipeline', fqn, normalizeFields(fields)] as const;
 
 export const pipelineQueryFn = (fqn: string, fields: string) => () =>
   getPipelineByFqn(fqn, { fields });
@@ -52,7 +64,7 @@ export const prefetchPipelineByFqn = (
 
 export type PipelineQueryData = Pipeline | undefined;
 
-const PREFETCH_PIPELINE_FIELDS = `${PIPELINE_DEFAULT_FIELDS},${TabSpecificField.USAGE_SUMMARY}`;
+export const PREFETCH_PIPELINE_FIELDS = `${PIPELINE_DEFAULT_FIELDS},${TabSpecificField.USAGE_SUMMARY}`;
 
 export const prefetchPipeline = (queryClient: QueryClient, fqn: string) =>
   prefetchPipelineByFqn(queryClient, fqn, PREFETCH_PIPELINE_FIELDS);

@@ -16,6 +16,9 @@ Unit tests for DatalakeS3Client cold storage filtering
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+from botocore.exceptions import ClientError
+
 from metadata.ingestion.source.database.datalake.clients.s3 import (
     S3_COLD_STORAGE_CLASSES,
     DatalakeS3Client,
@@ -139,6 +142,52 @@ class TestDatalakeS3ClientColdStorage(unittest.TestCase):
             result,
             [(f"data/{cls.lower()}.csv", None) for cls in non_cold_classes],
         )
+
+
+def _client_error(code, operation="ListObjectsV2"):
+    return ClientError({"Error": {"Code": code, "Message": code}}, operation)
+
+
+class TestDatalakeS3ClientErrorPropagation:
+    """get_table_names must let list_s3_objects errors propagate instead of
+    silently degrading to a partial or empty table list."""
+
+    def _make_client(self):
+        mock_s3_client = MagicMock()
+        return DatalakeS3Client(client=mock_s3_client)
+
+    @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
+    def test_client_error_propagates(self, mock_list_s3):
+        mock_list_s3.side_effect = _client_error("AccessDenied")
+        client = self._make_client()
+        with pytest.raises(ClientError):
+            list(client.get_table_names(bucket_name="my-bucket", prefix=None))
+
+    @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
+    def test_no_such_bucket_propagates(self, mock_list_s3):
+        mock_list_s3.side_effect = _client_error("NoSuchBucket")
+        client = self._make_client()
+        with pytest.raises(ClientError) as exc_info:
+            list(client.get_table_names(bucket_name="missing", prefix=None))
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+
+    @patch("metadata.ingestion.source.database.datalake.clients.s3.list_s3_objects")
+    def test_mid_pagination_error_propagates(self, mock_list_s3):
+        """A mid-pagination failure must not silently truncate the table list.
+        list_s3_objects is a generator, so we simulate yielding one page then
+        raising on the next pull."""
+
+        def _gen(_client, **_):
+            yield {"Key": "data/first.parquet", "Size": 1}
+            raise _client_error("Throttling")
+
+        mock_list_s3.side_effect = _gen
+        client = self._make_client()
+        collected = []
+        with pytest.raises(ClientError):
+            for key, size in client.get_table_names(bucket_name="bkt", prefix="data"):
+                collected.append((key, size))
+        assert collected == [("data/first.parquet", 1)]
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.MemoryExtractionState;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
@@ -57,6 +60,11 @@ import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -340,6 +348,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     return Set.of(Entity.PAGE);
   }
 
+  /** A top-level page's FQN is its bare name, dots included. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {
@@ -494,15 +508,31 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
-  public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
+  public List<PageHierarchy> listHierarchy(
+      ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
+    // Each page is checked only when a rule could refuse one the listing's check allowed.
+    boolean rowsMayDiffer =
+        RowDecisionGate.mayDiffer(
+            DefaultAuthorizer.getSubjectContext(securityContext),
+            Entity.PAGE,
+            List.of(MetadataOperation.VIEW_BASIC));
     EntityUtil.Fields fields = getFields("parent,children");
+    if (rowsMayDiffer) {
+      fields = ResourceContext.authorizationFields(this, fields);
+    }
 
-    ResultList<Page> resultList = listAfter(null, fields, filter, limit, null);
-    Map<UUID, Page> lookUp =
-        resultList.getData().stream().collect(Collectors.toMap(Page::getId, p -> p));
-    List<Page> topLevelPages =
-        resultList.getData().stream().filter(p -> p.getParent() == null).toList();
+    List<Page> pages = listAfter(null, fields, filter, limit, null).getData();
+    if (rowsMayDiffer) {
+      // Built from the pages the caller may view, so the tree and its child counts match what
+      // opens.
+      pages =
+          new ViewPermissionFilter(authorizer)
+              .retainPermitted(
+                  securityContext, Entity.PAGE, this, pages, List.of(MetadataOperation.VIEW_BASIC));
+    }
+    Map<UUID, Page> lookUp = pages.stream().collect(Collectors.toMap(Page::getId, p -> p));
+    List<Page> topLevelPages = pages.stream().filter(p -> p.getParent() == null).toList();
 
     for (Page page : topLevelPages) {
       pageHierarchyList.add(getHierarchy(lookUp, page));
@@ -957,26 +987,24 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
   }
 
-  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
-  // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
-  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
-  // so a deleted page must leave none behind in either form. Mirrors DashboardRepository's chart
-  // cascade.
+  // Memory cleanup runs in these hooks while the page -> memory MENTIONED_IN edges still exist; a
+  // hard delete's cleanup() removes them before postDelete. A page has no deleted field, so every
+  // delete is permanent and releases them; the soft hook mirrors ContextFileRepository's archive.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
-    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY));
   }
 
   /** True when an article's markdown body changed — the only edit that warrants re-extraction. */
