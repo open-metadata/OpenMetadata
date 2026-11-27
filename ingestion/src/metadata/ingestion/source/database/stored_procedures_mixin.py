@@ -208,7 +208,9 @@ class StoredProcedureLineageMixin(ABC):
                     )
                 )
                 continue
-            spool.write(query_by_procedure.model_dump_json(by_alias=True).encode() + b"\n")
+            # The body only feeds the name fallback above; on MSSQL it is the whole module
+            # definition, repeated on every child statement.
+            spool.write(query_by_procedure.model_dump_json(by_alias=True, exclude={"procedure_text"}).encode() + b"\n")
 
     @staticmethod
     def _read_spooled_history(spool: IO[bytes]) -> Iterator[QueryByProcedure]:

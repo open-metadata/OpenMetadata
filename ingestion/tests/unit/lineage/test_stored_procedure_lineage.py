@@ -217,41 +217,6 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         self.assertEqual(results[0].procedure.name.root, "Proc1")
         self.assertEqual(results[1].procedure.name.root, "Proc2")
 
-    def test_no_memory_accumulation(self):
-        """Test that queries are not accumulated in memory"""
-        # Create a large number of mock queries
-        large_query_results = []
-        for i in range(1000):
-            row_data = {
-                "PROCEDURE_NAME": f"Proc{i % 10}",
-                "QUERY_TEXT": f"SELECT * FROM table{i}",
-                "QUERY_TYPE": "SELECT",
-                "PROCEDURE_TEXT": f"CALL Proc{i % 10}()",
-                "PROCEDURE_START_TIME": datetime.now(),
-                "PROCEDURE_END_TIME": datetime.now(),
-            }
-            mock_row = Mock()
-            mock_row._asdict.return_value = row_data
-            mock_row.keys.return_value = list(row_data.keys())
-            large_query_results.append(mock_row)
-
-        self.mixin.engine._mock_conn.execute.return_value.yield_per.return_value = large_query_results
-
-        # The generator should not load all into memory at once
-        queries_gen = self.mixin.yield_stored_procedure_queries()
-
-        # Process one at a time
-        count = 0
-        for query in queries_gen:
-            count += 1
-            # Each query should be processed individually
-            self.assertIsInstance(query, QueryByProcedure)
-            if count > 5:  # Just test a few
-                break
-
-        # Should have processed queries without loading all into memory
-        self.assertGreater(count, 0)
-
     def test_filtered_procedures(self):
         """Test that filtered procedures are not processed"""
         # Create real stored procedure objects
@@ -1168,4 +1133,5 @@ class TestStoredProcedureHistoryIsSpooled:
 
         assert [query.procedure_name for query in queries] == [f"proc{index}" for index in range(row_count)]
         assert queries[0].procedure_start_time == datetime(2026, 11, 27, 10, 0)
+        assert queries[0].procedure_text is None
         mixin.status.failed.assert_not_called()
