@@ -53,11 +53,7 @@ def _visit_column_with_struct_quoting(self, column, *args, **kwargs):
         if quote_idx >= 0:
             segments = col_name.split(".")
             quoted = ".".join(self.preparer.quote_identifier(seg) for seg in segments)
-            result = (
-                result[:quote_idx]
-                + quoted
-                + result[quote_idx + len(default_quoted) :]
-            )
+            result = result[:quote_idx] + quoted + result[quote_idx + len(default_quoted) :]
     return result
 
 
