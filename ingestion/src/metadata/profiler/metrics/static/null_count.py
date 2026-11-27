@@ -42,7 +42,7 @@ class NullCount(StaticMetric):
     We are building a CASE WHEN structure:
     ```
     SUM(
-        CASE is not null THEN 1
+        CASE is null THEN 1
         ELSE 0
     )
     ```
