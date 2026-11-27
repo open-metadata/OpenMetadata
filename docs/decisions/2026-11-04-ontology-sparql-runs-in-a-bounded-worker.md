@@ -121,7 +121,7 @@ queries are unchanged.
 ## Amendment: OWL Mini inference is removed (v5, 2026-11-23)
 
 Reasoning moves out of OpenMetadata into a `ReasoningProvider` (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The OWL Mini reasoner
-in `OntologySparqlQueryService` is removed in 2.2, so the worker no longer runs OWL inference,
-and the Consequences' "NONE/RDFS/OWL Mini inference retain their semantics" no longer includes
-OWL Mini. OWL entailments come from the provider's graphs in Fuseki. The worker's isolation,
+in `OntologySparqlQueryService` will be removed in 2.2; until that change lands the worker still
+offers it. After it, the worker runs no OWL inference, and the Consequences' "NONE/RDFS/OWL Mini
+inference retain their semantics" no longer includes OWL Mini. OWL entailments come from the provider's graphs in Fuseki. The worker's isolation,
 budgets and refusals are unchanged.
