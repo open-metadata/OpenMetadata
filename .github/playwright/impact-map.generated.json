@@ -126,6 +126,7 @@
         "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
@@ -747,6 +748,7 @@
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts",
         "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
@@ -1061,6 +1063,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
@@ -1745,6 +1748,7 @@
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
@@ -2286,6 +2290,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
@@ -2592,6 +2597,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -2667,6 +2673,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -3579,6 +3586,7 @@
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
@@ -4261,6 +4269,7 @@
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityFilters.spec.ts",
@@ -4945,6 +4954,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
@@ -7647,6 +7657,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreSortDropdown/ExploreSortDropdown.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts"
       ]
@@ -7669,6 +7680,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/SortingDropDown.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts"
       ]
@@ -12198,6 +12210,30 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/AssetSummaryPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/GlobalSearchFooter.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/GlobalSearchPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/MainPanel.tsx"
       ],
       "specs": [
@@ -12571,6 +12607,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -12783,6 +12820,7 @@
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/EntityActivityFeed.spec.ts",
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts",
         "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",

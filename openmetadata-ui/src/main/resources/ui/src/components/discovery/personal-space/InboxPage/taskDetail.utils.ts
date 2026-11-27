@@ -58,6 +58,7 @@ import {
   TaskDetailRow,
   TaskTypeBadge,
 } from './taskDetail.types';
+import { DEFAULT_TYPE_BADGE, TASK_TYPE_BADGE } from './taskLabel.utils';
 import { getTaskResolutionSummary } from './taskResolution.utils';
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -118,110 +119,6 @@ const PII_SENSITIVE_TAG = 'PII.Sensitive';
 // utils' `getTierTags`: that module reaches the customization and permission
 // layers at import time, which this file must not drag into the task list.
 const TIER_TAG_PREFIX = `${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`;
-
-// Type → badge label / colour / icon. Colour carries meaning here (an incident
-// reads red, an access request blue), so it is declared per type rather than
-// derived from the category, which is coarser.
-const TASK_TYPE_BADGE: Record<
-  string,
-  {
-    labelKey: string;
-    color: TaskTypeBadge['color'];
-    icon: TaskTypeBadge['icon'];
-  }
-> = {
-  [TaskType.TestCaseResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.IncidentResolution]: {
-    labelKey: 'label.incident',
-    color: 'error',
-    icon: 'incident',
-  },
-  [TaskType.DataAccessRequest]: {
-    labelKey: 'label.access-request',
-    color: 'blue',
-    icon: 'access',
-  },
-  [TaskType.TagUpdate]: {
-    labelKey: 'label.tag-request',
-    color: 'purple',
-    icon: 'tag',
-  },
-  [TaskType.OwnershipUpdate]: {
-    labelKey: 'label.ownership',
-    color: 'blue-light',
-    icon: 'ownership',
-  },
-  [TaskType.DescriptionUpdate]: {
-    labelKey: 'label.description',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.Suggestion]: {
-    labelKey: 'label.suggestion',
-    color: 'gray',
-    icon: 'description',
-  },
-  [TaskType.TierUpdate]: {
-    labelKey: 'label.tier',
-    color: 'orange',
-    icon: 'tier',
-  },
-  [TaskType.DomainUpdate]: {
-    labelKey: 'label.domain',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.GlossaryApproval]: {
-    labelKey: 'label.glossary',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.RequestApproval]: {
-    labelKey: 'label.approval',
-    color: 'brand',
-    icon: 'approval',
-  },
-  [TaskType.CustomTask]: {
-    labelKey: 'label.custom-task',
-    color: 'gray',
-    icon: 'approval',
-  },
-  [TaskType.DataQualityReview]: {
-    labelKey: 'label.data-quality-review',
-    color: 'blue-light',
-    icon: 'approval',
-  },
-  [TaskType.PipelineReview]: {
-    labelKey: 'label.pipeline-review',
-    color: 'indigo',
-    icon: 'approval',
-  },
-  [TaskType.MemoryConflictReview]: {
-    labelKey: 'label.memory-conflict',
-    color: 'orange',
-    icon: 'approval',
-  },
-  [TaskType.MetadataCompletion]: {
-    labelKey: 'label.missing-metadata',
-    color: 'warning',
-    icon: 'description',
-  },
-  [TaskType.RecognizerFeedbackApproval]: {
-    labelKey: 'label.recognizer-feedback',
-    color: 'purple',
-    icon: 'tag',
-  },
-};
-
-const DEFAULT_TYPE_BADGE = {
-  labelKey: 'label.task',
-  color: 'gray' as TaskTypeBadge['color'],
-  icon: 'approval' as TaskTypeBadge['icon'],
-};
 
 // A Metadata Completion task that carries a rejection asks for a revision, not for fields.
 const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
