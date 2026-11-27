@@ -645,20 +645,47 @@ describe('ContractQualityFormTab', () => {
       expect(screen.getByTestId('quality-filter-button')).toBeEnabled();
     });
 
-    it('should filter by test case type', async () => {
+    it('should filter by test case type from the first page', async () => {
+      const mockHandlePageChange = jest.fn();
+      jest
+        .requireMock('../../../hooks/paging/usePaging')
+        .usePaging.mockReturnValue({
+          currentPage: 2,
+          pageSize: 10,
+          handlePageChange: mockHandlePageChange,
+          handlePageSizeChange: jest.fn(),
+          showPagination: true,
+          paging: { offset: 10, limit: 10, total: 20 },
+          handlePagingChange: jest.fn(),
+        });
+
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      // Wait for initial load
-      await waitFor(() => {
-        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
-          expect.objectContaining({
-            testCaseType: TestCaseType.all,
-          })
+      expect(await screen.findByTestId('table-row-test-1')).toBeInTheDocument();
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseType: TestCaseType.all })
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('quality-filter-button'));
+      });
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByRole('menuitemradio', { name: /table/i })
         );
       });
 
-      // Test type dropdown functionality would be tested here
-      // This requires more detailed implementation of the dropdown mock
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+          expect.objectContaining({ testCaseType: TestCaseType.table })
+        );
+      });
+
+      expect(getListTestCaseBySearch).not.toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: expect.anything() })
+      );
     });
   });
 
