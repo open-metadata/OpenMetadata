@@ -240,7 +240,7 @@ public class LineageResourceIT {
 
   private OpenMetadataClient createDashboardChartRestrictedClient(
       OpenMetadataClient admin, String entityType, MetadataOperation operation) throws Exception {
-    TestNamespace namespace = new TestNamespace("DashboardChartPermissions");
+    String suffix = UUID.randomUUID().toString();
     Rule allow =
         new Rule()
             .withName("allow_lineage")
@@ -258,16 +258,16 @@ public class LineageResourceIT {
             .policies()
             .create(
                 new CreatePolicy()
-                    .withName(namespace.prefix("policy"))
+                    .withName("dashboard-chart-policy-" + suffix)
                     .withRules(List.of(deny, allow)));
     Role role =
         admin
             .roles()
             .create(
                 new CreateRole()
-                    .withName(namespace.prefix("role"))
+                    .withName("dashboard-chart-role-" + suffix)
                     .withPolicies(List.of(policy.getFullyQualifiedName())));
-    String name = namespace.prefix("user");
+    String name = "dashboard-chart-" + suffix;
     String email = name + "@test.openmetadata.org";
     admin
         .users()
