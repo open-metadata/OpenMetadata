@@ -13,10 +13,13 @@ Mixin class with common Stored Procedures logic aimed at lineage.
 """
 
 import json
+import pickle
+import tempfile
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Iterator
+from typing import IO
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
@@ -148,14 +151,11 @@ class StoredProcedureLineageMixin(ABC):
         workflow, so a query history too large to scan used to cost the run its query
         lineage as well.
         """
+        spool = tempfile.TemporaryFile()  # noqa: SIM115 - closed below on both paths
         try:
-            # Fetch in batches: the history can hold every procedure child statement in the
-            # window with its full text, which loaded at once OOM-killed the ingestion pod.
-            # Result.yield_per, not the yield_per/stream_results execution option: that one asks
-            # for a server-side cursor, which psycopg2 (Redshift) refuses under the AUTOCOMMIT
-            # engines builders.py creates, and which mssql+pytds answers with zero rows.
-            results = conn.execute(text(query)).yield_per(STORED_PROCEDURE_FETCH_SIZE)
+            self._spool_history(conn, query, spool)
         except Exception as exc:
+            spool.close()
             narrowed = list(self.narrow_stored_procedure_statement(query, exc))
             if not narrowed:
                 self.status.failed(
@@ -170,39 +170,57 @@ class StoredProcedureLineageMixin(ABC):
                 yield from self._yield_queries_for_statement(conn, narrower_query)
             return
 
-        try:
-            for row in results:
-                # Bound outside the try so the handler can still name the procedure, and
-                # assigned inside it so an unreadable row cannot escape and silently drop
-                # every row after it.
-                row_data = {}
-                try:
-                    row_data = row._asdict()
-                    query_by_procedure = QueryByProcedure.model_validate(row_data)
-                    if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
-                        query_by_procedure.procedure_name = get_procedure_name_from_call(
-                            query_text=query_by_procedure.procedure_text
-                        )
-                    yield query_by_procedure
-                except Exception as exc:
-                    self.status.failed(
-                        StackTraceError(
-                            name="Stored Procedure",
-                            error=f"Error trying to get procedure name for "
-                            f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
-                            stackTrace=traceback.format_exc(),
-                        )
+        with spool:
+            spool.seek(0)
+            yield from self._read_spooled_history(spool)
+
+    def _spool_history(self, conn: Connection, query: str, spool: IO[bytes]) -> None:
+        """
+        Copy the whole history to a local file before any of it is processed. Holding it in
+        memory OOM-kills the pod on a busy account, and handing the open cursor to lineage
+        processing instead would pace the fetch by parsing: Snowflake downloads result chunks
+        lazily from URLs that expire after 6 hours, so a long run would lose its tail.
+
+        Result.yield_per, not the yield_per/stream_results execution option: that one asks for
+        a server-side cursor, which psycopg2 (Redshift) refuses under the AUTOCOMMIT engines
+        builders.py creates, and which mssql+pytds answers with zero rows.
+        """
+        for row in conn.execute(text(query)).yield_per(STORED_PROCEDURE_FETCH_SIZE):
+            try:
+                row_data = row._asdict()
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error reading a stored procedure query history row due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
                     )
-        except Exception as exc:
-            # A fetch failing mid-stream: rows already yielded are processed, so re-reading a
-            # narrower window would duplicate them. Record it instead of aborting the workflow.
-            self.status.failed(
-                StackTraceError(
-                    name="Stored Procedure",
-                    error=f"Error streaming stored procedure query history due to [{exc}]",
-                    stackTrace=traceback.format_exc(),
                 )
-            )
+                continue
+            pickle.dump(row_data, spool)
+
+    def _read_spooled_history(self, spool: IO[bytes]) -> Iterator[QueryByProcedure]:
+        while True:
+            try:
+                row_data = pickle.load(spool)  # written by _spool_history in this process
+            except EOFError:
+                break
+            try:
+                query_by_procedure = QueryByProcedure.model_validate(row_data)
+                if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
+                    query_by_procedure.procedure_name = get_procedure_name_from_call(
+                        query_text=query_by_procedure.procedure_text
+                    )
+                yield query_by_procedure
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error trying to get procedure name for "
+                        f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     @staticmethod
     def _reference_name(reference: EntityReference | None) -> str:

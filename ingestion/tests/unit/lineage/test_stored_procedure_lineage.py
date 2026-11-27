@@ -21,7 +21,9 @@ from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.pool import StaticPool
 
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
@@ -1091,8 +1093,9 @@ def _history_row(procedure_name):
     return row
 
 
-class TestStoredProcedureHistoryIsStreamed:
-    def test_rows_are_pulled_only_as_they_are_consumed(self):
+class TestStoredProcedureHistoryIsSpooled:
+    def test_history_is_fetched_completely_before_the_first_row_is_processed(self):
+        """Snowflake result chunk URLs expire after 6 hours, so parsing must not pace the fetch."""
         pulled = []
 
         def cursor():
@@ -1103,13 +1106,15 @@ class TestStoredProcedureHistoryIsStreamed:
         mixin = TestableStoredProcedureMixin()
         mixin.engine._mock_conn.execute.return_value.yield_per.return_value = cursor()
 
-        first = next(mixin.yield_stored_procedure_queries())
+        queries = mixin.yield_stored_procedure_queries()
+        first = next(queries)
 
         assert first.procedure_name == "proc0"
-        assert len(pulled) == 1
+        assert len(pulled) == 10_000
+        assert [query.procedure_name for query in queries] == [f"proc{index}" for index in range(1, 10_000)]
         mixin.engine._mock_conn.execute.return_value.yield_per.assert_called_once_with(STORED_PROCEDURE_FETCH_SIZE)
 
-    def test_fetch_failing_mid_stream_keeps_rows_already_read(self):
+    def test_fetch_failing_partway_is_recorded_once_and_yields_nothing(self):
         def cursor():
             yield _history_row("proc_a")
             raise OperationalError("fetch", {}, Exception("connection reset"))
@@ -1119,6 +1124,32 @@ class TestStoredProcedureHistoryIsStreamed:
 
         queries = list(mixin.yield_stored_procedure_queries())
 
-        assert [query.procedure_name for query in queries] == ["proc_a"]
+        assert queries == []
         assert mixin.status.failed.call_count == 1
-        assert "Error streaming" in mixin.status.failed.call_args.args[0].error
+        assert "Error reading stored procedure query history" in mixin.status.failed.call_args.args[0].error
+
+    def test_reads_every_row_through_a_real_cursor(self):
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        row_count = 2 * STORED_PROCEDURE_FETCH_SIZE + 7
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE procedure_log (PROCEDURE_NAME TEXT, QUERY_TEXT TEXT, QUERY_TYPE TEXT, "
+                    "PROCEDURE_TEXT TEXT, PROCEDURE_START_TIME TEXT, PROCEDURE_END_TIME TEXT)"
+                )
+            )
+            conn.execute(
+                text("INSERT INTO procedure_log VALUES (:name, 'INSERT INTO t1 SELECT 1', 'INSERT', :call, :ts, :ts)"),
+                [
+                    {"name": f"proc{index}", "call": f"CALL proc{index}()", "ts": "2026-11-27T10:00:00"}
+                    for index in range(row_count)
+                ],
+            )
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine = engine
+
+        queries = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in queries] == [f"proc{index}" for index in range(row_count)]
+        assert queries[0].procedure_start_time == datetime(2026, 11, 27, 10, 0)
+        mixin.status.failed.assert_not_called()
