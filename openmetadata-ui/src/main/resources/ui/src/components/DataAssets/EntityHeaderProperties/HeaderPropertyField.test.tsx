@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import { ReactElement } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { HeaderPropertyId } from '../../../constants/EntityHeaderProperties.constants';
 import { HeaderProperty } from './EntityHeaderProperties.types';
 import HeaderPropertyField from './HeaderPropertyField';
 
@@ -21,7 +22,7 @@ const renderEditor = (trigger: ReactElement) => (
 );
 
 const property = (overrides: Partial<HeaderProperty> = {}): HeaderProperty => ({
-  id: 'owners',
+  id: HeaderPropertyId.Owners,
   label: 'Owners',
   isEmpty: false,
   isReadOnly: false,

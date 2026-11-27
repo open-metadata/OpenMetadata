@@ -13,7 +13,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { COLLAPSED_HEADER_PROPERTY_COUNT } from '../../../constants/EntityHeaderProperties.constants';
 import { getShownHeaderProperties } from '../../../utils/EntityHeaderProperties.utils';
@@ -26,10 +26,7 @@ const EntityHeaderProperties = ({
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const shownProperties = useMemo(
-    () => getShownHeaderProperties(properties),
-    [properties]
-  );
+  const shownProperties = getShownHeaderProperties(properties);
 
   const hiddenCount = shownProperties.length - COLLAPSED_HEADER_PROPERTY_COUNT;
   const isCollapsed = !isExpanded && hiddenCount > 0;

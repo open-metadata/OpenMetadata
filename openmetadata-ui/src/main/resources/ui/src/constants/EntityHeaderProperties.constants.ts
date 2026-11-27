@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+// ADR:2026-11-27-entity-header-shows-five-properties-behind-show-more
 export const COLLAPSED_HEADER_PROPERTY_COUNT = 5;
 
 /** Ids of the properties an entity header can show. */

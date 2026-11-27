@@ -35,7 +35,7 @@ import {
   addCustomPropertiesForEntity,
   getCustomPropertyEditButton,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import { expandHeaderProperties, waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 // All operations across all entities
@@ -363,6 +363,26 @@ export const testProfilerTabPermission = async (
 };
 
 // Entity-specific test functions
+/**
+ * Usage sits past the header's first five properties on these pages, so it is
+ * behind Show more; without ViewUsage the header has no Usage property at all.
+ */
+const checkHeaderUsage = async (
+  testUserPage: Page,
+  effect: 'allow' | 'deny'
+) => {
+  await expandHeaderProperties(testUserPage);
+  const usage = testUserPage
+    .getByTestId('data-asset-header-metadata')
+    .getByTestId('header-property-usage');
+
+  if (effect === 'allow') {
+    await expect(usage).toBeVisible();
+  } else {
+    await expect(usage).not.toBeAttached();
+  }
+};
+
 export const testTableSpecificOperations = async (
   testUserPage: Page,
   entity: TableClass,
@@ -414,14 +434,7 @@ export const testTableSpecificOperations = async (
     "You don't have necessary permissions. Please check with the admin to get the View Data Observability permission."
   );
 
-  await checkElementVisibility(
-    testUserPage,
-    {
-      testId: 'Usage',
-      type: 'label',
-    },
-    effect
-  );
+  await checkHeaderUsage(testUserPage, effect);
 };
 
 export const testTopicSpecificOperations = async (
@@ -546,8 +559,10 @@ export const testDashboardDataModelSpecificOperations = async (
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
   await expect(
-    testUserPage.getByText('Usage').filter({ visible: true })
-  ).not.toHaveCount(0);
+    testUserPage
+      .getByTestId('data-asset-header-metadata')
+      .getByTestId('header-property-usage')
+  ).toBeVisible();
 };
 
 export const testDashboardSpecificOperations = async (
@@ -558,14 +573,7 @@ export const testDashboardSpecificOperations = async (
   await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
-  await checkElementVisibility(
-    testUserPage,
-    {
-      testId: 'Usage',
-      type: 'label',
-    },
-    effect
-  );
+  await checkHeaderUsage(testUserPage, effect);
 
   if (effect === 'allow') {
     await testVotePreservesUsage(testUserPage);
@@ -580,14 +588,7 @@ export const testMlModelSpecificOperations = async (
   await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
-  await checkElementVisibility(
-    testUserPage,
-    {
-      testId: 'Usage',
-      type: 'label',
-    },
-    effect
-  );
+  await checkHeaderUsage(testUserPage, effect);
 
   if (effect === 'allow') {
     await testVotePreservesUsage(testUserPage);

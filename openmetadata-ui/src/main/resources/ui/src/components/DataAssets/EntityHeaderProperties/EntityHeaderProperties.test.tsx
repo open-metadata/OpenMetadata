@@ -12,11 +12,12 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { HeaderPropertyId } from '../../../constants/EntityHeaderProperties.constants';
 import EntityHeaderProperties from './EntityHeaderProperties';
 import { HeaderProperty } from './EntityHeaderProperties.types';
 
 const property = (
-  id: string,
+  id: HeaderPropertyId,
   overrides: Partial<HeaderProperty> = {}
 ): HeaderProperty => ({
   id,
@@ -27,9 +28,9 @@ const property = (
   ...overrides,
 });
 
-const properties = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'].map((id) =>
-  property(id)
-);
+const properties = Object.values(HeaderPropertyId)
+  .slice(0, 7)
+  .map((id) => property(id));
 
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
@@ -44,7 +45,13 @@ describe('EntityHeaderProperties', () => {
   it('shows the first five properties and the rest behind Show more', async () => {
     render(<EntityHeaderProperties properties={properties} />);
 
-    expect(shownIds()).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(shownIds()).toEqual([
+      'domains',
+      'owners',
+      'tier',
+      'certification',
+      'retentionPeriod',
+    ]);
 
     const toggle = screen.getByTestId('header-properties-toggle');
 
@@ -53,7 +60,15 @@ describe('EntityHeaderProperties', () => {
 
     await user.click(toggle);
 
-    expect(shownIds()).toEqual(['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7']);
+    expect(shownIds()).toEqual([
+      'domains',
+      'owners',
+      'tier',
+      'certification',
+      'retentionPeriod',
+      'type',
+      'usage',
+    ]);
     expect(toggle).toHaveTextContent('label.show-less');
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
@@ -71,13 +86,16 @@ describe('EntityHeaderProperties', () => {
     render(
       <EntityHeaderProperties
         properties={[
-          property('p1', { isEmpty: true }),
-          property('p2', { isEmpty: true, isReadOnly: false }),
-          property('p3'),
+          property(HeaderPropertyId.Domains, { isEmpty: true }),
+          property(HeaderPropertyId.Owners, {
+            isEmpty: true,
+            isReadOnly: false,
+          }),
+          property(HeaderPropertyId.Tier),
         ]}
       />
     );
 
-    expect(shownIds()).toEqual(['p2', 'p3']);
+    expect(shownIds()).toEqual(['owners', 'tier']);
   });
 });

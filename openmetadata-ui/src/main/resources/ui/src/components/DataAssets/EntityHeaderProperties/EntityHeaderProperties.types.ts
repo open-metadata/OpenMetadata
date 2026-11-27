@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { ReactElement, ReactNode } from 'react';
+import { HeaderPropertyId } from '../../../constants/EntityHeaderProperties.constants';
 
 export interface HeaderProperty {
-  id: string;
+  id: HeaderPropertyId;
   label: string;
   isEmpty: boolean;
   /** Set by the system, so an empty one has nothing for anyone to fill in. */

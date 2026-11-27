@@ -137,25 +137,6 @@ import {
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
 
-// Extracted so the boolean short-circuits live in their own complexity scope
-// instead of DataAssetsHeader's render body.
-const computeHasEditableMetadata = (
-  editDomainPermission: boolean,
-  editOwnerPermission: boolean,
-  editTierPermission: boolean,
-  editCertificationPermission: boolean,
-  editStylePermission: boolean
-): boolean => {
-  const hasEditableEntityMetadata =
-    editDomainPermission || editOwnerPermission || editTierPermission;
-
-  return (
-    hasEditableEntityMetadata ||
-    editCertificationPermission ||
-    editStylePermission
-  );
-};
-
 const computeCanShowFollowStat = (
   excludeEntityService: boolean,
   deleted: boolean | undefined,
@@ -561,14 +542,6 @@ export const DataAssetsHeader = ({
   const hasTriggerPermission =
     can(Operation.Trigger) && canAutoPilot(Operation.Trigger);
   const editStylePermission = Boolean(onStyleUpdate) && flags.canEditAll;
-
-  const hasEditableMetadata = computeHasEditableMetadata(
-    editDomainPermission,
-    editOwnerPermission,
-    editTierPermission,
-    editCertificationPermission,
-    editStylePermission
-  );
 
   const currentStyle = useMemo<Style | undefined>(
     () => ('style' in dataAsset ? dataAsset.style : undefined),
@@ -1010,6 +983,7 @@ export const DataAssetsHeader = ({
       {
         id: HeaderPropertyId.Owners,
         label: t('label.owner-plural'),
+        testId: 'header-owner-container',
         editorTestId: 'edit-owner',
         content: (
           <Owner
@@ -1133,8 +1107,7 @@ export const DataAssetsHeader = ({
       <div
         className={classNames(
           'tw:relative tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface tw:p-5',
-          'data-assets-header-container',
-          { 'has-editable-metadata': hasEditableMetadata }
+          'data-assets-header-container'
         )}
         data-testid="data-assets-header">
         {tableClassBase.getRequestDataAccessBanner()}

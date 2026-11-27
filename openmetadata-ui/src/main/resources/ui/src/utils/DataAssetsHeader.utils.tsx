@@ -392,9 +392,7 @@ const getContainerHeaderInfo: HeaderInfoBuilder = (
 ) => {
   const containerDetails = dataAsset as Container;
   const isPartitioned = containerDetails.dataModel?.isPartitioned;
-  const partitionedLabel = t(
-    isPartitioned ? 'label.partitioned' : 'label.non-partitioned'
-  );
+  const partitionedLabel = t(isPartitioned ? 'label.yes' : 'label.no');
 
   return {
     breadcrumbs: getBreadcrumbForEntityWithParent({

@@ -109,7 +109,7 @@ const RetentionPeriod = ({
           {/* Overrides reproduce the antd Modal (modal.less) this replaced. */}
           <Dialog
             data-testid="retention-period-modal"
-            panelClassName="tw:rounded-lg tw:shadow-[2px_4px_12px_var(--om-legacy-color-0-0-0-0-2)] tw:dark:shadow-overlay"
+            panelClassName="tw:rounded-lg"
             width={520}>
             <Dialog.Header
               className={classNames(

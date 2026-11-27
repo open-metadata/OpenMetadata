@@ -80,6 +80,12 @@ export interface SetDomainOptions {
 
   /** Defaults to `'assigned'`. */
   verify?: DomainVerification;
+
+  /**
+   * For `verify: 'cleared'` on a page without an entity header, the placeholder
+   * it prints for no domain. An entity header offers Add instead.
+   */
+  clearedPlaceholder?: string;
 }
 
 const getSearchBox = (page: Page): Locator => page.getByTestId(SEARCH_TEST_ID);
@@ -155,7 +161,8 @@ const searchForDomain = async (
 const verifyOutcome = async (
   page: Page,
   domain: DomainPickerTarget,
-  verify: DomainVerification
+  verify: DomainVerification,
+  clearedPlaceholder?: string
 ): Promise<void> => {
   const chip = page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`);
 
@@ -180,11 +187,16 @@ const verifyOutcome = async (
 
   if (verify === 'cleared') {
     await expect(chip).not.toBeVisible();
-    await expect(
-      page
-        .getByTestId('no-domain-text')
-        .or(page.getByTestId('header-domain-container').getByText('Add'))
-    ).toBeVisible();
+
+    if (clearedPlaceholder) {
+      await expect(page.getByTestId('no-domain-text')).toContainText(
+        clearedPlaceholder
+      );
+    } else {
+      await expect(
+        page.getByTestId('header-domain-container').getByTestId('add-domain')
+      ).toHaveText('Add');
+    }
 
     return;
   }
@@ -220,6 +232,7 @@ export const setDomain = async (
     awaitPatch = true,
     retryUntilIndexed = false,
     verify = 'assigned',
+    clearedPlaceholder,
   } = options;
 
   await openPicker(page, trigger);
@@ -259,7 +272,7 @@ export const setDomain = async (
     await getSearchBox(page).waitFor({ state: 'detached' });
   }
 
-  await verifyOutcome(page, domain, verify);
+  await verifyOutcome(page, domain, verify, clearedPlaceholder);
 
   return patchResponse;
 };

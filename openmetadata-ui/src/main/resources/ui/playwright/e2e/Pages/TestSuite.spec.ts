@@ -391,7 +391,10 @@ test(
     await test.step('Domain Add, Update and Remove', async () => {
       await setDomain(page, domain1.responseData);
       await setDomain(page, domain2.responseData);
-      await setDomain(page, domain2.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData, {
+        verify: 'cleared',
+        clearedPlaceholder: '--',
+      });
     });
 
     await test.step('User as Owner assign, update & delete for test suite', async () => {

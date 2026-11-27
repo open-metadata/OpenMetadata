@@ -479,7 +479,8 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(shownInfo(assetData)).toContain('label.non-partitioned');
+    expect(shownInfo(assetData)).toContain('label.partitioned');
+    expect(shownInfo(assetData)).toContain('label.no');
 
     expect(shownInfo(assetData)).toContain('label.number-of-object-plural');
     expect(shownInfo(assetData)).toContain('10');

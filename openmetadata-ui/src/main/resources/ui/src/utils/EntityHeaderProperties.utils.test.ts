@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { HeaderProperty } from '../components/DataAssets/EntityHeaderProperties/EntityHeaderProperties.types';
+import { HeaderPropertyId } from '../constants/EntityHeaderProperties.constants';
 import { getShownHeaderProperties } from './EntityHeaderProperties.utils';
 
 const property = (
-  id: string,
+  id: HeaderPropertyId,
   overrides: Partial<HeaderProperty> = {}
 ): HeaderProperty => ({
   id,
@@ -28,10 +29,10 @@ const property = (
 describe('EntityHeaderProperties utils', () => {
   it('never shows an empty read-only property but keeps an empty editable one', () => {
     const shown = getShownHeaderProperties([
-      property('owners'),
-      property('tier', { isEmpty: true }),
-      property('usage', { isEmpty: true, isReadOnly: true }),
-      property('type', { isReadOnly: true }),
+      property(HeaderPropertyId.Owners),
+      property(HeaderPropertyId.Tier, { isEmpty: true }),
+      property(HeaderPropertyId.Usage, { isEmpty: true, isReadOnly: true }),
+      property(HeaderPropertyId.Type, { isReadOnly: true }),
     ]);
 
     expect(shown.map(({ id }) => id)).toEqual(['owners', 'tier', 'type']);
