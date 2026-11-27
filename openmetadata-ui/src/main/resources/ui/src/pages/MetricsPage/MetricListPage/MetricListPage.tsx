@@ -1195,6 +1195,7 @@ const MetricListPage = () => {
                 })}
                 className="tw:shrink-0"
                 data-testid={`select-metric-card-${metric.id}`}
+                isDisabled={isMetricsBusy}
                 isSelected={selectedMetricIds.includes(metric.id)}
                 onChange={(isSelected) =>
                   toggleMetricSelection(metric.id, isSelected)
@@ -1657,7 +1658,9 @@ const MetricListPage = () => {
         rowKey={({ row }) => row.id}
         rowSelection={{
           selectedRowKeys: selectedMetricIds,
-          getCheckboxProps: ({ row }) => ({ disabled: isSyntheticRow(row) }),
+          getCheckboxProps: ({ row }) => ({
+            disabled: isSyntheticRow(row) || isMetricsBusy,
+          }),
           onChange: (keys) => setSelectedMetricIds(keys.map(String)),
           preserveSelectedRowKeys: true,
         }}

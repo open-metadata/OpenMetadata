@@ -1239,6 +1239,28 @@ describe('MetricListPage', () => {
     expect(mockDeleteMetric).toHaveBeenCalledWith('metric-2', true);
   });
 
+  it('does not let stale rows be ticked while a filtered search is still loading', async () => {
+    mockSearchQuery.mockResolvedValue(buildSearchResponse([rootMetric]));
+    renderPage();
+    await screen.findByText('net_sales');
+    fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
+
+    expect(await screen.findByTestId('select-metric-1')).toBeEnabled();
+
+    mockSearchQuery.mockReturnValue(new Promise(() => undefined));
+    fireEvent.change(screen.getByTestId('metric-search'), {
+      target: { value: 'sales' },
+    });
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'sales' })
+      )
+    );
+
+    expect(await screen.findByTestId('select-metric-1')).toBeDisabled();
+  });
+
   it('keeps hidden child selections when their group is collapsed', async () => {
     const groupRow = {
       id: 'group:group-1',
