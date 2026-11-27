@@ -42,12 +42,13 @@ class PandasRunner:
     """
     Runner for pandas-based data quality tests.
 
-    This class extends list to maintain backwards compatibility with existing
-    validators that expect self.runner to be a List[DataFrame]. It also provides
+    This class does not extend list, but implements __iter__ and __call__ to
+    maintain backwards compatibility with existing validators that expect
+    self.runner to be iterable like a List[DataFrame]. It also provides
     access to the raw (unpartitioned, unsampled) dataset via the raw_dataset property.
 
     Usage:
-        - self.runner[0], for df in self.runner: - works (backwards compatible)
+        - for df in self.runner: - works (backwards compatible)
         - self.runner.dataset - returns the processed dataset (same as iterating)
         - self.runner.raw_dataset - returns the raw, unpartitioned/unsampled dataset
     """
