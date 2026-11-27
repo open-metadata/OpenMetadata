@@ -628,7 +628,7 @@
       <scope>test</scope>
     </dependency>
     <!-- Parses the ontology projection with OWL API and runs the OWL 2 DL profile check over it.
-         Test scope only: the server never reasons in process. -->
+         Test scope only: the server never runs OWL API. -->
     <dependency>
       <groupId>net.sourceforge.owlapi</groupId>
       <artifactId>owlapi-apibinding</artifactId>

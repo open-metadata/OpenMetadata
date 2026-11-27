@@ -223,10 +223,12 @@ re-probes on every run.
 **Before any of these, turn the extension on.** OpenMetadata requires the Graph Store extension
 from this release on. A deployment that runs this image without
 `OPENMETADATA_EXTENSION_ENABLED=true`, or runs upstream Apache Jena Fuseki, keeps serving live
-writes and reads after the upgrade, but its next `RdfIndexApp` run fails readiness and every
-ontology activation fails, both naming the extension. A failed activation is dead-lettered at once
-and marks the projection degraded, so it does not hold up the live writes behind it. Set the variable (it needs only a restart,
-on the same volume) or move to this image as described below.
+writes and reads after the upgrade. Its next `RdfIndexApp` run fails readiness, and every ontology
+graph write fails, both naming the extension: activating, deactivating or deleting an ontology
+leaves its graph as it was. Each refused graph write is dead-lettered at once and marks the
+projection degraded, so it does not hold up the live writes behind it, but it is not replayed. Set
+the variable (it needs only a restart, on the same volume) or move to this image as described
+below, then run `RdfIndexApp` to restore the ontology graphs and clear the degraded state.
 
 **From an earlier `openmetadata/fuseki` tag.** Change the tag and restart on the same volume.
 Every `6.2.0-<commit>` tag ships the same Fuseki 6.2.0. TDB2 written and compacted under the
