@@ -14,7 +14,6 @@ import { http, HttpResponse } from 'msw';
 import { setupWorker } from 'msw/browser';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
-import { DataQualityReportBatchRequest } from '../../generated/tests/dataQualityReportBatchRequest';
 
 /** What the server answers for an admin: every operation allowed. */
 export const allowAll = (resource = 'all') => ({
@@ -40,21 +39,10 @@ export const defaultHandlers = [
   http.get('/api/v1/dataQuality/testSuites/executionSummary', () =>
     HttpResponse.json({ columnTestSummary: [] })
   ),
-  // Data quality aggregations, such as a table summary panel's status counts:
-  // an empty report for every request, as for an asset with no test results.
-  http.post(
-    '/api/v1/dataQuality/testSuites/dataQualityReport/batch',
-    async ({ request }) => {
-      const { requests } =
-        (await request.json()) as DataQualityReportBatchRequest;
-
-      return HttpResponse.json({
-        results: requests.map(({ key }) => ({
-          key,
-          report: { data: [], metadata: {} },
-        })),
-      });
-    }
+  // Test cases from search, such as a table summary panel's status counts:
+  // none, as for an asset with no tests.
+  http.get('/api/v1/dataQuality/testCases/search/list', () =>
+    HttpResponse.json(EMPTY_LIST)
   ),
   http.get('/api/v1/permissions', () =>
     HttpResponse.json({ data: Object.values(ResourceEntity).map(allowAll) })
