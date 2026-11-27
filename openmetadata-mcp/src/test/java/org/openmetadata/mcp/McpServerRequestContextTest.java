@@ -13,7 +13,6 @@ import static org.mockito.Mockito.when;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -306,7 +305,7 @@ class McpServerRequestContextTest {
   void toolCallRunsOnlyForATokenIssuedForThisResourceAndCleansTheThread() throws Exception {
     installSigningKey();
     McpServer server = serverFor(toolContextObservingAndCaching(), null);
-    server.expectedResourceSupplier = () -> URI.create("https://om.example/mcp");
+    server.expectedResourceSupplier = () -> "https://om.example/mcp";
     server.jwtFilter = server.newJwtFilter(authConfig(), mock(AuthorizerConfiguration.class));
     onWorker(
         () -> {

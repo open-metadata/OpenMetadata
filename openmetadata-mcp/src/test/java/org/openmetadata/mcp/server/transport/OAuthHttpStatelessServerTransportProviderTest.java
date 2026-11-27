@@ -18,10 +18,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.common.McpTransportContext;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,7 +60,6 @@ import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthToken;
-import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
@@ -82,6 +86,7 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.slf4j.LoggerFactory;
 
 class OAuthHttpStatelessServerTransportProviderTest {
 
@@ -875,11 +880,11 @@ class OAuthHttpStatelessServerTransportProviderTest {
 
   // ── RFC 8707 resource enforcement & audience validation ───────────────────
 
-  private static final URI EXPECTED_RESOURCE = URI.create("https://om.example/mcp");
+  private static final String EXPECTED_RESOURCE = "https://om.example/mcp";
 
-  @Test
-  void authorizeDirectJsonFallback_preservesInvalidTargetErrorCodeAndDescription()
-      throws Exception {
+  @ParameterizedTest
+  @ValueSource(strings = {"invalid_target", "invalid_request"})
+  void authorizeDirectJson_keepsErrorCodeAndUsesGenericDescription(String error) throws Exception {
     AuthorizationHandler authorizationHandler = mock(AuthorizationHandler.class);
     when(authorizationHandler.handle(any(), any()))
         .thenReturn(
@@ -888,9 +893,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
                     null,
                     false,
                     new AuthorizationErrorResponse(
-                        "invalid_target",
-                        "The requested resource is not valid for this server",
-                        "s1"))));
+                        error, "Handler detail that can contain request input", "s1"))));
     OAuthHttpStatelessServerTransportProvider transport =
         transportWith(mock(UserSSOOAuthProvider.class));
     putField(transport, "authorizationHandler", authorizationHandler);
@@ -915,9 +918,8 @@ class OAuthHttpStatelessServerTransportProviderTest {
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
     JsonNode json = new ObjectMapper().readTree(output.toByteArray());
-    assertThat(json.get("error").asText()).isEqualTo("invalid_target");
-    assertThat(json.get("error_description").asText())
-        .isEqualTo("The requested resource is not valid for this server");
+    assertThat(json.get("error").asText()).isEqualTo(error);
+    assertThat(json.get("error_description").asText()).isEqualTo("Authorization request failed");
     verify(authorizationHandler)
         .handle(any(), eq(List.of("https://om.example/mcp", "https://evil.example/mcp")));
   }
@@ -968,7 +970,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
         tokenTransport(provider, EXPECTED_RESOURCE);
 
     String[] smuggledResources =
-        new String[] {"https://om.example/mcp", "https://evil.example/mcp"};
+        new String[] {"https://om.example/mcp", "http://alias.example/mcp?detail=private"};
     HttpServletRequest request =
         tokenRequest(
             Map.of(
@@ -984,7 +986,28 @@ class OAuthHttpStatelessServerTransportProviderTest {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     when(response.getOutputStream()).thenReturn(new CapturedOutput(output));
 
-    transport.doPost(request, response);
+    Logger logger = (Logger) LoggerFactory.getLogger("org.openmetadata.mcp.server");
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      transport.doPost(request, response);
+
+      assertThat(logs.list)
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .extracting(ILoggingEvent::getFormattedMessage)
+          .anySatisfy(
+              message ->
+                  assertThat(message)
+                      .contains(
+                          "/mcp/token", "https://om.example/mcp", "http://alias.example/mcp"));
+      assertThat(logs.list)
+          .extracting(ILoggingEvent::getFormattedMessage)
+          .noneMatch(message -> message.contains("detail=private"));
+    } finally {
+      logger.detachAppender(logs);
+      logs.stop();
+    }
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
     JsonNode json = new ObjectMapper().readTree(output.toByteArray());
@@ -1127,7 +1150,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
    */
   @Test
   void authenticateRequest_acceptsAnAccessTokenIssuedForThisResource() throws Exception {
-    OAuthHttpStatelessServerTransportProvider transport = transportServing("https://om.example");
+    OAuthHttpStatelessServerTransportProvider transport = startTransport("https://om.example");
     String token = accessTokenFor("HTTPS://OM.EXAMPLE:443/mcp/");
     HttpServletResponse response = mock(HttpServletResponse.class);
 
@@ -1143,7 +1166,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
   @Test
   void authenticateRequest_refusesAnAccessTokenIssuedForAnotherResourceWith401InvalidToken()
       throws Exception {
-    OAuthHttpStatelessServerTransportProvider transport = transportServing("https://om.example");
+    OAuthHttpStatelessServerTransportProvider transport = startTransport("https://om.example");
     String token = accessTokenFor("https://other-server.example/mcp");
 
     assertRefusedWithInvalidToken(transport, token);
@@ -1155,7 +1178,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
    */
   @Test
   void authenticateRequest_stillAcceptsAnOpenMetadataTokenWithoutAnAudience() throws Exception {
-    OAuthHttpStatelessServerTransportProvider transport = transportServing("https://om.example");
+    OAuthHttpStatelessServerTransportProvider transport = startTransport("https://om.example");
     String token =
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
@@ -1178,12 +1201,19 @@ class OAuthHttpStatelessServerTransportProviderTest {
   /** A base URL reload moves the resource, so a token bound to the old one stops passing. */
   @Test
   void authenticateRequest_checksTheResourcePublishedByTheLatestReload() throws Exception {
-    OAuthHttpStatelessServerTransportProvider transport = transportServing("https://om.example");
+    OAuthHttpStatelessServerTransportProvider transport = startTransport("https://om.example");
     String token = accessTokenFor("https://om.example/mcp");
 
     reload(transport, "https://om.example/data-catalog");
 
     assertRefusedWithInvalidToken(transport, token);
+    final String updatedToken = accessTokenFor("https://om.example/data-catalog/mcp");
+    try (MockedStatic<Entity> entity = storingAccessTokens(updatedToken)) {
+      assertThat(
+              transport.authenticateRequest(
+                  bearerRequest(updatedToken), mock(HttpServletResponse.class)))
+          .isTrue();
+    }
   }
 
   private static void assertRefusedWithInvalidToken(
@@ -1201,18 +1231,6 @@ class OAuthHttpStatelessServerTransportProviderTest {
     ArgumentCaptor<String> challenge = ArgumentCaptor.forClass(String.class);
     verify(response).setHeader(eq("WWW-Authenticate"), challenge.capture());
     assertThat(challenge.getValue()).contains("error=\"invalid_token\"");
-  }
-
-  /** A transport whose validator and resource come from a reload to {@code baseUrl}. */
-  private static OAuthHttpStatelessServerTransportProvider transportServing(String baseUrl)
-      throws Exception {
-    initializeJwtTokenGenerator();
-    OAuthHttpStatelessServerTransportProvider transport =
-        transportWith(mock(UserSSOOAuthProvider.class));
-    putField(transport, "mcpEndpoint", "/mcp");
-    putField(transport, "objectMapper", new ObjectMapper());
-    reload(transport, baseUrl);
-    return transport;
   }
 
   private static void reload(OAuthHttpStatelessServerTransportProvider transport, String baseUrl) {
@@ -1275,43 +1293,86 @@ class OAuthHttpStatelessServerTransportProviderTest {
   }
 
   @Test
-  void onConfigurationChanged_publishesUpdatedProtectedResourceToProvider() throws Exception {
-    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
-    OAuthHttpStatelessServerTransportProvider transport = transportWith(provider);
-    putField(transport, "mcpEndpoint", "/mcp");
-    putField(transport, "objectMapper", new ObjectMapper());
-    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
-    when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
-    when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
-    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+  void invalidProtectedResourceIsLoggedOnStartupAndReload() throws Exception {
+    Logger logger =
+        (Logger) LoggerFactory.getLogger(OAuthHttpStatelessServerTransportProvider.class);
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      OAuthHttpStatelessServerTransportProvider transport = startTransport("http://my_server:8585");
+      reload(transport, "http://other_server:8585");
 
-    try (MockedStatic<SecurityConfigurationManager> config =
-        mockStatic(SecurityConfigurationManager.class)) {
-      config.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
-      transport.onConfigurationChanged(
-          authConfig,
-          mock(AuthorizerConfiguration.class),
-          new MCPConfiguration().withBaseUrl("https://om.example/data-catalog/"));
+      assertThat(
+              logs.list.stream()
+                  .filter(event -> event.getLevel() == Level.ERROR)
+                  .map(ILoggingEvent::getFormattedMessage))
+          .anySatisfy(
+              message -> assertThat(message).contains("MCP OAuth resource", "my_server:8585/mcp"))
+          .anySatisfy(
+              message ->
+                  assertThat(message).contains("MCP OAuth resource", "other_server:8585/mcp"));
+    } finally {
+      logger.detachAppender(logs);
+      logs.stop();
     }
+  }
 
-    URI expected = URI.create("https://om.example/data-catalog/mcp");
-    assertThat(transport.getProtectedResourceUri()).isEqualTo(expected);
-    verify(provider).setIssuer("https://om.example/data-catalog/mcp");
-    verify(provider).setResource(expected);
+  private static OAuthHttpStatelessServerTransportProvider startTransport(String baseUrl)
+      throws Exception {
+    initializeJwtTokenGenerator();
+    final AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withPublicKeyUrls(List.of())
+            .withJwtPrincipalClaims(List.of("sub"));
+    try (MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      config
+          .when(SecurityConfigurationManager::getInstance)
+          .thenReturn(mock(SecurityConfigurationManager.class));
+      config.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
+      config
+          .when(SecurityConfigurationManager::getCurrentAuthzConfig)
+          .thenReturn(new AuthorizerConfiguration());
+      entity.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+      return new OAuthHttpStatelessServerTransportProvider(
+          new ObjectMapper(),
+          baseUrl,
+          "/mcp",
+          request -> McpTransportContext.EMPTY,
+          new UserSSOOAuthProvider(mock(JWTTokenGenerator.class)),
+          List.of());
+    }
+  }
+
+  @Test
+  void onConfigurationChanged_updatesTheAdvertisedResourceAndIssuer() throws Exception {
+    final var transport = startTransport("https://om.example");
+    reload(transport, "https://om.example/data-catalog/");
+
+    final HttpServletRequest request = mock(HttpServletRequest.class);
+    final HttpServletResponse response = mock(HttpServletResponse.class);
+    final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    when(response.getOutputStream()).thenReturn(new CapturedOutput(output));
+    transport.handleProtectedResourceMetadata(request, response);
+
+    final JsonNode metadata = new ObjectMapper().readTree(output.toByteArray());
+    final String expected = "https://om.example/data-catalog/mcp";
+    assertThat(metadata.path("resource").asText()).isEqualTo(expected);
+    assertThat(metadata.path("authorization_servers").get(0).asText()).isEqualTo(expected);
   }
 
   private static OAuthHttpStatelessServerTransportProvider tokenTransport(
-      UserSSOOAuthProvider provider, URI protectedResource) throws Exception {
+      UserSSOOAuthProvider provider, String issuer) throws Exception {
     OAuthHttpStatelessServerTransportProvider transport = transportWith(provider);
     OAuthClientInformation client = new OAuthClientInformation();
     client.setClientId(CLIENT_ID);
     ClientAuthenticator authenticator = mock(ClientAuthenticator.class);
     when(authenticator.authenticate(eq(CLIENT_ID), any()))
         .thenReturn(CompletableFuture.completedFuture(client));
-    ProtectedResourceMetadata resourceMetadata = new ProtectedResourceMetadata();
-    resourceMetadata.setResource(protectedResource);
+    when(provider.getIssuer()).thenReturn(issuer);
     putField(transport, "clientAuthenticator", authenticator);
-    putField(transport, "protectedResourceMetadata", resourceMetadata);
     putField(transport, "tokenAttempts", new ConcurrentHashMap<>());
     putField(transport, "objectMapper", new ObjectMapper());
     putField(transport, "allowedOrigins", List.of());

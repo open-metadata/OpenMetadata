@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -20,12 +19,11 @@ import org.openmetadata.service.security.TokenAudience;
 
 class McpResourceUriTest {
 
-  private static final URI CANONICAL_HTTPS = URI.create("https://om.example/mcp");
-  private static final URI CANONICAL_HTTP = URI.create("http://om.example/mcp");
-  private static final URI CANONICAL_SUBPATH = URI.create("https://om.example/data-catalog/mcp");
-  private static final URI CANONICAL_IPV6 = URI.create("https://[::1]/mcp");
-  private static final URI CANONICAL_IPV6_CUSTOM_PORT =
-      URI.create("https://[2001:db8::1]:8443/mcp");
+  private static final String CANONICAL_HTTPS = "https://om.example/mcp";
+  private static final String CANONICAL_HTTP = "http://om.example/mcp";
+  private static final String CANONICAL_SUBPATH = "https://om.example/data-catalog/mcp";
+  private static final String CANONICAL_IPV6 = "https://[::1]/mcp";
+  private static final String CANONICAL_IPV6_CUSTOM_PORT = "https://[2001:db8::1]:8443/mcp";
 
   @Test
   void exactAndEquivalentCanonicalFormsMatch() {
@@ -57,11 +55,9 @@ class McpResourceUriTest {
     Locale previous = Locale.getDefault();
     try {
       Locale.setDefault(Locale.forLanguageTag("tr-TR"));
-      assertThat(McpResourceUri.parseValid("HTTPS://API.EXAMPLE/mcp"))
-          .contains(URI.create("https://api.example/mcp"));
-      assertThat(
-              McpResourceUri.matches(
-                  "HTTPS://API.EXAMPLE:443/mcp/", URI.create("https://api.example/mcp")))
+      assertThat(McpResourceUri.canonicalize("HTTPS://API.EXAMPLE/mcp"))
+          .contains("https://api.example/mcp");
+      assertThat(McpResourceUri.matches("HTTPS://API.EXAMPLE:443/mcp/", "https://api.example/mcp"))
           .isTrue();
     } finally {
       Locale.setDefault(previous);
@@ -70,10 +66,10 @@ class McpResourceUriTest {
 
   @Test
   void nonDotPathSegmentsContainingDotsAreAccepted() {
-    URI versioned = URI.create("https://om.example/v1.0/mcp");
+    String versioned = "https://om.example/v1.0/mcp";
     assertThat(McpResourceUri.matches("https://om.example/v1.0/mcp/", versioned)).isTrue();
-    assertThat(McpResourceUri.parseValid("https://om.example:65535/mcp"))
-        .contains(URI.create("https://om.example:65535/mcp"));
+    assertThat(McpResourceUri.canonicalize("https://om.example:65535/mcp"))
+        .contains("https://om.example:65535/mcp");
   }
 
   @ParameterizedTest
@@ -145,68 +141,72 @@ class McpResourceUriTest {
         "https://om.example/mcp\\sub"
       })
   void invalidSyntaxOrForbiddenComponentsAreRejected(String raw) {
-    assertThat(McpResourceUri.parseValid(raw)).isEmpty();
-    assertThat(McpResourceUri.matches(raw, CANONICAL_HTTPS)).isFalse();
+    assertThat(McpResourceUri.canonicalize(raw)).isEmpty();
   }
 
   @Test
   void nullAndMaxLengthBoundaryAreEnforced() {
-    assertThat(McpResourceUri.parseValid(null)).isEmpty();
+    assertThat(McpResourceUri.canonicalize(null)).isEmpty();
     assertThat(McpResourceUri.matches(null, CANONICAL_HTTPS)).isFalse();
 
     String prefix = "https://om.example/";
     String exactMax = prefix + "a".repeat(McpResourceUri.MAX_RESOURCE_LENGTH - prefix.length());
     assertThat(exactMax).hasSize(McpResourceUri.MAX_RESOURCE_LENGTH);
-    assertThat(McpResourceUri.parseValid(exactMax)).contains(URI.create(exactMax));
+    assertThat(McpResourceUri.canonicalize(exactMax)).contains(exactMax);
 
     String overMax = exactMax + "a";
     assertThat(overMax).hasSize(McpResourceUri.MAX_RESOURCE_LENGTH + 1);
-    assertThat(McpResourceUri.parseValid(overMax)).isEmpty();
+    assertThat(McpResourceUri.canonicalize(overMax)).isEmpty();
   }
 
   @Test
   void nullOrInvalidExpectedCanonicalFailsClosed() {
     assertThat(McpResourceUri.matches("https://om.example/mcp", null)).isFalse();
-    assertThat(
-            McpResourceUri.matches(
-                "https://om.example/mcp", URI.create("https://om.example/mcp#frag")))
+    assertThat(McpResourceUri.matches("https://om.example/mcp", "https://om.example/mcp#frag"))
         .isFalse();
-    assertThat(McpResourceUri.validateRequested(List.of("https://om.example/mcp"), null)).isFalse();
+    assertThat(
+            McpResourceUri.validateRequested(List.of("https://om.example/mcp"), null, "/mcp/token"))
+        .isFalse();
     assertThat(
             McpResourceUri.validateRequested(
-                List.of("https://om.example/mcp"), URI.create("https://om.example/mcp?q=1")))
+                List.of("https://om.example/mcp"), "https://om.example/mcp?q=1", "/mcp/token"))
         .isFalse();
   }
 
   @Test
   void validateRequestedHandlesOmittedSingleAndMultiValueParams() {
-    assertThat(McpResourceUri.validateRequested(null, CANONICAL_HTTPS)).isTrue();
-    assertThat(McpResourceUri.validateRequested(List.of(), CANONICAL_HTTPS)).isTrue();
-    assertThat(McpResourceUri.validateRequested(null, null)).isTrue();
+    assertThat(McpResourceUri.validateRequested(null, CANONICAL_HTTPS, "/mcp/token")).isTrue();
+    assertThat(McpResourceUri.validateRequested(List.of(), CANONICAL_HTTPS, "/mcp/token")).isTrue();
+    assertThat(McpResourceUri.validateRequested(null, null, "/mcp/token")).isTrue();
 
     assertThat(
             McpResourceUri.validateRequested(
-                List.of("https://om.example/mcp", "https://om.example/mcp/"), CANONICAL_HTTPS))
+                List.of("https://om.example/mcp", "https://om.example/mcp/"),
+                CANONICAL_HTTPS,
+                "/mcp/token"))
         .isTrue();
     assertThat(
             McpResourceUri.validateRequested(
-                List.of("https://om.example/mcp", "https://evil.example/mcp"), CANONICAL_HTTPS))
+                List.of("https://om.example/mcp", "https://evil.example/mcp"),
+                CANONICAL_HTTPS,
+                "/mcp/token"))
         .isFalse();
     assertThat(
             McpResourceUri.validateRequested(
-                List.of("https://om.example/mcp", ""), CANONICAL_HTTPS))
+                List.of("https://om.example/mcp", ""), CANONICAL_HTTPS, "/mcp/token"))
         .isFalse();
     assertThat(
             McpResourceUri.validateRequested(
-                Arrays.asList("https://om.example/mcp", null), CANONICAL_HTTPS))
+                Arrays.asList("https://om.example/mcp", null), CANONICAL_HTTPS, "/mcp/token"))
         .isFalse();
-    assertThat(McpResourceUri.validateRequested(List.of(""), CANONICAL_HTTPS)).isFalse();
+    assertThat(McpResourceUri.validateRequested(List.of(""), CANONICAL_HTTPS, "/mcp/token"))
+        .isFalse();
   }
 
   /** The MCP endpoint's audience rule compares {@code aud} with the resource it serves now. */
   @Test
   void tokenAudienceAcceptsEquivalentFormsOfTheCurrentResourceOnly() {
-    AtomicReference<URI> served = new AtomicReference<>(CANONICAL_HTTPS);
+    AtomicReference<String> served = new AtomicReference<>(CANONICAL_HTTPS);
     TokenAudience audience = McpResourceUri.tokenAudienceOf(served::get);
 
     assertThatCode(() -> audience.requireAddressedHere(tokenFor("HTTPS://OM.EXAMPLE:443/mcp/")))

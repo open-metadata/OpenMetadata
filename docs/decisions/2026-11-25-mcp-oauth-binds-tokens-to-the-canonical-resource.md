@@ -30,11 +30,11 @@ OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTo
 
 ## Decision
 
-- **Single canonical resource source:** The server's canonical resource URI is always
-  `protectedResourceMetadata.getResource()` (`<baseUrl>/mcp`, honoring
-  ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path and never trusting `Host` or
-  `X-Forwarded-*`). It is published to the OAuth provider alongside `issuer` at startup and on
-  every runtime `baseUrl` reload.
+- **Single resource source:** The issuer and protected resource advertised in discovery both use
+  the configured `<baseUrl>/mcp` URI, honoring
+  ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path. Authorization, token exchange, and
+  audience checks all read the OAuth provider's current issuer, which the transport sets at startup
+  and on each base URL reload.
 - **Strict RFC 8707 / RFC 3986 validation (`McpResourceUri`):** Every `resource` parameter value
   from `request.getParameterValues("resource")` is validated on `/mcp/authorize` (after `client_id`
   and `redirect_uri` verification, before creating a pending login or contacting the IdP) and on
@@ -44,7 +44,12 @@ OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTo
   or repeated slashes are accepted; scheme and host fold case with `Locale.ROOT`, explicit default
   ports (`:80` / `:443`) normalize away, and raw paths compare case-sensitively without
   percent-decoding while allowing at most one trailing slash. Any invalid or mismatched value
-  returns `invalid_target` with a static error description that never echoes untrusted input.
+  returns `invalid_target`. Direct authorization error responses preserve the OAuth error code
+  and use a fixed description. Resource rejections log the expected URI and the first rejected
+  value at WARN, with userinfo, queries, and fragments redacted.
+- **Invalid server configuration:** The transport logs an error at startup and on reload if its
+  resource URI cannot be canonicalized. Token exchange returns `server_error` in this case before
+  signing a token, consuming an authorization code, or rotating a refresh token.
 - **Backward-compatible omission:** An absent `resource` parameter (`null`) remains accepted on
   `/mcp/authorize` and `/mcp/token` so legacy MCP clients keep signing in; an empty `resource=` is
   present and rejected with `invalid_target`.
@@ -64,7 +69,7 @@ OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTo
   handshake (`SocketAddressFilter`, both the polling servlet path and the WebSocket upgrade)
   refuse every OpenMetadata-signed token that carries `aud`, MCP access tokens included. The MCP
   transport and `McpServer` build their filters with `McpResourceUri.tokenAudienceOf`, which reads
-  the protected resource the transport currently publishes and matches it with
+  the OAuth provider's current issuer and matches it with
   `McpResourceUri.matches`; before the resource is published nothing matches.
 - **Tokens without `aud`:** login and session tokens, bot tokens, personal access tokens, and MCP
   access tokens minted before audience binding keep working on REST, the push feed and `/mcp`

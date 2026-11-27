@@ -6,21 +6,15 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.TokenAudience;
 
-/**
- * Validates and canonicalizes RFC 8707 resource indicators for MCP OAuth.
- *
- * <p>Only absolute, hierarchical {@code http}/{@code https} URIs without userinfo, query,
- * fragment, dangling port colons, invalid port numbers, dot-segments, or repeated slashes are
- * accepted. Scheme and host fold case using {@link Locale#ROOT}; explicit default ports ({@code
- * :80} for {@code http}, {@code :443} for {@code https}) are removed; raw paths are compared
- * case-sensitively without percent-decoding, allowing at most one trailing slash when the path has
- * more than one character.
- */
+/** Validates RFC 8707 indicators for the single resource advertised by MCP discovery. */
+@Slf4j
 public final class McpResourceUri {
 
   public static final int MAX_RESOURCE_LENGTH = 2048;
@@ -28,181 +22,118 @@ public final class McpResourceUri {
   public static final String INVALID_TARGET_DESCRIPTION =
       "The requested resource is not valid for this server";
 
-  private static final String HTTP_SCHEME = "http";
-  private static final String HTTPS_SCHEME = "https";
-  private static final int DEFAULT_HTTP_PORT = 80;
-  private static final int DEFAULT_HTTPS_PORT = 443;
-  private static final int MIN_PORT = 1;
+  private static final Pattern UNSUPPORTED_PATH = Pattern.compile("//|/\\.{1,2}(?:/|$)");
   private static final int MAX_PORT = 65535;
-  private static final Set<String> ALLOWED_SCHEMES = Set.of(HTTP_SCHEME, HTTPS_SCHEME);
-
-  private record CanonicalAuthority(String host, int port) {}
 
   private McpResourceUri() {}
 
   /**
-   * Parses and canonicalizes a raw RFC 8707 resource indicator.
-   *
-   * @param raw the untrusted resource URI string
-   * @return the canonical URI if valid, or empty otherwise
+   * Normalizes an HTTP(S) resource URI for exact comparison. Raw paths keep their case and
+   * escaping, with a single trailing slash optional.
    */
-  public static Optional<URI> parseValid(final String raw) {
-    if (!isSyntaxCandidate(raw)) {
-      return Optional.empty();
-    }
-    final URI parsed = parseUri(raw);
-    return parsed == null ? Optional.empty() : canonicalizeParsed(parsed);
+  public static Optional<String> canonicalize(final String resource) {
+    return parseUri(resource).flatMap(McpResourceUri::canonicalizeUri);
   }
 
-  /**
-   * Canonicalizes an already-constructed {@link URI} using the same RFC 8707 validation rules.
-   *
-   * @param uri the URI to canonicalize
-   * @return the canonical URI if valid, or empty when {@code uri} is null or invalid
-   */
-  public static Optional<URI> canonicalize(final URI uri) {
-    return uri == null ? Optional.empty() : parseValid(uri.toString());
-  }
-
-  /**
-   * Returns true if {@code candidate} is a valid RFC 8707 resource URI matching {@code
-   * expectedCanonical}. Fails closed when {@code expectedCanonical} is null or invalid.
-   */
-  public static boolean matches(final String candidate, final URI expectedCanonical) {
-    final Optional<URI> expected = canonicalize(expectedCanonical);
+  /** Returns whether the candidate and configured URIs are valid and name the same resource. */
+  public static boolean matches(final String candidate, final String expectedResource) {
+    final Optional<String> expected = canonicalize(expectedResource);
     return expected.isPresent() && matchesCanonical(candidate, expected.get());
   }
 
-  /**
-   * The audience rule of an entry point serving {@code resource}, read on every check because a
-   * base URL reload moves it: an {@code aud} value names it when it {@link #matches} the current
-   * value, and nothing names it while the resource is unresolved.
-   */
-  public static TokenAudience tokenAudienceOf(final Supplier<URI> resource) {
-    return TokenAudience.servedResourceNamedBy(audience -> matches(audience, resource.get()));
+  /** The live issuer may change when the MCP base URL is reloaded. */
+  public static TokenAudience tokenAudienceOf(final Supplier<String> issuer) {
+    return TokenAudience.servedResourceNamedBy(audience -> matches(audience, issuer.get()));
   }
 
   /**
-   * Validates all {@code resource} parameter values supplied on an authorization or token request.
-   *
-   * <p>An absent parameter ({@code null} or empty list) is accepted for backward compatibility with
-   * MCP clients that omit {@code resource}. When one or more values are present, every value must
-   * be a valid RFC 8707 URI matching {@code expectedCanonical}; a {@code null} expected URI fails
-   * closed.
+   * An omitted resource parameter remains valid for legacy clients. Every supplied value must
+   * name the configured resource. Log the first mismatch so repeated values cannot flood one entry.
    */
   public static boolean validateRequested(
-      final List<String> requestedValues, final URI expectedCanonical) {
-    if (nullOrEmpty(requestedValues)) {
-      return true;
-    }
-    final Optional<URI> expected = canonicalize(expectedCanonical);
-    if (expected.isEmpty()) {
-      return false;
-    }
-    for (final String value : requestedValues) {
-      if (!matchesCanonical(value, expected.get())) {
-        return false;
+      final List<String> requestedValues, final String expectedResource, final String endpoint) {
+    boolean valid = true;
+    if (!nullOrEmpty(requestedValues)) {
+      final Optional<String> expected = canonicalize(expectedResource);
+      for (final String received : requestedValues) {
+        if (expected.isEmpty() || !matchesCanonical(received, expected.get())) {
+          LOG.warn(
+              "Rejected MCP OAuth resource on {}. Expected '{}', received '{}'.",
+              endpoint,
+              describeForLogging(expectedResource),
+              describeForLogging(received));
+          valid = false;
+          break;
+        }
       }
     }
-    return true;
+    return valid;
   }
 
-  private static boolean matchesCanonical(final String candidate, final URI canonicalExpected) {
-    final Optional<URI> parsed = parseValid(candidate);
-    return parsed.isPresent() && parsed.get().toString().equals(canonicalExpected.toString());
+  /** Keeps the URI components useful for diagnostics and redacts credential-bearing components. */
+  public static String describeForLogging(final String resource) {
+    return parseUri(resource)
+        .filter(uri -> uri.getScheme() != null && uri.getRawAuthority() != null)
+        .map(McpResourceUri::redactUri)
+        .orElse(resource == null ? "<unset>" : "<invalid URI>");
   }
 
-  private static boolean isSyntaxCandidate(final String raw) {
-    return raw != null
-        && !raw.isEmpty()
+  private static String redactUri(final URI uri) {
+    final String authority = uri.getRawAuthority();
+    final String hostAndPort = authority.substring(authority.lastIndexOf('@') + 1);
+    final String query = uri.getRawQuery() == null ? "" : "?[redacted]";
+    final String fragment = uri.getRawFragment() == null ? "" : "#[redacted]";
+    return uri.getScheme() + "://" + hostAndPort + uri.getRawPath() + query + fragment;
+  }
+
+  private static boolean matchesCanonical(final String candidate, final String expected) {
+    return canonicalize(candidate).filter(expected::equals).isPresent();
+  }
+
+  private static Optional<URI> parseUri(final String raw) {
+    Optional<URI> parsed = Optional.empty();
+    if (raw != null
         && raw.length() <= MAX_RESOURCE_LENGTH
-        && raw.codePoints().noneMatch(Character::isWhitespace);
-  }
-
-  private static URI parseUri(final String raw) {
-    try {
-      return new URI(raw);
-    } catch (URISyntaxException e) {
-      return null;
-    }
-  }
-
-  private static Optional<URI> canonicalizeParsed(final URI uri) {
-    if (!uri.isAbsolute() || uri.isOpaque() || hasForbiddenComponents(uri)) {
-      return Optional.empty();
-    }
-    final String scheme = normalizeScheme(uri.getScheme());
-    if (scheme == null) {
-      return Optional.empty();
-    }
-    final Optional<CanonicalAuthority> authority = canonicalizeAuthority(uri, scheme);
-    final Optional<String> rawPath = canonicalizeRawPath(uri.getRawPath());
-    if (authority.isEmpty() || rawPath.isEmpty()) {
-      return Optional.empty();
-    }
-    final CanonicalAuthority auth = authority.get();
-    final String portSuffix = auth.port() == -1 ? "" : ":" + auth.port();
-    return Optional.of(URI.create(scheme + "://" + auth.host() + portSuffix + rawPath.get()));
-  }
-
-  private static boolean hasForbiddenComponents(final URI uri) {
-    return uri.getRawFragment() != null
-        || uri.getRawQuery() != null
-        || uri.getRawUserInfo() != null;
-  }
-
-  private static String normalizeScheme(final String rawScheme) {
-    if (rawScheme == null) {
-      return null;
-    }
-    final String scheme = rawScheme.toLowerCase(Locale.ROOT);
-    return ALLOWED_SCHEMES.contains(scheme) ? scheme : null;
-  }
-
-  private static Optional<CanonicalAuthority> canonicalizeAuthority(
-      final URI uri, final String scheme) {
-    final String rawAuthority = uri.getRawAuthority();
-    final String rawHost = uri.getHost();
-    if (nullOrEmpty(rawAuthority) || nullOrEmpty(rawHost) || rawHost.isBlank()) {
-      return Optional.empty();
-    }
-    final int port = uri.getPort();
-    // Java's URI parses a dangling colon ("example.com:" or "[::1]:") with port == -1.
-    if (port == -1 && !rawAuthority.equals(rawHost)) {
-      return Optional.empty();
-    }
-    if (port != -1 && (port < MIN_PORT || port > MAX_PORT)) {
-      return Optional.empty();
-    }
-    final int effectivePort = isDefaultPort(scheme, port) ? -1 : port;
-    return Optional.of(new CanonicalAuthority(rawHost.toLowerCase(Locale.ROOT), effectivePort));
-  }
-
-  private static boolean isDefaultPort(final String scheme, final int port) {
-    return (HTTPS_SCHEME.equals(scheme) && port == DEFAULT_HTTPS_PORT)
-        || (HTTP_SCHEME.equals(scheme) && port == DEFAULT_HTTP_PORT);
-  }
-
-  private static Optional<String> canonicalizeRawPath(final String rawPath) {
-    if (rawPath == null) {
-      return Optional.of("");
-    }
-    if (rawPath.contains("//") || hasDotSegment(rawPath)) {
-      return Optional.empty();
-    }
-    final String normalized =
-        rawPath.length() > 1 && rawPath.endsWith("/")
-            ? rawPath.substring(0, rawPath.length() - 1)
-            : rawPath;
-    return Optional.of(normalized);
-  }
-
-  private static boolean hasDotSegment(final String rawPath) {
-    for (final String segment : rawPath.split("/", -1)) {
-      if (".".equals(segment) || "..".equals(segment)) {
-        return true;
+        && raw.codePoints().noneMatch(Character::isWhitespace)) {
+      try {
+        parsed = Optional.of(new URI(raw));
+      } catch (URISyntaxException ignored) {
+        // Its message contains the raw URI, which can include credentials.
       }
     }
-    return false;
+    return parsed;
+  }
+
+  private static Optional<String> canonicalizeUri(final URI uri) {
+    final String scheme = Objects.toString(uri.getScheme(), "").toLowerCase(Locale.ROOT);
+    final int defaultPort =
+        switch (scheme) {
+          case "http" -> 80;
+          case "https" -> 443;
+          default -> -1;
+        };
+    return defaultPort != -1 && hasValidComponents(uri)
+        ? Optional.of(normalizeUri(uri, scheme, defaultPort))
+        : Optional.empty();
+  }
+
+  private static boolean hasValidComponents(final URI uri) {
+    final int port = uri.getPort();
+    return uri.getHost() != null
+        && uri.getRawUserInfo() == null
+        && uri.getRawQuery() == null
+        && uri.getRawFragment() == null
+        && !uri.getRawAuthority().endsWith(":")
+        && (port == -1 || (port > 0 && port <= MAX_PORT))
+        && !UNSUPPORTED_PATH.matcher(uri.getRawPath()).find();
+  }
+
+  private static String normalizeUri(final URI uri, final String scheme, final int defaultPort) {
+    final int port = uri.getPort();
+    final String portSuffix = port == -1 || port == defaultPort ? "" : ":" + port;
+    final String path = uri.getRawPath();
+    final String normalizedPath =
+        path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + portSuffix + normalizedPath;
   }
 }

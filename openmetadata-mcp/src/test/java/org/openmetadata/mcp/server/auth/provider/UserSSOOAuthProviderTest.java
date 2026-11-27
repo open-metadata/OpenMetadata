@@ -29,14 +29,15 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
-import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.RefreshToken;
@@ -1018,78 +1019,38 @@ class UserSSOOAuthProviderTest {
     return failure;
   }
 
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "http://my_server:8585/mcp")
+  void exchangeFailsWithoutConsumingGrantsWhenTheResourceIsInvalid(String issuer) throws Exception {
+    GrantExchange exchange = new GrantExchange(issuer);
+
+    try (MockedStatic<Entity> entity = tokenUser()) {
+      assertThat(assertThrows(TokenException.class, exchange::exchangeCode).getError())
+          .isEqualTo("server_error");
+      assertThat(assertThrows(TokenException.class, exchange::exchangeRefresh).getError())
+          .isEqualTo("server_error");
+      verify(exchange.codeRepo, never()).markAsUsedAtomic(anyString());
+      verify(exchange.tokenRepo, never()).rotateRefreshToken(any(), any(), any(), any(), any());
+      verifyNoInteractions(exchange.jwtGenerator);
+
+      exchange.provider.setIssuer("https://om.example/mcp");
+      assertThat(exchange.exchangeCode().getAccessToken()).isEqualTo("jwt");
+      assertThat(exchange.exchangeRefresh().getAccessToken()).isEqualTo("jwt");
+    }
+  }
+
   @Test
   void exchangeAuthorizationCodeAndRefresh_bindAccessTokenToCanonicalResourceAudience()
       throws Exception {
-    String verifier = "v".repeat(48);
-    String challenge =
-        Base64.getUrlEncoder()
-            .withoutPadding()
-            .encodeToString(
-                MessageDigest.getInstance("SHA-256")
-                    .digest(verifier.getBytes(StandardCharsets.US_ASCII)));
-    long expiresAt = System.currentTimeMillis() + 60_000L;
-    OAuthAuthorizationCodeRecord codeRecord =
-        new OAuthAuthorizationCodeRecord(
-            "code-1",
-            CLIENT_ID,
-            "alice",
-            challenge,
-            "S256",
-            MCP_REDIRECT_URI,
-            List.of("openid"),
-            expiresAt,
-            false);
-    OAuthAuthorizationCodeRepository codeRepo = mock(OAuthAuthorizationCodeRepository.class);
-    when(codeRepo.findByCode("code-1")).thenReturn(codeRecord);
-    when(codeRepo.markAsUsedAtomic("code-1")).thenReturn(codeRecord);
+    GrantExchange exchange = new GrantExchange("https://OM.EXAMPLE:443/data-catalog/mcp/");
 
-    RefreshToken storedRefresh =
-        new RefreshToken("refresh-1", CLIENT_ID, List.of("openid"), expiresAt);
-    storedRefresh.setUserName("alice");
-    OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
-    when(tokenRepo.findRefreshToken("refresh-1")).thenReturn(storedRefresh);
-
-    JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
-    when(jwtGenerator.generateJWTToken(
-            anyString(),
-            any(),
-            anyBoolean(),
-            any(),
-            anyLong(),
-            anyBoolean(),
-            any(),
-            any(),
-            any(),
-            any()))
-        .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
-
-    UserSSOOAuthProvider provider = newProvider(null, null, ISSUER);
-    provider.setResource(URI.create("https://OM.EXAMPLE:443/data-catalog/mcp/"));
-    setField(provider, "codeRepository", codeRepo);
-    setField(provider, "tokenRepository", tokenRepo);
-    setField(provider, "jwtGenerator", jwtGenerator);
-
-    AuthorizationCode presentedCode = new AuthorizationCode();
-    presentedCode.setCode("code-1");
-    presentedCode.setRedirectUri(URI.create(MCP_REDIRECT_URI));
-    presentedCode.setCodeVerifier(verifier);
-
-    RefreshToken presentedRefresh = new RefreshToken();
-    presentedRefresh.setToken("refresh-1");
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      eq(Entity.USER), eq("alice"), anyString(), eq(Include.NON_DELETED)))
-          .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
-      provider.exchangeAuthorizationCode(registeredClient(), presentedCode).join();
-      provider.exchangeRefreshToken(registeredClient(), presentedRefresh, null).join();
+    try (MockedStatic<Entity> entity = tokenUser()) {
+      exchange.exchangeCode();
+      exchange.exchangeRefresh();
     }
 
-    verify(jwtGenerator, times(2))
+    verify(exchange.jwtGenerator, times(2))
         .generateJWTToken(
             eq("alice"),
             any(),
@@ -1103,68 +1064,81 @@ class UserSSOOAuthProviderTest {
             eq("https://om.example/data-catalog/mcp"));
   }
 
-  @Test
-  void defaultProviderResourceFallsBackToIssuerAndHandlesBlankIssuer() {
-    OAuthAuthorizationServerProvider stubWithIssuer =
-        new OAuthAuthorizationServerProvider() {
-          private String issuer = "https://om.example/mcp";
+  private static MockedStatic<Entity> tokenUser() {
+    MockedStatic<Entity> entity = mockStatic(Entity.class);
+    entity
+        .when(
+            () -> Entity.getEntityByName(Entity.USER, "alice", "roles,teams", Include.NON_DELETED))
+        .thenReturn(new User().withName("alice").withEmail("alice@corp.example"));
+    return entity;
+  }
 
-          @Override
-          public String getIssuer() {
-            return issuer;
-          }
+  private static final class GrantExchange {
+    private static final String VERIFIER = "v".repeat(48);
+    private final OAuthAuthorizationCodeRepository codeRepo =
+        mock(OAuthAuthorizationCodeRepository.class);
+    private final OAuthTokenRepository tokenRepo = mock(OAuthTokenRepository.class);
+    private final JWTTokenGenerator jwtGenerator = mock(JWTTokenGenerator.class);
+    private final UserSSOOAuthProvider provider;
 
-          @Override
-          public void setIssuer(String issuer) {
-            this.issuer = issuer;
-          }
+    private GrantExchange(String issuer) throws Exception {
+      long expiresAt = System.currentTimeMillis() + 60_000L;
+      String challenge =
+          Base64.getUrlEncoder()
+              .withoutPadding()
+              .encodeToString(
+                  MessageDigest.getInstance("SHA-256")
+                      .digest(VERIFIER.getBytes(StandardCharsets.US_ASCII)));
+      OAuthAuthorizationCodeRecord codeRecord =
+          new OAuthAuthorizationCodeRecord(
+              "code-1",
+              CLIENT_ID,
+              "alice",
+              challenge,
+              "S256",
+              MCP_REDIRECT_URI,
+              List.of("openid"),
+              expiresAt,
+              false);
+      when(codeRepo.findByCode("code-1")).thenReturn(codeRecord);
+      when(codeRepo.markAsUsedAtomic("code-1")).thenReturn(codeRecord);
 
-          @Override
-          public CompletableFuture<OAuthClientInformation> getClient(String clientId) {
-            return null;
-          }
+      RefreshToken storedRefresh =
+          new RefreshToken("refresh-1", CLIENT_ID, List.of("openid"), expiresAt);
+      storedRefresh.setUserName("alice");
+      when(tokenRepo.findRefreshToken("refresh-1")).thenReturn(storedRefresh);
+      when(jwtGenerator.generateJWTToken(
+              anyString(),
+              any(),
+              anyBoolean(),
+              any(),
+              anyLong(),
+              anyBoolean(),
+              any(),
+              any(),
+              any(),
+              any()))
+          .thenReturn(new JWTAuthMechanism().withJWTToken("jwt"));
 
-          @Override
-          public CompletableFuture<Void> registerClient(OAuthClientInformation clientInfo) {
-            return null;
-          }
+      provider = newProvider(null, null, issuer);
+      setField(provider, "codeRepository", codeRepo);
+      setField(provider, "tokenRepository", tokenRepo);
+      setField(provider, "jwtGenerator", jwtGenerator);
+    }
 
-          @Override
-          public CompletableFuture<String> authorize(
-              OAuthClientInformation client, AuthorizationParams params) {
-            return null;
-          }
+    private OAuthToken exchangeCode() throws Exception {
+      AuthorizationCode code = new AuthorizationCode();
+      code.setCode("code-1");
+      code.setRedirectUri(URI.create(MCP_REDIRECT_URI));
+      code.setCodeVerifier(VERIFIER);
+      return provider.exchangeAuthorizationCode(registeredClient(), code).join();
+    }
 
-          @Override
-          public CompletableFuture<AuthorizationCode> loadAuthorizationCode(
-              OAuthClientInformation client, String authorizationCode) {
-            return null;
-          }
-
-          @Override
-          public CompletableFuture<OAuthToken> exchangeAuthorizationCode(
-              OAuthClientInformation client, AuthorizationCode authorizationCode) {
-            return null;
-          }
-
-          @Override
-          public CompletableFuture<OAuthToken> exchangeRefreshToken(
-              OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes) {
-            return null;
-          }
-
-          @Override
-          public CompletableFuture<Void> revokeToken(Object token) {
-            return null;
-          }
-        };
-
-    assertThat(stubWithIssuer.getResource()).isEqualTo(URI.create("https://om.example/mcp"));
-    stubWithIssuer.setResource(URI.create("https://ignored.example/mcp"));
-    stubWithIssuer.setIssuer("  ");
-    assertThat(stubWithIssuer.getResource()).isNull();
-    stubWithIssuer.setIssuer(null);
-    assertThat(stubWithIssuer.getResource()).isNull();
+    private OAuthToken exchangeRefresh() throws Exception {
+      RefreshToken refresh = new RefreshToken();
+      refresh.setToken("refresh-1");
+      return provider.exchangeRefreshToken(registeredClient(), refresh, null).join();
+    }
   }
 
   // ── reflection helpers (mirror AuthenticationCodeFlowHandlerTest) ─────────

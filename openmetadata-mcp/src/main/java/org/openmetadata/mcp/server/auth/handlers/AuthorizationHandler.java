@@ -104,8 +104,8 @@ public class AuthorizationHandler {
 
               // Validate RFC 8707 resource parameter(s) only after client_id and redirect_uri are
               // verified so unknown clients or unregistered callbacks cannot become open redirects.
-              URI expectedResource = provider.getResource();
-              if (!McpResourceUri.validateRequested(resourceValues, expectedResource)) {
+              if (!McpResourceUri.validateRequested(
+                  resourceValues, provider.getIssuer(), "/mcp/authorize")) {
                 return CompletableFuture.completedFuture(
                     createErrorResponse(
                         McpResourceUri.INVALID_TARGET_ERROR,
