@@ -41,8 +41,11 @@ jobs:
       ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        # The default checkout (a PR's merge commit) is the commit this workflow
+        # file came from, so its filter files always exist; a PR head branched
+        # before a filter file was added would not have it. paths-filter lists a
+        # PR's changed files through the API, so it needs no PR head.
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           fetch-depth: 1
           sparse-checkout: |
