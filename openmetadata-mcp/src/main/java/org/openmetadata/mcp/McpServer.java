@@ -22,12 +22,15 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -60,6 +63,7 @@ public class McpServer implements McpServerProvider {
   protected DefaultPromptsContext promptsContext;
   private Environment environment;
   private volatile String mcpBotName;
+  volatile Supplier<String> expectedResourceSupplier;
 
   // Default constructor for dynamic loading
   public McpServer() {
@@ -79,7 +83,7 @@ public class McpServer implements McpServerProvider {
       Limits limits,
       OpenMetadataApplicationConfig config) {
     this.jwtFilter =
-        new JwtFilter(
+        newJwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
     // Tokens must be checked against the security settings in effect, which reload without a
@@ -87,7 +91,7 @@ public class McpServer implements McpServerProvider {
     SecurityConfigurationManager.getInstance()
         .addConfigurationChangeListener(
             (authConfig, authzConfig, mcpConfig) ->
-                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
+                this.jwtFilter = newJwtFilter(authConfig, authzConfig));
     this.authorizer = authorizer;
     this.limits = limits;
     this.environment = environment;
@@ -100,6 +104,23 @@ public class McpServer implements McpServerProvider {
             (authConfig, authzConfig, mcpConfig) -> logToolGating(tools, mcpConfig));
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
+  }
+
+  /**
+   * Tool and prompt calls authenticate the caller's token again, so it must be addressed to the MCP
+   * resource the transport serves or carry no {@code aud}. Before the transport publishes that
+   * resource no {@code aud} names it.
+   * ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  JwtFilter newJwtFilter(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    return new JwtFilter(
+        authConfig, authzConfig, McpResourceUri.tokenAudienceOf(this::expectedResource));
+  }
+
+  private String expectedResource() {
+    Supplier<String> resource = expectedResourceSupplier;
+    return resource != null ? resource.get() : null;
   }
 
   /**
@@ -297,6 +318,7 @@ public class McpServer implements McpServerProvider {
               authProvider,
               allowedOrigins);
       statelessOauthTransport.setContextPath(contextHandler.getContextPath());
+      this.expectedResourceSupplier = authProvider::getIssuer;
       McpStatelessSyncServer server =
           buildServer(
               statelessOauthTransport,
