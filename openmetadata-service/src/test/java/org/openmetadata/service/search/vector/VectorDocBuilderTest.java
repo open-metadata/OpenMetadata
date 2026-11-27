@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
@@ -16,6 +17,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -25,6 +30,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -37,6 +43,34 @@ class VectorDocBuilderTest {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("database", "database");
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("glossaryterm", "glossaryTerm");
+  }
+
+  @Test
+  void vertexFingerprintTracksTheEmbeddingSpaceAndPreservesLegacyFingerprints() {
+    Table table = new Table().withName("orders").withDescription("Orders");
+    LLMGoogleEmbeddingConfig google = new LLMGoogleEmbeddingConfig();
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withGoogle(new LLMGoogleConfig())
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withGoogle(google)
+                    .withProvider(LLMEmbeddingsConfig.Provider.GOOGLE));
+    try (var holder = mockStatic(LlmConfigHolder.class)) {
+      String legacy = VectorDocBuilder.computeFingerprintForEntity(table);
+      holder.when(LlmConfigHolder::get).thenReturn(config);
+      assertEquals(legacy, VectorDocBuilder.computeFingerprintForEntity(table));
+      config.getGoogle().setUseVertexAI(true);
+      String vertex = VectorDocBuilder.computeFingerprintForEntity(table);
+      assertNotEquals(legacy, vertex);
+      google.setEmbeddingDimension(512);
+      assertNotEquals(vertex, VectorDocBuilder.computeFingerprintForEntity(table));
+      google.setEmbeddingDimension(768);
+      google.setEmbeddingModelId("another-model");
+      assertNotEquals(vertex, VectorDocBuilder.computeFingerprintForEntity(table));
+      config.getEmbeddings().setProvider(LLMEmbeddingsConfig.Provider.OPENAI);
+      assertEquals(legacy, VectorDocBuilder.computeFingerprintForEntity(table));
+    }
   }
 
   @Test

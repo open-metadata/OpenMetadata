@@ -1,9 +1,9 @@
 # Google embeddings can use Vertex AI with Application Default Credentials
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-27 (initial)
+- **Revisions:** v1 2026-11-27 (initial) · v2 2026-11-27 (switching a populated index)
 - **Deciders:** OpenMetadata contributors
-- **Guard:** GoogleEmbeddingClientTest and SearchRepositoryBehaviorTest.googleEmbeddingsUseVertexOnlyWhenEnabled
+- **Guard:** GoogleEmbeddingClientTest, SearchRepositoryBehaviorTest.googleEmbeddingsUseVertexOnlyWhenEnabled and VectorChunkIndexIT
 - **Related:** [#38915](https://github.com/open-metadata/OpenMetadata/issues/38915), [Google text embeddings API](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api)
 
 ## Context
@@ -24,5 +24,26 @@ endpoint continue to apply to the existing API-key path. Chat configuration rema
 
 The workload needs access to the Vertex AI prediction API for the selected project, location and
 model. Semantic search requests retrieval-document embeddings for indexing and retrieval-query
-embeddings for queries. Rebuild an existing vector index when switching provider mode so stored
-documents use the same retrieval setup. Vertex can report the actual input token count for metering.
+embeddings for queries. Vertex can report the actual input token count for metering.
+
+## Amendment
+
+v2: Vertex fingerprints include the backend, embedding model ID, dimension and the document/query
+task types. A full search rebuild compares these fingerprints for both entity vectors and chunk
+vectors, including chunks copied into a staged index. Other providers retain their existing
+text-only fingerprints. Switching either way therefore refreshes the affected vectors even if the
+catalog text, model ID and dimension stay the same. Repeating the rebuild under the same
+configuration can reuse those vectors.
+
+To switch a populated catalog:
+
+1. Schedule the full embedding cost and pause semantic-search traffic for the cutover. Finish any
+   active indexing run, then restart all servers and indexing workers with the same new provider
+   settings. Use those settings and the same catalog and search configuration for the ops command.
+2. From the OpenMetadata distribution run `./bootstrap/openmetadata-ops.sh reindex --force`
+   with no entity filter. The flag starts the full reindex even when the mappings are unchanged.
+   The new fingerprint makes the rebuild regenerate both kinds of stored vector. The standalone
+   `reembed` command skips release-managed ontology terms.
+3. Check the Search Indexing run's final status and embedding or chunk failures before restoring
+   semantic-search traffic. Correct any provider or quota errors and rerun the full command. It can
+   reuse vectors already rebuilt under the new configuration. Follow the same steps if switching back.

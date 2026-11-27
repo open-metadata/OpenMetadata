@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Supplier;
 import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 
@@ -62,6 +63,32 @@ public final class VertexAIEmbeddingClient extends EmbeddingClient {
     this.dimension = embeddings.getEmbeddingDimension();
     this.http = http;
     this.credentials = credentialProvider.get().createScoped(List.of(CLOUD_PLATFORM_SCOPE));
+  }
+
+  /**
+   * Namespace for stored vector fingerprints. Other providers keep their historical text-only
+   * fingerprints so enabling Vertex for the first time invalidates precisely the old vectors.
+   */
+  public static String fingerprintPrefix(LLMConfiguration config) {
+    final LLMEmbeddingsConfig embeddings = config == null ? null : config.getEmbeddings();
+    String prefix = "";
+    if (embeddings != null
+        && embeddings.getProvider() == LLMEmbeddingsConfig.Provider.GOOGLE
+        && embeddings.getGoogle() != null
+        && config.getGoogle() != null
+        && Boolean.TRUE.equals(config.getGoogle().getUseVertexAI())) {
+      final LLMGoogleEmbeddingConfig google = embeddings.getGoogle();
+      prefix =
+          String.join(
+              "\0",
+              "vertex-ai",
+              google.getEmbeddingModelId(),
+              String.valueOf(google.getEmbeddingDimension()),
+              RETRIEVAL_DOCUMENT_TASK,
+              RETRIEVAL_QUERY_TASK,
+              "");
+    }
+    return prefix;
   }
 
   private static GoogleCredentials applicationCredentials() {
