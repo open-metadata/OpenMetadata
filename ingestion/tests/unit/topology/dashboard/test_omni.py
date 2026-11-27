@@ -1124,6 +1124,22 @@ def test_tile_reference_to_a_replaced_inline_view_resolves_to_a_topic_of_the_sam
     ]
 
 
+def test_parse_model_yaml_replaced_inline_view_name_does_not_pass_to_another_view():
+    """Two view files share a leaf name; the inline name of one never lands on the other."""
+    files = {
+        "A/orders.view": "schema: A\ntable_name: ORDERS\n",
+        "B/orders.view": "schema: B\ntable_name: ORDERS\n",
+        "sv_orders.topic": (
+            "semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\n"
+            "views:\n  B__orders:\n    schema: B\n    table_name: ORDERS\n"
+        ),
+    }
+    parsed = _parse(files)
+
+    assert set(parsed) == {"sv_orders", "orders"}
+    assert (parsed["orders"].base_schema, parsed["orders"].alias) == ("A", None)
+
+
 @pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}", "label: {text: Orders}"])
 def test_parse_model_yaml_malformed_inline_view_is_skipped_alone(broken):
     """One inline view that cannot be parsed does not cost the model its other views."""

@@ -287,7 +287,7 @@ class OmniApiClient:
 
     @staticmethod
     def _pass_reference(topics: list[OmniTopic], name: str, reference: str | None) -> None:
-        """Give the data model that took a skipped view's name the inline name that view answered to."""
+        """Give the curated topic that took a skipped view's name the inline name that view answered to."""
         for topic in topics:
             if reference and topic.name == name and not topic.alias:
                 topic.alias = reference
@@ -386,9 +386,10 @@ class OmniApiClient:
             )
         # Views: one data model per physical table, with its columns. Skip any whose
         # name was already taken by a topic (or another view).
+        curated_topics = list(topics)
         for view_name, view in view_records:
             if view_name in seen_names:
-                cls._pass_reference(topics, view_name, view.get("reference"))
+                cls._pass_reference(curated_topics, view_name, view.get("reference"))
                 logger.debug(
                     "Skipping view %r: name already used by a topic/view in model %s",
                     view_name,

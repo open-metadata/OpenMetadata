@@ -9,6 +9,7 @@
   `test_parse_model_yaml_inline_view_shared_by_two_topics_is_one_data_model`,
   `test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file`,
   `test_tile_reference_to_a_replaced_inline_view_resolves_to_a_topic_of_the_same_name`,
+  `test_parse_model_yaml_replaced_inline_view_name_does_not_pass_to_another_view`,
   `test_parse_model_yaml_malformed_inline_view_is_skipped_alone`, `test_semantic_view_topic_lineage`)
 - **Related:** issue #38320
 
@@ -26,7 +27,7 @@ override fields of views defined elsewhere and usually name no table.
 - An inline entry without a table is an override and is not a data model.
 - A `.view` file wins over an inline view whose name matches it in any reference form, and then also answers to the
   inline name, so a tile that references either resolves to it. If a curated topic takes that view file's name, the
-  topic answers to the inline name instead. Of two inline views with the same name, the first in
+  topic answers to the inline name instead; another view file never does. Of two inline views with the same name, the first in
   file order wins.
 - An inline view that cannot be parsed is skipped with a warning; the rest of the model is still ingested.
 
