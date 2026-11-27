@@ -168,8 +168,10 @@ class RdfStorageReadinessIT {
   @Test
   void ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing() {
     final Model release = ModelFactory.createDefaultModel();
+    // openmetadata_b: each storage loads the bundled ontology, whose blank nodes make a concurrent
+    // second load add triples, so a dataset shared with another method breaks the count below.
     try (JenaFusekiStorage storage =
-        storage(withoutExtension, SCOPED_DATASET, "admin", ADMIN_PASSWORD)) {
+        storage(withoutExtension, "openmetadata_b", "admin", ADMIN_PASSWORD)) {
       release
           .createResource(BASE + "concept/" + UUID.randomUUID())
           .addProperty(release.createProperty(NAME), "activation");

@@ -205,6 +205,30 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
+  @DisplayName("a refused readiness makes the next ontology graph write probe again and refuse")
+  void refusedReadinessForgetsWhatAnEarlierStoreAdvertised() {
+    final Model release = ModelFactory.createDefaultModel();
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(storage::ensureStorageReady);
+      optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
+      assertThrows(RdfStorageUnsupportedException.class, storage::ensureStorageReady);
+      requests.clear();
+      assertThrows(
+          RdfStorageUnsupportedException.class,
+          () ->
+              storage.replaceGraph(
+                  "https://open-metadata.org/graph/ontology/" + UUID.randomUUID(),
+                  UUID.randomUUID(),
+                  release));
+      assertTrue(
+          requests.stream().noneMatch(sent -> sent.startsWith("PUT ") || sent.startsWith("POST ")),
+          requests.toString());
+    } finally {
+      release.close();
+    }
+  }
+
+  @Test
   @DisplayName("an activation that cannot reach Fuseki counts toward the circuit breaker")
   void unreachableActivationOpensTheCircuitBreaker() throws Exception {
     final int closedPort;

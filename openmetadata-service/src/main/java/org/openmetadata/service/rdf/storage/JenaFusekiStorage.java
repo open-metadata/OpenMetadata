@@ -281,6 +281,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void ensureStorageReady() {
+    // A refusal must not leave what an earlier, healthier store advertised for graph writes to use.
+    writeCapabilities = null;
     writeCapabilities = verifyDataset(endpoint);
     if (!testConnection()) {
       throw new IllegalStateException("RDF dataset is not accessible at " + maskUserInfo(endpoint));
