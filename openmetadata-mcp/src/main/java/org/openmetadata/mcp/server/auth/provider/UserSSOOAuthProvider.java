@@ -37,6 +37,7 @@ import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestReposito
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -939,6 +940,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 + " seconds ago. Please restart the authorization flow.");
       }
 
+      final String audience = requireResourceAudience();
+
       // Atomically mark as used — prevents replay attacks.
       // NOTE: Consuming BEFORE PKCE verification is intentional per RFC 6749 §4.1.2 (single-use).
       // If PKCE verification fails after consumption, the client must restart the flow. This is
@@ -1012,7 +1015,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       JWTAuthMechanism jwtAuth =
-          issueAccessToken(user, userName, client.getClientId(), usedRecord.scopes());
+          issueAccessToken(user, userName, client.getClientId(), usedRecord.scopes(), audience);
 
       // Generate cryptographically secure refresh token (32 bytes = 256 bits) for long-lived
       // sessions (OAuth 2.0 RFC 6749)
@@ -1051,13 +1054,21 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
   }
 
+  private String requireResourceAudience() throws TokenException {
+    return McpResourceUri.canonicalize(getIssuer())
+        .orElseThrow(
+            () ->
+                new TokenException("server_error", "MCP resource URI is not configured correctly"));
+  }
+
   /**
-   * Mints an access token naming the client it was issued to, and stores it. JwtFilter refuses one
-   * that is no longer stored, which is how a revoke reaches every server.
+   * Mints an access token naming the client it was issued to and bound to this MCP server's
+   * canonical resource URI via {@code aud}, then stores its hash. JwtFilter refuses one that is no
+   * longer stored, which is how a revoke reaches every server.
    * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
    */
   private JWTAuthMechanism issueAccessToken(
-      User user, String userName, String clientId, List<String> scopes) {
+      User user, String userName, String clientId, List<String> scopes, String audience) {
     JWTAuthMechanism jwtAuth =
         jwtGenerator.generateJWTToken(
             userName,
@@ -1068,7 +1079,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             false,
             ServiceTokenType.OM_USER,
             scopes,
-            clientId);
+            clientId,
+            audience);
     tokenRepository.storeAccessToken(
         new AccessToken(jwtAuth.getJWTToken(), clientId, scopes, jwtAuth.getJWTTokenExpiresAt()),
         clientId,
@@ -1168,6 +1180,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             "Requested scopes exceed originally granted scopes. Scope expansion is not allowed.");
       }
 
+      final String audience = requireResourceAudience();
       String userName = tokenRecord.getUserName();
       LOG.debug("Refresh token validated successfully (rotating token)");
 
@@ -1198,7 +1211,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       // rather than costing the client its grant. If the rotation then fails, the stored token was
       // never handed out and expires on its own.
       JWTAuthMechanism jwtAuth =
-          issueAccessToken(user, userName, client.getClientId(), requestedScopes);
+          issueAccessToken(user, userName, client.getClientId(), requestedScopes, audience);
 
       // Atomic CAS rotation: atomically revoke the old token, then store the new one.
       // If a concurrent request already consumed this token, CAS fails and we reject.
