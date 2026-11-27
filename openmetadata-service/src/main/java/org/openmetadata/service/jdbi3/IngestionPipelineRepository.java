@@ -878,8 +878,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       write.run();
       return;
     }
-    List<SecretInventory> inputs =
-        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    List<String> roots = entities.stream().map(manager::validatePipelineSecretWrite).toList();
     executeInTransaction(
         () -> {
           SecretMapOwnership ownership =
@@ -900,9 +899,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           for (int i = 0; i < entities.size(); i++) {
             UUID id = entities.get(i).getId();
             scopedWrites.put(
-                id,
-                ownership.forWrite(
-                    daoCollection, id, inputs.get(i).root(), originalEntities.get(i)));
+                id, ownership.forWrite(daoCollection, id, roots.get(i), originalEntities.get(i)));
           }
           SECRET_WRITES.set(scopedWrites);
           try {
@@ -919,10 +916,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             ownership.recordWrite(
                 entity.getId(),
                 originals.get(i),
-                inputs.get(i),
                 secretInventory(manager, entity),
                 scopedWrites.get(entity.getId()));
-            String root = inputs.get(i).root();
+            String root = roots.get(i);
             PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
           }
           return null;

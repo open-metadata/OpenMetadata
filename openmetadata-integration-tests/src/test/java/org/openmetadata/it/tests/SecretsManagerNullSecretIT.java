@@ -137,6 +137,79 @@ public class SecretsManagerNullSecretIT {
     vault.getSecretsMap().clear();
   }
 
+  @Test
+  void distinctServersKeepTheirCredentialsDuringAMaskedUpdate(TestNamespace ns) {
+    Map<String, String> before = Map.copyOf(vault.getSecretsMap());
+    CreateMcpService request =
+        new CreateMcpService()
+            .withName(ns.prefix("catalog_connectors"))
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("catalog", "catalog-fixture"),
+                    mcpServer("calendar", "calendar-fixture")));
+    McpService service = SdkClients.adminClient().mcpServices().create(request);
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    String serviceId = service.getId().toString();
+    Map<String, String> references = mcpBotReferences(serviceId);
+    assertNotEquals(references.get("catalog"), references.get("calendar"));
+
+    request
+        .withDescription("Updated connector descriptions")
+        .withConnection(
+            mcpDirectConnection(
+                mcpServer("catalog", PasswordEntityMasker.PASSWORD_MASK),
+                mcpServer("calendar", PasswordEntityMasker.PASSWORD_MASK)));
+    McpService updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/services/mcpServices", request, McpService.class);
+    assertEquals(request.getDescription(), updated.getDescription());
+    assertEquals(references, mcpBotReferences(serviceId));
+    assertEquals("catalog-fixture", vault.getSecretValue(references.get("catalog")));
+    assertEquals("calendar-fixture", vault.getSecretValue(references.get("calendar")));
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(serviceId, Map.of("hardDelete", "true", "recursive", "true"));
+    assertEquals(before, vault.getSecretsMap());
+  }
+
+  @Test
+  void sharedCredentialRemainsAvailableUntilBothServicesAreDeleted(TestNamespace ns) {
+    McpService owner = createCredentialReader(ns, "catalog_owner", "shared-fixture");
+    String reference = mcpBotReferences(owner.getId().toString()).get("catalog");
+    McpService reader = createCredentialReader(ns, "catalog_reader", reference);
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    String retained = mcpBotReferences(reader.getId().toString()).get("catalog");
+    assertEquals(reference, retained);
+    assertEquals("shared-fixture", vault.getSecretValue(retained));
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(reader.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(reference.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  private McpService createCredentialReader(TestNamespace ns, String name, String value) {
+    McpService service =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(ns.prefix(name))
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("catalog", value))));
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    return service;
+  }
+
   @ParameterizedTest
   @CsvSource({
     "entry,false",

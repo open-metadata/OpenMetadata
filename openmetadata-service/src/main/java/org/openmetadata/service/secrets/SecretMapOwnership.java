@@ -127,28 +127,31 @@ public final class SecretMapOwnership {
         original,
         canonicalNames,
         name -> collection.useHandle(handle -> inputsFor(handle).trackFreshSecret(manager, name)),
-        new HashSet<>());
+        new WrittenNames());
+  }
+
+  private record WrittenNames(Set<String> maps, Set<String> scalars, Set<String> fresh) {
+    private WrittenNames() {
+      this(new HashSet<>(), new HashSet<>(), new HashSet<>());
+    }
   }
 
   public static final class WriteContext<T> {
     private final T original;
     private final Set<String> ownedNames;
     private final Consumer<String> onFreshCreate;
-    private final Set<String> createdNames;
+    private final WrittenNames written;
 
     private WriteContext(
-        T original,
-        Set<String> ownedNames,
-        Consumer<String> onFreshCreate,
-        Set<String> createdNames) {
+        T original, Set<String> ownedNames, Consumer<String> onFreshCreate, WrittenNames written) {
       this.original = original;
       this.ownedNames = ownedNames;
       this.onFreshCreate = onFreshCreate;
-      this.createdNames = createdNames;
+      this.written = written;
     }
 
     static <T> WriteContext<T> untracked(T original) {
-      return new WriteContext<>(original, Set.of(), name -> {}, new HashSet<>());
+      return new WriteContext<>(original, Set.of(), name -> {}, new WrittenNames());
     }
 
     public T original() {
@@ -156,30 +159,35 @@ public final class SecretMapOwnership {
     }
 
     public <U> WriteContext<U> withOriginal(U convertedOriginal) {
-      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, createdNames);
+      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, written);
     }
 
     boolean owns(String canonicalName) {
       return ownedNames.contains(canonicalName);
     }
 
+    void recordStoredName(String name, boolean mapEntry) {
+      (mapEntry ? written.maps() : written.scalars()).add(name);
+    }
+
     void freshCreated(String name) {
       onFreshCreate.accept(name);
-      createdNames.add(name);
+      written.fresh().add(name);
     }
   }
 
+  /** Compatibility for callers without write tracking; an ambiguous slot cannot establish ownership. */
   public void recordWrite(
       UUID owner, SecretInventory original, SecretInventory input, SecretInventory stored) {
-    recordWrite(owner, original, input, stored, WriteContext.untracked(null));
+    WriteContext<?> context = WriteContext.untracked(null);
+    stored.copyLegacyWriteNames(input.writtenMaps(), name -> context.recordStoredName(name, true));
+    stored.copyLegacyWriteNames(
+        input.writtenScalars(), name -> context.recordStoredName(name, false));
+    recordWrite(owner, original, stored, context);
   }
 
   public void recordWrite(
-      UUID owner,
-      SecretInventory original,
-      SecretInventory input,
-      SecretInventory stored,
-      WriteContext<?> context) {
+      UUID owner, SecretInventory original, SecretInventory stored, WriteContext<?> context) {
     State state = load(stored.root());
     Owner previous = state.owners().get(owner);
     Set<String> scalars = new HashSet<>();
@@ -189,21 +197,21 @@ public final class SecretMapOwnership {
       state.owned().addAll(original.storedMaps());
       scalars.addAll(original.storedScalars());
     }
-    state.owned().addAll(stored.writtenSecretsFor(input.writtenMaps()));
-    scalars.addAll(stored.writtenSecretsFor(input.writtenScalars()));
+    state.owned().addAll(context.written.maps());
+    scalars.addAll(context.written.scalars());
     // Generated scalar keys use the same post-commit reference cleanup as map entries. Older
     // ledgers kept them among the owner's deterministic scalars until hard deletion.
     Set<String> generatedNames = new HashSet<>();
-    context.createdNames.forEach(name -> generatedNames.add(manager.canonicalSecretName(name)));
+    context.written.fresh().forEach(name -> generatedNames.add(manager.canonicalSecretName(name)));
     if (original != null) {
       original
-          .referencesBySlot()
+          .referenceTargetsBySlot()
           .forEach(
-              (slot, ref) -> {
-                if (manager.isGeneratedListReference(original.root(), slot, ref)) {
-                  generatedNames.add(manager.canonicalSecretName(ref));
-                }
-              });
+              (slot, targets) ->
+                  targets.stream()
+                      .filter(ref -> manager.isGeneratedListReference(original.root(), slot, ref))
+                      .map(manager::canonicalSecretName)
+                      .forEach(generatedNames::add));
     }
     for (var iterator = scalars.iterator(); iterator.hasNext(); ) {
       String name = iterator.next();

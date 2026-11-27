@@ -640,11 +640,8 @@ public abstract class SecretsManager {
                               ? storeListFieldValue(fieldName, clearValue, secretId, scope)
                               : storeValue(
                                   fieldName, clearValue, secretId, store && persistExternalSecrets);
-                      if (!inCollection
-                          && scope != null
-                          && storedFieldValue != null
-                          && Boolean.TRUE.equals(isSecret(storedFieldValue))) {
-                        scope.claim(storedFieldValue.substring(SECRET_FIELD_PREFIX.length()));
+                      if (scope != null) {
+                        scope.recordResult(clearValue, storedFieldValue, inCollection, false);
                       }
                       String newFieldValue =
                           persistExternalSecrets ? storedFieldValue : (String) obj;
@@ -693,12 +690,28 @@ public abstract class SecretsManager {
   }
 
   private void validateIncomingSecretValues(Object toEncryptObject, String secretId) {
+    Set<String> seenSlots = new HashSet<>();
+    Set<String> changedSlots = new HashSet<>();
     visitStoredSecrets(
         toEncryptObject,
         List.of(secretId),
+        false,
+        true,
         secret -> {
           String clear = fernet.decryptIfApplies(secret.value());
-          if (clear != null && !clear.isEmpty() && Boolean.FALSE.equals(isSecret(clear))) {
+          boolean changing = clear != null && !Boolean.TRUE.equals(isSecret(clear));
+          if (secret.inCollection()) {
+            String slot = canonicalSecretName(secret.slot());
+            if (changing) {
+              changedSlots.add(slot);
+            }
+            if (!seenSlots.add(slot) && changedSlots.contains(slot)) {
+              throw new SecretsManagerException(
+                  Response.Status.BAD_REQUEST,
+                  "Multiple list fields resolve to the same secret id. Shorten or rename one of the entries before changing its credentials.");
+            }
+          }
+          if (changing && !clear.isEmpty()) {
             validateSecretValue(secret.fieldName(), clear);
           }
         });
@@ -718,11 +731,7 @@ public abstract class SecretsManager {
     if (Boolean.TRUE.equals(isSecret(value))) {
       return value;
     }
-    String storedRef = storeWithFreshFallback(fieldName, defaultSecretId, value, scope);
-    if (Boolean.TRUE.equals(isSecret(storedRef))) {
-      scope.claim(storedRef.substring(SECRET_FIELD_PREFIX.length()));
-    }
-    return storedRef;
+    return storeWithFreshFallback(fieldName, defaultSecretId, value, scope);
   }
 
   private String storeWithFreshFallback(
@@ -782,11 +791,8 @@ public abstract class SecretsManager {
               inCollection && scope != null
                   ? storeListFieldValue(entryKey, clearValue, mapSecretId, scope)
                   : storeValue(entryKey, clearValue, mapSecretId, store && persistExternalSecrets);
-          if (!inCollection
-              && scope != null
-              && storedValue != null
-              && Boolean.TRUE.equals(isSecret(storedValue))) {
-            scope.claim(storedValue.substring(SECRET_FIELD_PREFIX.length()));
+          if (scope != null) {
+            scope.recordResult(clearValue, storedValue, inCollection, true);
           }
           String newValue = persistExternalSecrets ? storedValue : entryValue;
           return encryptedForStorage(newValue, store);
@@ -1085,6 +1091,15 @@ public abstract class SecretsManager {
    */
   private void visitStoredSecrets(
       Object toDeleteSecretsFrom, List<String> secretIds, Consumer<StoredSecret> visitor) {
+    visitStoredSecrets(toDeleteSecretsFrom, secretIds, false, false, visitor);
+  }
+
+  private void visitStoredSecrets(
+      Object toDeleteSecretsFrom,
+      List<String> secretIds,
+      boolean inCollection,
+      boolean validatingWrite,
+      Consumer<StoredSecret> visitor) {
     String secretId = secretIds.getLast();
     if (toDeleteSecretsFrom != null
         && !DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
@@ -1103,15 +1118,22 @@ public abstract class SecretsManager {
                       withNestedSecretId(
                           secretIds,
                           buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
+                      inCollection,
+                      validatingWrite,
                       visitor);
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                } else if (method.getAnnotation(PasswordField.class) != null
+                    && (obj != null
+                        || (inCollection
+                            && validatingWrite
+                            && method.getReturnType() == String.class))) {
                   if (obj instanceof Map<?, ?> secretMap) {
+                    String mapId =
+                        buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+                    if (validatingWrite) {
+                      rejectCollidingEntrySecretIds(secretMap, fieldName, mapId);
+                    }
                     visitSecretMapEntries(
-                        secretMap,
-                        withNestedSecretId(
-                            secretIds,
-                            buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
-                        visitor);
+                        secretMap, withNestedSecretId(secretIds, mapId), inCollection, visitor);
                   } else {
                     visitor.accept(
                         new StoredSecret(
@@ -1120,7 +1142,8 @@ public abstract class SecretsManager {
                             buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
                             fieldName,
                             (String) obj,
-                            false));
+                            false,
+                            inCollection));
                   }
                 } else {
                   forEachTraversableElement(
@@ -1135,6 +1158,8 @@ public abstract class SecretsManager {
                                       secretId,
                                       fieldName.toLowerCase(Locale.ROOT),
                                       elementKey)),
+                              true,
+                              validatingWrite,
                               visitor));
                 }
               });
@@ -1142,7 +1167,10 @@ public abstract class SecretsManager {
   }
 
   private void visitSecretMapEntries(
-      Map<?, ?> secretMap, List<String> mapSecretIds, Consumer<StoredSecret> visitor) {
+      Map<?, ?> secretMap,
+      List<String> mapSecretIds,
+      boolean inCollection,
+      Consumer<StoredSecret> visitor) {
     String mapSecretId = mapSecretIds.getLast();
     secretMap.forEach(
         (key, value) -> {
@@ -1155,21 +1183,34 @@ public abstract class SecretsManager {
                     buildSecretId(false, mapSecretId, lowerEntryKey),
                     entryKey,
                     stringValue,
-                    true));
+                    true,
+                    inCollection));
           }
         });
   }
 
+  private Object serviceConnectionForSecrets(
+      ServiceEntityInterface service, ServiceType serviceType) {
+    return service.getConnection() == null || service.getConnection().getConfig() == null
+        ? null
+        : SecretsUtil.convert(
+            service.getConnection().getConfig(),
+            service.getServiceType().value(),
+            service.getName(),
+            serviceType);
+  }
+
+  public String validateServiceSecretWrite(
+      ServiceEntityInterface service, ServiceType serviceType) {
+    String root = buildSecretId(true, serviceType.value(), service.getName());
+    validateIncomingSecretValues(serviceConnectionForSecrets(service, serviceType), root);
+    return root;
+  }
+
   public SecretInventory secretInventory(ServiceEntityInterface service, ServiceType serviceType) {
-    Object config =
-        service.getConnection() == null || service.getConnection().getConfig() == null
-            ? null
-            : SecretsUtil.convert(
-                service.getConnection().getConfig(),
-                service.getServiceType().value(),
-                service.getName(),
-                serviceType);
-    return secretInventory(config, buildSecretId(true, serviceType.value(), service.getName()));
+    return secretInventory(
+        serviceConnectionForSecrets(service, serviceType),
+        buildSecretId(true, serviceType.value(), service.getName()));
   }
 
   public SecretInventory secretInventory(Workflow workflow) {
@@ -1177,6 +1218,21 @@ public abstract class SecretsManager {
         (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     typed.setOpenMetadataServerConnection(null);
     return secretInventory(typed, buildSecretId(true, "workflow", workflow.getName()));
+  }
+
+  public String validatePipelineSecretWrite(IngestionPipeline pipeline) {
+    String root = buildSecretId(true, "pipeline", pipeline.getId().toString());
+    IngestionPipeline typed = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    IngestionPipelineBuilder.addDefinedConfig(typed);
+    if (typed.getOpenMetadataServerConnection() != null) {
+      Object serverConnection =
+          ClassConverterFactory.getConverter(OpenMetadataConnection.class)
+              .convert(typed.getOpenMetadataServerConnection());
+      validateIncomingSecretValues(serverConnection, buildSecretId(true, "serverconnection"));
+      typed.setOpenMetadataServerConnection(null);
+    }
+    validateIncomingSecretValues(typed, root);
+    return root;
   }
 
   public SecretInventory secretInventory(IngestionPipeline pipeline) {
@@ -1194,37 +1250,66 @@ public abstract class SecretsManager {
       Set<String> writtenScalars,
       Set<String> storedScalars,
       Set<String> references,
-      Map<String, String> referencesBySlot) {
-    Set<String> writtenSecretsFor(Set<String> writtenSlots) {
-      Set<String> written = new HashSet<>();
-      for (String slot : writtenSlots) {
-        written.add(referencesBySlot.getOrDefault(slot, slot));
+      Map<String, Set<String>> referenceTargetsBySlot) {
+    public SecretInventory(
+        String root,
+        Set<String> writtenMaps,
+        Set<String> storedMaps,
+        Set<String> writtenScalars,
+        Set<String> storedScalars,
+        Set<String> references) {
+      this(root, writtenMaps, storedMaps, writtenScalars, storedScalars, references, Map.of());
+    }
+
+    private String uniqueStoredName(String slot) {
+      Set<String> targets = referenceTargetsBySlot.getOrDefault(slot, Set.of(slot));
+      if (targets.size() != 1) {
+        throw new IllegalStateException("Ambiguous credential ownership requires a tracked write");
       }
-      return written;
+      return targets.iterator().next();
+    }
+
+    void copyLegacyWriteNames(Set<String> slots, Consumer<String> record) {
+      slots.stream().map(this::uniqueStoredName).forEach(record);
     }
   }
 
   private record StoredSecret(
-      String name, String slot, String fieldName, String value, boolean mapEntry) {}
+      String name,
+      String slot,
+      String fieldName,
+      String value,
+      boolean mapEntry,
+      boolean inCollection) {}
 
   @VisibleForTesting
   SecretInventory secretInventory(Object config, String root) {
     Set<String> writtenMaps = new HashSet<>();
-    Set<String> storedMaps = new HashSet<>();
     Set<String> writtenScalars = new HashSet<>();
+    Set<String> storedMaps = new HashSet<>();
     Set<String> storedScalars = new HashSet<>();
     Set<String> references = new HashSet<>();
-    Map<String, String> referencesBySlot = new HashMap<>();
+    Map<String, Set<String>> targets = new HashMap<>();
     visitStoredSecrets(
         config,
         List.of(root),
-        secret ->
-            collectSecret(
-                secret,
-                secret.mapEntry() ? writtenMaps : writtenScalars,
-                secret.mapEntry() ? storedMaps : storedScalars,
-                references,
-                referencesBySlot));
+        secret -> {
+          String clear = fernet.decryptIfApplies(secret.value());
+          if (clear != null && !clear.isEmpty()) {
+            Optional<String> reference = referencedSecretName(clear);
+            if (reference.isPresent()) {
+              String ref = reference.get();
+              references.add(ref);
+              targets.computeIfAbsent(secret.slot(), unused -> new HashSet<>()).add(ref);
+            } else {
+              (secret.mapEntry() ? writtenMaps : writtenScalars).add(secret.slot());
+            }
+            if (reference.isEmpty() || reference.get().equals(secret.name())) {
+              (secret.mapEntry() ? storedMaps : storedScalars).add(secret.name());
+            }
+          }
+        });
+    targets.replaceAll((slot, values) -> Set.copyOf(values));
     return new SecretInventory(
         root,
         Set.copyOf(writtenMaps),
@@ -1232,31 +1317,7 @@ public abstract class SecretsManager {
         Set.copyOf(writtenScalars),
         Set.copyOf(storedScalars),
         Set.copyOf(references),
-        Map.copyOf(referencesBySlot));
-  }
-
-  private void collectSecret(
-      StoredSecret secret,
-      Set<String> written,
-      Set<String> stored,
-      Set<String> references,
-      Map<String, String> referencesBySlot) {
-    String clear = fernet.decryptIfApplies(secret.value());
-    if (clear == null || clear.isEmpty()) {
-      return;
-    }
-    Optional<String> reference = referencedSecretName(clear);
-    reference.ifPresent(
-        ref -> {
-          references.add(ref);
-          referencesBySlot.put(secret.slot(), ref);
-        });
-    if (reference.isEmpty()) {
-      written.add(secret.slot());
-    }
-    if (reference.isEmpty() || reference.get().equals(secret.name())) {
-      stored.add(secret.name());
-    }
+        Map.copyOf(targets));
   }
 
   private static List<String> withNestedSecretId(List<String> secretIds, String nestedSecretId) {
@@ -1461,8 +1522,17 @@ public abstract class SecretsManager {
           && claimed.add(canonical);
     }
 
-    private void claim(String secretName) {
-      claimed.add(manager.canonicalSecretName(secretName));
+    private void recordResult(String input, String result, boolean inCollection, boolean mapEntry) {
+      if (result != null && Boolean.TRUE.equals(manager.isSecret(result))) {
+        String name = result.substring(SECRET_FIELD_PREFIX.length());
+        boolean written = !Boolean.TRUE.equals(manager.isSecret(input));
+        if (written) {
+          context.recordStoredName(name, mapEntry);
+        }
+        if (!inCollection || written) {
+          claimed.add(manager.canonicalSecretName(name));
+        }
+      }
     }
   }
 

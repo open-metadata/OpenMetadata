@@ -112,3 +112,9 @@ write retries up to 100 pending workflow namespaces after its own cleanup commit
 cursor advances independently of individual retries. Each retry commits separately, so a provider
 error for one key leaves its marker in place and other namespaces can finish. Rolling back the
 delete retains the workflow and discards its cleanup record.
+
+## Write validation and ownership
+
+Validate every configuration in a service or ingestion pipeline batch before writing to the credential provider.
+The ownership ledger records the names returned by the provider for values that OpenMetadata wrote.
+A masked update preserves the existing reference. Cleanup releases an owned value after its last persisted reference is removed.

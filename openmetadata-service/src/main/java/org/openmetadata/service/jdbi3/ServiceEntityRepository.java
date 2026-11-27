@@ -277,8 +277,10 @@ public abstract class ServiceEntityRepository<
       write.accept(Collections.nCopies(entities.size(), null));
       return;
     }
-    List<SecretInventory> inputs =
-        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    List<String> roots =
+        entities.stream()
+            .map(entity -> manager.validateServiceSecretWrite(entity, serviceType))
+            .toList();
     executeInTransaction(
         () -> {
           SecretMapOwnership ownership =
@@ -297,10 +299,7 @@ public abstract class ServiceEntityRepository<
           for (int i = 0; i < entities.size(); i++) {
             contexts.add(
                 ownership.forWrite(
-                    daoCollection,
-                    entities.get(i).getId(),
-                    inputs.get(i).root(),
-                    originalEntities.get(i)));
+                    daoCollection, entities.get(i).getId(), roots.get(i), originalEntities.get(i)));
           }
           write.accept(contexts);
           for (int i = 0; i < entities.size(); i++) {
@@ -308,10 +307,9 @@ public abstract class ServiceEntityRepository<
             ownership.recordWrite(
                 entity.getId(),
                 originals.get(i),
-                inputs.get(i),
                 secretInventory(manager, entity),
                 contexts.get(i));
-            String root = inputs.get(i).root();
+            String root = roots.get(i);
             PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
           }
           return null;

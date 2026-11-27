@@ -672,7 +672,6 @@ class SecretMapEntriesExternalStoreTest {
 
   private McpConnection encryptMcp(List<McpServerConfig> servers, McpConnection original) {
     McpConnection config = new McpConnection().withServers(servers);
-    SecretInventory input = secretsManager.secretInventory(config, mcpRoot());
     WriteContext<Object> context =
         ownership.forWrite(
             mock(CollectionDAO.class),
@@ -690,7 +689,6 @@ class SecretMapEntriesExternalStoreTest {
     ownership.recordWrite(
         owner,
         original == null ? null : secretsManager.secretInventory(original, mcpRoot()),
-        input,
         secretsManager.secretInventory(stored, mcpRoot()),
         context);
     return stored;
