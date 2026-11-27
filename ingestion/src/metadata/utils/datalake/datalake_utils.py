@@ -800,12 +800,14 @@ class ParquetDataFrameColumnParser:
         return data_type
 
 
-# Iceberg/Delta/Spark primitive type names that are NOT covered by
+# Iceberg/Delta/Spark primitive type names to map explicitly before consulting
 # ``ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE``. Spark ``StructType`` JSON serializes
-# ``ShortType``/``ByteType`` as ``short``/``byte``; Iceberg/Delta do not use these names.
+# ``ShortType``/``ByteType`` as ``short``/``byte`` (Iceberg/Delta do not use these names),
+# and ``variant`` must map to ``VARIANT`` rather than the shared map's ``JSON``.
 _ICEBERG_DELTA_TYPE_OVERLAY: dict[str, str] = {
     "SHORT": "SMALLINT",
     "BYTE": "TINYINT",
+    "VARIANT": "VARIANT",
 }
 
 # Iceberg ``fixed[L]`` is a fixed-length binary of length L.

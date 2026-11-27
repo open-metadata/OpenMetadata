@@ -933,6 +933,7 @@ class TestIcebergDeltaTypeMapping:
             ("uuid", DataType.UUID),
             ("binary", DataType.BINARY),
             ("time", DataType.TIME),
+            ("variant", DataType.VARIANT),
         ],
     )
     def test_primitive_type_mapping(self, type_name, expected):
@@ -1190,6 +1191,21 @@ class TestIcebergDeltaTypeMapping:
         assert types["price"] == DataType.NUMBER
         assert types["created"] == DataType.DATETIME
         assert types["active"] == DataType.BOOLEAN
+
+    def test_re_ingestion_corrects_type_for_previously_string_column(self):
+        """Re-ingestion of a field previously cataloged as STRING (here ``count``
+        declared as ``string``) must produce the corrected type (``INT``) when the
+        field is re-declared as ``integer``. The parser yields a fresh ``Column``
+        with the same name and the new ``dataType``; the OpenMetadata server merges
+        columns by name, so lineage mappings and column custom properties attached
+        to the prior column are retained across the type change."""
+        first = self._parse([{"name": "count", "type": "string"}])
+        assert first[0].dataType == DataType.STRING
+        assert first[0].displayName == "count"
+
+        second = self._parse([{"name": "count", "type": "integer"}])
+        assert second[0].dataType == DataType.INT
+        assert second[0].displayName == "count"
 
 
 class TestFetchColTypesWithParsedObjects:
