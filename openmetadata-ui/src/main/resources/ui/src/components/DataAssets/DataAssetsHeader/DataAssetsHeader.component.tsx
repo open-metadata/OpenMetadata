@@ -69,6 +69,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { LifeCycle } from '../../../generated/type/lifeCycle';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -84,9 +85,15 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
+  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
+  isRecordedLifeCycleTimestamp,
 } from '../../../utils/DataAssetsHeader.utils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -801,6 +808,30 @@ export const DataAssetsHeader = ({
     );
   };
 
+  // lifeCycle.updated is when the asset last changed at its source, set by
+  // ingestion from the source's metadata or the usage workflow's query log; it
+  // is not when the entity was edited in OpenMetadata.
+  const renderSourceUpdatedAt = () => {
+    const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
+      ?.updated?.timestamp;
+
+    if (!isRecordedLifeCycleTimestamp(sourceUpdatedAt)) {
+      return null;
+    }
+
+    return (
+      <>
+        <HeaderDotSeparator />
+        <ExtraInfoLabel
+          dataTestId="source-updated-at"
+          label={t('label.updated-at-source')}
+          tooltip={formatDateTime(sourceUpdatedAt)}
+          value={getRelativeTime(sourceUpdatedAt)}
+        />
+      </>
+    );
+  };
+
   const renderFollowAndVoteStats = () => {
     const followLabel = t(`label.${isFollowing ? 'un-follow' : 'follow'}`);
 
@@ -1230,6 +1261,7 @@ export const DataAssetsHeader = ({
           {renderRetentionAndMetricSection()}
 
           {extraInfo}
+          {renderSourceUpdatedAt()}
         </div>
       </div>
 

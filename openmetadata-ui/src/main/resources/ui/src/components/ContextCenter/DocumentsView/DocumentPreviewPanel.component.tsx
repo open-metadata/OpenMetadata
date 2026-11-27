@@ -18,7 +18,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CONTEXT_FILE_ENTITY_TYPE } from '../../../constants/ContextCenter.constants';
@@ -31,7 +31,7 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import MemoryExtractionButton from '../../discovery/context-center/MemoryExtractionButton/MemoryExtractionButton';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
@@ -100,9 +100,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton size="lg" url={url}>
-            <Copy01 data-icon aria-hidden="true" />
-          </CopyLinkButton>
+          <CopyButton size="lg" value={url} />
           <ButtonUtility
             data-testid="close-preview-btn"
             icon={XClose}

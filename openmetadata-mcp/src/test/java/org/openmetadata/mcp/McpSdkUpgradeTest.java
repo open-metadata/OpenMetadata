@@ -308,10 +308,45 @@ public class McpSdkUpgradeTest {
     MCPConfiguration configured =
         new MCPConfiguration().withMcpServerName("acme-mcp").withMcpServerVersion("9.9.9");
     McpServer.buildServer(transport, new McpServer().buildServerCapabilities(), () -> configured);
+    McpSchema.InitializeResult initialized = initialize(transport);
+
+    assertThat(initialized.instructions()).isNull();
+    McpSchema.Implementation serverInfo = initialized.serverInfo();
+    assertThat(serverInfo.name()).isEqualTo("acme-mcp");
+    assertThat(serverInfo.version()).isEqualTo("9.9.9");
+    MCPConfiguration blank =
+        new MCPConfiguration().withMcpServerName(" ").withMcpServerVersion(null);
+    assertThat(McpServer.serverInfo(blank).name()).isEqualTo("openmetadata-mcp-server");
+    assertThat(McpServer.serverInfo(blank).version()).isEqualTo("1.0.0");
+  }
+
+  @Test
+  void initializeReportsInstructionsFromADistribution() {
+    String instructions = "Use the catalog before answering.";
+    assertThat(new McpServer().serverInstructions()).isNull();
+    McpServer distribution =
+        new McpServer() {
+          @Override
+          protected String serverInstructions() {
+            return instructions;
+          }
+        };
+    McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    when(transport.protocolVersions()).thenReturn(List.of("2025-11-25"));
+
+    McpServer.buildServer(
+        transport,
+        distribution.buildServerCapabilities(),
+        MCPConfiguration::new,
+        distribution.serverInstructions());
+
+    assertThat(initialize(transport).instructions()).isEqualTo(instructions);
+  }
+
+  private static McpSchema.InitializeResult initialize(McpStatelessServerTransport transport) {
     ArgumentCaptor<McpStatelessServerHandler> handler =
         ArgumentCaptor.forClass(McpStatelessServerHandler.class);
     verify(transport).setMcpHandler(handler.capture());
-
     McpSchema.JSONRPCResponse response =
         handler
             .getValue()
@@ -328,15 +363,7 @@ public class McpSdkUpgradeTest {
                         "clientInfo",
                         Map.of("name", "test", "version", "1"))))
             .block();
-
-    McpSchema.Implementation serverInfo =
-        ((McpSchema.InitializeResult) response.result()).serverInfo();
-    assertThat(serverInfo.name()).isEqualTo("acme-mcp");
-    assertThat(serverInfo.version()).isEqualTo("9.9.9");
-    MCPConfiguration blank =
-        new MCPConfiguration().withMcpServerName(" ").withMcpServerVersion(null);
-    assertThat(McpServer.serverInfo(blank).name()).isEqualTo("openmetadata-mcp-server");
-    assertThat(McpServer.serverInfo(blank).version()).isEqualTo("1.0.0");
+    return (McpSchema.InitializeResult) response.result();
   }
 
   @Test

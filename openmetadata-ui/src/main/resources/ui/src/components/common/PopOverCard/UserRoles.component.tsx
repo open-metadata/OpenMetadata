@@ -14,7 +14,6 @@
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
 
@@ -35,7 +34,7 @@ export const UserRoles = React.memo(({ user }: UserRolesProps) => {
       <span className="d-flex flex-wrap m-t-xss">
         {isAdmin && (
           <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
-            {TERM_ADMIN}
+            {t('label.admin-superuser')}
           </span>
         )}
         {roles.map((role) => (

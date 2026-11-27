@@ -21,6 +21,7 @@ import {
   IntakeForm,
   TargetEntityType,
 } from '../../../../../../generated/governance/intakeForm';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import IntakeFormDesignerBody, {
   IntakeFormDesignerBodyHandle,
 } from '../../../../../../pages/IntakeForms/IntakeFormDesignerBody';
@@ -34,6 +35,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { GovernanceView } from './Governance.types';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
@@ -55,6 +57,8 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
   const { t } = useTranslation();
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isDirty);
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<IntakeForm | null>(null);
   const [resolvedEntityType, setResolvedEntityType] = useState<
@@ -130,6 +134,7 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
             entityType={resolvedEntityType}
             initialValue={existing}
             ref={bodyRef}
+            onDirtyChange={setIsDirty}
             onSubmit={handleSubmit}
           />
         </div>
@@ -145,9 +150,12 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
           data-testid="intake-form-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={() => onNavigate({ type: VIEW_INTAKE_LIST })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: VIEW_INTAKE_LIST }))
+          }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="intake-form-submit"

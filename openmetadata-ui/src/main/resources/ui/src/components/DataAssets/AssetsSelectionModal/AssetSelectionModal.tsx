@@ -27,6 +27,7 @@ export const AssetSelectionModal = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  useQueryPost,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
 
@@ -38,6 +39,7 @@ export const AssetSelectionModal = ({
     type,
     variant: 'modal',
     queryFilter,
+    useQueryPost,
   });
 
   return (
@@ -68,6 +70,7 @@ export const AssetSelectionModal = ({
               handleQuickFiltersValueSelect={
                 state.handleQuickFiltersValueSelect
               }
+              isExactName={state.isExactName}
               isLoading={state.isLoading}
               isSaveLoading={state.isSaveLoading}
               items={state.items}
@@ -76,6 +79,7 @@ export const AssetSelectionModal = ({
               selectedItems={state.selectedItems}
               setSearch={state.setSearch}
               totalCount={state.totalCount}
+              onExactNameChange={state.onExactNameChange}
               onScroll={state.onScroll}
               onSelectAll={state.onSelectAll}
             />

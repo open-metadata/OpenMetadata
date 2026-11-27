@@ -263,7 +263,7 @@ public class EntityProfileResource
     filter.addQueryParam("entityProfileFQN", fqn);
     filter.addQueryParam("entityProfileEntityType", entityType);
 
-    repository.deleteEntityProfile(filter, timestamp);
+    repository.deleteEntityProfile(entityType, fqn, filter, timestamp);
     return Response.ok().build();
   }
 
@@ -321,7 +321,7 @@ public class EntityProfileResource
     filter.addQueryParam("entityProfileFQN", entity.getFullyQualifiedName());
     filter.addQueryParam("entityProfileEntityType", entityType);
 
-    repository.deleteEntityProfile(filter, timestamp);
+    repository.deleteEntityProfile(entityType, entity.getFullyQualifiedName(), filter, timestamp);
     return Response.ok().build();
   }
 

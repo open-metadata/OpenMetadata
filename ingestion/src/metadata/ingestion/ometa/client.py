@@ -278,6 +278,11 @@ class REST:
             self.config.access_token, expiry = self._auth_token()
             if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
+                    # Auth callbacks (e.g. google-auth's ``credentials.expiry``) may
+                    # return a naive UTC datetime. Interpret it as UTC so
+                    # ``.timestamp()`` doesn't skew by the host's local timezone.
+                    if expiry.tzinfo is None:
+                        expiry = expiry.replace(tzinfo=timezone.utc)
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120

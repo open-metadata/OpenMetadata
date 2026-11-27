@@ -280,6 +280,9 @@ class SsoOidcConfidentialLoginIT {
       assertLoginEndsOnSignIn(timedOut, login(timedOut), TOKEN_EXCHANGE_FAILED);
     } finally {
       unanswered.release();
+      // The released exchange still mints an ID token; let it land before the next test reads the
+      // provider's last issued token.
+      unanswered.awaitCompletion(Duration.ofSeconds(10));
     }
     assertNoAccountFor(identity);
   }

@@ -132,6 +132,19 @@ describe('AiSidebarEditor', () => {
     );
   });
 
+  it('renders a real focusable drag handle button with slot="drag" on each row', () => {
+    renderEditor();
+
+    const handles = screen.getAllByRole('button', { name: 'label.move' });
+
+    expect(handles.length).toBeGreaterThan(1);
+
+    handles.forEach((handle) => {
+      expect(handle).toHaveAttribute('slot', 'drag');
+      expect(handle).not.toHaveAttribute('aria-hidden');
+    });
+  });
+
   it('locks the visibility toggle of modules that cannot be hidden', () => {
     renderEditor();
 

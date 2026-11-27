@@ -73,7 +73,6 @@ describe('getUsageCountLink', () => {
 
     // Assert that the correct explore path is returned
     expect(result).toBe(
-      // eslint-disable-next-line max-len
       '/explore/tables?page=1&quickFilter=%7B%22query%22%3A%7B%22bool%22%3A%7B%22must%22%3A%5B%7B%22bool%22%3A%7B%22should%22%3A%5B%7B%22term%22%3A%7B%22tier.tagFQN%22%3A%22Tier1%22%7D%7D%5D%7D%7D%5D%7D%7D%7D'
     );
   });
@@ -85,7 +84,6 @@ describe('getUsageCountLink', () => {
 
     // Assert that the correct explore path is returned
     expect(result).toBe(
-      // eslint-disable-next-line max-len
       '/explore/tables?page=1&quickFilter=%7B%22query%22%3A%7B%22bool%22%3A%7B%22must%22%3A%5B%7B%22bool%22%3A%7B%22should%22%3A%5B%7B%22term%22%3A%7B%22tags.tagFQN%22%3A%22Tag1%22%7D%7D%5D%7D%7D%5D%7D%7D%7D'
     );
   });

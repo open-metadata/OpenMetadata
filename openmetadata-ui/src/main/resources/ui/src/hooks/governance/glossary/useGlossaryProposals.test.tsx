@@ -267,4 +267,46 @@ describe('useGlossaryProposals', () => {
 
     expect(getMemoryDerivations).toHaveBeenCalledTimes(2);
   });
+
+  it('pages through every approval task so a large review queue is not truncated', async () => {
+    (listTasks as jest.Mock)
+      .mockResolvedValueOnce({
+        data: Array.from({ length: 50 }, (_, i) => ({
+          ...approvalTask,
+          id: `newer-task-${i}`,
+          about: {
+            fullyQualifiedName: `Customers.Newer${i}`,
+            type: 'glossaryTerm',
+          },
+        })),
+        paging: { after: 'cursor-2' },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            ...approvalTask,
+            id: 'oldest-task',
+            about: {
+              fullyQualifiedName: 'Customers.Escrow',
+              type: 'glossaryTerm',
+            },
+          },
+        ],
+        paging: { after: null },
+      });
+
+    const { result } = renderHook(() => useGlossaryProposal('person-id'), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(listTasks).toHaveBeenCalledTimes(2));
+
+    expect(result.current?.approvalTask?.id).toBe('oldest-task');
+    expect((listTasks as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ after: undefined })
+    );
+    expect((listTasks as jest.Mock).mock.calls[1][0]).toEqual(
+      expect.objectContaining({ after: 'cursor-2' })
+    );
+  });
 });

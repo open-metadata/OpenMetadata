@@ -76,6 +76,22 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     ).toBeVisible();
   });
 
+  test('shows the open incident count rising', async ({ page }) => {
+    const groups = await openGroups(page, seed, { groupBy: 'table' });
+
+    await expect(
+      groups.getByRole('img', {
+        name: /^Open incidents: 0 on .+, 2 on .+\.$/,
+      })
+    ).toBeVisible();
+    await expect(groups.getByTestId('incident-trend-direction')).toHaveText(
+      'Rising'
+    );
+    await expect(page.getByTestId('incident-groups-rising-count')).toHaveText(
+      'Rising groups: 1'
+    );
+  });
+
   test('hides the groups a status filter rules out', async ({ page }) => {
     await openGroups(page, seed, { status: 'New' });
 
@@ -370,7 +386,7 @@ test.describe('AI mode Incident Manager — changing grouped incidents', () => {
     await afterAction();
   });
 
-  test('leaves assigned incidents as they are when acknowledging', async ({
+  test('returns assigned incidents to Ack and clears their assignee', async ({
     page,
     browser,
   }) => {
@@ -386,18 +402,18 @@ test.describe('AI mode Incident Manager — changing grouped incidents', () => {
     await page.getByTestId('incident-groups-status-Ack').click();
     await confirmBulkChange(page);
 
-    // The workflow has no way back from Assigned to Ack, so nothing is sent.
-    await toastNotification(
-      page,
-      'No incident in the selected groups can take that change'
-    );
+    // ADR:2026-11-17-returning-incidents-to-triage-clears-assignees
+    await toastNotification(page, 'Incidents updated: 2');
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     for (const testCaseFqn of seed.testCaseFqns) {
       const incident = await getLatestIncident(apiContext, testCaseFqn);
 
-      expect(incident?.testCaseResolutionStatusType).toBe('Assigned');
+      expect(incident?.testCaseResolutionStatusType).toBe('Ack');
+      expect(
+        incident?.testCaseResolutionStatusDetails?.assignee
+      ).toBeUndefined();
     }
 
     await afterAction();

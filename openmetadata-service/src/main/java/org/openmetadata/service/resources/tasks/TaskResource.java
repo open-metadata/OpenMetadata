@@ -92,6 +92,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -295,6 +296,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
+              description =
+                  "Filter by tasks last updated on or after this timestamp (epoch millis)")
+          @QueryParam("updatedSince")
+          Long updatedSince,
+      @Parameter(
+              description = "Timestamp to sort by: createdAt or updatedAt (defaults to createdAt)")
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
               description = TASK_SORT_ORDER_DESCRIPTION,
               schema =
                   @Schema(
@@ -314,6 +324,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("taskStatus", status.value());
     }
     applyTaskTimeRange(filter, startTs, endTs);
+    if (updatedSince != null) {
+      filter.addQueryParam("taskUpdatedSince", updatedSince.toString());
+    }
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -359,10 +372,22 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
-    TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    TaskListOrder.fromParam(sortOrder).applyTo(filter, sortBy);
+    return withoutUnreadableValues(
         securityContext,
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+        aboutVisibility.retainViewable(
+            securityContext,
+            listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)));
+  }
+
+  // Every viewer of the entity sees its tasks; a change request's proposed values reach only the
+  // users who may read the request.
+  private ResultList<Task> withoutUnreadableValues(
+      SecurityContext securityContext, ResultList<Task> page) {
+    ChangeRequestVisibility.withoutUnreadableValues(
+        authorizer, securityContext, listOrEmpty(page.getData()));
+    return page;
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -613,9 +638,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    return aboutVisibility.retainViewable(
+    return withoutUnreadableValues(
         securityContext,
-        repository.listDataAccessRequests(uriInfo, fields, filter, limitParam, offset, sortOrder));
+        aboutVisibility.retainViewable(
+            securityContext,
+            repository.listDataAccessRequests(
+                uriInfo, fields, filter, limitParam, offset, sortOrder)));
   }
 
   @GET
@@ -687,9 +715,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return withoutUnreadableValues(
         securityContext,
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+        aboutVisibility.retainViewable(
+            securityContext,
+            listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)));
   }
 
   @GET
@@ -762,9 +793,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return withoutUnreadableValues(
         securityContext,
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+        aboutVisibility.retainViewable(
+            securityContext,
+            listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)));
   }
 
   @GET
@@ -848,9 +882,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return withoutUnreadableValues(
         securityContext,
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+        aboutVisibility.retainViewable(
+            securityContext,
+            listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)));
   }
 
   @GET
@@ -923,9 +960,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return withoutUnreadableValues(
         securityContext,
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+        aboutVisibility.retainViewable(
+            securityContext,
+            listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)));
   }
 
   @GET
@@ -958,6 +998,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    ChangeRequestVisibility.withoutUnreadableValues(authorizer, securityContext, List.of(task));
     return task;
   }
 
@@ -991,6 +1032,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
+    ChangeRequestVisibility.withoutUnreadableValues(authorizer, securityContext, List.of(task));
     return task;
   }
 
@@ -1016,6 +1058,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID id) {
     EntityHistory history = super.listVersionsInternal(securityContext, id);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    // A version carries the task's payload as stored, so it is not shown without the values.
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     return history;
   }
 
@@ -1048,6 +1092,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String version) {
     Task task = super.getVersionInternal(securityContext, id, version);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     return task;
   }
 
@@ -1326,6 +1371,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                 new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
     // Authorize before simulating the patch: its errors quote the stored task.
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
+    // The response returns the task with its proposed values.
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, original);
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
@@ -1838,7 +1885,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     validateTaskCanBeClosed(task);
     requireClosable(task);
 
-    Task closedTask = repository.closeTask(task, userName, comment);
+    Task closedTask = repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
     return Response.ok(closedTask).build();
   }
 
@@ -2089,7 +2136,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
         requireClosable(task);
-        repository.closeTask(task, userName, comment);
+        repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
       }
     }
   }
@@ -2285,6 +2332,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // requires — otherwise a caller denied access to the entity reads its task through this
     // endpoint (issue #18158). A task with no target has nothing to gate.
     authorizeViewOnAboutEntity(securityContext, task.getAbout());
+    // The response also returns the task's proposed values, which only those who may read its
+    // change request see.
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     TaskComment comment =
         new TaskComment()
@@ -2327,6 +2377,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     Task updatedTask =
         repository.editComment(task, commentId, updateComment.getMessage(), userName);
@@ -2366,6 +2417,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     Task updatedTask = repository.deleteComment(task, commentId, userName, isAdmin);
     return Response.ok(updatedTask).build();

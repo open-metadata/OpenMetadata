@@ -48,7 +48,15 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -57,6 +65,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
@@ -79,10 +88,18 @@ class RdfEntityWritePlannerTest {
   private static final UUID TOPIC_ID = UUID.fromString("00000000-0000-0000-0000-0000000000b2");
   private static final String TOPIC_URI = BASE + "entity/topic/" + TOPIC_ID;
   private static final String CLEANUP_POLICY = OM + "hasCleanupPolicy";
+  private static final UUID TEST_CASE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000d3");
+  private static final String TEST_CASE_URI = BASE + "entity/testCase/" + TEST_CASE_ID;
 
   private final JsonLdTranslator translator =
       new JsonLdTranslator(
-          JsonUtils.getObjectMapper(), BASE, (type, fqns) -> Map.of(), ReferenceScope.ALL);
+          JsonUtils.getObjectMapper(),
+          BASE,
+          (type, fqns) ->
+              Entity.TABLE.equals(type) && fqns.contains(TABLE_FQN)
+                  ? Map.of(TABLE_FQN, TABLE_ID)
+                  : Map.of(),
+          ReferenceScope.ALL);
   private final Store diff = new Store();
   private final Store replace = new Store();
 
@@ -90,6 +107,7 @@ class RdfEntityWritePlannerTest {
   static void registerEntityTypes() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("topic", "topic");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("testcase", "testCase");
   }
 
   @AfterEach
@@ -340,6 +358,65 @@ class RdfEntityWritePlannerTest {
     assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
   }
 
+  @Test
+  void aNewerTestResultReplacesTheOlderOneAndDeletingTheTestCaseRemovesIt() {
+    final Table table = table(List.of(column("amount")));
+    final Model tableProjection = translator.toRdf(table);
+    writeBoth(TABLE_URI, table);
+    final TestCase testCase =
+        new TestCase()
+            .withId(TEST_CASE_ID)
+            .withName("amount_positive")
+            .withFullyQualifiedName(TABLE_FQN + ".amount.amount_positive")
+            .withEntityLink("<#E::table::" + TABLE_FQN + "::columns::amount>")
+            .withEntityFQN(TABLE_FQN + ".amount")
+            .withTestCaseResult(testResult(1000L, TestCaseStatus.Failed, "-3", "9"))
+            .withIncidentStatus(
+                new TestCaseResolutionStatus()
+                    .withTimestamp(1000L)
+                    .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                    .withSeverity(Severity.Severity1));
+    writeBoth(TEST_CASE_URI, testCase);
+
+    testCase.setTestCaseResult(testResult(2000L, TestCaseStatus.Success, "0"));
+    testCase.setIncidentStatus(null);
+    writeBoth(TEST_CASE_URI, testCase);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase).union(tableProjection)));
+
+    testCase.setTestCaseResult(null);
+    writeBoth(TEST_CASE_URI, testCase);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase).union(tableProjection)));
+
+    testCase.setTestCaseResult(testResult(3000L, TestCaseStatus.Aborted, "1"));
+    writeBoth(TEST_CASE_URI, testCase);
+    assertTrue(
+        diff.graph()
+            .contains(
+                diff.graph().createResource(TEST_CASE_URI),
+                diff.graph().createProperty(OM, "testsEntity"),
+                diff.graph().createResource(TABLE_URI)));
+    UpdateAction.parseExecute(RdfRepository.buildEntityDeleteUpdate(TEST_CASE_URI), diff.dataset);
+    assertTrue(
+        diff.graph().isIsomorphicWith(tableProjection),
+        () -> diff.graph().listStatements().toList().toString());
+  }
+
+  private static TestCaseResult testResult(
+      final long timestamp, final TestCaseStatus status, final String... observed) {
+    final List<TestResultValue> values = new ArrayList<>();
+    for (String value : observed) {
+      values.add(new TestResultValue().withName("value" + values.size()).withValue(value));
+    }
+    return new TestCaseResult()
+        .withTimestamp(timestamp)
+        .withTestCaseStatus(status)
+        .withResult("observed " + String.join(",", observed))
+        .withFailedRows(timestamp / 1000)
+        .withTestResultValue(values);
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"id", "a.b", "a\"b"})
   void changingAndRemovingConstraintsLeavesOnlyCurrentMembersAndReferences(String firstColumn) {
@@ -376,6 +453,39 @@ class RdfEntityWritePlannerTest {
     writeBoth(TABLE_URI, table);
     assertSameGraph();
     assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table).add(shared)));
+  }
+
+  @Test
+  void aKeyThatLosesMembersOrIsDroppedLeavesOnlyWhatItStillStates() {
+    final TableConstraint key =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("tenant_id", "line_no", "legacy_id"));
+    final Table table =
+        table(List.of(column("tenant_id"), column("line_no"))).withTableConstraints(List.of(key));
+    writeBoth(TABLE_URI, table);
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+
+    key.setColumns(List.of("line_no"));
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+
+    table.setTableConstraints(List.of());
+    table.setColumns(
+        List.of(
+            column("tenant_id").withConstraint(ColumnConstraint.PRIMARY_KEY),
+            column("line_no").withConstraint(ColumnConstraint.PRIMARY_KEY)));
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
+
+    table.setColumns(
+        List.of(
+            column("tenant_id"), column("line_no").withConstraint(ColumnConstraint.PRIMARY_KEY)));
+    writeBoth(TABLE_URI, table);
+    assertSameGraph();
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
   }
 
   @Test

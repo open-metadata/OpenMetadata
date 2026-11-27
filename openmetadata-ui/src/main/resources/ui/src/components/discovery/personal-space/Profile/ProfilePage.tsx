@@ -24,6 +24,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { guardBreadcrumbAction } from '../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
@@ -240,7 +241,11 @@ const ProfilePage: React.FC = () => {
       { id: 'current', label: t(activeItem.label) },
     ]),
   ];
-  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
+  // Panels hand plain navigation here; the guard is applied once, for all.
+  const headerBreadcrumbAction = guardBreadcrumbAction(
+    headerOverride?.onBreadcrumbAction,
+    headerOverride?.inEditorBreadcrumbIds
+  );
 
   // Extracted so the nested loading/not-found branching lives in its own function
   // (keeps the component's cyclomatic complexity down and avoids a nested ternary).

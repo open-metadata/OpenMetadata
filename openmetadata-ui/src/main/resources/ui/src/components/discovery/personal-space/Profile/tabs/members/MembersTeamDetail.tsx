@@ -17,7 +17,7 @@ import {
   TableCard,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Policy, Reorder, Role } from '@openmetadata/ui-core-components/icons';
+import { Policy, Role } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -134,13 +134,6 @@ const CUSTOM_PROPERTIES = 'custom-properties' as const;
 // editors, which no other team tab needs.
 const CustomPropertiesList = withSuspenseFallback(
   lazy(() => import('../../customProperties/CustomPropertiesList'))
-);
-
-// The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
-// drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
-// size beats the unlayered LESS rule so the handle stays usable.
-const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
-  <Reorder className={className} style={{ height: 16, width: 16 }} />
 );
 
 // The inline role/policy add flow is identical bar the team field it writes to.
@@ -416,6 +409,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           pageSize: teamsPageSize,
           searchIndex: SearchIndex.TEAM,
           includeDeleted: showDeletedTeam,
+          // Without a term, pages stand in for the name-ordered list, so they
+          // keep its order; a typed search keeps relevance order.
+          ...(query ? {} : { sortField: 'name.keyword', sortOrder: 'asc' }),
           queryFilter: {
             query: { bool: { must: [{ term: { 'parents.id': team.id } }] } },
           },
@@ -684,7 +680,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
     const cursor = teamsPaging[cursorType];
 
-    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+    // ponytail: some backend builds list teams with a total but no cursor;
+    // the search index then serves the page by number, in the same name order.
+    // Its documents carry no user/sub-team counts. Drop this once the teams
+    // list returns cursors everywhere.
+    if (!cursor) {
+      void searchChildTeams('', newPage);
+
+      return;
+    }
+    if (Math.abs(newPage - teamsPage) !== 1) {
       return;
     }
 
@@ -1057,7 +1062,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
     () => ({
-      ...getTableExpandableConfig<Team>(true, undefined, ReorderDragIcon),
+      ...getTableExpandableConfig<Team>(true),
       onExpand: (isOpen, record) => {
         if (isOpen) {
           void handleTeamExpand(record);

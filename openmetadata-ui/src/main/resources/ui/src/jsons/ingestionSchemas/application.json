@@ -642,7 +642,7 @@
                                     "description": "Details of patterns that matched during recognition",
                                     "type": "array",
                                     "items": {
-                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/metadata/properties/recognizer/definitions/patternMatch"
+                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
                                     }
                                   }
                                 },
@@ -1465,7 +1465,7 @@
                           },
                           "description": {
                             "description": "Optional description of entity.",
-                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/description"
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/description"
                           },
                           "displayName": {
                             "description": "Display Name that identifies this entity.",
@@ -1481,7 +1481,7 @@
                           },
                           "href": {
                             "description": "Link to the entity resource.",
-                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/href"
+                            "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/href"
                           }
                         },
                         "required": [

@@ -36,6 +36,7 @@ import {
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
+  getDatatypeIri,
   getDatatypeLabel,
   getModelRelations,
   getObjectProperties,
@@ -558,5 +559,17 @@ describe('OntologyStudioModel utils', () => {
       { op: 'add', path: '/domain/1', value: order.iri },
     ]);
     expect(buildReusePropertyPatch(declared, customer)).toEqual([]);
+  });
+
+  it('ranges a Date property over om:date, since OWL 2 has no xsd:date', () => {
+    expect(getDatatypeIri('date')).toBe(
+      'https://open-metadata.org/ontology/date'
+    );
+    expect(getDatatypeIri('dateTime')).toBe(
+      'http://www.w3.org/2001/XMLSchema#dateTime'
+    );
+    expect(getDatatypeIri('enum')).toBe(
+      'http://www.w3.org/2001/XMLSchema#string'
+    );
   });
 });

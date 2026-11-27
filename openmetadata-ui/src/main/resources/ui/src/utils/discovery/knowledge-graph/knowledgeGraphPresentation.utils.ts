@@ -26,11 +26,17 @@ import {
   RelationCategory,
   toSentenceCase,
 } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
+import type {
+  GraphData as RdfGraphData,
+  GraphNode as RdfGraphNode,
+} from '../../../rest/rdfAPI.interface';
 import Fqn from '../../Fqn';
 import { identifyGraphEdges } from './knowledge-graph.utils';
 
 export const isConceptNode = (node: GraphNode) =>
-  ['glossaryterm', 'concept', 'term'].includes(node.type.toLowerCase());
+  ['glossaryterm', 'ontologyconcept', 'concept', 'term'].includes(
+    node.type.toLowerCase()
+  );
 
 export const isCoverageNode = (node: GraphNode) =>
   [
@@ -50,7 +56,7 @@ export const isCoverageNode = (node: GraphNode) =>
     'term',
   ].includes(node.type.toLowerCase());
 
-export const getGraphNodeLabel = (node: GraphNode) => {
+export const getGraphNodeLabel = (node: RdfGraphNode) => {
   // The RDF projection can return an empty label (seen on glossary terms),
   // which left the ontology concept picker and the node card blank.
   if (!node.label?.trim()) {
@@ -71,6 +77,7 @@ export const getGraphNodeLabel = (node: GraphNode) => {
 };
 
 const mappingPredicates = new Set([
+  'boundasset',
   'hasglossaryterm',
   'hasglossary',
   'hastag',
@@ -216,19 +223,13 @@ export const restrictToEntityLevel = (
   };
 };
 
-export const relabelGraphNodes = (data: GraphData | null): GraphData | null => {
-  if (!data) {
-    return null;
-  }
-
-  return {
-    ...data,
-    nodes: data.nodes.map((node) => ({
-      ...node,
-      label: getGraphNodeLabel(node),
-    })),
-  };
-};
+export const relabelGraphNodes = (data: RdfGraphData): GraphData => ({
+  ...data,
+  nodes: data.nodes.map((node) => ({
+    ...node,
+    label: getGraphNodeLabel(node),
+  })),
+});
 
 export const annotateGraphCoverage = (
   data: GraphData,

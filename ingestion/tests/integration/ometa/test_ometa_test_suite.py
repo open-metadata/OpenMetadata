@@ -240,9 +240,8 @@ class TestOMetaTestSuiteAPI:
 
         test_case = metadata.get_or_create_test_case(
             test_case_fqn,
-            test_definition_fqn="columnValuesToMatchRegex",
+            test_definition_fqn="columnValuesToBeNotNull",
             entity_link=f"<#E::table::{table_fqn}::columns::id>",
-            test_case_parameter_values=[TestCaseParameterValue(name="regex", value=".*")],
         )
         assert test_case.name.root == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)

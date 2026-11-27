@@ -19,6 +19,8 @@ import { createUserWithPut } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import BotAddForm from './BotAddForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -55,6 +57,8 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
   Alert: ({
     children,
     ...props

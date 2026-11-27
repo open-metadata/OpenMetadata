@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.AuthnRequestParams;
 import com.onelogin.saml2.exception.SettingsException;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -14,11 +13,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -31,6 +28,7 @@ import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.saml.SamlCertificates;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
@@ -229,18 +227,31 @@ public class SamlValidator {
     }
   }
 
+  /**
+   * The check a save of the configuration runs on the IdP certificate, without calling the identity
+   * provider. Returns null when the certificate passes or is not set.
+   */
+  public FieldError validateIdpCertificate(final SamlSSOClientConfig samlConfig) {
+    FieldError error = null;
+    final String certificate = samlConfig.getIdp().getIdpX509Certificate();
+    if (!nullOrEmpty(certificate)) {
+      try {
+        validateX509Certificate(certificate, "IdP X509 certificate", samlConfig);
+      } catch (Exception e) {
+        error =
+            ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT,
+                "IdP certificate validation failed: " + e.getMessage());
+      }
+    }
+    return error;
+  }
+
   private FieldError validateCertificates(SamlSSOClientConfig samlConfig) {
     try {
-      // Validate IdP certificate if provided
-      if (!nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
-        try {
-          validateX509Certificate(
-              samlConfig.getIdp().getIdpX509Certificate(), "IdP X509 certificate", samlConfig);
-        } catch (Exception e) {
-          return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT,
-              "IdP certificate validation failed: " + e.getMessage());
-        }
+      final FieldError idpCertificateError = validateIdpCertificate(samlConfig);
+      if (idpCertificateError != null) {
+        return idpCertificateError;
       }
 
       if (samlConfig.getSecurity() != null) {
@@ -482,60 +493,12 @@ public class SamlValidator {
   private void validateX509Certificate(
       String certData, String certName, SamlSSOClientConfig samlConfig) throws Exception {
     try {
-      // Extract base64 content from PEM format
-      String base64Content =
-          certData
-              .replace("-----BEGIN CERTIFICATE-----", "")
-              .replace("-----END CERTIFICATE-----", "")
-              .replace("-----BEGIN PUBLIC KEY-----", "")
-              .replace("-----END PUBLIC KEY-----", "")
-              .replaceAll("\\s+", "");
-
-      if (base64Content.isEmpty()) {
-        throw new IllegalArgumentException("Certificate data is empty after removing PEM headers");
+      for (X509Certificate cert :
+          samlConfig != null
+              ? SamlCertificates.parseValidIdpCertificates(certData)
+              : SamlCertificates.parse(certData)) {
+        validateParsedCertificate(cert, certName, samlConfig);
       }
-
-      // Decode base64 certificate
-      byte[] certBytes = Base64.getDecoder().decode(base64Content);
-
-      // Parse certificate
-      CertificateFactory cf = CertificateFactory.getInstance("X.509");
-      X509Certificate cert =
-          (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certBytes));
-
-      // Check if certificate is expired
-      Date now = Date.from(Instant.now());
-      Date notAfter = cert.getNotAfter();
-      Date notBefore = cert.getNotBefore();
-
-      if (now.before(notBefore)) {
-        throw new CertificateException(certName + " is not yet valid. Valid from: " + notBefore);
-      }
-
-      if (now.after(notAfter)) {
-        throw new CertificateException(certName + " has expired. Expired on: " + notAfter);
-      }
-
-      // Warn if certificate expires soon (within 30 days)
-      long daysUntilExpiry = (notAfter.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
-      if (daysUntilExpiry <= 30) {
-        LOG.warn(
-            "SAML {} expires in {} days ({}). Consider renewing soon.",
-            certName,
-            daysUntilExpiry,
-            notAfter);
-      }
-
-      // Perform IdP-specific validation if this is an IdP certificate
-      if (samlConfig != null && certName.contains("IdP")) {
-        validateIdpCertificateAgainstConfig(cert, samlConfig);
-      }
-
-      LOG.debug(
-          "SAML {} validated successfully. Subject: {}, Valid until: {}",
-          certName,
-          cert.getSubjectDN(),
-          notAfter);
 
     } catch (Exception e) {
       if (e instanceof CertificateException) {
@@ -543,6 +506,44 @@ public class SamlValidator {
       }
       throw new CertificateException("Failed to parse " + certName + ": " + e.getMessage(), e);
     }
+  }
+
+  private void validateParsedCertificate(
+      X509Certificate cert, String certName, SamlSSOClientConfig samlConfig)
+      throws CertificateException {
+    // Check if certificate is expired
+    final Date now = Date.from(Instant.now());
+    final Date notAfter = cert.getNotAfter();
+    final Date notBefore = cert.getNotBefore();
+
+    if (now.before(notBefore)) {
+      throw new CertificateException(certName + " is not yet valid. Valid from: " + notBefore);
+    }
+
+    if (now.after(notAfter)) {
+      throw new CertificateException(certName + " has expired. Expired on: " + notAfter);
+    }
+
+    // Warn if certificate expires soon (within 30 days)
+    final long daysUntilExpiry = (notAfter.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+    if (daysUntilExpiry <= 30) {
+      LOG.warn(
+          "SAML {} expires in {} days ({}). Consider renewing soon.",
+          certName,
+          daysUntilExpiry,
+          notAfter);
+    }
+
+    // Perform IdP-specific validation if this is an IdP certificate
+    if (samlConfig != null && certName.contains("IdP")) {
+      validateIdpCertificateAgainstConfig(cert, samlConfig);
+    }
+
+    LOG.debug(
+        "SAML {} validated successfully. Subject: {}, Valid until: {}",
+        certName,
+        cert.getSubjectDN(),
+        notAfter);
   }
 
   /**

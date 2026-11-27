@@ -26,13 +26,11 @@ from requests.adapters import HTTPAdapter
 from tableauserverclient import (
     Filter,
     Pager,
-    PersonalAccessTokenAuth,
     RequestOptions,
     Server,
     Sort,
-    TableauAuth,
 )
-from tableauserverclient.models import BackgroundJobItem, FlowItem, FlowRunItem, TaskItem
+from tableauserverclient.models import BackgroundJobItem, Credentials, FlowItem, FlowRunItem, TaskItem
 from tableauserverclient.server.endpoint.endpoint import TABLEAU_AUTH_HEADER
 from tableauserverclient.server.endpoint.exceptions import ServerResponseError
 from typing_extensions import Self
@@ -44,6 +42,7 @@ from urllib3.util.retry import Retry
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection,
 )
+from metadata.ingestion.source.dashboard.tableau.connection import build_server_config
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     ExtractTargetType,
     TableauFlowLineage,
@@ -173,7 +172,7 @@ class TableauPipelineClient:
 
     def __init__(
         self,
-        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
+        tableau_server_auth: Credentials,
         config: TableauPipelineConnection,
         verify_ssl: bool | str | None,
         ssl_manager: SSLManager | None = None,
@@ -198,7 +197,6 @@ class TableauPipelineClient:
                 config.hostPort,
                 FALLBACK_API_VERSION,
             )
-        self._auth = tableau_server_auth
         self.tableau_server.session.hooks["response"].append(self._sign_in_again)
         self.tableau_server.auth.sign_in(tableau_server_auth)
         self.config = config
@@ -223,7 +221,8 @@ class TableauPipelineClient:
             "Tableau ended the session: it expired, or the same personal access token signed in elsewhere. "
             "Signing in again."
         )
-        self.tableau_server.auth.sign_in(self._auth)
+        # Fresh credentials: a connected-app JWT expires five minutes after it is signed.
+        self.tableau_server.auth.sign_in(build_server_config(self.config))
         resent = request.copy()
         # Without this hook, a second 401 reaches the caller instead of another sign-in.
         resent.hooks = {"response": []}

@@ -33,6 +33,8 @@ import org.openmetadata.schema.system.TestLoginProtocol;
 import org.openmetadata.schema.system.TestLoginResult;
 import org.openmetadata.schema.system.TestLoginSession;
 import org.openmetadata.schema.system.TestLoginStage;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.TestLoginOidcHandler;
 import org.openmetadata.service.security.saml.TestLoginSamlHandler;
 
@@ -58,9 +60,15 @@ public final class TestLoginRoundTrip {
       "Too many credential test logins. Wait a few minutes and try again.";
 
   private final TestLoginSessionStore sessions;
+  private final Supplier<UserRepository> users;
 
   TestLoginRoundTrip(TestLoginSessionStore sessions) {
+    this(sessions, Entity::getUserRepository);
+  }
+
+  TestLoginRoundTrip(TestLoginSessionStore sessions, Supplier<UserRepository> users) {
     this.sessions = sessions;
+    this.users = users;
   }
 
   public static TestLoginRoundTrip getInstance() {
@@ -107,14 +115,34 @@ public final class TestLoginRoundTrip {
       throw new BadRequestException(NOT_AWAITING_CREDENTIALS);
     }
     requireCredentialTestAllowance(entry);
-    TestLoginResult result =
-        entry.protocol() == TestLoginProtocol.LDAP
-            ? TestLoginCredentialHandler.verifyLdap(
-                entry.candidate(), request.getEmail(), request.getPassword())
-            : TestLoginCredentialHandler.verifyBasic(
-                entry.candidate(), request.getEmail(), request.getPassword());
+    final TestLoginResult result = verifyCredentialsSafely(entry, request);
     sessions.complete(entry.testSessionId(), result);
     return result;
+  }
+
+  private TestLoginResult verifyCredentialsSafely(
+      TestLoginSessionEntry entry, TestLoginCredentialsRequest request) {
+    try {
+      final TestLoginResult result =
+          entry.protocol() == TestLoginProtocol.LDAP
+              ? TestLoginCredentialHandler.verifyLdap(
+                  entry.candidate(), request.getEmail(), request.getPassword())
+              : TestLoginCredentialHandler.verifyBasic(
+                  entry.candidate(), request.getEmail(), request.getPassword());
+      return checkAdmission(entry, result);
+    } catch (RuntimeException e) {
+      // Exception messages may contain candidate secrets (for example malformed LDAP role JSON).
+      LOG.warn(
+          "Credential test failed unexpectedly for {} ({})",
+          entry.protocol(),
+          e.getClass().getSimpleName());
+      final TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(entry.protocol());
+      recorder.pass(TestLoginStage.STARTED);
+      recorder.fail(
+          TestLoginStage.CREDENTIALS_VERIFIED,
+          "Could not verify credentials. Check the candidate authentication configuration and stored account settings.");
+      return TestLoginService.failure(entry.protocol(), recorder);
+    }
   }
 
   private static TestLoginSessionEntry requireAwaitingCredentials(TestLoginSessionEntry entry) {
@@ -173,7 +201,12 @@ public final class TestLoginRoundTrip {
                     entry,
                     () ->
                         TestLoginOidcHandler.complete(
-                            entry.candidate(), handshake, callbackParameters));
+                            entry.candidate(),
+                            handshake,
+                            callbackParameters,
+                            identity ->
+                                TestLoginAccountChecks.admitOidc(
+                                    entry.candidate(), identity, users.get())));
               } else {
                 LOG.warn("Ignoring an OIDC callback for a {} test login", entry.protocol());
               }
@@ -211,7 +244,7 @@ public final class TestLoginRoundTrip {
   private void completeSafely(TestLoginSessionEntry entry, Supplier<TestLoginResult> handler) {
     TestLoginResult result;
     try {
-      result = handler.get();
+      result = checkAdmission(entry, handler.get());
     } catch (RuntimeException e) {
       LOG.error("Unexpected failure completing a {} test login", entry.protocol(), e);
       result =
@@ -221,6 +254,14 @@ public final class TestLoginRoundTrip {
               "Unexpected error completing the sign-in: " + TestLoginService.rootMessage(e));
     }
     sessions.complete(entry.testSessionId(), result);
+  }
+
+  private TestLoginResult checkAdmission(TestLoginSessionEntry entry, TestLoginResult result) {
+    return result.getStatus() == TestLoginResult.Status.SUCCESS
+            && result.getProtocol() != TestLoginProtocol.BASIC
+            && result.getProtocol() != TestLoginProtocol.OIDC
+        ? TestLoginAccountChecks.check(entry.candidate(), result, users.get())
+        : result;
   }
 
   private void startOidc(

@@ -48,13 +48,6 @@ public class StorageServiceBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public StorageServiceBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateStorageService request without executing it.
    */
   public CreateStorageService build() {

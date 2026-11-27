@@ -134,7 +134,7 @@ const TestDefinitionList = () => {
             <Card.Content>
               <Box className="layout-row" justify="between" wrap="wrap">
                 <Box className="layout-column tw:block">
-                  <div className="flex gap-2 items-center m-b-xss">
+                  <div className="tw:flex tw:items-center tw:gap-1 tw:mb-1">
                     <Typography
                       as="h5"
                       className="m-b-0"

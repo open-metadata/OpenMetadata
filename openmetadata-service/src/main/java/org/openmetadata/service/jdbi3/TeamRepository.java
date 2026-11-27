@@ -1315,7 +1315,13 @@ public class TeamRepository extends EntityRepository<Team> {
       throw new IllegalArgumentException(
           "Default persona can only be set for teams of type Group.");
     }
-    Entity.getEntityReferenceById(Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED);
+    // Hydrate the reference so the change recorded downstream (and any governance rule matching
+    // on its value) carries a fullyQualifiedName. The request body only requires id + type, so
+    // without this the recorded ChangeDescription holds a sparse reference that governance rules
+    // cannot match. Mirrors validateDefaultDomain in UserRepository.
+    team.setDefaultPersona(
+        Entity.getEntityReferenceById(
+            Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED));
   }
 
   private void validateDirectUserAddition(Team team, List<EntityReference> users) {

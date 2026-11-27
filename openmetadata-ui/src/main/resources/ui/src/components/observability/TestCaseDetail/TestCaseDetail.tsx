@@ -26,12 +26,11 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TestCasePageTabs } from '../../../pages/IncidentManager/IncidentManager.interface';
 import { TEST_CASE_NEXT_RUN_QUERY_KEY } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
@@ -123,7 +122,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
   const incidentHeaderData = useTestCaseIncidentHeader({
     fetchTaskCount: getEntityFeedCount,
@@ -288,12 +287,6 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     return buildCrumbs();
   }, [t, testCase, isDimensionPage, dimensionKey, originBreadcrumb]);
 
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -398,9 +391,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}
                     displayName={displayName}
-                    hasCopied={hasCopied}
                     testCaseName={testCase.name}
-                    onCopy={handleCopyEntityUrl}
                   />
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
@@ -495,7 +486,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           open={isDimensionEdit}
           testCase={testCase}
           onClose={handleCancelDimension}
-          onUpdate={setTestCase}
+          onUpdate={mergeTestCase}
         />
       )}
     </>

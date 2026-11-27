@@ -25,12 +25,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { OauthClient } from '../../../../../generated/api/mcp/oauthClient';
 import {
   getMcpClients,
   revokeMcpClient,
   revokeMcpClientTokens,
 } from '../../../../../rest/mcpConfigAPI';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -161,11 +163,15 @@ const McpClientsTable = () => {
                   </Table.Cell>
                   <Table.Cell>
                     {client.issuedAt == null
-                      ? '—'
-                      : new Date(client.issuedAt).toLocaleString()}
+                      ? NO_DATA_PLACEHOLDER
+                      : formatDateTimeLong(client.issuedAt)}
                   </Table.Cell>
-                  <Table.Cell>{client.activeAccessTokens ?? '—'}</Table.Cell>
-                  <Table.Cell>{client.activeRefreshTokens ?? '—'}</Table.Cell>
+                  <Table.Cell>
+                    {client.activeAccessTokens ?? NO_DATA_PLACEHOLDER}
+                  </Table.Cell>
+                  <Table.Cell>
+                    {client.activeRefreshTokens ?? NO_DATA_PLACEHOLDER}
+                  </Table.Cell>
                   <Table.Cell>
                     <Box direction="col" gap={2}>
                       <Button

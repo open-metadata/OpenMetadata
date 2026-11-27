@@ -44,6 +44,7 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   setSelectedRunTimestamp: jest.fn(),
   testCase: MOCK_TEST_CASE_DATA,
   setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
   isLoading: false,
   setIsLoading: jest.fn(),
   reset: jest.fn(),
@@ -60,6 +61,7 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
 };
 
 jest.mock('./useTestCase.store', () => ({
+  ...jest.requireActual('./useTestCase.store'),
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
 }));
 
@@ -386,6 +388,32 @@ describe('useTestCaseDetailPage', () => {
     expect(updateTestCaseById).toHaveBeenCalledWith(
       MOCK_TEST_CASE_DATA.id,
       expect.arrayContaining([expect.objectContaining({ path: '/owners' })])
+    );
+  });
+
+  // #37951: the PATCH response omits the last run result, so the header and
+  // the Last run banner went blank after an owner change until a reload.
+  it('handleOwnerChange should keep the last run result the PATCH response omits', async () => {
+    const { testCaseResult, ...patchResponse } = MOCK_TEST_CASE_DATA;
+    const updatedAt = 1_800_000_000_000;
+    (updateTestCaseById as jest.Mock).mockResolvedValueOnce({
+      ...patchResponse,
+      updatedAt,
+    });
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleOwnerChange([
+        { id: 'owner-id', type: 'user' },
+      ]);
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseResult, updatedAt })
+      )
     );
   });
 

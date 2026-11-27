@@ -344,7 +344,14 @@ class BatchModeNodesTest {
     certify.execute(execution);
 
     for (EntityInterface<?> table : entities.values()) {
-      verify(repository).patch(isNull(), eq(table.getId()), eq("governance-bot"), any());
+      verify(repository)
+          .patch(
+              isNull(),
+              eq(table.getId()),
+              eq("governance-bot"),
+              any(),
+              isNull(),
+              eq("governance-bot"));
     }
     assertNull(variables.get("global_failure"));
   }

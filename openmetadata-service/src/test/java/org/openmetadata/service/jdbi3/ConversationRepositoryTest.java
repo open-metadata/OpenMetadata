@@ -154,6 +154,56 @@ class ConversationRepositoryTest {
     assertEquals(List.of(domain), replyContext.getDomains());
   }
 
+  /**
+   * The total counts only conversations the caller may view, on every page: a page that hides
+   * nothing itself still recounts when the database counted more rows than it shows.
+   */
+  @Test
+  void aListTotalIsRecountedWheneverItCountsMoreThanThePageShows() {
+    assertEquals(1, ConversationRepository.viewableTotal(2, 1, () -> 1), "a one-row page");
+    assertEquals(3, ConversationRepository.viewableTotal(5, 0, () -> 3), "every row hidden");
+    assertEquals(
+        40,
+        ConversationRepository.viewableTotal(50_000, 40, () -> 12),
+        "a bounded recount never reports fewer rows than the page returns");
+    assertEquals(
+        4,
+        ConversationRepository.viewableTotal(
+            4,
+            4,
+            () -> {
+              throw new AssertionError("nothing can be hidden, so nothing is recounted");
+            }));
+  }
+
+  @Test
+  void aRecountChecksEntitiesOnlyOfTypesARuleCouldHide() {
+    List<FeedDAOs.ConversationTypeCount> byType =
+        List.of(
+            new FeedDAOs.ConversationTypeCount(Entity.TABLE, 7),
+            new FeedDAOs.ConversationTypeCount(Entity.DATABASE_SCHEMA, 3));
+
+    assertEquals(
+        10,
+        ConversationRepository.viewableCount(
+            byType,
+            type -> false,
+            types -> {
+              throw new AssertionError("no type can hide a row, so no entity is checked");
+            }),
+        "a caller no rule restricts");
+    assertEquals(
+        5,
+        ConversationRepository.viewableCount(
+            byType,
+            Entity.TABLE::equals,
+            types -> {
+              assertEquals(List.of(Entity.TABLE), types);
+              return 2;
+            }),
+        "only tables are checked; schemas count as they are");
+  }
+
   @Test
   void hydrationQueryCountIsConstantWithPageSize() {
     CollectionDAO.ConversationDAO dao = mock(CollectionDAO.ConversationDAO.class);

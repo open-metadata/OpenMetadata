@@ -102,6 +102,19 @@ def test_run_paginator_walks_multiple_pages():
     assert client.restful.call_count == 2
 
 
+@pytest.mark.parametrize(
+    "getter,items_field",
+    [(get_datastreams, "dataStreams"), (get_datatransforms, "dataTransforms")],
+)
+def test_first_page_only_reads_one_page_of_a_large_listing(getter, items_field):
+    # Test Connection probes with a page of one: walking every page made one call
+    # per object and timed out on large orgs.
+    client = _client({"totalSize": 250, items_field: [{"name": "a"}]})
+    result = getter(client, pagination_limit=1, log_warning=MagicMock(), first_page_only=True)
+    assert result == [{"name": "a"}]
+    assert client.restful.call_count == 1
+
+
 def test_run_paginator_raises_on_a_failed_page():
     page_one = {"totalSize": 4, "dataSpaces": [{"name": "a"}, {"name": "b"}]}
     client = _client()

@@ -3,9 +3,14 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +23,7 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
 class FolderIndexTest {
@@ -78,8 +84,35 @@ class FolderIndexTest {
     assertFalse(result.containsKey("deleted"));
     assertFalse(result.containsKey("owners"));
 
-    // Entity-specific fields
-    assertEquals(2, result.get("childrenCount"));
+    // Entity-specific fields; the count depends on who reads the folder, so it is not indexed.
+    assertFalse(result.containsKey("childrenCount"));
     assertNotNull(result.get("parent"));
+  }
+
+  /** The builder starts from every field of the folder, a count it was read with included. */
+  @Test
+  void theIndexedDocumentLeavesOutAChildrenCountTheFolderCarries() {
+    stubCommonFieldLookups();
+    Folder folder =
+        new Folder()
+            .withId(UUID.randomUUID())
+            .withName("counted")
+            .withFullyQualifiedName("counted")
+            .withChildrenCount(2);
+
+    assertFalse(new FolderIndex(folder).buildSearchIndexDoc().containsKey("childrenCount"));
+  }
+
+  private static void stubCommonFieldLookups() {
+    entityStaticMock
+        .when(() -> Entity.getEntityTags(anyString(), any()))
+        .thenReturn(Collections.emptyList());
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationships =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationships);
+    when(relationships.findFrom(any(UUID.class), anyString(), anyInt()))
+        .thenReturn(Collections.emptyList());
+    entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
   }
 }

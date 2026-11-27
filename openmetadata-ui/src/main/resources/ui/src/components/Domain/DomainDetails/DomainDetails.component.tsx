@@ -20,11 +20,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
-  Brush01,
   ChevronDown,
   Collapse,
   Edit01,
   Expand,
+  ImageBrush,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -869,7 +869,7 @@ const DomainDetails = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={Brush01}
+                icon={ImageBrush}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -1009,13 +1009,16 @@ const DomainDetails = ({
   const statusBadge =
     entityUtilClassBase.shouldShowEntityStatus(EntityType.DOMAIN) &&
     domain.entityStatus ? (
-      <EntityStatusBadge
-        entityId={domain.id}
-        entityType={EntityType.DOMAIN}
-        fqn={domain.fullyQualifiedName}
-        showDivider={false}
-        status={domain.entityStatus}
-      />
+      // ml-2 restores the 12px gap after the copy/learning group's 4px.
+      <Box className="tw:ml-2">
+        <EntityStatusBadge
+          entityId={domain.id}
+          entityType={EntityType.DOMAIN}
+          fqn={domain.fullyQualifiedName}
+          showDivider={false}
+          status={domain.entityStatus}
+        />
+      </Box>
     ) : null;
 
   if (isLoading) {
@@ -1054,10 +1057,10 @@ const DomainDetails = ({
               serviceName=""
               suffix={
                 <>
-                  {statusBadge}
                   {!isTreeView && (
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
                   )}
+                  {statusBadge}
                 </>
               }
               titleColor={domain.style?.color}
