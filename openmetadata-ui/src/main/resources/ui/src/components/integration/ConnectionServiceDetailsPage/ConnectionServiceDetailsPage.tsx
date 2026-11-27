@@ -49,7 +49,10 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
-import { ServiceCategory } from '../../../enums/service.enum';
+import {
+  ServiceAgentSubTabs,
+  ServiceCategory,
+} from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -72,6 +75,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import {
   ActionContribution,
+  AiAgentsWidgetContribution,
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
   SlotContribution,
@@ -99,6 +103,7 @@ import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import ServiceInsightsTab from '../../ServiceInsights/ServiceInsightsTab';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import ServiceConnectionDetails from '../../Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import { useSlotInset } from '../hooks/useSlotInset';
@@ -113,12 +118,15 @@ import {
 } from './connectionServiceChildren.utils';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
+import ServiceAgentsTab from './ServiceAgentsTab';
+import ServiceAutoPilotButton from './ServiceAutoPilotButton';
 import {
   ServiceFilesTab,
   ServiceSpreadsheetsTab,
 } from './ServiceDriveAssetTabs';
 import { ServiceFollowButton } from './ServiceFollowButton';
 import { useActiveAnnouncements } from './useActiveAnnouncements';
+import { useServiceAgents } from './useServiceAgents';
 import {
   DATA_ASSETS_TAB_KEY,
   useServiceAssetCounts,
@@ -138,8 +146,18 @@ interface DetailsTab {
 // OSS built-in tabs. A plugin (e.g. Collate's summary/insights/agents) contributes the rest via
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
 // contribution land before or after these without either side knowing about the other.
+const INSIGHTS_TAB_ORDER = 20;
+const AGENTS_TAB_ORDER = 30;
 const DATA_ASSETS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
+
+// This page renders the Insights and Agents tabs and the AutoPilot trigger itself, so a plugin
+// contribution still registered under the same key is dropped rather than shown twice.
+const BUILT_IN_TAB_KEYS = new Set<string>([
+  EntityTabs.INSIGHTS,
+  EntityTabs.AGENTS,
+]);
+const AUTO_PILOT_ACTION_KEY = 'trigger-auto-pilot';
 
 // A long service name ends in an ellipsis, with the full name on hover only when it is cut off.
 const TITLE_ELLIPSIS = { tooltip: true } as const;
@@ -374,10 +392,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // unconditional in the migrated source, and restore must keep working on a soft-deleted
   // service — the only path back from soft-delete lives behind the same menu. Mirrors
   // DataAssetsHeader's `ungatedFlags`.
-  const { canEditAll, canViewAll, canEditDisplayName, canDelete } = useMemo(
-    () => getDerivedPermissionFlags(servicePermission),
-    [servicePermission]
-  );
+  const { canCreate, canEditAll, canViewAll, canEditDisplayName, canDelete } =
+    useMemo(
+      () => getDerivedPermissionFlags(servicePermission),
+      [servicePermission]
+    );
 
   // The header's domain / owner / tier edits, by contrast, are gated on `deleted` and read their
   // own field permissions — as classic's DataAssetsHeader does.
@@ -671,6 +690,19 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     serviceCategory as ServiceCategory
   );
 
+  const hasAiAgentsWidget =
+    extensionRegistry.getContributions<AiAgentsWidgetContribution>(
+      EXTENSION_POINTS.SERVICE_DETAILS_AI_AGENTS_WIDGET
+    ).length > 0;
+  const agentsState = useServiceAgents({
+    serviceCategory: serviceCategory as ServiceCategory,
+    serviceDetails,
+    fetchAiAgents: hasAiAgentsWidget,
+  });
+  const totalAgentsCount =
+    agentsState.agentCounts[ServiceAgentSubTabs.METADATA] +
+    agentsState.agentCounts[ServiceAgentSubTabs.COLLATE_AI];
+
   useEffect(() => {
     const isListShown =
       hasDataAssetsTab &&
@@ -714,6 +746,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
     return extensionRegistry
       .getContributions<TabContribution>(EXTENSION_POINTS.SERVICE_DETAILS_TABS)
+      .filter((pluginTab) => !BUILT_IN_TAB_KEYS.has(pluginTab.key))
       .filter((pluginTab) =>
         pluginTab.condition
           ? pluginTab.condition(extensionContext)
@@ -736,6 +769,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       .getContributions<ActionContribution>(
         EXTENSION_POINTS.SERVICE_DETAILS_ACTIONS
       )
+      .filter((action) => action.key !== AUTO_PILOT_ACTION_KEY)
       .filter((action) =>
         action.condition ? action.condition(extensionContext) : true
       )
@@ -760,6 +794,22 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // in tab but keeps its registration order relative to other order-less contributions.
   const tabs: DetailsTab[] = useMemo(() => {
     const builtIns: DetailsTab[] = [
+      // As classic: services without data assets get no insights either.
+      ...(hasDataAssetsTab
+        ? [
+            {
+              key: EntityTabs.INSIGHTS,
+              label: t('label.insight-plural'),
+              order: INSIGHTS_TAB_ORDER,
+            },
+          ]
+        : []),
+      {
+        key: EntityTabs.AGENTS,
+        label: t('label.agent-plural'),
+        order: AGENTS_TAB_ORDER,
+        badge: totalAgentsCount || undefined,
+      },
       ...(hasDataAssetsTab
         ? [
             {
@@ -813,6 +863,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     canEditAll,
     assetCounts,
     hasDataAssetsTab,
+    totalAgentsCount,
   ]);
 
   const allTabKeys = useMemo(
@@ -883,6 +934,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               <HeaderVersionButton
                 version={toString(serviceDetails.version)}
                 onClick={handleVersionClick}
+              />
+            )}
+            {isServiceDeleted ? null : (
+              <ServiceAutoPilotButton
+                autoPilotAction={agentsState.autoPilotAction}
+                serviceCategory={serviceCategory as ServiceCategory}
+                servicePermission={servicePermission}
               />
             )}
             {pluginActions.map((action) =>
@@ -1094,6 +1152,28 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               onDataProductUpdate={onDataProductUpdate}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.INSIGHTS) && (
+            <ServiceInsightsTab
+              collateAIagentsList={agentsState.collateAgentsList}
+              ingestionPipelines={agentsState.ingestionPipelines}
+              isCollateAIagentsLoading={agentsState.isCollateAgentLoading}
+              isIngestionPipelineLoading={
+                agentsState.isIngestionPipelineLoading
+              }
+              serviceDetails={serviceDetails}
+              workflowStatesData={agentsState.workflowStatesData}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.AGENTS) && (
+            <ServiceAgentsTab
+              agentsState={agentsState}
+              serviceCategory={serviceCategory as ServiceCategory}
+              serviceDetails={serviceDetails}
+              showAddAgent={canCreate || canEditAll}
             />
           )}
 
