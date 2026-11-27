@@ -81,5 +81,14 @@ class StoredEmbeddingReuseTest {
   @Test
   void aMissingDocIsNotSpliced() {
     assertFalse(StoredEmbeddingReuse.isSpliceable(null));
+    assertFalse(StoredEmbeddingReuse.isSpliceable(null, 2));
+  }
+
+  @ParameterizedTest(name = "a 2-dimensional vector, index dimension {0} -> spliceable={1}")
+  @CsvSource({"2,true", "3,false", "0,true", "-1,true"})
+  void aVectorIsSplicedOnlyIntoAnIndexOfItsDimension(int dimension, boolean spliceable) {
+    JsonNode stored = JsonUtils.readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2]}");
+
+    assertEquals(spliceable, StoredEmbeddingReuse.isSpliceable(stored, dimension));
   }
 }

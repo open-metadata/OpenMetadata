@@ -1944,7 +1944,7 @@ class LookerSource(DashboardServiceSource):
 
         We build:
         - Explore (DataModel) -> Dashboard lineage
-        - Explore (DataModel) -> Chart lineage
+        - Explore (DataModel) -> Chart lineage, unless the pipeline disables direct chart lineage
 
         We look at:
         - chart.query
@@ -1976,6 +1976,9 @@ class LookerSource(DashboardServiceSource):
                             from_entity=cached_explore,
                             to_entity=dashboard_entity,
                         )
+
+            if not self.include_direct_chart_lineage:
+                return
 
             # Yield Explore -> Chart lineage
             for chart_id, explore_names in chart_explore_map.items():

@@ -83,6 +83,21 @@
       "uniqueItems": true,
       "default": []
     },
+    "offeredTools": {
+      "description": "Allowlist of MCP tool names this server offers. An empty list offers every registered tool. Disabled tools and read-only mode still apply. Distributions may define additional values.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "extensions": {
+      "description": "Distribution-specific MCP settings ignored by OpenMetadata.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>",
+      "additionalProperties": true
+    },
     "dynamicClientRegistrationEnabled": {
       "description": "Allow anonymous OAuth client registration. Disabling it stops new registrations but preserves existing clients and grants.",
       "type": "boolean",

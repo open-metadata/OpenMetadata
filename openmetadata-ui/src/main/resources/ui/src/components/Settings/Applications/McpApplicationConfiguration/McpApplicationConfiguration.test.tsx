@@ -277,6 +277,7 @@ describe('McpApplicationConfiguration', () => {
         '/maxResponseChars',
         '/readOnly',
         '/disabledTools',
+        '/offeredTools',
       ],
     ],
     ['the whole setting', ['/']],

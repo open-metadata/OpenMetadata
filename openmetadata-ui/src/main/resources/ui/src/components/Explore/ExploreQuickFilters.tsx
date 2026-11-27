@@ -13,6 +13,7 @@
 
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
 import type { Bucket } from 'Models';
 import Qs from 'qs';
@@ -122,6 +123,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   helperText,
   untitledDropdown = false,
   bordered = false,
+  searchText: searchTextOverride,
+  ignoreHostSearchState = false,
+  singleLine = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -136,7 +140,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const isLatestOptionsRequest = (requestId: number) =>
     requestId === optionsRequestIdRef.current;
   const { queryFilter } = useAdvanceSearch();
-  const { isNLPActive } = useSearchStore();
+  const { isNLPActive: isPageNLPActive } = useSearchStore();
+  const isNLPActive = !ignoreHostSearchState && isPageNLPActive;
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -150,10 +155,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     );
 
     return {
-      showDeleted: parsed.showDeleted === 'true',
-      searchText: (parsed.search as string) ?? '',
+      showDeleted: !ignoreHostSearchState && parsed.showDeleted === 'true',
+      searchText: searchTextOverride ?? (parsed.search as string) ?? '',
     };
-  }, [location.search]);
+  }, [location.search, searchTextOverride, ignoreHostSearchState]);
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),
@@ -538,7 +543,11 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
   return (
-    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:mt-1">
+    <div
+      className={classNames(
+        'explore-quick-filters-container tw:flex tw:items-center tw:gap-2 tw:mt-1',
+        singleLine ? 'tw:flex-nowrap' : 'tw:flex-wrap'
+      )}>
       {visibleFields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
@@ -588,6 +597,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return (
           <FilterSelect
             bordered={bordered}
+            className={singleLine ? 'tw:shrink-0' : undefined}
             commitMode={immediateApply ? 'immediate' : 'staged'}
             data-testid={`search-dropdown-${field.key}`}
             // Keep the legacy empty-state copy: specs and users know this

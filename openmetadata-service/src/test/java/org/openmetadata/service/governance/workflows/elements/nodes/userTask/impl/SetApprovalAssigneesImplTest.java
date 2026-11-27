@@ -52,8 +52,11 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Paging;
@@ -61,6 +64,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -443,9 +447,9 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testSelfApprovalPrevention_eventDrivenSoleRequester_keptWhenNoOneElse() {
-    // Event-driven approval (not workflow-managed, not a change request): the only reviewer is the
-    // requester, who is kept so the task stays actionable.
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_neverAssignedAndAutoApproved() {
+    // Event-driven approval whose only reviewer is the requester: the requester is never their own
+    // approver (as filer they could not resolve it), so under "none" the node approves.
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
 
@@ -456,9 +460,54 @@ class SetApprovalAssigneesImplTest {
 
     delegate.execute(execution);
 
+    assertEquals("[]", capturedVars.get("ApprovalTask_assignees"));
+    assertFalse((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSecondApprovalStepOfEntityWorkflow_withNoApproverStillApproves() {
+    // An earlier step's CreateTask leaves taskEntityId at process scope. That does not make this
+    // entity-workflow step a task workflow's: with nobody to ask under "none", it approves.
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    UUID firstStepTaskId = UUID.randomUUID();
+    UUID entityWorkflowId = UUID.randomUUID();
+    TaskRepository tasks = mock(TaskRepository.class);
+    when(tasks.get(isNull(), eq(firstStepTaskId), any()))
+        .thenReturn(new Task().withId(firstStepTaskId).withWorkflowDefinitionId(entityWorkflowId));
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(tasks);
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntity(
+                    Entity.WORKFLOW_DEFINITION, entityWorkflowId, "nodes", Include.NON_DELETED))
+        .thenReturn(new WorkflowDefinition().withTrigger(new EventBasedEntityTriggerDefinition()));
+    when(execution.getVariable("taskEntityId")).thenReturn(firstStepTaskId.toString());
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals("[]", capturedVars.get("ApprovalTask_assignees"));
+    assertFalse((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_routedToOtherAdmins() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    givenAdmins("alice", "platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    delegate.execute(execution);
+
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
-    assertNotNull(assigneesJson);
-    assertTrue(assigneesJson.contains("alice"), "sole requester is kept outside change requests");
+    assertTrue(assigneesJson.contains("platform_admin"), assigneesJson);
+    assertFalse(assigneesJson.contains("<#E::user::alice>"), assigneesJson);
+    assertTrue((Boolean) capturedVars.get("hasAssignees"));
   }
 
   @Test

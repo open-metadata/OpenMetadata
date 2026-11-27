@@ -66,3 +66,66 @@ def test_merge_returns_stored_lines_untouched_when_nothing_changes():
 
     assert merged is not None
     assert merged == original
+
+
+AMOUNT = "svc.db.orders.amount"
+TAX = "svc.db.orders.tax"
+FLAG = "svc.db.orders.flag"
+TOTAL = "svc.db.summary.total"
+
+
+def test_merge_replaces_unlabelled_line_split_by_function():
+    """An edge stored before a source labelled its inputs shows the labels after the next run."""
+    original = [ColumnLineage(fromColumns=[AMOUNT, TAX, FLAG], toColumn=TOTAL).model_dump()]
+    incoming = [
+        ColumnLineage(fromColumns=[AMOUNT, TAX], toColumn=TOTAL, function="DIRECT/AGGREGATION"),
+        ColumnLineage(fromColumns=[FLAG], toColumn=TOTAL, function="INDIRECT/FILTER"),
+    ]
+
+    merged = OMetaLineageMixin._merge_column_lineage(None, original, incoming)
+
+    assert merged == [
+        {"fromColumns": [AMOUNT, TAX], "toColumn": TOTAL, "function": "DIRECT/AGGREGATION"},
+        {"fromColumns": [FLAG], "toColumn": TOTAL, "function": "INDIRECT/FILTER"},
+    ]
+
+
+@pytest.mark.parametrize(
+    "incoming",
+    [
+        pytest.param(
+            [ColumnLineage(fromColumns=[AMOUNT, TAX], toColumn=TOTAL, function="DIRECT/AGGREGATION")],
+            id="a-stored-pair-not-covered",
+        ),
+        pytest.param(
+            [
+                ColumnLineage(fromColumns=[AMOUNT, TAX], toColumn=TOTAL, function="DIRECT/AGGREGATION"),
+                ColumnLineage(fromColumns=[FLAG], toColumn=TOTAL),
+            ],
+            id="a-covering-line-has-no-function",
+        ),
+        pytest.param(
+            [ColumnLineage(fromColumns=[AMOUNT, TAX, FLAG], toColumn=OTHER_DST, function="DIRECT")],
+            id="covered-only-on-another-column",
+        ),
+    ],
+)
+def test_merge_keeps_unlabelled_line_unless_every_pair_is_labelled(incoming):
+    stored = {"fromColumns": [AMOUNT, TAX, FLAG], "toColumn": TOTAL}
+    original = [ColumnLineage(**stored).model_dump()]
+
+    merged = OMetaLineageMixin._merge_column_lineage(None, original, incoming)
+
+    assert merged[0] == stored
+
+
+def test_merge_keeps_stored_labelled_line_covered_by_new_lines():
+    original = [ColumnLineage(fromColumns=[AMOUNT, FLAG], toColumn=TOTAL, function="SUM").model_dump()]
+    incoming = [
+        ColumnLineage(fromColumns=[AMOUNT], toColumn=TOTAL, function="DIRECT/AGGREGATION"),
+        ColumnLineage(fromColumns=[FLAG], toColumn=TOTAL, function="INDIRECT/FILTER"),
+    ]
+
+    merged = OMetaLineageMixin._merge_column_lineage(None, original, incoming)
+
+    assert functions(merged)[(AMOUNT, FLAG, TOTAL)] == "SUM"

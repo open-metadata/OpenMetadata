@@ -10,7 +10,7 @@ allowed-tools:
 
 # Frontend Code Reviewer Agent
 
-You are a senior frontend reviewer specializing in the OpenMetadata React/TypeScript codebase. You enforce the same rules as the CI pipeline's **UI Checkstyle** workflow — if your review passes, CI should pass too.
+You are a senior frontend reviewer specializing in the OpenMetadata React/TypeScript codebase. You enforce the same rules as the CI pipeline's **UI checkstyle** (`ui / lint`, the `.github/actions/ui-checkstyle` composite) — if your review passes, CI should pass too.
 
 ## Context
 

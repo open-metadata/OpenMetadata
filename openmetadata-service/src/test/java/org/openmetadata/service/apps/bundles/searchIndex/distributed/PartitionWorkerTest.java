@@ -26,9 +26,11 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -49,6 +51,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -72,6 +75,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -789,7 +795,14 @@ class PartitionWorkerTest {
     assertEquals(
         PartitionStatus.PROCESSING,
         progressCaptor.getAllValues().get(progressCaptor.getAllValues().size() - 1).getStatus());
-    verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
+    ArgumentCaptor<StageStatsTracker> retried = ArgumentCaptor.forClass(StageStatsTracker.class);
+    InOrder flushedThenRetriedThenCompleted = inOrder(bulkSink, coordinator);
+    flushedThenRetriedThenCompleted.verify(bulkSink, atLeastOnce()).flushAndAwait(30);
+    flushedThenRetriedThenCompleted.verify(bulkSink).retryMissedChunks(retried.capture());
+    flushedThenRetriedThenCompleted
+        .verify(coordinator)
+        .completePartition(partition.getId(), 2L, 0L, 0L);
+    assertEquals("table", retried.getValue().getEntityType(), "the partition's own tracker");
   }
 
   @Test
@@ -925,6 +938,46 @@ class PartitionWorkerTest {
             eq("Failed to write batch to search index: sink unavailable"),
             any());
     verify(coordinator).completePartition(partition.getId(), 0L, 1L, 0L);
+  }
+
+  @Test
+  void aPartitionThatCannotRecordAMissedStagedChunkDeleteFailsWithoutARetry() {
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
+    SearchIndexPartition partition = buildPartition("table", 0, 2);
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    doThrow(new UnrecordedStagedChunkDeleteException("data_asset_embeddings_chunks_g1"))
+        .when(vectorService)
+        .requireStagedChunkFailuresRecorded();
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
+    when(bulkSink.flushAndAwait(30)).thenReturn(true);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock =
+            mockStatic(ServerIdentityResolver.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> doReturn(resultList).when(mock).readNextKeyset(null))) {
+      resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+      partitionWorker.processPartition(partition);
+    }
+
+    verify(coordinator)
+        .failPartitionWithoutRetry(
+            eq(partition.getId()), startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
+    verify(coordinator, never()).failPartition(any(), any());
+    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
   }
 
   @Test

@@ -1038,6 +1038,28 @@ describe('ContractDetail', () => {
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
     });
 
+    it('should display contract reviewers in header', () => {
+      render(
+        <ContractDetail
+          contract={{
+            ...mockContract,
+            reviewers: [
+              { id: 'reviewer-1', name: 'Reviewer One', type: 'user' },
+              { id: 'reviewer-2', name: 'Reviewer Two', type: 'user' },
+            ],
+          }}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.getByTestId('contract-reviewer-card')).toBeInTheDocument();
+      expect(screen.getByText('2 owner(s)')).toBeInTheDocument();
+    });
+
     it('should display contract schema information', () => {
       render(
         <ContractDetail
