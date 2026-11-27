@@ -1,9 +1,9 @@
 # MCP admins can disable single tools by name, for every caller including admins
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (tools/list follows the setting without a restart) · v3 2026-11-27 (tool allowlist)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (tools/list follows the setting without a restart) · v3 2026-11-27 (tool allowlist, distribution extensions)
 - **Deciders:** Vishnu Jain
-- **Guard:** `McpReadOnlyModeTest`
+- **Guard:** `McpReadOnlyModeTest`, `DeploymentConfigTest`, `useMcpConfiguration.test.tsx`
 - **Related:** #37161, ADR:2026-11-04-mcp-read-only-mode-hides-write-tools
 
 ## Context
@@ -39,7 +39,12 @@ ADR:2026-11-04-mcp-read-only-mode-hides-write-tools. Disabling or enabling a too
 to the next `tools/list` right away; a client that cached the list sees it when it lists tools again.
 The warning for a name that matches no tool now logs whenever the setting loads, not only at startup.
 
-**v3 2026-11-27.** `mcpConfiguration.offeredTools` allows deployments to specify the tools they
-offer by exact name. An empty list offers every registered tool. Read-only mode and
-`disabledTools` still apply. The same check hides excluded tools from `tools/list` and returns
-the disabled-tool error when a client calls one.
+**v3 2026-11-27.** `mcpConfiguration.offeredTools` lets a deployment list the tools it offers.
+An empty list offers every registered tool. Read-only mode and `disabledTools` still apply first.
+OpenMetadata matches exact names. A distribution may override `McpServer.isOfferedByAllowlist` to
+give extra values meaning (presets), and that one hook decides both `tools/list` visibility and
+`tools/call` refusal, which returns the disabled-tool error.
+
+`mcpConfiguration.extensions` is an opaque object owned by the distribution. OpenMetadata never
+reads, validates or strips it, and the settings form carries it forward unchanged on every save.
+Collate keeps its Knowledge Graph MCP settings there.
