@@ -167,6 +167,28 @@ class CompiledRuleTest {
             List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC));
   }
 
+  @Test
+  void editAllDoesNotSubsumeDeleteTestCaseFailedRowsSample() {
+    MetadataOperation deleteSample = MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE;
+    CompiledRule editAll = rule(Entity.TEST_CASE, MetadataOperation.EDIT_ALL, Rule.Effect.ALLOW);
+
+    assertFalse(
+        allowsOnTestCase(editAll, deleteSample),
+        "Deleting a failed-rows sample is its own grant; EditAll must not imply it");
+    assertTrue(allowsOnTestCase(editAll, MetadataOperation.EDIT_TESTS));
+    assertTrue(
+        allowsOnTestCase(
+            rule(Entity.TEST_CASE, MetadataOperation.ALL, Rule.Effect.ALLOW), deleteSample));
+    assertTrue(
+        allowsOnTestCase(rule(Entity.TEST_CASE, deleteSample, Rule.Effect.ALLOW), deleteSample));
+  }
+
+  private static boolean allowsOnTestCase(CompiledRule rule, MetadataOperation operation) {
+    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, operation);
+    rule.evaluateAllowRule(operationContext, null, null, null);
+    return !operationContext.getOperations(null).contains(operation);
+  }
+
   private static CompiledRule rule(
       String resource, MetadataOperation operation, Rule.Effect effect) {
     return new CompiledRule(

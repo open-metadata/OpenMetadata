@@ -85,6 +85,18 @@
   ],
   "mappings": [
     {
+      "_comment": "Task Form designer: field builder, schema round-trip, and the custom forms a task workflow renders from it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/TaskFormSettingsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TaskFormDesignerUtils*"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts"
+      ]
+    },
+    {
       "_comment": "MCP administrator controls and client revocation.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/mcp/**",
@@ -1083,6 +1095,19 @@
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/ProfilePreferences.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AI-mode global search (Cmd/Ctrl+K): the modal, its results hook, tabs, filters and summary panel, plus the Explore quick filters and sort dropdown it embeds. The generated map only links the few files the spec's imports reach, so a change to the results hook or the modal would otherwise skip this spec.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/SidebarSearchButton.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreQuickFilters.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreSortDropdown/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
       ]
     },
     {
