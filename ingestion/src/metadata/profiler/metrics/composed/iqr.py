@@ -47,8 +47,9 @@ class InterQuartileRange(ComposedMetric):
 
     def fn(self, res: dict[str, Any]) -> float | None:
         """
-        Safely compute null ratio based on the profiler
-        results of other Metrics
+        Safely compute the interquartile range (third quartile
+        minus first quartile) based on the profiler results
+        of other Metrics
         """
         res_first_quartile = res.get(FirstQuartile.name())
         res_third_quartile = res.get(ThirdQuartile.name())
