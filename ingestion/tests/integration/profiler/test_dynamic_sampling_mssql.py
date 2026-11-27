@@ -165,3 +165,121 @@ class TestMSSQLDynamicSampling:
         static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
         # 500 < 1000 threshold → no sampling
         assert static is None
+
+
+@pytest.fixture(scope="module")
+def literal_schema_objects(mssql_engine):
+    # Independent T-SQL fixture names must not use the converter's quoting policy.
+    with mssql_engine.connect() as conn:
+        for schema in ("[om37646.sales.archive]", "[om37646_control]"):
+            conn.execute(text(f"CREATE SCHEMA {schema}"))
+            conn.execute(text(f"CREATE TABLE {schema}.orders (id INT PRIMARY KEY, name NVARCHAR(256))"))
+            conn.execute(text(f"INSERT INTO {schema}.orders VALUES (11, 'first'), (29, 'second')"))
+            conn.execute(text(f"CREATE VIEW {schema}.orders_view AS SELECT id, name FROM {schema}.orders"))
+    yield
+    with mssql_engine.connect() as conn:
+        for schema in ("[om37646.sales.archive]", "[om37646_control]"):
+            conn.execute(text(f"DROP VIEW {schema}.orders_view"))
+            conn.execute(text(f"DROP TABLE {schema}.orders"))
+            conn.execute(text(f"DROP SCHEMA {schema}"))
+
+
+@pytest.mark.parametrize("service_type", ["Mssql", "AzureSQL"])
+@pytest.mark.parametrize(
+    "schema_name, sql_schema",
+    [("om37646.sales.archive", "[om37646.sales.archive]"), ("om37646_control", "[om37646_control]")],
+)
+@pytest.mark.parametrize("table_name, table_type", [("orders", TableType.Regular), ("orders_view", TableType.View)])
+def test_literal_schema_production_sampling(
+    mssql_engine,
+    mssql_session,
+    literal_schema_objects,
+    monkeypatch,
+    service_type,
+    schema_name,
+    sql_schema,
+    table_name,
+    table_type,
+):
+    from uuid import UUID
+
+    from sqlalchemy import func
+
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.generated.schema.entity.data.table import Column as CatalogColumn
+    from metadata.generated.schema.entity.data.table import DataType, Table
+    from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import AzureSQLConnection
+    from metadata.generated.schema.entity.services.connections.database.mssqlConnection import MssqlConnection
+    from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+    from metadata.profiler.metrics.registry import Metrics
+    from metadata.sampler.models import SampleConfig
+    from metadata.sampler.sampler_config import DatabaseSamplerConfig
+    from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
+    from metadata.sampler.sqlalchemy.mssql.sampler import MssqlSampler
+
+    database = Database(id=UUID(int=1), name="master", service={"id": str(UUID(int=2)), "type": "databaseService"})
+    schema = DatabaseSchema(
+        id=UUID(int=3),
+        name=schema_name,
+        service=database.service,
+        database={"id": str(database.id.root), "type": "database"},
+    )
+    entity = Table(
+        id=UUID(int=4),
+        name=table_name,
+        tableType=table_type,
+        serviceType=service_type,
+        columns=[CatalogColumn(name="id", dataType=DataType.INT), CatalogColumn(name="name", dataType=DataType.STRING)],
+        database={"id": str(database.id.root), "type": "database"},
+        databaseSchema={"id": str(schema.id.root), "type": "databaseSchema", "name": schema_name},
+    )
+    metadata = MagicMock(spec=OpenMetadata)
+    metadata.get_by_id.side_effect = lambda *, entity, entity_id, nullable: {
+        Database: database,
+        DatabaseSchema: schema,
+    }[entity]
+    monkeypatch.setattr("metadata.sampler.sqlalchemy.sampler.get_ssl_connection", lambda _: mssql_engine)
+    connection_class, sampler_class = (
+        (MssqlConnection, MssqlSampler) if service_type == "Mssql" else (AzureSQLConnection, AzureSQLSampler)
+    )
+    static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE)
+    sampler = sampler_class(
+        service_connection_config=connection_class(
+            username="fixture", password="fixture", hostPort="localhost:1433", database="master"
+        ),
+        ometa_client=metadata,
+        entity=entity,
+        config=DatabaseSamplerConfig(
+            sample_config=SampleConfig(
+                profileSampleConfig=ProfileSampleConfig(sampleConfigType=SampleConfigType.STATIC, config=static)
+            )
+        ),
+    )
+    try:
+        expected = [(11, "first"), (29, "second")]
+        independent = mssql_session.execute(
+            text(f"SELECT id, name FROM {sql_schema}.{table_name} ORDER BY id")
+        ).fetchall()
+        assert [tuple(row) for row in independent] == expected
+        assert sorted(tuple(row) for row in sampler.fetch_sample_data().rows) == expected
+        query = sampler.get_sample_query(static)
+        sql = str(query.compile(dialect=mssql_engine.dialect))
+        assert ("TABLESAMPLE" in sql) == (table_type == TableType.Regular)
+        assert f"FROM {sql_schema}.{table_name}" in sql
+        assert sorted(tuple(row) for row in mssql_session.query(query).all()) == expected
+
+        runner = QueryRunner(session=mssql_session, dataset=sampler.raw_dataset, raw_dataset=sampler.raw_dataset)
+        assert runner.schema_name == schema_name
+        assert runner.select_first_from_table(func.sum(sampler.raw_dataset.id))[0] == 40
+        if table_type == TableType.Regular:
+            computer = MSSQLTableMetricComputer(
+                runner=runner, metrics=[Metrics.rowCount], conn_config=sampler.service_connection_config, entity=entity
+            )
+            computer._set_table_and_schema_name()
+            result = computer.compute()
+            assert result is not None
+            assert result.rowCount == 2
+    finally:
+        sampler.session_factory.remove()

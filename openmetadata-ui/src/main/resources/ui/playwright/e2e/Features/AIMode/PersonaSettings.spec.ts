@@ -169,6 +169,91 @@ test.describe(
         .toContain(`#personas/${personaName}`);
     });
 
+    test('browser Back returns to the previous persona view', async ({
+      page,
+    }) => {
+      const personaName = persona.data.name;
+      const detailUrl = new RegExp(`#personas/${personaName}$`);
+
+      await openPersonaSettings(page, personaName);
+      await expect(page.getByTestId('persona-detail-container')).toBeVisible();
+
+      await test.step('from the personas list back to the persona', async () => {
+        await page
+          .getByTestId('profile-content-header')
+          .getByRole('link', { name: 'Personas', exact: true })
+          .click();
+        await expect(page.getByTestId('personas-landing')).toBeVisible();
+
+        await page.goBack();
+
+        await expect(
+          page.getByTestId('persona-detail-container')
+        ).toBeVisible();
+        await expect(page).toHaveURL(detailUrl);
+      });
+
+      await test.step('from an entity full page back into the modal', async () => {
+        await page.getByTestId('customize-card-data-assets').click();
+        await expect(
+          page.getByTestId('persona-sub-category-grid')
+        ).toBeVisible();
+        await page.getByTestId('sub-category-card-Table').click();
+        await expectFullscreenView(page, 'entity-customize-overlay');
+        // The unsaved-changes guard arms once the default layout loads.
+        await expect(page.getByTestId('save-button')).toBeEnabled();
+
+        await page.goBack();
+        await discardUnsavedDefaultLayout(page);
+
+        await expect(
+          page.getByTestId('persona-sub-category-grid')
+        ).toBeVisible();
+        await expect(page.getByTestId('ai-profile-page')).toBeVisible();
+        await expect(
+          page.getByTestId('persona-fullscreen-view')
+        ).not.toBeVisible();
+
+        await page.goBack();
+
+        await expect(page.getByTestId('persona-customize-grid')).toBeVisible();
+        await expect(page).toHaveURL(detailUrl);
+      });
+    });
+
+    test('closing settings opened from the user menu leaves no settings entry for Back', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await page.goto('/explore');
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ask-user-menu-settings').click();
+      await page.getByTestId('profile-nav-personas').click();
+      await expect(page.getByTestId('personas-landing')).toBeVisible();
+      await page.getByTestId('add-persona-button').click();
+      await expect(page.getByTestId('add-persona-container')).toBeVisible();
+
+      await page
+        .getByRole('dialog')
+        .filter({ has: page.getByTestId('ai-profile-page') })
+        .getByRole('button', { name: 'Close', exact: true })
+        .click();
+
+      await expect(page.getByTestId('app-shell')).toBeVisible();
+      await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/explore' && url.hash === ''
+      );
+
+      await page.goBack();
+
+      await expect(page).toHaveURL(
+        (url) => url.pathname !== '/explore' && url.hash === ''
+      );
+      await expect(page.getByTestId('app-shell')).toBeVisible();
+      await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
+    });
+
     test('Governance keeps the persona detail tabs and opens an entity full page', async ({
       page,
     }) => {
@@ -1069,26 +1154,17 @@ test.describe(
   { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     let persona: PersonaClass;
-    // Save & go writes the persona document, so it gets a persona of its own.
-    let savePersona: PersonaClass;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       persona = buildPersona('exit');
-      savePersona = buildPersona('exit-save');
-      await settleAll([
-        persona.create(apiContext),
-        savePersona.create(apiContext),
-      ]);
+      await persona.create(apiContext);
       await afterAction();
     });
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await settleAll([
-        persona.delete(apiContext),
-        savePersona.delete(apiContext),
-      ]);
+      await persona.delete(apiContext);
       await afterAction();
     });
 
@@ -1105,11 +1181,11 @@ test.describe(
 
       await expect(unsavedPopover(page)).toBeVisible();
       await expect(
-        page.getByTestId('unsaved-changes-popover-discard')
+        page.getByTestId('unsaved-changes-popover-confirm')
       ).toHaveText('Discard & go');
       await expect(page.getByTestId('unsaved-changes-modal')).not.toBeVisible();
 
-      await page.getByTestId('unsaved-changes-popover-discard').click();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('persona-detail-container')).toBeVisible();
       await expect(page.getByTestId('ai-profile-page')).toBeVisible();
@@ -1131,7 +1207,7 @@ test.describe(
         await expect(unsavedPopover(page)).toBeVisible();
 
         await page
-          .getByTestId('unsaved-changes-popover-discard')
+          .getByTestId('unsaved-changes-popover-confirm')
           .press('Escape');
 
         await expectEditorKeepsEdits(page);
@@ -1143,7 +1219,7 @@ test.describe(
         await expect(unsavedPopover(page)).toBeVisible();
 
         await page
-          .getByTestId('unsaved-changes-popover-discard')
+          .getByTestId('unsaved-changes-popover-confirm')
           .press('Escape');
 
         await expectEditorKeepsEdits(page);
@@ -1164,38 +1240,11 @@ test.describe(
       await expect(unsavedPopover(page)).toBeVisible();
       await expect(page.getByTestId('unsaved-changes-modal')).not.toBeVisible();
 
-      await page.getByTestId('unsaved-changes-popover-discard').click();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('app-shell')).toBeVisible();
       await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
       await expect(unsavedPopover(page)).not.toBeVisible();
-    });
-
-    test('Save & go saves the edits, then leaves', async ({ page }) => {
-      await openDirtyNavigationEditor(page, savePersona.data.name);
-
-      await page.getByTestId('customize-cancel').click();
-
-      await expect(unsavedPopover(page)).toBeVisible();
-
-      const saveResponse = waitForResponseWithStatus(
-        page,
-        isLayoutSave,
-        [200, 201]
-      );
-      await page.getByTestId('unsaved-changes-popover-confirm').click();
-      const response = await saveResponse;
-
-      expect(response.request().postData() ?? '').toContain('explore');
-      await expect(page.getByTestId('persona-detail-container')).toBeVisible();
-      await expect(unsavedPopover(page)).not.toBeVisible();
-
-      await page.getByTestId('customize-card-navigation').click();
-
-      await expect(
-        page.getByTestId('ai-sidebar-switch-explore').getByRole('switch')
-      ).not.toBeChecked();
-      await expect(page.getByTestId('customize-save')).toBeDisabled();
     });
 
     test('Home page minimize returns to the persona detail in the modal', async ({

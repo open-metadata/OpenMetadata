@@ -16,7 +16,7 @@ from confluent_kafka import KafkaError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -52,11 +52,13 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
+    KNOWN_TASKS_CACHE_MAXSIZE,
     KPL_AGGREGATED_MAGIC,
     MISSING_ENTITY_CACHE_TTL_SECONDS,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
     deaggregate_kinesis_record,
+    known_pipeline_weight,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
@@ -192,6 +194,7 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
     event_type=FULL_OL_KAFKA_EVENT["eventType"],
     inputs=FULL_OL_KAFKA_EVENT["inputs"],
     outputs=FULL_OL_KAFKA_EVENT["outputs"],
+    event_time=FULL_OL_KAFKA_EVENT["eventTime"],
 )
 
 
@@ -229,6 +232,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
                 source.source_config.lineageInformation = LineageInformation(dbServiceNames=["demo_db"])
                 source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+                source._known_pipelines = LRUCache(maxsize=KNOWN_TASKS_CACHE_MAXSIZE, getsizeof=known_pipeline_weight)
             yield
 
     def setup_mock_consumer_with_kafka_event(self, event):
@@ -325,12 +329,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_empty_input(self):
         """Test with an empty input list."""
-        result = self.open_lineage_source._create_output_lineage_dict([])
+        result = self.open_lineage_source._create_output_lineage_dict({})
         self.assertEqual(result, {})
 
     def test_create_output_lineage_dict_single_lineage_entry(self):
         """Test with a single lineage entry."""
-        lineage_info = [("output_table", "input_table", "output_column", "input_column")]
+        lineage_info = {("output_table", "input_table", "output_column", None): ["input_column"]}
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {"input_table": [ColumnLineage(toColumn="output_column", fromColumns=["input_column"])]}
@@ -339,10 +343,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_different_outputs(self):
         """Test with multiple entries having different output tables."""
-        lineage_info = [
-            ("output_table1", "input_table", "output_column1", "input_column"),
-            ("output_table2", "input_table", "output_column2", "input_column"),
-        ]
+        lineage_info = {
+            ("output_table1", "input_table", "output_column1", None): ["input_column"],
+            ("output_table2", "input_table", "output_column2", None): ["input_column"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table1": {"input_table": [ColumnLineage(toColumn="output_column1", fromColumns=["input_column"])]},
@@ -352,10 +356,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_same_output(self):
         """Test with multiple entries sharing the same output table."""
-        lineage_info = [
-            ("output_table", "input_table1", "output_column", "input_column1"),
-            ("output_table", "input_table2", "output_column", "input_column2"),
-        ]
+        lineage_info = {
+            ("output_table", "input_table1", "output_column", None): ["input_column1"],
+            ("output_table", "input_table2", "output_column", None): ["input_column2"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {
@@ -519,14 +523,76 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    def test_column_transformations_are_kept_with_their_input_columns(self):
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        fields = event["outputs"][0]["facets"]["columnLineage"]["fields"]
+        source = fields["id"]["inputFields"][0]
+        aggregate = [{"type": "DIRECT", "subtype": "AGGREGATION"}]
+        fields["id"] = {
+            "inputFields": [
+                {**source, "field": "amount", "transformations": aggregate},
+                {
+                    **source,
+                    "field": "flag",
+                    "transformations": [
+                        {"type": "INDIRECT", "subtype": "FILTER", "description": "eligible rows"},
+                        {"type": "DIRECT", "masking": True},
+                    ],
+                },
+                {**source, "field": "tax", "transformations": aggregate},
+                {**source, "field": "old", "transformations": []},
+            ],
+            "transformationDescription": "  legacy formula  ",
+            "transformationType": "IDENTITY",
+        }
+        fields["randomid"]["transformationType"] = "IDENTITY"
+        parsed = self.read_openlineage_event_from_kafka(event)
+        with (
+            patch.object(
+                OpenMetadataConnection,
+                "get_by_name",
+                create=True,
+                side_effect=lambda entity, fqn, **kwargs: Mock(id=Mock(root=uuid4()), columns=[]),
+            ),
+            patch.object(OpenMetadataConnection, "get_lineage_by_id", create=True, return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn_from_om",
+                side_effect=lambda table, services=None: f"svc.db.{table.name}",
+            ),
+        ):
+            (request,) = self.open_lineage_source.yield_pipeline_lineage_details(parsed)
+
+        columns = request.right.edge.lineageDetails.columnsLineage
+        self.assertEqual(
+            [
+                (
+                    col.toColumn.root.rsplit(".", 1)[1],
+                    col.function.root if col.function else None,
+                    [fqn.root.rsplit(".", 1)[1] for fqn in col.fromColumns],
+                )
+                for col in columns
+            ],
+            [
+                ("id", "DIRECT/AGGREGATION", ["amount", "tax"]),
+                ("id", "INDIRECT/FILTER (eligible rows), DIRECT [masked]", ["flag"]),
+                ("id", "  legacy formula  ", ["old"]),
+                ("randomid", "IDENTITY", ["products"]),
+                ("zip", None, ["platform"]),
+            ],
+        )
+
     @staticmethod
-    def _mock_table_with_columns(*column_names):
-        """Build a lightweight stand-in for a Table entity with the given real column names."""
+    def _mock_table_with_columns(table_fqn, fqn_segment_by_name):
+        """Build a lightweight stand-in for a Table entity with the given real columns.
+
+        Keyed by the name a fetched column carries, with the spelling its FQN stores."""
         table = Mock()
         columns = []
-        for column_name in column_names:
+        for column_name, fqn_segment in fqn_segment_by_name.items():
             column = Mock()
             column.name.root = column_name
+            column.fullyQualifiedName = FullyQualifiedEntityName(f"{table_fqn}.{fqn_segment}")
             columns.append(column)
         table.columns = columns
         return table
@@ -548,8 +614,12 @@ class OpenLineageUnitTest(unittest.TestCase):
         mock_build_map.return_value = {
             "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
-        source_table = self._mock_table_with_columns("first_name", "last_name")
-        target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
+        source_table = self._mock_table_with_columns(
+            "database.schema.case_test_source", {"first_name": "first_name", "last_name": "last_name"}
+        )
+        target_table = self._mock_table_with_columns(
+            "database.schema.case_test_target", {"FIRST_NAME": "FIRST_NAME", "LAST_NAME": "LAST_NAME"}
+        )
         mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
             target_table if fqn_str == "database.schema.case_test_target" else source_table
         )
@@ -603,6 +673,110 @@ class OpenLineageUnitTest(unittest.TestCase):
                         toColumn="database.schema.case_test_target.LAST_NAME",
                         fromColumns=["database.schema.case_test_source.last_name"],
                     ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_uses_stored_fqn_of_special_column_names(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """A column name with a reserved character or a dot is not its FQN segment, so
+        column lineage has to carry the stored FQN. An entry built as "<table>.<name>"
+        matches no real column and the server silently drops it."""
+        fqn_segment_by_name = {
+            "a>b": "a__reserved__arrow__b",
+            "c.d": '"c.d"',
+            "e.>f": '"e.__reserved__arrow__f"',
+            ".>": '".__reserved__arrow__"',
+        }
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {"postgres://host:5432/db.schema.source": "database.schema.source"}
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: self._mock_table_with_columns(
+            fqn_str, fqn_segment_by_name
+        )
+
+        outputs = [
+            {
+                "name": "db.schema.target",
+                "namespace": "postgres://host:5432",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            column_name: {
+                                "inputFields": [
+                                    {
+                                        "field": column_name,
+                                        "namespace": "postgres://host:5432",
+                                        "name": "db.schema.source",
+                                    }
+                                ]
+                            }
+                            for column_name in fqn_segment_by_name
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage([], outputs)
+
+        expected = {
+            "database.schema.target": {
+                "database.schema.source": [
+                    ColumnLineage(
+                        toColumn=f"database.schema.target.{fqn_segment}",
+                        fromColumns=[f"database.schema.source.{fqn_segment}"],
+                    )
+                    for fqn_segment in fqn_segment_by_name.values()
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_drops_unmatched_field_of_sharded_table(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """A sharded table has no column to fall back to, so a field it does not store is
+        dropped instead of becoming an invented "<table>.<field>" FQN."""
+        sharded_source = self._mock_table_with_columns("database.schema.source", {"id": "id"})
+        sharded_source.tableType = TableType.Sharded
+        target = self._mock_table_with_columns("database.schema.target", {"id": "id", "extra": "extra"})
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {"bigquery://host/db.schema.source": "database.schema.source"}
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
+            target if fqn_str == "database.schema.target" else sharded_source
+        )
+
+        outputs = [
+            {
+                "name": "db.schema.target",
+                "namespace": "bigquery://host",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            column_name: {
+                                "inputFields": [
+                                    {"field": column_name, "namespace": "bigquery://host", "name": "db.schema.source"}
+                                ]
+                            }
+                            for column_name in ("id", "extra")
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage([], outputs)
+
+        expected = {
+            "database.schema.target": {
+                "database.schema.source": [
+                    ColumnLineage(toColumn="database.schema.target.id", fromColumns=["database.schema.source.id"]),
                 ],
             }
         }
@@ -669,7 +843,7 @@ class OpenLineageUnitTest(unittest.TestCase):
     def test_get_column_lineage_requests_columns_field(
         self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
     ):
-        """_match_column_name only works if the fetched Table entity actually
+        """_match_column_fqn only works if the fetched Table entity actually
         has its columns populated. Table lookups must explicitly request the
         'columns' field rather than relying on whatever the default response
         happens to include."""
@@ -1176,6 +1350,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_resolve_pipeline_service",
                 return_value=MOCK_PIPELINE_SERVICE.name.root,
             ),
+            patch.object(OpenMetadataConnection, "get_by_name", create=True, return_value=None),
             patch.object(self.open_lineage_source, "register_record"),
         ):
             results = list(self.open_lineage_source.yield_pipeline(ol_event))
@@ -1444,27 +1619,24 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "START")
 
-    def test_get_pipelines_list_filters_out_fail_events(self):
-        """Test that get_pipelines_list filters out FAIL events"""
+    def test_get_pipelines_list_returns_fail_and_abort_events(self):
+        """FAIL and ABORT events carry the run's outcome, so they reach the pipeline status stage"""
+        for event_type in ("FAIL", "ABORT"):
+            event = copy.deepcopy(VALID_EVENT)
+            event["eventType"] = event_type
+            self.setup_mock_consumer_with_kafka_event(event)
+
+            results = list(self.open_lineage_source.get_pipelines_list())
+
+            self.assertEqual([result.event_type for result in results], [event_type])
+
+    def test_get_pipelines_list_filters_out_other_events(self):
+        """OTHER events carry no run outcome and no lineage"""
         event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "FAIL"
+        event["eventType"] = "OTHER"
         self.setup_mock_consumer_with_kafka_event(event)
 
-        result_generator = self.open_lineage_source.get_pipelines_list()
-        results = list(result_generator)
-
-        self.assertEqual(len(results), 0)
-
-    def test_get_pipelines_list_filters_out_abort_events(self):
-        """Test that get_pipelines_list filters out ABORT events"""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "ABORT"
-        self.setup_mock_consumer_with_kafka_event(event)
-
-        result_generator = self.open_lineage_source.get_pipelines_list()
-        results = list(result_generator)
-
-        self.assertEqual(len(results), 0)
+        self.assertEqual(list(self.open_lineage_source.get_pipelines_list()), [])
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_lineage_merge_start_with_data_running_without(self, mock_get_table_from_om):
@@ -1639,25 +1811,18 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "START")
 
-    def test_get_pipelines_list_kinesis_filters_out_fail_events(self):
-        """Test that Kinesis get_pipelines_list filters out FAIL events."""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "FAIL"
-        self._build_mock_kinesis_client([event])
+    def test_get_pipelines_list_kinesis_returns_fail_and_abort_events(self):
+        """Kinesis hands FAIL and ABORT events to the pipeline status stage, like Kafka."""
+        events = []
+        for event_type in ("FAIL", "ABORT", "OTHER"):
+            event = copy.deepcopy(VALID_EVENT)
+            event["eventType"] = event_type
+            events.append(event)
+        self._build_mock_kinesis_client(events)
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        self.assertEqual(len(results), 0)
-
-    def test_get_pipelines_list_kinesis_filters_out_abort_events(self):
-        """Test that Kinesis get_pipelines_list filters out ABORT events."""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "ABORT"
-        self._build_mock_kinesis_client([event])
-
-        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
-
-        self.assertEqual(len(results), 0)
+        self.assertEqual([result.event_type for result in results], ["FAIL", "ABORT"])
 
     def test_get_pipelines_list_kinesis_multiple_records(self):
         """Test Kinesis polling with multiple records in a single batch."""
@@ -3182,7 +3347,7 @@ class TestKafkaOffsetCommit:
     def test_filtered_and_unparseable_messages_are_stored(self):
         unparseable = self._message(1)
         unparseable.value.return_value = b"not json"
-        source, stored = self._source(self._message(0, event_type="FAIL"), unparseable)
+        source, stored = self._source(self._message(0, event_type="OTHER"), unparseable)
 
         assert list(source._poll_kafka(self.BROKER)) == []
         assert stored == [(0, 0), (0, 1)]

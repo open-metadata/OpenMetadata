@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import { FC, ReactNode } from 'react';
 import { TeamType } from '../../../../../../generated/entity/teams/team';
@@ -89,7 +90,7 @@ export type MembersUserDetailView = Extract<
 
 export interface MembersUserDetailProps {
   view: MembersUserDetailView;
-  onNavigate: (view: MembersView) => void;
+  onNavigate: (view: MembersView, options?: SettingsNavigateOptions) => void;
   /** Header slots (title, avatar, tabs, delete…) merged over the Members header. */
   onSetHeader: (
     header:
@@ -181,6 +182,8 @@ export interface ProfileHashLinkProps {
    * in-modal view. The href is kept for middle-click / open-in-new-tab. */
   onNavigate: (target: ProfileHashTarget) => void;
   children: ReactNode;
+  className?: string;
+  title?: string;
 }
 
 export interface TimeWindowOption {

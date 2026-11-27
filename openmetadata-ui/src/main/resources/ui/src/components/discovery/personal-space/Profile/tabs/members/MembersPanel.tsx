@@ -27,6 +27,10 @@ import type {
   TabContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -91,10 +95,15 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: MembersView) => {
-      setHash('members', viewToSubPath(nextView));
+    (nextView: MembersView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'members',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // The contribution backing the active `section` view, if any. A hash naming an
@@ -167,6 +176,38 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
+  // A team tab's sub-page may name itself and add header actions; the team
+  // header keeps its own trail. The override is tagged with the sub-page that
+  // set it so a later sub-page that sets nothing never shows a stale title.
+  const subPageKey =
+    view.type === TEAM_TAB_SUBPAGE
+      ? `${view.fqn}/${view.key}/${view.subPath ?? ''}`
+      : '';
+  const [tabSubPageHeader, setTabSubPageHeader] = useState<{
+    owner: string;
+    title?: string;
+    description?: string;
+    actions?: React.ReactNode;
+  } | null>(null);
+  const handleTabSubPageHeader = useCallback(
+    (override: ProfileHeaderOverride | null) =>
+      setTabSubPageHeader(
+        override
+          ? {
+              owner: subPageKey,
+              title: override.title,
+              description: override.description,
+              actions: override.actions,
+            }
+          : null
+      ),
+    [subPageKey]
+  );
+  const activeSubPageHeader =
+    subPageKey && tabSubPageHeader?.owner === subPageKey
+      ? tabSubPageHeader
+      : null;
+
   // Identifies the detail team so switching between two teams also resets the
   // header slots.
   const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
@@ -197,7 +238,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
             ? t(activeSection.descriptionKey)
             : undefined,
           icon: activeSection.icon,
-        }
+        },
+        activeSubPageHeader
       );
     const pick = (node: React.ReactNode) =>
       isTeamsOrDetailView(view) ? node : undefined;
@@ -208,7 +250,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       description: descByType[view.type],
       icon: iconByType[view.type],
       onBreadcrumbAction: makeBreadcrumbAction(onNavigate, view),
-      actions: panelHeaderActions,
+      actions: activeSubPageHeader?.actions ?? panelHeaderActions,
       titleInput: pick(detailHeaderTitleInput),
       titleSuffix: pick(detailHeaderTitleSuffix),
       ...(view.type === USER_DETAIL ? userDetailHeader : undefined),
@@ -224,6 +266,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     resolvedName,
     activeSection,
     userDetailHeader,
+    activeSubPageHeader,
   ]);
 
   const permissionPlaceholder = (
@@ -321,6 +364,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
         <TabComponent
           subPath={subPath}
           teamId={teamId}
+          onHeaderChange={handleTabSubPageHeader}
           onNavigate={(next?: string) =>
             onNavigate(
               next

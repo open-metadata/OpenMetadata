@@ -50,6 +50,10 @@ import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
  * Library UI does. Each pack must complete with the members the importer plans, and installing it
  * again must find nothing to apply. A {@code PACK_INSTALL} JSON line per pack records the sizes and
  * timings, and is appended to {@code -Dontology.packs.report} when set.
+ *
+ * <p>It runs in the global-state lane, not the parallel one: installing all packs takes 11 to 15
+ * minutes during which, being {@code @Isolated}, nothing else in a parallel fork runs, which pushed
+ * the parallel lane past its 65 minute budget.
  */
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)

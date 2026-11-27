@@ -32,7 +32,7 @@ const seededActivitySummary = `Activity stream seeded event ${uuid()}`;
 
 test.describe('Activity Stream on Entity Pages', () => {
   test.beforeAll('setup: create entities and users', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
 

@@ -39,6 +39,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
   pruneEmptyChildren,
@@ -51,7 +52,7 @@ import {
   prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -198,9 +199,15 @@ function WorksheetColumnsTable() {
                   {name}
                 </Typography>
                 {record.fullyQualifiedName && (
-                  <CopyLinkButton
-                    entityType={EntityType.WORKSHEET}
-                    fieldFqn={record.fullyQualifiedName}
+                  <CopyButton
+                    className="hover-cell-icon"
+                    isDisabled={!record.fullyQualifiedName}
+                    size="xs"
+                    testId="copy-field-link-button"
+                    value={getEntityDetailsUrl(
+                      EntityType.WORKSHEET,
+                      record.fullyQualifiedName ?? ''
+                    )}
                   />
                 )}
               </div>

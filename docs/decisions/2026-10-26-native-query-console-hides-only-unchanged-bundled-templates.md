@@ -2,9 +2,10 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-30 (compare against the UI's own copy of the seeds)
-  · v3 2026-10-30 (both Collate copy steps)
+  · v3 2026-10-30 (both Collate copy steps) · v4 2026-11-15 (UI guards moved to Collate)
+  · v5 2026-11-16 (the seed copy moved to Collate)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyStudioQueryConsole.test.tsx`, `OntologyStudio.constants.test.ts` (the UI copy
+- **Guard:** `OntologyStudioQueryConsole.test.tsx` *(openmetadata-collate)*, `OntologyStudio.constants.test.ts` *(openmetadata-collate)* (the UI copy
   equals `sparqlQuerySettings.json`)
 - **Related:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default, PR #36190
 
@@ -50,3 +51,5 @@ ADR:2026-10-30-production-ui-code-imports-only-from-the-ui-src-folder, and
 v2 said Collate copies only the UI's `src/` folder. Its `copy-om-to-collate` step copies `src/**`,
 and `copy-om-playwright-to-collate` copies `playwright/**`. The boundary is unchanged, because
 `playwright/` is not part of the build.
+
+v4 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

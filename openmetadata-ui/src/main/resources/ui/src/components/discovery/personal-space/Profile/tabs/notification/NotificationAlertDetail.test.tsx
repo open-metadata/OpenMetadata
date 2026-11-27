@@ -392,7 +392,10 @@ describe('NotificationAlertDetail', () => {
     fireEvent.click(screen.getByTestId('delete-alert-popover-confirm'));
 
     await waitFor(() =>
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' })
+      expect(mockOnNavigate).toHaveBeenCalledWith(
+        { type: 'list' },
+        { replace: true }
+      )
     );
 
     expect(deleteEntity).toHaveBeenCalledWith(

@@ -22,6 +22,7 @@ import {
   getGroupMemberLabelKey,
   getMappingCoverage,
   getSharedMemberType,
+  localizeGraphLabels,
   relabelGraphNodes,
   restrictToEntityLevel,
 } from './knowledgeGraphPresentation.utils';
@@ -983,5 +984,55 @@ describe('getGraphNodeLabel', () => {
         name: 'customer',
       })
     ).toBe('Customer');
+  });
+});
+
+describe('localizeGraphLabels', () => {
+  const translate = (key: string) => `t(${key})`;
+  const graph = (edges: GraphData['edges']): GraphData => ({
+    nodes: [],
+    edges,
+  });
+
+  it('translates a known predicate and keeps the raw one for classification', () => {
+    const result = localizeGraphLabels(
+      graph([{ from: 'a', to: 'b', label: 'Belongs To Database' }]),
+      translate
+    );
+
+    expect(result?.edges[0]).toEqual(
+      expect.objectContaining({
+        label: 't(label.belongs-to-database)',
+        relationType: 'Belongs To Database',
+      })
+    );
+  });
+
+  it('looks the translation up by relationType when the server sends one', () => {
+    const result = localizeGraphLabels(
+      graph([
+        { from: 'a', to: 'b', label: 'Has Column', relationType: 'hasColumn' },
+      ]),
+      translate
+    );
+
+    expect(result?.edges[0].label).toBe('t(label.has-column)');
+    expect(result?.edges[0].relationType).toBe('hasColumn');
+  });
+
+  it('falls back to the sentence-cased server label for an unknown predicate', () => {
+    const result = localizeGraphLabels(
+      graph([
+        {
+          from: 'a',
+          to: 'b',
+          label: 'Calculated From',
+          relationType: 'calculatedFrom',
+        },
+      ]),
+      translate
+    );
+
+    expect(result?.edges[0].label).toBe('Calculated from');
   });
 });

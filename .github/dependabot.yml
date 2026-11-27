@@ -25,6 +25,9 @@ updates:
       # See ingestion/setup.py comment on the tableau pin.
       - dependency-name: "urllib3"
         versions: [">=2.0.0"]
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
+      - dependency-name: "antlr4-python3-runtime"
+        versions: [">=4.10.0"]
 
   - package-ecosystem: "maven"
     directory: "/"
@@ -52,6 +55,22 @@ updates:
       # still targets 8.0.x. Remove once Dropwizard supports 9.
       - dependency-name: "org.hibernate.validator:hibernate-validator"
         versions: [">=9.0.0"]
+      # jsonschema2pojo 1.3.3 crashes generating openmetadata-spec (ValidRule.isMap treats a
+      # java.lang.Object field as a Map). Remove once a release ships the upstream fix.
+      - dependency-name: "org.jsonschema2pojo:*"
+        versions: ["1.3.3"]
+      # httpcore5 must match the line httpclient5 is built against (5.6.x -> 5.4.x); mixing
+      # them silently kills the search I/O reactor. Remove once httpclient5 5.7 is GA.
+      - dependency-name: "org.apache.httpcomponents.core5:*"
+        versions: [">=5.5"]
+      # Jena 6.3.0 hard-codes a 100 KB RDF Thrift message cap (TRDF.maxMessageSize), so RDF values
+      # over ~100 KB stop reading back. RdfLiveProjectionIT guards later releases.
+      - dependency-name: "org.apache.jena:*"
+        versions: ["6.3.0"]
+      # elasticsearch-java 9.3+ cannot decode cluster.stats from Elasticsearch 9.0/9.1 (missing
+      # SearchUsageStats.extended). Remove once the minimum supported server is 9.3 or later.
+      - dependency-name: "co.elastic.clients:elasticsearch-java"
+        versions: [">=9.3.0"]
 
   - package-ecosystem: "npm"
     directory: "/openmetadata-ui/src/main/resources/ui"
@@ -67,6 +86,25 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
+      - dependency-name: "antlr4"
+        versions: [">=4.10.0"]
+      - dependency-name: "@types/antlr4"
+        versions: [">=4.10.0"]
+      # Externals of openmetadata-ui-core-components: upgrade together with core.
+      - dependency-name: "react-aria-components"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-aria"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "echarts-for-react"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-hook-form"
+        update-types: ["version-update:semver-minor"]
+      # Playwright is upgraded by hand: the version is also pinned in the CI image tags, the
+      # browser installs, the IndexedDB patch and Collate (ADR:2026-11-24-playwright-is-upgraded-by-hand).
+      - dependency-name: "@playwright/test"
+      - dependency-name: "playwright*"
 
   - package-ecosystem: "github-actions"
     directory: "/"

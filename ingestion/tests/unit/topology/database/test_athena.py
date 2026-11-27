@@ -1337,12 +1337,15 @@ class TestAthenaViewsReachTheBulkPayloadOnce:
         )
 
 
-class TestAthenaPartitionedIcebergTableType:
+class TestAthenaPartitionedTableType:
     @pytest.mark.parametrize(
         ("parameters", "partitioned", "expected_type"),
         [
             ({"table_type": "ICEBERG"}, False, TableType.Iceberg),
             ({"table_type": "ICEBERG"}, True, TableType.Iceberg),
+            ({"table_type": "DELTA"}, False, TableType.DeltaLake),
+            ({"table_type": "delta", "spark.sql.sources.provider": "delta"}, True, TableType.DeltaLake),
+            ({"spark.sql.sources.provider": "delta"}, True, TableType.DeltaLake),
             ({}, True, TableType.Partitioned),
         ],
     )

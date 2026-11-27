@@ -90,6 +90,8 @@ check it isn't already cached a layer down (e.g. `OpenMetadata._search_es_entity
 **Comments explain *why*, never restate code.** Do NOT add comments that describe what obvious code does (`// Create user` before `createUser()`). Only comment complex business
 logic, non-obvious algorithms/workarounds, public-API JavaDoc, or `TODO/FIXME` with a ticket reference. If code needs a comment to be understood, refactor it to be clearer instead.
 
+**One return per method, at the end (Java).** Compute the result through `if`/`else`, a ternary or a `switch` expression and return it once as the last statement; a `void` method has no `return` and puts its work inside the condition that allows it. No guard-clause or early returns; throwing a specific validation exception is allowed, and conditions nested past three levels move into a named helper. Details and examples in `.claude/rules/java.md`; rationale in ADR:2026-11-20-a-method-returns-once.
+
 **Testing philosophy.** Test real behavior, not mock wiring — if a test mocks 3+ of your own classes to verify a method call, it tests the wrong thing. Prefer integration tests
 over heavily-mocked unit tests (this project has real ITs: `OpenMetadataApplicationTest`, Docker, real OpenSearch). Mocks are for boundaries (HTTP clients, third-party APIs), not
 internals. Ask "what breaks if this test passes but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes (API responses, DB state), not
@@ -102,8 +104,7 @@ is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; 
 **Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema,
 then regenerate — never hand-edit generated output.** Details in `.claude/rules/schema-first.md`.
 
-**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus on functionality over education. Do not add unnecessary blank lines between
-prose and code blocks.
+**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus on functionality over education. Do not add unnecessary blank lines between prose and code blocks.
 
 **No wrappers around core-ui components.** If a wrapper component exists that wraps a core-ui component, skip it — use the `openmetadata-ui-core-components` component directly at the call site. Only create a wrapper if it adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
 
@@ -119,14 +120,17 @@ prose and code blocks.
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |
+| `single-source.md` | UI `*.{ts,tsx}` — search core + this repo before creating any component; one component per concept; no `FooV2`/variant forks; grep Collate before deleting exports |
+| `page-structure.md` | UI `src/pages/**` — sanctioned layouts (core `PageLayout` default; `PageLayoutV1` legacy-only; `ResizablePanels` for splits) + `PageLayout.Header`/`.PageHeader` + ui-core `Tabs` |
 | `frontend-performance.md` | UI `*.{ts,tsx}` — waterfalls, barrel imports, re-renders, bundle discipline |
 | `frontend-permissions.md` | UI `*.{ts,tsx}` — `useEntityPermissions` and derived flags; never read a permission key directly |
 | `frontend-a11y.md` | UI `*.{ts,tsx}` — semantics over `div`+`role`, keyboard, focus, contrast, targets |
 | `i18n.md` | UI `*.{ts,tsx}` + `src/locale/**` — no string literals, `yarn i18n`, translate placeholders |
 | `frontend-playwright.md` | UI `playwright/**` — E2E test constraints |
+| `frontend-browser-tests.md` | UI `*.browser.test.tsx`, `src/test/browser/**`, `playwright/e2e/**` — which test layer a check belongs in; writing a Vitest browser test; tagging a migrated Playwright test |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
-| `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
+| `migrations.md` | `bootstrap/sql/**`, `service/migration/**` — append-only, native path, MySQL+Postgres, idempotent, steps carry their own logic |
 
 ### Repo coding conventions (read before writing non-trivial code)
 

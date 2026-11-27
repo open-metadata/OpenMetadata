@@ -45,10 +45,17 @@ import org.openmetadata.service.Entity;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexStopUnderLoadIT {
 
-  private static final int SEED_TABLES = SizeFactor.scale(10_000);
+  private static final int FULL_SIZE_TABLES = 10_000;
+  private static final int SEED_TABLES = SizeFactor.scale(FULL_SIZE_TABLES);
   private static final int COLUMNS_PER_TABLE = 3;
   private static final int LOAD_WORKERS = 16;
-  private static final Duration WARMUP = Duration.ofSeconds(8);
+
+  // The stop has to reach a reindex that is still running, and at the fast tier's 0.05 factor
+  // the whole run takes about 6 s. So the warm-up scales with the cohort, with a 2 s floor that
+  // gives the job time to start.
+  private static final Duration WARMUP =
+      Duration.ofMillis(Math.max(2_000L, 8_000L * SEED_TABLES / FULL_SIZE_TABLES));
+
   private static final Duration STOP_TIMEOUT = Duration.ofSeconds(30);
   private static final Duration POST_STOP_QUIESCE = Duration.ofSeconds(5);
 

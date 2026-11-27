@@ -19,6 +19,8 @@ import type { CustomProperty } from '../../../../../../generated/type/customProp
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesEditPage from './CustomPropertiesEditPage';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 const mockEntityType = {
   id: 'type-table',
   name: 'table',
@@ -142,6 +144,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 
   return {
+    // The unsaved-changes popover only opens on a dirty exit.
+    ConfirmPopover: () => null,
     Box: ({
       children,
       'data-testid': testId,

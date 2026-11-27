@@ -15,6 +15,7 @@ public class WorkflowDefinitionMapper
     if (create.getConfig() != null) {
       config.setStoreStageStatus(create.getConfig().getStoreStageStatus());
       config.setLifecycle(create.getConfig().getLifecycle());
+      config.setAutoAssignOwners(create.getConfig().getAutoAssignOwners());
     }
 
     return copy(new WorkflowDefinition(), create, user)

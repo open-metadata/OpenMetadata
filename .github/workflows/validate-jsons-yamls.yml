@@ -20,7 +20,16 @@ on:
       - "**.yaml"
       - "**.yml"
       - ".github/scripts/check_pr_workflow_security.py"
+      - ".github/scripts/prune_ghcr_package.py"
+      - ".github/scripts/summarize_surefire.py"
       - ".github/scripts/tests/test_pr_workflow_security.py"
+      - ".github/scripts/tests/test_prune_ghcr_package.py"
+      - ".github/scripts/tests/test_summarize_surefire.py"
+      - ".github/scripts/tests/test_ci_speed_*.py"
+      - ".github/scripts/configure_docker_storage.sh"
+      - ".github/actions/hydrate-maven-cache/**"
+      - "openmetadata-ui/src/main/resources/ui/jest.config.js"
+      - "openmetadata-integration-tests/pom.xml"
 
 permissions:
   contents: read
@@ -35,7 +44,7 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Set up Python 3.10
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.10'
 
@@ -54,6 +63,12 @@ jobs:
           source env/bin/activate
           python .github/scripts/check_pr_workflow_security.py
           python -m pytest .github/scripts/tests/test_pr_workflow_security.py -q
+
+      # Speed settings that are easy to undo by accident (cache saves on PRs, disk purges, worker counts).
+      - name: Verify CI speed guards
+        run: |
+          source env/bin/activate
+          python -m pytest .github/scripts/tests/test_ci_speed_*.py .github/scripts/tests/test_summarize_surefire.py .github/scripts/tests/test_prune_ghcr_package.py -q
 
       # Add back linting once we have 10/10 on main
       - name: Code style check

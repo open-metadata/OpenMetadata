@@ -507,8 +507,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
    * pending and sign in as before. Checked after the password, so it reveals nothing to a guesser.
    */
   void requireConfirmedRegistration(User storedUser) {
+    requireConfirmedRegistration(storedUser, tokenRepository);
+  }
+
+  static void requireConfirmedRegistration(User storedUser, TokenRepository tokens) {
     if (!Boolean.TRUE.equals(storedUser.getIsEmailVerified())
-        && !tokenRepository
+        && !tokens
             .findByUserIdAndType(storedUser.getId(), EMAIL_VERIFICATION.toString())
             .isEmpty()) {
       throw new AuthenticationException(EMAIL_CONFIRMATION_PENDING);

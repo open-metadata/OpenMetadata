@@ -23,11 +23,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -40,6 +43,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -104,6 +109,17 @@ public class OpenLineageLineageResolutionIT {
       List.of(
           new Column().withName("id").withDataType(ColumnDataType.BIGINT),
           new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+
+  private static final List<Column> COLUMNS_WITH_SPECIAL_NAMES =
+      List.of(
+          new Column().withName("a__reserved__arrow__b").withDataType(ColumnDataType.INT),
+          new Column().withName("c.d").withDataType(ColumnDataType.INT),
+          new Column().withName("e.__reserved__arrow__f").withDataType(ColumnDataType.INT),
+          new Column()
+              .withName("s")
+              .withDataType(ColumnDataType.STRUCT)
+              .withDataTypeDisplay("struct<x:int>")
+              .withChildren(List.of(new Column().withName("x").withDataType(ColumnDataType.INT))));
 
   private static final String EVENT_TIME = "2024-01-15T10:00:00Z";
   private static final long EVENT_TIME_MS = 1705312800000L;
@@ -1131,6 +1147,139 @@ public class OpenLineageLineageResolutionIT {
 
   @Test
   @Order(30)
+  @ResourceLock(
+      value = SharedResourceLocks.OPEN_LINEAGE_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void columnLineage_reachesStoredColumnsOfSpecialFieldNames() throws Exception {
+    String namespace = uniqueDatasetNamespace();
+    String inputName = "ol_special_in_" + uniqueSuffix();
+    String outputName = "ol_special_out_" + uniqueSuffix();
+    String inputDataset = "ecommerce_db.shopify." + inputName;
+    Table input =
+        Tables.create()
+            .name(inputName)
+            .inSchema(schemaFqn)
+            .withColumns(COLUMNS_WITH_SPECIAL_NAMES)
+            .execute();
+
+    JsonNode response =
+        withOpenLineageSettings(
+            autoCreateUnder(namespace),
+            () ->
+                send(
+                    completeEvent("ol_special_ns", "ol_special_job_" + uniqueSuffix())
+                        .addInput(inputDataset, namespace)
+                        .addOutput(
+                            outputWithFieldLineage(
+                                namespace,
+                                "ecommerce_db.shopify." + outputName,
+                                inputDataset,
+                                Map.of("a>b", "a>b", "c.d", "c.d", "e.>f", "e.>f", "x", "s.x")))));
+
+    assertEquals("success", response.get("status").asText(), response.toString());
+    Table output =
+        SdkClients.adminClient().tables().getByName(schemaFqn + "." + outputName, "columns");
+    assertEquals(
+        Set.of("a__reserved__arrow__b", "c.d", "e.__reserved__arrow__f", "x"),
+        output.getColumns().stream().map(Column::getName).collect(Collectors.toSet()));
+    String inputFqn = input.getFullyQualifiedName();
+    String outputFqn = output.getFullyQualifiedName();
+    assertEquals(
+        Map.of(
+            outputFqn + ".a__reserved__arrow__b", List.of(inputFqn + ".a__reserved__arrow__b"),
+            outputFqn + ".\"c.d\"", List.of(inputFqn + ".\"c.d\""),
+            outputFqn + ".\"e.__reserved__arrow__f\"",
+                List.of(inputFqn + ".\"e.__reserved__arrow__f\""),
+            outputFqn + ".x", List.of(inputFqn + ".s.x")),
+        fromColumnsByToColumn(fetchOpenLineageEdgeDetails(inputName, outputName)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @Order(31)
+  void columnLineage_acceptsIncompleteTransformationsAndPreservesValidFunctions(boolean batch)
+      throws Exception {
+    String input = "ecommerce_db.shopify.raw_order";
+    String outputName = "ol_functions_" + uniqueSuffix();
+    Table output =
+        Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Map<String, Object> aggregateInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "id",
+            "transformations",
+            List.of(
+                Map.of("subtype", "IGNORED"), Map.of("type", "DIRECT", "subtype", "AGGREGATION")));
+    Map<String, Object> filterInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "name",
+            "transformations",
+            List.of(Map.of("type", "INDIRECT", "subtype", "FILTER")));
+    Map<String, Object> fallbackInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "name",
+            "transformations",
+            List.of(Map.of("subtype", "IGNORED")));
+    Map<String, Object> fields =
+        Map.of(
+            "id", Map.of("inputFields", List.of(aggregateInput, filterInput)),
+            "name",
+                Map.of(
+                    "inputFields",
+                    List.of(fallbackInput),
+                    "transformationDescription",
+                    "Legacy fallback"));
+    OpenLineage.RunEventBuilder event =
+        completeEvent("ns", "ol_functions_" + uniqueSuffix())
+            .addInput(input, serviceName)
+            .addOutput(
+                Map.of(
+                    "namespace",
+                    serviceName,
+                    "name",
+                    "ecommerce_db.shopify." + outputName,
+                    "facets",
+                    Map.of("columnLineage", Map.of("fields", fields))));
+    JsonNode response =
+        batch ? MAPPER.readTree(OpenLineage.batch().addEvent(event).send()) : send(event);
+    assertEquals("success", response.path("status").asText(), response.toString());
+
+    List<?> mappings =
+        (List<?>) fetchOpenLineageEdgeDetails("raw_order", outputName).get("columnsLineage");
+    assertEquals(3, mappings.size());
+    Map<List<Object>, Object> functionByColumns = new HashMap<>();
+    for (Object mapping : mappings) {
+      Map<?, ?> columns = (Map<?, ?>) mapping;
+      functionByColumns.put(
+          List.of(columns.get("toColumn"), columns.get("fromColumns")), columns.get("function"));
+    }
+    assertEquals(
+        Map.of(
+            List.of(output.getFullyQualifiedName() + ".id", List.of(srcFqn + ".id")),
+            "DIRECT/AGGREGATION",
+            List.of(output.getFullyQualifiedName() + ".id", List.of(srcFqn + ".name")),
+            "INDIRECT/FILTER",
+            List.of(output.getFullyQualifiedName() + ".name", List.of(srcFqn + ".name")),
+            "Legacy fallback"),
+        functionByColumns);
+  }
+
+  @Test
+  @Order(32)
   void eventTime_withNumericUtcOffsetAndMicroseconds_preservesTruncatedEpochMillis(TestNamespace ns)
       throws Exception {
     long expectedEpochMs = 1788856189711L; // 2026-09-08T08:29:49.711Z
@@ -1249,6 +1398,43 @@ public class OpenLineageLineageResolutionIT {
   private static Map<String, Object> datasetWithColumns(String namespace, String name) {
     return Map.of(
         "namespace", namespace, "name", name, "facets", Map.of("schema", Map.of("fields", FIELDS)));
+  }
+
+  private static Map<String, Object> outputWithFieldLineage(
+      String namespace,
+      String name,
+      String inputDataset,
+      Map<String, String> inputFieldByOutputField) {
+    List<Map<String, Object>> schemaFields = new ArrayList<>();
+    Map<String, Object> lineageFields = new HashMap<>();
+    inputFieldByOutputField.forEach(
+        (outputField, inputField) -> {
+          schemaFields.add(Map.of("name", outputField, "type", "int"));
+          lineageFields.put(
+              outputField,
+              Map.of(
+                  "inputFields",
+                  List.of(
+                      Map.of("namespace", namespace, "name", inputDataset, "field", inputField))));
+        });
+    return Map.of(
+        "namespace",
+        namespace,
+        "name",
+        name,
+        "facets",
+        Map.of("schema", Map.of("fields", schemaFields)),
+        "outputFacets",
+        Map.of("columnLineage", Map.of("fields", lineageFields)));
+  }
+
+  private static Map<Object, Object> fromColumnsByToColumn(Map<?, ?> edgeDetails) {
+    return ((List<?>) edgeDetails.get("columnsLineage"))
+        .stream()
+            .map(Map.class::cast)
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.get("toColumn"), entry -> entry.get("fromColumns")));
   }
 
   private static String uniqueDatasetNamespace() {

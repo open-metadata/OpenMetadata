@@ -10,27 +10,30 @@ import org.openmetadata.sdk.models.ListResponse;
 
 public class MetadataService extends org.openmetadata.schema.entity.services.MetadataService {
 
-  public static MetadataService create(
+  public static org.openmetadata.schema.entity.services.MetadataService create(
       org.openmetadata.schema.entity.services.MetadataService entity) throws OpenMetadataException {
-    return (MetadataService) OpenMetadata.client().metadataServices().create(entity);
+    return OpenMetadata.client().metadataServices().create(entity);
   }
 
-  public static MetadataService retrieve(String id) throws OpenMetadataException {
-    return (MetadataService) OpenMetadata.client().metadataServices().get(id);
+  public static org.openmetadata.schema.entity.services.MetadataService retrieve(String id)
+      throws OpenMetadataException {
+    return OpenMetadata.client().metadataServices().get(id);
   }
 
-  public static MetadataService retrieve(UUID id) throws OpenMetadataException {
+  public static org.openmetadata.schema.entity.services.MetadataService retrieve(UUID id)
+      throws OpenMetadataException {
     return retrieve(id.toString());
   }
 
-  public static MetadataService retrieveByName(String name) throws OpenMetadataException {
-    return (MetadataService) OpenMetadata.client().metadataServices().getByName(name);
+  public static org.openmetadata.schema.entity.services.MetadataService retrieveByName(String name)
+      throws OpenMetadataException {
+    return OpenMetadata.client().metadataServices().getByName(name);
   }
 
-  public static MetadataService update(
+  public static org.openmetadata.schema.entity.services.MetadataService update(
       String id, org.openmetadata.schema.entity.services.MetadataService patch)
       throws OpenMetadataException {
-    return (MetadataService) OpenMetadata.client().metadataServices().update(id, patch);
+    return OpenMetadata.client().metadataServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

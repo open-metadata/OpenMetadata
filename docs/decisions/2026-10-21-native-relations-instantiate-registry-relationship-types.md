@@ -1,9 +1,9 @@
 # Native relations instantiate registry relationship types
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-26 (an inverse needs edit rights on the registry) · v3 2026-10-27 (a relation is offered only when its writes are allowed) · v4 2026-10-27 (a restore clears claims that compete for one live partner)
+- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-26 (an inverse needs edit rights on the registry) · v3 2026-10-27 (a relation is offered only when its writes are allowed) · v4 2026-10-27 (a restore clears claims that compete for one live partner) · v5 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** IndependentOntologyInverseIT, OntologyHierarchyStorageTest, OntologyPropertyInverseStorageTest#restoringTheOntologyDropsClaimsThatCompeteForALivePartner, OntologyNativeRelation.utils.test.ts, OntologyGraphView.test.tsx, RelationshipTypePicker.component.test.tsx
+- **Guard:** IndependentOntologyInverseIT, OntologyHierarchyStorageTest, OntologyPropertyInverseStorageTest#restoringTheOntologyDropsClaimsThatCompeteForALivePartner, OntologyNativeRelation.utils.test.ts, OntologyGraphView.test.tsx *(openmetadata-collate)*, RelationshipTypePicker.component.test.tsx
 - **Related:** #35987, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-19-native-ontology-imports-use-working-drafts
 
 ## Context
@@ -39,3 +39,5 @@ Picking a type can make three kinds of write. Declaring a property the ontology 
 ## Amendment: a restore clears claims that compete for one live partner (v4, 2026-10-27)
 
 A property can be restored on its own inside a deleted ontology, so two properties brought back together can name one partner that is already live, and the rows of a restore have no statement order. The stored `updatedAt` is the deletion time, not the time of the claim, so no claim can be called the latest. Settling such a claim by the order of the properties' ids made the result depend on those ids. A restore now states its links all at once. A property it brings back keeps its link to a partner the same restore brings back only when that partner names it back. When two or more properties it brings back name the same property that the ontology already holds live, it clears every one of those claims and leaves that property as it was, so the author chooses the link afterwards. A single claim on a live partner still relinks, and claims on a vocabulary property that the ontology does not declare, such as `skos:broader`, are kept.
+
+v5 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

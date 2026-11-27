@@ -21,7 +21,6 @@ import { waitForResponseWithStatus } from './waitHelpers';
 export const PERSONAL_SPACE_ROUTES = {
   HOME: '/',
   INBOX: '/inbox',
-  MY_DATA: '/my-data',
 };
 
 // Navigate to an AI-app-mode route and wait until the AI shell has rendered.

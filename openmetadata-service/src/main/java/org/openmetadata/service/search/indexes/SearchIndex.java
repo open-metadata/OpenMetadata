@@ -134,6 +134,7 @@ public interface SearchIndex {
 
     // Remove Entity Specific Field
     SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
+    SearchIndexUtils.removeNonIndexableFields(esDoc, getRetiredFields());
   }
 
   Object getEntity();
@@ -145,6 +146,16 @@ public interface SearchIndex {
   String getEntityTypeName();
 
   default Set<String> getExcludedFields() {
+    return Collections.emptySet();
+  }
+
+  /**
+   * Fields earlier releases wrote to this index and it no longer writes. The document leaves them
+   * out even when the entity carries them, and a live update, which merges into the stored
+   * document, removes them, so a document an earlier release wrote does not keep them until a
+   * reindex. Safe to call on a probe instance whose entity is null.
+   */
+  default Set<String> getRetiredFields() {
     return Collections.emptySet();
   }
 

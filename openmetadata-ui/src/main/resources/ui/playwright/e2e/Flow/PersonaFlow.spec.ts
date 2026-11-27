@@ -192,7 +192,7 @@ test.describe.serial('Persona operations', () => {
     ).toContainText(PERSONA_DETAILS.description);
 
     await expect(page.getByTestId(user.responseData.name)).toContainText(
-      user.responseData.name
+      user.getUserDisplayName()
     );
   });
 
@@ -417,7 +417,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         await expect(
           adminPage.getByTestId(user1.responseData.name)
-        ).toContainText(user1.responseData.name);
+        ).toContainText(user1.getUserDisplayName());
 
         await setPersonaAsDefault(adminPage);
       });

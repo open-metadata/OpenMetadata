@@ -297,25 +297,21 @@ const LineageConfigPage = () => {
                       </FormField>
                     </HookForm>
                   </div>
-                  <Box className="layout-row m-b-xl" justify="end" wrap="wrap">
-                    <Box
-                      className="layout-column d-flex justify-end gap-2"
-                      style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                      <Button
-                        color="secondary"
-                        data-testid="cancel-button"
-                        onClick={() => navigate(-1)}>
-                        {t('label.cancel')}
-                      </Button>
-                      <Button
-                        color="primary"
-                        data-testid="save-button"
-                        form="lineage-config"
-                        isLoading={isUpdating}
-                        type="submit">
-                        {t('label.save')}
-                      </Button>
-                    </Box>
+                  <Box className="tw:mt-6 tw:mb-8" gap={2} justify="end">
+                    <Button
+                      color="secondary"
+                      data-testid="cancel-button"
+                      onClick={() => navigate(-1)}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      color="primary"
+                      data-testid="save-button"
+                      form="lineage-config"
+                      isLoading={isUpdating}
+                      type="submit">
+                      {t('label.save')}
+                    </Button>
                   </Box>
                 </Grid.Item>
               </Grid>

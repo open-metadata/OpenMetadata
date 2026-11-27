@@ -16,8 +16,10 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.ZoneId;
 import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
@@ -30,6 +32,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 
 class PeriodicBatchEntityTriggerTest {
@@ -43,6 +46,40 @@ class PeriodicBatchEntityTriggerTest {
 
     assertNotNull(trigger);
     assertEquals("MainWorkflowTrigger", trigger.getTriggerWorkflowId());
+  }
+
+  @Test
+  void testScheduleInServerTimezoneIsAccepted() {
+    PeriodicBatchEntityTriggerDefinition triggerDef =
+        createScheduledTriggerDefinition(ZoneId.systemDefault().getId());
+
+    PeriodicBatchEntityTrigger trigger =
+        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+
+    assertNotNull(trigger);
+  }
+
+  @Test
+  void testScheduleInForeignTimezoneIsRejected() {
+    ZoneId foreign =
+        ZoneId.of("Asia/Tokyo").getRules().equals(ZoneId.systemDefault().getRules())
+            ? ZoneId.of("Europe/Berlin")
+            : ZoneId.of("Asia/Tokyo");
+    PeriodicBatchEntityTriggerDefinition triggerDef =
+        createScheduledTriggerDefinition(foreign.getId());
+
+    BadRequestException rejected =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                new PeriodicBatchEntityTrigger(
+                    "MainWorkflow", "MainWorkflowTrigger", triggerDef, true));
+
+    assertTrue(rejected.getMessage().contains(foreign.getId()));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            PeriodicBatchEntityTrigger.requireServerTimezone(triggerDef.getConfig().getSchedule()));
   }
 
   @Test
@@ -362,6 +399,27 @@ class PeriodicBatchEntityTriggerTest {
           "output": ["relatedEntity"]
         }
         """;
+    return JsonUtils.readValue(triggerJson, PeriodicBatchEntityTriggerDefinition.class);
+  }
+
+  private PeriodicBatchEntityTriggerDefinition createScheduledTriggerDefinition(String timezone) {
+    String triggerJson =
+        """
+        {
+          "type": "periodicBatchEntity",
+          "config": {
+            "schedule": {
+              "scheduleTimeline": "Custom",
+              "cronExpression": "0 2 * * *",
+              "timezone": "%s"
+            },
+            "entityTypes": ["glossaryTerm"],
+            "batchSize": 500
+          },
+          "output": ["relatedEntity"]
+        }
+        """
+            .formatted(timezone);
     return JsonUtils.readValue(triggerJson, PeriodicBatchEntityTriggerDefinition.class);
   }
 

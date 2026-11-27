@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,6 +19,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -27,13 +30,16 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -54,25 +60,25 @@ class OpenSearchVectorServiceTest {
     int current = VectorDocBuilder.CHUNK_DOC_VERSION;
 
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
-    assertEquals(OpenSearchVectorService.ChunkRefresh.REEMBED, refresh(memory, null));
+    assertEquals(AbstractVectorIndexService.ChunkRefresh.REEMBED, refresh(memory, null));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.REEMBED,
+        AbstractVectorIndexService.ChunkRefresh.REEMBED,
         refresh(memory, header("stale", current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current - 1, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Deprecated", "unanchored")));
     UUID anchorId = UUID.randomUUID();
     memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(memory, header(fingerprint, current, "Approved", anchorId.toString())));
   }
 
@@ -89,15 +95,15 @@ class OpenSearchVectorServiceTest {
     memory.withPinned(true);
     assertEquals(fingerprint, VectorDocBuilder.computeFingerprintForEntity(memory));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
 
     memory.withPinned(false).withMemoryType(ContextMemoryType.PREFERENCE);
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored", null)),
         "a chunk stamped before the kind existed is restamped");
   }
@@ -108,8 +114,95 @@ class OpenSearchVectorServiceTest {
     String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
 
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(table, header(fingerprint, VectorDocBuilder.CHUNK_DOC_VERSION, null, null, null)));
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload (used only by the {@code reembed} CLI) must
+   * refuse ontology terms: the release-aware writer needs the published release-snapshot body,
+   * and embedding from the mutable working (draft) row would publish drafts, deprecated, and
+   * not-in-active-release terms straight into the searchable ontology chunk index. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex), which passes the body into the
+   * 3-arg overload. This is the regression for the {@code reembed} draft-leak bug.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      // No chunk write, no entity-doc partial update, and crucially no embedding provider call:
+      // the guard refuses before building chunk docs, so drafts are never paid for or published.
+      verify(mockGenericClient, never()).execute(any());
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  /** The refusal must cover both ontology term types (concept and property). */
+  @Test
+  void twoArgOverloadRefusesOntologyPropertyWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyproperty", Entity.ONTOLOGY_PROPERTY);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyProperty term =
+        new OntologyProperty()
+            .withId(UUID.randomUUID())
+            .withName("code")
+            .withFullyQualifiedName("shop.code")
+            .withDescription("An order code")
+            .withDeleted(false);
+
+    vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+    verify(mockGenericClient, never()).execute(any());
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
+  }
+
+  /**
+   * A non-term entity passed to the 2-arg overload is unaffected: it still writes its chunks and
+   * entity-doc embedding. Guards against an over-broad fix that would skip every entity.
+   */
+  @Test
+  void twoArgOverloadStillWritesNonTermEntities() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("orders"),
+        "entityIndex");
+
+    assertFalse(capturedBulkTargets().isEmpty(), "a non-term entity must still write its chunks");
   }
 
   /** A recreate in flight would otherwise promote the chunks it copied before this update. */
@@ -296,7 +389,7 @@ class OpenSearchVectorServiceTest {
     setField("cachedSinkTargetAt", System.currentTimeMillis());
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
-    Logger logger = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);
@@ -317,38 +410,38 @@ class OpenSearchVectorServiceTest {
     }
   }
 
-  private static OpenSearchVectorService.ChunkRefresh refresh(
+  private static AbstractVectorIndexService.ChunkRefresh refresh(
       org.openmetadata.schema.EntityInterface<?> entity,
-      OpenSearchVectorService.ChunkHeader header) {
-    return OpenSearchVectorService.chunkRefresh(
+      AbstractVectorIndexService.ChunkHeader header) {
+    return AbstractVectorIndexService.chunkRefresh(
         entity, VectorDocBuilder.computeFingerprintForEntity(entity), header);
   }
 
   /** A header stamped with the kind {@link #refreshableMemory} has. */
-  private static OpenSearchVectorService.ChunkHeader header(
+  private static AbstractVectorIndexService.ChunkHeader header(
       String fingerprint, int docVersion, String status, String anchorId) {
     return header(fingerprint, docVersion, status, anchorId, MEMORY_KIND);
   }
 
-  private static OpenSearchVectorService.ChunkHeader header(
+  private static AbstractVectorIndexService.ChunkHeader header(
       String fingerprint,
       int docVersion,
       String status,
       String anchorId,
-      OpenSearchVectorService.MemoryKind kind) {
-    return new OpenSearchVectorService.ChunkHeader(
+      AbstractVectorIndexService.MemoryKind kind) {
+    return new AbstractVectorIndexService.ChunkHeader(
         fingerprint, 1, docVersion, status, anchorId, kind);
   }
 
-  private static final OpenSearchVectorService.MemoryKind MEMORY_KIND =
-      OpenSearchVectorService.MemoryKind.of(refreshableMemory());
+  private static final AbstractVectorIndexService.MemoryKind MEMORY_KIND =
+      AbstractVectorIndexService.MemoryKind.of(refreshableMemory());
 
   private static String jsonString(String value) {
     return value == null ? "null" : "\"" + value + "\"";
   }
 
   private void setField(String name, Object value) throws ReflectiveOperationException {
-    java.lang.reflect.Field field = OpenSearchVectorService.class.getDeclaredField(name);
+    java.lang.reflect.Field field = AbstractVectorIndexService.class.getDeclaredField(name);
     field.setAccessible(true);
     field.set(vectorService, value);
   }
@@ -822,141 +915,112 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
-  void testEnsureHybridSearchPipelineSendsCorrectRequest() throws IOException {
-    mockOpenSearchResponse("{\"acknowledged\":true}");
+  void reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent() throws IOException {
+    long updatedAt = 1_700_000_000_000L;
+    Table unchanged = reuseTable("orders", "Orders placed online", updatedAt);
+    Table textChanged = reuseTable("payments", "Customer payments by card", updatedAt);
+    // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
+    Table textChangedAsLastEmbedded =
+        reuseTable("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = reuseTable("refunds", "Refunds issued", updatedAt);
+    answerMgetsFrom(
+        Map.of(
+            textId(unchanged), storedEntityDoc(unchanged, unchanged),
+            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            textId(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
 
-    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
-        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    Map<String, JsonNode> reusable =
+        vectorService.getExistingEmbeddingsBatch(
+            "table_search_index",
+            Map.of(
+                textId(unchanged), () -> VectorDocBuilder.computeFingerprintForEntity(unchanged),
+                textId(textChanged),
+                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged),
+                textId(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
+                UUID.randomUUID().toString(),
+                    () -> VectorDocBuilder.computeFingerprintForEntity(unchanged)));
 
-    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
-
-    verify(mockGenericClient).execute(captor.capture());
-    os.org.opensearch.client.opensearch.generic.Request captured = captor.getValue();
-
-    assertEquals("PUT", captured.getMethod());
-    assertEquals("/_search/pipeline/hybrid-rrf", captured.getEndpoint());
-
-    String body =
-        new String(captured.getBody().get().bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
-    assertTrue(body.contains("\"weights\":[0.4,0.6]"));
-    assertTrue(body.contains("\"technique\":\"rrf\""));
-    assertTrue(body.contains("\"rank_constant\":30"));
-    assertTrue(body.contains("\"score-ranker-processor\""));
-    assertTrue(body.contains("\"phase_results_processors\""));
-    // The hybrid-rrf pipeline must NOT carry a collapse response processor. Collate's NLQ hybrid
-    // search applies a query-level collapse{parentId} in the request body; a pipeline-level
-    // collapse
-    // on the same field makes OpenSearch reject the request with
-    // "Cannot collapse on parentId. Results already collapsed on parentId" (HTTP 500).
-    assertFalse(body.contains("\"response_processors\""));
-    assertFalse(body.contains("\"collapse\""));
-    assertFalse(body.contains("\"parentId\""));
-  }
-
-  @Test
-  void testInlinePipelineDefinitionIsByteIdenticalToTheStoredPipelineBody() throws IOException {
-    // Hybrid ranking now travels with the query as an ad-hoc pipeline, because creating the
-    // stored one needs cluster:admin/search/pipeline/put and a search role confined to a single
-    // index prefix does not have it. Both forms must stay the same document: if they drift,
-    // deployments on the stored pipeline and deployments inlining it silently rank differently.
-    mockOpenSearchResponse("{\"acknowledged\":true}");
-    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
-        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
-
-    vectorService.ensureHybridSearchPipeline(0.4, 0.6);
-
-    verify(mockGenericClient).execute(captor.capture());
-    String storedBody =
-        new String(
-            captor.getValue().getBody().get().bodyAsBytes(),
-            java.nio.charset.StandardCharsets.UTF_8);
-    assertEquals(storedBody, OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.4, 0.6));
-  }
-
-  @Test
-  void testEnsureHybridSearchPipelineWithCustomWeights() throws IOException {
-    mockOpenSearchResponse("{\"acknowledged\":true}");
-
-    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
-        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
-
-    vectorService.ensureHybridSearchPipeline(0.3, 0.7);
-
-    verify(mockGenericClient).execute(captor.capture());
-    os.org.opensearch.client.opensearch.generic.Request captured = captor.getValue();
-
-    String body =
-        new String(captured.getBody().get().bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
-    assertTrue(
-        body.contains("\"weights\":[0.3,0.7]"),
-        "Pipeline body should contain custom weights [0.3,0.7]");
-  }
-
-  @Test
-  void testCheckHybridSearchPipelineRunsAHybridQueryWithTheInlinePipeline() throws IOException {
-    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
-    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
-
-    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
-
-    verify(mockGenericClient).execute(captor.capture());
-    Request probe = captor.getValue();
-    assertTrue(result.isEmpty(), "A query OpenSearch accepts means hybrid search can run");
-    assertEquals("POST", probe.getMethod());
-    assertEquals("/" + vectorService.getChunkIndexName() + "/_search", probe.getEndpoint());
-    assertEquals("true", probe.getParameters().get("ignore_unavailable"));
-    JsonNode body = MAPPER.readTree(probe.getBody().get().bodyAsString());
-    assertEquals(2, body.path("query").path("hybrid").path("queries").size());
+    assertEquals(java.util.Set.of(textId(unchanged)), reusable.keySet());
     assertEquals(
-        MAPPER.readTree(OpenSearchVectorService.buildHybridRrfPipelineDefinition(0.6, 0.4)),
-        body.path("search_pipeline"));
+        VectorDocBuilder.computeFingerprintForEntity(unchanged),
+        reusable.get(textId(unchanged)).path("fingerprint").asText());
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockGenericClient, times(2)).execute(sent.capture());
+    Request fingerprints = sent.getAllValues().getFirst();
+    Request embeddings = sent.getAllValues().getLast();
+    assertEquals("POST", fingerprints.getMethod());
+    assertEquals(
+        "/table_search_index/_mget?_source_includes=fingerprint", fingerprints.getEndpoint());
+    assertEquals(
+        "/table_search_index/_mget?_source_includes=fingerprint,embedding,textToLLMContext,"
+            + "textToEmbed,chunkIndex,chunkCount,parentId",
+        embeddings.getEndpoint());
+    assertEquals("{\"ids\":[\"" + textId(unchanged) + "\"]}", bodyOf(embeddings));
   }
 
-  @Test
-  void testCheckHybridSearchPipelineStaysInsideTheClusterAliasPrefix() throws IOException {
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    when(searchRepository.getClusterAlias()).thenReturn("bi4all-pt");
-    Entity.setSearchRepository(searchRepository);
-    mockOpenSearchResponse("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}");
-    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
-    try {
-      vectorService.checkHybridSearchPipeline(0.6, 0.4);
-    } finally {
-      Entity.setSearchRepository(null);
+  private static Table reuseTable(String name, String description, long updatedAt) {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("svc.db.schema." + name)
+        .withDescription(description)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static String textId(Table table) {
+    return table.getId().toString();
+  }
+
+  /** An entity doc as a reindex left it: current updatedAt, embedding of {@code embeddedAs}. */
+  private static ObjectNode storedEntityDoc(Table current, Table embeddedAs) {
+    ObjectNode doc = JsonUtils.getObjectNode();
+    doc.put("name", current.getName());
+    doc.put("updatedAt", current.getUpdatedAt());
+    doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
+    doc.putArray("embedding").add(0.5).add(0.25).add(0.125);
+    doc.put("parentId", textId(current));
+    return doc;
+  }
+
+  /** Answers an mget like the engine: only stored ids, only the requested _source fields. */
+  private void answerMgetsFrom(Map<String, ObjectNode> storedById) throws IOException {
+    when(mockGenericClient.execute(any()))
+        .thenAnswer(
+            invocation -> {
+              Request request = invocation.getArgument(0);
+              String[] sourceFields =
+                  request.getEndpoint().split("_source_includes=")[1].split(",");
+              ObjectNode answer = JsonUtils.getObjectNode();
+              for (JsonNode id : MAPPER.readTree(bodyOf(request)).path("ids")) {
+                ObjectNode stored = storedById.get(id.asText());
+                ObjectNode doc = answer.withArray("docs").addObject().put("_id", id.asText());
+                doc.put("found", stored != null);
+                if (stored != null) {
+                  ObjectNode source = doc.putObject("_source");
+                  for (String field : sourceFields) {
+                    copyField(stored, source, field);
+                  }
+                }
+              }
+              Response response = mock(Response.class);
+              when(response.getStatus()).thenReturn(200);
+              when(response.getBody())
+                  .thenReturn(
+                      Optional.of(
+                          Body.from(
+                              answer.toString().getBytes(StandardCharsets.UTF_8),
+                              "application/json")));
+              return response;
+            });
+  }
+
+  private static void copyField(ObjectNode from, ObjectNode to, String field) {
+    if (from.has(field)) {
+      to.set(field, from.get(field));
     }
-
-    verify(mockGenericClient).execute(captor.capture());
-    assertEquals(
-        "/bi4all-pt_data_asset_embeddings_chunks/_search", captor.getValue().getEndpoint());
-  }
-
-  @Test
-  void testCheckHybridSearchPipelineReportsWhyOpenSearchRejectedTheQuery() throws IOException {
-    String rejection =
-        "{\"error\":{\"type\":\"illegal_argument_exception\",\"reason\":\"sum of weights for"
-            + " combination must be equal to 1.0\"},\"status\":400}";
-    Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatus()).thenReturn(400);
-    when(mockResponse.getBody())
-        .thenReturn(
-            Optional.of(Body.from(rejection.getBytes(StandardCharsets.UTF_8), "application/json")));
-    when(mockGenericClient.execute(any())).thenReturn(mockResponse);
-
-    Optional<String> result = vectorService.checkHybridSearchPipeline(0.7, 0.7);
-
-    assertTrue(result.isPresent(), "A rejected query means hybrid search cannot run");
-    assertTrue(result.get().contains("status 400"), "Error should mention the status code");
-    assertTrue(result.get().contains("sum of weights"), "Error should carry OpenSearch's reason");
-  }
-
-  @Test
-  void testCheckHybridSearchPipelineReturnsErrorOnException() throws IOException {
-    when(mockGenericClient.execute(any())).thenThrow(new IOException("Connection refused"));
-
-    Optional<String> result = vectorService.checkHybridSearchPipeline(0.6, 0.4);
-    assertTrue(result.isPresent(), "Should return error when exception occurs");
-    assertTrue(
-        result.get().contains("Connection refused"), "Error should include exception message");
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {
@@ -985,7 +1049,7 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method m = AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
     m.setAccessible(true);
     String body = (String) m.invoke(vectorService);
 
@@ -1018,7 +1082,8 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
-    Method method = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method method =
+        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 

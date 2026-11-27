@@ -163,6 +163,9 @@ describe('TestCaseStatusModal component', () => {
       await screen.findByTestId('test-case-failure-reason')
     ).toBeInTheDocument();
     expect(screen.getByLabelText('RichTextEditor')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /label.status/ })
+    ).toHaveTextContent('label.resolved');
   });
 
   it('should call onCancel function, on click of cancel button', async () => {
@@ -205,7 +208,7 @@ describe('TestCaseStatusModal component', () => {
     expect(transitionIncident).not.toHaveBeenCalled();
   });
 
-  it('should only offer Assigned and Resolved when the incident is Assigned', async () => {
+  it('should offer Assigned, New, Ack and Resolved when the incident is Assigned', async () => {
     render(
       <TestCaseStatusModal
         {...mockProps}
@@ -222,7 +225,7 @@ describe('TestCaseStatusModal component', () => {
 
     expect(
       screen.getAllByRole('option').map((option) => option.textContent)
-    ).toEqual(['label.assigned', 'label.resolved']);
+    ).toEqual(['label.assigned', 'label.new', 'label.ack', 'label.resolved']);
   });
 
   it('should require reason and comment to resolve, then send them', async () => {

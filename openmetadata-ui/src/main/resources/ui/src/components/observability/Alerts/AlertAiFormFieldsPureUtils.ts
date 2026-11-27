@@ -198,6 +198,33 @@ export const getAlertAiSectionVisibility = ({
 });
 
 /**
+ * A saved alert that is switched off keeps its fields read-only until it is switched back on; the
+ * switch itself and Save/Cancel stay active. A new alert stays editable when switched off, so it
+ * can still be filled in and saved disabled. A view-only form is read-only whatever the state.
+ */
+export const getAlertFieldAccess = ({
+  alert,
+  isEditMode = false,
+  isViewOnly,
+  value,
+}: {
+  alert?: ModifiedEventSubscription;
+  isEditMode?: boolean;
+  isViewOnly?: boolean;
+  value: AlertAiFormValue;
+}) => {
+  const isAlertEnabled = value.enabled !== false;
+  const isFieldDisabled =
+    Boolean(isViewOnly) || (isEditMode && !isAlertEnabled);
+
+  return {
+    isAlertEnabled,
+    isFieldDisabled,
+    areRulesReadOnly: isFieldDisabled || alert?.hasRulesWithoutSelections,
+  };
+};
+
+/**
  * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
  * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
  * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are

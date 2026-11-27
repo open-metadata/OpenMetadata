@@ -12,9 +12,11 @@
  */
 
 import { Node } from 'reactflow';
+import { TEST_CASE_RESOLUTION_WORKFLOW_NAME } from '../constants/WorkflowBuilder.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+import { Type } from '../generated/governance/workflows/workflowDefinition';
 import {
   buildEntityFieldGroups,
   buildFieldOptions,
@@ -23,7 +25,43 @@ import {
   getGitSinkTriggerNodeConfig,
   getTriggerDataAssets,
   isGitSinkNode,
+  isIncidentSettingsWorkflow,
 } from './WorkflowConfigUtils';
+
+describe('WorkflowConfigUtils.isIncidentSettingsWorkflow', () => {
+  it.each([
+    {
+      name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+      type: Type.NoOp,
+      expected: true,
+    },
+    {
+      name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+      type: Type.EventBasedEntity,
+      expected: false,
+    },
+    { name: 'GlossaryApproval', type: Type.NoOp, expected: false },
+    { name: 'GlossaryApproval', type: Type.EventBasedEntity, expected: false },
+  ])(
+    'identifies $name with $type trigger as $expected',
+    ({ name, type, expected }) => {
+      expect(
+        isIncidentSettingsWorkflow({ name, description: '', trigger: { type } })
+      ).toBe(expected);
+    }
+  );
+
+  it('does not expose incident settings before a workflow or trigger is loaded', () => {
+    expect(isIncidentSettingsWorkflow()).toBe(false);
+    expect(isIncidentSettingsWorkflow(null)).toBe(false);
+    expect(
+      isIncidentSettingsWorkflow({
+        name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+        description: '',
+      })
+    ).toBe(false);
+  });
+});
 
 describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
   it('shows a standard field by its bare name', () => {

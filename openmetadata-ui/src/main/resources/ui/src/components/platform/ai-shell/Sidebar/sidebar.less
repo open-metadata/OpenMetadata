@@ -320,7 +320,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: calc(var(--tw-spacing) * 8);
+    // Tall enough for the wordmark at the classic sidebar's 40px.
+    height: calc(var(--tw-spacing) * 10);
     flex-shrink: 0;
     gap: 8px;
   }
@@ -338,7 +339,7 @@
     // Height-constrain the wordmark; width follows its own aspect (works for
     // any brand logo) and is capped so a very wide mark can't overflow.
     svg {
-      height: calc(var(--tw-spacing) * 6);
+      height: calc(var(--tw-spacing) * 10);
       width: auto;
       max-width: 100%;
     }
@@ -1022,6 +1023,14 @@
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;
 
+    // A TooltipTrigger item hides its outline (tw:outline-hidden), so keyboard focus, which
+    // react-aria marks with data-focus-visible, draws its own ring.
+    &[data-focus-visible],
+    &:focus-visible {
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
+    }
+
     &:not(&--active):not(&--interactive-icon):not(&--recent-chats):hover {
       background: @ask-bg-hover;
       color: @ask-text-tertiary;
@@ -1412,6 +1421,14 @@
     cursor: pointer;
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;
+
+    // A TooltipTrigger item hides its outline (tw:outline-hidden), so keyboard focus, which
+    // react-aria marks with data-focus-visible, draws its own ring.
+    &[data-focus-visible],
+    &:focus-visible {
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
+    }
 
     &:not(&--active):hover {
       background: @ask-bg-hover;

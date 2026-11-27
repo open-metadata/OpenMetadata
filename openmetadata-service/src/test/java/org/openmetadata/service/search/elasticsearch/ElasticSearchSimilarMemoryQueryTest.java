@@ -65,7 +65,8 @@ class ElasticSearchSimilarMemoryQueryTest {
     assertEquals(List.of("context_memory_search_index"), request.get().index());
     assertEquals(20, request.get().size());
     assertTrue(request.get().sort().isEmpty(), "hits come back best ranked first");
-    JsonNode bool = requestJson().path("query").path("bool");
+    JsonNode query = requestJson().path("query").path("bool");
+    JsonNode bool = query.path("must").get(0).path("bool");
     JsonNode ranked = bool.path("must").get(0).path("multi_match");
     assertEquals(TEXT, ranked.path("query").asText());
     assertEquals("cross_fields", ranked.path("type").asText());
@@ -75,6 +76,8 @@ class ElasticSearchSimilarMemoryQueryTest {
         List.of("question", "answer", "title", "summary"),
         JsonUtils.convertValue(ranked.path("fields"), List.class));
     assertTrue(bool.path("filter").get(0).toString().contains("FileExtraction"));
+    assertEquals(
+        Entity.AUDIT_REPORT, query.at("/filter/0/bool/must_not/0/term/entityType/value").asText());
     assertFalse(
         requestJson().toString().contains(ContextMemoryIndex.UNANCHORED),
         "no org-wide default hides a memory anchored to its file");

@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import MyDataPage from './MyDataPage.component';
 
@@ -88,7 +89,6 @@ jest.mock('../../rest/userAPI', () => ({
 }));
 
 let mockIsWelcomeVisible = true;
-let mockIsTourActive = false;
 
 jest.mock('../../hooks/useWelcomeStore', () => ({
   useWelcomeStore: jest
@@ -96,24 +96,15 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
     .mockImplementation(() => ({ isWelcomeVisible: mockIsWelcomeVisible })),
 }));
 
-jest.mock('../../hooks/product-tour/useProductTourStore', () => ({
-  useProductTourStore: jest
-    .fn()
-    .mockImplementation((selector: (state: { isActive: boolean }) => boolean) =>
-      selector({ isActive: mockIsTourActive })
-    ),
-}));
-
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.clear();
     mockIsWelcomeVisible = true;
-    mockIsTourActive = false;
     jest.clearAllMocks();
   });
 
   it('should only display WelcomeScreen when user logs in for the first time', async () => {
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     // WelcomeScreen is lazy-loaded, so it arrives a tick after the first paint.
     expect(await screen.findByText('WelcomeScreen')).toBeInTheDocument();
@@ -121,7 +112,7 @@ describe('MyDataPage component', () => {
   });
 
   it('should display the landing page after the WelcomeScreen is closed', async () => {
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     // Not awaited: this repo is on userEvent's v13-style synchronous API, and
     // awaiting the click hangs on its internal timer advance.
@@ -131,20 +122,10 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
   });
 
-  it('should not show the WelcomeScreen on the tour, even to a first-time user', async () => {
-    mockIsTourActive = true;
-
-    render(<MyDataPage />);
-
-    // The welcome screen would take the place of the landing page the tour highlights.
-    expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
-    expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
-  });
-
   it('should skip the WelcomeScreen for a user who has already seen it', () => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
 
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
     expect(screen.getByTestId('home-landing-page')).toBeInTheDocument();
@@ -155,7 +136,7 @@ describe('MyDataPage component', () => {
   it('should claim the My Data tab title for the landing page', () => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
 
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('document-title')).toHaveTextContent(
       'label.my-data'
@@ -167,7 +148,7 @@ describe('MyDataPage component', () => {
   it('should render the landing page inside the white surface panel', () => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
 
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     const surface = screen.getByTestId('home-page-surface');
 
@@ -178,7 +159,7 @@ describe('MyDataPage component', () => {
   it('should wrap the landing page in the asset LimitWrapper', () => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
 
-    render(<MyDataPage />);
+    render(<MyDataPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('LimitWrapper')).toBeInTheDocument();
   });

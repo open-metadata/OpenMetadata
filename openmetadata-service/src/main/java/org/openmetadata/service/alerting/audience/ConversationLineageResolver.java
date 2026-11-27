@@ -36,9 +36,4 @@ public class ConversationLineageResolver implements EntityLineageResolver {
     EntityReference entityReference = conversation == null ? null : conversation.getEntityRef();
     return entityReference == null ? Set.of() : Set.of(entityReference);
   }
-
-  @Override
-  public String getEntityType() {
-    return Entity.CONVERSATION;
-  }
 }

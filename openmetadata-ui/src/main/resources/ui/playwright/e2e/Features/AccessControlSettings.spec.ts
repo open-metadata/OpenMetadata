@@ -240,7 +240,7 @@ test.describe(
 
         await test.step('Teams tab shows empty state', async () => {
           await clickDetailTab(page, 'teams');
-          await expect(page.getByText('No Teams found')).toBeVisible();
+          await expect(page.getByText('No Teams Found')).toBeVisible();
         });
 
         await test.step('Users tab shows pre-added user', async () => {

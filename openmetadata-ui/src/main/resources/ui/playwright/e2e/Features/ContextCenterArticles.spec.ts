@@ -25,6 +25,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
   createNewPage,
@@ -43,6 +44,8 @@ import {
   createArticleViaApi,
   createMemoryViaApi,
   deleteArticleByFqn,
+  expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   getArticleFqnFromUrl,
   getLoggedInUser,
   getMemoryStatus,
@@ -1253,6 +1256,64 @@ test.describe('Context Center Articles', () => {
     }
   });
 
+  // A Collate server runs with memory extraction on, so these states exist only on OSS.
+  if (process.env.PLAYWRIGHT_IS_OSS) {
+    test('an article written while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
+      page,
+      browser,
+      dataConsumerPage,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const articleName = `cc_not_extracted_article_${uuid()}`;
+      try {
+        await expectMemoryExtractionOff(apiContext);
+        const article = await createArticleViaApi(apiContext, {
+          name: articleName,
+          displayName: `Not extracted ${uuid()}`,
+        });
+        const { neverExtracted } = await okJson<{ neverExtracted?: boolean }>(
+          await apiContext.get(
+            `/api/v1/contextCenter/pages/name/${encodeURIComponent(
+              article.fullyQualifiedName
+            )}`,
+            { params: { fields: 'neverExtracted' } }
+          ),
+          `Read whether ${article.fullyQualifiedName} was extracted`
+        );
+
+        expect(neverExtracted).toBe(true);
+
+        await navigateToArticle(page, article.fullyQualifiedName);
+        const panel = page.getByTestId('knowledge-page-right-panel');
+        await expect(panel.getByTestId('article-status-badge')).toHaveText(
+          'Not processed'
+        );
+        const extract = panel.getByTestId('memory-extraction-btn');
+        await expect(extract).toHaveText('Extract');
+        await expect(extract).toBeDisabled();
+        await expectMemoryExtractionOffTooltip(page);
+
+        await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
+        const consumerPanel = dataConsumerPage.getByTestId(
+          'knowledge-page-right-panel'
+        );
+        await expect(
+          consumerPanel.getByTestId('article-status-badge')
+        ).toHaveText('Not processed');
+        await expect(
+          consumerPanel.getByTestId('memory-extraction-btn')
+        ).toHaveCount(0);
+      } finally {
+        try {
+          await deleteArticleByFqn(apiContext, articleName);
+        } finally {
+          await afterAction();
+        }
+      }
+    });
+  }
+
   test('Article detail layout, drawer, activity tab, and version page work', async ({
     page,
     browser,
@@ -1894,9 +1955,13 @@ test.describe('Context Center Articles', () => {
       test.slow();
 
       const newDescription = `New description ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        // Keep A unsaved until the test returns to it. A save also reloads the
+        // hierarchy from its first page, dropping article B while it is scrolled to.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page.fill('.om-block-editor', newDescription);
         await waitForDraftPersisted(page, draftArticleA.id, newDescription);
       });
@@ -1928,6 +1993,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Navigate back to Article A — should show updated description', async () => {
+        await unblockAutoSave();
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
         await waitForDraftSyncedIntoEditor(page, newDescription);
@@ -1952,30 +2018,39 @@ test.describe('Context Center Articles', () => {
     }) => {
       test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        // Keep A unsaved until the test returns to it. A save also reloads the
+        // hierarchy from its first page, dropping article B while it is scrolled to.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
         // The 'Unsaved' badge is the editor's own signal that the edit has been
         // registered, so it is the thing to wait on before navigating away.
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.getByRole('link', { name: 'Articles' }).click();
-      });
+        await expect
+          .poll(async () => {
+            const drafts = await readDraftStore(page);
 
-      const updateDisplayNameResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/contextCenter/pages/') &&
-          response.request().method() === 'PATCH'
-      );
+            return (
+              drafts[draftArticleA.id] as { displayName?: string } | undefined
+            )?.displayName;
+          })
+          .toBe(newDisplayName);
+        await page
+          .getByTestId('breadcrumb')
+          .getByRole('link', { name: 'Articles' })
+          .click();
+      });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
         const node = await scrollHierarchyToNode(
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
-        await updateDisplayNameResponse;
         const articleLoaded = page.waitForResponse((resp) =>
           resp.url().includes('/api/v1/contextCenter/pages/name/')
         );
@@ -1996,6 +2071,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Navigate back to Article A — should show updated display name', async () => {
+        await unblockAutoSave();
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 

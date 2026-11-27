@@ -28,6 +28,11 @@
     display: flex;
     flex-direction: column;
     gap: @size-lg;
+
+    // @border-color-7 is a fixed near-white that glares on dark surfaces.
+    .dark-mode & {
+      border-color: var(--tw-border-color-secondary);
+    }
   }
 }
 

@@ -29,9 +29,11 @@ export const ENTITY_TABS_FILL_COLUMN_CLASS = [
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs]:flex-col',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs]:flex-[1_0_auto]',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs>*]:flex-[1_0_auto]',
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex',
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-col',
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-[1_0_auto]',
+  // Only the entity page's own panel: a tab's inner Tabs (e.g. the knowledge
+  // graph drawer) must keep its own flex sizing, or it can never shrink and scroll.
+  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]:not(.entity-details-page-tabs_[role=tabpanel]_[role=tabpanel])]:flex',
+  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]:not(.entity-details-page-tabs_[role=tabpanel]_[role=tabpanel])]:flex-col',
+  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]:not(.entity-details-page-tabs_[role=tabpanel]_[role=tabpanel])]:flex-[1_0_auto]',
   // A spinner keeps its square size; growing it stretches it into an ellipse.
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]>*:not(.loader)]:flex-[1_0_auto]',
+  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]:not(.entity-details-page-tabs_[role=tabpanel]_[role=tabpanel])>*:not(.loader)]:flex-[1_0_auto]',
 ].join(' ');

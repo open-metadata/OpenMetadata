@@ -169,9 +169,8 @@ public class ChildFieldPaginationIT {
   }
 
   @Test
-  void dataModelColumns_emptyCollection_frozenQuirk(TestNamespace ns) throws Exception {
-    // The empty-collection response is a quirk, not the general shape: before is "0" and after is
-    // offset + limit even though there is nothing to page to.
+  void dataModelColumns_emptyCollection_hasNoCursors(TestNamespace ns) throws Exception {
+    // ADR:2026-11-25-empty-child-page-has-no-cursors
     DashboardDataModel dataModel = createDataModelWithColumns(ns);
     OpenMetadataClient client = SdkClients.adminClient();
     String response =
@@ -187,8 +186,12 @@ public class ChildFieldPaginationIT {
 
     assertEquals(0, root.get("data").size());
     assertEquals(0, root.get("paging").get("total").asInt());
-    assertEquals(cursor(0), root.get("paging").get("before").asText());
-    assertEquals(cursor(50), root.get("paging").get("after").asText());
+    assertFalse(
+        root.get("paging").hasNonNull("before"),
+        "an empty collection must not advertise a before cursor");
+    assertFalse(
+        root.get("paging").hasNonNull("after"),
+        "an empty collection must not advertise an after cursor");
   }
 
   /** Entity type to the collection segment its paginated child endpoint lives under. */

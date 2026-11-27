@@ -16,11 +16,11 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import { formatDuration } from '../../../../utils/date-time/DateTimeUtils';
 import {
   formatDifference,
   formatExpectation,
   formatFound,
-  formatRunDuration,
   getComparisonBars,
   getFoundValue,
   getRunDetails,
@@ -311,11 +311,11 @@ describe('RunDetailsCard utils', () => {
     [59_999, '1m'],
     [95000, '1m 35s'],
   ])('formats a %dms duration as %s', (milliseconds, text) => {
-    expect(formatRunDuration(milliseconds)).toBe(text);
+    expect(formatDuration(milliseconds)).toBe(text);
   });
 
   it('shows no duration for a negative one, which only clock skew produces', () => {
-    expect(formatRunDuration(-500)).toBe('—');
+    expect(formatDuration(-500)).toBe('—');
   });
 
   it.each([

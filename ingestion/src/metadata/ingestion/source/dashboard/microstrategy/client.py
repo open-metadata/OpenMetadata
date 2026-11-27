@@ -10,36 +10,153 @@
 #  limitations under the License.
 """
 REST Auth & Client for MicroStrategy
+
+Every read raises on failure instead of returning an empty result: the source decides what a
+failure means, and an empty list read as "nothing exists" would drive stale deletion.
 """
 
+from __future__ import annotations
+
 import traceback
+from collections import OrderedDict
+from collections.abc import Hashable
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
+from urllib.parse import quote
 
 import requests
+from pydantic import ValidationError
 
-from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
-    MicroStrategyConnection,
-)
 from metadata.ingestion.connections.source_api_client import TrackedREST
-from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.ingestion.source.dashboard.microstrategy.models import (
-    AuthHeaderCookie,
-    MstrDashboard,
-    MstrDashboardDetails,
-    MstrDashboardList,
     MstrProject,
-    MstrProjectList,
+    MstrReport,
+    MstrSearchPage,
     MstrSearchResult,
-    MstrSearchResultList,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+        MicroStrategyConnection,
+    )
+
 logger = ingestion_logger()
 
-API_VERSION = "MicroStrategyLibrary/api"
-HEADERS = {"Content-Type": "application/json"}
+# ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged (v2: Library path)
+DEFAULT_LIBRARY_PATH = "MicroStrategyLibrary"
+AUTH_TOKEN_HEADER = "X-MSTR-AuthToken"
+PROJECT_HEADER = "X-MSTR-ProjectID"
 APPLICATION_TYPE = 35
+DOSSIER_TYPE = 55
+REPORT_TYPE = 3
+# Report subtypes of Data Import (EMMA) cubes, whose objects the modeling API does not serve
+DATA_IMPORT_CUBE_SUBTYPES = frozenset({779, 780})
+# ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
+SEARCH_PAGE_SIZE = 500
+CACHE_SIZE = 512
+# The most metrics read to resolve one metric into its parts, so a deep definition stays bounded.
+MAX_METRIC_PARTS = 100
+LOGIN_TIMEOUT = (10, 60)
+# The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
+# fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
+ENGINE_STEPS_TRAILER = "[Analytical engine calculation steps:"
+# The sqlView endpoint's answer for a dataset that is a report rather than an Intelligent Cube
+NOT_A_CUBE = "Only cube is supported to get SQL view"
+# Its answer for a Live Intelligent Cube, which keeps no data and so has no stored SQL
+LIVE_CUBE = "Live Intelligent Cubes cannot be published"
+
+T = TypeVar("T")
+K = TypeVar("K", bound=Hashable)
+
+
+def strip_engine_steps(sql: str | None) -> str | None:
+    """The cube SQL without the Analytical engine calculation steps that follow the statement"""
+    return sql.split(ENGINE_STEPS_TRAILER, 1)[0].rstrip() if sql else sql
+
+
+def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None], what: str) -> T | None:
+    """
+    Read through a bounded LRU cache. A failure is logged and cached as None, so a value that
+    cannot be read is not requested again for every dossier that uses it.
+    """
+    if key in cache:
+        cache.move_to_end(key)
+        return cache[key]
+    try:
+        value = fetch()
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning("Could not read %s: %s", what, exc)
+        value = None
+    cache[key] = value
+    if len(cache) > CACHE_SIZE:
+        cache.popitem(last=False)
+    return value
+
+
+class CubeSql(NamedTuple):
+    """
+    The SQL a dataset reads, and the cube it was read from: the source cube of a report built on
+    one, else the dataset itself. Cached together, so the cube is known whenever the SQL is.
+    """
+
+    cube: str
+    sql: str
+
+
+def _tree_values(tree: Any) -> Iterable[str]:
+    """The column names an expression tree reads, at any depth"""
+    if isinstance(tree, dict):
+        if tree.get("columnName"):
+            yield tree["columnName"]
+        for child in tree.get("children") or []:
+            yield from _tree_values(child)
+
+
+def _token_references(tokens: Any) -> Iterable[tuple[str, str, str]]:
+    """
+    (subtype, id, name) of each object an expression's resolved tokens reference. Tokens, not the
+    tree: a metric built in Workstation wraps its aggregation in an embedded object that no endpoint
+    serves, and only the tokens resolve the fact inside it.
+    """
+    for token in tokens if isinstance(tokens, list) else ():
+        target = token.get("target") if isinstance(token, dict) and token.get("type") == "object_reference" else None
+        if isinstance(target, dict) and target.get("objectId"):
+            yield target.get("subType") or "", target["objectId"], target.get("name") or ""
+
+
+class MetricDefinition(NamedTuple):
+    """
+    A schema metric as the modeling API defines it: the column alias set on it, which the SQL
+    generator names its projection after in place of the metric's name, and the (subtype, id, name)
+    of each object its expression references.
+    """
+
+    column_alias: str | None
+    references: tuple[tuple[str, str, str], ...]
+
+
+class MetricParts(NamedTuple):
+    """
+    What a schema metric is built from, through every metric it references: the ids of the facts
+    it aggregates, and the (id, SQL name) of the metrics it references. A metric's SQL name is its
+    column alias when one is set, else its name.
+    """
+
+    facts: frozenset[str]
+    metrics: frozenset[tuple[str, str]]
+
+
+class MicroStrategyApiError(Exception):
+    """A MicroStrategy REST call failed or answered with an unexpected body"""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class MicroStrategyClient:
@@ -47,218 +164,478 @@ class MicroStrategyClient:
     Client Handling API communication with MicroStrategy
     """
 
-    def _get_base_url(self, path=None):
-        if not path:
-            return f"{clean_uri(str(self.config.hostPort))}/{API_VERSION}"
-        return f"{clean_uri(str(self.config.hostPort))}/{API_VERSION}/{path}"
-
     def __init__(
         self,
         config: MicroStrategyConnection,
+        verify: bool | str | None = None,
+        cert: tuple[str, str] | None = None,
     ):
         self.config = config
+        self._verify = verify
+        self._cert = cert
+        self._base_url = clean_uri(str(self.config.hostPort))
+        # The Library web app is usually served at /MicroStrategyLibrary, but a server can run it,
+        # or a second copy of it, under another name.
+        library_path = (self.config.libraryPath or "").strip().strip("/") or DEFAULT_LIBRARY_PATH
+        self.library_url = f"{self._base_url}/{library_path}"
+        self._api_version = f"{library_path}/api"
+        self._cube_sql: OrderedDict[str, CubeSql | None] = OrderedDict()
+        self._report_cubes: OrderedDict[str, str | None] = OrderedDict()
+        self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
+        self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
+        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
+        self._failures_reported: set[str] = set()
+        self._metric_definitions: OrderedDict[str, MetricDefinition | None] = OrderedDict()
+        self._fact_columns: OrderedDict[str, frozenset[tuple[str, str]] | None] = OrderedDict()
+        self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
+        # Reading schema objects needs modeling privileges; their absence is reported once.
+        self.modeling_denied = False
+        # Objects dropped for not matching the expected shape. The source reads it to tell a
+        # complete listing from a partial one, since a dropped dossier would look deleted.
+        self.skipped_objects = 0
+        self.client = self._login()
 
-        self.auth_params = self._get_auth_header_and_cookies()
-
-        client_config = ClientConfig(
-            base_url=clean_uri(str(self.config.hostPort)),
-            api_version=API_VERSION,
-            extra_headers=self.auth_params.auth_header if self.auth_params else None,
-            allow_redirects=True,
-            cookies=self.auth_params.auth_cookies if self.auth_params else None,
-        )
-
-        self.client = TrackedREST(client_config, source_name="microstrategy")
-
-    def get_auth_params(self) -> AuthHeaderCookie:
+    def _login(self) -> TrackedREST:
         """
-        Test whether we can fetch auth_token from the api
+        Open a session and build a REST client that sends only its token and cookies.
+
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
         """
-        data = {
-            "username": self.config.username,
-            "password": self.config.password.get_secret_value(),
+        data: dict[str, Any] = {
             "loginMode": int(self.config.loginMode),
             "applicationType": APPLICATION_TYPE,
         }
-        response = requests.post(url=self._get_base_url("auth/login"), json=data, headers=HEADERS, timeout=60)
-        response.raise_for_status()
-        if not response.ok or response.status_code != 204 or "X-MSTR-AuthToken" not in response.headers:
-            raise SourceConnectionException(
-                f"Failed to Fetch Token, please validate your credentials and login_mode : {response.text}"
-            )
-        return AuthHeaderCookie(auth_header=response.headers, auth_cookies=response.cookies)
-
-    def _get_auth_header_and_cookies(self) -> AuthHeaderCookie | None:
-        """
-        Send a request to authenticate the user and get headers and
-
-        To know about the data params below please visit
-        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
-        """
+        if self.config.username:
+            data["username"] = self.config.username
+        if self.config.password:
+            data["password"] = self.config.password.get_secret_value()
+        response = requests.post(
+            url=f"{self.library_url}/api/auth/login",
+            json=data,
+            timeout=LOGIN_TIMEOUT,
+            verify=self._verify if self._verify is not None else True,
+            cert=self._cert,
+        )
         try:
-            auth_data = self.get_auth_params()
-            if auth_data:
-                self._set_api_session(auth_data)
-                return auth_data
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the auth header and cookies due to : [{exc}]")
-        return None
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            hint = (
+                f"No MicroStrategy Library API at {self.library_url}/api; check the Host and Port and the Library Path."
+                if response.status_code == 404
+                else "Check the username, password and Login Mode (1 Standard, 8 Anonymous, 16 LDAP)."
+            )
+            raise MicroStrategyApiError(
+                f"Login failed with HTTP {response.status_code}: {response.text[:500]}. {hint}"
+            ) from exc
+        token = response.headers.get(AUTH_TOKEN_HEADER)
+        if not token:
+            raise MicroStrategyApiError(
+                f"Login answered HTTP {response.status_code} without an {AUTH_TOKEN_HEADER} header; "
+                f"check that Host and Port is the server root and Library Path is the app at {self.library_url}."
+            )
+        return TrackedREST(
+            ClientConfig(
+                base_url=self._base_url,
+                api_version=self._api_version,
+                extra_headers={AUTH_TOKEN_HEADER: token},
+                cookies=response.cookies,
+                allow_redirects=True,
+                verify=self._verify,
+                cert=self._cert,
+            ),
+            source_name="microstrategy",
+        )
 
-    def _set_api_session(self, auth_data: AuthHeaderCookie) -> bool:
-        """
-        Set the user api session to active this will keep the connection alive
-        """
-        api_session = requests.put(
-            url=self._get_base_url("sessions"),
-            headers=auth_data.auth_header,
-            cookies=auth_data.auth_cookies,
-            timeout=60,
-        )
-        if api_session.ok:
-            logger.info(f"Connection Successful User {self.config.username} is Authenticated")
-            return True
-        raise requests.ConnectionError(
-            "Connection Failed, Failed to set an api session, Please validate the credentials"
-        )
+    def _get(self, path: str, params: dict | None = None, project_id: str | None = None) -> Any:
+        """GET that logs in again once when the session expired, and raises on any failure."""
+        headers = {"Content-Type": "application/json"}
+        if project_id:
+            headers[PROJECT_HEADER] = project_id
+        try:
+            response = self.client.get(path, data=params, headers=dict(headers))
+        except APIError as exc:
+            if exc.status_code != 401:
+                raise MicroStrategyApiError(f"GET {path} failed: {exc}", exc.status_code) from exc
+            logger.info("MicroStrategy session expired, logging in again")
+            self.client = self._login()
+            try:
+                response = self.client.get(path, data=params, headers=dict(headers))
+            except APIError as retry_exc:
+                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}", retry_exc.status_code) from retry_exc
+        if response is None:
+            raise MicroStrategyApiError(f"GET {path} returned no response")
+        return response
 
     def close_api_session(self) -> None:
         """
         Closes the active api session
         """
         try:
-            close_api_session = self.client.post(
-                path="/auth/logout",
-            )
-            if close_api_session.ok:
-                logger.info("API Session Closed Successfully")
-
+            self.client.post(path="/auth/logout", retries=0)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to close the api sesison due to [{exc}]")
+            logger.warning("Failed to close the MicroStrategy API session: %s", exc)
 
-    def is_project_name(self) -> bool:
-        return bool(self.config.projectName)
+    def get_session_info(self) -> Any:
+        """Read the session the token opened, proving it is valid"""
+        return self._get("/sessions")
 
     def get_projects_list(self) -> list[MstrProject]:
         """
         Get List of all projects
         """
-        try:
-            resp_projects = self.client.get(
-                path="/projects",
-            )
+        if self.config.projectName:
+            return [self.get_project_by_name(self.config.projectName)]
+        response = self._get("/projects")
+        if not isinstance(response, list):
+            raise MicroStrategyApiError(f"Unexpected /projects response: {str(response)[:200]}")
+        return self._validate_each(response, MstrProject, "project")
 
-            project_list = MstrProjectList(projects=resp_projects)
-            return project_list.projects  # noqa: TRY300
+    def get_project_by_name(self, project_name: str) -> MstrProject:
+        return MstrProject.model_validate(self._get(f"/projects/{quote(project_name, safe='')}"))
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the project list due to [{exc}]")
-
-        return []
-
-    def get_project_by_name(self) -> MstrProject | None:
+    def iter_search_results(
+        self, project_id: str, object_type: int = DOSSIER_TYPE, page_size: int = SEARCH_PAGE_SIZE
+    ) -> Iterable[MstrSearchResult]:
         """
-        Get Project By Name
+        Page through the quick search of one project.
+
+        The project is scoped by the X-MSTR-ProjectID header: a ``project_id`` query parameter
+        is ignored and searches every project the user can read.
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Browsing/doQuickSearch
         """
-        try:
-            resp_projects = self.client.get(
-                path=f"/projects/{self.config.projectName}",
-            )
-
-            project = MstrProject.model_validate(resp_projects)
-            return project  # noqa: RET504, TRY300
-
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error("Failed to fetch the project list")
-
-        return None
-
-    def get_search_results_list(self, project_id, object_type) -> list[MstrSearchResult]:
-        """
-        Get Search Results
-
-        To know about the data params below please visit
-        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html?#/Browsing/doQuickSearch
-        """
-        try:
-            data = {
-                "project_id": project_id,
+        offset = 0
+        while True:
+            params = {
                 "type": object_type,
                 "getAncestors": False,
-                "offset": 0,
-                "limit": -1,
+                "offset": offset,
+                "limit": page_size,
                 "certifiedStatus": "ALL",
                 "isCrossCluster": False,
+                # Hidden dossiers are not ingested.
                 "result.hidden": False,
             }
-            resp_results = self.client.get(
-                path="/searches/results",
-                data=data,
+            page = MstrSearchPage.model_validate(self._get("/searches/results", params=params, project_id=project_id))
+            results = page.result or []
+            yield from self._validate_each(results, MstrSearchResult, "search result")
+            offset += len(results)
+            # Without totalItems, only a short page proves the search is exhausted.
+            exhausted = offset >= page.totalItems if page.totalItems is not None else len(results) < page_size
+            if not results or exhausted:
+                return
+
+    def get_dashboard_details(self, project_id: str, dashboard_id: str) -> dict[str, Any]:
+        """
+        Get the raw dossier definition
+        """
+        response = self._get(f"/v2/dossiers/{dashboard_id}/definition", project_id=project_id)
+        if not isinstance(response, dict):
+            raise MicroStrategyApiError(f"Unexpected definition of dossier {dashboard_id}: {str(response)[:200]}")
+        return response
+
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> CubeSql | None:
+        """
+        Get the SQL of a dataset, cached for the dossiers that share it. A dataset that is a report
+        built on an Intelligent Cube reads that cube's SQL: the SQL view serves cubes only. A
+        dataset whose SQL cannot be read is cached as None too, so it is not requested again for
+        every dossier using it.
+        """
+
+        def fetch() -> CubeSql | None:
+            try:
+                return self._sql_view(project_id, cube_id)
+            except MicroStrategyApiError as exc:
+                if NOT_A_CUBE not in str(exc):
+                    raise
+            source_cube = self.get_report_cube(project_id, cube_id)
+            if source_cube is None:
+                # Its definition could not be read, and that was logged.
+                return None
+            if source_cube and source_cube != cube_id:
+                logger.info(
+                    "Dataset %s is a report on Intelligent Cube %s: reading that cube's SQL", cube_id, source_cube
+                )
+                # The source is a cube: its SQL is read as is, never resolved as a report again.
+                return cached(
+                    self._cube_sql,
+                    source_cube,
+                    lambda: self._sql_view(project_id, source_cube),
+                    f"the SQL of cube {source_cube}",
+                )
+            self._warn_report_without_sql(project_id, cube_id)
+            return None
+
+        return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
+
+    def _sql_view(self, project_id: str, cube_id: str) -> CubeSql | None:
+        """A cube's SQL. A Live cube has none, whether it is a dataset or a report's source."""
+        try:
+            response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+        except MicroStrategyApiError as exc:
+            if LIVE_CUBE not in str(exc):
+                raise
+            logger.warning(
+                "Cube %s is a Live Intelligent Cube: MicroStrategy keeps no copy of its data and"
+                " writes its SQL only when it queries the warehouse, so it has no lineage",
+                cube_id,
+            )
+            return None
+        sql = strip_engine_steps(response.get("sqlStatement"))
+        return CubeSql(cube=cube_id, sql=sql) if sql else None
+
+    def get_report_cube(self, project_id: str, report_id: str) -> str | None:
+        """
+        The Intelligent Cube a report is built on: an empty string for a report that queries the
+        warehouse, None when the report's definition cannot be read.
+        """
+
+        def fetch() -> str | None:
+            report = MstrReport.model_validate(self._get(f"/v2/reports/{report_id}", project_id=project_id))
+            return report.source.id if report.source else ""
+
+        return cached(self._report_cubes, report_id, fetch, f"the source of report {report_id}")
+
+    def _warn_report_without_sql(self, project_id: str, report_id: str) -> None:
+        """
+        A report that queries the warehouse has SQL only once it runs, and running it would query
+        the warehouse. A prompted one would also need its prompts answered.
+        """
+        try:
+            prompted = bool(self._get(f"/reports/{report_id}/prompts", project_id=project_id))
+        except MicroStrategyApiError:
+            logger.debug(traceback.format_exc())
+            prompted = False
+        kind = "a prompted report" if prompted else "a report"
+        logger.warning(
+            "Dataset %s is %s on warehouse tables, not on an Intelligent Cube: MicroStrategy writes its SQL"
+            " only when it runs%s, so it has no lineage",
+            report_id,
+            kind,
+            " with its prompts answered" if prompted else "",
+        )
+
+    def get_dataset_subtype(self, project_id: str, dataset_id: str) -> int | None:
+        """The subtype of the report object behind a dossier dataset, e.g. 776 for an Intelligent Cube"""
+        return cached(
+            self._dataset_subtypes,
+            dataset_id,
+            lambda: self._get(f"/objects/{dataset_id}", params={"type": REPORT_TYPE}, project_id=project_id).get(
+                "subtype"
+            ),
+            f"the type of dataset {dataset_id}",
+        )
+
+    def get_attribute_form_columns(
+        self, project_id: str, attribute_id: str
+    ) -> dict[str, frozenset[tuple[str, str]]] | None:
+        """
+        For each form of a schema attribute, the (physical table, column) pairs its expressions read,
+        lowercased. None when the attribute cannot be read, for instance without modeling privileges.
+        """
+        if attribute_id in self._form_columns:
+            self._form_columns.move_to_end(attribute_id)
+            return self._form_columns[attribute_id]
+        if self.modeling_denied:
+            return None
+        try:
+            attribute = self._get(
+                f"/model/attributes/{attribute_id}", params={"showExpressionAs": "tree"}, project_id=project_id
+            )
+            forms = {form["id"]: frozenset(self._expression_columns(project_id, form)) for form in attribute["forms"]}
+        except MicroStrategyApiError as exc:
+            if exc.status_code == 403:
+                self._deny_modeling(exc)
+                return None
+            self._schema_object_failed("attribute", attribute_id, exc)
+            forms = None
+        except Exception as exc:
+            self._schema_object_failed("attribute", attribute_id, exc)
+            forms = None
+        if self.modeling_denied:
+            # A table read was refused while reading the forms: what was read is incomplete.
+            return None
+        self._form_columns[attribute_id] = forms
+        if len(self._form_columns) > CACHE_SIZE:
+            self._form_columns.popitem(last=False)
+        return forms
+
+    def _deny_modeling(self, exc: MicroStrategyApiError) -> None:
+        """Without the privilege every schema object is refused alike, so none is asked for again"""
+        if self.modeling_denied:
+            return
+        logger.warning(
+            "Schema cubes get table-level lineage only: column-level lineage needs the service account "
+            "to read schema objects (Architect privileges): %s",
+            exc,
+        )
+        self.modeling_denied = True
+
+    def _schema_object_failed(self, kind: str, object_id: str, exc: Exception) -> None:
+        """One warning per kind for the run, so a server refusing many objects does not flood the log"""
+        logger.debug(traceback.format_exc())
+        if kind in self._failures_reported:
+            logger.debug("Could not read schema %s %s: %s", kind, object_id, exc)
+            return
+        self._failures_reported.add(kind)
+        logger.warning(
+            "Could not read schema %s %s, so its columns get no column-level lineage; further %ss "
+            "that cannot be read are logged at debug level: %s",
+            kind,
+            object_id,
+            kind,
+            exc,
+        )
+
+    def _read_schema_object(
+        self, project_id: str, kind: str, object_id: str, expression_as: str = "tree"
+    ) -> dict[str, Any] | None:
+        """
+        A schema object from the modeling API, its expressions as trees or resolved tokens. None when
+        it cannot be read: a 403 stops all modeling calls, any other failure is reported once per kind.
+        """
+        if self.modeling_denied:
+            return None
+        try:
+            return self._get(
+                f"/model/{kind}s/{object_id}", params={"showExpressionAs": expression_as}, project_id=project_id
+            )
+        except MicroStrategyApiError as exc:
+            if exc.status_code == 403:
+                self._deny_modeling(exc)
+                return None
+            self._schema_object_failed(kind, object_id, exc)
+        except Exception as exc:
+            self._schema_object_failed(kind, object_id, exc)
+        return None
+
+    def _expression_columns(self, project_id: str, holder: dict[str, Any]) -> Iterable[tuple[str, str]]:
+        """
+        The (physical table, column) pairs the expressions of an attribute form or a fact read: every
+        column an expression names, on every table it is mapped to.
+        """
+        for expression in holder.get("expressions") or []:
+            columns = {column.lower() for column in _tree_values((expression.get("expression") or {}).get("tree"))}
+            if not columns:
+                continue
+            for table in expression.get("tables") or []:
+                physical = self.get_physical_table(project_id, table["objectId"])
+                if physical:
+                    yield from ((physical, column) for column in columns)
+
+    def get_metric_parts(
+        self, project_id: str, metric_id: str, known: Callable[[str, str], bool] = lambda _id, _name: False
+    ) -> MetricParts | None:
+        """
+        The facts and metrics a schema metric is built from, followed through every metric it
+        references, except those ``known`` already tells the columns of (by id and SQL name). A
+        referenced metric that cannot be read is left out. None when the metric itself cannot be
+        read: a metric derived in a dossier has no schema definition, and reading one needs modeling
+        privileges.
+        """
+        if self._definition(project_id, metric_id) is None:
+            return None
+        facts: set[str] = set()
+        metrics: set[tuple[str, str]] = set()
+        seen, pending = {metric_id}, [metric_id]
+        while pending:
+            definition = self._definition(project_id, pending.pop())
+            for sub_type, object_id, name in definition.references if definition else ():
+                if sub_type == "fact":
+                    facts.add(object_id)
+                elif sub_type == "metric" and object_id not in seen and len(seen) < MAX_METRIC_PARTS:
+                    seen.add(object_id)
+                    sql_name = self.get_metric_sql_name(project_id, object_id, name)
+                    if sql_name is None:
+                        continue
+                    metrics.add((object_id, sql_name))
+                    if not known(object_id, sql_name):
+                        pending.append(object_id)
+        return MetricParts(facts=frozenset(facts), metrics=frozenset(metrics))
+
+    def get_metric_sql_name(self, project_id: str, metric_id: str, name: str) -> str | None:
+        """
+        The name the SQL generator gives a schema metric's projection: the column alias set on the
+        metric, else its name. None when the metric cannot be read.
+        """
+        definition = self._definition(project_id, metric_id)
+        if definition is None:
+            return None
+        return definition.column_alias or name
+
+    def _definition(self, project_id: str, metric_id: str) -> MetricDefinition | None:
+        """A schema metric's column alias and references, read once per metric"""
+
+        def fetch() -> MetricDefinition | None:
+            metric = self._read_schema_object(project_id, "metric", metric_id, expression_as="tokens")
+            if metric is None:
+                return None
+            alias = metric.get("columnNameAlias")
+            return MetricDefinition(
+                column_alias=alias if isinstance(alias, str) and alias.strip() else None,
+                references=tuple(_token_references((metric.get("expression") or {}).get("tokens"))),
             )
 
-            results_list = MstrSearchResultList.model_validate(resp_results).result
-            return results_list  # noqa: RET504, TRY300
+        return cached(self._metric_definitions, metric_id, fetch, f"metric {metric_id}")
 
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error("Failed to fetch the Search Result list")
+    def get_fact_columns(self, project_id: str, fact_id: str) -> frozenset[tuple[str, str]] | None:
+        """The (physical table, column) pairs a fact's expressions read, lowercased"""
 
-        return []
+        def fetch() -> frozenset[tuple[str, str]] | None:
+            fact = self._read_schema_object(project_id, "fact", fact_id)
+            if fact is None:
+                return None
+            columns = frozenset(self._expression_columns(project_id, fact))
+            # A table read refused while reading the expressions leaves them incomplete.
+            return None if self.modeling_denied else columns
 
-    def get_dashboards_list(self, project_id, project_name) -> list[MstrDashboard]:
+        return cached(self._fact_columns, fact_id, fetch, f"fact {fact_id}")
+
+    def get_physical_table(self, project_id: str, logical_table_id: str) -> str | None:
         """
-        Get Dashboard
+        The name the SQL gives the physical table behind a logical table, lowercased: its table
+        prefix when one is set (that is what MicroStrategy writes into the SQL), else its namespace,
+        then the table name.
         """
-        try:
-            results = self.get_search_results_list(project_id=project_id, object_type=55)
 
-            dashboards = []
-            for result in results:
-                dashboards.append(MstrDashboard(projectName=project_name, **result.model_dump()))  # noqa: PERF401
+        if self.modeling_denied:
+            return None
 
-            dashboards_list = MstrDashboardList(dashboards=dashboards)
-            return dashboards_list.dashboards  # noqa: TRY300
+        def fetch() -> str | None:
+            try:
+                table = self._get(f"/model/tables/{logical_table_id}", project_id=project_id)
+            except MicroStrategyApiError as exc:
+                if exc.status_code != 403:
+                    raise
+                self._deny_modeling(exc)
+                return None
+            physical = table.get("physicalTable") or {}
+            name = physical.get("tableName")
+            if not name:
+                return None
+            qualifier = (physical.get("tablePrefix") or "").strip(".") or physical.get("namespace") or ""
+            return ".".join(part for part in (qualifier, name) if part).lower()
 
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error("Failed to fetch the dashboard list")
+        return cached(self._physical_tables, logical_table_id, fetch, f"the physical table of {logical_table_id}")
 
-        return []
+    def get_owner_email(self, owner_id: str) -> str | None:
+        """The default email address of a user, when the session may read it"""
 
-    def get_dashboard_details(self, project_id, project_name, dashboard_id) -> MstrDashboardDetails | None:
-        """
-        Get Dashboard Details
-        """
-        try:
-            headers = {"X-MSTR-ProjectID": project_id} | self.auth_params.auth_header
-            resp_dashboard = self.client.get(path=f"/v2/dossiers/{dashboard_id}/definition", headers=headers)
+        def fetch() -> str | None:
+            addresses = self._get(f"/users/{owner_id}/addresses").get("addresses") or []
+            emails = [a for a in addresses if a.get("deliveryMode") == "EMAIL" and a.get("value")]
+            default = next((a for a in emails if a.get("isDefault")), emails[0] if emails else None)
+            return default["value"] if default else None
 
-            return MstrDashboardDetails(projectId=project_id, projectName=project_name, **resp_dashboard)
+        return cached(self._owner_emails, owner_id, fetch, f"the email of user {owner_id}")
 
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the dashboard with id: {dashboard_id}")
-
-        return None
-
-    def get_cube_sql_details(self, project_id: str, cube_id: str) -> str | None:
-        """
-        Get Cube SQL Details
-        """
-        try:
-            headers = {
-                "X-MSTR-ProjectID": project_id,
-                "cubeId": cube_id,
-            } | self.auth_params.auth_header
-
-            resp_dataset = self.client.get(path=f"/v2/cubes/{cube_id}/sqlView", headers=headers)
-            return resp_dataset["sqlStatement"]
-
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch the cube with id: {cube_id}")
-
-        return None
+    def _validate_each(self, items: list[Any], model: type[T], what: str) -> list[T]:
+        """Validate items one by one, so one malformed object does not drop its siblings"""
+        valid = []
+        for item in items:
+            try:
+                valid.append(model.model_validate(item))  # pyright: ignore[reportAttributeAccessIssue]
+            except ValidationError as exc:
+                self.skipped_objects += 1
+                logger.warning("Skipping a MicroStrategy %s that does not match the expected shape: %s", what, exc)
+        return valid

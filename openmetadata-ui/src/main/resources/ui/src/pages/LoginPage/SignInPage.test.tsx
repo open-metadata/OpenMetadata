@@ -187,6 +187,71 @@ describe('Test SignInPage Component', () => {
     expect(signinButton).toBeInTheDocument();
   });
 
+  it.each([
+    ['provider_refused', 'message.sso-sign-in-provider-refused'],
+    ['token_exchange_failed', 'message.sso-sign-in-token-exchange-failed'],
+    ['account_not_allowed', 'message.sso-sign-in-account-not-allowed'],
+    ['<b>anything else</b>', 'message.sso-sign-in-failed'],
+  ])(
+    'tells the person why an SSO sign-in failed with %s',
+    async (code, messageKey) => {
+      mockuseApplicationStore.mockReturnValue({
+        isAuthDisabled: false,
+        authConfig: { provider: 'google' },
+        onLogoutHandler: jest.fn(),
+        getOidcToken: jest.fn(),
+      });
+
+      render(
+        <MemoryRouter
+          initialEntries={[`/signin?error=${encodeURIComponent(code)}`]}>
+          <SignInPage />
+        </MemoryRouter>
+      );
+
+      const signInError = await screen.findByTestId('sign-in-error');
+
+      expect(signInError).toHaveTextContent(messageKey);
+      expect(signInError).not.toHaveTextContent(code);
+    }
+  );
+
+  it('shows no sign-in error when the sign-in did not fail', async () => {
+    mockuseApplicationStore.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'google' },
+      onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+    });
+
+    render(<SignInPage />, { wrapper: MemoryRouter });
+
+    expect(
+      await screen.findByText(/label.sign-in-with-sso/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('sign-in-error')).not.toBeInTheDocument();
+  });
+
+  it('does not redirect to the provider again while it shows why a sign-in failed', async () => {
+    const onLoginHandler = jest.fn();
+    mockUseAuthProvider.mockReturnValue({ onLoginHandler });
+    mockuseApplicationStore.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'google', enableAutoRedirect: true },
+      onLogoutHandler: jest.fn(),
+      getOidcToken: jest.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/signin?error=provider_refused']}>
+        <SignInPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('sign-in-error')).toBeInTheDocument();
+    expect(onLoginHandler).not.toHaveBeenCalled();
+  });
+
   it('Page should render the correct logo image for Basic auth', async () => {
     mockuseApplicationStore.mockReturnValue({
       isAuthDisabled: false,

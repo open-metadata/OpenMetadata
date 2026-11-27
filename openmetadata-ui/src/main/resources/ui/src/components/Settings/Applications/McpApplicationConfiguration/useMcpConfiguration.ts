@@ -44,6 +44,11 @@ import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
  * admin choices, so they are edited here as well.
  */
 const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
+  'enabled',
+  'dynamicClientRegistrationEnabled',
+  'allowedRedirectHosts',
+  'allowLoopbackRedirects',
+  'allowNativeRedirects',
   'baseUrl',
   'allowedOrigins',
   'maxResponseChars',
@@ -89,6 +94,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
   const [toolNames, setToolNames] = useState<string[]>();
   const [isFetching, setIsFetching] = useState<boolean>(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
   // whole setting. Held in a ref because they never affect rendering.
@@ -124,6 +130,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
 
   const fetchMcpConfig = useCallback(async () => {
     setIsFetching(true);
+    setFetchFailed(false);
     try {
       applyConfig(await getMcpConfig());
     } catch (error) {
@@ -132,6 +139,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
         applyConfig({});
       } else {
+        setFetchFailed(true);
         showErrorToast(error as AxiosError);
       }
     } finally {
@@ -161,6 +169,9 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   const saveMcpConfig = useCallback(
     // Callers pass form data already run through `formatFormDataForSubmit`.
     async (formData: MCPConfiguration) => {
+      if (fetchFailed) {
+        return;
+      }
       setIsSaving(true);
       try {
         const payload = {
@@ -179,7 +190,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
         setIsSaving(false);
       }
     },
-    [applyConfig, t]
+    [applyConfig, fetchFailed, t]
   );
 
   return {
@@ -187,6 +198,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
     formSchema,
     formUiSchema,
     isEveryFieldManaged,
+    fetchFailed,
     isFetching,
     isSaving,
     sources,

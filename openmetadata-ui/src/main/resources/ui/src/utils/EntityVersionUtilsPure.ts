@@ -48,7 +48,12 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  hasVersionDiffStringProperty,
   isEndsWithField,
+  isNestedNamedEntityWithTagsDiff,
+  isTagLabelDiff,
+  parseVersionDiffArray,
+  parseVersionDiffObject,
 } from './EntityDiffPureUtils';
 import {
   getAddedDiffElement,
@@ -63,7 +68,6 @@ import type {
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
 import { t } from './i18next/LocalUtil';
-import { isValidJSONString } from './StringUtils';
 import { getTagsWithoutTier, getTierTags } from './TablePureUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;
@@ -107,11 +111,13 @@ export const getEntityVersionTags = (
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-  const oldTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityOldValue(tagsDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(tagsDiff),
+    isTagLabelDiff
   );
-  const newTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityNewValue(tagsDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(tagsDiff),
+    isTagLabelDiff
   );
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<TagLabelWithStatus> = [];
@@ -130,28 +136,42 @@ export const getEntityVersionTags = (
 };
 
 export const summaryFormatter = (fieldChange: FieldChange) => {
-  const newValueJSON = isValidJSONString(fieldChange?.newValue)
-    ? JSON.parse(fieldChange?.newValue)
-    : undefined;
-  const oldValueJSON = isValidJSONString(fieldChange?.oldValue)
-    ? JSON.parse(fieldChange?.oldValue)
-    : {};
+  // A deleted field arrives with an empty newValue, so fall back to oldValue.
+  const parseWithFallback = <T>(isValid: (item: unknown) => boolean) => {
+    const fromNew = parseVersionDiffArray<T>(fieldChange.newValue, isValid);
 
-  const value = newValueJSON ?? oldValueJSON;
+    return fromNew.length
+      ? fromNew
+      : parseVersionDiffArray<T>(fieldChange.oldValue, isValid);
+  };
 
   if (fieldChange.name === EntityField.COLUMNS) {
-    return `${t('label.column-lowercase-plural')} ${value
-      ?.map((val: TableColumn) => val?.name)
+    return `${t(
+      'label.column-lowercase-plural'
+    )} ${parseWithFallback<TableColumn>((item) =>
+      hasVersionDiffStringProperty(item, 'name')
+    )
+      .map((val) => val.name)
       .join(', ')}`;
   } else if (
     fieldChange.name === 'tags' ||
     fieldChange.name?.endsWith('tags')
   ) {
-    return `${t('label.tag-lowercase-plural')} ${value
-      ?.map((val: TagLabel) => val?.tagFQN)
-      ?.join(', ')}`;
+    return `${t('label.tag-lowercase-plural')} ${parseWithFallback<TagLabel>(
+      isTagLabelDiff
+    )
+      .map((val) => val.tagFQN)
+      .join(', ')}`;
   } else if (fieldChange.name === 'owner') {
-    return `${fieldChange.name} ${value.name}`;
+    const newOwner = parseVersionDiffObject<EntityReference>(
+      fieldChange.newValue
+    );
+    const owner = isEmpty(newOwner)
+      ? parseVersionDiffObject<EntityReference>(fieldChange.oldValue)
+      : newOwner;
+    const ownerName = getEntityName(owner);
+
+    return ownerName ? `${fieldChange.name} ${ownerName}` : fieldChange.name;
   } else {
     return fieldChange.name;
   }
@@ -325,11 +345,13 @@ export function getEntityTagDiff<A extends EntityColumn>(
   changedEntityName?: string,
   entityList?: A[]
 ) {
-  const oldTags: TagLabel[] = JSON.parse(
-    getChangedEntityOldValue(entityDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(entityDiff),
+    isTagLabelDiff
   );
-  const newTags: TagLabel[] = JSON.parse(
-    getChangedEntityNewValue(entityDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(entityDiff),
+    isTagLabelDiff
   );
 
   const formatColumnData = (arr: Array<A>) => {
@@ -339,7 +361,7 @@ export function getEntityTagDiff<A extends EntityColumn>(
         const uniqueTags: TagLabelWithStatus[] = [];
         const tagsDiff = getTagsDiff(oldTags, newTags);
 
-        [...tagsDiff, ...(i.tags as TagLabelWithStatus[])].forEach(
+        [...tagsDiff, ...((i.tags ?? []) as TagLabelWithStatus[])].forEach(
           (elem: TagLabelWithStatus) => {
             if (!flag[elem.tagFQN]) {
               flag[elem.tagFQN] = true;
@@ -385,11 +407,11 @@ export const getOwnerDiff = (
     changeDescription as ChangeDescription
   );
 
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  const addedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityNewValue(fieldDiff)
   );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  const deletedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityOldValue(fieldDiff)
   );
 
   const unchangedItems = defaultItems.filter(
@@ -437,11 +459,11 @@ export const getDomainDiff = (
     changeDescription as ChangeDescription
   );
 
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  const addedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityNewValue(fieldDiff)
   );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  const deletedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityOldValue(fieldDiff)
   );
 
   const unchangedItems = defaultItems.filter(
@@ -493,13 +515,15 @@ export const getCommonExtraInfoForVersionDetails = (
   );
 
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-  const newTier = [
-    ...JSON.parse(getChangedEntityNewValue(tagsDiff) ?? '[]'),
-  ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
+  const newTier = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(tagsDiff),
+    isTagLabelDiff
+  ).find((t) => t.tagFQN?.startsWith('Tier'));
 
-  const oldTier = [
-    ...JSON.parse(getChangedEntityOldValue(tagsDiff) ?? '[]'),
-  ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
+  const oldTier = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(tagsDiff),
+    isTagLabelDiff
+  ).find((t) => t.tagFQN?.startsWith('Tier'));
 
   let tierDisplayName: ReactNode = '';
 
@@ -567,16 +591,14 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
 ) {
-  try {
-    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+  const newCol = parseVersionDiffArray<A>(
+    columnsDiff.added?.newValue,
+    isNestedNamedEntityWithTagsDiff
+  );
 
-    newCol.forEach((col) => {
-      formatAddedColumnData(colList, col);
-    });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
-  }
+  newCol.forEach((col) => {
+    formatAddedColumnData(colList, col);
+  });
 }
 
 export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -584,32 +606,30 @@ export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
   colList: A[] = [],
   changedEntity = ''
 ) {
-  try {
-    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-    const newColumns = getNewColumnFromColDiff(newCol);
+  const newCol = parseVersionDiffArray<A>(
+    columnsDiff.deleted?.oldValue,
+    isNestedNamedEntityWithTagsDiff
+  );
+  const newColumns = getNewColumnFromColDiff(newCol);
 
-    const insertNewColumn = (
-      changedEntityField: string,
-      colArray: Array<TableColumn | ContainerColumn>
-    ) => {
-      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
-      if (isEmpty(changedEntityField)) {
-        const nonExistingColumns = newColumns.filter((newColumn) =>
-          isUndefined(colArray.find((col) => col.name === newColumn.name))
-        );
-        colArray.unshift(...nonExistingColumns);
-      } else {
-        const parentField = fieldsArray.shift();
-        const arr = colArray.find((col) => col.name === parentField)?.children;
+  const insertNewColumn = (
+    changedEntityField: string,
+    colArray: Array<TableColumn | ContainerColumn>
+  ) => {
+    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+    if (isEmpty(changedEntityField)) {
+      const nonExistingColumns = newColumns.filter((newColumn) =>
+        isUndefined(colArray.find((col) => col.name === newColumn.name))
+      );
+      colArray.unshift(...nonExistingColumns);
+    } else {
+      const parentField = fieldsArray.shift();
+      const arr = colArray.find((col) => col.name === parentField)?.children;
 
-        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
-      }
-    };
-    insertNewColumn(changedEntity, colList);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
-  }
+      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+    }
+  };
+  insertNewColumn(changedEntity, colList);
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(

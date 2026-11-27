@@ -11,17 +11,13 @@
  *  limitations under the License.
  */
 
-import { Config, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  getEntityTypeAggregationFilter,
-  getJsonTreeFromQueryFilter,
-} from './QueryBuilderPureUtils';
+import { getExploreQueryFilterParam } from './queryBuilder/url';
 import { getExplorePath } from './RouterUtils';
 
 // Query filter strings that are considered empty
@@ -243,11 +239,9 @@ export const getSimpleExploreURLForAssetTypes = (
 export const getExploreURLForAdvancedFilter = ({
   queryFilter,
   selectedResource,
-  config,
 }: {
   queryFilter: string;
   selectedResource: Array<string>;
-  config: Config;
 }) => {
   try {
     if (isEmpty(selectedResource)) {
@@ -281,53 +275,12 @@ export const getExploreURLForAdvancedFilter = ({
     };
 
     if (!isEmpty(queryFilterObject) && queryFilterObject.query) {
-      const tree = QbUtils.sanitizeTree(
-        QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilterObject)),
-        config
-      ).fixedTree;
-
-      if (!isEmpty(tree)) {
-        params.queryFilter = JSON.stringify(tree);
-      }
+      params.queryFilter = getExploreQueryFilterParam(queryFilterObject);
     }
 
     const queryString = Qs.stringify(params);
 
     return `${getExplorePath({})}?${queryString}`;
-  } catch {
-    return getExplorePath({});
-  }
-};
-
-export const getExploreURLWithFilters = ({
-  queryFilter,
-  selectedResource,
-  config,
-}: {
-  queryFilter: string;
-  selectedResource: Array<string>;
-  config: Config;
-}) => {
-  try {
-    const expandedResources = getExpandedResourceList(selectedResource);
-
-    const queryFilterObject = JSON.parse(queryFilter || '{}');
-
-    const qFilter = getEntityTypeAggregationFilter(
-      queryFilterObject as unknown as QueryFilterInterface,
-      expandedResources
-    );
-
-    const tree = QbUtils.sanitizeTree(
-      QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
-      config
-    ).fixedTree;
-
-    const queryFilterString = !isEmpty(tree)
-      ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
-      : '';
-
-    return `${getExplorePath({})}${queryFilterString}`;
   } catch {
     return getExplorePath({});
   }

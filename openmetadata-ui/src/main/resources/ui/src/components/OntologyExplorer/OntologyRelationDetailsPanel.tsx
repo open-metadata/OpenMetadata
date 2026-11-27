@@ -40,8 +40,8 @@ interface OntologyRelationDetailsPanelProps {
   readonly nodes: OntologyNode[];
   readonly relationshipTypes: RelationshipType[];
   readonly onClose: () => void;
-  readonly onDelete: (edge: MergedEdge) => Promise<void>;
-  readonly onUpdate: (
+  readonly onDelete?: (edge: MergedEdge) => Promise<void>;
+  readonly onUpdate?: (
     edge: MergedEdge,
     update: UpdateTermRelation
   ) => Promise<void>;
@@ -364,13 +364,13 @@ export const OntologyRelationDetailsPanel = ({
 
   const save = async () => {
     if (edge) {
-      await onUpdate(edge, { provenance, relationType, status });
+      await onUpdate?.(edge, { provenance, relationType, status });
     }
   };
 
   const remove = async () => {
     if (edge) {
-      await onDelete(edge);
+      await onDelete?.(edge);
     }
   };
 

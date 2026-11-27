@@ -24,6 +24,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,6 +61,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.service.Entity;
 
 /**
  * A Draft memory with disputes opens a review task whose decision supersedes or rejects
@@ -223,6 +227,241 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(openTasks(conflict.reviewed()).isEmpty());
   }
 
+  /**
+   * Two values disputing one Approved value: approving the first supersedes it, so approving the
+   * second is refused until its review disputes the first, and then supersedes it. Never two
+   * values of one fact Approved side by side.
+   */
+  @Test
+  void approvingASecondValueOfAReplacedFactWeighsTheValueThatReplacedItFirst(TestNamespace ns) {
+    Conflict first = conflict(ns, "chain-eight");
+    ContextMemory second = pending(ns, "chain-seven", shared().USER2_REF);
+    ContextMemory heldSecond =
+        admin()
+            .patch(
+                idOf(second),
+                JsonUtils.readTree(
+                    HOLD_FOR_REVIEW.formatted(first.disputed().getId(), THRESHOLD_REASON)));
+    Task secondTask = openTask(heldSecond);
+    resolve(
+        SdkClients.adminClient(),
+        openTask(first.reviewed()),
+        "approve",
+        TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(), secondTask, "approve", TaskResolutionType.Approved));
+
+    assertTrue(refused.getMessage().contains("Another decision replaced"), refused.getMessage());
+    assertEquals(412, refused.getStatusCode());
+    ContextMemory repointed = admin().get(idOf(heldSecond));
+    assertEquals(ContextMemoryStatus.DRAFT, repointed.getEntityStatus());
+    assertEquals(
+        List.of(first.reviewed().getId()),
+        listOrEmpty(repointed.getDisputes()).stream()
+            .map(dispute -> dispute.getMemory().getId())
+            .toList());
+    assertEquals(secondTask.getId(), openTask(heldSecond).getId(), "the same review stays open");
+
+    resolve(SdkClients.adminClient(), secondTask, "approve", TaskResolutionType.Approved);
+
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(heldSecond)).getEntityStatus());
+    ContextMemory replaced = admin().get(idOf(first.reviewed()));
+    assertEquals(ContextMemoryStatus.SUPERSEDED, replaced.getEntityStatus());
+    assertEquals(heldSecond.getId(), replaced.getSupersededBy().getId());
+  }
+
+  /**
+   * Two values of one table's fact: the second review is pointed at the first once approved, also
+   * when its owner, no admin, decides it.
+   */
+  @Test
+  void aReviewOfAnAnchoredValueIsPointedAtTheValueThatReplacedItsDispute(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "anchored-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory first = heldAgainst(ns, "anchored-eight", table, original);
+    ContextMemory second = heldAgainst(ns, "anchored-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(first), "approve", TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.user2Client(),
+                    openTask(second),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertTrue(
+        refused.getMessage().contains("the review now disputes the memory that replaced it"),
+        refused.getMessage());
+    assertEquals(List.of(first.getId()), disputedIds(admin().get(idOf(second))));
+  }
+
+  /**
+   * A value on another table can replace a review's dispute: the resolver reads it, so the review
+   * is pointed at it, and its readers see it named whether or not they may open it.
+   */
+  @Test
+  void aReviewIsPointedAtAValueOnAnotherAnchorItsResolverCanRead(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    EntityReference otherTable = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "other-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory elsewhere = heldAgainst(ns, "other-eight", otherTable, original);
+    ContextMemory second = heldAgainst(ns, "other-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(elsewhere), "approve", TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(),
+                    openTask(second),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertTrue(
+        refused.getMessage().contains("the review now disputes the memory that replaced it"),
+        refused.getMessage());
+    assertEquals(List.of(elsewhere.getId()), disputedIds(admin().get(idOf(second))));
+  }
+
+  /**
+   * A replacement deleted since is no end to the chain: it was replaced in turn, and the review is
+   * pointed at the value holding the claim now rather than approved next to it.
+   */
+  @Test
+  void aReviewIsPointedPastADeletedReplacementToTheValueHoldingTheClaim(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "past-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory eight = heldAgainst(ns, "past-eight", table, original);
+    ContextMemory seven = heldAgainst(ns, "past-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(eight), "approve", TaskResolutionType.Approved);
+    ContextMemory nine = heldAgainst(ns, "past-nine", table, admin().get(idOf(eight)));
+    resolve(SdkClients.adminClient(), openTask(nine), "approve", TaskResolutionType.Approved);
+    admin().delete(idOf(eight));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(),
+                    openTask(seven),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertEquals(List.of(nine.getId()), disputedIds(admin().get(idOf(seven))));
+    assertEquals(ContextMemoryStatus.DRAFT, admin().get(idOf(seven)).getEntityStatus());
+  }
+
+  /**
+   * Deleting the original after another decision replaced it takes nothing back: the review is
+   * pointed at the value that replaced it rather than approved next to it.
+   */
+  @Test
+  void aReviewIsPointedPastADeletedOriginalToTheValueThatReplacedIt(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "gone-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory eight = heldAgainst(ns, "gone-eight", table, original);
+    ContextMemory seven = heldAgainst(ns, "gone-seven", table, original);
+    Task sevenReview = openTask(seven);
+    resolve(SdkClients.adminClient(), openTask(eight), "approve", TaskResolutionType.Approved);
+    admin().delete(idOf(original));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(), sevenReview, "approve", TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertEquals(List.of(eight.getId()), disputedIds(admin().get(idOf(seven))));
+    assertEquals(ContextMemoryStatus.DRAFT, admin().get(idOf(seven)).getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(eight)).getEntityStatus());
+  }
+
+  /**
+   * The re-pointed dispute is written as the person deciding: one who may not read the value that
+   * replaced the disputed memory is refused, and nothing is written.
+   */
+  @Test
+  void aResolverWhoCannotReadTheReplacingValueIsRefusedWithoutAWrite(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "hidden-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory hidden =
+        admin()
+            .create(
+                memory(ns, "hidden-eight", shared().USER1_REF)
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE))
+                    .withEntityStatus(ContextMemoryStatus.UNPROCESSED));
+    ContextMemory heldHidden =
+        admin()
+            .patch(
+                idOf(hidden),
+                JsonUtils.readTree(HOLD_FOR_REVIEW.formatted(original.getId(), THRESHOLD_REASON)));
+    ContextMemory second = heldAgainst(ns, "hidden-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(heldHidden), "approve", TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.user2Client(),
+                    openTask(second),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertTrue(
+        refused.getMessage().contains("with one this review cannot name"), refused.getMessage());
+    assertEquals(List.of(original.getId()), disputedIds(admin().get(idOf(second))));
+    assertEquals(ContextMemoryStatus.DRAFT, admin().get(idOf(second)).getEntityStatus());
+  }
+
+  private static EntityReference anchor(TestNamespace ns) {
+    Table table = ShortStackFactory.table(ns);
+    return new EntityReference().withId(table.getId()).withType(Entity.TABLE);
+  }
+
+  /** A pending value on {@code anchor} held for review against {@code disputed}. */
+  private static ContextMemory heldAgainst(
+      TestNamespace ns, String name, EntityReference anchor, ContextMemory disputed) {
+    ContextMemory pending =
+        admin()
+            .create(
+                memory(ns, name, shared().USER2_REF)
+                    .withPrimaryEntity(anchor)
+                    .withEntityStatus(ContextMemoryStatus.UNPROCESSED));
+    return admin()
+        .patch(
+            idOf(pending),
+            JsonUtils.readTree(HOLD_FOR_REVIEW.formatted(disputed.getId(), THRESHOLD_REASON)));
+  }
+
+  private static List<UUID> disputedIds(ContextMemory memory) {
+    return listOrEmpty(memory.getDisputes()).stream()
+        .map(dispute -> dispute.getMemory().getId())
+        .toList();
+  }
+
   @Test
   void rejectingRejectsTheReviewedMemoryAndKeepsTheDisputedOne(TestNamespace ns) {
     Conflict conflict = conflict(ns, "reject");
@@ -264,6 +503,23 @@ public class ContextMemoryConflictReviewIT {
     Task closed = SdkClients.adminClient().tasks().get(task.getId().toString());
     assertEquals(TaskEntityStatus.Cancelled, closed.getStatus());
     assertTrue(listOrEmpty(admin().get(idOf(conflict.reviewed())).getDisputes()).isEmpty());
+  }
+
+  /**
+   * A memory a person deleted is not archived with its sources, so no restore brings it back: a
+   * review disputing it is decided without it, and the deleted memory is left as it is.
+   */
+  @Test
+  void aReviewIsDecidedWithoutADisputedMemoryAPersonDeleted(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "person-deleted");
+    Task task = openTask(conflict.reviewed());
+    admin().delete(idOf(conflict.disputed()));
+
+    Task resolved = resolve(SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, admin().get(idOf(conflict.reviewed())).getEntityStatus());
   }
 
   /** Only the open review guards its memory: the one the delete cancelled stays deletable. */

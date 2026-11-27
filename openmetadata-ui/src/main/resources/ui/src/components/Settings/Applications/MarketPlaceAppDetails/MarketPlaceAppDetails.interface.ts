@@ -17,5 +17,6 @@ export enum ApplicationTabs {
   SCHEDULE = 'schedule',
   RECENT_RUNS = 'recent-runs',
   CONFIGURATION = 'configuration',
+  REGISTERED_CLIENTS = 'registered-clients',
   LIVE_INDEXING = 'live-indexing',
 }

@@ -7,8 +7,11 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.Getter;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.modify.request.QuadDataAcc;
@@ -216,6 +219,16 @@ public interface RdfStorageInterface extends AutoCloseable {
             new QuadDataAcc(
                 model.getGraph().find().mapWith(triple -> new Quad(graph, triple)).toList())));
     executeSparqlUpdate(update.toString());
+  }
+
+  /**
+   * Runs a read query whose results {@code reader} consumes before the execution closes, so a
+   * caller can stream them through its own bounded serializer. A store that cannot hand the server
+   * a live execution refuses.
+   */
+  default void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    throw new UnsupportedOperationException("This RDF store cannot stream query results");
   }
 
   /**

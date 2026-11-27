@@ -16,11 +16,13 @@ package org.openmetadata.service.datacontract.odcs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,18 @@ import org.openmetadata.service.util.ODCSConverter;
 class ODCSCrossVersionRoundTripTest {
   private static final ObjectMapper JSON = new ObjectMapper();
   private final ODCSExportService exporter = new ODCSExportService(contract -> List.of());
+  // A custom rule without engine/implementation and an unpublished metric are accepted on import.
+  private static final String UNREPRESENTABLE_ROOT_RULES =
+      """
+      {"apiVersion": "v3.1.0", "kind": "DataContract", "id": "legacy-root-rules",
+       "name": "Legacy root rules", "version": "1.0.0", "status": "active",
+       "quality": [
+         {"type": "library", "metric": "nullValues", "column": "id", "mustBe": 0},
+         {"type": "custom", "rule": "price >= 0", "column": "price"},
+         {"type": "library", "metric": "uniqueValues", "column": "id",
+          "mustBeGreaterThan": 0, "mustBeLessThan": 1000000}
+       ]}
+      """;
 
   static Stream<Arguments> versionPairs() {
     return ODCSProfiles.supportedVersions().stream()
@@ -194,6 +208,27 @@ class ODCSCrossVersionRoundTripTest {
       ArrayNode description = table.putArray("description");
       description.add("First paragraph").add("Second paragraph");
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
+  void acceptedRootRulesTheTargetCannotExpressStillExport(String version)
+      throws JsonProcessingException {
+    DataContract imported = read(JSON.readTree(UNREPRESENTABLE_ROOT_RULES), fixture().getEntity());
+    ODCSExportService.Result result = exporter.export(imported, version);
+    assertTrue(result.valid(), String.join("; ", result.issues()));
+  }
+
+  @Test
+  void unrepresentableRootRulesRoundTripThroughTheirEmbeddedDeclaration()
+      throws JsonProcessingException {
+    EntityReference entity = fixture().getEntity();
+    DataContract imported = read(JSON.readTree(UNREPRESENTABLE_ROOT_RULES), entity);
+    JsonNode exported = exporter.export(imported, ODCSExportService.DEFAULT_VERSION).requireValid();
+    assertTrue(exported.toString().contains("odcsRule"), exported.toString());
+    assertEquals(
+        Set.copyOf(imported.getOdcsQualityRules()),
+        Set.copyOf(read(exported, entity).getOdcsQualityRules()));
   }
 
   private static DataContract read(JsonNode source, EntityReference entity) {

@@ -431,7 +431,7 @@ function TestSummaryGraph({
         }),
       },
     }));
-    // Aborted and queued runs as dots alone, after the lines so no line's
+    // Runs placed without a measured value as dots alone, after the lines so no line's
     // palette colour shifts. Named like their line, so the legend lists and
     // toggles the two once.
     const placed = seriesLabels.reduce<ChartSeries[]>((series, label) => {

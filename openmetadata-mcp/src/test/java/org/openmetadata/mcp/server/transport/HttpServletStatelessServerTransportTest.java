@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
+import io.modelcontextprotocol.spec.HttpHeaders;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.ReadListener;
@@ -35,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -407,6 +409,45 @@ class HttpServletStatelessServerTransportTest {
     verify(response).setStatus(HttpServletResponse.SC_ACCEPTED);
     verify(handler, never()).handleNotification(any(), any());
     assertThat(body.toString()).isEmpty();
+  }
+
+  // ── protocol version header ───────────────────────────────────────────────
+
+  private static HttpServletRequest requestWithVersion(String version, String method)
+      throws Exception {
+    String payload = "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"" + method + "\",\"params\":{}}";
+    HttpServletRequest request = requestFor("application/json", payload);
+    when(request.getHeader(HttpHeaders.PROTOCOL_VERSION)).thenReturn(version);
+    return request;
+  }
+
+  @Test
+  void doPost_unsupportedProtocolVersion_answers400WithoutReachingTheHandler() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+
+    transportWith(handler).doPost(requestWithVersion("2026-07-28", "tools/list"), response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verifyNoInteractions(handler);
+    assertThat(body.toString())
+        .contains("\"code\":-32600")
+        .contains("\"id\":3")
+        .contains("2025-11-25");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"2025-11-25, tools/list", "2026-07-28, initialize"})
+  void doPost_supportedVersionOrInitialize_reachesTheHandler(String version, String method)
+      throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    when(handler.handleRequest(any(), any()))
+        .thenReturn(
+            Mono.just(new McpSchema.JSONRPCResponse(McpSchema.JSONRPC_VERSION, 3, Map.of(), null)));
+
+    transportWith(handler).doPost(requestWithVersion(version, method), response);
+
+    verify(handler).handleRequest(any(), any());
+    verify(response).setStatus(HttpServletResponse.SC_OK);
   }
 
   // ── request body limit ────────────────────────────────────────────────────

@@ -8,6 +8,10 @@ Two readers apply this file, and the bar is the same for both
   self-review of the branch diff against this file. A finding fixed there is one a maintainer never
   has to write.
 
+Before requesting review, authors work through [`CONTRIBUTING.md`](CONTRIBUTING.md) ("Before you
+request review"): green PR checks, the metadata check, and answered review-bot threads. With that
+first round handled, the maintainer's review can focus on what this file covers.
+
 The rules come from 30 days of review threads (2026-09-16 → 2026-10-16, 1,547 PRs): what
 maintainers asked for, and which gitar, Greptile and Copilot findings authors fixed and which they
 rejected. Findings that state a failure path and a fix were accepted 85–100% of the time; open
@@ -16,6 +20,27 @@ not restate what spotless, ESLint, Prettier, ruff or basedpyright already enforc
 
 ## How to review
 
+0. **Understand why the change exists, and whether it earns its cost.** Before judging any line:
+   - **Intent and evidence.** What problem does this solve, and for whom? Name where it came from:
+     a customer or production report, a filed bug, a failing or flaky test, an internal finding, or
+     a hypothetical ("this could happen if…"). How often does it happen? That sets how much
+     latency, query load, index size, migration risk and complexity the change may add. If the
+     current behavior was a deliberate earlier compromise, find its record in `docs/decisions/` or
+     the thread that decided it.
+   - **Question the evidence before the fix.** A failure can be the test's fault, not the system's:
+     a flaky spec, a fixture production never emits, a bug report that was really a config or
+     permission problem, or an expectation the API never promised. Confirm the result was actually
+     wrong on the PR head before accepting a fix for it.
+   - **A hypothetical fix earns its place.** Show the trigger is reachable — name the caller and the
+     input that reach it on a path that runs (this repo has closed PRs for "defensive" guards no
+     caller can trip). Even then, prefer the smallest guard over a new mode, abstraction or
+     redesign. When a hypothetical fix adds real latency, cost or complexity, recommend deferring it
+     and say what evidence would justify it.
+   - **Placement.** Who produces the inputs (ingestion, a UI form, Collate, a webhook), and who
+     consumes what changed (other REST callers, MCP tools, the search index, Collate, the UI that
+     renders it). Every consumer of a changed shape or behavior is affected whether or not its code
+     is in the diff. "Collate builds against OpenMetadata `main`" (below) is this rule across the
+     repo boundary.
 1. **Read the change, not just the hunk.** Read the net diff (`git diff origin/main...HEAD`, or the
    PR's file list) and every changed function in full. For a fix, also read every sibling with the
    same shape:
@@ -33,7 +58,26 @@ not restate what spotless, ESLint, Prettier, ruff or basedpyright already enforc
 3. **Hunt in this order:** logic defects (the list below), test gaps and tests that cannot fail,
    flaky tests, comments standing in for code, cross-layer and Collate gaps. Look at shape and
    style last.
-4. **Prove each finding before you write it:** the input or state that triggers it, the path
+4. **Judge the mechanism, not only the code.**
+   - **Question what the solution takes for granted.** Notice what the fix treats as given — a fact
+     it re-derives, a limit it works around, a cost it accepts. Often another layer already has that
+     fact (the server already stamps it, the schema already carries it, a shared helper already
+     resolves it) and could hand it over. Raise it only when dropping the assumption gives a clearly
+     simpler or more reliable path; otherwise stay with the author's approach.
+   - **Cause or symptom?** Does the change fix the class of problem, or the one input that was
+     reported? Try a sibling input of the same kind, and check whether `main` already fixed it.
+   - **Is it the simplest version that works?** Each new branch, abstraction, config knob, query or
+     model call earns its place against the evidence from step 0. Overengineering signs: an
+     interface or strategy with one caller, a mode nobody asked for, generality for inputs no caller
+     sends, a second round-trip where a deterministic check would do (see "Handle reachable cases",
+     "Delete what does nothing").
+5. **Weigh the trade-off explicitly.** Name the costs — user-visible latency, extra queries or
+   reindexing, migration risk, bundle size, a new config surface, complexity — with numbers where
+   you can, set them against the benefit and how often it happens (step 0), and name the alternative
+   the author did not take. When the trade-off is a product call, not a code call, raise it as a
+   question and point to "Decision records"; do not settle it in an inline thread. Record the
+   outcome in the summary's **Trade-off** line.
+6. **Prove each finding before you write it:** the input or state that triggers it, the path
    (`file:line`), and the wrong result. If you cannot write the trigger, drop the finding.
 
 ## What a finding is
@@ -57,6 +101,26 @@ Every finding carries three parts: the **trigger** (an input or state that occur
 - **Check the PR head, not `main` or an older revision,** before claiming a key, symbol or file is
   missing or was removed.
 - **Zero findings is a valid review.** When you find nothing, say what you checked.
+
+## The review summary
+
+Every review states these three lines, whether it is a maintainer's review or the `pr-checklist`
+self-review. They answer "is the change worth it?", which the per-finding list does not.
+
+- **Placement** (step 0): who reaches the changed path, who consumes it, and what you could not
+  verify across layers or in Collate.
+- **Trade-off** (step 5), always present, in exactly one of these forms:
+  - `Trade-off: none` — the change adds no user-visible cost;
+  - `Trade-off: weighed by the author, holds because …` — you checked the stated reasoning against
+    the PR's own numbers and code;
+  - `Trade-off: weighed by the author, doesn't hold because …`;
+  - `Trade-off: not weighed → needs a human decision: <cost> vs <alternative>` — for a product call
+    the code cannot settle.
+
+  "Holds" means you verified it; when it holds, the trade-off is not raised again as a finding.
+- **Recommendation:** approve, request changes, or *needs a human decision*, with the one sentence
+  that decides it. "Needs a human decision" is for product and trade-off calls the code cannot
+  settle; anything you can look up, look up first.
 
 ## Logic defects reviewers keep finding here
 
@@ -177,8 +241,8 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 ### Failure handling
 
 - **A failure never becomes success, zero or empty.**
-  - Check returned statuses: `SystemRepository.createOrUpdate` returns a 500 `Response` instead of
-    throwing.
+  - Check returned statuses: `SystemRepository.createOrUpdate` returned a 500 `Response` instead
+    of throwing.
   - Validate the JSON shape instead of trusting `JsonNode.asLong()` defaults: a missing `hits.total`
     was reported as 0.
   - A failed or unknown read is not "nothing exists": `{}`, `set()` or `undefined` read downstream as
@@ -244,10 +308,8 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
   - Persisted workflow and job fields stay readable by the previous server version during a rolling
     upgrade.
 - **Background jobs.** A new `jobType` joins every list that enumerates its siblings: the
-  `markStaleRunningJobsFailed` reaper, the memory-job capacity check, `JobDAO` and Collate's own
-  copy of `backgroundJob.json` (a missing constant throws `NoSuchFieldError`, an `Error` that kills
-  the background-job poller). Long or LLM-bound job types get a per-type cap on
-  `GenericBackgroundWorker`.
+  `markStaleRunningJobsFailed` reaper, the memory-job capacity check and `JobDAO`. Long or LLM-bound
+  job types get a per-type cap on `GenericBackgroundWorker`.
 - **Bounded caches** (AGENTS.md), and the cap must not change behavior. If the cache is a working set
   read after it is filled (page cursors, per-schema remarks), a miss after eviction refetches
   instead of silently losing data. Bound the total retained items, not just the keys, and cache
@@ -288,6 +350,11 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 repeatedly add the following.
 
 - **Java migrations** (`migration/utils/vNNN`):
+  - Carry their own logic: rows and SQL through the `Handle`, using only the classes
+    `MigrationArchitectureTest` allows, not `CollectionDAO`, repositories, `Entity` lookups or
+    generated classes, which keep changing after the step ships. An unavoidable call is a named
+    exception in that test.
+    ADR:2026-11-11-a-data-migration-carries-its-own-logic
   - Compute a fixed point that is safe to re-run, never a subtractive delta.
   - Guard on the current shape, so an admin-customized row is left alone.
   - Let unexpected failures propagate. A migration that logs and returns is recorded as applied in
@@ -295,11 +362,14 @@ repeatedly add the following.
   - Skip work already done. Data migrations re-run whenever `MigrationCodeFingerprint` changes.
   - Normalize legacy `null` values.
   - Rewrite the `entity_extension` `<entity>.version.*` snapshots as well as the live row.
-  - Remove the deployed pipelines of an entity type the migration removes.
+  - Remove the deployed pipelines of an entity type the migration removes. This needs the pipeline
+    service, so the step is a named exception.
+    ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
 - **SQL.**
   - Never edit a statement that already ran; statements are tracked by a hash of their text.
-    Appending a statement to the newest folder of the release in progress is fine:
-    `MigrationWorkflow` reprocesses it.
+    Appending a statement to the newest folder of the release in progress is fine while that
+    release has not shipped: `MigrationWorkflow` reprocesses it. A shipped folder never changes,
+    because a database that ran a later version of the same line never reads it again.
   - Size FQN-hash key columns like `entity_extension` (`VARCHAR(512)`).
   - Replace MySQL `INSERT IGNORE`, which turns truncation into a warning, with
     `ON DUPLICATE KEY UPDATE`.
@@ -308,6 +378,13 @@ repeatedly add the following.
   - Predicates on `entity_extension` must be index-usable; `LIKE 'app.version.%'` scans the table.
   - Scope catch-up sweeps to rows created after the previous upgrade: a missing target row can mean
     it was deleted on purpose.
+- **Migration queries on large, growing tables must not scan the whole table.** Check that each
+  such query's `WHERE` or `JOIN` is backed by an index, and that the index already exists when the
+  query runs: an index created in a later version, or present only on `main`, does not help an
+  earlier version. Check a backport on the target branch itself; do not assume an index, column or
+  other change from `main` came with it. A test on an empty database will not show a scan. (The
+  2.0.8 `audit_log_event` cleanup ran for hours on large deployments because only 2.1.0 indexed
+  `entity_type`.)
 - **Earlier releases' stored data.**
   - A new schema `maximum` (Pydantic `le=`) must not reject saved configs; ship a clamping migration.
   - Class names persisted by Quartz or `ServiceLoader` keep resolving.
@@ -320,6 +397,22 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
 
 ### UI
 
+- **No duplicate component or variant.** A new UI component implementing a concept the tree already
+  has (empty state, status badge, confirm dialog, skeleton, search input, date range, pagination —
+  the canon table is `.claude/rules/single-source.md`) is a 🔴 unless the PR says why the canonical
+  one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
+  is a prop/variant on the original, or a core-component extension. Name the existing component in
+  the finding. A sanctioned migration's successor is done only when the old variant's importer count
+  is zero and the file is deleted. A copy that only swaps one API call or id is the same finding:
+  the fix is a callback prop on the original.
+- **No pass-through wrapper around a core component.** A local `FooHeader`/`FooToggle` that only
+  forwards props to `PageLayout.PageHeader`/`Toggle`/`ButtonGroup` is a finding: use the core
+  component at the call site. When core lacks a prop the call site needs, add it to core in
+  its own PR instead of composing a workaround.
+- **No new page scaffold.** New pages use the ui-core `PageLayout`
+  (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
+  `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
+  mechanism is a finding.
 - **antd → core migrations keep behavior.** List each implicit antd behavior or default the call
   site relied on, and carry it over:
   - z-index: the core overlay is `z-50`, an antd drawer is 1000, so a dialog can open under a drawer;
@@ -410,7 +503,7 @@ Before renaming or removing any of the following, search `openmetadata-collate` 
 - an enum constant in a schema Collate copies;
 - a dependency major.
 
-Then ship a companion Collate PR, or keep a deprecated overload or no-op. `maven-collate-ci` breaks
+Then ship a companion Collate PR, or keep a deprecated overload or no-op. `Collate CI` breaks
 whichever repo merges first, and Collate's strict `tsc` fails on the next submodule bump. Provider
 rules stay behind their SPI, not keyed on a Collate provider in OSS core. A method whose only
 callers are in Collate says so in one line, so nobody deletes it as unused.
@@ -421,7 +514,8 @@ These go red on the PR. Update them in the same change:
 
 - a new `Relationship` enum value → `EnumBackwardCompatibilityTest` (the ordinal is stored);
 - a new entity-schema field → its `om:` predicate in
-  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl` (`RdfOntologyContractTest`);
+  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl`
+  (`RdfOntologyContractTest`, `RdfOntologyDescriptionContractTest`);
 - a new v2xx data-migration step → the `mockStatic` list in `IngestionPipelineMigrationEntryPointTest`;
 - a changed Pydantic model or base-class annotation → basedpyright, where any new violation in any
   file fails.
@@ -440,7 +534,7 @@ These go red on the PR. Update them in the same change:
 | A search field, mapping or refresh change | An IT on a real engine, including documents written in the old shape |
 | A switch or mapping that gains a value | A case in the existing table-driven test |
 | A UI flow, or a fix to the classic page and its AI-mode twin | A Playwright spec for each surface, asserting the result rather than the request |
-| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call |
+| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call. A new component file with a branch gets its own `X.test.tsx` |
 | A connector or DQ boundary | pytest at the boundary, plus a value just past it |
 | A bug fix | A test that fails on `main`. Say so in the PR |
 
@@ -623,8 +717,9 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **Java micro-style quoted from [`java.md`](.claude/rules/java.md) without a defect**: fully qualified names, `final` on
   locals, method or class length, utility classes not `final`, literals in test assertions. These
   had zero acceptances across 18 bot threads. Authors still follow `java.md` while writing; a
-  reviewer does not post a finding for it. `java.md` says to *prefer* one successful return:
-  flat validation guards and throws are fine, so "use one trailing return" is not a finding. Size
+  reviewer does not post a finding for it. The one exception is the return rule
+  (ADR:2026-11-20-a-method-returns-once): a new or changed production method with more than one
+  `return`, or a `return` that is not its last statement, is a 🟡 finding. Throws are fine. Size
   rules target production code, not tests or verbatim backports.
 - **`@Isolated` or `@Execution(SAME_THREAD)`** on an IT that touches process-global state. That is a
   supported group (74 IT files use it), not a breach of the concurrent-IT rule.
@@ -640,6 +735,11 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **i18n on Storybook stories**, loanwords, and non-user-facing identifiers.
 - **Speculation**: "worth confirming", "consider whether…" or "why X?" with no failure path; design
   intent the author already stated; product or information-architecture preferences.
+- **Trade-offs already settled** before this PR — in a record on the base branch, or a deliberate
+  house convention. Re-open one only with new evidence. A settlement that lives only in a PR thread
+  is not in the tree: raise it once as a "Decision records" omission instead. A record or PR
+  description this PR *adds* is the author's proposal, not a settlement: step 5 checks whether its
+  reasoning holds, and if it does, the trade-off is not raised.
 - **Review boilerplate**: no "Pull request overview", no per-file summary table, no reviewed-file
   count.
 

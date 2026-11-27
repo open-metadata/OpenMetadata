@@ -12,7 +12,8 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, render, screen } from '@testing-library/react';
+import userClassBase from '../../../utils/UserClassBase';
 import ProfilePicture from './ProfilePicture';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -195,5 +196,74 @@ describe('Test ProfilePicture component', () => {
     expect(props.className).toContain(
       'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
     );
+  });
+
+  it('draws a bot logo on a transparent surface with no outline or tint', () => {
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true },
+    ]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} className="custom" />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.src).toBe('/bot-logo.svg');
+    expect(props.initials).toBe('T');
+    expect(props.contrastBorder).toBe(false);
+    expect(props.style).toEqual({ backgroundColor: 'transparent' });
+    expect(props.className).toBe('custom');
+  });
+
+  it('draws a registered bot icon instead of the logo and initials', () => {
+    const { Avatar: RealAvatar } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const mockAvatar = Avatar as jest.Mock;
+    const mockedAvatarImpl = mockAvatar.getMockImplementation();
+    mockAvatar.mockImplementation(RealAvatar);
+    const getBotIcon = jest
+      .spyOn(userClassBase, 'getBotIcon')
+      .mockReturnValue(() => <svg data-testid="bot-icon" />);
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true, name: 'collateaiapplicationbot' },
+    ]);
+
+    const { container } = render(<ProfilePicture {...mockData} />);
+
+    expect(screen.getByTestId('bot-icon')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByText('T')).not.toBeInTheDocument();
+
+    getBotIcon.mockRestore();
+    mockAvatar.mockImplementation(mockedAvatarImpl);
+  });
+
+  it('keeps the tinted, outlined avatar for a bot without a logo', () => {
+    mockUseUserProfile.mockReturnValue(['', false, { isBot: true }]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(true);
+    expect(props.style).toEqual({ '--avatar-hue': expect.any(Number) });
+  });
+
+  it('keeps the outline on a user photo', () => {
+    mockUseUserProfile.mockReturnValue(['/photo.jpg', false, { isBot: false }]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.src).toBe('/photo.jpg');
+    expect(props.contrastBorder).toBe(true);
   });
 });

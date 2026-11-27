@@ -898,6 +898,23 @@ describe('KnowledgeGraph.utils', () => {
       ]);
     });
 
+    it('keeps a taller focus card so its mapped-status row stays inside', async () => {
+      const tall = graph();
+      tall.nodes[0] = {
+        ...tall.nodes[0],
+        style: { ...tall.nodes[0].style, size: [252, 80] },
+      };
+      const result = await applyGraphLayout(tall, {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      expect(result.nodes?.find((n) => n.id === 'focus')?.style?.size).toEqual([
+        MAX_NODE_WIDTH,
+        80,
+      ]);
+    });
+
     it('gives every node side ports in the layered layout', async () => {
       const result = await applyGraphLayout(graph(), {
         ...layoutOptions,

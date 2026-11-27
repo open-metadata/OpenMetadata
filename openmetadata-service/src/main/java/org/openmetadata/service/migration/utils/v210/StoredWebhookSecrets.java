@@ -38,9 +38,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
@@ -49,11 +49,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * The webhook secret rules of release 2.1, frozen for its data step: which fields of a webhook
- * configuration hold secrets, how a secret is bound to the alert destination or profile webhook
- * that holds it, and how a stored row, version or change event is brought to that form. It calls
- * no platform code that later releases may change; it uses only the Fernet token format,
+ * configuration hold secrets, and how a stored row, version or change event is brought to the form
+ * release 2.1 stores, each secret encrypted with the configured Fernet keys. A 2.1 pre-release
+ * encrypted each secret with a key derived for the destination or profile webhook holding it
+ * (the {@code fernet:bound:} format); that format is read here only to bring such a value back. It
+ * calls no platform code that later releases may change; it uses only the Fernet token format,
  * BouncyCastle's HKDF and the configured Fernet keys, so it always writes what release 2.1 writes.
- * ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
+ * ADR:2026-11-14-webhook-secrets-are-encrypted-with-the-server-fernet-key
  */
 @Slf4j
 final class StoredWebhookSecrets {
@@ -80,8 +82,8 @@ final class StoredWebhookSecrets {
       List.of("Webhook", "Slack", "MsTeams", "GChat");
   private static final JsonPointer ENDPOINT = JsonPointer.compile("/endpoint");
   private static final JsonPointer HEADERS = JsonPointer.compile("/headers");
-  // The fields releases before 2.1 stored encrypted: the only ones whose ciphertext is carried
-  // over.
+  // The fields releases before 2.1 encrypted and decrypted to send. Every other field they sent as
+  // stored.
   private static final List<JsonPointer> ENCRYPTED_BEFORE_2_1 =
       List.of(
           JsonPointer.compile("/authType/secretKey"),
@@ -122,10 +124,6 @@ final class StoredWebhookSecrets {
     return WEBHOOK_CHANNELS.contains(channelId) ? fieldsIn(destination.path("config")) : List.of();
   }
 
-  static boolean isLegacyCiphertext(String value) {
-    return value != null && value.startsWith(FERNET_PREFIX) && !value.startsWith(BOUND_PREFIX);
-  }
-
   static String alertDestinationOwner(UUID destinationId) {
     return "alertdestination/" + encodeId(destinationId);
   }
@@ -135,36 +133,40 @@ final class StoredWebhookSecrets {
   }
 
   /**
-   * Binds, in place, the destinations of a stored alert and masks its change descriptions. Legacy
-   * ciphertext is carried over only at the fields releases before 2.1 encrypted, and only when
-   * {@code storedElsewhere} does not hold it; any other value stays as stored, opens for no
-   * destination, and is entered again before the destination sends. Returns whether it changed.
+   * Encrypts, in place, the webhook secrets of a stored alert's destinations and masks its change
+   * descriptions. Plaintext is encrypted, and so is any value at a field releases before 2.1 sent
+   * as stored, as it is, so it is sent as it was; Fernet ciphertext at a field they encrypted stays
+   * as stored. A bound value is encrypted again as it opens for its destination; one that does not
+   * open stays as stored and is entered again before the destination sends. Encrypting again what
+   * this wrote would change it, so it runs once. Returns whether it changed.
    */
-  boolean bindAlert(JsonNode alert, Predicate<String> storedElsewhere) {
+  boolean encryptAlert(JsonNode alert) {
     JsonNode before = alert.deepCopy();
-    BiPredicate<JsonPointer, String> carriedOver =
-        (field, value) -> ENCRYPTED_BEFORE_2_1.contains(field) && !storedElsewhere.test(value);
     for (JsonNode destination : alert.path(DESTINATIONS)) {
-      if (destination instanceof ObjectNode stored) {
-        bindDestination(alert.path("name").asText(), stored, carriedOver);
-      }
+      String id = destination.path("id").asText();
+      encrypt(
+          () -> alertDestinationOwner(UUID.fromString(id)),
+          "Destination " + id + " of alert " + alert.path("name").asText(),
+          destination.path("config"),
+          destinationFields(destination));
     }
     CHANGE_DESCRIPTIONS.forEach(name -> maskRecordedDestinations(alert.path(name)));
     return !alert.equals(before);
   }
 
   /**
-   * Binds, in place, the profile webhooks of a stored user or team and masks its change
-   * descriptions. Releases before 2.1 stored profile webhooks in plain text, so no ciphertext is
-   * carried over. Returns whether it changed.
+   * Encrypts, in place, the profile webhook secrets of a stored user or team, as {@link
+   * #encryptAlert} does for an alert, and masks its change descriptions. Returns whether it changed.
    */
-  boolean bindProfileEntity(String entityType, JsonNode entity) {
+  boolean encryptProfileEntity(String entityType, JsonNode entity) {
     JsonNode before = entity.deepCopy();
     UUID id = UUID.fromString(entity.path("id").asText());
     for (Map.Entry<String, JsonNode> webhook : entity.at(SUBSCRIPTIONS).properties()) {
-      String owner = profileOwner(entityType, id, webhook.getKey());
-      String label = "The " + webhook.getKey() + " webhook of " + entityType + " " + id;
-      bind(owner, label, webhook.getValue(), fieldsIn(webhook.getValue()), (field, value) -> false);
+      encrypt(
+          () -> profileOwner(entityType, id, webhook.getKey()),
+          "The " + webhook.getKey() + " webhook of " + entityType + " " + id,
+          webhook.getValue(),
+          fieldsIn(webhook.getValue()));
     }
     CHANGE_DESCRIPTIONS.forEach(name -> maskRecordedProfile(entity.path(name)));
     return !entity.equals(before);
@@ -210,29 +212,14 @@ final class StoredWebhookSecrets {
     return open(value.substring(BOUND_PREFIX.length()), derived);
   }
 
-  private void bindDestination(
-      String alertName, ObjectNode destination, BiPredicate<JsonPointer, String> carriedOver) {
-    if (destination.path("id").asText().isEmpty()) {
-      destination.put("id", UUID.randomUUID().toString());
-    }
-    String id = destination.path("id").asText();
-    String owner = alertDestinationOwner(UUID.fromString(id));
-    String label = "Destination " + id + " of alert " + alertName;
-    bind(owner, label, destination.path("config"), destinationFields(destination), carriedOver);
-  }
-
-  private void bind(
-      String owner,
-      String label,
-      JsonNode config,
-      List<JsonPointer> fields,
-      BiPredicate<JsonPointer, String> carriedOver) {
+  private void encrypt(
+      Supplier<String> owner, String label, JsonNode config, List<JsonPointer> fields) {
     List<JsonPointer> toEnterAgain = new ArrayList<>();
     for (JsonPointer field : fields) {
       String value = config.at(field).asText();
-      Optional<String> secret = secretToBind(field, value, carriedOver);
-      secret.ifPresent(it -> set(config, field, encrypt(owner, field.toString(), it)));
-      if (secret.isEmpty() && isLegacyCiphertext(value)) {
+      Optional<String> secret = secretToEncrypt(owner, field, value);
+      secret.ifPresent(it -> set(config, field, encrypt(it)));
+      if (secret.isEmpty() && value.startsWith(BOUND_PREFIX)) {
         toEnterAgain.add(field);
       }
     }
@@ -241,25 +228,25 @@ final class StoredWebhookSecrets {
     }
   }
 
-  // Plaintext is bound as entered; legacy ciphertext only where it is carried over.
-  private Optional<String> secretToBind(
-      JsonPointer field, String value, BiPredicate<JsonPointer, String> carriedOver) {
+  // A bound value is encrypted as it opens, and Fernet ciphertext where releases before 2.1
+  // decrypted it stays; anything else is encrypted as it is stored.
+  private Optional<String> secretToEncrypt(
+      Supplier<String> owner, JsonPointer field, String value) {
     Optional<String> secret = Optional.empty();
-    if (isLegacyCiphertext(value)) {
-      secret = carriedOver.test(field, value) ? decryptLegacy(value) : Optional.empty();
-    } else if (!value.isEmpty() && !value.startsWith(BOUND_PREFIX)) {
+    if (value.startsWith(BOUND_PREFIX)) {
+      secret = openBound(owner.get(), field.toString(), value);
+    } else if (!value.isEmpty() && !keptAsStored(field, value)) {
       secret = Optional.of(value);
     }
     return secret;
   }
 
-  private String encrypt(String owner, String field, String secret) {
-    Key key = derive(keys.getFirst(), owner, field);
-    return BOUND_PREFIX + Token.generate(RANDOM, key, secret).serialise();
+  private static boolean keptAsStored(JsonPointer field, String value) {
+    return value.startsWith(FERNET_PREFIX) && ENCRYPTED_BEFORE_2_1.contains(field);
   }
 
-  private Optional<String> decryptLegacy(String ciphertext) {
-    return open(ciphertext.substring(FERNET_PREFIX.length()), keys);
+  private String encrypt(String secret) {
+    return FERNET_PREFIX + Token.generate(RANDOM, keys.getFirst(), secret).serialise();
   }
 
   private static Optional<String> open(String token, List<Key> candidates) {

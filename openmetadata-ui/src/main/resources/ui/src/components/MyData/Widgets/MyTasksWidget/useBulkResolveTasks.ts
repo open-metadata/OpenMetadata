@@ -27,6 +27,7 @@ import {
   buildResolveBody,
   getTaskResolveActions,
   needsTaskActionInput,
+  resolveTaskFormSchema,
 } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
 
 export type BulkDecision = 'approve' | 'reject';
@@ -41,8 +42,8 @@ const NEEDS_INPUT = 'needs-input';
 /**
  * Approves or rejects every selected task the way the inbox would one at a
  * time — its workflow transition when it has one, its legacy resolution when
- * not. A task whose action needs a comment or a pick is left for the tasks
- * page rather than resolved with the input missing.
+ * not. A task whose action needs a comment, a pick or a form is left for the
+ * tasks page rather than resolved with the input missing.
  *
  * Settled rather than all-or-nothing: one task closed elsewhere a moment ago
  * must not stop the rest from going through.
@@ -55,14 +56,18 @@ export const useBulkResolveTasks = () => {
     mutationFn: async ({ tasks, decision }: BulkResolveInput) => {
       const labels = { approve: t('label.approve'), reject: t('label.reject') };
       const results = await Promise.allSettled(
-        tasks.map((task) => {
+        tasks.map(async (task) => {
           const action = getTaskResolveActions(task, labels).find(
             (candidate) => candidate.kind === decision
           );
+          const schema = action?.transition
+            ? await resolveTaskFormSchema(task)
+            : undefined;
+          if (!action || needsTaskActionInput(task, action, schema)) {
+            throw new Error(NEEDS_INPUT);
+          }
 
-          return action && !needsTaskActionInput(task, action)
-            ? resolveTask(task.id, buildResolveBody(action, task))
-            : Promise.reject(new Error(NEEDS_INPUT));
+          return resolveTask(task.id, buildResolveBody(action, task));
         })
       );
       // Handed back so the card keeps them selected for a retry.

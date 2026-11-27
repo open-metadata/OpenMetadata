@@ -9,6 +9,7 @@ import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthClientRecord;
 
 /**
@@ -19,6 +20,10 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthClientRecord;
 public class OAuthClientRepository {
   private static final int BCRYPT_COST = 12;
   private final CollectionDAO.OAuthClientDAO dao;
+
+  private CollectionDAO.OAuthClientDAO dao() {
+    return McpGrantTransaction.resolve(daos -> daos.oauthClientDAO(), dao);
+  }
 
   public OAuthClientRepository() {
     this.dao = Entity.getCollectionDAO().oauthClientDAO();
@@ -39,15 +44,18 @@ public class OAuthClientRepository {
     List<String> scopeList =
         scope != null && !scope.isEmpty() ? List.of(scope.split(" ")) : List.of();
 
-    dao.insert(
-        clientInfo.getClientId(),
-        hashedSecret,
-        clientInfo.getClientName(),
-        JsonUtils.pojoToJson(
-            clientInfo.getRedirectUris().stream().map(URI::toString).collect(Collectors.toList())),
-        JsonUtils.pojoToJson(clientInfo.getGrantTypes()),
-        clientInfo.getTokenEndpointAuthMethod(),
-        JsonUtils.pojoToJson(scopeList));
+    dao()
+        .insert(
+            clientInfo.getClientId(),
+            hashedSecret,
+            clientInfo.getClientName(),
+            JsonUtils.pojoToJson(
+                clientInfo.getRedirectUris().stream()
+                    .map(URI::toString)
+                    .collect(Collectors.toList())),
+            JsonUtils.pojoToJson(clientInfo.getGrantTypes()),
+            clientInfo.getTokenEndpointAuthMethod(),
+            JsonUtils.pojoToJson(scopeList));
 
     LOG.info("Registered OAuth client in database: {}", clientInfo.getClientId());
   }
@@ -57,7 +65,7 @@ public class OAuthClientRepository {
    * (not the original secret) for verification by ClientAuthenticator.
    */
   public OAuthClientInformation findByClientId(String clientId) {
-    OAuthClientRecord record = dao.findByClientId(clientId);
+    OAuthClientRecord record = dao().findByClientId(clientId);
     if (record == null) {
       return null;
     }
@@ -79,7 +87,7 @@ public class OAuthClientRepository {
    * Delete OAuth client.
    */
   public void delete(String clientId) {
-    dao.delete(clientId);
+    dao().delete(clientId);
     LOG.info("Deleted OAuth client from database: {}", clientId);
   }
 }
