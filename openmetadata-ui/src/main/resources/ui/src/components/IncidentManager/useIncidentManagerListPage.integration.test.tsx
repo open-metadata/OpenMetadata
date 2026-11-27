@@ -167,7 +167,18 @@ describe('useIncidentManagerListPage (integration)', () => {
     await waitFor(() =>
       expect(result.current.testCaseListData.isLoading).toBe(false)
     );
+    const { pageSize } = result.current.pagingData;
     mockGetList.mockClear();
+    // Hold the old page's response until page 1 has answered, so only the
+    // latest-request guard keeps page 1's rows.
+    let releaseOldPage: () => void = jest.fn();
+    mockGetList.mockImplementation(({ offset }) =>
+      offset === 2 * pageSize
+        ? new Promise((resolve) => {
+            releaseOldPage = () => resolve(rowsAt(offset));
+          })
+        : Promise.resolve(rowsAt(offset))
+    );
 
     await act(async () => {
       result.current.updateFilters({
@@ -175,10 +186,14 @@ describe('useIncidentManagerListPage (integration)', () => {
       });
     });
     await waitFor(() =>
-      expect(result.current.testCaseListData.isLoading).toBe(false)
+      expect(result.current.testCaseListData.data[0].id).toBe('row-0')
     );
+    await act(async () => {
+      releaseOldPage();
+    });
 
     expect(result.current.pagingData.currentPage).toBe(1);
+    expect(mockGetList).toHaveBeenCalledTimes(2);
     expect(mockGetList).toHaveBeenLastCalledWith(
       expect.objectContaining({
         offset: 0,
