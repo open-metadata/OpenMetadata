@@ -12,7 +12,8 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 public interface OAuthAuthorizationServerProvider {
 
   /**
-   * Returns the issuer identifier of this authorization server. It is sent as the {@code iss}
+   * Returns the issuer identifier, which also identifies the MCP protected resource.
+   * It is sent as the {@code iss}
    * parameter on authorization responses so clients can confirm who issued the code.
    * @return The issuer identifier, or null if the base URL is not resolved yet.
    */
