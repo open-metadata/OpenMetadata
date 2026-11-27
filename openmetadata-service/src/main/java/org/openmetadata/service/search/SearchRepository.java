@@ -94,6 +94,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -1214,6 +1215,116 @@ public class SearchRepository {
       vectorFieldHealth.recordCannotHold(
           live.name(), live.indexes(), "its vector field could not be added: " + e.getMessage());
     }
+  }
+
+  /**
+   * Whether {@code reembed} can replace the vectors of {@code name} in place: every index behind it
+   * maps the field as a vector of the embedding model's dimension, whatever model it records, or no
+   * index exists yet. Only a rebuild gives any other index a field for the model.
+   */
+  public boolean takesVectorsInPlace(String name) {
+    return !nameExists(name)
+        || getEmbeddingModel()
+            .filter(model -> takesVectorsOf(searchClient.readEmbeddingField(name), model))
+            .isPresent();
+  }
+
+  /**
+   * After a {@code reembed} run that left no entity out: records the embedding model in the {@code
+   * _meta} of every vector index whose stored vectors all record it, and reads each again, so none
+   * of them counts as holding another model's vectors any more. An index whose field has other
+   * dimensions, or that still holds another model's vectors, as ontology terms do until a reindex
+   * embeds them again, keeps its {@code _meta} and stays reported.
+   *
+   * @return false when an index could not be read or its {@code _meta} written
+   */
+  public boolean recordModelOnReembeddedIndexes() {
+    return getEmbeddingModel()
+        .map(
+            model ->
+                vectorIndexNames().stream()
+                    .filter(this::nameExists)
+                    .map(name -> recordModelIfItHoldsOnlyItsVectors(name, model))
+                    .reduce(true, Boolean::logicalAnd))
+        .orElse(false);
+  }
+
+  private boolean recordModelIfItHoldsOnlyItsVectors(String name, EmbeddingModel model) {
+    LiveEmbeddingField live = searchClient.readEmbeddingField(name);
+    boolean succeeded = live.readable();
+    if (!succeeded) {
+      LOG.error("Could not read the embedding field of {}: {}", name, live.readFailure());
+    } else if (takesVectorsOf(live, model)) {
+      succeeded = recordModelUnlessOtherVectorsRemain(live, model);
+    }
+    vectorFieldHealth.refresh(name);
+    return succeeded;
+  }
+
+  private boolean recordModelUnlessOtherVectorsRemain(
+      LiveEmbeddingField live, EmbeddingModel model) {
+    OptionalLong others = countVectorsOfAnotherModel(live.name(), model);
+    boolean succeeded = others.isPresent();
+    if (others.isPresent() && others.getAsLong() == 0) {
+      succeeded =
+          live.indexes().stream()
+              .map(index -> recordModelOn(index, model))
+              .reduce(true, Boolean::logicalAnd);
+    } else if (others.isPresent()) {
+      LOG.warn(
+          "Index {} still holds {} vectors of another embedding model than {}, so it keeps its "
+              + "model record. {}",
+          live.name(),
+          others.getAsLong(),
+          model.id(),
+          VectorFieldHealth.WAY_OUT);
+    }
+    return succeeded;
+  }
+
+  private OptionalLong countVectorsOfAnotherModel(String name, EmbeddingModel model) {
+    OptionalLong count;
+    try {
+      count =
+          OptionalLong.of(
+              searchClient.countDocumentsAfterRefresh(
+                  name, EmbeddingFieldUpdate.vectorsOfAnotherModel(model)));
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Could not count the vectors of another embedding model in {}", name, e);
+      count = OptionalLong.empty();
+    }
+    return count;
+  }
+
+  private boolean recordModelOn(String index, EmbeddingModel model) {
+    boolean recorded;
+    try {
+      searchClient.recordEmbeddingModel(index, model);
+      recorded = true;
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Could not record the embedding model {} on index {}", model.id(), index, e);
+      recorded = false;
+    }
+    return recorded;
+  }
+
+  private static boolean takesVectorsOf(LiveEmbeddingField live, EmbeddingModel model) {
+    boolean takes = live.takesVectorsOf(model);
+    if (!takes) {
+      LOG.error(
+          "Index {} cannot take vectors of the embedding model {} ({} dimensions): {}. {}",
+          live.name(),
+          model.id(),
+          model.dimension(),
+          whyItCannotTake(live, model),
+          VectorFieldHealth.WAY_OUT);
+    }
+    return takes;
+  }
+
+  private static String whyItCannotTake(LiveEmbeddingField live, EmbeddingModel model) {
+    String reason = live.readable() ? live.describe(model) : live.readFailure();
+    return reason.isEmpty() ? "an index behind it maps no embedding field" : reason;
   }
 
   /** Whether the index mapping marks the index as a vector index, by its {@code fingerprint}. */

@@ -25,6 +25,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -241,6 +242,47 @@ class ElasticsearchVectorMappingUpdateIT {
     assertNeedsARebuild(indexName, "holds vectors of model " + MODEL.id());
   }
 
+  /**
+   * After {@code reembed} replaced every vector of a chunk index built for another model of the
+   * same dimension, the index records the model and keeps the rest of its {@code _meta}.
+   */
+  @Test
+  void recordingTheModelOnALiveIndexKeepsItsOtherMetaAndClearsTheOtherModel() throws Exception {
+    String indexName = "reembedded_embeddings_chunks_g1";
+    createRaw(
+        indexName,
+        "{\"settings\":{\"index\":{\"refresh_interval\":\"-1\"}},"
+            + "\"mappings\":{\"_meta\":{\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
+            + "\"embedding_dimension\":"
+            + DIMENSION
+            + "},\"properties\":{\"embedding\":{\"type\":\"dense_vector\",\"dims\":"
+            + DIMENSION
+            + "},\"embeddingModel\":{\"type\":\"keyword\"},"
+            + "\"embeddingDimension\":{\"type\":\"integer\"}}}}");
+    putDoc(indexName, "own", vectorDoc(MODEL.id()));
+    putDoc(indexName, "other", vectorDoc("another-model"));
+    putDoc(indexName, "unrecorded", "{\"embedding\":" + vector() + "}");
+    putDoc(indexName, "no-vector", "{\"embeddingModel\":\"another-model\"}");
+    assertEquals(
+        2,
+        indexManager.countDocumentsAfterRefresh(
+            indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT,
+        EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
+
+    indexManager.recordEmbeddingModel(indexName, MODEL);
+
+    JsonNode live = liveMappings(indexName);
+    assertEquals(9, live.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
+    assertEquals(DIMENSION, live.path("_meta").path("embedding_dimension").asInt());
+    assertEquals(DIMENSION, live.path("properties").path("embedding").path("dims").asInt());
+    assertEquals(
+        EmbeddingFieldUpdate.KEEP,
+        EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
+  }
+
   @Test
   void anEmbeddingMappedAsAnotherTypeNeedsARebuildAndIsLeftAlone() throws Exception {
     String indexName = "float_embedding_table_search_index";
@@ -398,6 +440,30 @@ class ElasticsearchVectorMappingUpdateIT {
 
   private String baseUrl() {
     return "http://" + container.getHost() + ":" + container.getMappedPort(9200);
+  }
+
+  private void putDoc(String indexName, String id, String document) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(baseUrl() + "/" + indexName + "/_doc/" + id))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(document))
+            .build();
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    assertTrue(response.statusCode() < 300, "index " + id + ": " + response.body());
+  }
+
+  private static String vectorDoc(String modelId) {
+    return "{\"embedding\":"
+        + vector()
+        + ",\"embeddingModel\":\""
+        + modelId
+        + "\",\"embeddingDimension\":"
+        + DIMENSION
+        + "}";
+  }
+
+  private static String vector() {
+    return "[" + String.join(",", Collections.nCopies(DIMENSION, "0.5")) + "]";
   }
 
   private static IndexMapping entityIndex(String indexName) {

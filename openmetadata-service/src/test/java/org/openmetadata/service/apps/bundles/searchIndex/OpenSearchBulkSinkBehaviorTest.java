@@ -193,10 +193,11 @@ class OpenSearchBulkSinkBehaviorTest {
                     + "\"textToEmbed\":\"text\",\"textToLLMContext\":\"context\","
                     + "\"chunkIndex\":0,\"chunkCount\":1,\"parentId\":\""
                     + entityId
-                    + "\"}");
+                    + "\",\"embeddingModel\":\"two-dimensional\",\"embeddingDimension\":2}");
     VectorIndexService vectorService = mock(VectorIndexService.class);
     EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
     when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(embeddingClient.getModelId()).thenReturn("two-dimensional");
     when(embeddingClient.getDimension()).thenReturn(2);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
 

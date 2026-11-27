@@ -144,4 +144,41 @@ class EmbeddingFieldUpdateTest {
         meta);
     assertEquals(meta, mappings.path("_meta"));
   }
+
+  @Test
+  void aModelRecordedOnALiveIndexStartsFromItsOwnMeta() {
+    String reply =
+        "{\"data_asset_embeddings_chunks_g1\":{\"mappings\":{\"_meta\":{\"chunkDocVersion\":9,"
+            + "\"embedding_model\":\"old\",\"embedding_dimension\":384}}}}";
+
+    ObjectNode body =
+        EmbeddingFieldUpdate.modelRecordedOn(
+            "data_asset_embeddings_chunks_g1", JsonUtils.readTree(reply), MODEL);
+
+    assertEquals(
+        JsonUtils.readTree(
+            "{\"_meta\":{\"chunkDocVersion\":9,\"embedding_model\":\"model-a\","
+                + "\"embedding_dimension\":384}}"),
+        body);
+  }
+
+  @Test
+  void theVectorsOfAnotherModelAreTheVectorsThatDoNotRecordThisModelAndItsDimension() {
+    assertEquals(
+        JsonUtils.readTree(
+            "{\"query\":{\"bool\":{\"filter\":[{\"exists\":{\"field\":\"embedding\"}}],"
+                + "\"must_not\":[{\"bool\":{\"filter\":[{\"term\":{\"embeddingModel\":\"model-a\"}},"
+                + "{\"term\":{\"embeddingDimension\":384}}]}}]}}}"),
+        EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL));
+  }
+
+  @Test
+  void aModelRecordedOnAnIndexWithoutMetaRecordsOnlyTheModel() {
+    ObjectNode body = EmbeddingFieldUpdate.modelRecordedOn(INDEX, JsonUtils.readTree("{}"), MODEL);
+
+    assertEquals(
+        JsonUtils.readTree(
+            "{\"_meta\":{\"embedding_model\":\"model-a\",\"embedding_dimension\":384}}"),
+        body);
+  }
 }

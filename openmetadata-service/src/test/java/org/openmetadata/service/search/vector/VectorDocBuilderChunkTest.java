@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
@@ -292,7 +293,9 @@ class VectorDocBuilderChunkTest {
       reuse.put(i, (float[]) original.get(i).get("embedding"));
     }
 
-    List<Map<String, Object>> rebuilt = VectorDocBuilder.fromEntityReusingEmbeddings(table, reuse);
+    EmbeddingModel model = EmbeddingModel.of(client);
+    List<Map<String, Object>> rebuilt =
+        VectorDocBuilder.fromEntityReusingEmbeddings(table, reuse, model);
 
     assertEquals(callsAfterOriginal, client.embedCalls.get(), "reuse path must not call embed()");
     assertEquals(original.size(), rebuilt.size());
@@ -302,6 +305,8 @@ class VectorDocBuilderChunkTest {
           rebuilt.get(i).get("embedding"),
           "reused vector must be the stored one");
       assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, rebuilt.get(i).get("docVersion"));
+      assertEquals(model.id(), rebuilt.get(i).get(EmbeddingModel.ID_FIELD));
+      assertEquals(model.dimension(), rebuilt.get(i).get(EmbeddingModel.DIMENSION_FIELD));
     }
     assertFalse(rebuilt.isEmpty());
   }

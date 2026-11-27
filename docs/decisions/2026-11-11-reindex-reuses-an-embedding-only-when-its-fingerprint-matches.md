@@ -2,10 +2,14 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-20 (both engines share the reuse lookup;
-  Elasticsearch embeds every chunk)
+  Elasticsearch embeds every chunk) · v3 2026-11-26 (a stored vector is reused only for the model
+  that made it; `reembed` ignores stored vectors and records the model)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `StoredEmbeddingReuseTest`, `reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent`
-  in `OpenSearchVectorServiceTest`, `StoredEmbeddingReuseIT` (both engines); live/reindex parity:
+  in `OpenSearchVectorServiceTest`, `EmbeddingModelSwitchTest`, `StoredEmbeddingReuseIT` (both
+  engines); the `reembed` record: `OpenMetadataOperationsReembedRunTest`, the `reembed` cases of
+  `SearchRepositoryBehaviorTest`, `recordingTheModelOnALiveIndexKeepsItsOtherMetaAndClearsTheOtherModel`
+  in `ElasticsearchVectorMappingUpdateIT` and `OpenSearchVectorMappingUpdateIT`; live/reindex parity:
   `VectorDocBuilderTest` (custom properties) and
   `MetricRepositoryTest.aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint`
 - **Related:** open-metadata/OpenMetadata#37524, open-metadata/OpenMetadata#37522,
@@ -35,9 +39,10 @@ old embedding forever:
 
 ## Decision
 
-- **The fingerprint is the only reuse key.** A reindex copies a stored entity-doc embedding only
-  when its stored fingerprint equals the current one. `updatedAt` plays no part.
-  `StoredEmbeddingReuse` holds the rule for both engines.
+- **The fingerprint is the only key for the text.** A reindex copies a stored entity-doc embedding
+  only when its stored fingerprint equals the current one. `updatedAt` plays no part.
+  `StoredEmbeddingReuse` holds the rule for both engines. The model that made the vector is the
+  other key, a separate fact (v3).
 - **The current fingerprint is computed lazily**, only for entities that have a stored doc, so a
   first-time index does not pay for it.
 - **The live write path and the reindex must build the same fingerprint for the same entity.**
@@ -100,3 +105,58 @@ v2 (2026-11-20): both engines run one vector index service
   entity, or embeds chunk 0 only, it now makes one call per chunk, as OpenSearch does. The entity
   doc takes chunk 0's embedding from that same call.
 - **`reembed` runs on Elasticsearch.**
+
+v3 (2026-11-26): a stored vector is reused only for the model that made it.
+
+- **Every vector records its model.** Each entity doc and chunk doc with an `embedding` carries
+  `embeddingModel`, the provider's model id, and `embeddingDimension` beside it, written from the
+  client that made the vector (`EmbeddingModel`). They are mapped as `keyword` and `integer` in
+  the entity index mappings and in the chunk index, which `chunkDocVersion` 9 adds to existing
+  chunk indexes. The model is not folded into the fingerprint: the fingerprint says which text was
+  embedded and the model says what embedded it, and each is checked on its own.
+- **A stored vector is current when its fingerprint is the current text's and its recorded model
+  equals the configured model.** Two models of one dimension place the same text at unrelated
+  points, and one model id can be configured for several dimensions, so the id and the dimension
+  both count. A doc that records no model is stale. The rule applies wherever a stored vector is
+  kept instead of embedding: the reindex lookup and the splice (`StoredEmbeddingReuse`), the
+  chunk backfill, the recreate's copy of live chunks into the staged generation
+  (`ChunkHeader.holdsVectorsOf`), and the live writes. The ontology term bulk write keeps a
+  term's own vector, with its model fields, across a rewrite of unchanged text; the embedding
+  refresh that follows every term write applies the rule.
+- **`reembed` ignores stored vectors.** It embeds every entity again (`reembedEntity`) and exits
+  with 1 when any entity could not be read or re-embedded; a batch that cannot be read counts all
+  its entities, and an entity whose re-embedding throws counts as well. It rewrites the live
+  indexes in place, so it first reads their fields, declares the field on an index that maps none
+  as server start and the smart `reindex` do, and leaves out, before any provider call and counted
+  as not re-embedded, every type whose entity index or the chunk index still does not map a vector
+  of the model's dimension; only a reindex rebuilds those.
+  An index that records another model of the same dimension is what it replaces, so the server's
+  record of indexes that cannot hold the model's vectors plays no part in it
+  (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model). It embeds no
+  ontology term: a reindex rebuilds those, decision 8 of that record.
+- **A complete `reembed` records the model.** After a run that left no entity out, every vector
+  index of the model's dimension in which no stored vector records another model, or none, records
+  the model in its `_meta` through `EmbeddingFieldUpdate.recordModel`, starting from that index's
+  live `_meta`, since `PUT _mapping` replaces all of it and a chunk index keeps `chunkDocVersion`
+  there. The vectors themselves are the evidence, so this also clears a vector index no embedded
+  type writes, which holds none, and keeps reporting one that still holds another model's vectors,
+  such as ontology terms. The server no longer counts a recorded index as holding another model's
+  vectors once it reads the field again. A run that left any entity out records nothing.
+
+Consequences of v3:
+
+- **Upgrade cost.** No doc written before v3 records its model, so every embedded entity is
+  embedded once more by the first write or reindex that touches it after the upgrade: one paid
+  provider call per chunk, on both engines, the cost of embedding the whole catalog once. After
+  that, a reindex embeds only entities whose text or model changed.
+- **A switch of model costs one full embedding of the catalog**, at the next reindex or
+  `reembed` (ontology terms at the next reindex). Until then, an index whose `_meta` records the
+  old model is left out of vector search and vector writes
+  (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model), so its
+  entities are missing from semantic results rather than ranked against the wrong model. The new
+  model's queries still meet the old model's vectors only where `_meta` does not name the old
+  model: an index that records no model, which is judged by its dimension alone; an index into
+  which a recreate on an earlier release copied the old model's vectors under the new model's
+  `_meta`, until the first reindex after the upgrade embeds it again; and, during a rolling
+  switch, vectors a node still running the old model writes, until the next reindex of their
+  types.

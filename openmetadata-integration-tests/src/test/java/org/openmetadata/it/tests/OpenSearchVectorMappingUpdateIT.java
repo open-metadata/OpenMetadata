@@ -26,6 +26,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -248,6 +249,48 @@ class OpenSearchVectorMappingUpdateIT {
     assertTrue(live.path("properties").has("addedInNextRelease"));
     assertEquals(MODEL.id(), recordedModel(indexName));
     assertNeedsARebuild(indexName, "holds vectors of model " + MODEL.id());
+  }
+
+  /**
+   * After {@code reembed} replaced every vector of a chunk index built for another model of the
+   * same dimension, the index records the model and keeps the rest of its {@code _meta}.
+   */
+  @Test
+  void recordingTheModelOnALiveIndexKeepsItsOtherMetaAndClearsTheOtherModel() throws Exception {
+    String indexName = "reembedded_embeddings_chunks_g1";
+    send(
+        "PUT",
+        "/" + indexName,
+        "{\"settings\":{\"index\":{\"knn\":true,\"refresh_interval\":\"-1\"}},\"mappings\":{\"_meta\":{"
+            + "\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
+            + "\"embedding_dimension\":"
+            + DIMENSION
+            + "},\"properties\":{\"embedding\":{\"type\":\"knn_vector\",\"dimension\":"
+            + DIMENSION
+            + "},\"embeddingModel\":{\"type\":\"keyword\"},"
+            + "\"embeddingDimension\":{\"type\":\"integer\"}}}}");
+    send("PUT", "/" + indexName + "/_doc/own", vectorDoc(MODEL.id()));
+    send("PUT", "/" + indexName + "/_doc/other", vectorDoc("another-model"));
+    send("PUT", "/" + indexName + "/_doc/unrecorded", "{\"embedding\":" + vector() + "}");
+    send("PUT", "/" + indexName + "/_doc/no-vector", "{\"embeddingModel\":\"another-model\"}");
+    assertEquals(
+        2,
+        client.countDocumentsAfterRefresh(
+            indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT,
+        EmbeddingFieldUpdate.updateFor(client.readEmbeddingField(indexName), MODEL));
+
+    client.recordEmbeddingModel(indexName, MODEL);
+
+    JsonNode live = liveMappings(indexName);
+    assertEquals(9, live.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(MODEL.id(), recordedModel(indexName));
+    assertEquals(DIMENSION, live.path("_meta").path("embedding_dimension").asInt());
+    assertEquals(DIMENSION, live.path("properties").path("embedding").path("dimension").asInt());
+    assertEquals(
+        EmbeddingFieldUpdate.KEEP,
+        EmbeddingFieldUpdate.updateFor(client.readEmbeddingField(indexName), MODEL));
   }
 
   @Test
@@ -661,6 +704,20 @@ class OpenSearchVectorMappingUpdateIT {
 
   private String baseUrl() {
     return "http://" + container.getHost() + ":" + container.getMappedPort(9200);
+  }
+
+  private static String vectorDoc(String modelId) {
+    return "{\"embedding\":"
+        + vector()
+        + ",\"embeddingModel\":\""
+        + modelId
+        + "\",\"embeddingDimension\":"
+        + DIMENSION
+        + "}";
+  }
+
+  private static String vector() {
+    return "[" + String.join(",", Collections.nCopies(DIMENSION, "0.5")) + "]";
   }
 
   private JsonNode get(String path) throws IOException, InterruptedException {

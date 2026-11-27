@@ -2,6 +2,7 @@ package org.openmetadata.service.search.elasticsearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -36,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
@@ -49,6 +51,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String RECORDED_MODEL_FILTER =
       "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
+  private static final String META_FILTER = "*.mappings." + LiveEmbeddingField.META;
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -154,6 +157,35 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         name,
         model.id(),
         model.dimension());
+  }
+
+  @Override
+  public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
+    Request liveMeta = new Request("GET", "/" + index + "/_mapping");
+    liveMeta.addParameter("filter_path", META_FILTER);
+    try {
+      putMapping(
+          index, EmbeddingFieldUpdate.modelRecordedOn(index, getJson(liveMeta), model).toString());
+    } catch (ParseException e) {
+      throw new IOException("Could not read the _meta of index " + index, e);
+    }
+    LOG.info(
+        "Recorded the embedding model {} ({} dimensions) in the _meta of index {}",
+        model.id(),
+        model.dimension(),
+        index);
+  }
+
+  @Override
+  public long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException {
+    lowLevelClient().performRequest(new Request("POST", "/" + name + "/_refresh"));
+    Request count = new Request("POST", "/" + name + "/_count");
+    count.setJsonEntity(body.toString());
+    try {
+      return getJson(count).path("count").asLong();
+    } catch (ParseException e) {
+      throw new IOException("Could not read the document count of " + name, e);
+    }
   }
 
   private void putMapping(String indexName, String mappingsJson) throws IOException {

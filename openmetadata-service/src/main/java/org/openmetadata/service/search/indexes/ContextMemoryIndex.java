@@ -32,6 +32,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.MemorySourceDisclosure;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 
 public class ContextMemoryIndex implements TaggableIndex {
 
@@ -61,14 +62,7 @@ public class ContextMemoryIndex implements TaggableIndex {
   public static final String FIELD_SOURCE_FILE_ID = "sourceFile.id";
 
   public static final Set<String> VECTOR_FIELDS =
-      Set.of(
-          "embedding",
-          "textToEmbed",
-          "textToLLMContext",
-          "fingerprint",
-          "parentId",
-          "chunkIndex",
-          "chunkCount");
+      Set.copyOf(VectorDocBuilder.EMBEDDING_SOURCE_FIELDS);
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
       Set.of(

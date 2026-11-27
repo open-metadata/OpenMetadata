@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
@@ -51,6 +52,19 @@ public interface IndexManagementClient {
    * records the model in {@code _meta}. Changes nothing else.
    */
   void declareEmbeddingField(String name, EmbeddingModel model) throws IOException;
+
+  /**
+   * Records {@code model} in the {@code _meta} of {@code index}, one concrete index whose field
+   * already holds vectors of the model's dimension, keeping its other {@code _meta} entries.
+   * Changes nothing else.
+   */
+  void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException;
+
+  /**
+   * How many documents behind {@code name}, an existing index or alias, match {@code body}, once
+   * {@code name} is refreshed so that every write acknowledged before the call is counted.
+   */
+  long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException;
 
   /**
    * Delete an index.

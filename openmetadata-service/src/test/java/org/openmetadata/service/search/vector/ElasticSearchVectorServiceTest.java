@@ -71,6 +71,7 @@ import org.slf4j.LoggerFactory;
 
 class ElasticSearchVectorServiceTest {
 
+  private static final String MODEL_ID = "es-test-model";
   private static final String EMPTY_HITS_RESPONSE =
       "{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}";
 
@@ -92,6 +93,7 @@ class ElasticSearchVectorServiceTest {
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     when(mockEmbeddingClient.embedQuery(any(String.class)))
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    when(mockEmbeddingClient.getModelId()).thenReturn(MODEL_ID);
 
     vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
   }
@@ -757,7 +759,11 @@ class ElasticSearchVectorServiceTest {
             "/table_search_index/_search",
             response(
                 200,
-                "{\"hits\":{\"hits\":[{\"_source\":{\"fingerprint\":\"" + fingerprint + "\"}}]}}"),
+                "{\"hits\":{\"hits\":[{\"_source\":{\"fingerprint\":\""
+                    + fingerprint
+                    + "\",\"embeddingModel\":\""
+                    + MODEL_ID
+                    + "\",\"embeddingDimension\":3}}]}}"),
             "/_bulk",
             response(200, "{\"errors\":false,\"items\":[]}")));
 

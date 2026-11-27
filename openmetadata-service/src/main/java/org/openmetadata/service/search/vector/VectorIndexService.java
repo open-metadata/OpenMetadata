@@ -85,6 +85,12 @@ public interface VectorIndexService {
   void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName);
 
   /**
+   * Embed the entity again with the configured model, ignoring every stored embedding, and write
+   * its chunk documents and its entity-doc embedding. Returns whether both were written.
+   */
+  boolean reembedEntity(EntityInterface<?> entity, String entityIndexName);
+
+  /**
    * Reindex-sink write of prebuilt chunk documents. {@code stagedChunkTarget} is the generation
    * the run staged with {@link #beginStagedChunkRecreate}, or null to write to the live index.
    * Returns false when the chunks could not be written, a miss the caller counts and retries.
@@ -109,7 +115,7 @@ public interface VectorIndexService {
 
   /**
    * The stored entity-doc embeddings a reindex may reuse, keyed by entity id: those whose stored
-   * fingerprint equals the current one.
+   * fingerprint equals the current one and whose recorded model is the configured model.
    *
    * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
    *     one exists

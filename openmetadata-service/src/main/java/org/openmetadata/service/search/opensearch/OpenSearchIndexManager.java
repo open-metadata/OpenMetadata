@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
@@ -49,6 +51,7 @@ import os.org.opensearch.client.transport.endpoints.BooleanResponse;
 public class OpenSearchIndexManager implements IndexManagementClient {
   private static final String RECORDED_MODEL_FILTER =
       "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
+  private static final String META_FILTER = "*.mappings." + LiveEmbeddingField.META;
   private final OpenSearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -142,6 +145,43 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         model.dimension());
   }
 
+  @Override
+  public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
+    JsonNode liveMeta = getJson("/" + index + "/_mapping", Map.of("filter_path", META_FILTER));
+    putMapping(
+        index,
+        "{\"mappings\":" + EmbeddingFieldUpdate.modelRecordedOn(index, liveMeta, model) + "}");
+    LOG.info(
+        "Recorded the embedding model {} ({} dimensions) in the _meta of index {}",
+        model.id(),
+        model.dimension(),
+        index);
+  }
+
+  @Override
+  public long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException {
+    try (Response refreshed =
+        client
+            .generic()
+            .execute(
+                Requests.builder().endpoint("/" + name + "/_refresh").method("POST").build())) {
+      responseBody(refreshed, "/" + name + "/_refresh");
+    }
+    try (Response response =
+        client
+            .generic()
+            .execute(
+                Requests.builder()
+                    .endpoint("/" + name + "/_count")
+                    .method("POST")
+                    .json(body.toString())
+                    .build())) {
+      return JsonUtils.readTree(responseBody(response, "/" + name + "/_count"))
+          .path("count")
+          .asLong();
+    }
+  }
+
   /**
    * Sends the {@code mappings.properties} of {@code content} as a {@code PUT _mapping}, and its
    * {@code _meta} when it has one.
@@ -187,17 +227,21 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         client
             .generic()
             .execute(Requests.builder().endpoint(endpoint).query(query).method("GET").build())) {
-      String body =
-          response
-              .getBody()
-              .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
-              .orElse("");
-      if (response.getStatus() != 200) {
-        throw new IOException(
-            String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
-      }
-      return JsonUtils.readTree(body);
+      return JsonUtils.readTree(responseBody(response, endpoint));
     }
+  }
+
+  private static String responseBody(Response response, String endpoint) throws IOException {
+    String body =
+        response
+            .getBody()
+            .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
+            .orElse("");
+    if (response.getStatus() != 200) {
+      throw new IOException(
+          String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
+    }
+    return body;
   }
 
   @Override

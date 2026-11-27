@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 /**
  * Vector search is gated in three independent places that must agree:
@@ -34,6 +35,10 @@ import org.openmetadata.service.search.vector.VectorIndexService;
  *       the {@code embedding} knn_vector without it.
  * </ol>
  *
+ * <p>Each mapping also maps the model fields every vector document records with the types their
+ * queries need: a {@code reembed} counts the vectors of another model with a {@code term} query on
+ * {@code embeddingModel}, which matches only on a keyword field.
+ *
  * <p>Drift between them fails silently and in opposite directions: a type in (1) but not (2) is
  * embedded at write cost and never returned, and a type in (2) but not (1) makes the alias claim
  * coverage it does not have. This test pins all three.
@@ -46,6 +51,10 @@ class EmbeddedEntityTypesConsistencyTest {
   private static final List<String> EMBEDDING_FIELDS =
       List.of(
           "fingerprint", "textToEmbed", "textToLLMContext", "chunkIndex", "chunkCount", "parentId");
+
+  /** The model fields {@code VectorDocBuilder} writes beside every vector, with their types. */
+  private static final Map<String, String> MODEL_FIELD_TYPES =
+      Map.of(EmbeddingModel.ID_FIELD, "keyword", EmbeddingModel.DIMENSION_FIELD, "integer");
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -89,9 +98,7 @@ class EmbeddedEntityTypesConsistencyTest {
             getClass().getResourceAsStream("/" + mapping.getIndexMappingFile(language))) {
           assertTrue(stream != null, type + " has no " + language + " mapping");
           JsonNode properties = MAPPER.readTree(stream).path("mappings").path("properties");
-          for (String field : EMBEDDING_FIELDS) {
-            assertTrue(properties.has(field), type + " " + language + " lacks " + field);
-          }
+          assertEquals(List.of(), missingFields(properties), type + " " + language);
         }
       }
     }
@@ -115,8 +122,7 @@ class EmbeddedEntityTypesConsistencyTest {
             continue; // language variants are optional; covered by IndexMappingVersionTrackerTest
           }
           JsonNode properties = MAPPER.readTree(stream).path("mappings").path("properties");
-          List<String> missing =
-              EMBEDDING_FIELDS.stream().filter(field -> !properties.has(field)).toList();
+          List<String> missing = missingFields(properties);
           if (!missing.isEmpty()) {
             problems.add(entityType + " (" + language + "): missing " + missing);
           }
@@ -128,8 +134,22 @@ class EmbeddedEntityTypesConsistencyTest {
         problems.isEmpty(),
         "Vector-indexable types whose index mapping omits the embedding fields. Without"
             + " 'fingerprint' OsUtils.addKnnVectorSettings skips the knn_vector entirely, so the"
-            + " type is embedded and then unsearchable: "
+            + " type is embedded and then unsearchable; without a keyword 'embeddingModel' a"
+            + " reembed never records its model: "
             + problems);
+  }
+
+  /** The embedding fields {@code properties} lacks, and each model field it maps with another type. */
+  private static List<String> missingFields(JsonNode properties) {
+    List<String> missing = new ArrayList<>();
+    EMBEDDING_FIELDS.stream().filter(field -> !properties.has(field)).forEach(missing::add);
+    MODEL_FIELD_TYPES.forEach(
+        (field, type) -> {
+          if (!type.equals(properties.path(field).path("type").asText())) {
+            missing.add(field + " as " + type);
+          }
+        });
+    return missing;
   }
 
   private static Map<String, IndexMapping> indexMappings() {

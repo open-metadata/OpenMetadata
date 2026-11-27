@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -1761,7 +1762,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "reembed",
       description =
-          "Drop the vector index, recreate it, and fully re-embed all entities using the configured embedding provider.")
+          "Re-embed every entity with the configured embedding provider, ignoring stored embeddings.")
   public Integer reembed(
       @Option(
               names = {"-b", "--batch-size"},
@@ -1808,8 +1809,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             finalQueueSize,
             batchSize);
         reembedAllTypes(vecService, run, batchSize, finalConsumerThreads);
-        LOG.info("Re-embedding completed successfully");
-        exitCode = 0;
+        exitCode =
+            reembedExitCode(
+                run.failedCounts(),
+                () -> Entity.getSearchRepository().recordModelOnReembeddedIndexes());
       }
     } catch (Exception e) {
       LOG.error("Failed to run full re-embedding", e);
@@ -1859,7 +1862,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       VectorIndexService vecService, ReembedRun run, int batchSize, int consumerThreads)
       throws InterruptedException {
     Map<String, Integer> entityTotals = new java.util.concurrent.ConcurrentHashMap<>();
-    int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
+    countReembedEntities(entityTotals);
+    leaveOutTypesThatCannotTakeVectors(vecService, entityTotals, run.failedCounts());
+    int totalBatches =
+        entityTotals.values().stream()
+            .mapToInt(total -> calculateReembedNumberOfBatches(total, batchSize))
+            .sum();
     java.util.concurrent.CountDownLatch producerLatch =
         new java.util.concurrent.CountDownLatch(totalBatches);
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1872,12 +1880,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
             run.processedCounts(),
             run.failedCounts());
     for (String entityType : EmbeddedEntityTypes.ALL) {
-      if (isReembedableEntityType(entityType)) {
-        // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
-        // publishes terms through the gated writer that keeps drafts out of search. See
-        // calculateReembedTotalBatches, which also excludes term types, and the ADR 2026-11-23.
+      if (entityTotals.containsKey(entityType)) {
+        // Ontology term types are never in entityTotals: their embeddings are rebuilt only via
+        // the release-aware reindex path (countReembedEntities and the ADR 2026-11-23).
         scheduleReembedBatches(
-            entityType, entityTotals.getOrDefault(entityType, 0), batchSize, run, producerLatch);
+            entityType, entityTotals.get(entityType), batchSize, run, producerLatch);
       }
     }
     awaitReembedProducers(producerLatch, run.producerExecutor());
@@ -1907,48 +1914,106 @@ public class OpenMetadataOperations implements Callable<Integer> {
           batches);
       for (int i = 0; i < batches; i++) {
         int offset = i * batchSize;
-        run.producerExecutor()
-            .submit(() -> produceReembedBatch(source, entityType, offset, run, producerLatch));
+        ReembedBatch batch =
+            new ReembedBatch(entityType, offset, Math.min(batchSize, totalRecords - offset));
+        run.producerExecutor().submit(() -> produceReembedBatch(source, batch, run, producerLatch));
       }
     }
   }
 
-  private static void produceReembedBatch(
+  /** A batch that cannot be read counts all its entities as not re-embedded. */
+  static void produceReembedBatch(
       org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source,
-      String entityType,
-      int offset,
+      ReembedBatch reembedBatch,
       ReembedRun run,
       java.util.concurrent.CountDownLatch producerLatch) {
+    String entityType = reembedBatch.entityType();
     try {
       org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
-          source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+          source.readWithCursor(RestUtil.encodeCursor(String.valueOf(reembedBatch.offset())));
       if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
         run.taskQueue().put(new ReembedTask(entityType, batch));
       }
       if (batch != null && batch.getErrors() != null && !batch.getErrors().isEmpty()) {
-        run.failedCounts()
-            .computeIfAbsent(entityType, key -> new AtomicInteger(0))
-            .addAndGet(batch.getErrors().size());
+        countNotReembedded(run.failedCounts(), entityType, batch.getErrors().size());
       }
     } catch (Exception e) {
-      LOG.warn("Failed to read batch for entity type {} at offset {}", entityType, offset, e);
+      LOG.warn(
+          "Failed to read batch for entity type {} at offset {}",
+          entityType,
+          reembedBatch.offset(),
+          e);
+      countNotReembedded(run.failedCounts(), entityType, reembedBatch.size());
     } finally {
       producerLatch.countDown();
     }
   }
 
+  private static void countNotReembedded(
+      Map<String, AtomicInteger> failedCounts, String entityType, int entities) {
+    failedCounts.computeIfAbsent(entityType, key -> new AtomicInteger(0)).addAndGet(entities);
+  }
+
+  /**
+   * Declares the vector field on every index that maps none, as server start and the smart {@code
+   * reindex} do, then leaves out of the run, counted as not re-embedded, every type whose entity
+   * index or the chunk index still cannot take the model's vectors in place, before any provider
+   * call is paid for. Its vectors cannot be replaced, and a vector written to an index that maps no
+   * field for it would be mapped as plain numbers.
+   */
+  static void leaveOutTypesThatCannotTakeVectors(
+      VectorIndexService vecService,
+      Map<String, Integer> entityTotals,
+      Map<String, AtomicInteger> failedCounts) {
+    SearchRepository repo = Entity.getSearchRepository();
+    repo.checkVectorFields();
+    boolean chunksTakeVectors = repo.takesVectorsInPlace(vecService.getChunkIndexName());
+    List.copyOf(entityTotals.keySet()).stream()
+        .filter(entityType -> !chunksTakeVectors || !entityIndexTakesVectors(repo, entityType))
+        .forEach(
+            entityType ->
+                countNotReembedded(failedCounts, entityType, entityTotals.remove(entityType)));
+  }
+
+  private static boolean entityIndexTakesVectors(SearchRepository repo, String entityType) {
+    String entityIndexName = resolveEntityIndexName(entityType);
+    return entityIndexName != null && repo.takesVectorsInPlace(entityIndexName);
+  }
+
   private static void logReembedSummary(ReembedRun run) {
     for (String entityType : EmbeddedEntityTypes.ALL) {
       LOG.info(
-          "Finished re-embedding {} entities for type {} (failed reads: {})",
+          "Re-embedded {} entities of type {}; {} could not be read or re-embedded",
           run.processedCounts().getOrDefault(entityType, new AtomicInteger(0)).get(),
           entityType,
           run.failedCounts().getOrDefault(entityType, new AtomicInteger(0)).get());
     }
   }
 
+  /**
+   * Success only when every entity was read and re-embedded, and then the indexes that hold only
+   * the model's vectors record it ({@code recordModel}); the summary above names the entities left
+   * out. A run that left any out records nothing, since an index it wrote may still hold another
+   * model's vectors.
+   */
+  static int reembedExitCode(Map<String, AtomicInteger> failedCounts, BooleanSupplier recordModel) {
+    int failed = failedCounts.values().stream().mapToInt(AtomicInteger::get).sum();
+    boolean recorded = failed == 0 && recordModel.getAsBoolean();
+    if (recorded) {
+      LOG.info("Re-embedding completed successfully");
+    } else if (failed == 0) {
+      LOG.error("Re-embedded every entity, but an index could not record the embedding model");
+    } else {
+      LOG.error(
+          "Re-embedding finished with {} entities not re-embedded; run it again once the cause "
+              + "is fixed",
+          failed);
+    }
+    return recorded ? 0 : 1;
+  }
+
   /** The state a re-embedding run shares between its producers and consumers. */
-  private record ReembedRun(
+  record ReembedRun(
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
       Map<String, AtomicInteger> processedCounts,
@@ -1959,6 +2024,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private record ReembedTask(
       String entityType,
       org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch) {}
+
+  /** One page of a type to re-embed: where it starts and how many entities it should hold. */
+  record ReembedBatch(String entityType, int offset, int size) {}
 
   private java.util.concurrent.CountDownLatch startReembedConsumers(
       int consumerThreads,
@@ -2002,27 +2070,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         if (task.batch() == null) {
           break;
         }
-        String entityType = task.entityType();
-        String entityIndexName = resolveEntityIndexName(entityType);
-        if (entityIndexName == null) {
-          LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
-          continue;
-        }
-        for (EntityInterface<?> entity : task.batch().getData()) {
-          try {
-            vecService.updateEntityEmbeddings(entity, entityIndexName);
-            processedCounts
-                .computeIfAbsent(
-                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-                .incrementAndGet();
-          } catch (Exception e) {
-            failedCounts
-                .computeIfAbsent(
-                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-                .incrementAndGet();
-            LOG.warn("Failed to embed entity {} of type {}", entity.getId(), entityType, e);
-          }
-        }
+        reembedBatch(
+            vecService, task.entityType(), task.batch().getData(), processedCounts, failedCounts);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -2031,7 +2080,46 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private String resolveEntityIndexName(String entityType) {
+  /**
+   * Re-embeds one batch, counting each entity as re-embedded or not. An entity whose re-embedding
+   * throws, and every entity of a batch whose index cannot be resolved, counts as not re-embedded,
+   * so the run records no model and exits 1.
+   */
+  static void reembedBatch(
+      VectorIndexService vecService,
+      String entityType,
+      List<? extends EntityInterface<?>> entities,
+      Map<String, AtomicInteger> processedCounts,
+      Map<String, AtomicInteger> failedCounts) {
+    String entityIndexName = resolveEntityIndexName(entityType);
+    if (entityIndexName == null) {
+      LOG.warn(
+          "No index mapping found for entity type {}; {} entities not re-embedded",
+          entityType,
+          entities.size());
+      countNotReembedded(failedCounts, entityType, entities.size());
+    } else {
+      for (EntityInterface<?> entity : entities) {
+        Map<String, AtomicInteger> outcome =
+            reembedded(vecService, entity, entityIndexName) ? processedCounts : failedCounts;
+        outcome.computeIfAbsent(entityType, key -> new AtomicInteger(0)).incrementAndGet();
+      }
+    }
+  }
+
+  private static boolean reembedded(
+      VectorIndexService vecService, EntityInterface<?> entity, String entityIndexName) {
+    boolean reembedded;
+    try {
+      reembedded = vecService.reembedEntity(entity, entityIndexName);
+    } catch (RuntimeException e) {
+      LOG.warn("Could not re-embed entity {} in {}", entity.getId(), entityIndexName, e);
+      reembedded = false;
+    }
+    return reembedded;
+  }
+
+  private static String resolveEntityIndexName(String entityType) {
     try {
       org.openmetadata.search.IndexMapping mapping =
           Entity.getSearchRepository().getIndexMapping(entityType);
@@ -2080,8 +2168,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private int calculateReembedTotalBatches(int batchSize, Map<String, Integer> entityTotals) {
-    int totalBatches = 0;
+  /** Counts the entities of every type the run may re-embed into {@code entityTotals}. */
+  private void countReembedEntities(Map<String, Integer> entityTotals) {
     for (String entityType : EmbeddedEntityTypes.ALL) {
       if (!isReembedableEntityType(entityType)) {
         // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
@@ -2093,23 +2181,21 @@ public class OpenMetadataOperations implements Callable<Integer> {
         continue;
       }
       try {
-        int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
-        entityTotals.put(entityType, totalRecords);
-        totalBatches += calculateReembedNumberOfBatches(totalRecords, batchSize);
+        entityTotals.put(
+            entityType, Entity.getEntityRepository(entityType).getDao().listTotalCount());
       } catch (EntityNotFoundException e) {
         LOG.warn(
             "Skipping re-embedding for entity type '{}': repository not registered", entityType);
       }
     }
-    return totalBatches;
   }
 
   /**
    * Whether the {@code reembed} CLI may embed an entity type from its raw working row. Ontology
    * terms are excluded: their embeddings are rebuilt only via the release-aware reindex path,
    * which publishes terms through the gated writer that keeps drafts out of search (ADR
-   * 2026-11-23). The 2-arg {@code updateEntityEmbeddings} overload refuses terms defensively as
-   * well, so a term that reached {@code reembed} would be skipped at write time regardless.
+   * 2026-11-23). {@code reembedEntity} refuses terms defensively as well, so a term that reached
+   * {@code reembed} would be skipped at write time regardless.
    */
   static boolean isReembedableEntityType(String entityType) {
     return !org.openmetadata.service.search.OntologyTermSearch.isTerm(entityType);

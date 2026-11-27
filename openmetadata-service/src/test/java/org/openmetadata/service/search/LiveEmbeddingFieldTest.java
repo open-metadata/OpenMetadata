@@ -162,4 +162,29 @@ class LiveEmbeddingFieldTest {
     assertEquals("503", live.readFailure());
     assertFalse(LiveEmbeddingField.unreadable("table_search_index", null).readable());
   }
+
+  @Test
+  void aFieldOfTheModelsDimensionTakesItsVectorsWhateverModelItRecords() {
+    LiveEmbeddingField anotherModel =
+        vector384("table_search_index_a")
+            .withRecordedModels(JsonUtils.readTree(recorded("table_search_index_a", "model-b")));
+
+    assertFalse(anotherModel.holds(MODEL_384));
+    assertTrue(anotherModel.takesVectorsOf(MODEL_384));
+    assertFalse(anotherModel.takesVectorsOf(new EmbeddingModel("model-a", 768)));
+  }
+
+  @Test
+  void noIndexWithoutTheFieldTakesVectors() {
+    LiveEmbeddingField oneWithout =
+        elasticsearch(
+            "{\"a\": {\"mappings\": {\"embedding\": {\"full_name\": \"embedding\",\"mapping\":"
+                + " {\"embedding\": {\"type\": \"dense_vector\", \"dims\": 384}}}}},"
+                + " \"b\": {\"mappings\": {}}}");
+
+    assertFalse(oneWithout.takesVectorsOf(MODEL_384));
+    assertFalse(
+        LiveEmbeddingField.unreadable("table_search_index", "503").takesVectorsOf(MODEL_384));
+    assertFalse(LiveEmbeddingField.notMapped("table_search_index").takesVectorsOf(MODEL_384));
+  }
 }

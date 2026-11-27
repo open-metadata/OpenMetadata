@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -4850,6 +4851,144 @@ class SearchRepositoryBehaviorTest {
     assertTrue(report.contains("openmetadata-ops.sh reindex"), report);
     assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
     verify(searchClient, never()).declareEmbeddingField(anyString(), any());
+  }
+
+  /**
+   * A repository whose vector search service runs on {@code model}. No spy: its {@link
+   * VectorFieldHealth} rechecks through the instance it was built with, which must know the model.
+   */
+  private SearchRepository repositoryRunningOn(EmbeddingModel model) throws Exception {
+    SearchRepository repository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.DOMAIN, DOMAIN_MAPPING),
+            "",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    lenient()
+        .when(vectorService.chunkIndexNames())
+        .thenReturn(List.of("data_asset_embeddings_chunks"));
+    EmbeddingClient client = mock(EmbeddingClient.class);
+    lenient().when(client.getModelId()).thenReturn(model.id());
+    lenient().when(client.getDimension()).thenReturn(model.dimension());
+    setPrivateField(repository, "embeddingClient", client);
+    setPrivateField(repository, "vectorIndexService", vectorService);
+    setPrivateField(repository, "vectorServiceInitialized", true);
+    return repository;
+  }
+
+  /** {@code name}, an alias over {@code index}, whose vectors {@code model} made, as it records. */
+  private static LiveEmbeddingField recordingModel(
+      String name, String index, String model, int dimensions) {
+    return new LiveEmbeddingField(
+        name,
+        Set.of(index),
+        Map.of(index, new LiveEmbeddingField.Declared("dense_vector", dimensions)),
+        Map.of(index, model),
+        Set.of(),
+        null);
+  }
+
+  /** {@code table_search_index}, of the model's dimension, whose vectors model A made. */
+  private SearchRepository reembeddedTableIndexOf768(long vectorsOfAnotherModel) throws Exception {
+    SearchRepository repository = repositoryRunningOn(MODEL_768);
+    existingIndexes("table_search_index");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(
+            recordingModel("table_search_index", "table_search_index_rebuild_1", "model-a", 768));
+    when(searchClient.countDocumentsAfterRefresh(eq("table_search_index"), any()))
+        .thenReturn(vectorsOfAnotherModel);
+    repository.startVectorSearch();
+    return repository;
+  }
+
+  @Test
+  void anIndexWhoseVectorsAreAllTheModelsRecordsItAndNeedsNoRebuild() throws Exception {
+    SearchRepository repository = reembeddedTableIndexOf768(0);
+    assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(
+            recordingModel("table_search_index", "table_search_index_rebuild_1", "model-a", 768),
+            recordingModel("table_search_index", "table_search_index_rebuild_1", "model-b", 768));
+
+    assertTrue(repository.recordModelOnReembeddedIndexes());
+
+    verify(searchClient).recordEmbeddingModel("table_search_index_rebuild_1", MODEL_768);
+    assertTrue(repository.getVectorFieldHealth().canHold("table_search_index"));
+    assertTrue(repository.getVectorFieldHealth().mismatches().isEmpty());
+  }
+
+  @Test
+  void anIndexThatStillHoldsAnotherModelsVectorsKeepsItsRecordAndStaysReported() throws Exception {
+    SearchRepository repository = reembeddedTableIndexOf768(3);
+
+    assertTrue(repository.recordModelOnReembeddedIndexes(), "not a failure of the run");
+
+    verify(searchClient, never()).recordEmbeddingModel(anyString(), any());
+    assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
+  }
+
+  @Test
+  void anIndexOfAnotherDimensionRecordsNoModelAndStillNeedsARebuild() throws Exception {
+    SearchRepository repository = repositoryRunningOn(MODEL_768);
+    existingIndexes("table_search_index");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 384));
+    repository.startVectorSearch();
+    ListAppender<ILoggingEvent> logs = searchRepositoryLogs();
+
+    assertTrue(repository.recordModelOnReembeddedIndexes());
+
+    verify(searchClient, never()).countDocumentsAfterRefresh(anyString(), any());
+    verify(searchClient, never()).recordEmbeddingModel(anyString(), any());
+    assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
+    String error = errors(logs).getFirst();
+    assertTrue(error.contains("table_search_index has dense_vector of 384 dimensions"), error);
+    assertTrue(error.contains("openmetadata-ops.sh reindex"), error);
+  }
+
+  @Test
+  void aModelThatCouldNotBeRecordedFailsTheRecord() throws Exception {
+    SearchRepository repository = reembeddedTableIndexOf768(0);
+    doThrow(new IOException("mapping update refused"))
+        .when(searchClient)
+        .recordEmbeddingModel("table_search_index_rebuild_1", MODEL_768);
+
+    assertFalse(repository.recordModelOnReembeddedIndexes());
+  }
+
+  @Test
+  void vectorsThatCouldNotBeCountedFailTheRecordAndRecordNothing() throws Exception {
+    SearchRepository repository = reembeddedTableIndexOf768(0);
+    when(searchClient.countDocumentsAfterRefresh(eq("table_search_index"), any()))
+        .thenThrow(new IOException("count refused"));
+
+    assertFalse(repository.recordModelOnReembeddedIndexes());
+
+    verify(searchClient, never()).recordEmbeddingModel(anyString(), any());
+  }
+
+  @Test
+  void reembedReplacesInPlaceOnlyTheVectorsOfAFieldOfTheModelsDimension() throws Exception {
+    SearchRepository repository = repositoryRunningOn(MODEL_768);
+    existingIndexes("table_search_index", "domain_search_index", "data_asset_embeddings_chunks");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(
+            recordingModel("table_search_index", "table_search_index_rebuild_1", "model-a", 768));
+    when(searchClient.readEmbeddingField("domain_search_index"))
+        .thenReturn(heldAs("domain_search_index", 384));
+    when(searchClient.readEmbeddingField("data_asset_embeddings_chunks"))
+        .thenReturn(
+            LiveEmbeddingField.fromFieldMapping(
+                "data_asset_embeddings_chunks",
+                JsonUtils.readTree("{\"data_asset_embeddings_chunks\":{\"mappings\":{}}}"),
+                "dense_vector",
+                "dims"));
+
+    assertTrue(repository.takesVectorsInPlace("table_search_index"), "another model, same size");
+    assertFalse(repository.takesVectorsInPlace("domain_search_index"), "other dimensions");
+    assertFalse(repository.takesVectorsInPlace("data_asset_embeddings_chunks"), "no field");
+    assertTrue(repository.takesVectorsInPlace("database_service_search_index"), "not created");
   }
 
   @Test
