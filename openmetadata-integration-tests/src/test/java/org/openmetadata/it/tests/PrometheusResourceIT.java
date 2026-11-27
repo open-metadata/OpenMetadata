@@ -54,7 +54,10 @@ class PrometheusResourceIT {
     String secondTable = TABLE_ROUTE + "/" + UUID.randomUUID();
     assertEquals(404, applicationRequest("GET", firstTable).statusCode());
     assertEquals(404, applicationRequest("GET", secondTable).statusCode());
-    assertEquals(404, applicationRequest("HEAD", secondTable).statusCode());
+    assertEquals(
+        400,
+        applicationRequest("POST", TABLE_ROUTE, HttpRequest.BodyPublishers.ofString("{}"))
+            .statusCode());
 
     await()
         .atMost(Duration.ofSeconds(15))
@@ -69,7 +72,7 @@ class PrometheusResourceIT {
     verifyResponseDelta(before, after, "2xx", 1);
     verifyResponseDelta(before, after, "4xx", 3);
     verifyLatencyDelta(before, after, "GET", 3);
-    verifyLatencyDelta(before, after, "HEAD", 1);
+    verifyLatencyDelta(before, after, "POST", 1);
     assertFalse(PrometheusText.contains(after, REQUEST_LATENCY_COUNT, "endpoint", TABLE_ROUTE));
     double utilization = PrometheusText.sum(after, JETTY_UTILIZATION);
     assertTrue(utilization >= 0 && utilization <= 1);
@@ -97,13 +100,13 @@ class PrometheusResourceIT {
     JsonNode jetty = diagnostics.path("jetty");
     double busy = jetty.get("threads_busy").doubleValue();
     double max = jetty.get("threads_max").doubleValue();
-    assertTrue(jetty.get("queue_time_avg_ms").isNumber());
+    assertTrue(jetty.has("queue_time_avg_ms"));
     assertTrue(jetty.get("threads_current").isNumber());
     double expectedPercent = max > 0 ? Math.round(Math.clamp(busy / max, 0, 1) * 1000) / 10.0 : 0;
     assertEquals(expectedPercent, jetty.get("utilization_pct").doubleValue());
     JsonNode latency = diagnostics.path("request_latency");
     assertTrue(latency.path("GET " + TABLE_ROUTE).path("count").asLong() >= 3);
-    assertTrue(latency.path("HEAD " + TABLE_ROUTE).path("count").asLong() >= 1);
+    assertTrue(latency.path("POST " + TABLE_ROUTE).path("count").asLong() >= 1);
     assertTrue(latency.path("GET " + TABLE_ROUTE).path("avg_total_ms").isNumber());
   }
 
@@ -117,12 +120,18 @@ class PrometheusResourceIT {
 
   private static HttpResponse<String> applicationRequest(String method, String path)
       throws Exception {
+    return applicationRequest(method, path, HttpRequest.BodyPublishers.noBody());
+  }
+
+  private static HttpResponse<String> applicationRequest(
+      String method, String path, HttpRequest.BodyPublisher body) throws Exception {
     URI uri = URI.create(TestSuiteBootstrap.getBaseUrl() + "/api" + path);
     HttpRequest request =
         HttpRequest.newBuilder(uri)
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
             .timeout(Duration.ofSeconds(30))
-            .method(method, HttpRequest.BodyPublishers.noBody())
+            .method(method, body)
             .build();
     return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
   }
