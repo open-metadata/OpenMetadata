@@ -15,7 +15,6 @@ package org.openmetadata.mcp.server.auth.validators;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkException;
-import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
@@ -24,6 +23,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.Calendar;
@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler.McpTokenVerification;
 import org.openmetadata.service.security.IdentityProviderKeys;
 import org.openmetadata.service.security.ProviderTokenValidator;
 
@@ -75,7 +77,8 @@ import org.openmetadata.service.security.ProviderTokenValidator;
 public class IdTokenValidator {
   private static final Duration KEY_LIFETIME = Duration.ofHours(6);
 
-  private final JwkProvider jwkProvider;
+  private final IdentityProviderKeys jwkProvider;
+  private final AuthProvider provider;
   private final String expectedIssuer;
   private final String expectedAudience; // Client ID
   private final String tokenValidationAlgorithm;
@@ -105,13 +108,44 @@ public class IdTokenValidator {
       String expectedIssuer,
       String expectedAudience,
       String tokenValidationAlgorithm) {
-    if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-      throw new IllegalArgumentException("publicKeyUrls cannot be null or empty");
-    }
+    this(
+        providerKeys(publicKeyUrls, false),
+        expectedIssuer,
+        expectedAudience,
+        tokenValidationAlgorithm,
+        null);
+  }
+
+  public IdTokenValidator(McpTokenVerification settings) {
+    this(
+        providerKeys(settings.keySetUrls(), settings.publicClient()),
+        settings.issuer(),
+        settings.audience(),
+        "RS256",
+        settings.provider());
+  }
+
+  private IdTokenValidator(
+      IdentityProviderKeys jwkProvider,
+      String expectedIssuer,
+      String expectedAudience,
+      String tokenValidationAlgorithm,
+      AuthProvider provider) {
     if (expectedIssuer == null || expectedIssuer.trim().isEmpty()) {
       throw new IllegalArgumentException("expectedIssuer cannot be null or empty");
     }
+    this.jwkProvider = jwkProvider;
+    this.expectedIssuer = expectedIssuer;
+    this.expectedAudience = expectedAudience;
+    this.tokenValidationAlgorithm = tokenValidationAlgorithm;
+    this.provider = provider;
+  }
 
+  private static IdentityProviderKeys providerKeys(
+      List<String> publicKeyUrls, boolean publicMcpClient) {
+    if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
+      throw new IllegalArgumentException("publicKeyUrls cannot be null or empty");
+    }
     // Convert URLs and initialize multi-URL JWKS provider with caching
     List<URL> urls =
         publicKeyUrls.stream()
@@ -126,16 +160,9 @@ public class IdTokenValidator {
                 })
             .collect(Collectors.toList());
 
-    this.jwkProvider = IdentityProviderKeys.forUrls(urls, KEY_LIFETIME);
-    this.expectedIssuer = expectedIssuer;
-    this.expectedAudience = expectedAudience;
-    this.tokenValidationAlgorithm = tokenValidationAlgorithm;
-
-    LOG.info(
-        "Initialized IdTokenValidator with issuer: {}, audience: {}, algorithm: {}",
-        expectedIssuer,
-        expectedAudience != null ? expectedAudience : "not validated",
-        tokenValidationAlgorithm);
+    return publicMcpClient
+        ? IdentityProviderKeys.forPublicMcp(urls, KEY_LIFETIME)
+        : IdentityProviderKeys.forUrls(urls, KEY_LIFETIME);
   }
 
   /**
@@ -190,8 +217,7 @@ public class IdTokenValidator {
       throw new IdTokenValidationException("ID token is missing required 'iss' (issuer) claim");
     }
 
-    if (!expectedIssuer.equals(issuer)
-        && !ProviderTokenValidator.isGoogleSchemelessIssuer(expectedIssuer, issuer)) {
+    if (!ProviderTokenValidator.isIssuedBy(expectedIssuer, jwt)) {
       LOG.warn(
           "ID token issuer mismatch. Expected: {}, Got: {}. This may indicate a token from a different OIDC provider.",
           expectedIssuer,
@@ -230,7 +256,12 @@ public class IdTokenValidator {
 
     try {
       // Fetch public key from JWKS endpoint (with caching)
-      Jwk jwk = jwkProvider.get(keyId);
+      final var publishedKey = jwkProvider.getWithSource(keyId);
+      final Jwk jwk = publishedKey.key();
+      if (!ProviderTokenValidator.signingKeyAllowsIssuer(
+          provider, expectedIssuer, publishedKey, jwt)) {
+        throw new IdTokenValidationException("Signing key issuer does not match the token issuer");
+      }
       RSAPublicKey publicKey = (RSAPublicKey) jwk.getPublicKey();
 
       // Create algorithm for verification
@@ -306,7 +337,7 @@ public class IdTokenValidator {
    *   <li>JWKS endpoint unreachable
    * </ul>
    */
-  public static class IdTokenValidationException extends Exception {
+  public static class IdTokenValidationException extends GeneralSecurityException {
     public IdTokenValidationException(String message) {
       super(message);
     }

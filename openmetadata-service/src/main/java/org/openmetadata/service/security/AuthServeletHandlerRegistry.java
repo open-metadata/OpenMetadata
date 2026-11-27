@@ -27,6 +27,16 @@ public class AuthServeletHandlerRegistry {
     return getHandler();
   }
 
+  /** Resolve from the live servlet context so a provider change also replaces the MCP login. */
+  public static AuthenticationCodeFlowHandler getOidcHandlerForMcp(
+      ServletContext context, String baseUrl) {
+    return switch (getHandler(context)) {
+      case AuthenticationCodeFlowHandler confidential -> confidential;
+      case PublicOidcAuthServletHandler publicClient -> publicClient.forMcp(baseUrl);
+      default -> null;
+    };
+  }
+
   public static void setHandler(AuthServeletHandler handler) {
     currentHandler = handler;
   }
