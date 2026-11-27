@@ -94,7 +94,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -1299,7 +1298,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // An omitted team list keeps the stored teams (see createOrUpdateUser), so it leaves none.
     return changesRoles(currentUser, updatedUser)
         || (!nullOrEmpty(create.getTeams())
-            && changesClosedTeamMembership(currentUser, create.getTeams()))
+            && repository.changesClosedTeamMembership(currentUser, create.getTeams()))
         || hasDomainElevation(currentUser, updatedUser);
   }
 
@@ -1342,26 +1341,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .collect(Collectors.toSet());
   }
 
-  // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
-  // policies, so joining a team that is not open to everyone grants privileges the same way naming
-  // a role does, and leaving one sheds them, deny rules included, the way dropping a role does.
-  // Only the teams that change are looked up. Every user belongs to the organization, which is
-  // never left.
-  private boolean changesClosedTeamMembership(User currentUser, List<UUID> requestedTeamIds) {
-    Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
-    Set<UUID> requested = new HashSet<>(listOrEmpty(requestedTeamIds));
-    Stream<UUID> joined = requested.stream().filter(teamId -> !currentTeamIds.contains(teamId));
-    Stream<UUID> left =
-        currentTeamIds.stream()
-            .filter(teamId -> !requested.contains(teamId) && !isOrganization(teamId));
-    return Stream.concat(joined, left).anyMatch(this::isClosedTeam);
-  }
-
-  private static boolean isOrganization(UUID teamId) {
-    return teamId.equals(
-        Entity.getEntityReferenceByName(Entity.TEAM, Entity.ORGANIZATION_NAME, ALL).getId());
-  }
-
   // Decided on the teams the patched user is left in, not on each operation's shape: a replace, a
   // write of the whole list or of one reference's id changes a membership as surely as an add or a
   // remove. The user is loaded with the fields the PATCH itself loads, so the operations apply here
@@ -1377,13 +1356,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .map(EntityReference::getId)
             .filter(Objects::nonNull)
             .toList();
-    if (changesClosedTeamMembership(stored, patchedTeamIds)) {
+    if (repository.changesClosedTeamMembership(stored, patchedTeamIds)) {
       authorizeAdminForPrivilegedFields(securityContext, requestContext);
     }
-  }
-
-  private boolean isClosedTeam(UUID teamId) {
-    return !repository.isTeamJoinable(teamId.toString());
   }
 
   // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
@@ -1392,7 +1367,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || changesClosedTeamMembership(null, create.getTeams())
+        || repository.changesClosedTeamMembership(null, create.getTeams())
         || !nullOrEmpty(create.getDomains());
   }
 
