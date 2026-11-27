@@ -237,7 +237,8 @@ For a verified local recording, include its evidence and a reference on its own 
   openmetadata-nightly) PR too, link each PR from the other's description; each lists the tests run
   in its own repo.
 - **Record the self-review.** Check the template's self-review box, and under it write the SHA from
-  Step 1b and each 🔴 you answered instead of fixing, one line each with the reason.
+  Step 1b, the review's Placement, Trade-off and Recommendation lines, and each 🔴 you answered
+  instead of fixing, one line each with the reason.
 
 ### Step 7 — Create or update the PR
 
