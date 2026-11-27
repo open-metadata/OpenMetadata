@@ -41,6 +41,7 @@ import org.openmetadata.sdk.services.drives.FileService;
 public class FileResourceIT extends BaseEntityIT<File, CreateFile> {
 
   {
+    supportsLineage = true;
     supportsFollowers = false;
     supportsDomains = false;
     supportsDataProducts = false;
