@@ -75,7 +75,8 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
 
   @Test
   void aCheckedLineageUpdateFailsWhenTheDestinationRemainsConflicted() throws Exception {
-    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(response(0, 1));
+    UpdateByQueryResponse conflicted = response(0, 1);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted);
     OpenSearchEntityManager manager = new OpenSearchEntityManager(client);
 
     IOException failure =

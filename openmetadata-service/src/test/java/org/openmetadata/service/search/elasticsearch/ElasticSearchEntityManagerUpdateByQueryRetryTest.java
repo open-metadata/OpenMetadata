@@ -76,7 +76,8 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
 
   @Test
   void aCheckedLineageUpdateFailsWhenTheDestinationIsMissing() throws Exception {
-    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(response(0, 0));
+    UpdateByQueryResponse missing = response(0, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(missing);
     ElasticSearchEntityManager manager = new ElasticSearchEntityManager(client);
 
     IOException failure =
