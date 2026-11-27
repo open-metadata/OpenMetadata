@@ -934,13 +934,11 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page.getByTestId('glossary-container').getByTestId('add-tag')
       ).toBeVisible();
 
-      await expect(page.getByTestId('Tier')).toContainText('--');
-
-      await expect(page.getByTestId('certification-label')).toContainText('--');
-
-      await expect(page.getByTestId('owner-label')).toContainText('--');
-
-      await expect(page.getByTestId('no-domain-text')).toBeVisible();
+      for (const property of ['tier', 'certification', 'owners', 'domains']) {
+        await expect(
+          page.getByTestId(`header-property-${property}`)
+        ).toContainText('Add');
+      }
     });
 
     await dbEntity.delete(apiContext);

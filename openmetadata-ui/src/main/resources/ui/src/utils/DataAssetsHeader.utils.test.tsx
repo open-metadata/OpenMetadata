@@ -15,6 +15,7 @@ import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { HeaderProperty } from '../components/DataAssets/EntityHeaderProperties/EntityHeaderProperties.types';
 import { EntityType } from '../enums/entity.enum';
 import {
   Spreadsheet,
@@ -44,7 +45,6 @@ import { mockTopicData } from '../mocks/TopicVersion.mock';
 import {
   ExtraInfoLabel,
   getDataAssetsHeaderInfo,
-  getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
 import {
   DATE_TIME_12_HOUR_FORMAT,
@@ -121,6 +121,19 @@ jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
 }));
 
+// The builders list every property of the entity type; only the filled ones reach the header.
+const shownInfo = ({ extraInfo }: { extraInfo: HeaderProperty[] }) =>
+  JSON.stringify(extraInfo.filter(({ isEmpty }) => !isEmpty));
+
+const renderInfo = (extraInfo: HeaderProperty[]) =>
+  render(
+    <>
+      {extraInfo.map(({ id, content }) => (
+        <React.Fragment key={id}>{content}</React.Fragment>
+      ))}
+    </>
+  );
+
 describe('Tests for DataAssetsHeaderUtils', () => {
   // Test for Table entity
   it('Function getDataAssetsHeaderInfo should return data for tables entity', () => {
@@ -136,25 +149,21 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     // contains all extra data
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.type');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('Regular');
+    expect(shownInfo(assetData)).toContain('label.type');
+    expect(shownInfo(assetData)).toContain('Regular');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
+    expect(shownInfo(assetData)).toContain('label.usage');
+    expect(shownInfo(assetData)).toContain('getUsagePercentile');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.column-plural'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain('12');
+    expect(shownInfo(assetData)).toContain('label.column-plural');
+    expect(shownInfo(assetData)).toContain('12');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.row-plural');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('14567');
+    expect(shownInfo(assetData)).toContain('label.row-plural');
+    expect(shownInfo(assetData)).toContain('14567');
 
     // source-system creation time, read from lifeCycle.created
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'formatted-1609459200000'
-    );
+    expect(shownInfo(assetData)).toContain('label.created-time');
+    expect(shownInfo(assetData)).toContain('formatted-1609459200000');
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -173,35 +182,21 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     // contains all extra data
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.type'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'Regular'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.type');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('Regular');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'getUsagePercentile'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.usage');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('getUsagePercentile');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.column-plural'
     );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain('12');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('12');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.row-plural'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      '14567'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.row-plural');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('14567');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.created-time'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.created-time');
   });
 
   it('Function getDataAssetsHeaderInfo should render an epoch-0 table creation time', () => {
@@ -212,8 +207,8 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       []
     );
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
+    expect(shownInfo(assetData)).toContain('label.created-time');
+    expect(shownInfo(assetData)).toContain('formatted-0');
   });
 
   it.each([
@@ -246,7 +241,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
         []
       );
 
-      render(<>{extraInfo}</>);
+      renderInfo(extraInfo);
 
       const createdTime = screen.getByTestId(testId);
 
@@ -276,12 +271,8 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       []
     );
 
-    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
-      'label.created-time'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
-      'formatted--62135596800000'
-    );
+    expect(shownInfo(assetData)).not.toContain('label.created-time');
+    expect(shownInfo(assetData)).not.toContain('formatted--62135596800000');
   });
 
   // Test for Topic entity
@@ -297,15 +288,11 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains all extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.partition-plural'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain('128');
+    expect(shownInfo(assetData)).toContain('label.partition-plural');
+    expect(shownInfo(assetData)).toContain('128');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.replication-factor'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain('4');
+    expect(shownInfo(assetData)).toContain('label.replication-factor');
+    expect(shownInfo(assetData)).toContain('4');
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -316,15 +303,15 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     // contains all extra data
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.partition-plural'
     );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain('128');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('128');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.replication-factor'
     );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain('4');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('4');
   });
 
   // Test for Dashboard entity
@@ -340,16 +327,14 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains all extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.entity-type-plural'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain('Dashboard');
+    expect(shownInfo(assetData)).toContain('label.entity-type-plural');
+    expect(shownInfo(assetData)).toContain('Dashboard');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.project');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('workspace');
+    expect(shownInfo(assetData)).toContain('label.project');
+    expect(shownInfo(assetData)).toContain('workspace');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
+    expect(shownInfo(assetData)).toContain('label.usage');
+    expect(shownInfo(assetData)).toContain('getUsagePercentile');
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -365,26 +350,16 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     // contains all extra data
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.entity-type-plural'
     );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'Dashboard'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('Dashboard');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.project'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'workspace'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.project');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('workspace');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'getUsagePercentile'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.usage');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('getUsagePercentile');
   });
 
   // Test for Pipeline entity
@@ -419,22 +394,20 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.algorithm');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('Neural Network');
+    expect(shownInfo(assetData)).toContain('label.algorithm');
+    expect(shownInfo(assetData)).toContain('Neural Network');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.target');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('ETA_time');
+    expect(shownInfo(assetData)).toContain('label.target');
+    expect(shownInfo(assetData)).toContain('ETA_time');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.server');
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'http://my-server.ai'
-    );
+    expect(shownInfo(assetData)).toContain('label.server');
+    expect(shownInfo(assetData)).toContain('http://my-server.ai');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.dashboard');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('forecast_sales');
+    expect(shownInfo(assetData)).toContain('label.dashboard');
+    expect(shownInfo(assetData)).toContain('forecast_sales');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
+    expect(shownInfo(assetData)).toContain('label.usage');
+    expect(shownInfo(assetData)).toContain('getUsagePercentile');
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -453,40 +426,22 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     // contains extra data
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.algorithm'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'Neural Network'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.algorithm');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('Neural Network');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.target'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'ETA_time'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.target');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('ETA_time');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.server'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.server');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'http://my-server.ai'
     );
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.dashboard'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'forecast_sales'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.dashboard');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('forecast_sales');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'getUsagePercentile'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.usage');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('getUsagePercentile');
   });
 
   it.each([
@@ -502,7 +457,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
         'forecast_sales',
         []
       );
-      const { container, getByText } = render(<>{extraInfo}</>);
+      const { container, getByText } = renderInfo(extraInfo);
 
       expect(getByText(server)).toBeInTheDocument();
       expect(container.querySelector('a')?.getAttribute('href') ?? null).toBe(
@@ -524,17 +479,13 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.non-partitioned'
-    );
+    expect(shownInfo(assetData)).toContain('label.non-partitioned');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.number-of-object-plural'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain('10');
+    expect(shownInfo(assetData)).toContain('label.number-of-object-plural');
+    expect(shownInfo(assetData)).toContain('10');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.size');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('bytesToSize');
+    expect(shownInfo(assetData)).toContain('label.size');
+    expect(shownInfo(assetData)).toContain('bytesToSize');
 
     //  If Data has 0 as a value,it should display them
     const assetWithZeroData = getDataAssetsHeaderInfo(
@@ -552,11 +503,11 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       []
     );
 
-    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain(
+    expect(shownInfo(assetWithZeroData)).toContain(
       'label.number-of-object-plural'
     );
 
-    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain('label.size');
+    expect(shownInfo(assetWithZeroData)).toContain('label.size');
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -575,21 +526,17 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     // contains extra data
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).toContain(
-      'label.partitioned'
-    );
+    expect(shownInfo(assetWithNoExtraData)).toContain('label.partitioned');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
     );
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.number-of-object-plural'
     );
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.size'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.size');
   });
 
   // Test for Dashboard Data Modal entity
@@ -605,11 +552,9 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.data-model-type'
-    );
+    expect(shownInfo(assetData)).toContain('label.data-model-type');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('LookMlExplore');
+    expect(shownInfo(assetData)).toContain('LookMlExplore');
   });
 
   // Test for Stored Procedure entity
@@ -625,8 +570,8 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.language');
-    expect(JSON.stringify(assetData.extraInfo)).toContain('SQL');
+    expect(shownInfo(assetData)).toContain('label.language');
+    expect(shownInfo(assetData)).toContain('SQL');
 
     //  If Data does not present
 
@@ -638,11 +583,9 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     // contains extra data
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.language'
-    );
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.language');
 
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
     );
   });
@@ -675,22 +618,16 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.mime-type');
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
+    expect(shownInfo(assetData)).toContain('label.mime-type');
+    expect(shownInfo(assetData)).toContain(
       'application/vnd.google-apps.spreadsheet'
     );
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'formatted-1609459200000'
-    );
+    expect(shownInfo(assetData)).toContain('label.created-time');
+    expect(shownInfo(assetData)).toContain('formatted-1609459200000');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.modified-time'
-    );
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'formatted-1640995200000'
-    );
+    expect(shownInfo(assetData)).toContain('label.modified-time');
+    expect(shownInfo(assetData)).toContain('formatted-1640995200000');
 
     // Test with missing optional data
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -706,13 +643,9 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     // Should not contain extra data when fields are undefined
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.mime-type'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.created-time'
-    );
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.mime-type');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain('label.created-time');
+    expect(shownInfo(assetWithNoExtraData)).not.toContain(
       'label.modified-time'
     );
   });
@@ -728,7 +661,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
-    expect(assetData.extraInfo).toEqual(<React.Fragment />);
+    expect(assetData.extraInfo).toEqual([]);
   });
 
   // Test for All Service entity Level
@@ -744,7 +677,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(databaseService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(databaseService.extraInfo).toEqual(<React.Fragment />);
+    expect(databaseService.extraInfo).toEqual([]);
 
     // Database
     const database = getDataAssetsHeaderInfo(
@@ -755,7 +688,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(database.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
-    expect(database.extraInfo).toEqual(<React.Fragment />);
+    expect(database.extraInfo).toEqual([]);
 
     // Database Schema
     const databaseSchema = getDataAssetsHeaderInfo(
@@ -768,7 +701,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(databaseSchema.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(databaseSchema.extraInfo).toEqual(<React.Fragment />);
+    expect(databaseSchema.extraInfo).toEqual([]);
 
     // Messaging Service
     const messagingService = getDataAssetsHeaderInfo(
@@ -781,7 +714,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(messagingService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(messagingService.extraInfo).toEqual(<React.Fragment />);
+    expect(messagingService.extraInfo).toEqual([]);
 
     // Dashboard Service
     const dashboardService = getDataAssetsHeaderInfo(
@@ -794,7 +727,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(dashboardService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(dashboardService.extraInfo).toEqual(<React.Fragment />);
+    expect(dashboardService.extraInfo).toEqual([]);
 
     // MlModel Service
     const mlModelService = getDataAssetsHeaderInfo(
@@ -807,7 +740,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(mlModelService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(mlModelService.extraInfo).toEqual(<React.Fragment />);
+    expect(mlModelService.extraInfo).toEqual([]);
 
     // Pipeline Service
     const pipelineService = getDataAssetsHeaderInfo(
@@ -820,7 +753,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(pipelineService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(pipelineService.extraInfo).toEqual(<React.Fragment />);
+    expect(pipelineService.extraInfo).toEqual([]);
 
     // Storage Service
     const storageService = getDataAssetsHeaderInfo(
@@ -833,7 +766,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(storageService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(storageService.extraInfo).toEqual(<React.Fragment />);
+    expect(storageService.extraInfo).toEqual([]);
 
     // Metadata Service
     const metaDataService = getDataAssetsHeaderInfo(
@@ -846,7 +779,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(metaDataService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(metaDataService.extraInfo).toEqual(<React.Fragment />);
+    expect(metaDataService.extraInfo).toEqual([]);
 
     // Search Service
     const searchService = getDataAssetsHeaderInfo(
@@ -859,7 +792,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(searchService.breadcrumbs).toEqual([
       { name: 'entityName', url: 'url' },
     ]);
-    expect(searchService.extraInfo).toEqual(<React.Fragment />);
+    expect(searchService.extraInfo).toEqual([]);
   });
 });
 
@@ -903,87 +836,5 @@ describe('ExtraInfoLabel', () => {
 
     expect(getByTestId('size-info-label')).toHaveTextContent('Size');
     expect(getByTestId('size-info')).toHaveTextContent('1 KB');
-  });
-});
-
-describe('getEntityExtraInfoLength', () => {
-  it('should return 0 for non-React elements', () => {
-    expect(getEntityExtraInfoLength(null)).toBe(0);
-    expect(getEntityExtraInfoLength(undefined)).toBe(0);
-    expect(getEntityExtraInfoLength('string')).toBe(0);
-    expect(getEntityExtraInfoLength(123)).toBe(0);
-  });
-
-  it('should return 0 for React elements without children', () => {
-    const element = <div />;
-
-    expect(getEntityExtraInfoLength(element)).toBe(0);
-  });
-
-  it('should return 0 for React elements with non-array children', () => {
-    const element = <div>Single child</div>;
-
-    expect(getEntityExtraInfoLength(element)).toBe(0);
-  });
-
-  it('should count non-null/undefined children in array', () => {
-    const element = (
-      <div>
-        {null}
-        <span>Child 1</span>
-        {undefined}
-        <span>Child 2</span>
-        <span>Child 3</span>
-      </div>
-    );
-
-    expect(getEntityExtraInfoLength(element)).toBe(3);
-  });
-
-  it('should handle nested elements correctly', () => {
-    const element = (
-      <div>
-        <span>Child 1</span>
-        <div>
-          <span>Nested Child</span>
-        </div>
-        <span>Child 3</span>
-      </div>
-    );
-
-    expect(getEntityExtraInfoLength(element)).toBe(3);
-  });
-
-  it('should handle empty array of children', () => {
-    const element = <div>{[]}</div>;
-
-    expect(getEntityExtraInfoLength(element)).toBe(0);
-  });
-
-  it('should handle fragments', () => {
-    const element = (
-      <>
-        <span>Child 1</span>
-        <span>Child 2</span>
-      </>
-    );
-
-    expect(getEntityExtraInfoLength(element)).toBe(2);
-  });
-
-  it('should handle conditional rendering', () => {
-    const showExtra = true;
-    const hideExtra = false;
-    const element = (
-      <div>
-        <span>Always shown</span>
-        {showExtra && <span>Conditional child</span>}
-        {hideExtra && <span>Never shown</span>}
-        {null}
-        {undefined}
-      </div>
-    );
-
-    expect(getEntityExtraInfoLength(element)).toBe(2);
   });
 });

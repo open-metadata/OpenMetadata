@@ -18,7 +18,6 @@ import {
   Owner,
   Tooltip,
   TooltipTrigger,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Activity,
@@ -35,24 +34,24 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
+import DomainSelectableList from '../../../components/common/DomainSelectableList/DomainSelectableList.component';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
+import { HeaderPropertyId } from '../../../constants/EntityHeaderProperties.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -85,15 +84,9 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
-  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
-  HeaderDotSeparator,
-  isRecordedLifeCycleTimestamp,
+  getSourceUpdatedAtProperty,
 } from '../../../utils/DataAssetsHeader.utils';
-import {
-  formatDateTime,
-  getRelativeTime,
-} from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -105,6 +98,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
+import { saveDomainViaApi } from '../../../utils/DomainSyncUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
@@ -118,7 +112,10 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
-import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
+import RetentionPeriod, {
+  formatRetentionPeriod,
+} from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -128,6 +125,8 @@ import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicato
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
+import EntityHeaderProperties from '../EntityHeaderProperties/EntityHeaderProperties';
+import { HeaderProperty } from '../EntityHeaderProperties/EntityHeaderProperties.types';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -808,30 +807,6 @@ export const DataAssetsHeader = ({
     );
   };
 
-  // lifeCycle.updated is when the asset last changed at its source, set by
-  // ingestion from the source's metadata or the usage workflow's query log; it
-  // is not when the entity was edited in OpenMetadata.
-  const renderSourceUpdatedAt = () => {
-    const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
-      ?.updated?.timestamp;
-
-    if (!isRecordedLifeCycleTimestamp(sourceUpdatedAt)) {
-      return null;
-    }
-
-    return (
-      <>
-        <HeaderDotSeparator />
-        <ExtraInfoLabel
-          dataTestId="source-updated-at"
-          label={t('label.updated-at-source')}
-          tooltip={formatDateTime(sourceUpdatedAt)}
-          value={getRelativeTime(sourceUpdatedAt)}
-        />
-      </>
-    );
-  };
-
   const renderFollowAndVoteStats = () => {
     const followLabel = t(`label.${isFollowing ? 'un-follow' : 'follow'}`);
 
@@ -943,218 +918,183 @@ export const DataAssetsHeader = ({
     />
   );
 
-  const renderDomainAndOwnerSection = () => (
-    <>
-      {showDomain && (
-        <DomainLabel
-          headerLayout
-          showDashPlaceholder
-          afterDomainUpdateAction={afterDomainUpdateAction}
-          domains={(dataAsset as EntitiesWithDomainField).domains}
-          entityFqn={dataAsset.fullyQualifiedName ?? ''}
-          entityId={dataAsset.id ?? ''}
-          entityType={entityType}
-          hasPermission={editDomainPermission}
-          labelClassName="tw:text-secondary!"
-          multiple={entityRules.canAddMultipleDomains}
-          textClassName="render-domain-lebel-style tw:text-secondary!"
-        />
-      )}
+  const certification = (dataAsset as Table).certification;
+  const domains = (dataAsset as EntitiesWithDomainField).domains;
 
-      {showDomain && <HeaderDotSeparator />}
+  const handleDomainSave = (
+    selectedDomain: EntityReference | EntityReference[] | undefined
+  ) =>
+    saveDomainViaApi(
+      selectedDomain ?? [],
+      entityType as AssetsUnion,
+      dataAsset.fullyQualifiedName ?? '',
+      dataAsset.id ?? '',
+      noop,
+      afterDomainUpdateAction
+    );
 
-      <Owner
-        showDashPlaceholder
-        avatarSize={24}
-        hasPermission={editOwnerPermission}
-        isCompactView={false}
-        maxVisibleOwners={3}
-        owners={dataAsset?.owners}
-        placeHolder={t('label.owners')}
-        selectorContent={
+  const editableProperty = (
+    property: Omit<HeaderProperty, 'isReadOnly' | 'isEmpty'>,
+    value: unknown,
+    canEdit: boolean
+  ): HeaderProperty => ({
+    ...property,
+    isEmpty: isEmpty(value),
+    isReadOnly: false,
+    renderEditor: canEdit ? property.renderEditor : undefined,
+  });
+
+  const tierProperty = (): HeaderProperty =>
+    editableProperty(
+      {
+        id: HeaderPropertyId.Tier,
+        label: t('label.tier'),
+        testId: 'header-tier-container',
+        editorTestId: 'edit-tier',
+        content:
+          tierSuggestionRender ??
+          (tier && (
+            <TagChipTooltip
+              title={getTagTooltip(tier.tagFQN, tier.description)}>
+              <ClassificationTag
+                color={tier.style?.color}
+                data-testid="Tier"
+                href={getTagRedirectLink(tier)}
+                icon={tier.style?.iconURL}
+                label={getTagName(tier)}
+                size="sm"
+              />
+            </TagChipTooltip>
+          )),
+        renderEditor: (trigger) => (
+          <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
+            {trigger}
+          </TierCard>
+        ),
+      },
+      tierSuggestionRender ?? tier,
+      editTierPermission && !tierSuggestionRender
+    );
+
+  const getStandardProperties = (): HeaderProperty[] => [
+    ...(showDomain
+      ? [
+          editableProperty(
+            {
+              id: HeaderPropertyId.Domains,
+              label: t('label.domain-plural'),
+              testId: 'header-domain-container',
+              editorTestId: 'add-domain',
+              content: (
+                <DomainTags
+                  domains={domains}
+                  maxVisible={entityRules.canAddMultipleDomains ? 1 : undefined}
+                />
+              ),
+              renderEditor: (trigger) => (
+                <DomainSelectableList
+                  hasPermission
+                  multiple={entityRules.canAddMultipleDomains}
+                  selectedDomain={domains}
+                  onUpdate={handleDomainSave}>
+                  {trigger}
+                </DomainSelectableList>
+              ),
+            },
+            domains,
+            editDomainPermission
+          ),
+        ]
+      : []),
+    editableProperty(
+      {
+        id: HeaderPropertyId.Owners,
+        label: t('label.owner-plural'),
+        editorTestId: 'edit-owner',
+        content: (
+          <Owner
+            avatarSize={24}
+            isCompactView={false}
+            maxVisibleOwners={3}
+            owners={dataAsset.owners}
+            showLabel={false}
+          />
+        ),
+        renderEditor: (trigger) => (
           <UserTeamSelectableList
-            hasPermission={Boolean(editOwnerPermission)}
+            hasPermission
             multiple={{
               user: entityRules.canAddMultipleUserOwners,
               team: entityRules.canAddMultipleTeamOwner,
             }}
-            owner={dataAsset?.owners}
-            onUpdate={onOwnerUpdate}
-          />
-        }
-      />
+            owner={dataAsset.owners}
+            onUpdate={onOwnerUpdate}>
+            {trigger}
+          </UserTeamSelectableList>
+        ),
+      },
+      dataAsset.owners,
+      editOwnerPermission
+    ),
+    tierProperty(),
+    ...(isUndefined(serviceCategory)
+      ? [
+          editableProperty(
+            {
+              id: HeaderPropertyId.Certification,
+              label: t('label.certification'),
+              testId: 'certification-label',
+              editorTestId: 'edit-certification',
+              content: certification && (
+                <div data-testid="certification-value">
+                  <CertificationTag showName certification={certification} />
+                </div>
+              ),
+              renderEditor: (trigger) => (
+                <Certification
+                  currentCertificate={certification?.tagLabel?.tagFQN}
+                  permission={editCertificationPermission}
+                  onCertificationUpdate={onCertificationUpdate}>
+                  {trigger}
+                </Certification>
+              ),
+            },
+            certification,
+            editCertificationPermission
+          ),
+        ]
+      : []),
+    ...(entityType === EntityType.TABLE && onUpdateRetentionPeriod
+      ? [
+          editableProperty(
+            {
+              id: HeaderPropertyId.RetentionPeriod,
+              label: t('label.retention-period'),
+              testId: 'retention-period-container',
+              editorTestId: 'edit-retention-period-button',
+              content: formatRetentionPeriod(dataAsset.retentionPeriod),
+              renderEditor: (trigger) => (
+                <RetentionPeriod
+                  retentionPeriod={dataAsset.retentionPeriod}
+                  onUpdate={onUpdateRetentionPeriod}>
+                  {trigger}
+                </RetentionPeriod>
+              ),
+            },
+            dataAsset.retentionPeriod,
+            flags.canEditAll
+          ),
+        ]
+      : []),
+  ];
 
-      <HeaderDotSeparator />
-
-      {tierSuggestionRender ?? (
-        <div
-          className="tw:flex tw:flex-col tw:gap-1.5"
-          data-testid="header-tier-container">
-          <div className="tw:flex tw:items-center tw:gap-1">
-            <Typography
-              as="span"
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.tier')}
-            </Typography>
-            {editTierPermission && (
-              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                <Pressable>
-                  <ButtonUtility
-                    data-testid="edit-tier"
-                    icon={Edit01}
-                    tooltip={t('label.edit-entity', {
-                      entity: t('label.tier'),
-                    })}
-                  />
-                </Pressable>
-              </TierCard>
-            )}
-          </div>
-          {(() => {
-            if (tier) {
-              // The chip is a link to the tag, so it is not also a tier trigger.
-              return (
-                <TagChipTooltip
-                  title={getTagTooltip(tier.tagFQN, tier.description)}>
-                  <ClassificationTag
-                    color={tier.style?.color}
-                    data-testid="Tier"
-                    href={getTagRedirectLink(tier)}
-                    icon={tier.style?.iconURL}
-                    label={getTagName(tier)}
-                    size="sm"
-                  />
-                </TagChipTooltip>
-              );
-            }
-
-            const placeholder = (
-              <Typography
-                as="span"
-                className="tw:cursor-pointer tw:text-primary"
-                data-testid="Tier"
-                size="text-sm"
-                weight="medium">
-                {NO_DATA_PLACEHOLDER}
-              </Typography>
-            );
-
-            return editTierPermission ? (
-              <TierCard updateTier={onTierUpdate}>
-                <Pressable>
-                  <span
-                    aria-label={t('label.edit-entity', {
-                      entity: t('label.tier'),
-                    })}
-                    className="tw:inline-flex tw:cursor-pointer"
-                    role="button"
-                    tabIndex={0}>
-                    {placeholder}
-                  </span>
-                </Pressable>
-              </TierCard>
-            ) : (
-              placeholder
-            );
-          })()}
-        </div>
-      )}
-    </>
-  );
-
-  const renderCertificationSection = () => {
-    if (!isUndefined(serviceCategory)) {
-      return null;
-    }
-
-    return (
-      <>
-        <HeaderDotSeparator />
-        <div
-          className="tw:flex tw:flex-col tw:gap-1.5"
-          data-testid="certification-label">
-          <div className="tw:flex tw:items-center tw:gap-1">
-            <Typography
-              as="span"
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.certification')}
-            </Typography>
-            {editCertificationPermission && (
-              <Certification
-                currentCertificate={
-                  'certification' in dataAsset
-                    ? dataAsset.certification?.tagLabel?.tagFQN
-                    : undefined
-                }
-                permission={editCertificationPermission}
-                onCertificationUpdate={onCertificationUpdate}>
-                <ButtonUtility
-                  data-testid="edit-certification"
-                  icon={Edit01}
-                  tooltip={t('label.edit-entity', {
-                    entity: t('label.certification'),
-                  })}
-                />
-              </Certification>
-            )}
-          </div>
-          {(() => {
-            const tableCertification = (dataAsset as Table).certification;
-            const certValue = (
-              <div
-                className="tw:text-sm tw:font-medium tw:text-primary"
-                data-testid="certification-value">
-                {tableCertification ? (
-                  <CertificationTag
-                    showName
-                    certification={tableCertification}
-                  />
-                ) : (
-                  NO_DATA_PLACEHOLDER
-                )}
-              </div>
-            );
-
-            return editCertificationPermission ? (
-              <Certification
-                currentCertificate={
-                  'certification' in dataAsset
-                    ? dataAsset.certification?.tagLabel?.tagFQN
-                    : undefined
-                }
-                permission={editCertificationPermission}
-                onCertificationUpdate={onCertificationUpdate}>
-                <span className="tw:inline-flex tw:cursor-pointer">
-                  {certValue}
-                </span>
-              </Certification>
-            ) : (
-              certValue
-            );
-          })()}
-        </div>
-      </>
-    );
-  };
-
-  const renderRetentionAndMetricSection = () => (
-    <>
-      {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
-        <>
-          <HeaderDotSeparator />
-          <RetentionPeriod
-            hasPermission={flags.canEditAll}
-            retentionPeriod={dataAsset.retentionPeriod}
-            onUpdate={onUpdateRetentionPeriod}
-          />
-        </>
-      )}
-    </>
-  );
+  const headerProperties: HeaderProperty[] = [
+    ...getStandardProperties(),
+    ...extraInfo,
+    getSourceUpdatedAtProperty(
+      (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle?.updated?.timestamp
+    ),
+  ];
 
   const renderFooterOverlays = () => (
     <>
@@ -1253,16 +1193,7 @@ export const DataAssetsHeader = ({
           </div>
         </div>
 
-        <div
-          className="tw:flex tw:flex-wrap tw:items-start tw:gap-[18px]"
-          data-testid="data-asset-header-metadata">
-          {renderDomainAndOwnerSection()}
-          {renderCertificationSection()}
-          {renderRetentionAndMetricSection()}
-
-          {extraInfo}
-          {renderSourceUpdatedAt()}
-        </div>
+        <EntityHeaderProperties properties={headerProperties} />
       </div>
 
       {renderFooterOverlays()}

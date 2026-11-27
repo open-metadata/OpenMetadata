@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { ReactElement } from 'react';
+
 export interface RetentionPeriodProps {
   retentionPeriod?: string;
   onUpdate: (retentionPeriod: string) => Promise<void>;
-  hasPermission: boolean;
+  /** The button that opens the editor. */
+  children: ReactElement;
 }

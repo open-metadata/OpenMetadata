@@ -13,13 +13,12 @@
 import {
   Alert,
   Button,
-  ButtonUtility,
   Dialog,
+  DialogTrigger,
   Input,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Duration } from 'luxon';
@@ -27,7 +26,6 @@ import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 // Pluralize a duration component, e.g. pluralizeDurationUnit(2, 'year') => '2 years'
 const pluralizeDurationUnit = (value: number, unit: string): string => {
@@ -40,7 +38,7 @@ const ISO_DURATION_REGEX =
   /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(\d+H)?(\d+M)?(\d+S)?)?$/;
 
 // Helper function to detect and format ISO 8601 duration
-const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
+export const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {
     return NO_DATA_PLACEHOLDER;
   }
@@ -69,7 +67,7 @@ const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
 const RetentionPeriod = ({
   retentionPeriod,
   onUpdate,
-  hasPermission,
+  children,
 }: RetentionPeriodProps) => {
   const { t } = useTranslation();
   const [value, setValue] = useState(retentionPeriod);
@@ -78,9 +76,9 @@ const RetentionPeriod = ({
 
   const onCancel = useCallback(() => setIsEdit(false), []);
 
-  const onEdit = () => {
+  const handleOpenChange = (isOpen: boolean) => {
     setValue(retentionPeriod);
-    setIsEdit(true);
+    setIsEdit(isOpen);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -104,36 +102,9 @@ const RetentionPeriod = ({
   });
 
   return (
-    <div className="d-flex items-start gap-1">
-      <div
-        className="d-flex retention-period-container align-start"
-        data-testid="retention-period-container">
-        <div className="text-sm d-flex flex-col gap-2 tw:text-primary">
-          <div className="d-flex items-center gap-1">
-            <span className="extra-info-label-heading tw:text-secondary">
-              {t('label.retention-period')}
-            </span>
-            {hasPermission && (
-              <ButtonUtility
-                data-testid="edit-retention-period-button"
-                icon={Edit01}
-                size="sm"
-                tooltip={editTitle}
-                onClick={onEdit}
-              />
-            )}
-          </div>
-
-          <span className="font-medium extra-info-value">
-            {formatRetentionPeriod(retentionPeriod)}
-          </span>
-        </div>
-      </div>
-
-      <ModalOverlay
-        isKeyboardDismissDisabled={isLoading}
-        isOpen={isEdit}
-        onOpenChange={(open) => !open && onCancel()}>
+    <DialogTrigger isOpen={isEdit} onOpenChange={handleOpenChange}>
+      {children}
+      <ModalOverlay isKeyboardDismissDisabled={isLoading}>
         <Modal>
           {/* Overrides reproduce the antd Modal (modal.less) this replaced. */}
           <Dialog
@@ -186,7 +157,7 @@ const RetentionPeriod = ({
           </Dialog>
         </Modal>
       </ModalOverlay>
-    </div>
+    </DialogTrigger>
   );
 };
 

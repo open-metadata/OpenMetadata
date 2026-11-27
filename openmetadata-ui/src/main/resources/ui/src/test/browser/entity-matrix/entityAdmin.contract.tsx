@@ -92,6 +92,12 @@ const DELETE_TARGETS: Record<EntityLabel, () => DeleteTarget> = {
   Worksheet: () => landingOn('DriveService'),
 };
 
+/** Whether the project is past the header's first five properties, so behind Show more. */
+const PROJECT_BEHIND_SHOW_MORE: Partial<Record<EntityLabel, boolean>> = {
+  Dashboard: false,
+  DashboardDataModel: true,
+};
+
 /** A deleted asset keeps its page but closes every edit (spec: deletedEntityCommonChecks). */
 const expectEditsClosed = async () => {
   // Anchor on the sections first, so an absent control means closed, not unrendered.
@@ -191,10 +197,16 @@ export const describeAdminFlows = (label: EntityLabel) => {
       expect(location.pathname).toBe(config.url);
     });
 
-    test.runIf(['Dashboard', 'DashboardDataModel'].includes(label))(
+    test.runIf(label in PROJECT_BEHIND_SHOW_MORE)(
       'header shows the project name',
       async () => {
-        await expect.element(page.getByText('pw_project')).toBeVisible();
+        if (PROJECT_BEHIND_SHOW_MORE[label]) {
+          await userEvent.click(page.getByTestId('header-properties-toggle'));
+        }
+
+        await expect
+          .element(page.getByTestId('header-property-project'))
+          .toHaveTextContent('pw_project');
       }
     );
 

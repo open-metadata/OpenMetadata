@@ -16,6 +16,7 @@ import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { expandHeaderProperties } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const HOUR = 60 * 60 * 1000;
@@ -33,10 +34,13 @@ const assetsWithSourceUpdate = [
   { name: 'pipeline', entity: pipeline },
 ];
 
+// The header collapses past five properties. A pipeline without a source
+// update has exactly five (Domains, Owners, Tier, Certification, Usage), so
+// its header has nothing to expand.
 const assetsWithoutSourceUpdate = [
-  { name: 'table', entity: new TableClass() },
-  { name: 'dashboard', entity: new DashboardClass() },
-  { name: 'pipeline', entity: new PipelineClass() },
+  { name: 'table', entity: new TableClass(), headerOverflows: true },
+  { name: 'dashboard', entity: new DashboardClass(), headerOverflows: true },
+  { name: 'pipeline', entity: new PipelineClass(), headerOverflows: false },
 ];
 
 test.describe('Asset source update time in the entity header', () => {
@@ -87,6 +91,7 @@ test.describe('Asset source update time in the entity header', () => {
       page,
     }) => {
       await entity.visitEntityPage(page);
+      await expandHeaderProperties(page);
 
       const header = page.getByTestId('data-asset-header-metadata');
       const sourceUpdated = header.getByTestId('source-updated-at');
@@ -109,7 +114,7 @@ test.describe('Asset source update time in the entity header', () => {
     });
   }
 
-  for (const { name, entity } of assetsWithoutSourceUpdate) {
+  for (const { name, entity, headerOverflows } of assetsWithoutSourceUpdate) {
     test(`omits the source update time when the ${name} source reported none`, async ({
       page,
     }) => {
@@ -118,6 +123,13 @@ test.describe('Asset source update time in the entity header', () => {
       const header = page.getByTestId('data-assets-header');
 
       await expect(header).toBeVisible();
+      if (headerOverflows) {
+        await expandHeaderProperties(page);
+      } else {
+        await expect(
+          header.getByTestId('header-properties-toggle')
+        ).toHaveCount(0);
+      }
       await expect(header.getByTestId('source-updated-at')).toHaveCount(0);
       await expect(header.getByText('Updated at source')).toHaveCount(0);
     });

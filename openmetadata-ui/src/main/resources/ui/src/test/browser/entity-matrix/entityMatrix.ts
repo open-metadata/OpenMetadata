@@ -1068,8 +1068,8 @@ export const domainWithDataProducts = async (
 
     await expect.poll(() => fqns(server.current().domains)).toEqual([]);
     await expect
-      .element(page.getByTestId('no-domain-text'))
-      .toHaveTextContent('--');
+      .element(page.getByTestId('add-domain'))
+      .toHaveTextContent('Add');
   }
 };
 
@@ -1374,8 +1374,11 @@ export const setReplaceClearCertification = async (
 
   await expect.poll(certified).toBeUndefined();
   await expect
-    .element(page.getByTestId('certification-label'))
-    .toHaveTextContent('--');
+    .element(page.getByTestId('edit-certification'))
+    .toHaveTextContent('Add');
+  await expect
+    .element(page.getByTestId('certification-value'))
+    .not.toBeInTheDocument();
   expect(server.patches).toHaveLength(3);
 };
 
@@ -1402,7 +1405,8 @@ export const setReplaceClearTier = async (
   );
 
   await expect.poll(() => tagFqns(server.current())).toEqual([]);
-  await expect.element(page.getByTestId('Tier')).toHaveTextContent('--');
+  await expect.element(page.getByTestId('edit-tier')).toHaveTextContent('Add');
+  await expect.element(page.getByTestId('Tier')).not.toBeInTheDocument();
   expect(server.patches).toHaveLength(3);
 };
 
