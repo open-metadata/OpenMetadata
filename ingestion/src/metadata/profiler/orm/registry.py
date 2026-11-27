@@ -32,6 +32,7 @@ from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_time import CustomTime
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
+from metadata.profiler.orm.types.redshift_super import RedshiftSuper
 from metadata.profiler.orm.types.undetermined_type import UndeterminedType
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
@@ -133,6 +134,7 @@ NOT_COMPUTE = {
     sqlalchemy.ARRAY.__name__,
     sqlalchemy.JSON.__name__,
     BigQueryJSON.__name__,
+    RedshiftSuper.__name__,
     sqa_types.SQAMap.__name__,
     sqa_types.SQAStruct.__name__,
     sqa_types.SQASet.__name__,

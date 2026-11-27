@@ -402,6 +402,48 @@ def test_redshift_mapper_does_not_leak_geometry_into_other_dialects():
     assert redshift_mapper.return_custom_type(geometry_col, DatabaseServiceType.Redshift) is GEOMETRY
 
 
+@mark.parametrize("data_type", [DataType.VARBINARY, DataType.BINARY])
+def test_redshift_binary_columns_read_hex_text(data_type):
+    """psycopg2 returns Redshift VARBYTE as hex text such as '616263', which the bytes-only
+    HexByteString rejected, failing every table with such a column in the sampler."""
+    from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
+    from metadata.profiler.orm.types.custom_hex_byte_string import HexTextByteString
+
+    column = Column(name="payload", dataType=data_type)
+
+    assert RedshiftMapTypes().return_custom_type(column, DatabaseServiceType.Redshift) is HexTextByteString
+    assert CommonMapTypes().return_custom_type(column, DatabaseServiceType.Postgres) is CustomTypes.BYTES.value
+
+
+def test_hex_text_byte_string_decodes_hex_text_and_bytes_alike():
+    from metadata.profiler.orm.types.custom_hex_byte_string import HexTextByteString
+
+    decoder = HexTextByteString()
+
+    assert decoder.process_result_value("616263", None) == "abc"
+    assert decoder.process_result_value(b"abc", None) == "abc"
+    assert decoder.process_result_value(None, None) is None
+
+
+def test_redshift_super_samples_as_documents():
+    """SUPER had no profiler type, so its samples persisted as "OPENMETADATA_UNDETERMIND[<json>]"."""
+    from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
+    from metadata.profiler.orm.types.redshift_super import RedshiftSuper
+
+    column = Column(name="payload", dataType=DataType.SUPER)
+    super_type = RedshiftMapTypes().return_custom_type(column, DatabaseServiceType.Redshift)
+
+    def parse(value):
+        return super_type().process_result_value(value, None)
+
+    assert super_type is RedshiftSuper
+    assert RedshiftSuper.__name__ in NOT_COMPUTE
+    assert parse('{"kind":"fixture","count":2}') == {"kind": "fixture", "count": 2}
+    assert parse("[1,2]") == [1, 2]
+    assert parse("not json") == "not json"
+    assert parse(None) is None
+
+
 def test_mariadb_mapper_does_not_leak_time_override_into_other_dialects():
     """The MariaDB mapper used to update the shared CommonMapTypes._TYPE_MAP on init,
     remapping TIME to CustomTime for every dialect built afterwards (BigQuery, Redshift,

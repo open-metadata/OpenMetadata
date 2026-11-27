@@ -584,7 +584,8 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             )
             fkeys.append(fkey_constraint)
 
-        return pkeys, [ukeys], fkeys
+        # A table with no unique key has no unique constraint, not one with no columns.
+        return pkeys, [ukeys] if ukeys else [], fkeys
 
     def _set_constraint_details(self, schema_name: str):
         """Get all the column constraints in a given schema

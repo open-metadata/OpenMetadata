@@ -82,3 +82,18 @@ class HexByteString(TypeDecorator):
     def process_literal_param(self, value, dialect):
         self.validate(value)
         return value
+
+
+class HexTextByteString(HexByteString):
+    """A binary column whose driver returns the bytes as hexadecimal text.
+
+    Redshift's VARBYTE reaches psycopg2 as text such as '616263' rather than bytes,
+    so the digits are decoded back to the bytes they spell before the usual handling.
+    """
+
+    cache_ok = True
+
+    def process_result_value(self, value: str | bytes | bytearray | memoryview | None, dialect) -> str | None:
+        if isinstance(value, str):
+            value = bytes.fromhex(value)
+        return super().process_result_value(value, dialect)

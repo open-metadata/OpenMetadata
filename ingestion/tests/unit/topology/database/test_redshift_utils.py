@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
     _get_args_and_kwargs,
@@ -526,6 +527,23 @@ class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
                     expected_om_type,
                     f"'{external_type}' resolved to {resolved}, expected {expected_om_type}",
                 )
+
+
+def test_time_with_time_zone_is_a_time_of_day():
+    """Redshift reflects `time with time zone` as TIMETZ, a time of day like Postgres' TIME WITH TIME ZONE."""
+    reflected = ischema_names["time with time zone"]()
+    assert ColumnTypeParser.get_column_type(reflected) == "TIME"
+    assert ColumnTypeParser.get_column_type(ischema_names["timestamp with time zone"]()) == "TIMESTAMP"
+
+
+def test_table_without_unique_key_has_no_unique_constraint():
+    source = SimpleNamespace(constraint_details={"public.orders": {"pkey": {"id"}}})
+    assert RedshiftSource._get_columns_with_constraints(source, "public", "orders") == (["id"], [], [])
+
+
+def test_table_with_unique_key_keeps_its_unique_columns():
+    source = SimpleNamespace(constraint_details={"public.orders": {"pkey": {"id"}, "ukey": {'"code"'}}})
+    assert RedshiftSource._get_columns_with_constraints(source, "public", "orders") == (["id"], [["code"]], [])
 
 
 if __name__ == "__main__":
