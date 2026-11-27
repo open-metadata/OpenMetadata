@@ -165,7 +165,7 @@ public class McpServer implements McpServerProvider {
    * #executeTool} refuses them on each call. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools
    * and ADR:2026-11-05-mcp-admins-can-disable-single-tools.
    */
-  static McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
+  McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
     return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
   }
 
@@ -174,22 +174,14 @@ public class McpServer implements McpServerProvider {
     return null;
   }
 
-  static McpStatelessSyncServer buildServer(
+  McpStatelessSyncServer buildServer(
       McpStatelessServerTransport transport,
       McpSchema.ServerCapabilities capabilities,
       Supplier<MCPConfiguration> mcpConfig) {
-    return buildServer(transport, capabilities, mcpConfig, null);
-  }
-
-  static McpStatelessSyncServer buildServer(
-      McpStatelessServerTransport transport,
-      McpSchema.ServerCapabilities capabilities,
-      Supplier<MCPConfiguration> mcpConfig,
-      String instructions) {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
         .serverInfo(serverInfo(mcpConfig.get()))
         .capabilities(capabilities)
-        .instructions(instructions)
+        .instructions(serverInstructions())
         // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
         // tools accept looser shapes on purpose, see
         // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
@@ -214,7 +206,7 @@ public class McpServer implements McpServerProvider {
   }
 
   // tools/list follows the setting live, so say what it hides each time the setting loads.
-  private static void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
+  private void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
     long hidden = tools.stream().filter(tool -> refusalReason(tool, config).isPresent()).count();
     if (hidden > 0) {
       LOG.info(
@@ -244,9 +236,10 @@ public class McpServer implements McpServerProvider {
         : config.getDisabledTools();
   }
 
-  private static boolean isOutsideAllowlist(String toolName, MCPConfiguration config) {
+  /** Distributions can override this to interpret additional {@code offeredTools} values. */
+  protected boolean isOfferedByAllowlist(McpSchema.Tool tool, MCPConfiguration config) {
     final Set<String> offered = config == null ? null : config.getOfferedTools();
-    return !nullOrEmpty(offered) && !offered.contains(toolName);
+    return nullOrEmpty(offered) || offered.contains(tool.name());
   }
 
   // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
@@ -257,13 +250,12 @@ public class McpServer implements McpServerProvider {
     return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
   }
 
-  private static Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
+  private Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
     Optional<String> reason = Optional.empty();
     if (isReadOnlyMode(config) && !isAvailableInReadOnlyMode(tool)) {
       reason =
           Optional.of("The MCP server is in read-only mode, so " + tool.name() + " is unavailable");
-    } else if (disabledTools(config).contains(tool.name())
-        || isOutsideAllowlist(tool.name(), config)) {
+    } else if (disabledTools(config).contains(tool.name()) || !isOfferedByAllowlist(tool, config)) {
       reason = Optional.of(tool.name() + " is disabled on this MCP server");
     }
     return reason;
@@ -323,8 +315,7 @@ public class McpServer implements McpServerProvider {
           buildServer(
               statelessOauthTransport,
               serverCapabilities,
-              SecurityConfigurationManager::getCurrentMcpConfig,
-              serverInstructions());
+              SecurityConfigurationManager::getCurrentMcpConfig);
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
 

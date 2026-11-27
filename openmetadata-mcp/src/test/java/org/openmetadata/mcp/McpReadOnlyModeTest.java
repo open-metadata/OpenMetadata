@@ -51,6 +51,8 @@ class McpReadOnlyModeTest {
   private static final String TOKEN = "token";
   private static final String SEARCH_METADATA = "search_metadata";
   private static final String SEMANTIC_SEARCH = "semantic_search";
+  private static final String ONTOLOGY_DESCRIBE = "ontology_describe";
+  private static final String ONTOLOGY_PRESET = "ontology";
 
   private static final Set<String> WITHHELD_TOOLS =
       Set.of(
@@ -182,16 +184,49 @@ class McpReadOnlyModeTest {
     assertTrue(call(succeedingToolContext(), "patch_entity", config).isError());
   }
 
+  @Test
+  void toolsListUsesTheDistributionAllowlist() {
+    final var config = configOffering(ONTOLOGY_PRESET, SEMANTIC_SEARCH);
+
+    assertEquals(List.of(ONTOLOGY_DESCRIBE), listTools(new PresetServer(), config));
+  }
+
+  @Test
+  void toolCallsUseTheDistributionAllowlist() {
+    final var server = new PresetServer();
+    final var config = configOffering(ONTOLOGY_PRESET, SEMANTIC_SEARCH);
+
+    final var offered = call(server, ONTOLOGY_DESCRIBE, config);
+    final var refused = call(server, SEMANTIC_SEARCH, config);
+
+    assertFalse(offered.isError(), () -> offered.content().toString());
+    assertTrue(refused.isError());
+    assertEquals(403, ((Map<?, ?>) refused.structuredContent()).get("statusCode"));
+  }
+
+  private static final class PresetServer extends McpServer {
+    @Override
+    protected boolean isOfferedByAllowlist(McpSchema.Tool tool, MCPConfiguration config) {
+      final Set<String> offered = config == null ? null : config.getOfferedTools();
+      return offered != null && offered.contains(ONTOLOGY_PRESET)
+          ? ONTOLOGY_DESCRIBE.equals(tool.name())
+          : super.isOfferedByAllowlist(tool, config);
+    }
+  }
+
   private static MCPConfiguration configOffering(String... names) {
     return JsonUtils.convertValueLenient(
         Map.of("offeredTools", List.of(names)), MCPConfiguration.class);
   }
 
   private static List<String> listTools(MCPConfiguration config) {
+    return listTools(new McpServer(), config);
+  }
+
+  private static List<String> listTools(McpServer mcpServer, MCPConfiguration config) {
     McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
-    McpServer mcpServer = new McpServer();
     McpStatelessSyncServer server =
-        McpServer.buildServer(transport, mcpServer.buildServerCapabilities(), () -> config);
+        mcpServer.buildServer(transport, mcpServer.buildServerCapabilities(), () -> config);
     mcpServer.addToolsToServer(server, mcpServer.getTools());
     ArgumentCaptor<McpStatelessServerHandler> handler =
         ArgumentCaptor.forClass(McpStatelessServerHandler.class);
@@ -211,7 +246,7 @@ class McpReadOnlyModeTest {
   @Test
   void toolsListFollowsTheSettingWithoutARestart() {
     AtomicReference<MCPConfiguration> config = new AtomicReference<>(new MCPConfiguration());
-    McpSyncListFilter<McpSchema.Tool> filter = McpServer.toolFilter(config::get);
+    McpSyncListFilter<McpSchema.Tool> filter = new McpServer().toolFilter(config::get);
     McpSchema.Tool patchEntity = toolNamed("patch_entity");
 
     assertTrue(filter.isVisible(McpTransportContext.EMPTY, patchEntity));
@@ -224,7 +259,7 @@ class McpReadOnlyModeTest {
   }
 
   private static List<McpSchema.Tool> exposed(List<McpSchema.Tool> tools, MCPConfiguration config) {
-    McpSyncListFilter<McpSchema.Tool> filter = McpServer.toolFilter(() -> config);
+    McpSyncListFilter<McpSchema.Tool> filter = new McpServer().toolFilter(() -> config);
     return tools.stream()
         .filter(tool -> filter.isVisible(McpTransportContext.EMPTY, tool))
         .toList();
@@ -244,7 +279,11 @@ class McpReadOnlyModeTest {
 
   private static McpSchema.CallToolResult call(
       DefaultToolContext toolContext, String toolName, MCPConfiguration mcpConfig) {
-    McpServer server = new McpServer(toolContext, new DefaultPromptsContext());
+    return call(new McpServer(toolContext, new DefaultPromptsContext()), toolName, mcpConfig);
+  }
+
+  private static McpSchema.CallToolResult call(
+      McpServer server, String toolName, MCPConfiguration mcpConfig) {
     server.jwtFilter = jwtFilterFor("alice");
     McpSchema.CallToolRequest request =
         McpSchema.CallToolRequest.builder(toolName).arguments(Map.of()).build();
