@@ -275,7 +275,7 @@ jobs:
           # and removes them itself on a conflict (it also reports them
           # UNKNOWN while building). Mergeability is computed lazily after main
           # moves; re-read until none is UNKNOWN, leave any still UNKNOWN for
-          # the next merge.
+          # the next merge. GitHub returns a null queue when none is configured.
           for _ in 1 2 3 4 5 6; do
             # shellcheck disable=SC2016  # the GraphQL query must not expand
             gh api graphql -f owner="$OWNER" -f repo="$REPO" -f branch="$BASE_REF" -f query='
@@ -287,7 +287,7 @@ jobs:
                     }
                   }
                 }
-              }' --jq '.data.repository.mergeQueue.entries.nodes[]
+              }' --jq '(.data.repository.mergeQueue.entries.nodes // [])[]
                        | select(.state == "QUEUED")
                        | [.pullRequest.id, .pullRequest.number, .pullRequest.mergeable, .position]
                        | @tsv' > entries.tsv
