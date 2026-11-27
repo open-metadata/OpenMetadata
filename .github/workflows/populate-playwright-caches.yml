@@ -21,7 +21,7 @@
 #    merge-queue refs. prune-ephemeral-caches.yml now collects those; the saves
 #    that created them are gated off merge_group in the reusable.
 #
-# The fix has two halves: playwright-e2e-reusable.yml uses RESTORE-ONLY
+# The fix has two halves: reusable-playwright-e2e.yml uses RESTORE-ONLY
 # cache steps (no saves from ephemeral refs), and THIS workflow is the one
 # writer — it saves from main's scope so every downstream run gets a hit.
 #
@@ -35,7 +35,7 @@
 #                rebuilt it for ~17 min each — 31% of a 55 min suite, on the
 #                critical path of every entry in the queue. Warming them needs
 #                the real build-and-seed pipeline, so this job CALLS
-#                playwright-e2e-reusable.yml with `warm_caches_only: true`,
+#                reusable-playwright-e2e.yml with `warm_caches_only: true`,
 #                which runs it for its cache side effects and stops before the
 #                shards. The commit was already tested by the queue entry that
 #                produced it; re-running the suite on main proves nothing.
@@ -67,7 +67,7 @@
 # nothing rebuilds — so running on each main push is the safe default.
 #
 # IMPORTANT: the cache keys and the apt package list below MUST stay
-# identical to their counterparts in playwright-e2e-reusable.yml — a drifted
+# identical to their counterparts in reusable-playwright-e2e.yml — a drifted
 # key populates a cache nobody restores. Update both files together.
 name: Populate Playwright CI caches
 
@@ -226,11 +226,12 @@ jobs:
     concurrency:
       group: populate-playwright-caches-fixture
       cancel-in-progress: false
-    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    uses: ./.github/workflows/reusable-playwright-e2e.yml
     secrets: inherit
     permissions:
       actions: read
       contents: read
+      packages: write
       pull-requests: read
       checks: read
     with:

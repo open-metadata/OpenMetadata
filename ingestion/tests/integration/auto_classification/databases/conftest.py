@@ -4,6 +4,7 @@ import uuid
 import pytest
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import postgres_source_image
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceRequest
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth
@@ -18,7 +19,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 def postgres_container():
     """Start a PostgreSQL container with the test database."""
     init_file = os.path.join(os.path.dirname(__file__), "init.sql")  # noqa: PTH118, PTH120
-    container = PostgresContainer("postgres:15", dbname="test_db").with_volume_mapping(
+    container = PostgresContainer(postgres_source_image(), dbname="test_db").with_volume_mapping(
         init_file, "/docker-entrypoint-initdb.d/init.sql"
     )
 

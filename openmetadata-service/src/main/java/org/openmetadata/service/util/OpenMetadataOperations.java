@@ -99,6 +99,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.ConfigTemplateKind;
@@ -147,6 +148,8 @@ import org.openmetadata.service.search.fitness.FitnessVerdict;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1780,166 +1783,178 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "300",
               description = "Queue size for buffering embedding tasks.")
           int queueSize) {
-    int finalProducerThreads =
-        producerThreads <= 0
-            ? Math.max(1, Runtime.getRuntime().availableProcessors())
-            : producerThreads;
-    int finalConsumerThreads =
-        consumerThreads <= 0
-            ? Math.max(1, Runtime.getRuntime().availableProcessors())
-            : consumerThreads;
+    int finalProducerThreads = threadsOrProcessorCount(producerThreads);
+    int finalConsumerThreads = threadsOrProcessorCount(consumerThreads);
     int finalQueueSize = Math.max(1, queueSize);
-    java.util.concurrent.BlockingQueue<ReembedTask> taskQueue =
-        new java.util.concurrent.LinkedBlockingQueue<>(finalQueueSize);
-    java.util.concurrent.atomic.AtomicBoolean producersDone =
-        new java.util.concurrent.atomic.AtomicBoolean(false);
-    java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>
-        processedCounts = new java.util.concurrent.ConcurrentHashMap<>();
-    java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>
-        failedCounts = new java.util.concurrent.ConcurrentHashMap<>();
-    java.util.concurrent.ExecutorService producerExecutor =
-        java.util.concurrent.Executors.newFixedThreadPool(
-            finalProducerThreads, Thread.ofPlatform().name("reembed-producer-", 0).factory());
-    java.util.concurrent.ExecutorService consumerExecutor =
-        java.util.concurrent.Executors.newFixedThreadPool(
-            finalConsumerThreads, Thread.ofPlatform().name("reembed-consumer-", 0).factory());
+    ReembedRun run =
+        new ReembedRun(
+            new java.util.concurrent.LinkedBlockingQueue<>(finalQueueSize),
+            new java.util.concurrent.atomic.AtomicBoolean(false),
+            new java.util.concurrent.ConcurrentHashMap<>(),
+            new java.util.concurrent.ConcurrentHashMap<>(),
+            java.util.concurrent.Executors.newFixedThreadPool(
+                finalProducerThreads, Thread.ofPlatform().name("reembed-producer-", 0).factory()),
+            java.util.concurrent.Executors.newFixedThreadPool(
+                finalConsumerThreads, Thread.ofPlatform().name("reembed-consumer-", 0).factory()));
+    int exitCode = 1;
     try {
-      if (!OpenMetadataApplicationConfigHolder.isInitialized()) {
-        parseConfig();
-      }
-      CollectionRegistry.initialize();
-      var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
-      ApplicationHandler.initialize(omConfig);
-      SeedDataGate.getInstance().forceSeedData();
-      CollectionRegistry.getInstance()
-          .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
-      TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
-      TypeRegistry.instance().initialize(typeRepository);
-
-      SearchRepository repo = Entity.getSearchRepository();
-      if (repo == null) {
-        LOG.error("Search repository is not initialized; cannot run re-embedding");
-        return 1;
-      }
-
-      repo.prepareForReindex();
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService =
-          org.openmetadata.service.search.vector.OpenSearchVectorService.getInstance();
-      if (vecService == null || vecService.getEmbeddingClient() == null) {
-        LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
-        return 1;
-      }
-
-      java.util.concurrent.ConcurrentHashMap<String, Integer> entityTotals =
-          new java.util.concurrent.ConcurrentHashMap<>();
-      int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
-      java.util.concurrent.CountDownLatch producerLatch =
-          new java.util.concurrent.CountDownLatch(totalBatches);
-
-      LOG.info(
-          "Re-embedding with producers: {}, consumers: {}, queue size: {}, batch size: {}",
-          finalProducerThreads,
-          finalConsumerThreads,
-          finalQueueSize,
-          batchSize);
-
-      java.util.concurrent.CountDownLatch consumerLatch =
-          startReembedConsumers(
-              finalConsumerThreads,
-              consumerExecutor,
-              taskQueue,
-              producersDone,
-              vecService,
-              processedCounts,
-              failedCounts);
-
-      for (String entityType :
-          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
-        if (!isReembedableEntityType(entityType)) {
-          // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
-          // publishes terms through the gated writer that keeps drafts out of search. See
-          // calculateReembedTotalBatches, which also excludes term types, and the ADR
-          // 2026-11-23.
-          continue;
-        }
-        int totalRecords = entityTotals.getOrDefault(entityType, 0);
-        int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
-        if (batches == 0) {
-          LOG.info("No entities found for type {}, skipping", entityType);
-          continue;
-        }
-
-        org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source =
-            new org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource(
-                entityType, batchSize, List.of("*"));
-
+      initializeReembedRuntime();
+      VectorIndexService vecService = prepareReembedVectorService();
+      if (vecService != null) {
         LOG.info(
-            "Scheduling re-embedding for entity type {} with {} records ({} batches)",
-            entityType,
-            totalRecords,
-            batches);
-
-        for (int i = 0; i < batches; i++) {
-          int offset = i * batchSize;
-          producerExecutor.submit(
-              () -> {
-                try {
-                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
-                      source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
-                  if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
-                    taskQueue.put(new ReembedTask(entityType, batch));
-                  }
-                  if (batch != null && batch.getErrors() != null && !batch.getErrors().isEmpty()) {
-                    failedCounts
-                        .computeIfAbsent(
-                            entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-                        .addAndGet(batch.getErrors().size());
-                  }
-                } catch (Exception e) {
-                  LOG.warn(
-                      "Failed to read batch for entity type {} at offset {}",
-                      entityType,
-                      offset,
-                      e);
-                } finally {
-                  producerLatch.countDown();
-                }
-              });
-        }
+            "Re-embedding with producers: {}, consumers: {}, queue size: {}, batch size: {}",
+            finalProducerThreads,
+            finalConsumerThreads,
+            finalQueueSize,
+            batchSize);
+        reembedAllTypes(vecService, run, batchSize, finalConsumerThreads);
+        LOG.info("Re-embedding completed successfully");
+        exitCode = 0;
       }
-
-      awaitReembedProducers(producerLatch, producerExecutor);
-      producersDone.set(true);
-      signalReembedConsumersToStop(finalConsumerThreads, taskQueue);
-      consumerLatch.await();
-
-      for (String entityType :
-          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
-        int processed =
-            processedCounts
-                .getOrDefault(entityType, new java.util.concurrent.atomic.AtomicInteger(0))
-                .get();
-        int failed =
-            failedCounts
-                .getOrDefault(entityType, new java.util.concurrent.atomic.AtomicInteger(0))
-                .get();
-        LOG.info(
-            "Finished re-embedding {} entities for type {} (failed reads: {})",
-            processed,
-            entityType,
-            failed);
-      }
-
-      LOG.info("Re-embedding completed successfully");
-      return 0;
     } catch (Exception e) {
       LOG.error("Failed to run full re-embedding", e);
-      return 1;
     } finally {
-      shutdownReembedExecutor(producerExecutor, "reembed-producer");
-      shutdownReembedExecutor(consumerExecutor, "reembed-consumer");
+      shutdownReembedExecutor(run.producerExecutor(), "reembed-producer");
+      shutdownReembedExecutor(run.consumerExecutor(), "reembed-consumer");
+    }
+    return exitCode;
+  }
+
+  private static int threadsOrProcessorCount(int threads) {
+    return threads <= 0 ? Math.max(1, Runtime.getRuntime().availableProcessors()) : threads;
+  }
+
+  private void initializeReembedRuntime() throws Exception {
+    if (!OpenMetadataApplicationConfigHolder.isInitialized()) {
+      parseConfig();
+    }
+    CollectionRegistry.initialize();
+    var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
+    ApplicationHandler.initialize(omConfig);
+    SeedDataGate.getInstance().forceSeedData();
+    CollectionRegistry.getInstance()
+        .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
+    TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+    TypeRegistry.instance().initialize(typeRepository);
+  }
+
+  /** The engine's vector service ready to re-embed, or null when re-embedding cannot run. */
+  private static VectorIndexService prepareReembedVectorService() {
+    SearchRepository repo = Entity.getSearchRepository();
+    VectorIndexService vecService = null;
+    if (repo == null) {
+      LOG.error("Search repository is not initialized; cannot run re-embedding");
+    } else {
+      repo.prepareForReindex();
+      vecService = repo.getVectorIndexService();
+      if (vecService == null || vecService.getEmbeddingClient() == null) {
+        LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
+        vecService = null;
+      }
+    }
+    return vecService;
+  }
+
+  private void reembedAllTypes(
+      VectorIndexService vecService, ReembedRun run, int batchSize, int consumerThreads)
+      throws InterruptedException {
+    Map<String, Integer> entityTotals = new java.util.concurrent.ConcurrentHashMap<>();
+    int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
+    java.util.concurrent.CountDownLatch producerLatch =
+        new java.util.concurrent.CountDownLatch(totalBatches);
+    java.util.concurrent.CountDownLatch consumerLatch =
+        startReembedConsumers(
+            consumerThreads,
+            run.consumerExecutor(),
+            run.taskQueue(),
+            run.producersDone(),
+            vecService,
+            run.processedCounts(),
+            run.failedCounts());
+    for (String entityType : EmbeddedEntityTypes.ALL) {
+      if (isReembedableEntityType(entityType)) {
+        // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
+        // publishes terms through the gated writer that keeps drafts out of search. See
+        // calculateReembedTotalBatches, which also excludes term types, and the ADR 2026-11-23.
+        scheduleReembedBatches(
+            entityType, entityTotals.getOrDefault(entityType, 0), batchSize, run, producerLatch);
+      }
+    }
+    awaitReembedProducers(producerLatch, run.producerExecutor());
+    run.producersDone().set(true);
+    signalReembedConsumersToStop(consumerThreads, run.taskQueue());
+    consumerLatch.await();
+    logReembedSummary(run);
+  }
+
+  private void scheduleReembedBatches(
+      String entityType,
+      int totalRecords,
+      int batchSize,
+      ReembedRun run,
+      java.util.concurrent.CountDownLatch producerLatch) {
+    int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
+    if (batches == 0) {
+      LOG.info("No entities found for type {}, skipping", entityType);
+    } else {
+      org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source =
+          new org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource(
+              entityType, batchSize, List.of("*"));
+      LOG.info(
+          "Scheduling re-embedding for entity type {} with {} records ({} batches)",
+          entityType,
+          totalRecords,
+          batches);
+      for (int i = 0; i < batches; i++) {
+        int offset = i * batchSize;
+        run.producerExecutor()
+            .submit(() -> produceReembedBatch(source, entityType, offset, run, producerLatch));
+      }
     }
   }
+
+  private static void produceReembedBatch(
+      org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source,
+      String entityType,
+      int offset,
+      ReembedRun run,
+      java.util.concurrent.CountDownLatch producerLatch) {
+    try {
+      org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
+          source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+      if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
+        run.taskQueue().put(new ReembedTask(entityType, batch));
+      }
+      if (batch != null && batch.getErrors() != null && !batch.getErrors().isEmpty()) {
+        run.failedCounts()
+            .computeIfAbsent(entityType, key -> new AtomicInteger(0))
+            .addAndGet(batch.getErrors().size());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to read batch for entity type {} at offset {}", entityType, offset, e);
+    } finally {
+      producerLatch.countDown();
+    }
+  }
+
+  private static void logReembedSummary(ReembedRun run) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
+      LOG.info(
+          "Finished re-embedding {} entities for type {} (failed reads: {})",
+          run.processedCounts().getOrDefault(entityType, new AtomicInteger(0)).get(),
+          entityType,
+          run.failedCounts().getOrDefault(entityType, new AtomicInteger(0)).get());
+    }
+  }
+
+  /** The state a re-embedding run shares between its producers and consumers. */
+  private record ReembedRun(
+      java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
+      java.util.concurrent.atomic.AtomicBoolean producersDone,
+      Map<String, AtomicInteger> processedCounts,
+      Map<String, AtomicInteger> failedCounts,
+      java.util.concurrent.ExecutorService producerExecutor,
+      java.util.concurrent.ExecutorService consumerExecutor) {}
 
   private record ReembedTask(
       String entityType,
@@ -1950,7 +1965,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.ExecutorService consumerExecutor,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1974,7 +1989,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int consumerId,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     LOG.debug("Consumer {} started", consumerId);
@@ -2067,8 +2082,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private int calculateReembedTotalBatches(int batchSize, Map<String, Integer> entityTotals) {
     int totalBatches = 0;
-    for (String entityType :
-        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       if (!isReembedableEntityType(entityType)) {
         // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
         // publishes terms through the gated writer that keeps drafts out of search (see ADR
@@ -3593,6 +3607,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
+    LlmConfigHolder.initialize(config.getLlmConfiguration());
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
       throw new IllegalArgumentException("No database in config file");

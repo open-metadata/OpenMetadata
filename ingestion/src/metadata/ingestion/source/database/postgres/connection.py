@@ -141,6 +141,15 @@ POSTGRES_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
+def check_query_history(engine: Engine, query_statement_source: str | None) -> Evidence:
+    relation = validate_query_statement_source(query_statement_source)
+    statement = POSTGRES_TEST_GET_QUERIES.format(
+        time_column_name=get_postgres_time_column_name(engine=engine),
+        query_statement_source=relation,
+    )
+    return run_sql(engine, statement, lambda _: "query history accessible")
+
+
 class PostgresChecks:
     """Test-connection checks for PostgreSQL."""
 
@@ -181,13 +190,7 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        # Built here, not at construction, so the version-probe query runs only
-        # after CheckAccess has confirmed reachability - never ahead of the gate.
-        statement = POSTGRES_TEST_GET_QUERIES.format(
-            time_column_name=get_postgres_time_column_name(engine=self._db.client),
-            query_statement_source=validate_query_statement_source(self.query_statement_source),
-        )
-        return run_sql(self._db.client, statement, lambda _: "query history accessible")
+        return check_query_history(self._db.client, self.query_statement_source)
 
     @check(DatabaseStep.GetColumnMetadata)
     def get_column_metadata(self) -> Evidence:

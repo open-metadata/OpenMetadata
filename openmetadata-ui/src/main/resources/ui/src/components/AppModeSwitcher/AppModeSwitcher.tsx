@@ -14,6 +14,7 @@
 import {
   Badge,
   Box,
+  Card,
   HoverCard,
   Popover,
   Typography,
@@ -24,7 +25,7 @@ import {
   ChevronUp,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { useRef, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import appModeAIIcon from '../../assets/svg/app-mode-ai.svg';
@@ -40,24 +41,19 @@ import {
   useIsAiMode,
   writeAppMode,
 } from '../../hooks/useAppMode';
+import {
+  CURRENT_CHECK_CLASS,
+  OPTION_ICON_BOX,
+  TRIGGER_STYLES,
+} from './AppModeSwitcher.constants';
+import {
+  AppModeSwitcherProps,
+  AppModeSwitcherTriggerProps,
+} from './AppModeSwitcher.types';
 import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 
-const OPTION_ICON_BOX =
-  'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
-
-const CURRENT_CHECK_CLASS = 'tw:shrink-0 tw:text-fg-brand-primary';
-
-const AppModeSwitcherTrigger: React.FC<{
-  compact?: boolean;
-  isOpen: boolean;
-  isAiMode: boolean;
-  aiLabel: string;
-  modeLabel: string;
-  modeLabelSentence: string;
-  triggerRef: React.RefObject<HTMLButtonElement>;
-  onClick: () => void;
-}> = ({
-  compact,
+const AppModeSwitcherTrigger: FC<AppModeSwitcherTriggerProps> = ({
+  variant,
   isOpen,
   isAiMode,
   aiLabel,
@@ -66,18 +62,14 @@ const AppModeSwitcherTrigger: React.FC<{
   triggerRef,
   onClick,
 }) => {
-  const iconSize = compact ? 12 : 20;
-  const modeLabelText = compact ? modeLabel : modeLabelSentence;
+  const { root, label, iconSize, chevron } = TRIGGER_STYLES[variant];
 
   return (
     <button
       aria-expanded={isOpen}
       aria-haspopup="dialog"
-      className={
-        compact
-          ? 'tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left'
-          : 'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
-      }
+      aria-label={label ? undefined : modeLabelSentence}
+      className={root}
       data-testid="app-mode-switcher-trigger"
       ref={triggerRef}
       type="button"
@@ -97,15 +89,12 @@ const AppModeSwitcherTrigger: React.FC<{
           width={iconSize}
         />
       )}
-      <span
-        className={
-          compact
-            ? 'tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold'
-            : 'tw:flex-1 tw:text-sm tw:text-secondary tw:font-medium'
-        }>
-        {modeLabelText}
-      </span>
-      {compact ? (
+      {label && (
+        <span className={label}>
+          {variant === 'pill' ? modeLabel : modeLabelSentence}
+        </span>
+      )}
+      {chevron === 'up' && (
         <ChevronUp
           className={classNames(
             'tw:shrink-0 tw:text-utility-blue-500 tw:transition-transform tw:duration-150',
@@ -114,7 +103,8 @@ const AppModeSwitcherTrigger: React.FC<{
           height={10}
           width={10}
         />
-      ) : (
+      )}
+      {chevron === 'right' && (
         <ChevronRight
           className="tw:shrink-0 tw:text-tertiary"
           height={16}
@@ -125,13 +115,13 @@ const AppModeSwitcherTrigger: React.FC<{
   );
 };
 
-const AppModeSwitcher: React.FC<{
-  className?: string;
-  cardRef?: React.RefObject<HTMLElement>;
-  compact?: boolean;
-  classicHref?: string;
-  aiHref?: string;
-}> = ({ className, cardRef, compact, classicHref = '/', aiHref = '/' }) => {
+const AppModeSwitcher: FC<AppModeSwitcherProps> = ({
+  className,
+  cardRef,
+  classicHref = '/',
+  aiHref = '/',
+  variant = 'inline',
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -142,6 +132,8 @@ const AppModeSwitcher: React.FC<{
   const { preferences, setPreference } = useCurrentUserPreferences();
 
   const modeLabel = isAiMode ? t('label.ai') : t('label.classic');
+  const isPill = variant === 'pill';
+  const { frame } = TRIGGER_STYLES[variant];
 
   const handleClassicClick = () => {
     writeAppMode(DEFAULT_APP_MODE);
@@ -167,28 +159,33 @@ const AppModeSwitcher: React.FC<{
     setPreference({ appMode: isRemembered ? null : currentModeWireToken });
   };
 
+  const trigger = (
+    <AppModeSwitcherTrigger
+      aiLabel={t('label.ai')}
+      isAiMode={isAiMode}
+      isOpen={isOpen}
+      modeLabel={modeLabel}
+      modeLabelSentence={t('label.mode-label', { mode: modeLabel })}
+      triggerRef={triggerRef}
+      variant={variant}
+      onClick={() => setIsOpen((prev) => !prev)}
+    />
+  );
+
   return (
     <div className={classNames(className)}>
-      <AppModeSwitcherTrigger
-        aiLabel={t('label.ai')}
-        compact={compact}
-        isAiMode={isAiMode}
-        isOpen={isOpen}
-        modeLabel={modeLabel}
-        modeLabelSentence={t('label.mode-label', { mode: modeLabel })}
-        triggerRef={triggerRef}
-        onClick={() => setIsOpen((prev) => !prev)}
-      />
+      {frame ? <Card className={frame}>{trigger}</Card> : trigger}
 
       <Popover
-        containerClassName="tw:w-60"
+        aria-label={t('label.switch-interface')}
+        containerClassName="tw:w-64"
         isOpen={isOpen}
-        placement={compact ? 'right' : 'right bottom'}
+        placement={isPill ? 'right' : 'right bottom'}
         shouldCloseOnInteractOutside={(element) =>
           !triggerRef.current?.contains(element) &&
           !cardRef?.current?.contains(element)
         }
-        triggerRef={compact ? triggerRef : cardRef ?? triggerRef}
+        triggerRef={isPill ? triggerRef : cardRef ?? triggerRef}
         onOpenChange={setIsOpen}>
         <Box
           className="tw:p-2"
@@ -291,7 +288,7 @@ const AppModeSwitcher: React.FC<{
               className={classNames(
                 'tw:w-5 tw:h-5 tw:rounded-md tw:shrink-0 tw:transition',
                 {
-                  'tw:bg-blue-600 tw:border-0': isRemembered,
+                  'tw:bg-brand-solid tw:border-0': isRemembered,
                   'tw:bg-surface tw:border tw:border-utility-gray-400':
                     !isRemembered,
                 }

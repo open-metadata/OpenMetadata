@@ -26,6 +26,7 @@ export type EntityVersionTimelineProps = {
 export type EntityVersionButtonProps = {
   version: {
     updatedBy: string;
+    impersonatedBy?: string;
     version: string | number;
     changeDescription: ChangeDescription;
     updatedAt: number;

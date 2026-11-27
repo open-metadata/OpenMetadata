@@ -41,6 +41,11 @@ $$section
   - **This field is read-only** - it cannot be edited
   - **Copy this exact URL** and add it to your OIDC provider's allowed redirect URIs list
   - Format is always: `{your-domain}/callback`
+
+**MCP sign-in**
+
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Add `<om-url>/mcp/callback` to your provider’s allowed redirect URIs. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
 $$
 
 $$section

@@ -16,7 +16,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   assertAppMode,
   disableAiAppMode,
-  switchToAiModeViaProfileToggle,
+  switchToAiModeViaSidebarSwitcher,
 } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
 
@@ -78,7 +78,7 @@ const simulateAllTabsClosed = (page: Page): Promise<void> =>
   );
 
 test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
-  test('profile-dropdown toggle switches Classic → AI and populates session + hint', async ({
+  test('sidebar switcher switches Classic → AI and populates session + hint', async ({
     page,
   }) => {
     await disableAiAppMode(page);
@@ -90,8 +90,8 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
       await assertAppMode(page, 'default');
     });
 
-    await test.step('Toggle to AI via profile dropdown', async () => {
-      await switchToAiModeViaProfileToggle(page);
+    await test.step('Toggle to AI via the sidebar switcher', async () => {
+      await switchToAiModeViaSidebarSwitcher(page);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
       await assertAppMode(page, 'ai');
     });
@@ -109,7 +109,7 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
     await disableAiAppMode(page);
     await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
-    await switchToAiModeViaProfileToggle(page);
+    await switchToAiModeViaSidebarSwitcher(page);
     await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
     await test.step('Reload the tab', async () => {
@@ -129,7 +129,7 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
     await disableAiAppMode(page);
     await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
-    await switchToAiModeViaProfileToggle(page);
+    await switchToAiModeViaSidebarSwitcher(page);
     await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
     // The hint is what carries the mode across tabs — sessionStorage does NOT
@@ -156,7 +156,7 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
     await disableAiAppMode(page);
     await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
-    await switchToAiModeViaProfileToggle(page);
+    await switchToAiModeViaSidebarSwitcher(page);
     await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
     await test.step('Simulate closing every tab (session + hint gone)', async () => {
@@ -178,7 +178,7 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
     await disableAiAppMode(page);
     await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
-    await switchToAiModeViaProfileToggle(page);
+    await switchToAiModeViaSidebarSwitcher(page);
     await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
     const rememberToggle = page

@@ -17,7 +17,7 @@
  *   node scripts/select-browser-tests.mjs --map impact-map.json --base <sha> [--out selection.json]
  *
  * The impact map ({ testFile: [source files it executed] }) comes from the
- * merge queue's full run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
+ * latest passing CI run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
  * import graph is too entangled to select from on its own (lazy imports tie
  * ~1,000 modules into one cycle), so it is used only
  * for what coverage cannot see: test helpers, the direct imports of executed
@@ -37,6 +37,7 @@ const LOCALE = 'src/locale/languages/en-us.json';
 const RUN_ALL_PREFIXES = [
   '.github/workflows/ui-browser-tests.yml',
   '.github/actions/ui-browser-setup/',
+  '.github/actions/setup-ui/',
   `${UI}package.json`,
   `${UI}yarn.lock`,
   `${UI}.nvmrc`,
@@ -162,7 +163,11 @@ export const selectTests = ({
 
   for (const path of changed.filter((file) => file.startsWith(UI))) {
     const file = path.slice(UI.length);
-    if (!file.startsWith('src/') || file.startsWith('src/locale/')) {
+    if (
+      !file.startsWith('src/') ||
+      file.startsWith('src/locale/') ||
+      file.endsWith('.md')
+    ) {
       continue;
     }
     // A screenshot baseline sits beside its test:
@@ -258,6 +263,18 @@ const buildGraph = async (tests) => {
       logLevel: 'silent',
       tsconfig: 'tsconfig.json',
       loader: empty,
+      // The ANTLR parsers are generated at build time and git-ignored; the
+      // select job has no build, and their grammar is not UI code.
+      plugins: [
+        {
+          name: 'generated-antlr',
+          setup: (b) =>
+            b.onResolve({ filter: /\/generated\/antlr\// }, (args) => ({
+              path: args.path,
+              external: true,
+            })),
+        },
+      ],
     });
 
     return Object.fromEntries(
@@ -287,14 +304,23 @@ const main = async () => {
   const head = option('--head') ?? 'HEAD';
   const git = (...cmd) =>
     execFileSync('git', cmd, { encoding: 'utf8', maxBuffer: 1 << 26 });
+  // CI's shallow clone may hold no merge base (a merge-queue group batching
+  // several pull requests); there the base is an ancestor of the head, so
+  // comparing the two trees is the same diff.
+  let range = [`${base}...${head}`];
+  try {
+    git('merge-base', base, head);
+  } catch {
+    range = [base, head];
+  }
   // Deleted test files need no run; a deleted source file still selects the
   // tests that loaded it, since its removal can break them.
   const deleted = new Set(
-    git('diff', '--name-only', '--diff-filter=D', `${base}...${head}`)
+    git('diff', '--name-only', '--diff-filter=D', ...range)
       .split('\n')
       .filter(Boolean)
   );
-  const changed = git('diff', '--name-only', `${base}...${head}`)
+  const changed = git('diff', '--name-only', ...range)
     .split('\n')
     .filter(Boolean)
     .filter(

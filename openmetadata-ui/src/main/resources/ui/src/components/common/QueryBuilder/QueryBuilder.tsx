@@ -35,7 +35,10 @@ import {
   formatQuery,
   isQueryTreeComplete,
 } from '../../../utils/queryBuilder/formatters';
-import { loadQueryBuilderTree } from '../../../utils/queryBuilder/tree';
+import {
+  loadQueryBuilderTree,
+  sanitizeQueryBuilderTree,
+} from '../../../utils/queryBuilder/tree';
 import {
   QUERY_BUILDER_CONJUNCTION_MODE,
   QUERY_BUILDER_GROUP_MODE,
@@ -148,7 +151,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   );
 
   useEffect(() => {
-    setTreeInternal((current) => QbUtils.checkTree(current, config));
+    setTreeInternal((current) => sanitizeQueryBuilderTree(current, config));
   }, [config]);
 
   const valueRef = useRef(value);

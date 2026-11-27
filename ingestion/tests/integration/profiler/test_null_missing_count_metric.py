@@ -39,6 +39,7 @@ from sqlalchemy.orm import DeclarativeBase
 from testcontainers.mysql import MySqlContainer
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image, postgres_source_image
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.types.custom_array import CustomArray
@@ -136,7 +137,7 @@ def _seed_arrays(engine, session):
 
 @pytest.fixture(scope="module")
 def postgres_session():
-    with PostgresContainer("postgres:15") as container:
+    with PostgresContainer(postgres_source_image()) as container:
         engine = create_engine(container.get_connection_url())
         session = _seed(engine)
         _seed_arrays(engine, session)
@@ -147,7 +148,7 @@ def postgres_session():
 
 @pytest.fixture(scope="module")
 def mysql_session():
-    with MySqlContainer(image="mysql:8.4.13", dbname="test_missing_count") as container:
+    with MySqlContainer(image=mysql_source_image(), dbname="test_missing_count") as container:
         engine = create_engine(container.get_connection_url())
         session = _seed(engine)
         yield session

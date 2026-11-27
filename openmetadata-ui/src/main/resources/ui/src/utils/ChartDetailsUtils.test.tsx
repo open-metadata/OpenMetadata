@@ -103,7 +103,7 @@ const mockProps: Omit<ChartDetailsTabsProps, 'labelMap'> = {
 
 describe('ChartDetailsUtils', () => {
   describe('getChartDetailPageTabs labelMap handling', () => {
-    it('uses each tab own key in labelMap rather than EntityTabs.LINEAGE', () => {
+    it('uses each tab own key in labelMap rather than EntityTabs.LINEAGE', async () => {
       const tabs = getChartDetailPageTabs({
         ...mockProps,
         labelMap: {
@@ -129,7 +129,7 @@ describe('ChartDetailsUtils', () => {
 
       expect(screen.getByTestId('tab-label-Details')).toBeInTheDocument();
       expect(
-        screen.getByTestId('tab-label-Activity Feeds & Tasks')
+        await screen.findByTestId('tab-label-Activity Feeds & Tasks')
       ).toBeInTheDocument();
       expect(screen.getByTestId('tab-label-Lineage')).toBeInTheDocument();
       expect(screen.getByTestId('tab-label-Contract')).toBeInTheDocument();

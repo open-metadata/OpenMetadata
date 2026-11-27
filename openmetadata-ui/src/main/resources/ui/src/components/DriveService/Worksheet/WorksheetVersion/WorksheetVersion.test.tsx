@@ -405,12 +405,13 @@ describe('WorksheetVersion', () => {
       ViewAll: false,
     };
 
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+
     renderWorksheetVersion({
       entityPermissions: limitedPermissions,
     });
-
-    const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
-    fireEvent.click(customPropertiesTab);
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
@@ -611,6 +612,32 @@ describe('WorksheetVersion', () => {
     });
 
     expect(screen.getAllByTestId('tags-container').length).toBeGreaterThan(0);
+  });
+
+  it('should follow the tab route param when it changes without a remount', async () => {
+    const { rerender } = renderWorksheetVersion();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /schema/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(
+      <MemoryRouter>
+        <WorksheetVersion {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('tab', { name: /custom/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {

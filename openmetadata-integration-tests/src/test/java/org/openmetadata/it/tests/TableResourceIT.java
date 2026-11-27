@@ -164,6 +164,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   private static final int LARGE_PROFILE_HISTORY_ROWS = 1001;
 
   {
+    supportsLineage = true;
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;

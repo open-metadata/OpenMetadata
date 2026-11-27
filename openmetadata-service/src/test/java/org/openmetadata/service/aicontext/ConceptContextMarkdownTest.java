@@ -84,6 +84,29 @@ class ConceptContextMarkdownTest {
   }
 
   @Test
+  void capsLongSampleValuesOnConceptBindings() {
+    ConceptContext concept =
+        concept()
+            .withBindings(
+                List.of(
+                    new ConceptBinding()
+                        .withAssetFqn("svc.db.schema.orders")
+                        .withAssetType(Entity.TABLE)
+                        .withColumn("svc.db.schema.orders.amount")
+                        .withSampleValues(List.of("z".repeat(500)))));
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertFalse(
+        markdown.contains("z".repeat(121)),
+        "a long concept-binding sample value must be capped at MAX_SAMPLE_CELL_CHARS, not inlined"
+            + " unbounded");
+    assertTrue(
+        markdown.contains("\u2026"),
+        "a capped concept-binding sample value must be marked as elided");
+  }
+
+  @Test
   void rendersTableRowCountsForAssetAndColumnBindings() {
     ConceptContext concept =
         concept()

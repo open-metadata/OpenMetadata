@@ -45,7 +45,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
             <AIUserMenu collapsed />
           </Box>
         </Card>
-        <AppModeSwitcher compact />
+        <AppModeSwitcher variant="pill" />
       </>
     );
   }

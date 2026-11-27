@@ -68,7 +68,6 @@ describe('LineageColumnMenu', () => {
     const onParentMouseDown = jest.fn();
     render(
       // stand-in for the column row, which selects the column on click
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
       <div onClick={onParentClick} onMouseDown={onParentMouseDown}>
         <LineageColumnMenu {...props} />
       </div>

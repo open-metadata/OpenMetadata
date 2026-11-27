@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.services import databaseService
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.metrics.core import (
     ComposedMetric,
-    CustomMetric,
     HybridMetric,
     QueryMetric,
     StaticMetric,
@@ -83,15 +82,6 @@ class MetricFilter:
             List[Type[ComposedMetric]]:
         """
         return self.filter_by_type(ComposedMetric)
-
-    @property
-    def custom_metrics(self) -> list[type[CustomMetric]]:
-        """Get custom metrics. Custom metrics are user-defined metrics.
-
-        Returns:
-            List[Type[CustomMetric]]:
-        """
-        return self.filter_by_type(CustomMetric)
 
     @property
     def query_metrics(self) -> list[type[QueryMetric]]:
