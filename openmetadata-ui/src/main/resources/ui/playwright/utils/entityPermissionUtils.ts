@@ -369,9 +369,16 @@ export const testProfilerTabPermission = async (
  */
 const checkHeaderUsage = async (
   testUserPage: Page,
-  effect: 'allow' | 'deny'
+  effect: 'allow' | 'deny',
+  { isHeaderCollapsed = true }: { isHeaderCollapsed?: boolean } = {}
 ) => {
-  await expandHeaderProperties(testUserPage);
+  await expect(
+    testUserPage.getByTestId('data-asset-header-metadata')
+  ).toBeVisible();
+
+  if (isHeaderCollapsed) {
+    await expandHeaderProperties(testUserPage);
+  }
   const usage = testUserPage
     .getByTestId('data-asset-header-metadata')
     .getByTestId('header-property-usage');
@@ -588,7 +595,10 @@ export const testMlModelSpecificOperations = async (
   await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
-  await checkHeaderUsage(testUserPage, effect);
+  // Without Usage the ML model header fits in five properties, so nothing is collapsed.
+  await checkHeaderUsage(testUserPage, effect, {
+    isHeaderCollapsed: effect === 'allow',
+  });
 
   if (effect === 'allow') {
     await testVotePreservesUsage(testUserPage);
