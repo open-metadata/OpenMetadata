@@ -15,6 +15,7 @@ import {
   Button,
   Checkbox,
   Input,
+  Select,
   Toggle,
   Tooltip,
   TooltipTrigger,
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityReference } from '../../../../generated/entity/teams/user';
+import { EmptyAssigneeStrategy } from '../../../../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { AssigneeCandidate } from '../../../../interface/WorkflowTypes.interface';
@@ -38,6 +40,7 @@ import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';
+import { EMPTY_ASSIGNEE_STRATEGY_OPTIONS } from './UserApprovalForm.constants';
 
 interface UserApprovalFormProps {
   node: Node;
@@ -69,7 +72,7 @@ const DEFAULT_USER_APPROVAL_TRANSITIONS = [
 interface AssigneesConfigSlice {
   addReviewers?: boolean;
   addOwners?: boolean;
-  emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy?: EmptyAssigneeStrategy;
   candidates?: AssigneeCandidate[];
 }
 
@@ -80,7 +83,7 @@ interface UserApprovalInitialState {
   rejectionThreshold: number;
   addReviewers: boolean;
   addOwners: boolean;
-  emptyAssigneeStrategy: 'none' | 'assignAdmins';
+  emptyAssigneeStrategy: EmptyAssigneeStrategy;
   candidates: EntityReference[];
   allowPartialDecisions: boolean;
 }
@@ -88,7 +91,8 @@ interface UserApprovalInitialState {
 const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
   addReviewers: assignees.addReviewers ?? true,
   addOwners: assignees.addOwners ?? false,
-  emptyAssigneeStrategy: assignees.emptyAssigneeStrategy ?? 'none',
+  emptyAssigneeStrategy:
+    assignees.emptyAssigneeStrategy ?? EmptyAssigneeStrategy.None,
   candidates: Array.isArray(assignees.candidates) ? assignees.candidates : [],
 });
 
@@ -126,9 +130,9 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [rejectionThreshold, setRejectionThreshold] = useState(1);
   const [addReviewers, setAddReviewers] = useState(true);
   const [addOwners, setAddOwners] = useState(false);
-  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState<
-    'none' | 'assignAdmins'
-  >('none');
+  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState(
+    EmptyAssigneeStrategy.None
+  );
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
   const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
@@ -356,6 +360,36 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
               </ModeAwareFormField>
             </FormField>
           </div>
+        </div>
+
+        <div className="tw:mb-6">
+          <Select
+            data-testid="user-approval-empty-assignee-strategy-select"
+            hint={t(
+              EMPTY_ASSIGNEE_STRATEGY_OPTIONS[emptyAssigneeStrategy].hintKey
+            )}
+            isDisabled={isFormDisabled}
+            label={t('label.if-no-one-else-can-approve')}
+            value={emptyAssigneeStrategy}
+            onChange={(key) =>
+              setEmptyAssigneeStrategy(key as EmptyAssigneeStrategy)
+            }>
+            {Object.values(EmptyAssigneeStrategy).map((strategy) => (
+              <Select.Item
+                data-testid={`user-approval-empty-assignee-strategy-${strategy}`}
+                id={strategy}
+                key={strategy}
+                label={t(EMPTY_ASSIGNEE_STRATEGY_OPTIONS[strategy].labelKey)}
+              />
+            ))}
+          </Select>
+          <Typography
+            as="p"
+            className="tw:mt-2"
+            color="secondary"
+            size="text-sm">
+            {t('message.empty-assignee-strategy-description')}
+          </Typography>
         </div>
       </div>
 

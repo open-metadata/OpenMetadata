@@ -14,7 +14,7 @@
 import { type Page } from '@playwright/test';
 import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
-import { uuid } from '../../../utils/common';
+import { chooseSelectOption, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
@@ -29,6 +29,12 @@ const test = base.extend<{ page: Page }>({
 });
 
 let workflowName: string;
+
+// The edit test switches the approval step to Assign admins. Skip every real table so tables other
+// workers create while this workflow is deployed never open an admin task.
+const NEVER_MATCHING_TABLE_FILTER = JSON.stringify({
+  '!=': [{ var: 'name' }, `pw-oss-no-such-table-${uuid()}`],
+});
 
 // Opened by URL, not from the list: the list shows 12 cards per page and the
 // seeded workflows already fill page 1, so the test workflow lands on page 2.
@@ -115,7 +121,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                 events: ['Created'],
                 exclude: [],
                 include: [],
-                filter: {},
+                filter: { table: NEVER_MATCHING_TABLE_FILTER },
               },
               output: ['relatedEntity', 'updatedBy'],
             },
@@ -184,7 +190,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
     });
 
     test.describe('Test workflow — edit mode: task node config', () => {
-      test('editing a form field and saving node config then workflow fires PUT API with updated data', async ({
+      test('editing the threshold and the no-approver strategy then saving fires PUT API with both', async ({
         page,
       }) => {
         await navigateToWorkflowDetailPage(page, workflowName);
@@ -198,9 +204,27 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await expect(thresholdInput).toBeEnabled();
         await thresholdInput.fill('2');
 
+        const strategyTrigger = sidebar
+          .getByTestId('user-approval-empty-assignee-strategy-select')
+          .getByRole('button');
+
+        await expect(strategyTrigger).toBeEnabled();
+        await chooseSelectOption(
+          strategyTrigger,
+          page.getByTestId(
+            'user-approval-empty-assignee-strategy-assignAdmins'
+          ),
+          strategyTrigger.filter({ hasText: 'Assign to admins' })
+        );
+
         await sidebar.getByTestId('save-node-configuration-button').click();
         await expect(sidebar).not.toBeVisible();
 
+        const saveRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/governance/workflowDefinitions') &&
+            request.method() === 'PUT'
+        );
         const saveResponse = waitForResponseWithStatus(
           page,
           (response) =>
@@ -210,6 +234,28 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         );
 
         await page.getByTestId('save-workflow-button').click();
+
+        const savedWorkflow = (await saveRequest).postDataJSON();
+
+        expect(savedWorkflow.trigger.config.filter.table).toBe(
+          NEVER_MATCHING_TABLE_FILTER
+        );
+
+        const savedApprovalNode = (
+          savedWorkflow.nodes as Array<{
+            name: string;
+            config?: {
+              approvalThreshold?: number;
+              assignees?: { emptyAssigneeStrategy?: string };
+            };
+          }>
+        ).find((node) => node.name === 'ApprovalTask');
+
+        expect(savedApprovalNode?.config?.approvalThreshold).toBe(2);
+        expect(
+          savedApprovalNode?.config?.assignees?.emptyAssigneeStrategy
+        ).toBe('assignAdmins');
+
         await saveResponse;
         await waitForAllLoadersToDisappear(page);
 
