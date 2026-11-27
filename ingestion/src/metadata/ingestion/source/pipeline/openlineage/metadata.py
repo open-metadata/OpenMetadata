@@ -19,7 +19,7 @@ import time
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
-from itertools import groupby, product
+from itertools import product
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -52,6 +52,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlFunction
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -560,13 +561,20 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str | None:
-        """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
+    def _match_column_fqn(table, table_fqn: str, field_name: str) -> str | None:
+        """
+        Resolve an OpenLineage field name to the FQN of the real stored column, case-insensitively.
+
+        The stored FQN cannot be rebuilt from the column name: a fetched name has its reserved
+        characters decoded (`a>b` is stored as `a__reserved__arrow__b`), and a dot in it is quoted
+        in the FQN (`"c.d"`). The server silently drops an entry that matches no real column.
+        A sharded table has no column to fall back to, so an unmatched field resolves to None.
+        """
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
-                return column.name.root
-        return None if table and table.tableType == TableType.Sharded else lower
+                return model_str(column.fullyQualifiedName)
+        return None if table and table.tableType == TableType.Sharded else f"{table_fqn}.{lower}"
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -842,21 +850,53 @@ class OpenlineageSource(PipelineServiceSource):
 
         return result
 
-    @classmethod
+    @staticmethod
+    def _column_function(input_field: dict, field_spec: dict) -> str | None:
+        def text(value: object) -> str:
+            return value.strip() if isinstance(value, str) else ""
+
+        transformations = input_field.get("transformations")
+        functions = []
+        if isinstance(transformations, list):
+            for transformation in transformations:
+                if not isinstance(transformation, dict):
+                    continue
+                label = text(transformation.get("type"))
+                if not label:
+                    continue
+                if subtype := text(transformation.get("subtype")):
+                    label += f"/{subtype}"
+                if description := text(transformation.get("description")):
+                    label += f" ({description})"
+                if transformation.get("masking") is True:
+                    label += " [masked]"
+                functions.append(label)
+
+        if functions:
+            return ", ".join(functions)
+        for field in ("transformationDescription", "transformationType"):
+            value = field_spec.get(field)
+            if isinstance(value, str) and value.strip():
+                return value
+        return None
+
+    @staticmethod
     def _create_output_lineage_dict(
-        cls,
-        lineage_info: list[tuple[str, str, str, str]],
+        columns_by_function: dict[tuple[str, str, str, str | None], list[str]],
     ) -> dict[str, dict[str, list[ColumnLineage]]]:
         result = defaultdict(lambda: defaultdict(list))
-        for (output_table, input_table, output_column), group in groupby(lineage_info, lambda x: x[:3]):
-            input_columns = [input_col for _, _, _, input_col in group]
-
-            result[output_table][input_table] += [ColumnLineage(toColumn=output_column, fromColumns=input_columns)]
-
+        for (output_table, input_table, output_column, function), input_columns in columns_by_function.items():
+            result[output_table][input_table].append(
+                ColumnLineage(
+                    toColumn=FullyQualifiedEntityName(output_column),
+                    fromColumns=[FullyQualifiedEntityName(column) for column in input_columns],
+                    function=SqlFunction(function) if function else None,
+                )
+            )
         return result
 
     def _get_column_lineage(self, inputs: list, outputs: list) -> dict[str, dict[str, list[ColumnLineage]]]:
-        _result: list = []
+        columns_by_function: dict[tuple[str, str, str, str | None], list[str]] = defaultdict(list)
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
@@ -892,20 +932,18 @@ class OpenlineageSource(PipelineServiceSource):
                     if not input_table_fqn:
                         continue
                     input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
-                    output_column = self._match_column_name(output_table_entity, field_name)
-                    input_column = self._match_column_name(input_table_entity, input_field.get("field", ""))
+                    output_column = self._match_column_fqn(output_table_entity, output_table_fqn, field_name)
+                    input_column = self._match_column_fqn(
+                        input_table_entity, input_table_fqn, input_field.get("field", "")
+                    )
                     if not output_column or not input_column:
                         continue
-                    _result.append(  # output table, input table, output column, input column
-                        (
-                            output_table_fqn,
-                            input_table_fqn,
-                            f"{output_table_fqn}.{output_column}",
-                            f"{input_table_fqn}.{input_column}",
-                        )
+                    function = self._column_function(input_field, field_spec)
+                    columns_by_function[(output_table_fqn, input_table_fqn, output_column, function)].append(
+                        input_column
                     )
 
-        return OpenlineageSource._create_output_lineage_dict(_result)
+        return self._create_output_lineage_dict(columns_by_function)
 
     def _resolve_pipeline_service(self, pipeline_details: OpenLineageEvent) -> str:
         """
