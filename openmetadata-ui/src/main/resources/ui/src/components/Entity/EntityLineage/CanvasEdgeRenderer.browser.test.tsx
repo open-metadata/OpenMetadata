@@ -124,15 +124,18 @@ describe('CanvasEdgeRenderer', () => {
         await expect
           .element(page.getByTestId('pipeline-status-badge'))
           .toHaveTextContent(StatusType.Successful);
+
         const link = page.getByRole('link', {
           name: pipeline.name,
           exact: true,
         });
+
         await expect
           .element(link)
           .toHaveAttribute('href', `/pipeline/${pipeline.fullyQualifiedName}`);
 
         await link.hover();
+
         await expect.element(link).toBeVisible();
       } finally {
         webdriver.mockRestore();
