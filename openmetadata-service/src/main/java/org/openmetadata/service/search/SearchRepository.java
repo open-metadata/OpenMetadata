@@ -121,6 +121,7 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -1001,8 +1002,6 @@ public class SearchRepository {
       vectorServiceInitialized = true;
       this.vectorServiceInitError = null;
 
-      ensureHybridSearchPipeline();
-
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
           resolveEmbeddingProvider(llmConfig),
@@ -1023,79 +1022,41 @@ public class SearchRepository {
     return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
   }
 
-  public void ensureHybridSearchPipeline() {
-    if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
-      return;
-    }
-    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
-    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
-    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
-      return;
-    }
-    double[] weights = resolveHybridWeights();
-    updateHybridSearchPipeline(weights[0], weights[1]);
-  }
+  /** The weights of the keyword and the semantic leg of hybrid search. */
+  public record HybridWeights(double keyword, double semantic) {}
 
   /**
-   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
-   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
-   * OpenSearch.
-   *
-   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
-   * settings, so inlining is what makes an admin's weight change take effect on the next query
-   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
-   * role is not allowed to write anyway.
+   * The effective hybrid weights: search settings when present, else configuration, else 0.6 and
+   * 0.4. Read on each call, so an admin's change applies to the next search.
    */
-  public Optional<String> getHybridRrfPipelineDefinition() {
-    if (!isVectorEmbeddingEnabled()
-        || !vectorServiceInitialized
-        || !(vectorIndexService instanceof OpenSearchVectorService)) {
-      return Optional.empty();
-    }
-    double[] weights = resolveHybridWeights();
-    return Optional.of(
-        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
-  }
-
-  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
-  private double[] resolveHybridWeights() {
-    ElasticSearchConfiguration cfg = getSearchConfiguration();
-    NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
+  public HybridWeights getHybridWeights() {
+    NaturalLanguageSearchConfiguration nlConfig =
+        Objects.requireNonNullElseGet(
+            getSearchConfiguration().getNaturalLanguageSearch(),
+            NaturalLanguageSearchConfiguration::new);
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
         nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
+    GlobalSettings global = searchSettingsGlobals();
+    if (global != null && global.getKeywordWeight() != null) {
+      keywordWeight = global.getKeywordWeight();
+    }
+    if (global != null && global.getSemanticWeight() != null) {
+      semanticWeight = global.getSemanticWeight();
+    }
+    return new HybridWeights(keywordWeight, semanticWeight);
+  }
 
+  private static GlobalSettings searchSettingsGlobals() {
+    GlobalSettings global = null;
     try {
-      SearchSettings ss =
+      SearchSettings settings =
           SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-      if (ss != null && ss.getGlobalSettings() != null) {
-        if (ss.getGlobalSettings().getKeywordWeight() != null) {
-          keywordWeight = ss.getGlobalSettings().getKeywordWeight();
-        }
-        if (ss.getGlobalSettings().getSemanticWeight() != null) {
-          semanticWeight = ss.getGlobalSettings().getSemanticWeight();
-        }
-      }
+      global = settings == null ? null : settings.getGlobalSettings();
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-    return new double[] {keywordWeight, semanticWeight};
-  }
-
-  public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      openSearchVectorService.ensureHybridSearchPipeline(keywordWeight, semanticWeight);
-    } else {
-      LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
-    }
-  }
-
-  public Optional<String> checkHybridSearchPipeline() {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      double[] weights = resolveHybridWeights();
-      return openSearchVectorService.checkHybridSearchPipeline(weights[0], weights[1]);
-    }
-    return Optional.empty();
+    return global;
   }
 
   public IndexMapping getIndexMapping(String entityType) {
@@ -1348,7 +1309,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 

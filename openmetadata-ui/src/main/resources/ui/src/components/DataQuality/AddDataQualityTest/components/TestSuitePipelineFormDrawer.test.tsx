@@ -54,7 +54,10 @@ jest.mock(
 
 jest.mock(
   '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
-  () => jest.fn(() => <div>ScheduleInterval</div>)
+  () =>
+    jest.fn(({ timezone }: { timezone?: string }) => (
+      <div data-testid="schedule-timezone">{timezone}</div>
+    ))
 );
 
 jest.mock('../../../../utils/DataQuality/FormFieldDocs', () => ({
@@ -360,6 +363,35 @@ describe('TestSuitePipelineFormDrawer', () => {
       'server.update-entity-success'
     );
     expect(onSuccess).toHaveBeenCalled();
+  });
+
+  it('describes a new pipeline schedule in UTC', async () => {
+    renderDrawer();
+
+    expect(await screen.findByTestId('schedule-timezone')).toHaveTextContent(
+      'UTC'
+    );
+  });
+
+  it("describes an edited pipeline schedule in the pipeline's timezone", async () => {
+    render(
+      <TestSuitePipelineFormDrawer
+        open
+        ingestionPipeline={{
+          ...EDITED_PIPELINE,
+          airflowConfig: {
+            ...EDITED_PIPELINE.airflowConfig,
+            pipelineTimezone: 'Europe/Berlin',
+          },
+        }}
+        onClose={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('schedule-timezone')).toHaveTextContent(
+      'Europe/Berlin'
+    );
   });
 
   it("adds a bundle suite's pipeline scoped by the suite, with no table", async () => {

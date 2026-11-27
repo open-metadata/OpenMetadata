@@ -18,7 +18,10 @@ when the parent's fn() calls _compute_sqa_fn with arguments the child doesn't ex
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, Table
+from sqlalchemy.dialects import mysql
 
+from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
@@ -76,3 +79,20 @@ def test_compute_sqa_fn_accepts_parent_args(child_cls):
     col = MagicMock()
     result = instance._compute_sqa_fn(col, "test_table", 0.5, dimension_col="dim_col")
     assert result is not None
+
+
+@pytest.mark.parametrize(
+    "child_cls",
+    [c for c, _ in CHILD_PARENT_PAIRS],
+    ids=[c.__name__ for c, _ in CHILD_PARENT_PAIRS],
+)
+def test_fn_forwards_dimension_col(child_cls):
+    """The parent fn() must forward the dimension_col property to _compute_sqa_fn,
+    so the GROUP BY-correlated branch of each override is reachable."""
+    col = Table("test_table", MetaData(), Column("dim_col", Integer), Column("value", Integer)).c.value
+
+    plain = str(child_cls(col).fn().compile(dialect=mysql.dialect()))
+    dimensional = str(add_props(dimension_col="dim_col")(child_cls)(col).fn().compile(dialect=mysql.dialect()))
+
+    assert "dim_col" not in plain
+    assert "dim_col" in dimensional

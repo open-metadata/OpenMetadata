@@ -16,6 +16,8 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import React, { Fragment } from 'react';
 import { useParams } from 'react-router-dom';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import {
@@ -23,8 +25,12 @@ import {
   getTestCaseFailedSampleData,
 } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useTestCaseStore } from '../useTestCase.store';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -115,6 +121,7 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
@@ -162,6 +169,16 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
 
 const FQN = 'svc.db.schema.table.failing_test_case';
 
+// The real store and the real derivation: only the grants are test data.
+const withTestCasePermission = (grants: Partial<OperationPermission>) =>
+  useTestCaseStore.setState({
+    isPermissionLoading: false,
+    testCasePermission: {
+      ...DEFAULT_ENTITY_PERMISSION,
+      ...grants,
+    } as OperationPermission,
+  });
+
 const mockTestCase: TestCase = {
   id: 'tc-1',
   name: 'failing_test_case',
@@ -202,6 +219,9 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     jest.clearAllMocks();
     (checkPermission as jest.Mock).mockReturnValue(true);
     (useParams as jest.Mock).mockReturnValue({});
+    withTestCasePermission({
+      [Operation.DeleteTestCaseFailedRowsSample]: true,
+    });
     (getTestCaseFailedSampleData as jest.Mock).mockReset().mockResolvedValue({
       columns: ['c1'],
       rows: [['r1']],
@@ -522,6 +542,114 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     );
 
     expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument();
+  });
+});
+
+describe('FailedTestCaseSampleData - delete permission', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (checkPermission as jest.Mock).mockReturnValue(true);
+    (useParams as jest.Mock).mockReturnValue({});
+    (deleteTestCaseFailedSampleData as jest.Mock).mockReset();
+    (getTestCaseFailedSampleData as jest.Mock).mockReset().mockResolvedValue({
+      columns: ['c1'],
+      rows: [['r1']],
+    });
+  });
+
+  it('should hide delete from a user who can edit the test case but not delete its sample', async () => {
+    withTestCasePermission({
+      [Operation.EditAll]: true,
+      [Operation.DeleteTestCaseFailedRowsSample]: false,
+    });
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await screen.findByTestId('sample-data-table');
+
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should offer delete to a user granted DeleteTestCaseFailedRowsSample without EditAll', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    (checkPermission as jest.Mock).mockImplementation(
+      (operation: Operation) => operation === Operation.ViewSampleData
+    );
+    withTestCasePermission({
+      [Operation.DeleteTestCaseFailedRowsSample]: true,
+    });
+    (deleteTestCaseFailedSampleData as jest.Mock).mockResolvedValueOnce(
+      undefined
+    );
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+    await screen.findByTestId('sample-data-table');
+    (getTestCaseFailedSampleData as jest.Mock).mockRejectedValueOnce({
+      response: { status: 404 },
+    });
+
+    await user.click(screen.getByTestId('sample-data-manage-button'));
+    await user.click(await screen.findByRole('menuitem'));
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm sample deletion' })
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('sample-data-table')).not.toBeInTheDocument();
+    });
+
+    expect(deleteTestCaseFailedSampleData).toHaveBeenCalledWith(
+      mockTestCase.id
+    );
+  });
+
+  it('should hide delete until the test case permissions load', async () => {
+    useTestCaseStore.setState({
+      isPermissionLoading: true,
+      testCasePermission: undefined,
+    });
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await screen.findByTestId('sample-data-table');
+
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should keep the dialog open and toast the error when delete is forbidden', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const forbidden = { response: { status: 403 } } as AxiosError;
+    withTestCasePermission({
+      [Operation.DeleteTestCaseFailedRowsSample]: true,
+    });
+    (deleteTestCaseFailedSampleData as jest.Mock).mockRejectedValueOnce(
+      forbidden
+    );
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+    await screen.findByTestId('sample-data-table');
+
+    await user.click(screen.getByTestId('sample-data-manage-button'));
+    await user.click(await screen.findByRole('menuitem'));
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm sample deletion' })
+    );
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        forbidden,
+        'server.delete-entity-error'
+      )
+    );
+
+    expect(screen.getByTestId('sample-data-table')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Confirm sample deletion' })
+    ).toBeInTheDocument();
   });
 });
 

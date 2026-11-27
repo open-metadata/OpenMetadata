@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import githubShortcodes from 'emojibase-data/en/shortcodes/github.json';
+import emojiHexcodes from 'emojibase-data/meta/hexcodes.json';
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
-import Showdown from 'showdown';
+import { Marked, Renderer } from 'marked';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
   getEntityDetail,
@@ -64,10 +66,8 @@ export const convertMarkdownFormatToHtmlString = (markdown: string) => {
   return updatedMessage;
 };
 
-// Lists and tables are structural markup the markdown converter cannot round
-// trip: Showdown hashes such markup as inline spans and its unhash pass gives
-// up after 10 levels of nesting, leaking `\u00a8C<n>C` placeholders into the
-// rendered output. Content carrying one is always treated as HTML.
+// Already-rendered lists and tables bypass markdown parsing so editor attributes
+// and nested HTML structure survive unchanged.
 const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
 
 // A fenced block or a code span holds a literal example. `DOMParser` has no
@@ -181,17 +181,102 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-const _convertMarkdownStringToHtmlString = new Showdown.Converter({
-  ghCodeBlocks: true,
-  encodeEmails: false,
-  ellipsis: false,
-  simplifiedAutoLink: true,
-  tables: true,
-  strikethrough: true,
-  simpleLineBreaks: true,
-  openLinksInNewWindow: true,
-  emoji: true,
-  underline: true,
+const shortcodeEntries: [string, string | string[]][] =
+  Object.entries(githubShortcodes);
+const emojiVariants: Record<string, Record<string, number>> = emojiHexcodes;
+
+const emojiByShortcode = new Map(
+  shortcodeEntries.flatMap(([hexcode, names]) => {
+    // Use the fully qualified sequence so text-default characters render as emoji.
+    const fullyQualified = Object.entries(emojiVariants[hexcode] ?? {}).find(
+      ([, qualification]) => qualification === 0
+    )?.[0];
+    const codepoints = (fullyQualified ?? hexcode)
+      .split('-')
+      .map((value) => parseInt(value, 16));
+    const emoji = String.fromCodePoint(...codepoints);
+    const aliases = typeof names === 'string' ? [names] : names;
+
+    return aliases.map((name) => [name, emoji] as const);
+  })
+);
+const defaultMarkdownRenderer = new Renderer();
+
+// CommonMark block parsing preserves each level of two-space-indented lists.
+const markdownConverter = new Marked({
+  gfm: true,
+  breaks: true,
+  tokenizer: {
+    del(source) {
+      // Single tildes are literal in existing descriptions; false delegates
+      // double tildes to Marked's built-in strikethrough rule.
+      return source.startsWith('~~') ? false : undefined;
+    },
+  },
+  renderer: {
+    // Preview truncation depends on the newline text following each break.
+    br: () => '<br>\n',
+    link(href, title, text) {
+      // Delegate URL/title escaping to marked before adding external-link attributes.
+      return defaultMarkdownRenderer
+        .link(href, title, text)
+        .replace(
+          /^<a ([^>]+)>/,
+          '<a $1 target="_blank" rel="noopener noreferrer">'
+        );
+    },
+  },
+  extensions: [
+    {
+      name: 'em',
+      renderer(token) {
+        const content = this.parser.parseInline(token.tokens ?? []);
+        let html = `<em>${content}</em>`;
+        if (token.raw.startsWith('___') && token.raw.endsWith('___')) {
+          html = content;
+        } else if (token.raw.startsWith('_')) {
+          html = `_${content}_`;
+        }
+
+        return html;
+      },
+    },
+    {
+      name: 'strong',
+      renderer(token) {
+        // Existing descriptions use double underscores for underline rather than bold.
+        const tag = token.raw.startsWith('__') ? 'u' : 'strong';
+
+        return `<${tag}>${this.parser.parseInline(
+          token.tokens ?? []
+        )}</${tag}>`;
+      },
+    },
+    {
+      name: 'emoji',
+      level: 'inline',
+      start: (source) => source.search(/:[a-zA-Z0-9_+-]+:/),
+      tokenizer(source) {
+        const match = /^:([a-zA-Z0-9_+-]+):/.exec(source);
+
+        if (!match) {
+          return undefined;
+        }
+
+        const [, shortcode] = match;
+
+        const html = emojiByShortcode.get(shortcode);
+
+        // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
+        return html === undefined
+          ? undefined
+          : { type: 'emoji', raw: match[0], html };
+      },
+      renderer(token) {
+        return token.html;
+      },
+    },
+  ],
 });
 
 /**
@@ -201,7 +286,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
 export const getHtmlStringFromMarkdownString = (content: string) => {
   return isHTMLString(content)
     ? content
-    : _convertMarkdownStringToHtmlString.makeHtml(content);
+    : markdownConverter.parser(markdownConverter.lexer(content)).trimEnd();
 };
 
 const MENTION_OR_HASHTAG_SELECTOR =

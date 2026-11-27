@@ -16,14 +16,21 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.DOMAIN_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.ROLE_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.SERVICE_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TAG_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TEAM_FUNCTIONS;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.Function;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.FunctionCall;
 
 class PolicyConditionUpdaterTest {
@@ -150,6 +157,71 @@ class PolicyConditionUpdaterTest {
         PolicyConditionUpdater.renamePrefixInCondition(
             "matchAnyTag('A.B')", "A.B", "X.Y", TAG_FUNCTIONS);
     assertEquals("matchAnyTag('X.Y')", result);
+  }
+
+  @Test
+  void renamePrefixInCondition_domainRenameCarriesItsSubDomains() {
+    String result =
+        PolicyConditionUpdater.renamePrefixInCondition(
+            "matchAnyDomain('Finance', 'Finance.Payments', 'Marketing')",
+            "Finance",
+            "FinanceOps",
+            DOMAIN_FUNCTIONS);
+    assertEquals("matchAnyDomain('FinanceOps', 'FinanceOps.Payments', 'Marketing')", result);
+  }
+
+  @Test
+  void renamePrefixInCondition_domainRenameLeavesSiblingWithSharedPrefixAlone() {
+    String result =
+        PolicyConditionUpdater.renamePrefixInCondition(
+            "matchAnyDomain('FinanceEU')", "Finance", "FinanceOps", DOMAIN_FUNCTIONS);
+    assertEquals("matchAnyDomain('FinanceEU')", result);
+  }
+
+  @Test
+  void removeByPrefixFromCondition_deletedDomainTakesItsSubDomainsWithIt() {
+    assertEquals(
+        "matchAnyDomain('Marketing')",
+        PolicyConditionUpdater.removeByPrefixFromCondition(
+            "matchAnyDomain('Finance.Payments', 'Marketing')", "Finance", DOMAIN_FUNCTIONS));
+    assertEquals(
+        "isOwner() && false",
+        PolicyConditionUpdater.removeByPrefixFromCondition(
+            "isOwner() && matchAnyDomain('Finance', 'Finance.Payments')",
+            "Finance",
+            DOMAIN_FUNCTIONS));
+  }
+
+  /**
+   * Every policy function that takes arguments must either be rewritten when the entities it names
+   * are renamed or deleted, or be listed here with the reason it is not. A new function that names
+   * entities and is in no rewrite set silently stops matching after a rename, as matchAnyDomain
+   * did.
+   */
+  @Test
+  void everyFunctionTakingArgumentsIsRewrittenOrListedAsNotNeedingIt() {
+    // Their arguments are service types and environments, fixed values rather than entity names.
+    Set<String> argumentsAreNotEntityNames =
+        Set.of("matchAnyServiceType", "matchAnyServiceEnvironment");
+    // Names bots, which nothing rewrites today when a bot is deleted.
+    Set<String> knownNotRewritten = Set.of("impersonatedBy");
+
+    Set<String> rewritten = new HashSet<>();
+    List.of(TAG_FUNCTIONS, ROLE_FUNCTIONS, TEAM_FUNCTIONS, SERVICE_FUNCTIONS, DOMAIN_FUNCTIONS)
+        .forEach(rewritten::addAll);
+    Set<String> functionsTakingArguments =
+        Arrays.stream(RuleEvaluator.class.getDeclaredMethods())
+            .filter(m -> m.isAnnotationPresent(Function.class) && m.getParameterCount() > 0)
+            .map(Method::getName)
+            .collect(Collectors.toSet());
+    assertTrue(
+        functionsTakingArguments.contains("matchAnyDomain"), "reflection found no functions");
+
+    Set<String> uncovered = new HashSet<>(functionsTakingArguments);
+    uncovered.removeAll(rewritten);
+    uncovered.removeAll(argumentsAreNotEntityNames);
+    uncovered.removeAll(knownNotRewritten);
+    assertEquals(Set.of(), uncovered, "functions naming entities with no rename/delete rewrite");
   }
 
   @Test

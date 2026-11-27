@@ -195,7 +195,6 @@ test.describe('Table Sorting', () => {
               sourceConfig: {
                 config: {
                   type: 'TestSuite',
-                  entityFullyQualifiedName: testSuite.fullyQualifiedName,
                 },
               },
             },

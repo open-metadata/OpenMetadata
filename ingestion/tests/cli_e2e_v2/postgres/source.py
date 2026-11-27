@@ -26,6 +26,8 @@ from sqlalchemy.exc import OperationalError
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import postgres_source_image
+
 from ..runtime.ci import mask_secrets
 from .baseline import build_postgres_baseline
 
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
     from ..features.database.source import SqlSourceBaseline
 
 logger = logging.getLogger(__name__)
-POSTGRES_IMAGE = "postgres:16.6@sha256:557fea37a744d5f4c8faab304b0a90858b53ab119735a88c131fd19dab802f36"
+POSTGRES_IMAGE = postgres_source_image()
 _INGEST_USER_OPTION = "e2e_postgres_ingest_user"
 _DATABASE = "e2e"
 

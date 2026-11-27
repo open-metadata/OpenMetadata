@@ -12,7 +12,8 @@
  */
 
 const BLANKET_HOOK_NAMES = new Set(['beforeEach']);
-const OWN_SLOT_HOOK_NAMES = new Set(['beforeAll', 'afterAll', 'afterEach']);
+const OWN_SLOT_HOOK_NAMES = new Set(['afterEach']);
+const ALL_HOOK_NAMES = new Set(['beforeAll', 'afterAll']);
 const PER_TEST_MODIFIER_NAMES = new Set([
   'only',
   'fixme',
@@ -57,6 +58,14 @@ const isSlowMethodCall = (node) => {
 
   return info?.path.length === 1 && info.path[0] === 'slow';
 };
+
+// `slow()` and `slow(true)` always apply; a condition or description needs a
+// human to decide what the hook should do, so those get no autofix.
+const isUnconditionalSlow = (node) =>
+  node.arguments.length === 0 ||
+  (node.arguments.length === 1 &&
+    node.arguments[0].type === 'Literal' &&
+    node.arguments[0].value === true);
 
 // A variable bound directly to the `describe` function itself — e.g.
 // `const describeInParallel = test.describe;` (seen in TagsSuggestion.spec.ts)
@@ -113,15 +122,25 @@ const collectTestObjectSignal = (node, signals) => {
  * `test.only/fixme/fail/skip/step(...)` variant — the callback runs once
  * per test, so `slow()` inside it affects only that test.
  *
- * Also legal, but for a different reason — `beforeAll`, `afterAll`, and
- * `afterEach` each run on their own timeout slot (verified against
- * playwright@1.57.0's worker/workerMain.js: `_runEachHooksForSuites` for
- * these passes its own slot), so `slow()` there extends only the hook's own
- * budget, never a test's.
+ * Also legal: `afterEach`. It runs on the after-hooks slot, sized
+ * `max(project timeout, testInfo.timeout)` (verified against
+ * playwright@1.65.1's worker/workerProcessEntry.js), so `slow()` there extends
+ * only the hook's budget, and a test that already called `slow()` has
+ * tripled it anyway.
+ *
+ * `beforeAll` and `afterAll` each run on a fresh slot of the project timeout,
+ * but with the TestInfo of the first or last test in the worker. Since 1.65
+ * `slow()` takes effect once per TestInfo (`TimeoutManager.slow()` returns
+ * early once `_slow` is set). A `beforeAll` `slow()` uses up the first test's
+ * one `slow()`, so that test's own `test.slow()` no longer triples it; an
+ * `afterAll` `slow()` does nothing when the last test already called
+ * `test.slow()`, so the hook keeps the base timeout. Both are flagged with a
+ * fix to `test.setTimeout(test.info().timeout * 3)`, which extends the hook's
+ * own slot and never touches `_slow`.
  *
  * Blanket: file scope (no enclosing function at all), any `describe*`
  * callback, `beforeEach` — which, unlike the other hooks, runs on the
- * *test's own* default timeout slot (workerMain.js calls
+ * *test's own* default timeout slot (workerProcessEntry.js calls
  * `_runEachHooksForSuites(suites, 'beforeEach', testInfo)` with no slot
  * argument) before every test in scope, so `slow()` there has the same
  * blast radius as a describe-scope call — and any unknown wrapper, which we
@@ -163,6 +182,10 @@ const classifyEnclosingCall = (node, testObjectIdentifiers) => {
       return 'blanket';
     }
 
+    if (info.path.length === 1 && ALL_HOOK_NAMES.has(method)) {
+      return 'allHook';
+    }
+
     if (info.path.length === 1 && OWN_SLOT_HOOK_NAMES.has(method)) {
       return 'legal';
     }
@@ -183,10 +206,13 @@ const rule = {
     docs: {
       description: 'Disallow test.slow() at file or describe scope',
     },
+    fixable: 'code',
     schema: [],
     messages: {
       blanketSlow:
         'test.slow() at file or describe scope triples the timeout for every test in scope and hides real performance regressions. Move it inside the single test that genuinely needs it.',
+      slowInAllHook:
+        "test.slow() in beforeAll/afterAll shares one slow() with the first/last test (Playwright 1.65+): in beforeAll it cancels that test's own slow(), in afterAll it does nothing once that test called slow(). Use test.setTimeout(test.info().timeout * 3) to extend the hook instead.",
     },
   },
 
@@ -232,10 +258,24 @@ const rule = {
             continue;
           }
 
-          if (
-            classifyEnclosingCall(node, testObjectIdentifiers) === 'blanket'
-          ) {
+          const scope = classifyEnclosingCall(node, testObjectIdentifiers);
+
+          if (scope === 'blanket') {
             context.report({ node, messageId: 'blanketSlow' });
+          }
+
+          if (scope === 'allHook') {
+            context.report({
+              node,
+              messageId: 'slowInAllHook',
+              fix: isUnconditionalSlow(node)
+                ? (fixer) =>
+                    fixer.replaceText(
+                      node,
+                      `${info.root}.setTimeout(${info.root}.info().timeout * 3)`
+                    )
+                : null,
+            });
           }
         }
       },

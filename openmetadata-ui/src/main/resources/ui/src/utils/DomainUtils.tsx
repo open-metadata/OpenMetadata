@@ -59,6 +59,12 @@ const CustomPropertyTable = withSuspenseFallback(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -284,8 +290,10 @@ export const getDomainDetailTabs = ({
           },
           {
             label: (
-              <TabsLabel
+              <ActivityFeedTabLabel
                 count={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                fqn={domain.fullyQualifiedName}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                 name={get(

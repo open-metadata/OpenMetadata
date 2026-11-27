@@ -100,11 +100,17 @@ def has_secrets(value) -> bool:
     return False
 
 
+# Check runs report results on the PR's own commit; they cannot change code, releases or
+# secrets. Fork PRs still receive a read-only token, whatever the workflow declares.
+PR_WRITE_SCOPES = frozenset({"checks"})
+
+
 def read_only(permissions) -> bool:
     if permissions == "read-all":
         return True
     return isinstance(permissions, dict) and all(
-        value in ("read", "none") for value in permissions.values()
+        value in ("read", "none") or (value == "write" and scope in PR_WRITE_SCOPES)
+        for scope, value in permissions.items()
     )
 
 
@@ -126,6 +132,7 @@ def check_workflows(root: Path = ROOT) -> list[str]:
             if not read_only(permissions):
                 failures.append(
                     f"{location}: declare read-only permissions for PR execution"
+                    " (only checks: write is allowed)"
                 )
             if job.get("secrets"):
                 failures.append(
