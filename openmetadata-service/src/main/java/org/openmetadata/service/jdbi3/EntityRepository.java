@@ -3542,7 +3542,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final T createInternal(T entity) {
-    return createInternal(entity, null, null);
+    return createInternal(entity, null, ImpersonationContext.getImpersonatedBy());
   }
 
   private T createInternal(T entity, String updatedBy, String impersonatedBy) {
@@ -4473,7 +4473,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
-    return createOrUpdate(uriInfo, updated, updatedBy, null);
+    return createOrUpdate(uriInfo, updated, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PutResponse<T> createOrUpdate(
@@ -4536,7 +4536,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
-    return createOrUpdateForImport(uriInfo, updated, updatedBy, null);
+    return createOrUpdateForImport(
+        uriInfo, updated, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   public PutResponse<T> createOrUpdateForImport(
@@ -4606,7 +4607,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   @Transaction
   public List<T> createManyEntitiesForImport(List<T> entities) {
-    return createManyEntitiesForImport(entities, null);
+    return createManyEntitiesForImport(entities, ImpersonationContext.getImpersonatedBy());
   }
 
   @Transaction
@@ -4644,7 +4645,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   @Transaction
   public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
-    return updateManyEntitiesForImport(originals, updates, updatedBy, null);
+    return updateManyEntitiesForImport(
+        originals, updates, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   @Transaction
@@ -4656,8 +4658,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // 1. Batch lock manager check
     checkModificationsAllowed(updates);
-    // The import records its author as impersonatedBy too; it carries no bot impersonation.
-    authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
+    authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, impersonatedBy));
 
     // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
     // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
@@ -4680,6 +4681,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // Data product lineage is recounted from the HAS rows, so the pairs the rewrite can change are
+    // read before it as well as after it.
+    Set<Pair<UUID, UUID>> dataProductPairs = importDataProductPairs(originals, updatedEntities);
+
     // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
     // parents before the flush rewrites their edges.
     List<List<EntityReference>> previousParents =
@@ -4700,6 +4705,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           for (T entity : updatedEntities) {
             invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
           }
+          recountImportedDataProductLineage(dataProductPairs, originals, updatedEntities);
         });
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
@@ -4718,6 +4724,58 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return new ChangeDescription()
         .withPreviousVersion(original.getVersion())
         .withChangeSummary(changeSummary);
+  }
+
+  /**
+   * The data product pairs an import can change: each product a changed entity gains or loses,
+   * against each product its lineage neighbours hold when this runs. Read before and after the HAS
+   * rewrite, they cover the neighbours' products on both sides too.
+   */
+  private Set<Pair<UUID, UUID>> importDataProductPairs(List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    for (int i = 0; i < originals.size(); i++) {
+      Set<UUID> moved = movedDataProducts(originals.get(i), updates.get(i));
+      if (!moved.isEmpty()) {
+        pairs.addAll(dataProductPairs(originals.get(i).getId(), moved));
+      }
+    }
+    return pairs;
+  }
+
+  private void recountImportedDataProductLineage(
+      Set<Pair<UUID, UUID>> pairsBefore, List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>(pairsBefore);
+    pairs.addAll(importDataProductPairs(originals, updates));
+    LineageUtil.recountDataProductsLineage(pairs);
+  }
+
+  // A product the entity keeps changes no pair of its own: a changed neighbour's entry covers it.
+  private Set<UUID> movedDataProducts(T original, T update) {
+    Set<UUID> before = referenceIds(listOrEmpty(original.getDataProducts()));
+    Set<UUID> after = referenceIds(listOrEmpty(update.getDataProducts()));
+    Set<UUID> moved = new HashSet<>(before);
+    moved.addAll(after);
+    moved.removeIf(product -> before.contains(product) && after.contains(product));
+    return moved;
+  }
+
+  private Set<Pair<UUID, UUID>> dataProductPairs(UUID entityId, Set<UUID> dataProductIds) {
+    Set<UUID> downstream =
+        heldDataProducts(
+            daoCollection.relationshipDAO().findDownstreamDataProducts(entityId, entityType));
+    Set<UUID> upstream =
+        heldDataProducts(
+            daoCollection.relationshipDAO().findUpstreamDataProducts(entityId, entityType));
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    for (UUID dataProductId : dataProductIds) {
+      downstream.forEach(neighbour -> pairs.add(Pair.of(dataProductId, neighbour)));
+      upstream.forEach(neighbour -> pairs.add(Pair.of(neighbour, dataProductId)));
+    }
+    return pairs;
+  }
+
+  private static Set<UUID> heldDataProducts(List<CollectionDAO.EntityRelationshipObject> has) {
+    return has.stream().map(row -> UUID.fromString(row.getFromId())).collect(Collectors.toSet());
   }
 
   @SuppressWarnings("unused")
@@ -4946,7 +5004,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated, String updatedBy) {
-    return update(uriInfo, original, updated, updatedBy, null);
+    return update(uriInfo, original, updated, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PutResponse<T> update(
@@ -4971,7 +5029,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> updateIfCurrent(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
-    return updateInternal(uriInfo, original, updated, updatedBy, null, true, null);
+    return updateInternal(
+        uriInfo,
+        original,
+        updated,
+        updatedBy,
+        ImpersonationContext.getImpersonatedBy(),
+        true,
+        null);
   }
 
   private PutResponse<T> updateInternal(
@@ -5072,7 +5137,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> updateForImport(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
-    return updateForImport(uriInfo, original, updated, updatedBy, null);
+    return updateForImport(
+        uriInfo, original, updated, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PutResponse<T> updateForImport(
@@ -5126,12 +5192,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   @Deprecated
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
-    return patch(uriInfo, id, user, patch, null, null, null);
+    return patch(uriInfo, id, user, patch, null, null, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, id, user, patch, changeSource, null, null);
+    return patch(
+        uriInfo, id, user, patch, changeSource, null, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
@@ -5205,12 +5272,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * PATCH using fully qualified name
    */
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
-    return patch(uriInfo, fqn, user, patch, null, null, null);
+    return patch(uriInfo, fqn, user, patch, null, null, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, String fqn, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, fqn, user, patch, changeSource, null, null);
+    return patch(
+        uriInfo, fqn, user, patch, changeSource, null, ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
@@ -5220,7 +5288,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
-    return patch(uriInfo, fqn, user, patch, changeSource, ifMatchHeader, null);
+    return patch(
+        uriInfo,
+        fqn,
+        user,
+        patch,
+        changeSource,
+        ifMatchHeader,
+        ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
@@ -5535,7 +5610,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Publishes an approved change request revision as its requester, in the caller's transaction.
    * The gate re-verifies the request is Approved for this revision inside the same transaction, so
-   * no caller-supplied flag can bypass admission.
+   * no caller-supplied flag can bypass admission. Bot attribution requires actor-specific pending
+   * requests (#37892).
    */
   public final PatchResponse<T> applyApprovedChange(ApprovedApplication approval, JsonPatch patch) {
     T original = get(null, approval.entityId(), patchFields, NON_DELETED, false);
@@ -5980,8 +6056,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
+        // A hard delete stores nothing, but its response and async change event carry the entity.
+        // Its time stays the stored one: ontology deletes check it against the locked row.
+        EntityUtil.recordWriter(updated, deletedBy);
         if (supportsSoftDelete && !hardDelete) {
-          updated.setUpdatedBy(deletedBy);
           updated.setUpdatedAt(System.currentTimeMillis());
           updated.setDeleted(true);
           EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
@@ -6921,6 +6999,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entities.forEach(entity -> entity.setImpersonatedBy(impersonatedBy));
     entities.forEach(this::evaluateRulesDeferredUntilInherited);
     entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
@@ -8548,7 +8628,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       setFieldsInternal(original, putFields, ALL);
       setInheritedFields(original, putFields);
       T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-      updated.setUpdatedBy(updatedBy);
+      EntityUtil.recordWriter(updated, updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
@@ -9308,7 +9388,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase(phaseName)) {
       for (T original : originals) {
         T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
-        updated.setUpdatedBy(updatedBy);
+        EntityUtil.recordWriter(updated, updatedBy);
         updated.setUpdatedAt(now);
         if (mutator != null) {
           mutator.accept(updated);
@@ -10404,13 +10484,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   static List<List<EntityReference>> moveTargets(
       final List<EntityReference> ownDomains, final List<EntityReference> written) {
-    final Set<UUID> storedIds = domainIds(ownDomains);
+    final Set<UUID> storedIds = referenceIds(ownDomains);
     final List<List<EntityReference>> added =
         written.stream()
             .filter(domain -> !storedIds.contains(domain.getId()))
             .map(List::of)
             .toList();
-    final boolean removesOnly = added.isEmpty() && !storedIds.equals(domainIds(written));
+    final boolean removesOnly = added.isEmpty() && !storedIds.equals(referenceIds(written));
     return removesOnly ? List.of(written) : added;
   }
 
@@ -10440,8 +10520,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     };
   }
 
-  private static Set<UUID> domainIds(final List<EntityReference> domains) {
-    return domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  private static Set<UUID> referenceIds(final List<EntityReference> references) {
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   // A user's write is never let through unchecked: without an authorizer it is refused.
@@ -10756,7 +10836,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return result;
   }
 
-  /** Records assets added to or removed from an entity as one change event on that entity. */
+  /**
+   * Records assets added to or removed from an entity as one change event on that entity, named for
+   * the request's user and its bot. Without a user, it names the entity's last writer.
+   */
   protected void recordBulkAssetsChange(
       String fromEntity,
       UUID entityId,
@@ -10766,10 +10849,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
     ChangeDescription change =
         addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
-    String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
     ChangeEvent changeEvent =
-        getChangeEvent(
-            entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+        getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+    if (userName != null) {
+      changeEvent
+          .withUserName(userName)
+          .withImpersonatedBy(ImpersonationContext.getImpersonatedBy());
+    }
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
@@ -10807,9 +10893,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return change;
   }
 
+  /** A change event naming the entity's writer: the user it records and that user's bot. */
   protected ChangeEvent getChangeEvent(
       EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
-    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy());
+    return getChangeEvent(updated, change, entityType, prevVersion, updated.getUpdatedBy())
+        .withImpersonatedBy(updated.getImpersonatedBy());
   }
 
   protected ChangeEvent getChangeEvent(
@@ -10850,6 +10938,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withEntityId(updated.getId())
             .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
             .withUserName(updated.getUpdatedBy())
+            .withImpersonatedBy(updated.getImpersonatedBy())
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
@@ -11357,6 +11446,27 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       providerSetter.accept(original.getProvider());
     }
 
+    /**
+     * Keeps a system entity that may not be deleted undeletable. No create request carries
+     * allowDelete, so a PUT keeps the stored value; a PATCH that lifts a stored false on a system
+     * entity is rejected with a 400.
+     */
+    protected final void restrictAllowDeleteChange(
+        Boolean originalAllowDelete,
+        Boolean updatedAllowDelete,
+        Consumer<Boolean> allowDeleteSetter) {
+      boolean liftsSystemDeleteProtection =
+          ProviderType.SYSTEM.equals(original.getProvider())
+              && Boolean.FALSE.equals(originalAllowDelete)
+              && !Boolean.FALSE.equals(updatedAllowDelete);
+      if (operation.isPut()) {
+        allowDeleteSetter.accept(originalAllowDelete);
+      } else if (operation.isPatch() && liftsSystemDeleteProtection) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.systemEntityModifyNotAllowed(original.getName(), entityType));
+      }
+    }
+
     protected final void compareAndUpdate(String fieldName, Runnable updater) {
       if (shouldCompare(fieldName)) {
         updater.run();
@@ -11732,6 +11842,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       } else if (!versionChanged) {
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
     }
@@ -11745,6 +11856,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updated.setChangeDescription(original.getChangeDescription());
       }
       updated.setUpdatedBy(original.getUpdatedBy());
+      updated.setImpersonatedBy(original.getImpersonatedBy());
       updated.setUpdatedAt(original.getUpdatedAt());
     }
 
@@ -12565,8 +12677,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           Relationship.HAS,
           entityType,
           original.getId());
-      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
-      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      // The rollups follow the persisted entity; consolidation replays this diff against reverted
+      // baselines they never saw.
+      if (isIndexBaselinePass()
+          && !referenceIds(origDataProducts).equals(referenceIds(updatedDataProducts))) {
+        removeDataProductsLineage(original.getId(), entityType, origDataProducts);
+        addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      }
     }
 
     private void updateExperts() {
@@ -13154,6 +13271,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         LOG.info("No version change and entityChanged=false, checking previous");
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
@@ -13232,6 +13350,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       } else { // Update did not change the entity version
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setImpersonatedBy(original.getImpersonatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
         // Remove entity history recorded when going from previous -> original (and now back to
         // previous)
@@ -13431,13 +13550,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
-          && original
-              .getUpdatedBy()
-              .equals(updated.getUpdatedBy()) // Must be updated by the same user
+          && isSameActor(original, updated)
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * A user's own edits and the edits a bot makes on their behalf stay separate versions, so the
+     * version history keeps naming the bot behind each change instead of only the last writer.
+     */
+    private boolean isSameActor(T original, T updated) {
+      return original.getUpdatedBy().equals(updated.getUpdatedBy())
+          && Objects.equals(original.getImpersonatedBy(), updated.getImpersonatedBy());
     }
 
     private boolean wasRenamedInSession(T original) {
@@ -15377,7 +15503,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     updated.setChangeDescription(change);
     updated.setVersion(EntityUtil.nextVersion(original.getVersion())); // Manually bump version ONCE
-    updated.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(updated, updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
 
     storeVersions(List.of(original));
@@ -15477,27 +15603,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // Policy conditions such as isImpersonated() read the impersonation from the thread, so the
     // job carries the request's into the write checks it runs and clears it when it ends.
-    final String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     CompletableFuture<BulkOperationResult> job;
     try {
       job =
           CompletableFuture.supplyAsync(
-              () -> {
-                ImpersonationContext.setImpersonatedBy(impersonatedBy);
-                try {
-                  return bulkCreateOrUpdateEntitiesSequential(
-                      uriInfo, entities, userName, existingByFqn, overrideMetadata);
-                } catch (Exception e) {
-                  LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
-                  BulkOperationResult errorResult = new BulkOperationResult();
-                  errorResult.setStatus(ApiStatus.FAILURE);
-                  errorResult.setNumberOfRowsFailed(entities.size());
-                  errorResult.setNumberOfRowsPassed(0);
-                  return errorResult;
-                } finally {
-                  ImpersonationContext.clear();
-                }
-              },
+              ImpersonationContext.propagateResult(
+                  () -> {
+                    try {
+                      return bulkCreateOrUpdateEntitiesSequential(
+                          uriInfo, entities, userName, existingByFqn, overrideMetadata);
+                    } catch (Exception e) {
+                      LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
+                      BulkOperationResult errorResult = new BulkOperationResult();
+                      errorResult.setStatus(ApiStatus.FAILURE);
+                      errorResult.setNumberOfRowsFailed(entities.size());
+                      errorResult.setNumberOfRowsPassed(0);
+                      return errorResult;
+                    }
+                  }),
               BulkExecutor.getInstance().getExecutor());
     } catch (Exception e) {
       BULK_JOB_PERMITS.release();
@@ -15688,9 +15811,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               updateFrequencyByFqn.getOrDefault(fqn, 0) > 1
                   ? JsonUtils.deepCopy(hydratedOriginal, entityClass)
                   : hydratedOriginal;
-          entity.setUpdatedBy(userName);
+          EntityUtil.recordWriter(entity, userName);
           entity.setUpdatedAt(System.currentTimeMillis());
-          final ChangeActor actor = ChangeActor.recorded(userName, null);
+          final ChangeActor actor = ChangeActor.recorded(userName, entity.getImpersonatedBy());
           authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
           authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
 
@@ -16043,7 +16166,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               admit(
                   published,
                   entity,
-                  ChangeActor.recorded(userName, null),
+                  ChangeActor.recorded(userName, ImpersonationContext.getImpersonatedBy()),
                   Edit.bulkPut(overrideMetadata));
           if (change.isPresent()) {
             candidates.remove();
@@ -16073,7 +16196,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       final T entity, final String userName, final List<BulkResponse> failedRequests) {
     boolean refused = false;
     try {
-      authorizeUserWrite(null, entity, ChangeActor.recorded(userName, null), null);
+      authorizeUserWrite(
+          null,
+          entity,
+          ChangeActor.recorded(userName, ImpersonationContext.getImpersonatedBy()),
+          null);
     } catch (AuthorizationException e) {
       failedRequests.add(failedBulkItem(entity, Status.FORBIDDEN.getStatusCode(), e.getMessage()));
       refused = true;
@@ -16145,10 +16272,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       lockManager.checkModificationAllowed(updated);
     }
     if (original == null) {
+      EntityUtil.recordWriter(updated, updatedBy);
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated, updatedBy, null);
+    return update(uriInfo, original, updated, updatedBy, ImpersonationContext.getImpersonatedBy());
   }
 
   /**

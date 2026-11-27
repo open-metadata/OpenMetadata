@@ -50,6 +50,7 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
+  getZoomGesturePoint,
   isSceneEmpty,
   isSceneNodeDrillableWithChildren,
   type SceneLayoutBox,
@@ -842,6 +843,41 @@ describe('getDeleteKeyAction', () => {
         hasSelectedEdge: false,
       })
     ).toBeUndefined();
+  });
+});
+
+describe('zoom gesture point', () => {
+  const touchEvent = (
+    touches: { clientX: number; clientY: number }[],
+    changedTouches: { clientX: number; clientY: number }[] = []
+  ) => ({ touches, changedTouches } as unknown as TouchEvent);
+
+  it('uses the pointer for a wheel or mouse event', () => {
+    expect(
+      getZoomGesturePoint({ clientX: 10, clientY: 20 } as MouseEvent)
+    ).toEqual({ x: 10, y: 20 });
+  });
+
+  it('uses the midpoint of the fingers for a pinch', () => {
+    expect(
+      getZoomGesturePoint(
+        touchEvent([
+          { clientX: 100, clientY: 40 },
+          { clientX: 300, clientY: 80 },
+        ])
+      )
+    ).toEqual({ x: 200, y: 60 });
+  });
+
+  it('falls back to the lifted fingers once no touch remains', () => {
+    expect(
+      getZoomGesturePoint(touchEvent([], [{ clientX: 50, clientY: 70 }]))
+    ).toEqual({ x: 50, y: 70 });
+  });
+
+  it('returns undefined without an event or touches', () => {
+    expect(getZoomGesturePoint(null)).toBeUndefined();
+    expect(getZoomGesturePoint(touchEvent([]))).toBeUndefined();
   });
 });
 

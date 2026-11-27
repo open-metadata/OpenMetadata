@@ -1,6 +1,9 @@
 """function calls shared across all percentile metrics"""
 
+from sqlalchemy import type_coerce
+
 from metadata.profiler.orm.functions.median import MedianFn
+from metadata.profiler.orm.registry import CustomTypes
 
 
 class PercentilMixin:
@@ -18,6 +21,11 @@ class PercentilMixin:
         Returns:
             MedianFn expression
         """
-        if dimension_col is not None:
-            return MedianFn(column, table, percentile, dimension_col)
-        return MedianFn(column, table, percentile)
+        fn = (
+            MedianFn(column, table, percentile, dimension_col)
+            if dimension_col is not None
+            else MedianFn(column, table, percentile)
+        )
+        if isinstance(column.type, CustomTypes.LARGEINT.value):
+            return type_coerce(fn, column.type)
+        return fn

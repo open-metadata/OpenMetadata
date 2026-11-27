@@ -8,28 +8,38 @@ import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.sso.MockHttp;
+import org.openmetadata.it.sso.MockResponseGate;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
 import org.openmetadata.it.sso.config.SsoConfigs;
+import org.openmetadata.it.sso.config.SsoServer;
+import org.openmetadata.it.sso.oidc.IdTokenDefect;
 import org.openmetadata.it.sso.oidc.MockOidcIdentity;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
 import org.openmetadata.it.sso.oidc.OidcProviderProfile;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.fluent.Users;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * What a real sign-in to {@code /mcp} must hold beyond the happy path: each identity provider's
@@ -237,24 +247,155 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
     }
   }
 
-  /** A public OIDC client has no server-side login for the MCP sign-in to hand over to. */
   @Test
-  void gapPublicOidcClientCannotSignIn() throws Throwable {
+  void publicOidcClientSignsInAndCallsATool(TestNamespace ns) throws Throwable {
+    try (MockOidcProvider publicProvider = MockOidcProvider.startPublicClient()) {
+      withPublicProvider(
+          publicProvider,
+          () -> {
+            User user = createUser(new CreateUser(), ns.shortPrefix("public"));
+            try {
+              publicProvider.signIn(MockOidcIdentity.forEmail(user.getEmail()));
+              assertClientConnects(CLIENT, user, this::approveConsent);
+
+              assertThat(publicProvider.authorizeRequests()).hasSize(1);
+              assertThat(publicProvider.tokenRequests()).hasSize(1);
+              var authorization = publicProvider.authorizeRequests().getFirst();
+              var exchange = publicProvider.tokenRequests().getFirst();
+              String callback = SsoServer.url("/mcp/callback");
+              assertThat(authorization.parameter("state")).isNotBlank();
+              assertThat(authorization.parameter("nonce")).isNotBlank();
+              assertThat(exchange.parameter("code_verifier")).isNotBlank();
+              assertThat(authorization.parameters())
+                  .containsEntry("client_id", publicProvider.clientId())
+                  .containsEntry("redirect_uri", callback)
+                  .containsEntry("code_challenge_method", "S256")
+                  .containsEntry("code_challenge", s256(exchange.parameter("code_verifier")));
+              assertThat(exchange.parameters())
+                  .containsEntry("grant_type", "authorization_code")
+                  .containsEntry("client_id", publicProvider.clientId())
+                  .containsEntry("redirect_uri", callback)
+                  .doesNotContainKey("client_secret");
+              assertThat(exchange.authorization()).isNull();
+            } finally {
+              hardDelete(user);
+            }
+          });
+    }
+  }
+
+  @Test
+  void browserOnlyProviderRegistrationStopsBeforeConsent(TestNamespace ns) throws Throwable {
+    try (MockOidcProvider publicProvider = MockOidcProvider.startPublicClient()) {
+      publicProvider.registerRedirectForBrowserOnly();
+      withPublicProvider(
+          publicProvider,
+          () -> {
+            publicProvider.signIn(
+                MockOidcIdentity.forEmail(ns.shortPrefix("browser") + EMAIL_DOMAIN));
+            JsonNode server = discoverAuthorizationServer();
+            Authorization authorization =
+                authorizationFor(CLIENT, server, register(CLIENT, server));
+
+            SsoNavigation navigation = navigateUntilTheClient(server, authorization);
+
+            assertThat(publicProvider.tokenRequests()).hasSize(1);
+            assertThat(navigation.last().status()).isEqualTo(502);
+            assertThat(navigation.last().body())
+                .contains("server-side code exchange")
+                .doesNotContain("consent_token");
+            assertThat(navigation.pendingUrl()).isNull();
+          });
+    }
+  }
+
+  @Test
+  void unexpectedPublicProviderIssuerLeavesTheUserSignedOut(TestNamespace ns) throws Throwable {
+    try (MockOidcProvider publicProvider = MockOidcProvider.startPublicClient()) {
+      withPublicProvider(
+          publicProvider,
+          () -> {
+            User user = createUser(new CreateUser(), ns.shortPrefix("issuer"));
+            try {
+              publicProvider.signIn(MockOidcIdentity.forEmail(user.getEmail()));
+              publicProvider.defectNextIdToken(IdTokenDefect.WRONG_ISSUER);
+              JsonNode server = discoverAuthorizationServer();
+              Authorization authorization =
+                  authorizationFor(CLIENT, server, register(CLIENT, server));
+              SsoBrowser browser = new SsoBrowser();
+              SsoNavigation navigation =
+                  browser.navigate(
+                      authorizeUrl(server, authorization),
+                      next -> next.toString().startsWith(CLIENT.redirectUri()));
+              assertThat(publicProvider.tokenRequests()).hasSize(1);
+              assertThat(navigation.last().status()).isGreaterThanOrEqualTo(400);
+              assertThat(navigation.last().body()).doesNotContain("consent_token");
+              assertThat(Users.get(user.getId().toString(), "lastLoginTime").getLastLoginTime())
+                  .isNull();
+              assertThat(browser.get(SsoServer.url(SsoServer.LOGGED_IN_USER_PATH)).statusCode())
+                  .isEqualTo(401);
+            } finally {
+              hardDelete(user);
+            }
+          });
+    }
+  }
+
+  @Test
+  void publicCallbackUsesItsProvidersKeysDuringConfigurationReload(TestNamespace ns)
+      throws Throwable {
+    try (MockOidcProvider publicProvider = MockOidcProvider.startPublicClient()) {
+      withPublicProvider(
+          publicProvider,
+          () -> {
+            User user = createUser(new CreateUser(), ns.shortPrefix("reload"));
+            try {
+              publicProvider.signIn(MockOidcIdentity.forEmail(user.getEmail()));
+              JsonNode server = discoverAuthorizationServer();
+              Authorization authorization =
+                  authorizationFor(CLIENT, server, register(CLIENT, server));
+              MockResponseGate exchange = publicProvider.holdNextTokenResponse();
+              CompletableFuture<SsoNavigation> login =
+                  CompletableFuture.supplyAsync(
+                      () -> navigateUntilTheClient(server, authorization));
+              try {
+                assertThat(exchange.awaitArrival(TIMEOUT))
+                    .as("public callback reached its provider")
+                    .isTrue();
+                securityConfig.restoreBaseline();
+              } finally {
+                exchange.release();
+              }
+              SsoNavigation result = login.get(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+              assertThat(result.last().status()).isEqualTo(200);
+              assertThat(result.last().body()).contains("consent_token");
+              assertThat(publicProvider.jwksRequests()).isNotEmpty();
+            } finally {
+              hardDelete(user);
+            }
+          });
+    }
+  }
+
+  private static void withPublicProvider(MockOidcProvider provider, Executable check)
+      throws Throwable {
     securityConfig.withVariant(
-        config -> SsoConfigs.publicOidc(securityConfig.originalCopy(), provider),
+        config -> SsoConfigs.publicOidc(config, provider),
         () -> {
-          provider.clearJournal();
-          JsonNode server = discoverAuthorizationServer();
-          Authorization authorization = authorizationFor(CLIENT, server, register(CLIENT, server));
-
-          SsoNavigation navigation = navigateUntilTheClient(server, authorization);
-
-          assertThat(navigation.finalUrl().toString())
-              .as(navigation.describe())
-              .startsWith(CLIENT.redirectUri())
-              .contains("error=authorization_failed");
-          // The sign-in stops at the server: the provider is never asked to authorize.
-          assertThat(provider.authorizeRequests()).isEmpty();
+          // The embedded server listens on an ephemeral port. Advertise that public MCP base to the
+          // provider.
+          final MCPConfiguration original = SecurityConfigurationManager.getCurrentMcpConfig();
+          final MCPConfiguration local =
+              original == null
+                  ? new MCPConfiguration()
+                  : JsonUtils.deepCopy(original, MCPConfiguration.class);
+          final SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+          try {
+            manager.setCurrentMcpConfig(local.withBaseUrl(SsoServer.root()));
+            check.execute();
+          } finally {
+            manager.setCurrentMcpConfig(original);
+          }
         });
   }
 

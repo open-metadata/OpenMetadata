@@ -13,8 +13,10 @@
 
 package org.openmetadata.it.tests.ontology;
 
-import java.util.List;
-import org.openmetadata.schema.EntityInterface;
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
@@ -27,26 +29,35 @@ import org.openmetadata.service.jdbi3.SystemRepository;
  * database; constructing a repository re-registers it and would otherwise leave a dropped one.
  */
 public final class EntityRegistrySnapshot {
+  private final Jdbi jdbi = Entity.getJdbi();
   private final CollectionDAO collectionDAO = Entity.getCollectionDAO();
   private final SystemRepository systemRepository = Entity.getSystemRepository();
   private final EntityRelationshipRepository relationships =
       Entity.getEntityRelationshipRepository();
-  private final List<EntityRepository<? extends EntityInterface<?>>> repositories =
-      List.copyOf(Entity.getEntityRepositories());
+  private final Map<String, EntityRepository<?>> repositories = registeredRepositories();
+  private final Map<String, EntityRepository<?>> previousRepositories = new HashMap<>(repositories);
 
   public static EntityRegistrySnapshot capture() {
     return new EntityRegistrySnapshot();
   }
 
   public void restore() {
+    Entity.setJdbi(jdbi);
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(systemRepository);
     Entity.setEntityRelationshipRepository(relationships);
-    repositories.forEach(EntityRegistrySnapshot::register);
+    repositories.clear();
+    repositories.putAll(previousRepositories);
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private static void register(EntityRepository repository) {
-    Entity.registerEntity(repository.getEntityClass(), repository.getEntityType(), repository);
+  @SuppressWarnings("unchecked")
+  static Map<String, EntityRepository<?>> registeredRepositories() {
+    try {
+      Field registry = Entity.class.getDeclaredField("ENTITY_REPOSITORY_MAP");
+      registry.setAccessible(true);
+      return (Map<String, EntityRepository<?>>) registry.get(null);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("Cannot preserve ontology fixture repositories", e);
+    }
   }
 }
