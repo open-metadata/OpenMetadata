@@ -48,7 +48,7 @@ class NonParametricSkew(ComposedMetric):
 
     def fn(self, res: dict[str, Any]) -> float | None:
         """
-        Safely compute the non parametric (Pearson mode) skew
+        Safely compute the non parametric skew, (mean - median) / stddev,
         based on the profiler results of other Metrics
         """
         res_mean = res.get(Mean.name())
