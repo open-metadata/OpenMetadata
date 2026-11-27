@@ -37,10 +37,10 @@ losslessly across all supported mapping languages.
 On upgraded clusters whose existing `search_entity_search_index` already dynamically mapped
 `searchIndexSettings` subfields, an in-place `putMapping` (`OpenSearchIndexManager.updateIndex` and
 its Elasticsearch equivalent) is rejected because an already-mapped object cannot be switched to
-`enabled: false` in place. Because startup `putMapping` errors are caught and logged, other in-place
-mapping updates to `search_entity_search_index` are also skipped until the index is rebuilt.
-Operators on affected clusters must run the Search Indexing application once with **Recreate
-Indexes** enabled after upgrade.
+`enabled: false` in place. `IndexMappingVersionTracker` schedules an index recreation on upgrade
+when the mapping hash changes. Operators needing immediate recovery can run Search Indexing for
+the `searchIndex` entity type to apply the changed mapping. This follows
+ADR:2026-11-24-free-form-config-objects-stay-out-of-the-search-mapping.
 
 Revisit only if a feature requires filtering or aggregating on a specific normalized index setting,
 in which case extract a dedicated typed top-level mapping field rather than re-enabling dynamic
