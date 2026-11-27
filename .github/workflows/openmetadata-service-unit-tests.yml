@@ -9,53 +9,91 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: OpenMetadata Service Unit Tests
+# Unified Backend CI workflow covering all Java/Maven backend checks in one place:
+#   - Stage 1 (parallel): fail-fast Java Checkstyle -> openmetadata-service unit tests,
+#     k8s-operator unit tests, Docker server smoke test, Maven SonarCloud (main/nightly),
+#     and a single shared Integration Test runtime build (merge_group/main/dispatch).
+#   - Stage 2 (parallel, gated behind Stage 1): all three Java integration-test profiles
+#     (MySQL+Elasticsearch, PostgreSQL+OpenSearch, PostgreSQL+Elasticsearch+Redis) reusing
+#     the one pre-built reactor artifact from Stage 1 instead of compiling three times.
+#
+# Required-check cutover: replace the retired Java check names with `backend-checks`.
+# ADR:2026-11-25-backend-checks-reports-native-stage-failures.
+name: Backend CI
 
 on:
   merge_group:
   workflow_dispatch:
+    inputs:
+      store-database-version:
+        description: Metadata store MySQL version, shipped or oldest
+        type: choice
+        options:
+          - shipped
+          - oldest
+        default: shipped
+  schedule:
+    # Nightly MySQL IT suite on the oldest supported metadata store version (#38208).
+    - cron: "0 2 * * *"
+    # Nightly static-analysis build on main (runs only maven-sonarcloud-ci).
+    - cron: "0 4 * * *"
   push:
     branches:
       - main
   pull_request:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
+  packages: read
+  pull-requests: read
 
 concurrency:
-  group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  # Merge-queue, push, schedule and dispatch runs key on run_id so they never cancel each other.
+  group: backend-ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  # Detect whether relevant paths changed. When no Java service files
-  # are modified the downstream jobs are skipped via their `if` condition.
-  # A job skipped by `if` reports as "Success", so required checks still pass.
-  # This replaces the old openmetadata-service-unit-tests-skip.yml companion workflow.
+  # Single path-detection job for every backend check. Jobs skipped by `if:` report
+  # as "Success" to branch protection, so required checks stay green on non-backend PRs.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    timeout-minutes: 10
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     outputs:
-      java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
-      k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
-      docker: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.docker }}
+      checkstyle: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.checkstyle) }}
+      java: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.java) }}
+      k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.k8s_operator) }}
+      docker: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.docker) }}
+      backend_it: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.backend_it) }}
+      backend_it_rdf: ${{ github.event_name == 'workflow_dispatch' && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.backend_it_rdf) }}
+      mysql_oldest_nightly: ${{ (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') && 'true' || 'false' }}
+      sonar: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 4 * * *')) && 'true' || (github.event_name == 'schedule' && 'false' || steps.filter.outputs.sonar) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-
+        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
+        with:
+          fetch-depth: ${{ (github.event_name == 'merge_group' || github.event_name == 'push') && '0' || '1' }}
+          filter: ${{ (github.event_name == 'merge_group' || github.event_name == 'push') && 'blob:none' || '' }}
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
+            checkstyle:
+              - '**/*.java'
+              - 'pom.xml'
+              - '**/pom.xml'
+              - '.github/workflows/openmetadata-service-unit-tests.yml'
+              - '.github/scripts/summarize_surefire.py'
             java:
               - '.github/workflows/openmetadata-service-unit-tests.yml'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
+              - '.github/actions/hydrate-maven-cache/**'
+              - '.github/scripts/summarize_surefire.py'
               - 'openmetadata-service/**'
               - 'openmetadata-spec/**'
               - 'openmetadata-clients/**'
@@ -66,8 +104,6 @@ jobs:
               - 'bootstrap/**'
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
             # Everything that ends up inside the server image or decides how it
             # is launched. Not 'openmetadata-service/**': the smoke test asserts
             # image properties, not application behaviour, so a Java-only change
@@ -81,117 +117,123 @@ jobs:
               - 'openmetadata-dist/**'
               - 'conf/**'
               - 'bin/**'
+            backend_it:
+              - 'openmetadata-service/**'
+              - 'openmetadata-integration-tests/**'
+              - 'openmetadata-spec/pom.xml'
+              - 'openmetadata-spec/src/**'
+              - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'openmetadata-mcp/**'
+              - 'common/**'
+              - 'pom.xml'
+              - 'Makefile'
+              - 'bootstrap/**'
+              - '.github/scripts/classify_test_outcome.py'
+              - '.github/scripts/configure_docker_storage.sh'
+              - '.github/actions/hydrate-maven-cache/**'
+              - '.github/workflows/openmetadata-service-unit-tests.yml'
+              - '.github/workflows/java-integration-lanes-reusable.yml'
+            backend_it_rdf:
+              - 'docker/rdf-store/**'
+            sonar:
+              - 'openmetadata-service/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'openmetadata-dist/**'
+              - 'openmetadata-clients/**'
+              - 'openmetadata-sdk/**'
+              - 'common/**'
+              - 'pom.xml'
+              - 'Makefile'
+              - 'bootstrap/**'
 
-  # The openmetadata-service unit tests are pure JVM tests with no database
-  # interaction (no testcontainers, no JDBC). The {mysql, postgresql} matrix used
-  # to run the suite twice with different `-Pmysql` / `-Ppostgresql` profiles, but
-  # those profiles are only defined in openmetadata-sdk/pom.xml and only affect
-  # failsafe (integration) tests that aren't enabled in this workflow. Result:
-  # both matrix jobs ran an identical surefire suite. DB-specific coverage
-  # belongs in `openmetadata-integration-tests`, not here.
-  openmetadata-service-unit-tests:
+  # Unified fail-fast Backend check: runs Java Checkstyle (~30s) first and skips
+  # unit tests when formatting fails. Produces a single structured Job Summary
+  # and PR annotations showing either the unformatted files or the exact failing
+  # Surefire unit test classes and methods.
+  #
+  # The openmetadata-service unit tests are mock-only and run in parallel forks
+  # configured by openmetadata-service/pom.xml (unitTests.forkCount=1C); see
+  # ADR:2026-11-24-service-unit-tests-are-mock-only-and-run-in-parallel-forks.
+  backend-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
-    if: ${{ needs.changes.outputs.java == 'true' }}
+    if: ${{ needs.changes.outputs.java == 'true' || needs.changes.outputs.checkstyle == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      # Restore-only (exact Actions cache -> GHCR pre-baked image -> prefix fallback);
+      # the save after the build runs on push to main only.
+      - name: Hydrate Maven dependencies
+        id: maven-cache
+        uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
 
-      - name: Install Ubuntu dependencies
-        timeout-minutes: 15
+      # Fail-fast checkstyle: if formatting fails, skip unit tests and report
+      # the exact files in the summary below.
+      - name: "1/2: Java checkstyle"
+        id: checkstyle
         run: |
-          # The hosted-runner Azure apt mirror intermittently blackholes connections;
-          # apt then falls back to archive.ubuntu.com and can hang forever with no
-          # output, burning the whole job timeout. Bound every fetch and retry.
-          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
-          Acquire::Retries "3";
-          Acquire::http::Timeout "30";
-          Acquire::https::Timeout "30";
-          Acquire::http::No-Cache "true";
-          APTCONF
-          # Keep the whole retry budget strictly inside this step's timeout-minutes.
-          # Otherwise the outer deadline truncates a retry and kills the step before
-          # the helper can say why it gave up, which is the failure we're fixing.
-          APT_BUDGET=600
-          APT_DEADLINE=$((SECONDS + APT_BUDGET))
-          apt_retry() {
-            local limit=$1; shift
-            local i remaining
-            for i in 1 2 3; do
-              remaining=$((APT_DEADLINE - SECONDS))
-              if [ "$remaining" -le 30 ]; then
-                echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
-                return 1
-              fi
-              if [ "$limit" -gt "$remaining" ]; then
-                limit=$remaining
-              fi
-              if sudo timeout "$limit" apt-get "$@"; then
-                return 0
-              fi
-              if [ "$i" -lt 3 ]; then
-                echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
-                sleep 10
-              fi
-            done
-            echo "::error::apt-get $1 failed after 3 attempts"
-            return 1
-          }
-          apt_retry 240 update
-          apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          librdkafka-dev unixodbc-dev libevent-dev jq
-          sudo make install_antlr_cli
+          mvn -B -T 1C spotless:apply
+          git diff --name-only > "$RUNNER_TEMP/checkstyle-failed-files.txt"
+          if [[ -s "$RUNNER_TEMP/checkstyle-failed-files.txt" ]]; then
+            echo "Java checkstyle found unformatted files:"
+            cat "$RUNNER_TEMP/checkstyle-failed-files.txt"
+            exit 1
+          fi
 
-      - name: Run openmetadata-service unit tests
+      # No -Pstatic-code-analysis: its JaCoCo agent slowed every test, yet `package`
+      # never builds the report and nothing uploads it. No apt/ANTLR install either:
+      # nothing here uses them (openmetadata-spec's prepare_model_schemas.py needs
+      # only stdlib python3).
+      - name: "2/2: Service unit tests"
+        id: unit-tests
+        if: ${{ steps.checkstyle.outcome == 'success' && needs.changes.outputs.java == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis \
-            -DfailIfNoTests=false \
-            -Dsonar.skip=true
+          mvn -B -T 1C clean package -pl openmetadata-service -am \
+            -DfailIfNoTests=false
 
-      - name: Record test evidence for dequeue attribution
+      - name: Summarize backend checks
         if: ${{ always() }}
+        env:
+          CHECKSTYLE_OUTCOME: ${{ steps.checkstyle.outcome }}
+          UNIT_TESTS_OUTCOME: ${{ steps.unit-tests.outcome }}
+        run: |
+          python3 .github/scripts/summarize_surefire.py \
+            --title "Backend checks" \
+            --checkstyle-outcome "$CHECKSTYLE_OUTCOME" \
+            --checkstyle-files "$RUNNER_TEMP/checkstyle-failed-files.txt" \
+            --unit-tests-outcome "$UNIT_TESTS_OUTCOME" \
+            --report-glob "openmetadata-service/target/surefire-reports/TEST-*.xml" \
+            --emit-annotations
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true' && steps.checkstyle.outcome == 'success'
         continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
+        uses: actions/cache/save@v6
         with:
-          check-name: openmetadata-service-unit-tests
-          suite: openmetadata-service:static-code-analysis
-          reports: '**/target/surefire-reports/TEST-*.xml'
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Upload surefire reports
-        if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
+        if: ${{ failure() && steps.unit-tests.outcome == 'failure' && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
-
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
-          check_name: "Test Report"
 
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
@@ -202,54 +244,57 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Hydrate Maven dependencies
+        id: maven-cache
+        uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
 
       - name: Build k8s-operator dependencies
         run: |
-          mvn -B clean install -pl openmetadata-k8s-operator -am -DskipTests
+          mvn -B -T 1C clean install -pl openmetadata-k8s-operator -am -DskipTests
 
       - name: Run k8s-operator unit tests
+        id: k8s-tests
+        continue-on-error: true
         run: |
           mvn -B test -pl openmetadata-k8s-operator
 
-      - name: Record test evidence for dequeue attribution
+      - name: Summarize k8s-operator unit tests
         if: ${{ always() }}
+        run: |
+          python3 .github/scripts/summarize_surefire.py \
+            --title "K8s Operator Unit Tests" \
+            --checkstyle-outcome "skipped" \
+            --unit-tests-outcome "${{ steps.k8s-tests.outcome }}" \
+            --report-glob "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml" \
+            --emit-annotations
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
         continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
+        uses: actions/cache/save@v6
         with:
-          check-name: k8s_operator-unit-tests
-          suite: openmetadata-k8s-operator
-          reports: openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Upload surefire reports
-        if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+        if: ${{ steps.k8s-tests.outcome == 'failure' && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: k8s-operator-surefire-reports
           path: openmetadata-k8s-operator/target/surefire-reports/
 
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
-          check_name: "K8s Operator Test Report"
+      - name: Enforce k8s-operator outcome
+        if: ${{ steps.k8s-tests.outcome == 'failure' }}
+        run: exit 1
 
   # The server image is distroless: no package manager, a non-root uid, a shell
   # that exists only because busybox is deliberately kept, and the glibc
@@ -265,18 +310,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Hydrate Maven dependencies
+        id: maven-cache
+        uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -294,38 +336,342 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -B -DskipTests package -pl openmetadata-dist -am
+          mvn -B -T 1C -DskipTests package -pl openmetadata-dist -am
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Smoke test the server image
         run: ./scripts/docker_smoke_test.sh
 
-  # Single required-check gate for branch protection.
-  # `always()` so the context reports on every PR: when the workflow is legitimately
-  # skipped (draft PR / missing `safe to test` label / no relevant paths changed) this
-  # exits 0; otherwise every triggered job must have succeeded.
-  # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
-  openmetadata-service-unit-tests-status:
-    name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests, docker-image-smoke-test]
+  # Static analysis build (previously standalone maven-sonar-build.yml). Runs in
+  # parallel on main pushes, nightly schedule, and manual dispatch — never on PRs
+  # or merge_group (ADR:2026-11-11-pull-request-jobs-restore-caches-but-never-save-them).
+  maven-sonarcloud-ci:
+    name: Maven SonarCloud CI
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.changes.outputs.sonar == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Hydrate Maven dependencies
+        id: maven-cache
+        uses: ./.github/actions/hydrate-maven-cache
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
+
+      - name: Build with Maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -T 1C -Pstatic-code-analysis clean verify -DskipTests -am
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
+
+  # Single shared integration-test runtime build for all three DB/search profiles
+  # (replaces three identical `integration-test-build` jobs). Runs in parallel with
+  # Stage 1 unit tests on merge_group / main push / dispatch; skipped on PRs.
+  integration-test-build:
+    name: Build Integration Test Runtime
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: >-
+      github.event_name != 'pull_request' &&
+      (needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' || needs.changes.outputs.mysql_oldest_nightly == 'true')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Hydrate Maven dependencies
+        uses: ./.github/actions/hydrate-maven-cache
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build and Bundle Integration Test Runtime
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          project_version="$(mvn --quiet --non-recursive help:evaluate \
+            -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
+          if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            echo "Invalid Maven project version: $project_version"
+            exit 1
+          fi
+
+          project_repository="$HOME/.m2/repository/org/open-metadata"
+          if [[ -d "$project_repository" ]]; then
+            find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+              -name "$project_version" -prune -exec rm -rf -- {} +
+          fi
+
+          mvn -B -T 1C -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
+            clean install -pl :openmetadata-integration-tests -am
+
+          staging="$RUNNER_TEMP/java-it-reactor-repository"
+          bundle="$RUNNER_TEMP/java-it-build"
+          mkdir -p "$staging/org/open-metadata" "$bundle"
+          version_directory_count=0
+          while IFS= read -r -d '' version_directory; do
+            artifact_id="$(basename "$(dirname "$version_directory")")"
+            mkdir -p "$staging/org/open-metadata/$artifact_id"
+            cp -a "$version_directory" "$staging/org/open-metadata/$artifact_id/"
+            version_directory_count=$((version_directory_count + 1))
+          done < <(find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+            -name "$project_version" -print0)
+
+          if (( version_directory_count == 0 )); then
+            echo "The Maven build did not install any reactor artifacts."
+            exit 1
+          fi
+
+          find "$staging" -type f -name '*-boot.jar' -delete
+          tar -C "$staging" -czf "$bundle/reactor-repository.tar.gz" org
+          (
+            cd "$bundle"
+            sha256sum reactor-repository.tar.gz > reactor-repository.sha256
+          )
+          printf '%s\n' "$project_version" > "$bundle/project-version.txt"
+          printf '%s\n' "$SOURCE_SHA" > "$bundle/source-sha.txt"
+          du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Integration Test Runtime
+        id: upload-runtime
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-it-build-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/java-it-build
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      # upload-artifact has no built-in retry, and a FinalizeArtifact 403 from the
+      # blob-storage intermediary is transient — without a second attempt it fails the
+      # build job and every lane that depends on it. overwrite: true keeps the re-upload
+      # safe even when the first attempt already staged blobs.
+      - name: Upload Integration Test Runtime (retry)
+        if: ${{ steps.upload-runtime.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-it-build-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/java-it-build
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  # Stage 2: All three Java IT profiles fan out in parallel from the single
+  # `java-it-build` artifact ONLY after Stage 1 checkstyle + unit tests pass
+  # (or are skipped when only IT-only paths like docker/rdf-store changed).
+  # `!cancelled()` disables GitHub's implicit `success()`, which would otherwise
+  # skip Stage 2 whenever `backend-checks` is legitimately skipped
+  # (ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once).
+  it-mysql-elasticsearch:
+    needs: [changes, backend-checks, integration-test-build]
+    if: >-
+      !cancelled() &&
+      github.event_name != 'pull_request' &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' || needs.changes.outputs.mysql_oldest_nightly == 'true') &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
+      needs.integration-test-build.result == 'success'
+    permissions:
+      contents: read
+      checks: write
+      packages: read
+    uses: ./.github/workflows/java-integration-lanes-reusable.yml
+    with:
+      profile_label: mysql-elasticsearch
+      maven_profile: mysql-elasticsearch
+      artifact_name: java-it-build-${{ github.run_id }}
+      lanes_json: '["parallel","global-state","multi-node","retry-queue","rdf"]'
+      store_database_version: ${{ needs.changes.outputs.mysql_oldest_nightly == 'true' && 'oldest' || inputs.store-database-version || 'shipped' }}
+
+  it-postgres-opensearch:
+    needs: [changes, backend-checks, integration-test-build]
+    if: >-
+      !cancelled() &&
+      github.event_name != 'pull_request' &&
+      github.event_name != 'schedule' &&
+      needs.changes.result == 'success' &&
+      (needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true') &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
+      needs.integration-test-build.result == 'success'
+    permissions:
+      contents: read
+      checks: write
+      packages: read
+    uses: ./.github/workflows/java-integration-lanes-reusable.yml
+    with:
+      profile_label: postgres-opensearch
+      maven_profile: postgres-opensearch
+      artifact_name: java-it-build-${{ github.run_id }}
+      lanes_json: '["parallel","global-state","multi-node","retry-queue","rdf"]'
+
+  # Runs the full integration test suite with the Redis cache enabled (postgres +
+  # elasticsearch + redis), via -Pcache-tests (ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue).
+  it-postgres-elasticsearch-redis:
+    needs: [changes, backend-checks, integration-test-build]
+    if: >-
+      !cancelled() &&
+      github.event_name != 'pull_request' &&
+      github.event_name != 'schedule' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.backend_it == 'true' &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
+      needs.integration-test-build.result == 'success'
+    permissions:
+      contents: read
+      checks: write
+      packages: read
+    uses: ./.github/workflows/java-integration-lanes-reusable.yml
+    with:
+      profile_label: postgres-elasticsearch-redis
+      maven_profile: cache-tests
+      artifact_name: java-it-build-${{ github.run_id }}
+      lanes_json: '["parallel","global-state","multi-node","retry-queue"]'
+
+  # Required status-check rollup gates (skipped on PRs so no runner starts and
+  # GitHub counts the required check as passing; enforced on merge_group / push).
+  integration-tests-mysql-elasticsearch:
+    name: integration-tests-mysql-elasticsearch
+    needs: [changes, backend-checks, integration-test-build, it-mysql-elasticsearch]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() }}
+    if: ${{ always() && github.event_name != 'pull_request' && (github.event_name != 'schedule' || needs.changes.outputs.mysql_oldest_nightly == 'true') }}
     steps:
-      - name: Verify unit test suite
+      - name: Verify MySQL + Elasticsearch Integration Test Lanes
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' || needs.changes.outputs.mysql_oldest_nightly == 'true' }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
+          BUILD_RESULT: ${{ needs.integration-test-build.result }}
+          LANES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
+            echo "No backend integration-test paths changed."
+            exit 0
+          fi
+          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
+             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
+            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
+            exit 1
+          fi
+
+  integration-tests-postgres-opensearch:
+    name: integration-tests-postgres-opensearch
+    needs: [changes, backend-checks, integration-test-build, it-postgres-opensearch]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() && github.event_name != 'pull_request' && github.event_name != 'schedule' }}
+    steps:
+      - name: Verify PostgreSQL + OpenSearch Integration Test Lanes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
+          BUILD_RESULT: ${{ needs.integration-test-build.result }}
+          LANES_RESULT: ${{ needs.it-postgres-opensearch.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
+            echo "No backend integration-test paths changed."
+            exit 0
+          fi
+          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
+             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
+            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
+            exit 1
+          fi
+
+  integration-tests-postgres-elasticsearch-redis:
+    name: integration-tests-postgres-elasticsearch-redis
+    needs: [changes, backend-checks, integration-test-build, it-postgres-elasticsearch-redis]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() && github.event_name != 'pull_request' && github.event_name != 'schedule' }}
+    steps:
+      - name: Verify PostgreSQL + Elasticsearch + Redis Integration Test Lanes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
+          BUILD_RESULT: ${{ needs.integration-test-build.result }}
+          LANES_RESULT: ${{ needs.it-postgres-elasticsearch-redis.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
+            echo "No backend integration-test paths changed."
+            exit 0
+          fi
+          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
+             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
+            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
+            exit 1
+          fi
+
+  # Single required-check gate for Backend unit/checkstyle/k8s/docker checks.
+  # `always()` so the context reports on every PR: when the workflow is legitimately
+  # skipped (draft PR / no relevant paths changed) this exits 0; otherwise every
+  # triggered job must have succeeded.
+  backend-checks-status:
+    name: backend-checks-status
+    needs: [changes, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() && github.event_name != 'schedule' }}
+    steps:
+      - name: Verify backend checks, operator tests, and Docker smoke test
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CHECKSTYLE_CHANGED: ${{ needs.changes.outputs.checkstyle }}
           JAVA_CHANGED: ${{ needs.changes.outputs.java }}
           K8S_CHANGED: ${{ needs.changes.outputs.k8s_operator }}
           DOCKER_CHANGED: ${{ needs.changes.outputs.docker }}
-          SERVICE_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          SERVICE_RESULT: ${{ needs.backend-checks.result }}
           K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
           DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
         run: |
-          # `changes` is skipped by its own `if:` on draft PRs and on fork PRs that
-          # lack the `safe to test` label. Nothing downstream can have run, so the
-          # required check is legitimately green.
+          # `changes` is skipped by its own `if:` on draft PRs. Nothing downstream
+          # can have run, so the required check is legitimately green.
           if [[ "$CHANGES_RESULT" == "skipped" ]]; then
-            echo "Detect Changes was skipped (draft PR or missing 'safe to test' label); nothing to gate."
+            echo "Detect Changes was skipped (draft PR); nothing to gate."
             exit 0
           fi
 
@@ -348,7 +694,11 @@ jobs:
               echo "${name}: success"
             fi
           }
-          check "openmetadata-service-unit-tests" "$JAVA_CHANGED"   "$SERVICE_RESULT"
-          check "k8s_operator-unit-tests"         "$K8S_CHANGED"    "$K8S_RESULT"
-          check "docker-image-smoke-test"         "$DOCKER_CHANGED" "$DOCKER_RESULT"
+          backend_changed="false"
+          if [[ "$JAVA_CHANGED" == "true" || "$CHECKSTYLE_CHANGED" == "true" ]]; then
+            backend_changed="true"
+          fi
+          check "backend-checks" "$backend_changed" "$SERVICE_RESULT"
+          check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
+          check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
           exit $fail

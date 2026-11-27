@@ -12,6 +12,7 @@
 Unit tests for PII classifiers
 """
 
+from collections import Counter
 from unittest.mock import Mock, patch
 
 import pytest
@@ -42,7 +43,7 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
-from metadata.pii.algorithms.tag_scoring import TagScorer
+from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService, TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
@@ -216,6 +217,58 @@ class TestTagScorer:
             score=IsNumeric(gt=0.5),
         )
 
+    @pytest.mark.parametrize(
+        "patterns, language",
+        [
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex=r"EMP-(\d{6}")],
+                ClassificationLanguage.en,
+                id="invalid-regex",
+            ),
+            pytest.param([], ClassificationLanguage.en, id="no-patterns"),
+            # Too deeply nested to compile; the recognizer is not even for the language analyzed.
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.de,
+                id="too-deeply-nested-other-language",
+            ),
+            pytest.param(
+                [PatternFactory.build(name="Badge", regex="(" * 350 + "a" + ")" * 350)],
+                ClassificationLanguage.en,
+                id="too-deeply-nested",
+            ),
+        ],
+    )
+    def test_broken_recognizer_does_not_drop_other_tags(
+        self, email_tag, general_classification, column_to_analyze, nlp_engine, patterns, language
+    ):
+        broken_tag = TagFactory.create(
+            tag_name="BadgeTag",
+            tag_classification=general_classification,
+            autoClassificationEnabled=True,
+            recognizers=[
+                RecognizerFactory.create(
+                    name="BadgeRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=patterns,
+                        context=[],
+                        supportedLanguage=language,
+                    ),
+                    target=Target.content,
+                )
+            ],
+        )
+        classifier = TagScorer(
+            tag_analyzers=[
+                TagAnalyzer(tag=email_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+                TagAnalyzer(tag=broken_tag, column=column_to_analyze, nlp_engine=nlp_engine),
+            ],
+        )
+
+        scores = classifier.predict_scores(["john.doe@example.com", "jane.smith@test.org"])
+
+        assert [scored_tag.tag.fullyQualifiedName for scored_tag in scores] == ["PII.EmailTag"]
+
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
         scores = classifier.predict_scores([])
@@ -271,6 +324,50 @@ class TestTagScorer:
             tag=IsInstance(Tag) & HasAttributes(name=EntityName(root="EmailTag")),
             score=IsNumeric(gt=0.5),
         )
+
+    @pytest.mark.parametrize("language", [ClassificationLanguage.en, ClassificationLanguage.any])
+    def test_sample_values_are_parsed_once_across_tags(self, email_tag, phone_tag, column_to_analyze, language):
+        nlp_engine = load_nlp_engine()
+        engine_class = type(nlp_engine)
+        sample_data = ["john@example.com", "555-123-4567", "john@example.com", "plain text"]
+
+        # Patched on the class: the "any" path loads its per-language engines itself.
+        with patch.object(
+            engine_class, "process_text", autospec=True, side_effect=engine_class.process_text
+        ) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine, language=language)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[1] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({*sample_data, column_to_analyze.name.root})
+
+    def test_list_valued_samples_are_parsed_once_per_element(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [["john@example.com", "555-123-4567"], ["john@example.com"], None]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[0] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({"john@example.com", "555-123-4567", column_to_analyze.name.root})
+
+    def test_values_beyond_the_memo_cap_are_parsed_per_tag(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [f"user{i}@example.com" for i in range(3)]
+
+        with (
+            patch("metadata.pii.tag_analyzer.NLP_ARTIFACTS_MEMO_MAX_SIZE", 2),
+            patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text,
+        ):
+            ScoreTagsForColumnService(nlp_engine=nlp_engine)(column_to_analyze, sample_data, [email_tag, phone_tag])
+
+        parse_counts = Counter(call.args[0] for call in process_text.call_args_list)
+        assert [parse_counts[value] for value in sample_data] == [1, 1, 2]
 
 
 class TestTagAnalyzer:
@@ -654,6 +751,93 @@ class TestTagAnalyzer:
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True
+
+    def test_exception_list_filtering_column_name_with_a_dot(self, email_tag, nlp_engine):
+        """A column whose name contains a dot is quoted in its FQN and in its exception's link"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch.users::columns::"user.email">', reason="Test exception"
+            )
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
+
+    def test_exception_list_filtering_dotted_name_and_nested_path(self, email_tag, nlp_engine):
+        """An unquoted dotted path names the nested column, not a column whose own name has that dot"""
+        literal = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        nested = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.user.email",
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink="<#E::table::svc.db.sch.users::columns::user.email>", reason="Test exception"
+            )
+        ]
+
+        assert TagAnalyzer(tag=email_tag, column=nested, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
+        assert not TagAnalyzer(tag=email_tag, column=literal, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
+
+    def test_exception_list_filtering_other_column_with_a_dot(self, email_tag, nlp_engine):
+        """An exception for one column does not apply to another column of the table"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::email>", reason="Test exception"),
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::user>", reason="Test exception"),
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is False
+
+    def test_exception_list_filtering_nested_column(self, email_tag, nlp_engine):
+        """A nested column is named by its dotted path under the table, as in a test case link"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.contact.email",
+        )
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+
+        own = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact.email>", reason="Test exception"
+        )
+        parent = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact>", reason="Test exception"
+        )
+        assert analyzer.should_skip_recognizer([own]) is True
+        assert analyzer.should_skip_recognizer([parent]) is False
+
+    def test_exception_list_filtering_table_name_with_a_dot(self, email_tag, nlp_engine):
+        """A quoted table name keeps its quotes in the entity link, as in the table's FQN"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch."users.v2".email',
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch."users.v2"::columns::email>',
+                reason="Test exception",
+            )
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
 
 
 class TestBuildRecognizerMetadata:

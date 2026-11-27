@@ -26,7 +26,7 @@ import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.ConceptAssetCount;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
-import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 import org.openmetadata.service.util.FreshReadScope;
 
 /**
@@ -45,7 +45,7 @@ public final class OntologyConceptBindingStore {
 
   private static final String SCHEMA = "ontologyConceptBindings";
   private static final String FIRST_PAGE = "";
-  private static final int MAX_ANCESTORS = OntologyReleaseManifest.MAX_MEMBERS;
+  private static final int MAX_ANCESTORS = OntologyWriteClosureLimits.BINDING_ANCESTORS;
   private final CollectionDAO dao;
   private final Function<OntologyBindingAssetType, String> assetTables;
 

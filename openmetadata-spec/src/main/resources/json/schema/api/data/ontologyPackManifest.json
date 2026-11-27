@@ -34,8 +34,16 @@
         "manufacturing",
         "human-resources",
         "retail",
-        "supply-chain"
+        "supply-chain",
+        "cross-industry",
+        "buildings-and-energy"
       ]
+    },
+    "publisher": {
+      "description": "Organization that publishes the standard, or OpenMetadata for an authored starter.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
     },
     "layer": {
       "description": "Governance layer of a new ontology created to hold this pack.",
@@ -62,6 +70,11 @@
     "sourceUrl": {
       "type": "string",
       "format": "uri"
+    },
+    "attribution": {
+      "description": "Copyright and license notice the license requires us to show wherever the pack is redistributed.",
+      "type": "string",
+      "maxLength": 2048
     },
     "bundled": {
       "description": "Whether every selected module can be installed from verified classpath content.",

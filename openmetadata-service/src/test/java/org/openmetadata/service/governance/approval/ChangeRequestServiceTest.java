@@ -428,16 +428,50 @@ class ChangeRequestServiceTest {
     }
 
     @Test
-    void publishedEditRequiresNoApproval() {
+    void publishedEditRequiresNoApprovalAndStillReportsItsOps() {
       UUID entityId = UUID.randomUUID();
+      List<MutationOp> ops = List.of(new MutationOp().withField("description").withGated(false));
       when(repository.previewPatch(entityId, REQUESTER, patch)).thenReturn(Optional.empty());
+      when(repository.previewPatchOps(entityId, REQUESTER, patch)).thenReturn(ops);
 
       ChangeRequestPreview preview =
           ChangeRequestService.preview(Entity.GLOSSARY, entityId, patch, REQUESTER);
 
       assertFalse(preview.getRequiresApproval());
       assertNull(preview.getWorkflowDefinitionId());
+      assertEquals(ops, preview.getOps());
+      verify(requests, never()).insert(any());
+    }
+
+    @Test
+    void anUngatedEditToAnythingButDescriptiveMetadataGetsNoOps() {
+      UUID entityId = UUID.randomUUID();
+      JsonPatch config =
+          Json.createPatchBuilder()
+              .replace("/description", "x")
+              .replace("/connection/config/hostPort", "db:5432")
+              .build();
+      when(repository.previewPatch(entityId, REQUESTER, config)).thenReturn(Optional.empty());
+
+      ChangeRequestPreview preview =
+          ChangeRequestService.preview(Entity.DATABASE_SERVICE, entityId, config, REQUESTER);
+
+      assertFalse(preview.getRequiresApproval());
       assertTrue(preview.getOps().isEmpty());
+      verify(repository, never()).previewPatchOps(any(), any(), any());
+    }
+
+    @Test
+    void heldEditDoesNotComputeItsOpsTwice() {
+      UUID entityId = UUID.randomUUID();
+      StagedChange staged =
+          new StagedChange(
+              Entity.GLOSSARY, entityId, "g", 0.1, REQUESTER, null, UUID.randomUUID(), List.of());
+      when(repository.previewPatch(entityId, REQUESTER, patch)).thenReturn(Optional.of(staged));
+
+      ChangeRequestService.preview(Entity.GLOSSARY, entityId, patch, REQUESTER);
+
+      verify(repository, never()).previewPatchOps(any(), any(), any());
     }
   }
 
@@ -739,5 +773,17 @@ class ChangeRequestServiceTest {
   void cancellingForNoEntitiesQueriesNothing() {
     ChangeRequestService.cancelForDeletedEntities(List.of());
     verify(requests, never()).listByEntitiesAndStatuses(any(), any());
+  }
+
+  @Test
+  void anUngatedPreviewReturnsOpsOnlyForDescriptiveFields() {
+    MutationOp description = new MutationOp().withField("description");
+    MutationOp connection = new MutationOp().withField("connection");
+
+    assertEquals(List.of(description), ChangeRequestService.descriptiveOnly(List.of(description)));
+    assertEquals(
+        List.of(),
+        ChangeRequestService.descriptiveOnly(List.of(description, connection)),
+        "a field the patch did not name but preparation changed leaves the preview without ops");
   }
 }

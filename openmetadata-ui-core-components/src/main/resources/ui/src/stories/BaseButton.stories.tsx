@@ -202,6 +202,19 @@ export const BoxedLink: StoryObj = {
   ),
 };
 
+export const Pill: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3 tw:rounded-full tw:border tw:border-utility-warning-300 tw:bg-utility-warning-50 tw:py-2 tw:pr-2 tw:pl-4">
+      <span className="tw:text-sm tw:font-semibold">
+        Priya Raman asked you to review v1.1.0
+      </span>
+      <Button pill color="secondary-warning-outline" size="sm">
+        Review
+      </Button>
+    </div>
+  ),
+};
+
 export const AsLink: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

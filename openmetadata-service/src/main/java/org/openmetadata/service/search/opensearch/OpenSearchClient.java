@@ -70,7 +70,9 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryDsl;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -239,6 +241,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchQueryDsl getQueryDsl() {
+    return new OpenSearchQueryDsl(newClient._transport().jsonpMapper());
+  }
+
+  @Override
   public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
       throws IOException {
     var builder = Requests.builder().method(method).endpoint(endpoint);
@@ -352,6 +359,12 @@ public class OpenSearchClient implements SearchClient {
   public SearchResultListMapper searchForExport(
       SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
   }
 
   @Override
@@ -1066,13 +1079,9 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.useSystemProperties();
 
-            // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
-            // pipeline by default. opensearch-java's ApacheHttpClient5Transport also
-            // decompresses the response body itself, so leaving both enabled makes the second
-            // pass run on already-inflated bytes and throws
-            // "java.util.zip.ZipException: Not in GZIP format" out of LazyDecompressingInputStream.
-            // Disable at the transport layer and let opensearch-java own decompression.
-            httpClientBuilder.disableContentCompression();
+            // Leave httpclient5's automatic gzip decompression on: since opensearch-java 3.6 the
+            // ApacheHttpClient5Transport no longer inflates responses itself, so disabling it here
+            // hands gzip bytes to the JSON parser.
 
             return httpClientBuilder;
           });

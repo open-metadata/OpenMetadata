@@ -263,8 +263,7 @@ class GluePipelineUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
 
         config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)

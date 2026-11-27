@@ -26,10 +26,14 @@ import { DocumentStatusBadgeProps } from './DocumentStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'indigo' | 'success' | 'error' | 'warning';
 
-const STATUS_CONFIG: Record<
-  ProcessingStatus,
-  { color: BadgeColor; labelKey: string }
-> = {
+type StatusConfig = { color: BadgeColor; labelKey: string };
+
+const NOT_PROCESSED_CONFIG: StatusConfig = {
+  color: 'gray',
+  labelKey: 'label.not-processed',
+};
+
+const STATUS_CONFIG: Record<ProcessingStatus, StatusConfig> = {
   [ProcessingStatus.Uploaded]: { color: 'gray', labelKey: 'label.uploaded' },
   [ProcessingStatus.Analyzing]: { color: 'blue', labelKey: 'label.analyzing' },
   [ProcessingStatus.ExtractingContext]: {
@@ -55,20 +59,23 @@ const isPartialExtraction = (stats?: ExtractionStats): boolean =>
       stats.chunksProcessed < stats.chunksTotal
   );
 
-const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
-  error,
-  stats,
-  status,
-}) => {
+const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ file }) => {
   const { t } = useTranslation();
+  const {
+    extractionStats: stats,
+    neverExtracted,
+    processingError: error,
+    processingStatus: status,
+  } = file;
 
   if (!status) {
     return null;
   }
 
   // A backend newer than this UI can report a status we don't know yet
-  const config: { color: BadgeColor; labelKey: string } | undefined =
-    STATUS_CONFIG[status];
+  const config: StatusConfig | undefined = neverExtracted
+    ? NOT_PROCESSED_CONFIG
+    : STATUS_CONFIG[status];
 
   if (!config) {
     return null;

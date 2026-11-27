@@ -12,7 +12,7 @@
  */
 
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -22,6 +22,7 @@ import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { parseVersionDiffArray } from '../../../utils/EntityDiffPureUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import {
   getAllRowKeysByKeyName,
@@ -142,6 +143,24 @@ function VersionTable<T extends Column | SearchIndexField>({
     internalHandlePageSizeChange,
   ]);
 
+  const labelSourceConstraints = useMemo(
+    () =>
+      uniqBy(
+        [
+          ...(tableConstraints ?? []),
+          ...(addedTableConstraintDiffs ?? []).flatMap((diff) =>
+            parseVersionDiffArray<TableConstraint>(diff.newValue)
+          ),
+          ...(deletedTableConstraintDiffs ?? []).flatMap((diff) =>
+            parseVersionDiffArray<TableConstraint>(diff.oldValue)
+          ),
+        ].filter((constraint) => Array.isArray(constraint.columns)),
+        ({ constraintType, columns }) =>
+          JSON.stringify([constraintType, [...(columns ?? [])].sort()])
+      ),
+    [tableConstraints, addedTableConstraintDiffs, deletedTableConstraintDiffs]
+  );
+
   const renderColumnName = useCallback(
     (name: T['name'], record: T) => {
       const addedColumnConstraint = addedColumnConstraintDiffs?.find((diff) =>
@@ -154,7 +173,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       let deletedTableConstraint: TableConstraint[] | undefined;
 
       addedTableConstraintDiffs?.forEach((diff) => {
-        const constraintNewValue = JSON.parse(diff.newValue);
+        const constraintNewValue = parseVersionDiffArray<TableConstraint>(
+          diff.newValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintNewValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             addedTableConstraint = [
@@ -166,7 +187,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       });
 
       deletedTableConstraintDiffs?.forEach((diff) => {
-        const constraintOldValue = JSON.parse(diff.oldValue);
+        const constraintOldValue = parseVersionDiffArray<TableConstraint>(
+          diff.oldValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintOldValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             deletedTableConstraint = [
@@ -186,6 +209,7 @@ function VersionTable<T extends Column | SearchIndexField>({
 
       addedConstraintIcon = prepareConstraintIcon({
         columnName: name,
+        labelSourceConstraints,
         columnConstraint:
           addedColumnConstraint?.newValue ?? (record as Column).constraint,
         tableConstraints: addedTableConstraint ?? existingAddedTableConstraint,
@@ -195,6 +219,7 @@ function VersionTable<T extends Column | SearchIndexField>({
 
       deletedConstraintIcon = prepareConstraintIcon({
         columnName: name,
+        labelSourceConstraints,
         columnConstraint: deletedColumnConstraint?.oldValue,
         tableConstraints: deletedTableConstraint,
         isColumnConstraintAdded: false,
@@ -207,7 +232,7 @@ function VersionTable<T extends Column | SearchIndexField>({
           className="d-inline-flex flex-column hover-icon-group vertical-align-inherit"
           style={{ maxWidth: '80%' }}>
           <div className="d-inline-flex items-start gap-1 flex-column">
-            <div className="d-inline-flex items-baseline">
+            <div className="d-inline-flex items-center">
               {deletedConstraintIcon}
               {addedConstraintIcon}
               <span className="break-word">
@@ -227,6 +252,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     },
     [
       tableConstraints,
+      labelSourceConstraints,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
       addedTableConstraintDiffs,

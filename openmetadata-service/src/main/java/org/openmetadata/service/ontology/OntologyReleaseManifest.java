@@ -19,11 +19,24 @@ import org.openmetadata.service.exception.BadRequestException;
 /** Canonical members and a bounded, database-independent release manifest. */
 public final class OntologyReleaseManifest {
   public static final String ENCODING_VERSION = "ontology-release-v1";
-  public static final int MAX_MEMBER_BYTES = 1_048_576;
-  public static final int MAX_MEMBERS = 10_000;
-  public static final long MAX_RELEASE_BYTES = 67_108_864L;
+  private static final long MEBIBYTE = 1_048_576L;
+  public static final int MAX_MEMBER_BYTES = (int) MEBIBYTE;
+  public static final int MAX_MEMBERS = 50_000;
+  public static final long MAX_RELEASE_BYTES = 256 * MEBIBYTE;
 
   private OntologyReleaseManifest() {}
+
+  public static String memberLimitMessage(final String subject) {
+    return subject + " exceeds the " + MAX_MEMBERS + " member limit";
+  }
+
+  public static String byteLimitMessage(final String subject) {
+    return subject + " exceeds the " + MAX_RELEASE_BYTES / MEBIBYTE + " MiB limit";
+  }
+
+  public static String memberByteLimitMessage(final String subject) {
+    return subject + " exceeds the " + MAX_MEMBER_BYTES / MEBIBYTE + " MiB limit";
+  }
 
   public static void verify(
       final OntologyRelease release, final List<OntologyReleaseMember> members) {
@@ -59,7 +72,7 @@ public final class OntologyReleaseManifest {
     final String json = canonical.toString();
     final byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
     if (bytes.length > MAX_MEMBER_BYTES) {
-      throw new BadRequestException("An ontology release member exceeds the 1 MiB limit");
+      throw new BadRequestException(memberByteLimitMessage("An ontology release member"));
     }
     return new OntologyReleaseMember()
         .withReleaseId(releaseId)
@@ -97,7 +110,8 @@ public final class OntologyReleaseManifest {
 
   public static String digest(final List<OntologyReleaseMember> members) {
     if (members == null || members.isEmpty() || members.size() > MAX_MEMBERS) {
-      throw new BadRequestException("An ontology release requires between 1 and 10000 members");
+      throw new BadRequestException(
+          "An ontology release requires between 1 and " + MAX_MEMBERS + " members");
     }
     for (final OntologyReleaseMember member : members) {
       if (member == null || member.getMemberKind() == null || member.getMemberId() == null) {
@@ -123,7 +137,7 @@ public final class OntologyReleaseManifest {
       requireValidMember(member, previous);
       totalBytes += member.getPayloadBytes();
       if (totalBytes > MAX_RELEASE_BYTES) {
-        throw new BadRequestException("Ontology release content exceeds the 64 MiB limit");
+        throw new BadRequestException(byteLimitMessage("Ontology release content"));
       }
       final ObjectNode entry = JsonUtils.getObjectMapper().valueToTree(member);
       entry.remove(List.of("releaseId", "payload"));

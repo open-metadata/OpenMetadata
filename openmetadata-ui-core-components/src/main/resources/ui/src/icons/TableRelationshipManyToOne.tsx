@@ -24,19 +24,22 @@ export const TableRelationshipManyToOne: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)" stroke="currentColor" strokeWidth={1.3}>
+    <g
+      clipPath="url(#table-relationship-many-to-one_a)"
+      stroke="currentColor"
+      strokeWidth={1.3}>
       <path d="m2.285 13.214 3.857-3.215-3.857-3.214M9.357 10H1m5.143-3.215v6.429M8.072 10h10.929m-5.786 3.214V6.785m2.57 6.429V6.785" />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="table-relationship-many-to-one_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>

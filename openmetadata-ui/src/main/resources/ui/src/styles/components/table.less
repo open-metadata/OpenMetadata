@@ -71,8 +71,11 @@
   color: @primary-color;
 }
 
+// Sized for the square core-ui Reorder icon; a width alone squashes it.
 .drag-icon {
-  width: 6px;
+  flex-shrink: 0;
+  width: calc(var(--tw-spacing) * 4);
+  height: calc(var(--tw-spacing) * 4);
   margin-right: var(--om-space-8);
   color: @grey-4;
 }

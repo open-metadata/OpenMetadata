@@ -106,6 +106,7 @@ describe('ContextCenterAIContextPage', () => {
       data: [
         {
           ...personas[0],
+          userCount: 5,
           users: [
             { id: 'u1', type: 'user' },
             { id: 'u2', type: 'user' },
@@ -130,6 +131,9 @@ describe('ContextCenterAIContextPage', () => {
     const row = await screen.findByTestId('ai-context-persona-DataEngineer');
 
     expect(row).toHaveTextContent('2');
+    expect(screen.getByTestId('ai-context-persona-users')).toHaveTextContent(
+      '5'
+    );
     expect(row).toHaveTextContent('64');
     expect(row).toHaveTextContent('message.persona-context-budget-usage');
     expect(row).toHaveTextContent('label.freshness-with-time');
@@ -226,7 +230,7 @@ describe('ContextCenterAIContextPage', () => {
     ).toBeInTheDocument();
     expect(getAllPersonas).toHaveBeenCalledWith({
       after: 'cursor-2',
-      fields: 'users,contextDefinition',
+      fields: 'userCount,contextDefinition',
       limit: 15,
     });
     expect(getPersonaAIContextStatus).toHaveBeenCalledWith({

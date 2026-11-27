@@ -103,7 +103,15 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
             credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
 
         credentials.refresh(AuthRequest())  # type: ignore
-        expiry = getattr(credentials, "expiry", None) or (datetime.now(timezone.utc) + timedelta(minutes=55))
+        expiry = getattr(credentials, "expiry", None)
+        # google-auth deliberately returns a naive UTC datetime in its implementation
+        # (google.auth._helpers.utcnow() strips tzinfo for backward compatibility).
+        # Normalize to aware UTC so the REST/SSE consumers' `expiry.timestamp()`
+        # round-trips correctly regardless of the host's local timezone.
+        if expiry is not None and expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if expiry is None:
+            expiry = datetime.now(timezone.utc) + timedelta(minutes=55)
         return (credentials.token, expiry)  # type: ignore
 
     return _callback

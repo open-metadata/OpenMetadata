@@ -14,12 +14,16 @@ Test Salesforce Data 360 database source using the topology
 
 from unittest.mock import patch
 
+import pytest
+from simple_salesforce.exceptions import SalesforceAuthenticationFailed
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.data360.constant import (
     Constant,
@@ -139,6 +143,27 @@ def _build_source() -> Data360Source:
     return source
 
 
+def test_a_failed_login_raises_the_salesforce_error_from_create():
+    """
+    The client logs in before the connection test runs, so a bad secret
+    surfaces Salesforce's message rather than a bare CheckAccess failure.
+    """
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360_CONFIG)
+    login_error = SalesforceAuthenticationFailed("invalid_client", "invalid client credentials")
+    with (
+        patch("metadata.ingestion.source.database.data360.connection.Salesforce", side_effect=login_error),
+        patch(
+            "metadata.ingestion.source.database.data360.metadata.Data360Source.test_connection",
+            side_effect=SourceConnectionException("Failed to run the test connection step: CheckAccess"),
+        ),
+        pytest.raises(SalesforceAuthenticationFailed, match="invalid client credentials"),
+    ):
+        Data360Source.create(
+            MOCK_DATA360_CONFIG["source"],
+            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+        )
+
+
 class TestData360Source:
     def test_get_database_names(self):
         source = _build_source()
@@ -179,6 +204,30 @@ class TestData360Source:
             Constant.DATA_MODEL_OBJECTS,
             Constant.CALCULATED_INSIGHTS,
         ]
+
+    def test_get_database_schema_names_applies_filter_pattern(self):
+        source = _build_source()
+        source.source_config.schemaFilterPattern = FilterPattern(excludes=["^Calculated Insights$"])
+        schema_names = list(source.get_database_schema_names())
+        assert schema_names == [Constant.DATA_LAKE_OBJECTS, Constant.DATA_MODEL_OBJECTS]
+
+    def test_get_database_schema_names_matches_the_fqn_when_asked(self):
+        source = _build_source()
+        source.source_config.useFqnForFiltering = True
+        source.source_config.schemaFilterPattern = FilterPattern(includes=[r"^local_data360\.customer_360\.Data Lake"])
+        schema_names = list(source.get_database_schema_names())
+        assert schema_names == [Constant.DATA_LAKE_OBJECTS]
+
+    def test_get_database_names_matches_the_fqn_when_asked(self):
+        source = _build_source()
+        source.source_config.useFqnForFiltering = True
+        source.source_config.databaseFilterPattern = FilterPattern(includes=[r"^local_data360\.customer_360$"])
+        with patch(
+            "metadata.ingestion.source.database.data360.metadata.get_dataspaces",
+            return_value=MOCK_DATASPACES,
+        ):
+            names = list(source.get_database_names())
+        assert names == ["customer_360"]
 
     def test_get_tables_name_and_type(self):
         source = _build_source()

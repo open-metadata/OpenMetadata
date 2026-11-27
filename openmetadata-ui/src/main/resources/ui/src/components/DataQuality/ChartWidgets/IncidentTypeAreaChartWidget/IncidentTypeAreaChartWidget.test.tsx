@@ -35,9 +35,14 @@ jest.mock('../../../Visualisations/Chart/CustomAreaChart.component', () =>
 );
 
 const defaultProps: IncidentTypeAreaChartWidgetProps = {
-  incidentStatusType: TestCaseResolutionStatusTypes.New,
+  incidentStatusTypes: [
+    TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
+    TestCaseResolutionStatusTypes.Assigned,
+  ],
   name: 'Incident Type',
   title: 'Incident Type Area Chart Widget',
+  description: 'Incidents with daily activity',
 };
 
 describe('IncidentTypeAreaChartWidget', () => {
@@ -45,19 +50,25 @@ describe('IncidentTypeAreaChartWidget', () => {
     renderWithQueryClient(<IncidentTypeAreaChartWidget {...defaultProps} />);
 
     expect(await screen.findByText(defaultProps.title)).toBeInTheDocument();
+    expect(await screen.findByTestId('widget-description')).toHaveTextContent(
+      defaultProps.description
+    );
     expect(
       await screen.findByText('CustomAreaChart.component')
     ).toBeInTheDocument();
     expect((await screen.findByTestId('total-value')).textContent).toEqual(
       '17'
     );
+    expect(
+      screen.getByTestId('incident-New-type-area-chart-widget-container')
+    ).toBeInTheDocument();
   });
 
   it('should call fetchCountOfIncidentStatusTypeByDays function', async () => {
     renderWithQueryClient(<IncidentTypeAreaChartWidget {...defaultProps} />);
 
     expect(fetchCountOfIncidentStatusTypeByDays).toHaveBeenCalledWith(
-      defaultProps.incidentStatusType,
+      defaultProps.incidentStatusTypes,
       undefined
     );
   });
@@ -70,12 +81,12 @@ describe('IncidentTypeAreaChartWidget', () => {
       tags: ['tag1', 'tag2'],
       tier: ['tier1'],
     };
-    const status = TestCaseResolutionStatusTypes.Assigned;
+    const status = [TestCaseResolutionStatusTypes.Resolved];
     renderWithQueryClient(
       <IncidentTypeAreaChartWidget
         {...defaultProps}
         chartFilter={filters}
-        incidentStatusType={status}
+        incidentStatusTypes={status}
       />
     );
 
@@ -113,7 +124,7 @@ describe('IncidentTypeAreaChartWidget', () => {
     };
     (fetchCountOfIncidentStatusTypeByDays as jest.Mock).mockImplementation(
       async (
-        _status: TestCaseResolutionStatusTypes,
+        _status: TestCaseResolutionStatusTypes[],
         filters: { startTs: number }
       ) => {
         await gates[filters.startTs];

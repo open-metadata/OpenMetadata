@@ -629,7 +629,14 @@ public class MigrationUtil {
       return;
     }
     ServiceEdge key = new ServiceEdge(fromId, fromType, toId, toType);
-    edgesToCreate.putIfAbsent(key, buildServiceLineageDetails(sourceDetails));
+    // Count each contributing child edge rather than collapsing to a constant 1, so the
+    // assetEdges refcount the runtime decrements per child-edge delete matches the number of
+    // child edges feeding the hop. A hard-coded 1 would let the first delete of any one
+    // contributing child edge remove the hop while the other children still need it.
+    edgesToCreate.merge(
+        key,
+        buildServiceLineageDetails(sourceDetails),
+        (existing, ignored) -> existing.withAssetEdges(existing.getAssetEdges() + 1));
   }
 
   private static LineageDetails buildServiceLineageDetails(LineageDetails source) {

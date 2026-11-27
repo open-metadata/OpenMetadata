@@ -138,9 +138,9 @@
           "title": "Refresh Frequency",
           "properties": {
             "interval": { "type": "integer" },
-            "unit": { "type": "string", "enum": ["hour", "day", "week", "month", "year"] }
+            "unit": { "type": "string", "enum": ["minute", "hour", "day", "week", "month", "year"] }
           },
-          "description": "Expected frequency of data updates (e.g. every 1 day)",
+          "description": "Expected frequency of data updates (e.g. every 15 minutes)",
           "required": ["interval", "unit"]
         },
         "maxLatency": {
@@ -342,6 +342,13 @@
       "items": {
         "$ref": "../datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"
       },
+      "default": null
+    },
+    "odcsPreservedFields": {
+      "description": "ODCS metadata without a native OpenMetadata mapping, retained as a generic JSON document for export. Native fields remain authoritative. Omission on PUT preserves it; an empty object clears it.",
+      "type": "object",
+      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode",
+      "additionalProperties": true,
       "default": null
     },
     "odcsElementExtensions": {

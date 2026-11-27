@@ -129,6 +129,15 @@ describe('FieldValueBoostForm', () => {
       fireEvent.click(screen.getByTestId('cancel-button'));
     });
 
+    // The edited boost is dropped on Cancel, so it asks first.
+    expect(onSaveState).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-popover-confirm')
+      );
+    });
+
     expect(onSaveState).toHaveBeenCalledWith({ termBoosts, isReturning: true });
     expect(updateSettingsConfig).not.toHaveBeenCalled();
   });

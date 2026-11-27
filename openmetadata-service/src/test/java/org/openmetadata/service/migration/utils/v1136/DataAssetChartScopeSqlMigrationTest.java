@@ -18,7 +18,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -28,14 +27,23 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * <p>The scope now lives in SQL rather than in a Java migration, because a Java {@code
  * runDataMigration()} attached to a version a deployment has already recorded never runs, while SQL
  * statements are replayed on any version still offered for reprocessing. That leaves the SQL as the
- * only place the scope is written, so these tests pin it against {@link
- * DataInsightSystemChartRepository}, which is what the aggregators and the OpenSearch regression
- * test read.
+ * only place the scope is written, so these tests pin it. The scope is frozen here as a literal:
+ * later releases widen it in their own migration and pin that against the live constants.
  */
 class DataAssetChartScopeSqlMigrationTest {
 
   private static final String EXPECTED_EXCLUDE_GROUPS =
       "[\"tag\",\"glossaryTerm\",\"dataProduct\"]";
+  private static final List<String> EXPECTED_EXCLUDED_ENTITY_TYPES =
+      List.of("tag", "glossaryTerm", "dataProduct");
+
+  /** The scope as of 1.13.6; later releases widen it in their own migration. */
+  private static final String EXPECTED_DATA_ASSET_FILTER =
+      "{\"query\":{\"bool\":{\"must\":[{\"exists\":{\"field\":\"entityType\"}}],"
+          + "\"must_not\":[{\"term\":{\"entityType.keyword\":\"tag\"}},"
+          + "{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}},"
+          + "{\"term\":{\"entityType.keyword\":\"dataProduct\"}}]}}}";
+
   private static final Pattern NAME_IN_LIST = Pattern.compile("name IN \\(([^)]*)\\)");
   private static final Pattern QUOTED_NAME = Pattern.compile("'([a-z0-9_]+)'");
 
@@ -63,19 +71,14 @@ class DataAssetChartScopeSqlMigrationTest {
     final String sql = read(dialect);
 
     assertTrue(
-        sql.contains(DataInsightSystemChartRepository.DATA_ASSET_FILTER),
-        dialect
-            + " must embed DataInsightSystemChartRepository.DATA_ASSET_FILTER verbatim, otherwise "
-            + "the stored definitions drift from the scope the charts are tested against");
+        sql.contains(EXPECTED_DATA_ASSET_FILTER),
+        dialect + " must embed the data-asset filter as of 1.13.6 verbatim");
   }
 
   @ParameterizedTest(name = "{0} excludes exactly the non data asset entity types")
   @MethodSource("dialects")
   void migrationExcludesTheNonDataAssetEntityTypes(final String dialect) throws IOException {
-    assertEquals(
-        JsonUtils.pojoToJson(DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES),
-        EXPECTED_EXCLUDE_GROUPS,
-        "NON_DATA_ASSET_ENTITY_TYPES changed; update the 1.13.6 excludeGroups literal to match");
+    assertEquals(JsonUtils.pojoToJson(EXPECTED_EXCLUDED_ENTITY_TYPES), EXPECTED_EXCLUDE_GROUPS);
     assertTrue(read(dialect).contains(EXPECTED_EXCLUDE_GROUPS), dialect + " excludeGroups literal");
   }
 
@@ -114,11 +117,8 @@ class DataAssetChartScopeSqlMigrationTest {
     final LineChart chart =
         JsonUtils.readValue(resource("migrated_line_chart_details"), LineChart.class);
 
-    assertEquals(
-        DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES, chart.getExcludeGroups());
-    assertEquals(
-        DataInsightSystemChartRepository.DATA_ASSET_FILTER,
-        chart.getMetrics().getFirst().getFilter());
+    assertEquals(EXPECTED_EXCLUDED_ENTITY_TYPES, chart.getExcludeGroups());
+    assertEquals(EXPECTED_DATA_ASSET_FILTER, chart.getMetrics().getFirst().getFilter());
     assertEquals("entityType.keyword", chart.getGroupBy());
   }
 
@@ -127,9 +127,7 @@ class DataAssetChartScopeSqlMigrationTest {
     final SummaryCard card =
         JsonUtils.readValue(resource("migrated_summary_card_details"), SummaryCard.class);
 
-    assertEquals(
-        DataInsightSystemChartRepository.DATA_ASSET_FILTER,
-        card.getMetrics().getFirst().getFilter());
+    assertEquals(EXPECTED_DATA_ASSET_FILTER, card.getMetrics().getFirst().getFilter());
   }
 
   @ParameterizedTest(name = "{0} parses into the two statements the workflow will run")
@@ -144,7 +142,7 @@ class DataAssetChartScopeSqlMigrationTest {
 
     assertEquals(2, statements.size(), dialect + " should parse into two UPDATE statements");
     assertTrue(
-        statements.getFirst().contains(DataInsightSystemChartRepository.DATA_ASSET_FILTER),
+        statements.getFirst().contains(EXPECTED_DATA_ASSET_FILTER),
         dialect + ": the parser must not mangle the filter literal");
     assertTrue(
         statements.getLast().contains(EXPECTED_EXCLUDE_GROUPS),

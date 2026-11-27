@@ -14,6 +14,8 @@
 Unit tests for datalake source
 """
 
+import csv
+import io
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
@@ -469,8 +471,7 @@ class DatalakeUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.datalake_source = DatalakeSource.create(
@@ -673,8 +674,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("metadata.utils.credentials.validate_private_key")
     @patch("google.cloud.storage.Client")
-    def __init__(self, methodName, _, __, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, _, __, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_gcs_config)
         self.datalake_source = DatalakeSource.create(
@@ -803,6 +803,28 @@ def discover_table_and_schema_wrapper(source):
         assert list(source.yield_table(discovered_table)) == []
 
     return discovered_table, fetch_dataframe.call_args.kwargs["file_fqn"]
+
+
+@pytest.mark.parametrize("escapechar", [None, "!"])
+def test_csv_dialect_reaches_schema_inference(datalake_manifest_source, escapechar):
+    source = datalake_manifest_source
+    source.service_connection.csvEscapeChar = escapechar or ""
+    columns = ["path\\", "value!", "name"]
+    stream = io.StringIO()
+    csv.writer(stream, delimiter=";", escapechar=escapechar, quoting=csv.QUOTE_ALL).writerows(
+        [columns, ["one", "two", "three"]]
+    )
+    data = stream.getvalue().encode()
+    source.client.client.get_object.side_effect = lambda **_: {"Body": io.BytesIO(data)}
+
+    with patch(
+        "metadata.ingestion.source.database.datalake.metadata.fqn.build",
+        return_value="local_datalake.default.my_bucket",
+    ):
+        result = next(source.yield_table(("dialect.csv", TableType.Regular, SupportedTypes.CSV, len(data), ";")))
+
+    assert result.left is None
+    assert [column.name.root for column in result.right.columns] == columns
 
 
 def test_manifest_separator_reaches_schema_inference(datalake_manifest_source):

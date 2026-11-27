@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -50,6 +51,7 @@ import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -57,6 +59,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -73,6 +76,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
@@ -100,6 +104,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.ProfileSampleConfig;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -126,6 +131,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -158,9 +164,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   private static final int LARGE_PROFILE_HISTORY_ROWS = 1001;
 
   {
+    supportsLineage = true;
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsCsvImportSessionConsolidationRegression = true;
     supportsBatchImport = true;
@@ -2048,6 +2057,55 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
   // ===================================================================
 
+  /**
+   * Resubmitting a stored system event must update that row in place, not fail the whole request
+   * with a 409 that also drops the events after it. The operation must be matched from
+   * profileData, where it is stored.
+   */
+  @Test
+  void systemProfile_repeatedEventUpdatesExistingRow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createEntity(createRequest(ns.prefix("system_profile_upsert_table"), ns));
+    String tableFqn = table.getFullyQualifiedName();
+    long now = System.currentTimeMillis();
+    long eventTs = now - 120_000;
+    long followingEventTs = eventTs + 1000;
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile()
+                        .withRowCount(42.0)
+                        .withColumnCount(2.0)
+                        .withTimestamp(eventTs))
+                .withSystemProfile(List.of(systemEvent(eventTs, DmlOperationType.INSERT, 10))));
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile().withRowCount(1.0).withColumnCount(2.0).withTimestamp(now))
+                .withSystemProfile(
+                    List.of(
+                        systemEvent(eventTs, DmlOperationType.INSERT, 20),
+                        systemEvent(eventTs, DmlOperationType.UPDATE, 5),
+                        systemEvent(followingEventTs, DmlOperationType.DELETE, 3))));
+
+    List<SystemProfile> profiles = listSystemProfiles(client, tableFqn);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.INSERT, 20);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.UPDATE, 5);
+    assertEventRowsAffected(profiles, followingEventTs, DmlOperationType.DELETE, 3);
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(latestProfile.getProfile(), "Latest table profile must be stored");
+    assertEquals(1.0, latestProfile.getProfile().getRowCount());
+  }
+
   @Test
   void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2294,6 +2352,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             HttpMethod.POST,
             "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
             createProfile);
+  }
+
+  private static SystemProfile systemEvent(
+      long timestamp, DmlOperationType operation, int rowsAffected) {
+    return new SystemProfile()
+        .withTimestamp(timestamp)
+        .withOperation(operation)
+        .withRowsAffected(rowsAffected);
+  }
+
+  private static void assertEventRowsAffected(
+      List<SystemProfile> profiles, long timestamp, DmlOperationType operation, int expected) {
+    List<SystemProfile> matching =
+        profiles.stream()
+            .filter(
+                profile ->
+                    Objects.equals(profile.getTimestamp(), timestamp)
+                        && profile.getOperation() == operation)
+            .toList();
+    assertEquals(
+        1,
+        matching.size(),
+        operation + " system event at " + timestamp + " must be stored exactly once");
+    assertTrue(
+        matching.stream().allMatch(profile -> Objects.equals(profile.getRowsAffected(), expected)),
+        operation + " system event at " + timestamp + " must hold rowsAffected " + expected);
   }
 
   private void writeFullProfile(OpenMetadataClient client, Table table) {
@@ -4531,6 +4615,165 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(sqlQuery, storedEdge.path("sqlQuery").asText(null));
   }
 
+  // collate#7983: a column rename must reach every edge out of the table, not only the ones into
+  // other tables. A metric is its own single column endpoint, so an edge into a metric carries the
+  // source column's FQN just as the table edge beside it does.
+  @Test
+  void test_renamedColumnFollowsMetricLineage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_ren_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("gross_amount", "BIGINT").build())));
+    // Bump version past 0.1 so consolidateChanges() is eligible on the rename PATCH below
+    source.setDescription("metric lineage rename source");
+    source = client.tables().update(source.getId().toString(), source);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_ren_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("total_amount", "BIGINT").build())));
+    Metric metric =
+        client.metrics().create(new CreateMetric().withName(ns.prefix("metric_ren_total")));
+    String sourceColumn = source.getFullyQualifiedName() + ".gross_amount";
+    String sqlQuery = "SELECT SUM(gross_amount) FROM metric_ren_src";
+    addLineage(
+        client,
+        source.getEntityReference(),
+        target.getEntityReference(),
+        columnLineage(
+            sqlQuery, List.of(sourceColumn), target.getFullyQualifiedName() + ".total_amount"));
+    addLineage(
+        client,
+        source.getEntityReference(),
+        metric.getEntityReference(),
+        columnLineage(sqlQuery, List.of(sourceColumn), metric.getFullyQualifiedName()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      String metricDocPath = "/openmetadata_metric_search_index/_doc/" + metric.getId();
+      Awaitility.await("Wait for the metric's column lineage to be indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  readDocumentSource(searchClient, metricDocPath)
+                      .path("upstreamLineage")
+                      .toString()
+                      .contains(sourceColumn));
+
+      // A case-only rename is the change EntityUtil.columnMatch reports as a rename.
+      source.setColumns(List.of(ColumnBuilder.of("GROSS_AMOUNT", "BIGINT").build()));
+      client.tables().update(source.getId().toString(), source);
+
+      String renamedColumn = source.getFullyQualifiedName() + ".GROSS_AMOUNT";
+      JsonNode renamed = JsonUtils.valueToTree(List.of(renamedColumn));
+      assertEquals(
+          renamed,
+          getStoredLineageEdge(client, source, target).at("/columnsLineage/0/fromColumns"));
+      JsonNode metricEdge = getStoredLineageEdge(client, source, metric);
+      assertEquals(renamed, metricEdge.at("/columnsLineage/0/fromColumns"));
+      assertEquals(
+          metric.getFullyQualifiedName(), metricEdge.at("/columnsLineage/0/toColumn").asText());
+      assertEquals(sqlQuery, metricEdge.path("sqlQuery").asText(null));
+
+      Awaitility.await("Wait for the metric's indexed column lineage to follow the rename")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  readDocumentSource(searchClient, metricDocPath)
+                      .path("upstreamLineage")
+                      .toString()
+                      .contains(renamedColumn));
+    }
+  }
+
+  // collate#7983, the delete leg: a deleted source column must leave the metric edge's mapping as
+  // it leaves the table edge's, instead of pointing at a column that no longer exists.
+  @Test
+  void test_deletedColumnLeavesMetricLineage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_del_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            ColumnBuilder.of("keep_col", "BIGINT").build(),
+                            ColumnBuilder.of("drop_col", "BIGINT").build())));
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_del_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build())));
+    Metric metric =
+        client.metrics().create(new CreateMetric().withName(ns.prefix("metric_del_total")));
+    String keepColFqn = source.getFullyQualifiedName() + ".keep_col";
+    List<String> fromColumns = List.of(keepColFqn, source.getFullyQualifiedName() + ".drop_col");
+    addLineage(
+        client,
+        source.getEntityReference(),
+        target.getEntityReference(),
+        columnLineage(null, fromColumns, target.getFullyQualifiedName() + ".tgt_col"));
+    addLineage(
+        client,
+        source.getEntityReference(),
+        metric.getEntityReference(),
+        columnLineage(null, fromColumns, metric.getFullyQualifiedName()));
+
+    source.setColumns(List.of(ColumnBuilder.of("keep_col", "BIGINT").build()));
+    client.tables().update(source.getId().toString(), source);
+
+    JsonNode kept = JsonUtils.valueToTree(List.of(keepColFqn));
+    assertEquals(
+        kept, getStoredLineageEdge(client, source, target).at("/columnsLineage/0/fromColumns"));
+    assertEquals(
+        kept, getStoredLineageEdge(client, source, metric).at("/columnsLineage/0/fromColumns"));
+  }
+
+  private static LineageDetails columnLineage(
+      String sqlQuery, List<String> fromColumns, String toColumn) {
+    return new LineageDetails()
+        .withSqlQuery(sqlQuery)
+        .withColumnsLineage(
+            List.of(new ColumnLineage().withFromColumns(fromColumns).withToColumn(toColumn)));
+  }
+
+  private static void addLineage(
+      OpenMetadataClient client,
+      EntityReference from,
+      EntityReference to,
+      LineageDetails lineageDetails) {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from)
+                        .withToEntity(to)
+                        .withLineageDetails(lineageDetails)));
+  }
+
   private static void addColumnLineage(
       OpenMetadataClient client,
       Table sourceTable,
@@ -4577,13 +4820,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   /** The stored edge from the relationship table — what reindex reads and the edge drawer shows. */
   private static JsonNode getStoredLineageEdge(
-      OpenMetadataClient client, Table sourceTable, Table targetTable) throws Exception {
+      OpenMetadataClient client, EntityInterface<?> source, EntityInterface<?> target)
+      throws Exception {
     String response =
         client
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/v1/lineage/getLineageEdge/" + sourceTable.getId() + "/" + targetTable.getId(),
+                "/v1/lineage/getLineageEdge/" + source.getId() + "/" + target.getId(),
                 null);
     return JsonUtils.readTree(response).path("edge");
   }
@@ -6443,6 +6687,69 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         List.of(parentTypeFqn, parentCountryFqn), storedAfterReingest.getReferredColumns());
   }
 
+  /**
+   * Correcting the column pairing of a foreign key replaces the constraint with one that still
+   * refers to the same table, so the link between the two tables must be kept.
+   */
+  @Test
+  void patch_correctingForeignKeyPairingKeepsTableRelationship(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest = new CreateTable();
+    parentRequest.setName(ns.prefix("fk_fix_parent"));
+    parentRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    parentRequest.setColumns(
+        List.of(
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2),
+            new Column().withName("type").withDataType(ColumnDataType.CHAR).withDataLength(3)));
+    Table parent = client.tables().create(parentRequest);
+    String countryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String typeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    CreateTable childRequest = new CreateTable();
+    childRequest.setName(ns.prefix("fk_fix_child"));
+    childRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    childRequest.setColumns(
+        List.of(
+            new Column().withName("alt_type").withDataType(ColumnDataType.CHAR).withDataLength(3),
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2)));
+    // Crossed pairing: alt_type -> country and country -> type
+    childRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("alt_type", "country"))
+                .withReferredColumns(List.of(countryFqn, typeFqn))));
+    Table child = client.tables().create(childRequest);
+    assertTrue(relatedTables(child).contains(parent.getId()));
+
+    Table childToFix =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    childToFix
+        .getTableConstraints()
+        .get(0)
+        .withReferredColumns(new ArrayList<>(List.of(typeFqn, countryFqn)));
+    // If-Match takes the version-checked save, which does not re-store the table's relationships
+    Table fixed = client.tables().update(child.getId().toString(), childToFix, "*");
+
+    assertEquals(
+        List.of(typeFqn, countryFqn), fixed.getTableConstraints().get(0).getReferredColumns());
+    assertTrue(
+        relatedTables(child).contains(parent.getId()),
+        "Correcting the column pairing must keep the link to the referred table");
+  }
+
+  private static List<UUID> relatedTables(Table table) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findTo(table.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal(), Entity.TABLE)
+        .stream()
+        .map(EntityRelationshipRecord::getId)
+        .toList();
+  }
+
   // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
@@ -8060,7 +8367,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
-  // PATCH PERSISTENCE: schemaDefinition (#32625) and tablePartition (#33429)
+  // PERSISTENCE: schemaDefinition across PATCH (#32625) and the dataModel PUT, tablePartition
+  // (#33429)
   // Tables are created by ingestion-bot and patched by admin, as in production. A patch by the
   // same user inside the session window is consolidated into the previous version and stored
   // regardless, which would hide the tablePartition no-op.
@@ -8088,6 +8396,22 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table stored =
         SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void put_dataModel_keepsSchemaDefinition(TestNamespace ns) {
+    Table view = createAsIngestionBot(ns, "datamodel_keeps_ddl", TableType.View, VIEW_DDL);
+
+    SdkClients.ingestionBotClient()
+        .tables()
+        .updateDataModel(view.getId(), new DataModel().withModelType(DataModel.ModelType.DBT));
+
+    Table stored =
+        SdkClients.adminClient()
+            .tables()
+            .get(view.getId().toString(), "schemaDefinition,dataModel");
+    assertNotNull(stored.getDataModel());
     assertEquals(VIEW_DDL, stored.getSchemaDefinition());
   }
 

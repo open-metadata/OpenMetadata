@@ -54,8 +54,8 @@ final class OntologyAiOutputValidator {
     return name;
   }
 
-  static void requireConfidence(final double confidence) {
-    if (!Double.isFinite(confidence) || confidence < 0D || confidence > 1D) {
+  static void requireConfidence(final Double confidence) {
+    if (confidence == null || !Double.isFinite(confidence) || confidence < 0D || confidence > 1D) {
       throw invalid("confidence must be between 0 and 1");
     }
   }

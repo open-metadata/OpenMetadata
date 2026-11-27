@@ -14,6 +14,9 @@
  * One independently selectable module in an ontology library pack.
  */
 export interface OntologyPackModule {
+    /**
+     * Distinct IRIs typed owl:Class, rdfs:Class or skos:Concept in the payload.
+     */
     conceptCount: number;
     dependencies: string[];
     description:  string;
@@ -21,8 +24,12 @@ export interface OntologyPackModule {
     /**
      * Stable module key within the pack.
      */
-    id:                string;
-    name:              string;
+    id:   string;
+    name: string;
+    /**
+     * Distinct IRI-to-IRI rdfs:subClassOf, rdfs:subPropertyOf, skos:broader, skos:narrower and
+     * skos:related statements in the payload.
+     */
     relationshipCount: number;
     /**
      * Classpath resource used for redistributable bundled modules.
@@ -34,7 +41,13 @@ export interface OntologyPackModule {
      */
     sha256?: string;
     /**
-     * Authoritative external source for catalogue-only modules.
+     * Lowercase SHA-256 of the published file, recorded only when the generator converted it to
+     * the bundled Turtle payload.
+     */
+    sourceSha256?: string;
+    /**
+     * Authoritative external source: where a catalogue-only module is obtained, or where a
+     * bundled module was published.
      */
     sourceUrl?: string;
 }

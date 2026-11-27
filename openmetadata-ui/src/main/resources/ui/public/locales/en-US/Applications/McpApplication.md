@@ -11,6 +11,41 @@ MCP Server app installs an embedded Model Context Protocol(MCP) server within Op
     - This endpoint can be used by client if Streamable-Http transport is used.
 
 $$section
+### Enable MCP Server $(id="enabled")
+
+Allow MCP clients to connect. Disabling stops new MCP requests and sign-ins without deleting registered clients or their grants. Already-running requests may finish.
+
+$$
+
+$$section
+### Allow Dynamic Client Registration $(id="dynamicClientRegistrationEnabled")
+
+Allow new clients to register without administrator pre-registration. Disabling this does not revoke existing clients.
+
+$$
+
+$$section
+### Allowed Redirect Hosts $(id="allowedRedirectHosts")
+
+Exact HTTPS callback host names, without a scheme, path or wildcard. An empty list allows any HTTPS host. Applies to new authorizations; revoke a client to end existing access.
+
+$$
+
+$$section
+### Allow Loopback Redirects $(id="allowLoopbackRedirects")
+
+Allow callbacks to localhost and loopback IP addresses. Desktop clients may require these.
+
+$$
+
+$$section
+### Allow Native App Redirects $(id="allowNativeRedirects")
+
+Allow private-use callback schemes used by native applications. Disabling may prevent those clients from connecting.
+
+$$
+
+$$section
 ### Base URL $(id="baseUrl")
 
 External-facing base URL advertised in the MCP OAuth metadata (issuer and endpoint URLs). Leave empty to fall back to the OpenMetadata base URL from system settings. Set this explicitly for clustered deployments where the service is reached through a load balancer or ingress.
@@ -35,13 +70,20 @@ $$
 $$section
 ### Read-only Mode $(id="readOnly")
 
-Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are blocked for every MCP client and every user, admins included. Each user's own permissions still apply to the remaining tools. Turning it on blocks those tools right away; they leave the tool list after the server restarts, and turning it off takes effect after a restart.
+Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are blocked for every MCP client and every user, admins included. Each user's own permissions still apply to the remaining tools. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.
 
 $$
 
 $$section
 ### Disabled Tools $(id="disabledTools")
 
-MCP tools to turn off for every MCP client and every user, admins included, whatever their permissions. Use it to hide single tools, read or write; Read-only Mode still applies to the rest. A disabled tool is blocked right away; it leaves the tool list after the server restarts, and enabling it again takes effect after a restart.
+MCP tools to turn off for every MCP client and every user, admins included, whatever their permissions. Use it to hide single tools, read or write; Read-only Mode still applies to the rest. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.
+
+$$
+
+$$section
+### Offered Tools $(id="offeredTools")
+
+MCP tools this server offers. Leave the list empty to offer every registered tool. Disabled Tools and Read-only Mode still apply. Distributions may define additional values.
 
 $$

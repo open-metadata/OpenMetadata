@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.WEB_ANALYTIC_EVENT;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +23,19 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
-  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
+  public static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
       "webAnalyticEvent.webAnalyticEventData";
+
+  // Event data rows are stored with the event type as their FQN, hashed the way @BindFQN hashes it.
+  public static String eventTypeHash(String eventType) {
+    return FullyQualifiedName.buildHash(eventType);
+  }
+
+  public static List<String> eventTypeHashes() {
+    return Arrays.stream(WebAnalyticEventType.values())
+        .map(eventType -> eventTypeHash(eventType.value()))
+        .toList();
+  }
 
   public WebAnalyticEventRepository() {
     super(
@@ -96,7 +108,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
         daoCollection.entityExtensionTimeSeriesDao();
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
+    filter.addQueryParam("entityFQNHash", eventTypeHash(eventType));
     return timeSeriesDao.listCount(filter, startTs, endTs, latest);
   }
 
@@ -111,7 +123,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
         daoCollection.entityExtensionTimeSeriesDao();
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
+    filter.addQueryParam("entityFQNHash", eventTypeHash(eventType));
 
     int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
     List<WebAnalyticEventData> webAnalyticEventData = new ArrayList<>();
@@ -148,7 +160,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
         daoCollection.entityExtensionTimeSeriesDao();
     ListFilter filter = new ListFilter(null);
-    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
+    filter.addQueryParam("entityFQNHash", eventTypeHash(eventType));
 
     if (limitParam <= 0) {
       return getWebAnalyticEventDataResultList(new ArrayList<>(), null, null, cachedTotal);

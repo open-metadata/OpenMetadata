@@ -12,6 +12,7 @@
  */
 
 import { Edge } from '../generated/governance/workflows/elements/edge';
+import { EmptyAssigneeStrategy } from '../generated/governance/workflows/elements/nodes/userTask/userApprovalTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 
@@ -102,7 +103,7 @@ export interface UserApprovalConfig {
   assignees?: {
     addReviewers: boolean;
     addOwners?: boolean;
-    emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
     candidates?: AssigneeCandidate[];
   };
   approvalThreshold?: number;

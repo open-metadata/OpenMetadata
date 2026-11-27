@@ -37,13 +37,18 @@ class WorkbookDetails(BaseModel):
     updatedAt: datetime | None = None  # noqa: N815
     url: str
     path: str | None = None
+    latestVersion: int | float | None = None  # noqa: N815
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in the workbook response: Sigma returns the badge on the workbook's /files entry.
+    badge: str | None = None
     # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
     elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
     lineage: list["WorkbookLineageEntry"] | None = None
+    # Not in Sigma's response: each element's column formulas by column name, read by SigmaSource.get_dashboard_details.
+    formulas: dict[str, dict[str, str]] = {}
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -70,8 +75,16 @@ class WorkBookPageResponse(BaseModel):
 class Elements(BaseModel):
     elementId: str  # noqa: N815
     name: str | None = None
+    type: str | None = Field(default=None)
     vizualizationType: str | None = None  # noqa: N815
     columns: list[str] | None = []
+
+    @property
+    def is_data_element(self) -> bool:
+        """Whether the element supports data models and lineage."""
+        if self.type is not None:
+            return self.type in ("table", "pivot-table", "visualization")
+        return bool(self.vizualizationType)
 
 
 class ElementsResponse(BaseModel):
@@ -82,6 +95,7 @@ class ElementsResponse(BaseModel):
 
 class EdgeSource(BaseModel):
     source: str
+    target: str | None = None
 
     @property
     def node_id(self):
@@ -110,9 +124,13 @@ class EdgeSourceResponse(BaseModel):
 
 class NodeDetails(BaseModel):
     id: str
+    urlId: str | None = None  # noqa: N815
+    # Not in Sigma's response: the id an element lineage names this node by, set by SigmaApiClient.get_lineage_details
+    nodeId: str | None = None  # noqa: N815
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
+    badge: str | None = None
 
     @property
     def node_schema(self):
@@ -128,7 +146,9 @@ class NodeDetails(BaseModel):
 
 
 class DataModel(BaseModel):
+    path: str | None = None
     dataModelId: str  # noqa: N815
+    dataModelUrlId: str | None = None  # noqa: N815
     name: str | None = None
     url: str | None = None
     ownerId: str | None = None  # noqa: N815
@@ -143,11 +163,30 @@ class Connection(BaseModel):
     type: str
 
 
+class ConnectionPath(BaseModel):
+    connectionId: str  # noqa: N815
+    path: list[str]
+
+
+class ColumnEntry(BaseModel):
+    elementId: str  # noqa: N815
+    name: str
+    formula: str | None = None
+
+
+class ColumnsResponse(BaseModel):
+    entries: list[ColumnEntry] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class WorkbookLineageEntry(BaseModel):
+    type: str | None = None
     connectionId: str | None = None  # noqa: N815
     elementId: str | None = None  # noqa: N815
+    sourceIds: list[str] | None = None  # noqa: N815
     dataSourceIds: list[str] | None = None  # noqa: N815
     dataModelId: str | None = None  # noqa: N815
+    inodeId: str | None = None  # noqa: N815
 
 
 class WorkbookLineageResponse(BaseModel):

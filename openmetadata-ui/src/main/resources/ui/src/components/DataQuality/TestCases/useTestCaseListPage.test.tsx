@@ -37,6 +37,7 @@ const mockShowModal = jest.fn();
 const mockLocation = { search: '' };
 
 const mockHandlePageChange = jest.fn();
+let mockCurrentPage = 1;
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
 
@@ -83,7 +84,7 @@ jest.mock(
 
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn(() => ({
-    currentPage: 1,
+    currentPage: mockCurrentPage,
     pageSize: 10,
     paging: { after: '', before: '', total: 0 },
     showPagination: true,
@@ -130,6 +131,7 @@ describe('useTestCaseListPage', () => {
     mockNavigate.mockClear();
     mockShowModal.mockClear();
     mockLocation.search = '';
+    mockCurrentPage = 1;
     mockPermissions.testCase = { ViewAll: true, ViewBasic: true };
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [],
@@ -273,8 +275,8 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should refetch for the requested page when the pagination handler is called', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+  it('should fetch the requested page once the paging hook reports it', async () => {
+    const { result, rerender } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -283,6 +285,8 @@ describe('useTestCaseListPage', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 3 });
     });
+    mockCurrentPage = 3;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
@@ -728,7 +732,7 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should keep carrying sort options on a later fetch after sortTestCase', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+    const { result, rerender } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -744,6 +748,8 @@ describe('useTestCaseListPage', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 2 });
     });
+    mockCurrentPage = 2;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(

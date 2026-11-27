@@ -73,6 +73,7 @@ import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Result;
 import os.org.opensearch.client.opensearch._types.SlicesCalculation;
+import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -97,6 +98,10 @@ import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
  */
 @Slf4j
 public class OpenSearchEntityManager implements EntityManagementClient {
+  private static final String MATCHING_INDICES = "matchingIndices";
+  // A full page may be cut short, so the rewrite then targets the whole alias
+  // (ADR:2026-11-11-a-global-alias-rewrite-targets-only-the-indices-holding-a-match).
+  static final int MAX_MATCHING_INDICES = 1000;
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final OpenSearchAsyncClient asyncClient;
@@ -261,26 +266,21 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Build the query using the new OpenSearch client API
-    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-
-    for (Pair<String, String> p : fieldAndValue) {
-      boolQueryBuilder.must(
-          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-    }
-
-    // Execute delete by query using the new client
     DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .refresh(Refresh.True));
+        client.deleteByQuery(buildDeleteByFieldsRequest(indexNames, fieldAndValue));
 
     LOG.info(
         "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
         response.deleted(),
         response.failures().size());
+
+    if (response.versionConflicts() != null && response.versionConflicts() > 0) {
+      LOG.warn(
+          "DeleteByQuery skipped {} documents due to version conflicts for indices: {}, fields: {}",
+          response.versionConflicts(),
+          indexNames,
+          fieldAndValue);
+    }
 
     if (!response.failures().isEmpty()) {
       String failureDetails =
@@ -289,6 +289,25 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
     }
+  }
+
+  /**
+   * A reindex can rewrite matched child docs between the scroll and the delete; with the default
+   * conflicts=abort the whole cleanup failed with 409, so conflicted docs are skipped instead.
+   */
+  DeleteByQueryRequest buildDeleteByFieldsRequest(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+    for (Pair<String, String> p : fieldAndValue) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+    }
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexNames)
+                .query(q -> q.bool(boolQueryBuilder.build()))
+                .conflicts(Conflicts.Proceed)
+                .refresh(Refresh.True));
   }
 
   @Override
@@ -1223,6 +1242,34 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         failures);
   }
 
+  // Each shard an update-by-query reaches opens a scroll context, matching or not. Across the
+  // global alias that is one per shard of every index, so a busy node exhausts its open scroll
+  // contexts and the engine retries for about a minute before failing with 429 (#37466). A size-0
+  // search opens none, so it picks the indices to rewrite.
+  private List<String> indicesHoldingMatches(String indexOrAlias, Query query) throws IOException {
+    SearchResponse<JsonData> response =
+        client.search(
+            s ->
+                s.index(indexOrAlias)
+                    .size(0)
+                    .query(query)
+                    .aggregations(
+                        MATCHING_INDICES,
+                        a -> a.terms(t -> t.field("_index").size(MAX_MATCHING_INDICES))),
+            JsonData.class);
+    // A shard the search could not reach may hold a match, so the rename goes to the retry queue.
+    if (response.shards().failed() > 0) {
+      throw new IOException(
+          "Search for the indices tagged in '%s' failed on %s shards"
+              .formatted(indexOrAlias, response.shards().failed()));
+    }
+    final List<String> indices =
+        response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
+            .map(StringTermsBucket::key)
+            .toList();
+    return indices.size() < MAX_MATCHING_INDICES ? indices : List.of(indexOrAlias);
+  }
+
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
@@ -1235,6 +1282,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Query prefixQuery =
           Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
 
+      List<String> indices =
+          indicesHoldingMatches(
+              Entity.getSearchRepository().getIndexOrAliasName(indexName), prefixQuery);
+      if (indices.isEmpty()) {
+        LOG.info("No search documents are tagged under {}; nothing to rewrite", oldFqnPrefix);
+        return;
+      }
+
       Map<String, JsonData> params =
           Map.of(
               "oldParentFQN", JsonData.of(oldFqnPrefix),
@@ -1243,7 +1298,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryRequest request =
           UpdateByQueryRequest.of(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  req.index(indices)
                       .query(prefixQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1813,7 +1868,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    List<String> fieldsToRemove = new ArrayList<>();
+    List<String> fieldsToRemove = new ArrayList<>(SearchIndexUtils.listedFieldsToRemove(map));
 
     Map<String, JsonData> result =
         JsonUtils.getMap(map).entrySet().stream()

@@ -48,13 +48,6 @@ public class DashboardServiceBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public DashboardServiceBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateDashboardService request without executing it.
    */
   public CreateDashboardService build() {

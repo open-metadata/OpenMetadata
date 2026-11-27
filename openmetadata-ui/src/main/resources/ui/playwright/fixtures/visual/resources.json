@@ -4147,7 +4147,8 @@
           "iri": "https://example.com/finance#"
         }
       ],
-      "layer": "L1"
+      "layer": "L1",
+      "publicationStatus": { "reviewLock": {}, "unpublishedChanges": 0 }
     }
   ],
   "ontologyConcepts": [

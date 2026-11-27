@@ -13,12 +13,14 @@
 Test ometa to orm converter
 """
 
+from decimal import Decimal
 from unittest.mock import patch
 from uuid import UUID
 
 import sqlalchemy
 from pytest import mark
 from snowflake.sqlalchemy import dialect as snowflake_dialect
+from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
@@ -27,12 +29,20 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.static.column_names import ColumnNames
+from metadata.profiler.metrics.static.max import Max
+from metadata.profiler.metrics.static.mean import Mean
+from metadata.profiler.metrics.static.min import Min
+from metadata.profiler.metrics.static.stddev import StdDev
+from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.window.first_quartile import FirstQuartile
+from metadata.profiler.metrics.window.median import Median
+from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.converter_registry import converter_registry
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
-from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes
+from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes, is_quantifiable
 from metadata.profiler.orm.types import custom_xml
 
 
@@ -402,6 +412,108 @@ def test_redshift_mapper_does_not_leak_geometry_into_other_dialects():
     assert redshift_mapper.return_custom_type(geometry_col, DatabaseServiceType.Redshift) is GEOMETRY
 
 
+def test_mariadb_mapper_does_not_leak_time_override_into_other_dialects():
+    """The MariaDB mapper used to update the shared CommonMapTypes._TYPE_MAP on init,
+    remapping TIME to CustomTime for every dialect built afterwards (BigQuery, Redshift,
+    Snowflake, ClickZetta and every service hitting the ``defaultdict`` fallback, e.g.
+    MySQL, Databricks). It must now own a private copy of the map."""
+    from metadata.profiler.orm.converter.mariadb.converter import MariaDBMapTypes
+
+    time_col = Column(name="opened_at", dataType=DataType.TIME)
+
+    # Instantiating MariaDBMapTypes used to mutate CommonMapTypes._TYPE_MAP in place.
+    mariadb_mapper = MariaDBMapTypes()
+
+    # MariaDB itself keeps the TIME override ...
+    assert mariadb_mapper.return_custom_type(time_col, DatabaseServiceType.MariaDB) is CustomTypes.TIME.value
+    # ... and the base map (and every shared-map dialect) is untouched.
+    assert CommonMapTypes._TYPE_MAP[DataType.TIME] is sqlalchemy.TIME
+    assert CommonMapTypes().return_custom_type(time_col, DatabaseServiceType.BigQuery) is sqlalchemy.TIME
+    assert CommonMapTypes().return_custom_type(time_col, DatabaseServiceType.Snowflake) is sqlalchemy.TIME
+    assert CommonMapTypes().return_custom_type(time_col, DatabaseServiceType.Mysql) is sqlalchemy.TIME
+    # The MariaDB map is a distinct object, so the parent dict cannot be mutated through it.
+    assert MariaDBMapTypes._TYPE_MAP is not CommonMapTypes._TYPE_MAP
+
+
+def test_mariadb_metric_filter_lookup_finds_time_config_for_custom_time_column():
+    """Reproduces the exact lookup from ``metric_filter.filter_column_metrics_from_global_config``:
+    ``converter_registry[service_type].map_sqa_to_om_types().get(column.type.__class__)``.
+    A MariaDB TIME column's ORM type is an instance of CustomTime, so the lookup must
+    resolve to {DataType.TIME} (not None) or a global metricConfiguration for TIME is
+    silently ignored (the original bug)."""
+    from metadata.profiler.orm.types.custom_time import CustomTime
+
+    mapper = converter_registry[DatabaseServiceType.MariaDB]
+    sqa_to_om_types = mapper.map_sqa_to_om_types()
+
+    # A MariaDB TIME column built by the ORM is an instance of CustomTime
+    time_column = sqlalchemy.Column("opened_at", CustomTime())
+    om_data_types = sqa_to_om_types.get(time_column.type.__class__)
+
+    assert om_data_types == {DataType.TIME}
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_mariadb_time_override_does_not_leak_to_subsequent_orm_builds(mock_schema, mock_database):
+    """Building a MariaDB ORM table must not poison the shared CommonMapTypes._TYPE_MAP
+    so that a subsequently built non-MariaDB TIME column still uses sqlalchemy.TIME (not
+    CustomTime). This mirrors the data-quality logical test suite path where multiple
+    services are processed in one process and the connection is swapped per table.
+
+    Each table needs its own name: ometa_to_sqa_orm keys the generated declarative class
+    on it, so reusing one collides in the shared registry.
+    """
+    from metadata.profiler.orm.converter.mariadb.converter import MariaDBMapTypes
+
+    mariadb_table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="mariadb_time_table",
+        columns=[
+            Column(name="id", dataType=DataType.INT),
+            Column(name="opened_at", dataType=DataType.TIME),
+        ],
+        serviceType=DatabaseServiceType.MariaDB,
+    )
+    mariadb_orm = ometa_to_sqa_orm(mariadb_table, None)
+
+    mariadb_time_type = mariadb_orm.__table__.columns["opened_at"].type
+    assert isinstance(mariadb_time_type, CustomTypes.TIME.value)
+
+    # A later BigQuery TIME column must still be sqlalchemy.TIME, not CustomTime.
+    bigquery_table = Table(
+        id=UUID("2f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="bigquery_time_table",
+        columns=[
+            Column(name="id", dataType=DataType.INT),
+            Column(name="opened_at", dataType=DataType.TIME),
+        ],
+        serviceType=DatabaseServiceType.BigQuery,
+    )
+    bigquery_orm = ometa_to_sqa_orm(bigquery_table, None)
+
+    bigquery_time_type = bigquery_orm.__table__.columns["opened_at"].type
+    assert isinstance(bigquery_time_type, sqlalchemy.TIME)
+    assert not isinstance(bigquery_time_type, CustomTypes.TIME.value)
+
+    # The MariaDB mapper's own map is still correct after the cross-dialect build.
+    assert MariaDBMapTypes._TYPE_MAP[DataType.TIME] is CustomTypes.TIME.value
+
+
+def test_snowflake_mapper_preserves_shared_type_map_values():
+    """Snowflake mapper construction preserves shared mapping contents and the
+    inherited BINARY mapping.
+    """
+    from metadata.profiler.orm.converter.snowflake.converter import SnowflakeMapTypes
+
+    snapshot = dict(CommonMapTypes._TYPE_MAP)
+
+    SnowflakeMapTypes()
+
+    assert snapshot == CommonMapTypes._TYPE_MAP
+    assert CommonMapTypes._TYPE_MAP[DataType.BINARY] is CustomTypes.BYTES.value
+
+
 def test_geometry_reverse_map_stays_separate_from_geography():
     reverse_map = CommonMapTypes.map_sqa_to_om_types()
 
@@ -539,3 +651,211 @@ def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database, d
     orm_table = ometa_to_sqa_orm(table, None)
 
     assert orm_table.__table__.columns.keys() == ["id", "tags"]
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+@mark.parametrize(
+    "schema_name, sql_schema",
+    [
+        ("sales.archive", "[sales.archive]"),
+        ("sales.archive.history", "[sales.archive.history]"),
+        ("sales].archive", "[sales]].archive]"),
+        ("sales[archive]", "[sales[archive]]]"),
+        ("dbo", "[dbo]"),
+    ],
+)
+def test_literal_tsql_schema_qualification(service_type, table_type, schema_name, sql_schema):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.profiler.processor.runner import QueryRunner
+
+    table, metadata = _catalog_table(service_type, schema_name, table_type)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    statement = sqlalchemy.select(orm.id)
+
+    assert str(statement.compile(dialect=dialect())) == f"SELECT {sql_schema}.orders.id \nFROM {sql_schema}.orders"
+    runner = QueryRunner(session=None, dataset=orm, raw_dataset=orm)
+    assert runner.schema_name == schema_name
+
+
+def _catalog_table(service_type, schema_name, table_type="Regular"):
+    from unittest.mock import MagicMock
+
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+    database = Database(id=UUID(int=1), name="catalog", service={"id": str(UUID(int=2)), "type": "databaseService"})
+    schema = DatabaseSchema(
+        id=UUID(int=3),
+        name=schema_name,
+        service=database.service,
+        database={"id": str(database.id.root), "type": "database"},
+    )
+    table = Table(
+        id=UUID(int=4),
+        name="orders",
+        columns=[Column(name="id", dataType=DataType.INT)],
+        serviceType=service_type,
+        tableType=table_type,
+        database={"id": str(database.id.root), "type": "database"},
+        databaseSchema={"id": str(schema.id.root), "type": "databaseSchema"},
+    )
+    metadata = MagicMock(spec=OpenMetadata)
+    metadata.get_by_id.side_effect = lambda *, entity, entity_id, nullable: {
+        Database: database,
+        DatabaseSchema: schema,
+    }[entity]
+    return table, metadata
+
+
+@mark.parametrize(
+    "service_type, schema_name, expected_schema",
+    [
+        (DatabaseServiceType.Postgres, "sales.archive", '"sales.archive"'),
+        (DatabaseServiceType.Trino, "catalog.sales", '"catalog.sales"'),
+        (DatabaseServiceType.Snowflake, "MixedCase", '"MixedCase"'),
+        (DatabaseServiceType.Snowflake, "UPPERCASE", '"UPPERCASE"'),
+    ],
+)
+def test_schema_quoting_preserves_other_dialect_defaults(service_type, schema_name, expected_schema):
+    from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
+    from trino.sqlalchemy.dialect import TrinoDialect
+
+    dialects = {
+        DatabaseServiceType.Postgres: postgres_dialect,
+        DatabaseServiceType.Trino: TrinoDialect,
+        DatabaseServiceType.Snowflake: snowflake_dialect,
+    }
+    table, metadata = _catalog_table(service_type, schema_name)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    sql = str(sqlalchemy.select(orm.id).compile(dialect=dialects[service_type]()))
+    sql_table = '"orders"' if service_type == DatabaseServiceType.Snowflake else "orders"
+    assert f"FROM {expected_schema}.{sql_table}" in sql
+    expected_quote = True if service_type == DatabaseServiceType.Snowflake and schema_name == "MixedCase" else None
+    assert orm.__table__.schema.quote is expected_quote
+    assert orm.__table__.schema == schema_name
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+def test_production_tsql_sampler_qualifies_literal_schema(service_type, table_type):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import AzureSQLConnection
+    from metadata.generated.schema.entity.services.connections.database.mssqlConnection import MssqlConnection
+    from metadata.generated.schema.type.basic import ProfileSampleType
+    from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+    from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
+    from metadata.sampler.sqlalchemy.mssql.sampler import MssqlSampler
+
+    entity, metadata = _catalog_table(service_type, "sales.archive", table_type)
+    connection_type, sampler_type = (
+        (MssqlConnection, MssqlSampler)
+        if service_type == DatabaseServiceType.Mssql
+        else (AzureSQLConnection, AzureSQLSampler)
+    )
+    engine = sqlalchemy.create_engine("sqlite://")
+    try:
+        with patch("metadata.sampler.sqlalchemy.sampler.get_ssl_connection", return_value=engine):
+            sampler = sampler_type(
+                service_connection_config=connection_type(
+                    username="fixture", password="fixture", hostPort="localhost:1433", database="catalog"
+                ),
+                ometa_client=metadata,
+                entity=entity,
+            )
+        static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE)
+        sql = str(sampler.get_sample_query(static).compile(dialect=dialect()))
+        assert "FROM [sales.archive].orders" in sql
+        assert ("TABLESAMPLE" in sql) == (table_type == "Regular")
+        assert sampler.raw_dataset.__table__.schema == "sales.archive"
+    finally:
+        engine.dispose()
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Doris, "doris_largeint_table"),
+        (DatabaseServiceType.StarRocks, "starrocks_largeint_table"),
+    ],
+)
+def test_largeint_columns_are_mapped_as_numeric(mock_schema, mock_database, service_type, table_name):
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[Column(name="big_id", dataType=DataType.LARGEINT, dataTypeDisplay="largeint")],
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None, sqlalchemy.MetaData())
+    col = orm_table.__table__.columns["big_id"]
+
+    assert not isinstance(col.type, CustomTypes.UNDETERMINED.value)
+    assert isinstance(col.type, CustomTypes.LARGEINT.value)
+    assert col.type.__class__.__name__ not in NOT_COMPUTE
+    assert is_quantifiable(col.type)
+    assert is_quantifiable(DataType.LARGEINT)
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+    assert reverse_map[CustomTypes.LARGEINT.value] == {DataType.LARGEINT}
+    assert DataType.LARGEINT not in reverse_map[sqlalchemy.NUMERIC]
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_doris_largeint_numeric_metrics_and_sum_sql(mock_schema, mock_database):
+    from metadata.ingestion.source.database.doris.connection import DorisPyMySQLDialect
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="doris_largeint_metrics_table",
+        columns=[
+            Column(name="amount", dataType=DataType.LARGEINT, dataTypeDisplay="largeint"),
+            Column(name="regular_int", dataType=DataType.INT, dataTypeDisplay="int"),
+        ],
+        serviceType=DatabaseServiceType.Doris,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None, sqlalchemy.MetaData())
+    col = orm_table.__table__.columns["amount"]
+    int_col = orm_table.__table__.columns["regular_int"]
+
+    for metric_cls in (Mean, Sum, Min, Max, StdDev, FirstQuartile, Median, ThirdQuartile):
+        expr = metric_cls(col).fn()
+        assert expr is not None, f"{metric_cls.__name__} returned None for Doris LARGEINT column"
+
+    doris_dialect = DorisPyMySQLDialect()
+    # StarRocksConnection uses mysql+pymysql (MySQLDialect_pymysql), so LARGEINT SUM must also skip UNSIGNED cast there.
+    mysql_pymysql_dialect = MySQLDialect_pymysql()
+
+    for dialect in (doris_dialect, mysql_pymysql_dialect):
+        sum_sql = str(sqlalchemy.select(Sum(col).fn()).compile(dialect=dialect))
+        assert "SUM(amount)" in sum_sql
+        assert "CAST(" not in sum_sql
+
+    mysql_int_sum_sql = str(sqlalchemy.select(Sum(int_col).fn()).compile(dialect=mysql_pymysql_dialect))
+    assert "CAST(regular_int AS UNSIGNED INTEGER)" in mysql_int_sum_sql
+
+    # Doris/StarRocks send 128-bit LARGEINT as MYSQL_TYPE_STRING while supports_native_decimal is True.
+    max_int128 = "170141183460469231731687303715884105727"
+    min_int128 = "-170141183460469231731687303715884105728"
+    for dialect in (doris_dialect, mysql_pymysql_dialect):
+        for sqa_type in (
+            col.type,
+            Min(col).fn().type,
+            Max(col).fn().type,
+            Sum(col).fn().type,
+            FirstQuartile(col).fn().type,
+            Median(col).fn().type,
+            ThirdQuartile(col).fn().type,
+        ):
+            processor = sqa_type.result_processor(dialect, None)
+            assert processor is not None
+            assert processor(max_int128) == Decimal(max_int128)
+            assert processor(min_int128) == Decimal(min_int128)
+            assert processor(12.5) == 12.5
+            assert processor(None) is None

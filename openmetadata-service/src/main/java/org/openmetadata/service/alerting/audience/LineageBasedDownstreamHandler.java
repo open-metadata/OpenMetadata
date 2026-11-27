@@ -32,9 +32,10 @@ import org.openmetadata.service.util.LineageGraphExplorer;
  * <p>An {@link EntityLineageResolver} turns the event's entity into the entities lineage starts
  * from (a test case into its table, for example). From each of them it resolves that entity's own
  * recipients, the recipients of every entity downstream of it, and then does the same for its
- * ancestors of another type, visiting each entity once. The strategy decides which recipients an
- * entity has (owners, followers, admins...). A lineage read that fails is a failure of the
- * destination; the branches that could be read still reach their recipients.
+ * ancestors of another type, visiting each entity once. A resolver that answers with no entities
+ * means the event's entity takes part in lineage itself, so lineage starts from there. The strategy
+ * decides which recipients an entity has (owners, followers, admins...). A lineage read that fails
+ * is a failure of the destination; the branches that could be read still reach their recipients.
  */
 @Slf4j
 public class LineageBasedDownstreamHandler implements DownstreamHandler {
@@ -69,7 +70,10 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
         Lookup.of(
             "the lineage roots of event " + changeEvent.getId(),
             () -> resolver.resolveTraversalEntities(changeEvent)),
-        roots -> fromEach(roots, walk));
+        roots ->
+            roots.isEmpty()
+                ? downstreamOf(changeEvent.getEntityId(), changeEvent.getEntityType(), walk)
+                : fromEach(roots, walk));
   }
 
   private Recipients fromEach(Set<EntityReference> entities, Walk walk) {

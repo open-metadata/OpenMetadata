@@ -38,10 +38,13 @@ import java.util.Map;
 import java.util.UUID;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -71,8 +74,39 @@ class CreateTaskTest {
     assertEquals(3, CreateTask.resolveApprovalThreshold("allAssignees", 1, users(3)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, List.of(team())));
     assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, List.of(team())));
-    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, null));
+  }
+
+  @Test
+  void approvalThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 2, users(1)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 3, users(2)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of()));
+  }
+
+  @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, users(1)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, users(2)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(1, CreateTask.reviewPolicy(2, 2, true, users(1)).getRejectionThreshold());
+  }
+
+  @Test
+  void changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote() {
+    ReviewPolicy oneReviewerLeft = CreateTask.reviewPolicy(2, 1, true, users(1));
+    assertEquals(1, oneReviewerLeft.getApprovalThreshold());
+    assertEquals(1, oneReviewerLeft.getRejectionThreshold());
+    assertTrue(oneReviewerLeft.getPartialDecisions());
+
+    assertEquals(2, CreateTask.reviewPolicy(2, 1, true, users(3)).getApprovalThreshold());
+    assertEquals(
+        2,
+        CreateTask.reviewPolicy(2, 1, false, List.of(users(1).get(0), team()))
+            .getApprovalThreshold());
   }
 
   private static List<EntityReference> users(int count) {
@@ -113,7 +147,7 @@ class CreateTaskTest {
 
     List<EntityReference> resolved =
         CreateTask.resolveExistingTaskAssignees(
-            existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
+            existingTask, List.of(workflowAssignee), List.of(workflowAssignee), "review");
 
     assertNull(resolved);
   }
@@ -141,7 +175,7 @@ class CreateTaskTest {
 
     List<EntityReference> resolved =
         CreateTask.resolveExistingTaskAssignees(
-            existingTask, List.of(workflowAssignee), List.of(workflowAssignee));
+            existingTask, List.of(workflowAssignee), List.of(workflowAssignee), "review");
 
     assertNull(resolved);
   }
@@ -159,9 +193,38 @@ class CreateTaskTest {
         new Task().withId(UUID.randomUUID()).withWorkflowStageId("review").withAssignees(null);
 
     List<EntityReference> resolved =
-        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(workflowAssignee), null);
+        CreateTask.resolveExistingTaskAssignees(
+            existingTask, List.of(workflowAssignee), null, "review");
 
     assertEquals(List.of(workflowAssignee), resolved);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"assigned,new", "assigned,ack", "ack,new"})
+  void returningIncidentClearsAssigneesInTheStageUpdate(String currentStage, String targetStage) {
+    Task existingTask =
+        new Task()
+            .withType(TaskEntityType.TestCaseResolution)
+            .withWorkflowStageId(currentStage)
+            .withAssignees(users(1));
+
+    assertEquals(
+        List.of(),
+        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(), List.of(), targetStage));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"new,ack", "new,assigned", "ack,resolved", "assigned,resolved", "new,new"})
+  void staleEmptyAssigneesDoNotClearLaterAssignments(String currentStage, String targetStage) {
+    List<EntityReference> assignees = users(1);
+    Task existingTask =
+        new Task()
+            .withType(TaskEntityType.TestCaseResolution)
+            .withWorkflowStageId(currentStage)
+            .withAssignees(assignees);
+    assertEquals(
+        assignees,
+        CreateTask.resolveExistingTaskAssignees(existingTask, List.of(), List.of(), targetStage));
   }
 
   @Test

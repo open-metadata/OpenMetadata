@@ -51,6 +51,7 @@ public class ContainerBuilder {
    * Set custom extension data.
    */
   public ContainerBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

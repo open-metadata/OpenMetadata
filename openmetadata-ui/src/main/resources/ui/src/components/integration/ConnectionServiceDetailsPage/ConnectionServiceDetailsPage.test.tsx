@@ -24,7 +24,9 @@ import { getDatabases } from '../../../rest/databaseAPI';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
+import { DATA_ASSETS_TAB_KEY } from './useServiceAssetCounts';
 
 // ── Mock Data ─────────────────────────────────────────────────────────────
 
@@ -404,7 +406,20 @@ jest.mock('./ServiceFollowButton', () => ({
 
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
-  default: () => null,
+  default: ({
+    extraInfo,
+    isTestingDisabled,
+  }: {
+    extraInfo?: string;
+    isTestingDisabled?: boolean;
+  }) => (
+    <>
+      <span data-testid="test-connection-extra-info">{extraInfo}</span>
+      <span data-testid="test-connection-disabled">
+        {String(isTestingDisabled)}
+      </span>
+    </>
+  ),
 }));
 
 jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
@@ -459,6 +474,50 @@ jest.mock('./useServiceAssetCounts', () => ({
   ...jest.requireActual('./useServiceAssetCounts'),
   useServiceAssetCounts: (...args: unknown[]) =>
     mockUseServiceAssetCounts(...args),
+}));
+
+let mockIsAdminUser = true;
+jest.mock('../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
+}));
+
+let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
+  id: 'user-1',
+};
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
+}));
+
+let mockAgentCounts = { metadata: 0, collateAI: 0 };
+const mockUseServiceAgents = jest.fn();
+jest.mock('./useServiceAgents', () => ({
+  useServiceAgents: (...args: unknown[]) => {
+    mockUseServiceAgents(...args);
+
+    return {
+      agentCounts: mockAgentCounts,
+      autoPilotAction: { isDisabled: false, isLoading: false },
+      collateAgentsList: [],
+      ingestionPipelines: [],
+      isCollateAgentLoading: false,
+      isIngestionPipelineLoading: false,
+    };
+  },
+}));
+
+jest.mock('./ServiceAgentsTab', () => ({
+  __esModule: true,
+  default: () => <div data-testid="service-agents-tab" />,
+}));
+
+jest.mock('../../ServiceInsights/ServiceInsightsTab', () => ({
+  __esModule: true,
+  default: () => <div data-testid="service-insights-tab" />,
+}));
+
+jest.mock('./ServiceAutoPilotButton', () => ({
+  __esModule: true,
+  default: () => <div data-testid="service-auto-pilot-button" />,
 }));
 
 const mockDataAssetsTab = jest.fn();
@@ -567,7 +626,9 @@ describe('ConnectionServiceDetailsPage', () => {
   beforeEach(() => {
     mockFooterInset = 0;
     jest.clearAllMocks();
-    mockTabParam = undefined;
+    mockTabParam = DATA_ASSETS_TAB_KEY;
+    mockIsAdminUser = true;
+    mockCurrentUser = { id: 'user-1' };
     mockServiceCategory = 'databaseServices';
     mockFqn = 'test-service';
     mockPermissions.database = {};
@@ -606,7 +667,9 @@ describe('ConnectionServiceDetailsPage', () => {
     );
   });
 
-  it('defaults to the dataAssets tab when nothing is contributed and there is no tab param', async () => {
+  it('defaults to the data assets tab when nothing is contributed and there is no tab param', async () => {
+    mockTabParam = undefined;
+
     await act(async () => {
       render(<ConnectionServiceDetailsPage />);
     });
@@ -614,6 +677,10 @@ describe('ConnectionServiceDetailsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
     });
+
+    expect(
+      screen.queryByTestId('service-insights-tab')
+    ).not.toBeInTheDocument();
   });
 
   it('falls back to the default tab for an invalid tab param', async () => {
@@ -626,6 +693,64 @@ describe('ConnectionServiceDetailsPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
     });
+  });
+
+  it('passes the service ingestion runner to the connection test', async () => {
+    const extraInfoSpy = jest
+      .spyOn(serviceUtilClassBase, 'getServiceExtraInfo')
+      .mockReturnValue({ name: 'hybrid-runner' } as ReturnType<
+        typeof serviceUtilClassBase.getServiceExtraInfo
+      >);
+    mockTabParam = 'connection';
+
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('test-connection-extra-info')
+      ).toHaveTextContent('hybrid-runner');
+    });
+    extraInfoSpy.mockRestore();
+  });
+
+  it('keeps the connection test disabled until the ingestion runners load', async () => {
+    let finishExtraInfo: () => void = () => undefined;
+    const loadSpy = jest
+      .spyOn(serviceUtilClassBase, 'getExtraInfo')
+      .mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishExtraInfo = resolve;
+        })
+      );
+    const extraInfoSpy = jest
+      .spyOn(serviceUtilClassBase, 'getServiceExtraInfo')
+      .mockReturnValue({ name: 'hybrid-runner' } as ReturnType<
+        typeof serviceUtilClassBase.getServiceExtraInfo
+      >);
+    mockTabParam = 'connection';
+
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+
+    expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+      'true'
+    );
+
+    await act(async () => finishExtraInfo());
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('test-connection-extra-info')
+      ).toHaveTextContent('hybrid-runner');
+      expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+        'false'
+      );
+    });
+    loadSpy.mockRestore();
+    extraInfoSpy.mockRestore();
   });
 
   it('switches to the connection tab and updates the URL', async () => {
@@ -663,27 +788,31 @@ describe('ConnectionServiceDetailsPage', () => {
       );
     };
 
-    it('offers a dashboard service its data models, between its dashboards and its connection', async () => {
+    it('offers a dashboard service its data models, right after its dashboards', async () => {
       mockServiceCategory = 'dashboardServices';
       await renderPage();
 
       const labels = tabLabels();
 
-      expect(labels).toContain('label.data-model-plural');
-      expect(labels.indexOf('label.data-model-plural')).toBe(
-        labels.indexOf('label.connection') - 1
-      );
+      expect(labels.slice(1)).toEqual([
+        'label.data-model-plural',
+        'label.insight-plural',
+        'label.agent-plural',
+        'label.connection',
+      ]);
     });
 
-    it('offers a drive service its files and spreadsheets, before its connection', async () => {
+    it('offers a drive service its files and spreadsheets, right after its primary assets', async () => {
       mockServiceCategory = 'driveServices';
       await renderPage();
 
       const labels = tabLabels();
 
-      expect(labels.slice(-3)).toEqual([
+      expect(labels.slice(1)).toEqual([
         'label.file-plural',
         'label.spreadsheet-plural',
+        'label.insight-plural',
+        'label.agent-plural',
         'label.connection',
       ]);
     });
@@ -748,9 +877,14 @@ describe('ConnectionServiceDetailsPage', () => {
       'never mounts %s for a service without it',
       async (tabKey, tabComponent) => {
         mockTabParam = tabKey;
-        await renderPage();
+        await act(async () => {
+          render(<ConnectionServiceDetailsPage />);
+        });
 
-        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
+        await waitFor(() =>
+          expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+        );
+
         expect(tabComponent).not.toHaveBeenCalled();
       }
     );
@@ -866,49 +1000,60 @@ describe('ConnectionServiceDetailsPage', () => {
     );
   });
 
-  // As classic: metadata and security services have no child assets, so no data-assets tab.
-  describe.each(['metadataServices', 'securityServices'])('%s', (category) => {
+  // As classic: metadata and security services have no child assets, so no data-assets or
+  // insights tab; a security service has no agents either.
+  describe.each([
+    [
+      'metadataServices',
+      ['label.agent-plural', 'label.connection'],
+      'service-agents-tab',
+    ],
+    ['securityServices', ['label.connection'], 'edit-connection-button'],
+  ])('%s', (category, expectedTabs, defaultTabTestId) => {
     beforeEach(() => {
       mockServiceCategory = category;
+      mockTabParam = undefined;
     });
 
-    it('offers no data-assets tab and opens on the connection', async () => {
+    it('offers no data-assets or insights tab, as classic', async () => {
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+        expect(screen.getByTestId(defaultTabTestId)).toBeInTheDocument()
       );
 
-      expect(tabLabels()).toEqual(['label.connection']);
+      expect(tabLabels()).toEqual(expectedTabs);
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
       expect(getDatabases).not.toHaveBeenCalled();
     });
 
-    it('lands a data-assets deep link on the connection instead', async () => {
+    it('lands a data-assets deep link on the default tab instead', async () => {
       mockTabParam = 'dataAssets';
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       await waitFor(() =>
-        expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument()
+        expect(screen.getByTestId(defaultTabTestId)).toBeInTheDocument()
       );
 
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
     });
 
-    // Classic also hides the connection from those who may not edit it, leaving no tab.
-    it('offers a read-only user no tab, as classic', async () => {
+    // Classic also hides the connection from those who may not edit it.
+    it('offers a read-only user no connection tab, as classic', async () => {
       mockServicePermission = { ViewAll: true, ViewBasic: true };
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
       });
 
       expect(
-        within(screen.getByRole('tablist')).queryAllByRole('button')
-      ).toEqual([]);
+        within(screen.getByRole('tablist'))
+          .queryAllByRole('button')
+          .map((tab) => tab.textContent)
+      ).toEqual(expectedTabs.filter((label) => label !== 'label.connection'));
       expect(mockDataAssetsTab).not.toHaveBeenCalled();
     });
   });
@@ -1322,6 +1467,16 @@ describe('ConnectionServiceDetailsPage', () => {
       });
     };
 
+    it('offers no AutoPilot trigger, which has no service to run on', async () => {
+      await renderDeleted();
+
+      await screen.findByTestId('service-header');
+
+      expect(
+        screen.queryByTestId('service-auto-pilot-button')
+      ).not.toBeInTheDocument();
+    });
+
     it('marks the service as deleted in the header', async () => {
       await renderDeleted();
 
@@ -1442,11 +1597,12 @@ describe('ConnectionServiceDetailsPage', () => {
     });
 
     it('sorts a low-order contribution ahead of the dataAssets built-in and makes it the default', async () => {
-      // dataAssets is order 40; a contribution ordered 10 (as Collate's future summary tab will be)
+      // dataAssets is order 20; a contribution ordered 10 (as Collate's future summary tab will be)
       // must land first and become the tab shown when there is no tab param.
       contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_TABS] = [
         { ...CONTRIBUTED_TAB, order: 10 },
       ];
+      mockTabParam = undefined;
 
       await act(async () => {
         render(<ConnectionServiceDetailsPage />);
@@ -1548,6 +1704,141 @@ describe('ConnectionServiceDetailsPage', () => {
       expect(
         screen.queryByRole('button', { name: 'Trigger AutoPilot' })
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('insights, agents and AutoPilot', () => {
+    beforeEach(() => {
+      mockTabParam = undefined;
+      mockAgentCounts = { metadata: 0, collateAI: 0 };
+    });
+
+    it('leads with the data assets, then insights and agents, then the connection', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+      );
+
+      expect(tabLabels()).toEqual([
+        'label.database-plural',
+        'label.insight-plural',
+        'label.agent-plural',
+        'label.connection',
+      ]);
+    });
+
+    it('offers the agents only to admins and the owners, as classic', async () => {
+      mockIsAdminUser = false;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+      );
+
+      expect(tabLabels()).not.toContain('label.agent-plural');
+    });
+
+    it.each([
+      ['owns the service', { id: 'owner-1' }],
+      ['is in an owner team', { id: 'user-2', teams: [{ id: 'team-1' }] }],
+    ])('offers the agents to a non-admin who %s', async (_, user) => {
+      mockIsAdminUser = false;
+      mockCurrentUser = user;
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        owners: [
+          { id: 'owner-1', type: 'user' },
+          { id: 'team-1', type: 'team' },
+        ],
+      });
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() => expect(tabLabels()).toContain('label.agent-plural'));
+    });
+
+    it('badges the agents tab with the metadata and AI agents together', async () => {
+      mockAgentCounts = { metadata: 4, collateAI: 2 };
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(screen.getByTestId('tab-badge-agents')).toHaveTextContent('6');
+    });
+
+    it('opens the agents tab from a deep link', async () => {
+      mockTabParam = 'agents';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('service-agents-tab')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByTestId('service-insights-tab')
+      ).not.toBeInTheDocument();
+    });
+
+    it('drops a plugin tab or action still registered under a built-in key', async () => {
+      contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_TABS] = [
+        { ...CONTRIBUTED_TAB, key: 'agents', label: 'Plugin Agents' },
+        { ...CONTRIBUTED_TAB, key: 'insights', label: 'Plugin Insights' },
+      ];
+      contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_ACTIONS] = [
+        {
+          key: 'trigger-auto-pilot',
+          label: 'Plugin AutoPilot',
+          onClick: jest.fn(),
+        },
+      ];
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+      );
+
+      expect(screen.queryByText('Plugin Agents')).not.toBeInTheDocument();
+      expect(screen.queryByText('Plugin Insights')).not.toBeInTheDocument();
+      expect(screen.queryByText('Plugin AutoPilot')).not.toBeInTheDocument();
+      expect(screen.getAllByTestId('service-auto-pilot-button')).toHaveLength(
+        1
+      );
+    });
+
+    it('fetches the AI agents only when a plugin contributes the widget that lists them', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(mockUseServiceAgents).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fetchAiAgents: false })
+      );
+
+      contributionsByPoint[EXTENSION_POINTS.SERVICE_DETAILS_AI_AGENTS_WIDGET] =
+        [{ key: 'ai-agents', component: () => null }];
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(mockUseServiceAgents).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fetchAiAgents: true })
+      );
     });
   });
 

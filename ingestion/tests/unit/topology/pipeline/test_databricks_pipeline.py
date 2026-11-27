@@ -235,8 +235,7 @@ class DatabricksPipelineTests(TestCase):
     maxDiff = None
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         log_ansi_encoded_string(message="init")
         test_connection.return_value = False
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)

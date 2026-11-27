@@ -1,9 +1,9 @@
 # Binding a table's columns shows each suggested property, and keeps every binding the step does not show
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `OntologyColumnMappingStep.test.tsx`; `OntologyBindingSuggestion.utils.test.ts`; `dataColumnLayout.test.ts`; `OntologyNativeDataMode.spec.ts` ("Binding a table suggests a property for each of its columns"); `OntologyNativeDataColumns.spec.ts`
+- **Guard:** `OntologyColumnMappingStep.test.tsx` *(openmetadata-collate)*; `OntologyBindingSuggestion.utils.test.ts` *(openmetadata-collate)*; `dataColumnLayout.test.ts`; `OntologyNativeDataMode.spec.ts` *(openmetadata-collate)* ("Binding a table suggests a property for each of its columns"); `OntologyNativeDataColumns.spec.ts` *(openmetadata-collate)*
 - **Related:** PR #36868, ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
 
 ## Context
@@ -36,3 +36,7 @@ Binding takes one more screen than the prototype's picker, and **Skip** keeps th
 A column's extra bindings show as a count on its row and are edited elsewhere. A new caller of
 `replaceAsset` that edits part of a table's bindings must start from the existing list in the same
 way.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

@@ -15,11 +15,14 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
@@ -53,7 +56,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -70,6 +75,10 @@ import org.openmetadata.service.util.RequestEntityCache;
 public class ContextMemoryExtractedApprovalIT {
   private static final String APPROVAL = "/v1/contextCenter/memories/extractedApproval";
   private static final String PAGES = "v1/contextCenter/pages";
+  private static final String MEMORIES = "v1/contextCenter/memories";
+
+  /** Asked by no other test, so a decision on it holds nothing a concurrent test approves. */
+  private static final String RETAINER_DAY = "On which day is the Zephyrine retainer invoiced?";
 
   @Test
   void anAdminApprovesAPendingFactAndLeavesTwoValuesOfOneQuestionAndADraft(TestNamespace ns) {
@@ -137,6 +146,56 @@ public class ContextMemoryExtractedApprovalIT {
     assertEquals(1, preview.getApproved());
     assertEquals(1, result.getApproved());
     assertEquals(ContextMemoryStatus.APPROVED, status(window));
+  }
+
+  /**
+   * Another user's private copy links the original's memories by their source edges alone, so the
+   * original's owner approves them as themselves: nothing they approve names a file they cannot
+   * read, the copy sorting first by name included.
+   */
+  @Test
+  void anOriginalsOwnerApprovesTheMemoriesAnotherUsersPrivateCopyAlsoStates(TestNamespace ns) {
+    EntityReference original = file(ns, "b-original", shared().USER1_REF);
+    EntityReference copy = privateFile(ns, "a-private-copy", shared().USER2_REF);
+    ContextMemory window = stored(ns, original, "What is the refund window?", "30 days", pending());
+    ContextMemory fee = stored(ns, original, "What is the refund fee?", "5%", pending());
+    memoryRepository().linkExtractedMemory(window.getId(), copy);
+    memoryRepository().linkExtractedMemory(fee.getId(), copy);
+
+    ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), original);
+    ExtractedMemoryApproval result =
+        approve(SdkClients.user1Client(), original, preview.getApprovable());
+
+    assertEquals(Set.of(window.getId(), fee.getId()), comparedIds(preview.getApprovable()));
+    assertEquals(2, result.getApproved());
+    assertEquals(0, result.getFailed());
+    assertEquals(ContextMemoryStatus.APPROVED, status(window));
+    assertEquals(ContextMemoryStatus.APPROVED, status(fee));
+  }
+
+  /**
+   * A decision in the document itself is that document's own rule to apply: beside the figure an
+   * admin rejected there, the other figure the document states is its owner's to approve, as a
+   * retired value no longer answers the question.
+   */
+  @Test
+  void aDocumentsOwnerApprovesAFigureBesideTheOneRejectedInThatDocument(TestNamespace ns)
+      throws Exception {
+    EntityReference file = file(ns, "retainer-invoicing", shared().USER1_REF);
+    ContextMemory fifth = stored(ns, file, RETAINER_DAY, "It is invoiced on the 5th.", pending());
+    ContextMemory tenth = stored(ns, file, RETAINER_DAY, "It is invoiced on the 10th.", pending());
+    reject(fifth);
+    awaitIndexedIn(file, fifth, ContextMemoryStatus.REJECTED);
+
+    ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), file);
+    ExtractedMemoryApproval result =
+        approve(SdkClients.user1Client(), file, preview.getApprovable());
+
+    assertEquals(Set.of(tenth.getId()), comparedIds(preview.getApprovable()));
+    assertEquals(List.of(), preview.getNeedsDecision());
+    assertEquals(1, result.getApproved());
+    assertEquals(ContextMemoryStatus.APPROVED, status(tenth));
+    assertEquals(ContextMemoryStatus.REJECTED, status(fifth));
   }
 
   @Test
@@ -287,6 +346,41 @@ public class ContextMemoryExtractedApprovalIT {
     return assertThrows(OpenMetadataException.class, request).getStatusCode();
   }
 
+  /** An admin rejects the memory in its panel. */
+  private static void reject(ContextMemory memory) throws Exception {
+    ContextMemory current =
+        RestClient.admin().getById(MEMORIES, memory.getId(), "", ContextMemory.class);
+    RestClient.admin()
+        .patch(
+            MEMORIES,
+            memory.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextMemory.class)
+                .withEntityStatus(ContextMemoryStatus.REJECTED),
+            ContextMemory.class);
+  }
+
+  /** Approval reads decisions from the memory index, which shows a write once refreshed. */
+  private static void awaitIndexedIn(
+      EntityReference anchor, ContextMemory memory, ContextMemoryStatus status) {
+    ListParams anchored =
+        new ListParams()
+            .setLimit(50)
+            .addFilter("assets", anchor.getId().toString())
+            .addFilter("statuses", status.value());
+    ContextMemoryService memories =
+        new ContextMemoryService(SdkClients.adminClient().getHttpClient());
+    Awaitility.await("the memory is searchable in its stage")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    memories.list(anchored).getData().stream()
+                        .anyMatch(listed -> listed.getId().equals(memory.getId()))));
+  }
+
   private static ContextMemoryStatus pending() {
     return ContextMemoryStatus.UNPROCESSED;
   }
@@ -355,6 +449,17 @@ public class ContextMemoryExtractedApprovalIT {
   }
 
   private static EntityReference file(TestNamespace ns, String label, EntityReference owner) {
+    return file(ns, label, owner, null);
+  }
+
+  /** A file only its owner may read. */
+  private static EntityReference privateFile(
+      TestNamespace ns, String label, EntityReference owner) {
+    return file(ns, label, owner, new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+  }
+
+  private static EntityReference file(
+      TestNamespace ns, String label, EntityReference owner, MemoryShareConfig sharing) {
     ContextFile file =
         fileRepository()
             .create(
@@ -365,6 +470,7 @@ public class ContextMemoryExtractedApprovalIT {
                     .withHeadContentId(UUID.randomUUID().toString())
                     .withProcessingStatus(ProcessingStatus.Processed)
                     .withOwners(owner == null ? null : List.of(owner))
+                    .withShareConfig(sharing)
                     .withUpdatedBy(Entity.ADMIN_USER_NAME)
                     .withUpdatedAt(System.currentTimeMillis()));
     return ns.trackRoot(Entity.CONTEXT_FILE, file).getEntityReference();

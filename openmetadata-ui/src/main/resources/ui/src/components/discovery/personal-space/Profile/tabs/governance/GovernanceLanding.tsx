@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import {
   IntakeForms,
   KnowledgePanels,
@@ -25,6 +25,7 @@ interface LandingCard {
   descriptionKey: string;
   icon: FC<{ className?: string }>;
   id: string;
+  isDeprecated?: boolean;
   titleKey: string;
   view: GovernanceView;
 }
@@ -42,6 +43,7 @@ const LANDING_CARDS: LandingCard[] = [
     icon: IntakeForms,
     titleKey: 'label.intake-form-plural',
     descriptionKey: 'message.intake-form-plural-description',
+    isDeprecated: true,
     view: { type: 'intake-list' },
   },
 ];
@@ -90,12 +92,19 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                   <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {t(card.titleKey)}
-                  </Typography>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {t(card.titleKey)}
+                    </Typography>
+                    {card.isDeprecated && (
+                      <Badge color="warning" size="sm" type="pill-color">
+                        {t('label.deprecated')}
+                      </Badge>
+                    )}
+                  </Box>
                   <Typography
                     className="tw:text-tertiary tw:line-clamp-2"
                     size="text-sm"

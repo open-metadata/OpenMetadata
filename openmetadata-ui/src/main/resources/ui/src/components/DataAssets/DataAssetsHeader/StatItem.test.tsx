@@ -87,6 +87,45 @@ describe('StatItem', () => {
     expect(screen.getByTestId('up-vote')).not.toHaveAttribute('data-active');
   });
 
+  it('keeps the active colour while the active item is hovered', () => {
+    const { rerender } = render(
+      <StatItem
+        isActive
+        count={1}
+        countTestId="up-vote-count"
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    const activeLabel = screen.getByTestId('up-vote-count').parentElement;
+
+    expect(activeLabel).toHaveClass(
+      'tw:text-brand-secondary',
+      'tw:hover:text-brand-secondary'
+    );
+    expect(activeLabel).not.toHaveClass('tw:hover:text-secondary');
+
+    rerender(
+      <StatItem
+        count={0}
+        countTestId="up-vote-count"
+        isActive={false}
+        testId="up-vote"
+        tooltip="Up Vote"
+        onClick={jest.fn()}
+      />
+    );
+
+    const idleLabel = screen.getByTestId('up-vote-count').parentElement;
+
+    expect(idleLabel).toHaveClass(
+      'tw:text-quaternary',
+      'tw:hover:text-secondary'
+    );
+  });
+
   it('does not expose an enabled action when no click handler exists', () => {
     render(
       <StatItem

@@ -23,11 +23,12 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { useTestCaseResultTab } from './useTestCaseResultTab';
 
-const mockSetTestCase = jest.fn();
+const mockMergeTestCase = jest.fn();
 
 const mockUseTestCaseStore = {
   testCase: MOCK_TEST_CASE_DATA as unknown as TestCase,
-  setTestCase: mockSetTestCase,
+  setTestCase: jest.fn(),
+  mergeTestCase: mockMergeTestCase,
   showAILearningBanner: false,
   testCasePermission: MOCK_PERMISSIONS,
   isTabExpanded: true,
@@ -217,7 +218,7 @@ describe('useTestCaseResultTab', () => {
         expect.objectContaining({ path: '/description' }),
       ])
     );
-    expect(mockSetTestCase).toHaveBeenCalled();
+    expect(mockMergeTestCase).toHaveBeenCalled();
     expect(showSuccessToast).toHaveBeenCalled();
     expect(mockRefetchChangeSummary).toHaveBeenCalled();
   });
@@ -245,7 +246,7 @@ describe('useTestCaseResultTab', () => {
       MOCK_TEST_CASE_DATA.id,
       expect.arrayContaining([expect.objectContaining({ path: '/tags' })])
     );
-    expect(mockSetTestCase).toHaveBeenCalled();
+    expect(mockMergeTestCase).toHaveBeenCalled();
   });
 
   it('handleDataProductsSave should patch the data products', async () => {

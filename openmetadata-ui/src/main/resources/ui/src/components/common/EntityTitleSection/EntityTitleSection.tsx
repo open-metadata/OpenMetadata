@@ -24,6 +24,7 @@ import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { twMerge } from 'tailwind-merge';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
@@ -157,7 +158,7 @@ export const EntityTitleSection = ({
 
   return (
     <div
-      className={classNames(
+      className={twMerge(
         'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-primary',
         className
       )}>

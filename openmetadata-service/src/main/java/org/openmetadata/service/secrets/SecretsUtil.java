@@ -13,14 +13,20 @@
 
 package org.openmetadata.service.secrets;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.util.ReflectionUtil;
 
 public final class SecretsUtil {
+
+  private static final String GET_SSL_CONFIG = "getSslConfig";
 
   private SecretsUtil() {
     /* Final Class */
@@ -91,6 +97,40 @@ public final class SecretsUtil {
           String.format(
               "Failed to load the connection of type [%s]. Did migrations run properly?\n%s",
               connectionType, message),
+          e);
+    }
+  }
+
+  /**
+   * Rejects an {@code sslConfig} that does not match the SSL client schema. It is a JSON Schema
+   * {@code oneOf}, so the POJO field is an untyped {@code Object}: the class converters keep any map
+   * they cannot type, and the service saved a config the ingestion runner then refused to load. Call
+   * this on writes only; already-stored configs must stay readable so they can be fixed by a PATCH.
+   */
+  public static void validateSslConfig(Object connectionConfig, String connectionType) {
+    if (untypedSslConfig(connectionConfig) instanceof Map<?, ?> sslConfig) {
+      requireValidSslConfig(sslConfig, connectionType);
+    }
+  }
+
+  private static Object untypedSslConfig(Object connectionConfig) {
+    return Arrays.stream(connectionConfig.getClass().getMethods())
+        .filter(method -> GET_SSL_CONFIG.equals(method.getName()))
+        .filter(method -> method.getParameterCount() == 0 && method.getReturnType() == Object.class)
+        .findFirst()
+        .map(method -> ReflectionUtil.getObjectFromMethod(method, connectionConfig))
+        .orElse(null);
+  }
+
+  private static void requireValidSslConfig(Map<?, ?> sslConfig, String connectionType) {
+    try {
+      JsonUtils.convertValue(sslConfig, ValidateSSLClientConfig.class);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidServiceConnectionException(
+          buildExceptionMessageUnrecognizedField(
+              "Invalid sslConfig for '%s' connection: unrecognized field '%s'. Supported fields are"
+                  + " caCertificate, sslCertificate and sslKey.",
+              "Invalid sslConfig for '%s' connection.", e.getMessage(), connectionType),
           e);
     }
   }

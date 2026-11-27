@@ -34,21 +34,28 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
+const MCP_TOOL_FIELDS = ['disabledTools', 'offeredTools'] as const;
+
 /**
  * Base URL and allowed origins are the two settings an operator has to be able to correct from
  * the product: an empty allowlist makes the MCP server reject every cross-origin request, and a
  * wrong base URL breaks the OAuth metadata behind a load balancer. The response cap depends on
  * which MCP clients connect, so it is set here too. Everything else in the stored
  * `mcpConfiguration` (timeouts, plus fields no code reads) stays out of the form but is merged
- * back on save, because the PUT replaces the whole setting. Read-only mode and disabled tools are
- * admin choices, so they are edited here as well.
+ * back on save, because the PUT replaces the whole setting. Read-only mode and the two tool lists
+ * are admin choices, so they are edited here as well.
  */
 const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
+  'enabled',
+  'dynamicClientRegistrationEnabled',
+  'allowedRedirectHosts',
+  'allowLoopbackRedirects',
+  'allowNativeRedirects',
   'baseUrl',
   'allowedOrigins',
   'maxResponseChars',
   'readOnly',
-  'disabledTools',
+  ...MCP_TOOL_FIELDS,
 ];
 
 const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
@@ -60,23 +67,31 @@ const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
  * failed, or the server registered none) the picker would offer only "All", which saves nothing, so
  * the field falls back to typing names, like Allowed Origins.
  */
-export const withMcpToolNames = (
+const withMcpToolNames = (
   schema: RJSFSchema,
   toolNames: string[] | undefined,
-  savedNames: string[] = []
+  config: MCPConfiguration
 ): RJSFSchema => {
   if (!toolNames) {
     return schema;
   }
-  const field = schema.properties?.disabledTools as RJSFSchema;
-  const disabledTools: RJSFSchema = isEmpty(toolNames)
-    ? omit(field, ['uiFieldType', 'expandAllValue'])
-    : {
-        ...field,
-        items: { type: 'string', enum: uniq([...toolNames, ...savedNames]) },
-      };
+  const properties = { ...schema.properties };
+  for (const name of MCP_TOOL_FIELDS) {
+    const field = properties[name] as RJSFSchema | undefined;
+    if (field) {
+      properties[name] = isEmpty(toolNames)
+        ? omit(field, ['uiFieldType', 'expandAllValue'])
+        : {
+            ...field,
+            items: {
+              type: 'string',
+              enum: uniq([...toolNames, ...(config[name] ?? [])]),
+            },
+          };
+    }
+  }
 
-  return { ...schema, properties: { ...schema.properties, disabledTools } };
+  return { ...schema, properties };
 };
 
 /**
@@ -89,6 +104,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
   const [toolNames, setToolNames] = useState<string[]>();
   const [isFetching, setIsFetching] = useState<boolean>(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
   // whole setting. Held in a ref because they never affect rendering.
@@ -124,6 +140,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
 
   const fetchMcpConfig = useCallback(async () => {
     setIsFetching(true);
+    setFetchFailed(false);
     try {
       applyConfig(await getMcpConfig());
     } catch (error) {
@@ -132,6 +149,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
         applyConfig({});
       } else {
+        setFetchFailed(true);
         showErrorToast(error as AxiosError);
       }
     } finally {
@@ -154,13 +172,16 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
   }, [fetchMcpConfig, fetchMcpTools]);
 
   const formSchema = useMemo(
-    () => withMcpToolNames(jsonSchema, toolNames, formConfig.disabledTools),
-    [jsonSchema, toolNames, formConfig.disabledTools]
+    () => withMcpToolNames(jsonSchema, toolNames, formConfig),
+    [jsonSchema, toolNames, formConfig]
   );
 
   const saveMcpConfig = useCallback(
     // Callers pass form data already run through `formatFormDataForSubmit`.
     async (formData: MCPConfiguration) => {
+      if (fetchFailed) {
+        return;
+      }
       setIsSaving(true);
       try {
         const payload = {
@@ -179,7 +200,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
         setIsSaving(false);
       }
     },
-    [applyConfig, t]
+    [applyConfig, fetchFailed, t]
   );
 
   return {
@@ -187,6 +208,7 @@ export const useMcpConfiguration = (jsonSchema: RJSFSchema) => {
     formSchema,
     formUiSchema,
     isEveryFieldManaged,
+    fetchFailed,
     isFetching,
     isSaving,
     sources,

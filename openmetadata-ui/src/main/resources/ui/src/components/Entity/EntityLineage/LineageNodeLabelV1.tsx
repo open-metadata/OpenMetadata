@@ -294,16 +294,15 @@ const EntityFooter = ({
   isOnlyShowColumnsWithLineageFilterActive,
 }: Omit<LineageNodeLabelProps, 'actions' | 'onEntityClick'>) => {
   const { t } = useTranslation();
-  const { childrenHeading } = useMemo(
+  const { childHeading, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
   );
   const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
-  const childrenInfoDropdownLabel = useMemo(
-    () => `${childrenCount} ${childrenHeading}`,
-    [childrenCount, childrenHeading]
-  );
+  const childrenInfoDropdownLabel = `${childrenCount} ${
+    childrenCount === 1 ? childHeading : childrenHeading
+  }`;
 
   const handleClickColumnInfoDropdown = useCallback(
     (e: React.MouseEvent) => {

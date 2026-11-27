@@ -355,7 +355,9 @@ describe('AIUserMenu', () => {
 
     fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile');
+    expect(mockSetHash).toHaveBeenCalledWith('profile', undefined, undefined, {
+      push: true,
+    });
   });
 
   it('opens My Data in the personal-space modal', () => {
@@ -413,7 +415,14 @@ describe('AIUserMenu', () => {
 
     fireEvent.click(screen.getByTestId('ask-user-menu-settings'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('preferences');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'preferences',
+      undefined,
+      undefined,
+      {
+        push: true,
+      }
+    );
     expect(mockNavigate).not.toHaveBeenCalledWith('/settings');
   });
 
@@ -423,17 +432,6 @@ describe('AIUserMenu', () => {
     fireEvent.click(screen.getByTestId('ai-user-menu-logout'));
 
     expect(mockOnLogoutHandler).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not offer an interface-mode switch', () => {
-    renderMenu();
-
-    expect(
-      screen.queryByTestId('interface-mode-option-classic')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('interface-mode-option-ai')
-    ).not.toBeInTheDocument();
   });
 
   describe('version fetch on mount', () => {

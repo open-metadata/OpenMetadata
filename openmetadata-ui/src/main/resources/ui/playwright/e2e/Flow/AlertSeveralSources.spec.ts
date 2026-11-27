@@ -137,11 +137,14 @@ test.describe('Alerts with several sources', () => {
     const capabilities = page.waitForResponse(
       '/api/v1/events/subscriptions/capabilities'
     );
-    await page.click('[data-testid="trigger-select-0"]');
-    await page
-      .getByRole('listbox')
-      .getByTestId('Get Schema Changes (Table)-filter-option')
-      .click();
+    // The trigger opens at the viewport's bottom edge, where react-aria's close-on-scroll can
+    // dismiss the popover mid-click; the helper centres the trigger and reopens it.
+    await selectOptionWithRetry(
+      page.getByTestId('trigger-select-0').getByRole('button'),
+      page
+        .getByRole('listbox')
+        .getByTestId('Get Schema Changes (Table)-filter-option')
+    );
     await capabilities;
 
     await expect(page.getByTestId('topic-warning')).toBeVisible();

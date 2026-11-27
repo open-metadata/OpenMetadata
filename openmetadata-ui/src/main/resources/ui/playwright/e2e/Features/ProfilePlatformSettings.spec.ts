@@ -148,6 +148,12 @@ const fillField = async (page: Page, testId: string, value: string) => {
 const saveSettings = (page: Page) =>
   clickAndWaitFor(page, page.getByTestId('save-button'), SETTINGS_PUT);
 
+const IMAGE_HOST = 'https://cdn.example.org';
+const FAVICON_URL = `${IMAGE_HOST}/favicon.svg`;
+const DARK_LOGO_URL = `${IMAGE_HOST}/logo-dark.svg`;
+const SVG_IMAGE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#f79009"/></svg>';
+
 // The app-mode and table & schema cards write one key of `appConfiguration`
 // with a JSON Patch on the typed endpoint, not the generic settings PUT.
 const saveAppConfiguration = async (page: Page) => {
@@ -487,6 +493,73 @@ test.describe(
       );
     });
 
+    test('lineage: asks before leaving unsaved edits, and only Discard drops them', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '4');
+
+      // Switching sidebar item is held until the user decides.
+      await page.getByTestId('profile-nav-bots').click();
+      const prompt = page.getByTestId('unsaved-changes-popover');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+      await expect(prompt).toBeHidden();
+      await expect(
+        page.getByTestId('field-upstream').locator('input')
+      ).toHaveValue('4');
+
+      // Esc is held the same way; Discard then closes without saving.
+      await page.keyboard.press('Escape');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-confirm').click();
+      await expect(page.getByTestId('ai-profile-page')).toBeHidden();
+      expect(settings.puts).toHaveLength(0);
+    });
+
+    test('browser Back walks the opened views and never reopens a saved form', async ({
+      page,
+    }) => {
+      await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('2');
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+
+      await page.goForward();
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '3');
+      await saveSettings(page);
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+
+      // Save replaced the editor's entry, so Back stays on the page view.
+      await page.goBack();
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+      await expect(page.getByTestId('field-upstream')).toBeHidden();
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+    });
+
     test('default app mode: saves the selected mode', async ({ page }) => {
       const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
         initial: { defaultAppMode: null },
@@ -545,33 +618,50 @@ test.describe(
         page,
         'customUiThemePreference'
       );
+      // The form loads each edited logo URL as an image before it lets you save.
+      await page.route(`${IMAGE_HOST}/**`, (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          headers: { 'Access-Control-Allow-Origin': '*' },
+          body: SVG_IMAGE,
+        })
+      );
       await openPlatformSettings(page);
       await openCard(page, 'theme');
       await expect(page.getByTestId('theme-settings')).toBeVisible();
 
       await header(page).getByTestId('edit-button').click();
       await page.getByTestId('infoColor-color-input').fill('#123456');
+
+      // An invalid URL is flagged as it is typed and blocks Save.
       await fillField(page, 'customFaviconUrlPath', 'favicon.ico');
-      await page.getByTestId('save-button').click();
-      await expect(
-        page.getByText('Favicon URL is not valid url')
-      ).toBeVisible();
+      await expect(page.getByTestId('customFaviconUrlPath-error')).toHaveText(
+        'Enter a full URL starting with https://'
+      );
+      await expect(page.getByTestId('save-button')).toBeDisabled();
       expect(settings.puts).toHaveLength(0);
 
-      await fillField(
-        page,
-        'customFaviconUrlPath',
-        'https://cdn.example.org/favicon.ico'
-      );
+      await fillField(page, 'customFaviconUrlPath', FAVICON_URL);
+      await page.getByTestId('customLogoDarkUrlPath-add').click();
+      await fillField(page, 'customLogoDarkUrlPath', DARK_LOGO_URL);
+      await expect(
+        page.getByTestId('customLogoDarkUrlPath-preview')
+      ).toHaveAttribute('src', DARK_LOGO_URL);
+      // Save waits until every edited URL has loaded as an image.
+      await expect(page.getByTestId('save-button')).toBeEnabled();
       await saveSettings(page);
 
       expect(settings.puts[0].config_value).toMatchObject({
         customLogoConfig: {
-          customFaviconUrlPath: 'https://cdn.example.org/favicon.ico',
+          customFaviconUrlPath: FAVICON_URL,
+          customLogoDarkUrlPath: DARK_LOGO_URL,
         },
         customTheme: { infoColor: '#123456' },
       });
       await expect(page.getByTestId('infoColor-value')).toHaveText('#123456');
+      await expect(
+        page.getByTestId('customLogoDarkUrlPath-preview')
+      ).toHaveAttribute('src', DARK_LOGO_URL);
 
       await clickAndWaitFor(
         page,
@@ -580,7 +670,10 @@ test.describe(
       );
       expect(settings.puts[1].config_value).toMatchObject({
         customTheme: { infoColor: '', primaryColor: '' },
-        customLogoConfig: { customFaviconUrlPath: '' },
+        customLogoConfig: {
+          customFaviconUrlPath: '',
+          customLogoDarkUrlPath: '',
+        },
       });
     });
 

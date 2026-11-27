@@ -58,8 +58,18 @@ public final class SparqlQueryLimits {
   }
 
   /** A local query exceeded its isolated execution or transport budget. */
-  public static final class QueryLimitExceededException extends IllegalArgumentException {
+  public static class QueryLimitExceededException extends IllegalArgumentException {
     public QueryLimitExceededException(final String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * The ontology itself does not fit the local worker, so no query over it can run there; one the
+   * triplestore serves can still answer it.
+   */
+  public static final class OntologyTooLargeException extends QueryLimitExceededException {
+    public OntologyTooLargeException(final String message) {
       super(message);
     }
   }

@@ -21,6 +21,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.NoopCompletionClient;
 
 class AiProviderHolderTest {
 
@@ -28,6 +31,7 @@ class AiProviderHolderTest {
   void resetHolders() {
     AiProviderHolder.reset();
     LlmConfigHolder.initialize(null);
+    LLMClientHolder.initialize(null);
   }
 
   @Test
@@ -72,6 +76,15 @@ class AiProviderHolderTest {
     AiProviderHolder.reset();
 
     assertInstanceOf(LlmAiProvider.class, AiProviderHolder.get());
+  }
+
+  /** OSS judges duplicate facts with the shared LLM client; a distribution may supply its own. */
+  @Test
+  void theBuiltInProviderJudgesDuplicatesWithTheSharedLlmClient() {
+    LLMCompletionClient shared = new NoopCompletionClient();
+    LLMClientHolder.setForTesting(shared);
+
+    assertSame(shared, new LlmAiProvider().duplicateJudge().orElseThrow());
   }
 
   public static final class FakeProvider implements AiProvider {

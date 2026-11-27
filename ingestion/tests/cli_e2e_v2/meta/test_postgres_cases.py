@@ -8,18 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Offline Postgres ownership gates and independently declared catalog scope."""
+"""Offline Postgres ownership gates."""
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
-from metadata.generated.schema.entity.data.table import DataType, TableType
-
 from ..features.database.pipelines import LineagePipeline, MetadataPipeline
 from ..postgres.baseline import build_postgres_baseline
 from ..postgres.connector import postgres_invocation
-from ..postgres.expected import postgres_expected
 from ..postgres.source import PostgresSource
 from ..server import ServerConfig
 
@@ -87,19 +84,3 @@ def test_invocation_rejects_closed_and_mismatched_sources(owned_source, monkeypa
     owned_source._closed = True
     with pytest.raises(ValueError, match="already been closed"):
         _invocation(owned_source)
-
-
-def test_expected_catalog_contains_all_22_native_view_columns():
-    expected = postgres_expected("fixture_service", database="e2e", schema="e2epgowned")
-    assert expected.databases[0].name == "e2e"
-    schema = expected.databases[0].schemas[0]
-    assert {table.name for table in schema.tables} == {
-        "customers",
-        "transactions",
-        "all_datatypes",
-        "view_all_datatypes",
-    }
-    view = next(table for table in schema.tables if table.name == "view_all_datatypes")
-    assert view.table_type is TableType.View
-    assert len(view.columns) == 22
-    assert {column.name: column.data_type for column in view.columns}["column13"] is DataType.JSON

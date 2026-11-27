@@ -16,6 +16,7 @@ package org.openmetadata.service.datacontract.odcs;
 import static java.util.Map.entry;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -162,9 +163,21 @@ public final class ODCSSlaMapper {
     }
   }
 
+  private static String stringValue(Entry entry, String field, Object value) {
+    if (value != null && !(value instanceof String)) {
+      warn(
+          entry,
+          field,
+          String.format(
+              "SLA `%s` field `%s` must be a string, so it is not imported.",
+              entry.property().getProperty(), field));
+    }
+    return value instanceof String string ? string : null;
+  }
+
   private static void applyAvailability(ContractSLA sla, Entry entry) {
-    sla.setAvailabilityTime(entry.property().getValue());
-    String timezone = entry.property().getValueExt();
+    sla.setAvailabilityTime(stringValue(entry, "value", entry.property().getValue()));
+    String timezone = stringValue(entry, "valueExt", entry.property().getValueExt());
     if (TIMEZONES.contains(timezone)) {
       sla.setTimezone(ContractSLA.Timezone.fromValue(timezone));
     } else if (!nullOrEmpty(timezone)) {
@@ -177,20 +190,29 @@ public final class ODCSSlaMapper {
     }
   }
 
+  /** ODCS allows the value as any JSON type; only whole numbers map onto the contract SLA. */
   private static Integer wholeNumber(Entry entry) {
-    String value = entry.property().getValue();
+    Object value = entry.property().getValue();
     Integer number = null;
-    try {
-      number = value == null ? null : Integer.valueOf(value.trim());
-    } catch (NumberFormatException e) {
-      LOG.debug("ODCS SLA value '{}' is not a whole number", value);
+    if (value instanceof Number numeric) {
+      try {
+        number = new BigDecimal(numeric.toString()).intValueExact();
+      } catch (ArithmeticException | NumberFormatException e) {
+        LOG.debug("ODCS SLA value '{}' cannot be represented as an integer", value);
+      }
+    } else if (value instanceof String textual) {
+      try {
+        number = Integer.valueOf(textual.trim());
+      } catch (NumberFormatException e) {
+        LOG.debug("ODCS SLA value '{}' is not a whole number", value);
+      }
     }
     if (number == null) {
       warn(
           entry,
           "value",
           String.format(
-              "SLA `%s` value `%s` is not a whole number, so it is not imported.",
+              "SLA `%s` value `%s` is not a whole number in the 32-bit integer range, so it is not imported.",
               entry.property().getProperty(), value));
     }
     return number;
@@ -223,10 +245,11 @@ public final class ODCSSlaMapper {
     return nullOrEmpty(element) ? null : element.substring(element.lastIndexOf('.') + 1);
   }
 
+  /** Exported as the number it is, so the document keeps the type the agreement was written in. */
   private static ODCSSlaProperty property(String name, Integer value, Enum<?> unit) {
     return new ODCSSlaProperty()
         .withProperty(name)
-        .withValue(String.valueOf(value))
+        .withValue(value)
         .withUnit(unit == null ? null : unit.toString());
   }
 

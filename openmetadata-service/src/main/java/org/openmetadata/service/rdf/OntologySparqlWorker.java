@@ -41,6 +41,7 @@ import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryCapacityException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.BoundedOutputStream;
+import org.openmetadata.service.rdf.SparqlQueryLimits.OntologyTooLargeException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededException;
 
 @Slf4j
@@ -62,7 +63,7 @@ final class OntologySparqlWorker implements AutoCloseable {
   private static final String LOADING_ONTOLOGY = "loading-ontology";
   private static final String INPUT_LIMIT_MESSAGE =
       "SPARQL ontology exceeds the maximum input size of 32 MiB";
-  private static final String OUTPUT_LIMIT_MESSAGE =
+  static final String OUTPUT_LIMIT_MESSAGE =
       "SPARQL result exceeds the maximum response size of %,d bytes"
           .formatted(SparqlQueryLimits.MAX_OUTPUT_BYTES);
 
@@ -130,7 +131,16 @@ final class OntologySparqlWorker implements AutoCloseable {
     }
   }
 
+  /** Any input refusal is the ontology's size: query text is bounded long before this point. */
   private void writeInput(final Model model, final SparqlQuery request) throws IOException {
+    try {
+      writeBoundedInput(model, request);
+    } catch (final QueryLimitExceededException exception) {
+      throw new OntologyTooLargeException(exception.getMessage());
+    }
+  }
+
+  private void writeBoundedInput(final Model model, final SparqlQuery request) throws IOException {
     try (final DataOutputStream output =
         new DataOutputStream(
             new BufferedOutputStream(
@@ -217,10 +227,11 @@ final class OntologySparqlWorker implements AutoCloseable {
   }
 
   static QueryLimitExceededException memoryLimitFailure(final Path directory) {
-    return new QueryLimitExceededException(
-        Files.exists(directory.resolve(LOADING_ONTOLOGY))
-            ? "SPARQL ontology is too large for the worker memory budget while loading"
-            : "SPARQL query or inference exceeds the execution memory budget");
+    return Files.exists(directory.resolve(LOADING_ONTOLOGY))
+        ? new OntologyTooLargeException(
+            "SPARQL ontology is too large for the worker memory budget while loading")
+        : new QueryLimitExceededException(
+            "SPARQL query or inference exceeds the execution memory budget");
   }
 
   private String readResult() throws IOException {

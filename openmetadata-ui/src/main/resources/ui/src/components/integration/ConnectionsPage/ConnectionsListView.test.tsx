@@ -268,6 +268,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Skeleton: () => (
       <span className="tw:animate-pulse" data-testid="count-skeleton" />
     ),
+    FeaturedIcon: ({ icon }: { icon?: React.ReactNode }) => <>{icon}</>,
     Table,
     // Renders only its children (the wrapped name), not the `title`, so the name
     // appears once — the row itself carries navigation via onAction.

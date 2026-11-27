@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.context.center;
 
+import java.util.EnumSet;
+import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -24,7 +26,68 @@ import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
  * holds it for review, and approving a document's memories leaves it for a decision.
  */
 public final class MemoryReviewHolds {
+  /** Stages a review leaves a pill in once a person decided it; Draft still awaits a decision. */
+  static final Set<ContextMemoryStatus> DECIDED_STAGES =
+      EnumSet.of(
+          ContextMemoryStatus.REJECTED,
+          ContextMemoryStatus.SUPERSEDED,
+          ContextMemoryStatus.INVALIDATED,
+          ContextMemoryStatus.DEPRECATED,
+          ContextMemoryStatus.ARCHIVED);
+
   private MemoryReviewHolds() {}
+
+  /**
+   * Whether a person decided {@code pill}: a review retired it, or a person corrected it (Manual).
+   * Nothing records who approved an Approved pill, so approval alone is no decision here.
+   */
+  public static boolean isDecided(ContextMemory pill) {
+    return pill.getSourceType() == ContextMemorySourceType.MANUAL
+        || DECIDED_STAGES.contains(pill.getEntityStatus());
+  }
+
+  /**
+   * Whether a person's decision on {@code decided} holds {@code value} for review across documents:
+   * the value replaces a number of the same question, as re-extraction pairs them, or may be the
+   * figure a correction replaced.
+   */
+  public static boolean holdsAcrossDocuments(ContextMemory decided, ContextMemory value) {
+    return isDecided(decided)
+        && haveConflictingNumbers(decided, value)
+        && (askTheSameQuestion(decided, value) || mayBeTheReplacedFigure(decided, value));
+  }
+
+  /** As beside an edit-modal correction on re-extraction; another year is still another fact. */
+  private static boolean mayBeTheReplacedFigure(ContextMemory correction, ContextMemory value) {
+    return mayHaveBeenReplaced(correction, value)
+        && !MemoryTextSimilarity.hasConflictingNumbers(
+            correction.getQuestion(), value.getQuestion());
+  }
+
+  /** Only a value stating a number can replace one, so only such a value can be held. */
+  public static boolean statesANumber(ContextMemory value) {
+    return MemoryTextSimilarity.hasNumbers(factText(value));
+  }
+
+  /** A replaced number, by value, in the question or the answer: never the same fact. */
+  public static boolean haveConflictingNumbers(ContextMemory a, ContextMemory b) {
+    return MemoryTextSimilarity.hasConflictingNumbers(factText(a), factText(b));
+  }
+
+  /**
+   * How re-extraction pairs a value with a decided pill: the same question, the whole pair clearing
+   * the identity bar. A question for another year is another question.
+   */
+  static boolean askTheSameQuestion(ContextMemory a, ContextMemory b) {
+    return sameQuestion(a, b)
+        && MemoryTextSimilarity.weighted(
+                a.getQuestion(), a.getAnswer(), b.getQuestion(), b.getAnswer())
+            >= MemoryTextSimilarity.IDENTITY_THRESHOLD;
+  }
+
+  private static String factText(ContextMemory pill) {
+    return pill.getQuestion() + " " + pill.getAnswer();
+  }
 
   /**
    * The engine maintains the pills extraction creates, Approved or awaiting review (Unprocessed).

@@ -50,14 +50,17 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntSupplier;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -73,7 +76,9 @@ import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.MemoryDerivations;
+import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -110,10 +115,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       "Memories are extracted from context files and pages, not from a %s";
   static final String EXTRACTED_APPROVAL_NEEDS_OWNER =
       "Only an admin or an owner of the document can approve its extracted memories";
+  private static final String DECISIONS_INDEX_UNAVAILABLE =
+      "The memory search index, which holds other documents' decisions, is unavailable";
   private static final Set<String> EXTRACTION_SOURCES = Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
-  static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
+  public static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
 
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
@@ -124,7 +131,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
-    extractedMemoryApprover = new ExtractedMemoryApprover(repository);
+    extractedMemoryApprover =
+        new ExtractedMemoryApprover(
+            repository,
+            SemanticMemoryDuplicateFinder.forDecisionChecks(repository)::isHeldByADecision);
   }
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
@@ -274,7 +284,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, fieldsParam),
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
                 filter,
                 limitParam,
                 before,
@@ -305,7 +315,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
    * the rows the caller may list are recounted. Never less than the page itself
    * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
-  static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
+  public static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
     return total > listedOnPage ? Math.max(recount.getAsInt(), listedOnPage) : total;
   }
 
@@ -318,7 +328,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, null),
+                ContextMemoryVisibility.guardFields(entityType, null),
                 filter,
                 MAX_VISIBLE_COUNT_SCAN,
                 null,
@@ -327,10 +337,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return ContextMemoryVisibility.filterListed(scanned, securityContext).size();
   }
 
+  /** The Query evidence the caller may view, and the files the last change names they may read. */
   private ResultList<ContextMemory> withVisibleEvidence(
       SecurityContext securityContext, ResultList<ContextMemory> memories) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         memories.getData(), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(memories.getData(), securityContext);
     return memories;
   }
 
@@ -343,6 +355,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (response.getEntity() instanceof ContextMemory memory) {
       ContextMemory copy =
           ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
+      ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;
@@ -351,6 +364,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         List.of(memory), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), securityContext);
     return memory;
   }
 
@@ -757,6 +771,17 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
   }
 
+  /**
+   * Every stored version, wherever the base class serves it (the versions, one version or the
+   * history), names a file only to a caller who may read it now
+   * (ADR:2026-09-29-context-file-memory-reuse).
+   */
+  @Override
+  protected Optional<UnaryOperator<ContextMemory>> snapshotRedaction(
+      SecurityContext securityContext) {
+    return Optional.of(ContextMemoryDocumentAccess.versionRedaction(securityContext));
+  }
+
   /** Current visibility governs every response containing a stored memory. */
   private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
     ContextMemory current =
@@ -958,6 +983,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   }
 
   @GET
+  @Path("/extractionAvailability")
+  @Operation(
+      operationId = "getMemoryExtractionAvailability",
+      summary = "Get whether memories can be extracted",
+      description =
+          "Whether memories can be extracted from Context Center documents and articles now, and"
+              + " why not when they cannot. Any authenticated user may read it.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Whether memory extraction is available",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ExtractionAvailability.class)))
+      })
+  public ExtractionAvailability getExtractionAvailability() {
+    return AiProviderHolder.get().extractionAvailability();
+  }
+
+  @GET
   @Path("/extractedApproval")
   @Operation(
       operationId = "previewExtractedMemoryApproval",
@@ -965,8 +1011,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       description =
           "List the Unprocessed memories extracted from a context file or page that approval would"
               + " approve, each as read, and those it leaves for a decision: a second value of a"
-              + " question another pending or Approved memory of the document asks, or a value held"
-              + " beside a decided memory of the document. Admins and the document's owners only.",
+              + " question another pending or Approved memory of the document asks, a value held"
+              + " beside a decided memory of the document, a memory another document it is linked"
+              + " to leaves for a decision, and a value a person's decision in another document"
+              + " holds. Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -981,7 +1029,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         @ApiResponse(
             responseCode = "403",
             description = "Not an admin or an owner of the document"),
-        @ApiResponse(responseCode = "404", description = "Document not found")
+        @ApiResponse(responseCode = "404", description = "Document not found"),
+        @ApiResponse(responseCode = "503", description = DECISIONS_INDEX_UNAVAILABLE)
       })
   public ExtractedMemoryApproval previewExtractedApproval(
       @Context SecurityContext securityContext,
@@ -1010,8 +1059,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
               + " request lists as its preview read them. A listed memory that changed since, or that"
               + " approval would no longer approve, fails; a memory the request does not list is"
               + " untouched. A second value of a question another pending or Approved memory of the"
-              + " document asks, and a value held beside a decided memory of the document, stay"
-              + " pending and are returned for a decision. Admins and the document's owners only.",
+              + " document asks, a value held beside a decided memory of the document, a memory"
+              + " another document it is linked to leaves for a decision, and a value a person's"
+              + " decision in another document holds stay pending and are returned for a decision."
+              + " Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1026,7 +1077,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         @ApiResponse(
             responseCode = "403",
             description = "Not an admin or an owner of the document"),
-        @ApiResponse(responseCode = "404", description = "Document not found")
+        @ApiResponse(responseCode = "404", description = "Document not found"),
+        @ApiResponse(responseCode = "503", description = DECISIONS_INDEX_UNAVAILABLE)
       })
   public ExtractedMemoryApproval approveExtracted(
       @Context SecurityContext securityContext, @Valid @NotNull ApproveExtractedMemories request) {

@@ -69,6 +69,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     content,
   }: React.PropsWithChildren<{ content: React.ReactNode }>) =>
     React.createElement(React.Fragment, null, children, content),
+  Card: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement('div', props, children),
   Box: ({
     children,
     ...props
@@ -131,6 +136,30 @@ describe('AppModeSwitcher', () => {
     // (`label.classic`) since the mock only interpolates when passed
     // an explicit `mode` option.
     expect(getTrigger()).toHaveTextContent('label.classic mode');
+  });
+
+  it('shows the mode as a short pill label in the AI rail', () => {
+    render(<AppModeSwitcher variant="pill" />);
+
+    expect(getTrigger()).toHaveTextContent(/^label\.classic$/);
+  });
+
+  it('shows the full mode sentence on the bordered sidebar card', () => {
+    render(<AppModeSwitcher variant="card" />);
+
+    expect(getTrigger()).toHaveTextContent('label.classic mode');
+    expect(getTrigger()).not.toHaveAttribute('aria-label');
+  });
+
+  it('names the icon-only trigger for the collapsed sidebar and still opens the switcher', () => {
+    render(<AppModeSwitcher variant="icon" />);
+
+    expect(getTrigger()).toHaveAccessibleName('label.classic mode');
+    expect(getTrigger()).toHaveTextContent(/^$/);
+
+    fireEvent.click(getTrigger());
+
+    expect(getCard()).toBeInTheDocument();
   });
 
   it('renders both Classic and AI options', () => {

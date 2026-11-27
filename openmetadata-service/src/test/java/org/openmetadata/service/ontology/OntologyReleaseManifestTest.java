@@ -137,11 +137,23 @@ class OntologyReleaseManifestTest {
   void limitsTotalCapturedBytes() {
     String payload =
         "{\"description\":\"" + "x".repeat(OntologyReleaseManifest.MAX_MEMBER_BYTES - 100) + "\"}";
+    OntologyReleaseMember largest = member(payload);
+    int oneTooMany =
+        (int) (OntologyReleaseManifest.MAX_RELEASE_BYTES / largest.getPayloadBytes()) + 1;
     List<OntologyReleaseMember> members =
-        IntStream.range(0, 65)
-            .mapToObj(index -> member(payload).withMemberId(new UUID(0, index)))
+        IntStream.range(0, oneTooMany)
+            .mapToObj(
+                index ->
+                    new OntologyReleaseMember()
+                        .withReleaseId(largest.getReleaseId())
+                        .withMemberKind(largest.getMemberKind())
+                        .withMemberId(new UUID(0, index))
+                        .withPayload(largest.getPayload())
+                        .withPayloadDigest(largest.getPayloadDigest())
+                        .withPayloadBytes(largest.getPayloadBytes()))
             .toList();
     assertThrows(BadRequestException.class, () -> OntologyReleaseManifest.digest(members));
+    assertDoesNotThrow(() -> OntologyReleaseManifest.digest(members.subList(0, oneTooMany - 1)));
   }
 
   private static OntologyReleaseMember member(String json) {

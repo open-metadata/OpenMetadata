@@ -81,10 +81,7 @@ const SubPanel: React.FC<SubPanelProps> = ({
   );
 
   return (
-    <div
-      className="ask-sub-panel"
-      data-testid="ask-sub-panel"
-      data-tour-step="sub-panel">
+    <div className="ask-sub-panel" data-testid="ask-sub-panel">
       <header className="ask-sub-panel__header">
         <span
           className="ask-sub-panel__title"

@@ -21,15 +21,22 @@ import {
 } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
 import {
   getGraphRelationCategory,
+  getRelationLabelKey,
   normalizeRelationKey,
   RelationCategory,
   toSentenceCase,
 } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.relations';
+import type {
+  GraphData as RdfGraphData,
+  GraphNode as RdfGraphNode,
+} from '../../../rest/rdfAPI.interface';
 import Fqn from '../../Fqn';
 import { identifyGraphEdges } from './knowledge-graph.utils';
 
 export const isConceptNode = (node: GraphNode) =>
-  ['glossaryterm', 'concept', 'term'].includes(node.type.toLowerCase());
+  ['glossaryterm', 'ontologyconcept', 'concept', 'term'].includes(
+    node.type.toLowerCase()
+  );
 
 export const isCoverageNode = (node: GraphNode) =>
   [
@@ -49,7 +56,7 @@ export const isCoverageNode = (node: GraphNode) =>
     'term',
   ].includes(node.type.toLowerCase());
 
-export const getGraphNodeLabel = (node: GraphNode) => {
+export const getGraphNodeLabel = (node: RdfGraphNode) => {
   // The RDF projection can return an empty label (seen on glossary terms),
   // which left the ontology concept picker and the node card blank.
   if (!node.label?.trim()) {
@@ -70,6 +77,7 @@ export const getGraphNodeLabel = (node: GraphNode) => {
 };
 
 const mappingPredicates = new Set([
+  'boundasset',
   'hasglossaryterm',
   'hasglossary',
   'hastag',
@@ -94,16 +102,23 @@ const isMappingPredicate = (predicate: string) =>
     predicate.split(/[/#:]/).pop()?.replace(/\s/g, '').toLowerCase() ?? ''
   );
 
-/** Reads every predicate as a phrase, the way the design labels edges. */
-export const sentenceCaseGraphLabels = (
-  data: GraphData | null
+/**
+ * Reads every predicate as a phrase in the user's language, the way the design
+ * labels edges. The raw predicate moves to `relationType` because the
+ * classifiers key on `relationType ?? label` and must not see the translation.
+ */
+export const localizeGraphLabels = (
+  data: GraphData | null,
+  translate: (key: string) => string
 ): GraphData | null =>
   data && {
     ...data,
     edges: data.edges.map((edge) => {
-      const label = toSentenceCase(edge.label);
+      const relationType = edge.relationType ?? edge.label;
+      const key = getRelationLabelKey(relationType);
+      const label = key ? translate(key) : toSentenceCase(edge.label);
 
-      return label === edge.label ? edge : { ...edge, label };
+      return label === edge.label ? edge : { ...edge, label, relationType };
     }),
   };
 
@@ -208,19 +223,13 @@ export const restrictToEntityLevel = (
   };
 };
 
-export const relabelGraphNodes = (data: GraphData | null): GraphData | null => {
-  if (!data) {
-    return null;
-  }
-
-  return {
-    ...data,
-    nodes: data.nodes.map((node) => ({
-      ...node,
-      label: getGraphNodeLabel(node),
-    })),
-  };
-};
+export const relabelGraphNodes = (data: RdfGraphData): GraphData => ({
+  ...data,
+  nodes: data.nodes.map((node) => ({
+    ...node,
+    label: getGraphNodeLabel(node),
+  })),
+});
 
 export const annotateGraphCoverage = (
   data: GraphData,

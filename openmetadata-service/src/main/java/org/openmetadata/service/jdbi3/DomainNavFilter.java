@@ -128,6 +128,9 @@ public final class DomainNavFilter {
           || DomainFilterExclusions.keepsUnassigned(entityType)) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }
+      if (DomainFilterExclusions.keepsSystemProvided(entityType)) {
+        filter.addQueryParam(ListFilter.KEEPS_SYSTEM_PROVIDED, Boolean.TRUE.toString());
+      }
     }
   }
 }

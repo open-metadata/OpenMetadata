@@ -180,7 +180,8 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -419,10 +420,16 @@ export interface Connection {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -443,6 +450,16 @@ export interface Connection {
      * API token to authenticate with Omni.
      */
     token?: string;
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      */
@@ -479,6 +496,9 @@ export interface Connection {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -496,6 +516,9 @@ export interface AuthenticationType {
     /**
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      */
     username?: string;
@@ -508,13 +531,23 @@ export interface AuthenticationType {
      */
     personalAccessTokenSecret?: string;
     /**
-     * Authentication type identifier.
-     */
-    authType?: AuthType;
-    /**
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
     /**
      * OAuth 2.0 client secret.
      */

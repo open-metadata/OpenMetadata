@@ -34,7 +34,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -290,7 +293,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block tw:text-left"
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"
@@ -314,7 +317,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     const hasMore = listLength > LIST_CAP;
 
     if (!roles?.length) {
-      return '--';
+      return NO_DATA_PLACEHOLDER;
     }
 
     return (
@@ -330,7 +333,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
             <Popover className="tw:overflow-y-auto" maxHeight={320}>
-              <Box className="tw:p-3" direction="col" gap={1}>
+              <Box className="tw:max-w-xs tw:p-3" direction="col" gap={1}>
                 {roles.slice(LIST_CAP).map(renderRoleItem)}
               </Box>
             </Popover>

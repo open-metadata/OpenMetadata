@@ -1,7 +1,7 @@
 # Image JDKs distrust a compromised CA by deleting its roots from cacerts, not by fingerprint-blocking its intermediates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes) · v3 2026-11-18 (the server and operator run on Corretto)
 - **Deciders:** @mohityadav766
 - **Guard:** the image build, which the step fails while any root in its list is still in the JDK's `cacerts`; `reviewer` for the rest
 - **Related:** #36087, #36088, open-metadata/openmetadata-collate#7792, open-metadata/openmetadata-collate#7816, open-metadata/ai-platform#1856, #36234, #36235
@@ -45,3 +45,8 @@ Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
 - This replaces the v1 consequence that the step deletes nothing once every base is on Temurin
   21.0.13. Temurin is not known to remove G1, G2 or AAA, so the step can only be dropped once no
   base ships any root in its list.
+
+**v3, 2026-11-18.** The server and k8s operator images now run on Amazon Corretto with the CA list
+it ships (ADR:2026-11-18-shipped-jvm-images-run-on-corretto). That list holds none of the six roots,
+so on those images the step deletes nothing and only checks. The olivaw and oss-scanner images
+still run on Temurin.

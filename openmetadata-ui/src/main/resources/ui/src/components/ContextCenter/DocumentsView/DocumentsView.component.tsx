@@ -26,7 +26,6 @@ import {
 import {
   Check,
   ChevronRight,
-  Copy01,
   Documents,
   DotsVertical,
   Download01,
@@ -48,22 +47,29 @@ import {
   ShareRole,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { EntityReference } from '../../../generated/entity/type';
+import { useMemoryExtraction } from '../../../hooks/discovery/context-center/useMemoryExtraction';
 import {
+  extractFileMemories,
+  getContextFileById,
   moveFileToFolder,
   moveFileToRoot,
   updateContextFile,
 } from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import MemoryExtractionMenuItem from '../../discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
@@ -144,7 +150,6 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                     aria-hidden="true"
                     className="tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
                     size={16}
-                    strokeWidth={2}
                   />
                 )}
               </Box>
@@ -196,6 +201,7 @@ const FileActions: FC<FileActionsProps> = ({
   isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onLoadMoreFolders,
 }) => {
@@ -203,6 +209,15 @@ const FileActions: FC<FileActionsProps> = ({
   const [isMoving, setIsMoving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isSharePickerOpen, setIsSharePickerOpen] = useState(false);
+  // Its response replaces the row, never merging through onFileUpdated, which keeps neverExtracted.
+  const extraction = useMemoryExtraction<ContextFile>({
+    action: getFileExtractionAction(file),
+    documentId: file.id,
+    owners: file.owners,
+    reload: () => getContextFileById(file.id),
+    request: () => extractFileMemories(file.id),
+    onUpdate: (refreshed) => onFileRefreshed?.(refreshed),
+  });
 
   const applyShareConfig = async (shareConfig: ShareConfig) => {
     try {
@@ -278,7 +293,7 @@ const FileActions: FC<FileActionsProps> = ({
     }
   };
 
-  if (!canEdit && !canDelete) {
+  if (!canEdit && !canDelete && !extraction.action) {
     return null;
   }
 
@@ -331,7 +346,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -398,7 +412,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -418,6 +431,8 @@ const FileActions: FC<FileActionsProps> = ({
                   </Dropdown.Popover>
                 </SubmenuTrigger>
               )}
+
+              <MemoryExtractionMenuItem {...extraction} />
 
               {canDelete && (
                 <Dropdown.Item data-testid="delete-btn" id="delete">
@@ -609,6 +624,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onOpenPreview,
   onPreview,
@@ -706,13 +722,20 @@ const FileRow: FC<FileRowProps> = ({
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
-              <Typography
-                className="tw:text-quaternary"
+              {/* The row opens the preview; keep clicks on the user link from reaching it. */}
+              <span
+                className="tw:min-w-0"
                 data-testid="document-updated-by"
-                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
-                size="text-xs">
-                {file.updatedBy}
-              </Typography>
+                role="presentation"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}>
+                <UserPopOverCard
+                  showUserName
+                  className="tw:min-w-0 tw:overflow-hidden tw:text-xs tw:text-quaternary"
+                  profileWidth={16}
+                  userName={file.updatedBy}
+                />
+              </span>
             </>
           )}
           {file.updatedAt && (
@@ -749,11 +772,7 @@ const FileRow: FC<FileRowProps> = ({
         onKeyDown={(e) => e.stopPropagation()}>
         {/* Hidden on narrow rows (preview panel open) so it can't squeeze the file details */}
         <span className="tw:hidden tw:@xl:inline-flex">
-          <DocumentStatusBadge
-            error={file.processingError}
-            stats={file.extractionStats}
-            status={file.processingStatus}
-          />
+          <DocumentStatusBadge file={file} />
         </span>
         <ButtonUtility
           className={`tw:ml-1.5${
@@ -772,9 +791,7 @@ const FileRow: FC<FileRowProps> = ({
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton size="lg" url={rowUrl}>
-          <Copy01 data-icon aria-hidden="true" />
-        </CopyLinkButton>
+        <CopyButton size="lg" value={rowUrl} />
         <FileActions
           canDelete={canDelete}
           canEdit={canEdit}
@@ -784,6 +801,7 @@ const FileRow: FC<FileRowProps> = ({
           isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onFileRefreshed={onFileRefreshed}
           onFileUpdated={onFileUpdated}
           onLoadMoreFolders={onLoadMoreFolders}
         />
@@ -823,6 +841,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileRefreshed,
   onFileUpdated,
   onOpenPreview,
   onPreview,
@@ -935,6 +954,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onFileRefreshed={onFileRefreshed}
                     onFileUpdated={onFileUpdated}
                     onLoadMoreFolders={onLoadMoreFolders}
                     onOpenPreview={onOpenPreview}

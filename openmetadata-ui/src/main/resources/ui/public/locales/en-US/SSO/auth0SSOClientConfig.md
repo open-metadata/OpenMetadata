@@ -55,6 +55,12 @@ $$section
 - **Note:**
   - Must be registered in Auth0 → Applications → Authentication → Redirect URIs
   - Always use HTTPS in production
+  - The web callback defaults to `{your-domain}/callback`. Register the exact URL shown in this field.
+
+**MCP sign-in**
+
+- Enable the authorization code grant for this client. MCP requests `response_type=code`. Keep the existing browser redirect and its response type (the public web app defaults to `id_token`).
+- Add `<om-url>/mcp/callback` to the Auth0 application’s allowed callback URLs. Use the external address where users reach the OpenMetadata MCP server, for example `https://catalog.example.com/mcp/callback`.
 $$
 
 $$section
@@ -257,19 +263,6 @@ $$section
 - **Example:** {"prompt": "select_account", "domain_hint": "company.com"}
 - **Why it matters:** Allows customization of Auth0 authentication behavior.
 - **Note:** Common parameters include `prompt`, `domain_hint`, `login_hint`
-$$
-
-$$section
-### OIDC Callback URL / Redirect URI $(id="callbackUrl")
-
-- **Definition:** URL where Auth0 redirects after authentication.
-- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
-- **Example:** https://openmetadata.company.com/callback
-- **Why it matters:** Must be registered in your Auth0 configuration.
-- **Note:**
-  - **This field is read-only** - it cannot be edited
-  - **Copy this exact URL** and add it to Auth0's allowed redirect URIs list
-  - Format is always: `{your-domain}/callback`
 $$
 
 $$section
