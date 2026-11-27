@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { toast } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { ReactNode, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

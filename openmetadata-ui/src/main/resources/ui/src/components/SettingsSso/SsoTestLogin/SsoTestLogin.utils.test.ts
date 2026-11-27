@@ -19,12 +19,12 @@ import {
 } from '../../../generated/system/testLoginResult';
 import enUS from '../../../locale/languages/en-us.json';
 import {
-  STAGE_LABEL_KEYS,
   getChangedPaths,
   isBrowserTestLogin,
   isTestLoginSettled,
   labelConfigurationPaths,
   requiresTestLogin,
+  STAGE_LABEL_KEYS,
   toConnectionStepState,
 } from './SsoTestLogin.utils';
 
