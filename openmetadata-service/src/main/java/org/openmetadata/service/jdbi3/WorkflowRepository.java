@@ -3,15 +3,22 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.WORKFLOW;
 
 import java.util.List;
+import java.util.Set;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
@@ -72,11 +79,82 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     storeMany(workflows);
   }
 
-  /** Remove the secrets from the secret manager */
+  @Override
+  protected void store(Workflow workflow, boolean update, Double expectedVersion) {
+    writeWithSharedCredentials(
+        List.of(workflow), update, () -> super.store(workflow, update, expectedVersion));
+  }
+
+  @Override
+  protected void storeMany(List<Workflow> entities) {
+    writeWithSharedCredentials(entities, false, () -> super.storeMany(entities));
+  }
+
+  @Override
+  protected void updateMany(List<Workflow> entities) {
+    writeWithSharedCredentials(entities, true, () -> super.updateMany(entities));
+  }
+
+  private void writeWithSharedCredentials(List<Workflow> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+    } else {
+      SecretMapOwnership ownership =
+          new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+      withOwnershipLock(
+          ownership,
+          () -> {
+            List<SecretInventory> previous =
+                update
+                    ? entities.stream().map(entity -> storedInventory(manager, entity)).toList()
+                    : List.of();
+            write.run();
+            for (int i = 0; i < previous.size(); i++) {
+              SecretInventory before = previous.get(i);
+              if (before != null) {
+                scheduleRelease(
+                    ownership, before, manager.secretInventory(entities.get(i)).references());
+              }
+            }
+          });
+    }
+  }
+
+  private SecretInventory storedInventory(SecretsManager manager, Workflow entity) {
+    String json = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    return json == null ? null : manager.secretInventory(JsonUtils.readValue(json, Workflow.class));
+  }
+
+  private void withOwnershipLock(SecretMapOwnership ownership, Runnable work) {
+    executeInTransaction(
+        () -> {
+          ownership.lock();
+          work.run();
+          return null;
+        });
+  }
+
+  private void scheduleRelease(
+      SecretMapOwnership ownership, SecretInventory before, Set<String> remaining) {
+    if (ownership.recordReleasedReferences(before, remaining)) {
+      PostCommitActionQueue.runOrDefer(
+          () -> withOwnershipLock(ownership, () -> ownership.clean(before.root())));
+    }
+  }
+
   @Override
   protected void postDelete(Workflow workflow, boolean hardDelete) {
     super.postDelete(workflow, hardDelete);
-    SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    manager.deleteSecretsFromWorkflow(workflow);
+    if (hardDelete && manager.getSecretsManagerProvider() != SecretsManagerProvider.DB) {
+      SecretInventory before = manager.secretInventory(workflow);
+      SecretMapOwnership ownership =
+          new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+      PostCommitActionQueue.runOrDefer(
+          () -> withOwnershipLock(ownership, () -> scheduleRelease(ownership, before, Set.of())));
+    }
   }
 
   @Override

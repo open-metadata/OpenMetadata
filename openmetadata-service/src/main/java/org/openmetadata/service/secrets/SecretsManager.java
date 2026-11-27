@@ -1172,6 +1172,13 @@ public abstract class SecretsManager {
     return secretInventory(config, buildSecretId(true, serviceType.value(), service.getName()));
   }
 
+  public SecretInventory secretInventory(Workflow workflow) {
+    Workflow typed =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    typed.setOpenMetadataServerConnection(null);
+    return secretInventory(typed, buildSecretId(true, "workflow", workflow.getName()));
+  }
+
   public SecretInventory secretInventory(IngestionPipeline pipeline) {
     IngestionPipeline typed = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
     IngestionPipelineBuilder.addDefinedConfigForRead(typed);

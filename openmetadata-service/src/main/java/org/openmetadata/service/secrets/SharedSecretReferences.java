@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -70,6 +71,13 @@ final class SharedSecretReferences {
                 handle,
                 Entity.getEntityRepository(Entity.INGESTION_PIPELINE),
                 entity -> manager.secretInventory((IngestionPipeline) entity),
+                missing);
+          }
+          if (!missing.isEmpty()) {
+            findIn(
+                handle,
+                Entity.getEntityRepository(Entity.WORKFLOW),
+                entity -> manager.secretInventory((Workflow) entity),
                 missing);
           }
         });

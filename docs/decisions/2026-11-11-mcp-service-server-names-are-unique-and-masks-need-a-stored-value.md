@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-23 (allocate a fresh id when another element still references a list element's default id); v5 2026-11-27 (stage replacements for committed fresh ids and retire them after commit); v6 2026-11-27 (retain references shared between configurations)
 - **Deciders:** backend
-- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`, `SecretsManagerNullSecretIT.replacingACommittedFreshReferenceStagesItsValueUntilCommit`, `SecretsManagerNullSecretIT.clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits`, `SecretsManagerNullSecretIT.anotherServiceCanResolveTheCredentialAfterItsOwnerChanges`, `SecretsManagerNullSecretIT.anExistingPipelineReferenceProtectsADeletedServicesCredential`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
+- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`, `SecretsManagerNullSecretIT.replacingACommittedFreshReferenceStagesItsValueUntilCommit`, `SecretsManagerNullSecretIT.clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits`, `SecretsManagerNullSecretIT.anotherServiceCanResolveTheCredentialAfterItsOwnerChanges`, `SecretsManagerNullSecretIT.anExistingPipelineReferenceProtectsADeletedServicesCredential`, `SecretsManagerNullSecretIT.aStoredTestConnectionWorkflowKeepsItsCredentialUntilHardDeletion`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
 - **Related:** open-metadata/openmetadata-collate#7962, ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
 
 ## Context
@@ -92,10 +92,12 @@ Passing through a reference unchanged keeps its id.
 
 ## Amendment (v6, 2026-11-27)
 
-A service or ingestion pipeline may reference a key owned by another configuration. When the last
-known local reference disappears, check current service and pipeline rows (including soft-deleted
-rows) under the existing database lock. Read bounded pages and stop as soon as every candidate
+A key owned by a service or ingestion pipeline may also be referenced by another service, pipeline,
+or automation workflow. When the last known local reference disappears, check their current rows,
+including soft-deleted rows, under the existing database lock. Read bounded pages and stop as soon as every candidate
 has a reference. This also covers configurations written before the ownership ledger and references
 wrapped in Fernet. The check reads local references without fetching provider values. If a key
 is still in use, keep its ownership and record its namespace against the normalized key. When
-another config releases the key, revisit the recorded owner after commit.
+another config releases the key, revisit the recorded owner after commit. Workflow writes share
+the same lock as service and pipeline writes, including bulk writes. A soft-deleted workflow can
+be restored and continues to hold its reference.

@@ -231,6 +231,18 @@ public final class SecretMapOwnership {
     save(deleted.root(), state);
   }
 
+  /** A borrowed key remains owned by its original configuration. */
+  public boolean recordReleasedReferences(SecretInventory before, Set<String> remaining) {
+    Set<String> released =
+        references.rootsReleasedBy(before.root(), before.references(), remaining);
+    if (!released.isEmpty()) {
+      State state = load(before.root());
+      state.cleanupRoots().addAll(released);
+      save(before.root(), state);
+    }
+    return !released.isEmpty();
+  }
+
   private static Set<String> priorReferences(Owner previous, SecretInventory original) {
     Set<String> references = new HashSet<>();
     if (previous != null) {

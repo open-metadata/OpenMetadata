@@ -43,9 +43,14 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -55,7 +60,9 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpHeaders;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.mcp.McpConnection.DiscoveryMethod;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig.TransportType;
@@ -1188,6 +1195,62 @@ public class SecretsManagerNullSecretIT {
             dbtRequest(database, pipelineName, Map.of()),
             IngestionPipeline.class);
     assertFalse(vault.getSecretsMap().containsKey(key));
+  }
+
+  @Test
+  void aStoredTestConnectionWorkflowKeepsItsCredentialUntilHardDeletion(TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(owner.getId().toString());
+    String shared = refs.get("alpha");
+    DatabaseConnection connection =
+        new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword(shared)));
+    Workflow workflow =
+        SdkClients.adminClient()
+            .workflows()
+            .create(
+                new CreateWorkflow()
+                    .withName(ns.shortPrefix() + "sharedWorkflow")
+                    .withWorkflowType(WorkflowType.TEST_CONNECTION)
+                    .withRequest(
+                        new TestServiceConnectionRequest()
+                            .withServiceType(ServiceType.DATABASE)
+                            .withConnectionType("Mysql")
+                            .withConnection(connection)));
+    owner.setConnection(
+        mcpDirectConnection(mcpServer("beta", refs.get("beta")), mcpServer("alpha", "rotated")));
+    ((McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE))
+        .storeEntity(owner, true);
+    RequestEntityCache.clear();
+    try {
+      Workflow read = SdkClients.ingestionBotClient().workflows().get(workflow.getId().toString());
+      String password =
+          JsonUtils.valueToTree(read.getRequest())
+              .at("/connection/config/authType/password")
+              .asText();
+      assertEquals(shared, password);
+      assertEquals("second-key", vault.getSecretValue(password));
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE, "/v1/automations/workflows/" + workflow.getId(), null);
+      assertEquals("second-key", vault.getSecretValue(password));
+    } finally {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/automations/workflows/" + workflow.getId() + "?hardDelete=true",
+              null);
+    }
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
   }
 
   private static McpService createMcpWithFreshReference(TestNamespace ns) {
