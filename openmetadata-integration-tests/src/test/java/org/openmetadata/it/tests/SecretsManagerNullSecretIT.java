@@ -1112,6 +1112,84 @@ public class SecretsManagerNullSecretIT {
     assertEquals("operator-test-value", vault.getSecretsMap().get(externalName));
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void anotherServiceCanResolveTheCredentialAfterItsOwnerChanges(boolean rotate, TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(owner.getId().toString());
+    String shared = refs.get("alpha");
+    McpService reader =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(ns.prefix("mcp_reader"))
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("reader", shared))));
+    ns.trackRoot(Entity.MCP_SERVICE, reader);
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+    owner.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")), mcpServer("alpha", rotate ? "rotated" : "")));
+    repository.storeEntity(owner, true);
+    RequestEntityCache.clear();
+
+    String readerRef = mcpBotReferences(reader.getId().toString()).get("reader");
+    assertEquals(shared, readerRef);
+    assertEquals("second-key", vault.getSecretValue(readerRef));
+    if (rotate) {
+      assertEquals(
+          "rotated", vault.getSecretValue(mcpBotReferences(owner.getId().toString()).get("alpha")));
+    }
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(reader.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  @Test
+  void anExistingPipelineReferenceProtectsADeletedServicesCredential(TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    String shared = mcpBotReferences(owner.getId().toString()).get("alpha");
+    DatabaseService database = DatabaseServiceTestFactory.createPostgres(ns);
+    String pipelineName = ns.prefix("dbt_shared_header");
+    IngestionPipeline pipeline =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .create(dbtRequest(database, pipelineName, Map.of()));
+    ns.trackRoot(Entity.INGESTION_PIPELINE, pipeline);
+
+    // The stored alias comes from before the current ownership ledger recorded this reference.
+    var pipelines = Entity.getCollectionDAO().ingestionPipelineDAO();
+    IngestionPipeline legacy = pipelines.findEntityById(pipeline.getId(), Include.ALL);
+    legacy.setSourceConfig(
+        dbtRequest(database, pipelineName, Map.of("Authorization", shared)).getSourceConfig());
+    vault.encryptIngestionPipeline(legacy);
+    pipelines.update(legacy);
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    IngestionPipeline stored =
+        Entity.getCollectionDAO()
+            .ingestionPipelineDAO()
+            .findEntityById(pipeline.getId(), Include.ALL);
+    String key = shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    assertTrue(vault.secretInventory(stored).references().contains(key));
+    assertEquals("second-key", vault.getSecretValue(shared));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/ingestionPipelines",
+            dbtRequest(database, pipelineName, Map.of()),
+            IngestionPipeline.class);
+    assertFalse(vault.getSecretsMap().containsKey(key));
+  }
+
   private static McpService createMcpWithFreshReference(TestNamespace ns) {
     String name = ns.prefix("mcp_fresh_reference");
     McpService service =

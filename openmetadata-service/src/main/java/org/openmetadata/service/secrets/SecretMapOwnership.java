@@ -26,9 +26,11 @@ public final class SecretMapOwnership {
   private static final ThreadLocal<Map<Handle, WriteInputs>> WRITE_INPUTS = new ThreadLocal<>();
   private final EntityExtensionDAO dao;
   private final SecretsManager manager;
+  private final SharedSecretReferences references;
 
   public SecretMapOwnership(EntityExtensionDAO dao, SecretsManager manager) {
     this.dao = dao;
+    this.references = new SharedSecretReferences(dao, manager);
     this.manager = manager;
   }
 
@@ -204,6 +206,11 @@ public final class SecretMapOwnership {
       }
     }
     state.owners().put(owner, new Owner(stored.references(), scalars));
+    state
+        .cleanupRoots()
+        .addAll(
+            references.rootsReleasedBy(
+                stored.root(), priorReferences(previous, original), stored.references()));
     save(stored.root(), state);
   }
 
@@ -216,11 +223,35 @@ public final class SecretMapOwnership {
     } else {
       state.owned().addAll(previous.scalars());
     }
+    state
+        .cleanupRoots()
+        .addAll(
+            references.rootsReleasedBy(
+                deleted.root(), priorReferences(previous, deleted), Set.of()));
     save(deleted.root(), state);
+  }
+
+  private static Set<String> priorReferences(Owner previous, SecretInventory original) {
+    Set<String> references = new HashSet<>();
+    if (previous != null) {
+      references.addAll(previous.references());
+    }
+    if (original != null) {
+      references.addAll(original.references());
+    }
+    return references;
   }
 
   public void clean(String root) {
     State state = load(root);
+    for (String retiredRoot : state.cleanupRoots()) {
+      cleanOwned(retiredRoot, load(retiredRoot));
+    }
+    state.cleanupRoots().clear();
+    cleanOwned(root, state);
+  }
+
+  private void cleanOwned(String root, State state) {
     Set<String> liveReferences = new HashSet<>();
     state
         .owners()
@@ -236,20 +267,31 @@ public final class SecretMapOwnership {
         removed.add(owned);
       }
     }
-    removed.forEach(manager::deleteStoredSecret);
-    state.owned().removeAll(removed);
+    if (!removed.isEmpty()) {
+      Set<String> unreferenced = references.unreferenced(removed);
+      for (String name : removed) {
+        String canonical = manager.canonicalSecretName(name);
+        if (unreferenced.contains(canonical)) {
+          manager.deleteStoredSecret(name);
+          state.owned().remove(name);
+          references.forget(canonical);
+        } else {
+          references.defer(canonical, root);
+        }
+      }
+    }
     save(root, state);
   }
 
   private State load(String root) {
     String json = dao.getExtensionForUpdate(namespaceId(root), EXTENSION);
     return json == null
-        ? new State(new HashSet<>(), new HashMap<>())
+        ? new State(new HashSet<>(), new HashMap<>(), new HashSet<>())
         : JsonUtils.readValue(json, State.class);
   }
 
   private void save(String root, State state) {
-    if (state.owned().isEmpty() && state.owners().isEmpty()) {
+    if (state.owned().isEmpty() && state.owners().isEmpty() && state.cleanupRoots().isEmpty()) {
       dao.delete(namespaceId(root), EXTENSION);
     } else {
       dao.insert(namespaceId(root), EXTENSION, EXTENSION, JsonUtils.pojoToJson(state));
@@ -262,5 +304,10 @@ public final class SecretMapOwnership {
 
   private record Owner(Set<String> references, Set<String> scalars) {}
 
-  private record State(Set<String> owned, Map<UUID, Owner> owners) {}
+  private record State(Set<String> owned, Map<UUID, Owner> owners, Set<String> cleanupRoots) {
+    private State {
+      // Existing namespace records predate cross-config retirement.
+      cleanupRoots = cleanupRoots == null ? new HashSet<>() : cleanupRoots;
+    }
+  }
 }
