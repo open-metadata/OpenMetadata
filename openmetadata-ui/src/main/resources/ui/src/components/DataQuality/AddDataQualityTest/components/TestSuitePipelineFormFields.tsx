@@ -27,7 +27,10 @@ import {
 import { Fragment, useMemo, useRef } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_PIPELINE_TIMEZONE,
+  DEFAULT_SCHEDULE_CRON_DAILY,
+} from '../../../../constants/Schedular.constants';
 import { useSeedFirstFieldDoc } from '../../../../hooks/useSeedFirstFieldDoc';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
@@ -48,6 +51,7 @@ interface TestSuitePipelineFormFieldsProps {
   // Per-field "Form Hint" docs keyed by field id; shown only when the host
   // HookForm enables field docs.
   fieldDocs?: Record<string, string>;
+  timezone?: string;
   onSchedulerValidityChange?: (isValid: boolean) => void;
 }
 
@@ -57,6 +61,7 @@ const TestSuitePipelineFormFields = ({
   testSuiteId,
   tableFqn,
   fieldDocs = {},
+  timezone = DEFAULT_PIPELINE_TIMEZONE,
   onSchedulerValidityChange,
 }: TestSuitePipelineFormFieldsProps) => {
   const { t } = useTranslation();
@@ -178,6 +183,7 @@ const TestSuitePipelineFormFields = ({
                 defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                 entity={t('label.test-case-plural')}
                 includePeriodOptions={includePeriodOptions}
+                timezone={timezone}
                 value={field.value}
                 onChange={field.onChange}
                 onValidityChange={onSchedulerValidityChange}
