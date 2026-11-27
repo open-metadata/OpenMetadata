@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.alerting.content.template;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,12 +22,15 @@ import static org.mockito.Mockito.mockStatic;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.EntityReference;
@@ -44,6 +48,8 @@ import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbo
 class TaskEntityCreatedTemplateTest {
 
   private static final String BASE_URL = "http://localhost:8585";
+  private static final String INCOMPLETE_WARNING =
+      "The proposed changes may be incomplete because part of the approval history could not be read.";
   private static final String TEMPLATE =
       "/json/data/notifications/templates/system-notification-task-entity-created.json";
 
@@ -132,8 +138,26 @@ class TaskEntityCreatedTemplateTest {
         () -> "the asset link must open the table: " + out);
     assertTrue(out.contains("added ifbi_sensitivity.Internal Use Only"), out);
     assertTrue(out.contains("removed ifbi_sensitivity.Confidential Critical"), out);
+    assertFalse(out.contains(INCOMPLETE_WARNING), out);
     assertTrue(out.contains("@Data Steward"), out);
     assertFalse(out.contains("/task/TASK-00761"), () -> "the broken singular route: " + out);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void incompletePreview_warnsWhetherOrNotChangesAreAvailable(boolean hasChanges) throws Exception {
+    Map<String, Object> task = new LinkedHashMap<>(approvalTask());
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("proposedChangesIncomplete", true);
+    if (hasChanges) {
+      payload.put("proposedChanges", ((Map<?, ?>) task.get("payload")).get("proposedChanges"));
+    }
+    task.put("payload", payload);
+
+    String out = render(templateBody, task);
+
+    assertTrue(out.contains(INCOMPLETE_WARNING), out);
+    assertEquals(hasChanges, out.contains("added ifbi_sensitivity.Internal Use Only"), out);
   }
 
   @Test

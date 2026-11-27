@@ -67,9 +67,8 @@ public final class ChangePreviewUtils {
   private ChangePreviewUtils() {}
 
   /**
-   * The changes an approval cycle made since the version it began from, oldest first. {@code
-   * complete} is false when part of the cycle's history could not be read, so the changes are only
-   * the ones after that part.
+   * The changes an approval cycle made since the version it began from, oldest first. A preview
+   * based on a partial history or a snapshot comparison may omit changes.
    */
   public record CyclePreview(
       double baseVersion, List<ChangeDescription> changes, boolean complete) {
@@ -241,11 +240,11 @@ public final class ChangePreviewUtils {
     Object payload = existingPayload;
     if (entity != null && !hasNoChanges(pending)) {
       payload =
-          previewOrUnchanged(
+          previewOrFallback(
               entity,
-              existingPayload,
               () ->
-                  withPreview(entity, existingPayload, buildChangeMap(maskedFor(entity, pending))));
+                  withPreview(entity, existingPayload, buildChangeMap(maskedFor(entity, pending))),
+              () -> existingPayload);
     }
     return payload;
   }
@@ -253,14 +252,15 @@ public final class ChangePreviewUtils {
   /**
    * The payload of a task in an approval cycle: its preview is the fold of every change since the
    * cycle began, replacing whatever preview the payload carried, and the payload records where the
-   * cycle began so the task that supersedes it continues from there. A preview that could not read
-   * the whole cycle says so. The cycle is read here, inside the guard, so a history that cannot be
-   * read leaves the payload as it was.
+   * cycle began so the task that supersedes it continues from there. If reading the history fails,
+   * keep any carried preview and mark it incomplete.
    */
   public static Object withCyclePreview(
       EntityInterface<?> entity, Object existingPayload, Supplier<CyclePreview> cycle) {
-    return previewOrUnchanged(
-        entity, existingPayload, () -> withCycle(entity, existingPayload, cycle.get()));
+    return previewOrFallback(
+        entity,
+        () -> withCycle(entity, existingPayload, cycle.get()),
+        () -> markPreviewIncomplete(existingPayload));
   }
 
   private static Map<String, Object> withCycle(
@@ -318,9 +318,9 @@ public final class ChangePreviewUtils {
   // A preview the task cannot show must not keep the approval task from being created. Reading the
   // history behind it can fail on an entity deleted meanwhile, an entity type the status adapter
   // cannot read, an unreadable stored version, or the database itself.
-  private static Object previewOrUnchanged(
-      EntityInterface<?> entity, Object existingPayload, Supplier<Object> build) {
-    Object payload = existingPayload;
+  private static Object previewOrFallback(
+      EntityInterface<?> entity, Supplier<Object> build, Supplier<Object> fallback) {
+    Object payload;
     try {
       payload = build.get();
     } catch (JsonParsingException
@@ -328,12 +328,18 @@ public final class ChangePreviewUtils {
         | IllegalArgumentException
         | JdbiException unreadable) {
       LOG.warn(
-          "Failed to build proposed-changes payload for approval task on {}; the task keeps its"
-              + " existing payload",
+          "Failed to build proposed changes for approval task on {}",
           entity.getFullyQualifiedName(),
           unreadable);
+      payload = fallback.get();
     }
     return payload;
+  }
+
+  private static Map<String, Object> markPreviewIncomplete(Object existingPayload) {
+    Map<String, Object> updated = cloneAsMutableMap(existingPayload);
+    updated.put(PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+    return updated;
   }
 
   private static Map<String, Object> withPreview(

@@ -1314,10 +1314,9 @@ public class CreateTask implements TaskListener {
    * The changes an approval task previews: the pending revision a change-request run reviews, or,
    * for any other run, every change the entity's history holds since the approval cycle began. It
    * is read again at every task write, so an edit that started no run (a bot's, or one the trigger
-   * filter skipped) still reaches the next task, and a preview stored on a superseded task is never
-   * carried forward. The history is read only when the preview is applied, inside the guard that
-   * keeps the task's payload when the preview cannot be built, so a failed read never stops the
-   * task from opening. ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
+   * filter skipped) still reaches the next task. A failed read preserves any carried preview and
+   * marks it incomplete, so the task can still open.
+   * ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
    */
   record PreviewChanges(ChangeDescription pending, Supplier<CyclePreview> cycle) {
     static final PreviewChanges NONE = new PreviewChanges(null, null);

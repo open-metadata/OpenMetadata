@@ -64,6 +64,18 @@ class ApprovalCycleTest {
   }
 
   @Test
+  void anOpeningTaskUsesAnEarlierApprovedBaseline() {
+    assertEquals(
+        UNKNOWN_BASE, ApprovalCycle.baseVersion(OptionalDouble.of(0.7), List.of(), unknownBase));
+    assertEquals(1, unknownReads.get());
+  }
+
+  @Test
+  void anOpeningTaskKeepsAnEarlierTriggeringBase() {
+    assertEquals(0.1, ApprovalCycle.baseVersion(OptionalDouble.of(0.1), List.of(), unknownBase));
+  }
+
+  @Test
   void aRunWithoutATriggeringVersionBeginsAtTheUnknownBase() {
     assertEquals(
         UNKNOWN_BASE, ApprovalCycle.baseVersion(OptionalDouble.empty(), List.of(), unknownBase));

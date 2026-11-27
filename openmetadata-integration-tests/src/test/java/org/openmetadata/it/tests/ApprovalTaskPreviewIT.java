@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -198,6 +199,38 @@ public class ApprovalTaskPreviewIT {
             added("Alias")));
   }
 
+  @Test
+  void aBotEditBeforeTheCycleIsPreviewedAndRevertedOnRejection(TestNamespace ns) throws Exception {
+    GlossaryTerm term = approvedTerm(ns, "bot_edit_before_cycle", "Original definition");
+    editDescription(SdkClients.ingestionBotClient(), term, "Ingested definition");
+    addSynonym(SdkClients.adminClient(), term, "Alias");
+
+    Task task =
+        awaitPreview(
+            term,
+            Map.of(
+                DESCRIPTION, replaced("Ingested definition", "Original definition"),
+                SYNONYMS, added("Alias")));
+    assertFalse(isMarkedIncomplete(task));
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+
+    await("rejection of " + term.getFullyQualifiedName())
+        .atMost(TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .untilAsserted(
+            () -> {
+              GlossaryTerm restored =
+                  SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "synonyms");
+              assertEquals(EntityStatus.APPROVED, restored.getEntityStatus());
+              assertEquals("Original definition", restored.getDescription());
+              assertTrue(nullOrEmpty(restored.getSynonyms()));
+            });
+  }
+
   // A reviewer's own edit is approved as it is made, so the next cycle starts from it.
   @Test
   void aReviewerEditBetweenCyclesBecomesTheNextBase(TestNamespace ns) throws Exception {
@@ -211,10 +244,10 @@ public class ApprovalTaskPreviewIT {
     awaitPreview(term, Map.of(DESCRIPTION, replaced("Edited definition", "Reviewed definition")));
   }
 
-  // The history lost the cycle's first edit. The next task compares the version the cycle began
-  // from with the current one, so the reviewer still sees that edit.
+  // The snapshot comparison recovers visible changes and flags the incomplete history.
   @Test
-  void aVersionMissingFromTheHistoryStillPreviewsTheWholeCycle(TestNamespace ns) throws Exception {
+  void aMissingVersionKeepsTheSnapshotChangesAndMarksThePreviewIncomplete(TestNamespace ns)
+      throws Exception {
     GlossaryTerm term = approvedTerm(ns, "missing_version", "Original definition");
     editDescription(SdkClients.adminClient(), term, "Edited definition");
     Task opened =
@@ -232,7 +265,7 @@ public class ApprovalTaskPreviewIT {
                 replaced("Edited definition", "Original definition"),
                 SYNONYMS,
                 added("Alias")));
-    assertFalse(isMarkedIncomplete(next));
+    assertTrue(isMarkedIncomplete(next));
   }
 
   // Without the version the cycle began from there is nothing to compare with, so the task lists

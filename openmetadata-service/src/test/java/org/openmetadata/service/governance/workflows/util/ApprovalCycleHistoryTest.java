@@ -32,12 +32,16 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory.CycleChanges;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 import org.slf4j.LoggerFactory;
 
@@ -102,15 +106,14 @@ class ApprovalCycleHistoryTest {
     assertEquals(new CycleChanges(changesOf(inReview, current), true), changes);
   }
 
-  // Past the read cap the walk cannot reach the base, so the base version is compared with the
-  // current one: the reviewer still sees every edit of the cycle, from two reads.
+  // Past the read cap, the snapshot comparison recovers visible changes in two extra reads.
   @Test
   void changesSince_pastTheCapComparesTheBaseWithTheCurrentVersion() {
     GlossaryTerm current = chainOf(ApprovalCycleHistory.MAX_VERSIONS + 5);
 
     CycleChanges changes = withWarnings(() -> history.changesSince(current, 0.1));
 
-    assertTrue(changes.complete());
+    assertFalse(changes.complete());
     assertEquals(
         Map.of(
             Entity.FIELD_DESCRIPTION,
@@ -137,7 +140,7 @@ class ApprovalCycleHistoryTest {
 
     CycleChanges changes = withWarnings(() -> history.changesSince(current, 0.1));
 
-    assertTrue(changes.complete());
+    assertFalse(changes.complete());
     assertEquals(
         Map.of(
             Entity.FIELD_DESCRIPTION,
@@ -145,6 +148,36 @@ class ApprovalCycleHistoryTest {
             "synonyms",
             new FieldDiff(List.of("Alias"), List.of())),
         ChangePreviewUtils.foldChanges(current, changes.changes()));
+  }
+
+  @Test
+  void changesSince_missingHopWithAnExistingColumnEditMarksThePayloadIncomplete() {
+    UUID tableId = UUID.randomUUID();
+    Table before =
+        new Table()
+            .withId(tableId)
+            .withVersion(0.1)
+            .withColumns(List.of(new Column().withName("customer_id").withDescription("Old")));
+    Table current =
+        new Table()
+            .withId(tableId)
+            .withVersion(0.3)
+            .withChangeDescription(new ChangeDescription().withPreviousVersion(0.2))
+            .withColumns(List.of(new Column().withName("customer_id").withDescription("New")));
+    rows.put(before.getVersion(), before);
+    rows.put(current.getVersion(), current);
+
+    CycleChanges changes = history.changesSince(current, before.getVersion());
+    Object payload =
+        ChangePreviewUtils.withCyclePreview(
+            current,
+            null,
+            () -> new CyclePreview(before.getVersion(), changes.changes(), changes.complete()));
+
+    assertEquals("columns", changes.changes().getFirst().getFieldsUpdated().getFirst().getName());
+    assertEquals(
+        Boolean.TRUE,
+        ((Map<?, ?>) payload).get(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
   }
 
   // Without the base version there is nothing to compare with, so the preview keeps the changes
@@ -187,6 +220,15 @@ class ApprovalCycleHistoryTest {
     store(reviewedTerm(0.1, 0.0, AUTHOR, null).withEntityStatus(EntityStatus.DRAFT));
     GlossaryTerm current =
         reviewedTerm(0.2, 0.1, REVIEWER, status(EntityStatus.DRAFT, EntityStatus.APPROVED));
+
+    assertEquals(OptionalDouble.empty(), history.approvedBaseline(current));
+  }
+
+  @Test
+  void approvedBaseline_isAbsentForAnEntityWithoutLifecycleStatus() {
+    UUID teamId = UUID.randomUUID();
+    rows.put(0.1, new Team().withId(teamId).withVersion(0.1));
+    Team current = new Team().withId(teamId).withVersion(0.2);
 
     assertEquals(OptionalDouble.empty(), history.approvedBaseline(current));
   }

@@ -687,12 +687,20 @@ class ChangePreviewUtilsTest {
     assertEquals(OptionalDouble.of(0.0), ChangePreviewUtils.cycleBaseOf(result));
   }
 
-  // A history that cannot be read keeps the payload the task had, so the task is still created.
   @ParameterizedTest
   @MethodSource("historyReadFailures")
-  void withCyclePreview_aHistoryReadThatFailsKeepsTheExistingPayload(RuntimeException failure) {
-    Map<String, Object> carried = new LinkedHashMap<>();
-    carried.put("feedback", "keep me");
+  void withCyclePreview_aFailedReadKeepsTheCarriedPreviewAndMarksItIncomplete(
+      RuntimeException failure) {
+    Map<String, Object> carried =
+        Map.of(
+            "feedback",
+            "keep me",
+            ChangePreviewUtils.PROPOSED_CHANGES_BASE_VERSION_KEY,
+            0.3,
+            ChangePreviewUtils.PROPOSED_CHANGES_KEY,
+            Map.of(
+                "description",
+                Map.of("added", List.of("Prior edit"), "removed", List.of("Original"))));
 
     Object result =
         ChangePreviewUtils.withCyclePreview(
@@ -702,7 +710,9 @@ class ChangePreviewUtilsTest {
               throw failure;
             });
 
-    assertEquals(carried, result);
+    Map<String, Object> expected = new LinkedHashMap<>(carried);
+    expected.put(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+    assertEquals(expected, result);
   }
 
   static Stream<RuntimeException> historyReadFailures() {

@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
@@ -1261,11 +1262,8 @@ class CreateTaskTest {
     assertEquals(List.of(older.getId(), newer.getId()), priors.stream().map(Task::getId).toList());
   }
 
-  // The preview reads the entity's history when the task is written. A read that fails (the entity
-  // deleted meanwhile, an unreadable version, the database) leaves the payload as it was, so the
-  // approval task is still created instead of the run failing.
   @Test
-  void testAnApprovalWhoseHistoryCannotBeReadKeepsItsPayload() {
+  void testAnApprovalWithNoCarriedPreviewMarksAFailedReadIncomplete() {
     Map<String, Object> payload = Map.of("feedback", "keep me");
 
     Object result =
@@ -1281,7 +1279,9 @@ class CreateTaskTest {
                       throw EntityNotFoundException.byMessage("glossaryTerm was deleted");
                     }));
 
-    assertEquals(payload, result);
+    assertEquals(
+        Map.of("feedback", "keep me", ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY, true),
+        result);
   }
 
   private static Task openApproval(UUID workflowDefinitionId, long createdAt) {

@@ -17,27 +17,27 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
-import java.util.stream.DoubleStream;
 
 /** Where an approval cycle begins when its tasks supersede one another. */
 public final class ApprovalCycle {
   private ApprovalCycle() {}
 
   /**
-   * The earliest of the triggering edit's base and the base each carried task recorded, so a task
-   * that supersedes others lists everything since the oldest of them began, whichever run stored
-   * its task first. A base that is not known (a run without a triggering version, or a task stored
-   * before bases were recorded) is {@code unknownBase}, evaluated at most once.
+   * The earliest of the triggering edit's base and the bases carried by prior tasks. An opening
+   * task also considers {@code unknownBase}, which can recover the last approved version before
+   * edits that did not start a run. The same fallback supplies missing bases on later tasks and is
+   * evaluated at most once.
    */
   public static double baseVersion(
       OptionalDouble triggeringBase, List<Object> carriedPayloads, DoubleSupplier unknownBase) {
     Supplier<Double> unknown = Suppliers.memoize(unknownBase::getAsDouble);
-    DoubleStream carriedBases =
+    double editBase = orUnknown(triggeringBase, unknown);
+    double earliestCarriedOrApprovedBase =
         carriedPayloads.stream()
-            .mapToDouble(payload -> orUnknown(ChangePreviewUtils.cycleBaseOf(payload), unknown));
-    return DoubleStream.concat(DoubleStream.of(orUnknown(triggeringBase, unknown)), carriedBases)
-        .min()
-        .orElseThrow();
+            .mapToDouble(payload -> orUnknown(ChangePreviewUtils.cycleBaseOf(payload), unknown))
+            .min()
+            .orElseGet(unknown::get);
+    return Math.min(editBase, earliestCarriedOrApprovedBase);
   }
 
   private static double orUnknown(OptionalDouble base, Supplier<Double> unknown) {

@@ -44,8 +44,8 @@ public final class ApprovalCycleHistory {
   private static final double FIRST_VERSION_BASE = 0.0;
 
   /**
-   * The changes of an approval cycle, oldest first. {@code complete} is false when part of the cycle
-   * could not be read, and the changes are then only the ones after that part.
+   * The changes of an approval cycle, oldest first. {@code complete} is true when the history
+   * walk reached the base.
    */
   public record CycleChanges(List<ChangeDescription> changes, boolean complete) {
     public CycleChanges {
@@ -82,9 +82,8 @@ public final class ApprovalCycleHistory {
 
   /**
    * The changes of every version of {@code current} newer than {@code base}, oldest first. When the
-   * walk stops short of the base, the change is the comparison of the base version with the current
-   * one; only when the base version cannot be read either are the changes the walk reached returned,
-   * marked incomplete.
+   * walk stops short of the base, use the snapshot comparison when available and otherwise keep
+   * the changes the walk reached. Either fallback can omit changes from the preview.
    */
   public CycleChanges changesSince(EntityInterface<?> current, double base) {
     List<EntityInterface<?>> newestFirst = versionsNewerThan(current, base).toList();
@@ -97,6 +96,7 @@ public final class ApprovalCycleHistory {
   public OptionalDouble approvedBaseline(EntityInterface<?> current) {
     return versionsNewerThan(current, FIRST_VERSION_BASE)
         .skip(1)
+        .filter(version -> version.getEntityStatus() != null)
         .filter(ApprovedBaseline::isApprovedBaseline)
         .mapToDouble(EntityInterface::getVersion)
         .findFirst();
@@ -142,12 +142,12 @@ public final class ApprovalCycleHistory {
 
   private CycleChanges acrossTheGap(
       EntityInterface<?> current, double base, List<EntityInterface<?>> newestFirst) {
-    CycleChanges changes =
-        netChange(current, base)
-            .map(net -> new CycleChanges(List.of(net), true))
-            .orElseGet(() -> new CycleChanges(oldestFirst(newestFirst), false));
-    warnOfGap(current, base, newestFirst.getLast(), changes.complete());
-    return changes;
+    Optional<ChangeDescription> snapshot = netChange(current, base);
+    List<ChangeDescription> changes =
+        snapshot.map(List::of).orElseGet(() -> oldestFirst(newestFirst));
+    warnOfGap(current, base, newestFirst.getLast(), snapshot.isPresent());
+    // The snapshot can collapse a nested edit to a list of unchanged names in the preview.
+    return new CycleChanges(changes, false);
   }
 
   // Two rows however long the cycle: the version it began from and the current one.
@@ -162,17 +162,17 @@ public final class ApprovalCycleHistory {
   }
 
   private static void warnOfGap(
-      EntityInterface<?> current, double base, EntityInterface<?> oldestRead, boolean complete) {
+      EntityInterface<?> current, double base, EntityInterface<?> oldestRead, boolean hasSnapshot) {
     LOG.warn(
         "[ApprovalCycleHistory] The history of {} since version {} stops at version {}, on a"
-            + " missing version or past {} versions; its approval preview {}",
+            + " missing version or past {} versions; its incomplete approval preview {}",
         current.getFullyQualifiedName(),
         base,
         oldestRead.getVersion(),
         MAX_VERSIONS,
-        complete
+        hasSnapshot
             ? "compares the base version with the current one"
-            : "lists the changes after the gap and is marked incomplete");
+            : "lists the changes after the gap");
   }
 
   private static Optional<EntityInterface<?>> storedVersion(
