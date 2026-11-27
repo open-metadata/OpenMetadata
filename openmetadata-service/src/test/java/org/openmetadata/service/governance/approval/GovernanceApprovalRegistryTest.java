@@ -56,6 +56,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
+import org.openmetadata.service.governance.workflows.WorkflowTriggeringBots;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GovernanceDAOs;
@@ -307,6 +308,126 @@ class GovernanceApprovalRegistryTest {
     WorkflowDefinition wd =
         workflow(trigger("\"table\"", "\"description\"", "", "{}"), STATUS_NODE);
     assertEquals(1, rulesFor("table", wd).size());
+  }
+
+  private static final String SCRAPER = "ScraperBot";
+  private static final String SCRAPER_USER = "scraperbot";
+
+  private static String defaultTrigger(String bots) {
+    return ("{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],"
+            + "\"events\":[\"Updated\"],\"triggeringBots\":[%s]}}")
+        .formatted(bots);
+  }
+
+  private static String enforceTriggerListing(String bots) {
+    return ("{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Enforce\","
+            + "\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"triggeringBots\":[%s]}}")
+        .formatted(bots);
+  }
+
+  private static WorkflowDefinition named(WorkflowDefinition wd) {
+    return wd.withFullyQualifiedName(wd.getName());
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  private static <T> T withStored(
+      List<WorkflowDefinition> stored, Set<String> resolvedBotUsers, Supplier<T> check) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    GovernanceDAOs.ChangeRequestDAO changeRequestDAO = mock(GovernanceDAOs.ChangeRequestDAO.class);
+    EntityRepository workflowRepository = mock(EntityRepository.class);
+    when(collectionDAO.changeRequestDAO()).thenReturn(changeRequestDAO);
+    when(changeRequestDAO.workflowDefinitionEpoch()).thenReturn(UUID.randomUUID().toString());
+    when(changeRequestDAO.botEpoch()).thenReturn(UUID.randomUUID().toString());
+    when(workflowRepository.listAll(any(), any())).thenReturn(stored);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<WorkflowTriggeringBots> bots = mockStatic(WorkflowTriggeringBots.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowRepository);
+      bots.when(() -> WorkflowTriggeringBots.botUserNames(any())).thenReturn(Set.of());
+      bots.when(() -> WorkflowTriggeringBots.botUserNames(List.of(SCRAPER)))
+          .thenReturn(resolvedBotUsers);
+      GovernanceApprovalRegistry.invalidate();
+      return check.get();
+    } finally {
+      GovernanceApprovalRegistry.invalidate();
+    }
+  }
+
+  @Test
+  void workflowListingABotStartsForItsEntityTypeAndOnlyForThatBot() {
+    WorkflowDefinition wd = named(workflow(defaultTrigger("\"" + SCRAPER + "\"")));
+    assertTrue(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("table", SCRAPER_USER)));
+    assertTrue(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOfWorkflow("wf", SCRAPER_USER)));
+    assertFalse(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("table", "otherbot")));
+    assertFalse(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("glossary", SCRAPER_USER)));
+  }
+
+  @Test
+  void suspendedWorkflowListsNoBot() {
+    WorkflowDefinition wd =
+        named(workflow(defaultTrigger("\"" + SCRAPER + "\""))).withSuspended(true);
+    assertFalse(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("table", SCRAPER_USER)));
+  }
+
+  @Test
+  void enforceWorkflowsBotsAreGatedNotSignalled() {
+    WorkflowDefinition wd = named(workflow(enforceTriggerListing("\"" + SCRAPER + "\"")));
+    assertFalse(
+        withStored(
+            List.of(wd),
+            Set.of(SCRAPER_USER),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("table", SCRAPER_USER)));
+    try (MockedStatic<WorkflowTriggeringBots> bots = mockStatic(WorkflowTriggeringBots.class)) {
+      bots.when(() -> WorkflowTriggeringBots.botUserNames(any())).thenReturn(Set.of(SCRAPER_USER));
+      assertEquals(Set.of(SCRAPER_USER), onlyRule("table", wd).triggeringBotUsers());
+    }
+  }
+
+  @Test
+  void deletedListedBotStartsNothing() {
+    WorkflowDefinition wd = named(workflow(defaultTrigger("\"" + SCRAPER + "\"")));
+    assertFalse(
+        withStored(
+            List.of(wd),
+            Set.of(),
+            () -> GovernanceApprovalRegistry.isTriggeringBotOf("table", SCRAPER_USER)));
+  }
+
+  @Test
+  void snapshotEpochChangesWhenBotsChange() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    GovernanceDAOs.ChangeRequestDAO changeRequestDAO = mock(GovernanceDAOs.ChangeRequestDAO.class);
+    when(collectionDAO.changeRequestDAO()).thenReturn(changeRequestDAO);
+    when(changeRequestDAO.workflowDefinitionEpoch()).thenReturn("3:100");
+    when(changeRequestDAO.botEpoch()).thenReturn("9:200", "9:300");
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      String before = GovernanceApprovalRegistry.currentEpoch();
+      String after = GovernanceApprovalRegistry.currentEpoch();
+      assertFalse(before.equals(after), "Recreating a bot must invalidate the snapshot");
+    }
   }
 
   /**
@@ -601,6 +722,59 @@ class GovernanceApprovalRegistryTest {
                   "ingestion-bot",
                   null,
                   true)
+              .isEmpty());
+    }
+
+    private GatingRule ruleListing(UUID workflowId, List<String> include, Set<String> botUsers) {
+      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, botUsers);
+    }
+
+    @Test
+    void listedBotsChangeIsHeldByTheWorkflowThatListsIt() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("by listed bot");
+      StagedChange change =
+          admit(
+                  List.of(ruleListing(WORKFLOW_A, List.of("description"), Set.of("scraperbot"))),
+                  original,
+                  updated,
+                  "scraperbot",
+                  null,
+                  true)
+              .orElseThrow();
+      assertEquals(WORKFLOW_A, change.workflowDefinitionId());
+      assertEquals("scraperbot", change.requestedBy());
+    }
+
+    @Test
+    void botIsHeldOnlyByTheWorkflowsThatListIt() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDisplayName("renamed by bot");
+      assertTrue(
+          admit(
+                  List.of(
+                      ruleListing(WORKFLOW_A, List.of("description"), Set.of("scraperbot")),
+                      rule(WORKFLOW_B, List.of("displayName"), List.of())),
+                  original,
+                  updated,
+                  "scraperbot",
+                  null,
+                  true)
+              .isEmpty());
+    }
+
+    @Test
+    void workflowAutomationIsNotHeldEvenWhereBotsAreListed() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("by workflow");
+      assertTrue(
+          admit(
+                  List.of(ruleListing(WORKFLOW_A, List.of("description"), Set.of("alice"))),
+                  original,
+                  updated,
+                  "alice",
+                  "governance-bot",
+                  false)
               .isEmpty());
     }
 

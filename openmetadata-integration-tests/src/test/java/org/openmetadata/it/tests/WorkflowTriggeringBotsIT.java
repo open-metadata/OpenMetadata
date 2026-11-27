@@ -27,6 +27,7 @@ import static org.openmetadata.it.tests.ChangeRequestITSupport.onlyPendingReques
 import static org.openmetadata.it.tests.ChangeRequestITSupport.openTaskFilters;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.patchAs;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.requestsFor;
+import static org.openmetadata.it.tests.ChangeRequestITSupport.resolve;
 
 import java.time.Duration;
 import java.util.List;
@@ -39,21 +40,33 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -107,6 +120,109 @@ class WorkflowTriggeringBotsIT {
         requestsFor(glossary.getId()).stream()
             .map(ChangeRequest::getRequestedBy)
             .collect(Collectors.toSet()));
+  }
+
+  /**
+   * The flow the feature exists for: an automation writes as a bot an admin created, listed on the
+   * seeded glossary term approval workflow. Its new term goes to review instead of skipping the
+   * workflow, the asset link it adds is held while the term is not approved, and approving the term
+   * releases that link.
+   */
+  @Test
+  void listedBotsNewGlossaryTermIsReviewedAndApprovalReleasesItsHeldTag(TestNamespace ns) {
+    TestBot bot = TestBot.create(ns, "term");
+    WorkflowDefinition approval =
+        SdkClients.adminClient().workflowDefinitions().getByName(GLOSSARY_TERM_APPROVAL);
+    listBots(approval, List.of(bot.name()));
+    try {
+      Glossary glossary = gatedGlossary(ns);
+      GlossaryTerm term =
+          bot.client()
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName(ns.shortPrefix("botterm"))
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Proposed by an automation"));
+      awaitStatus(term, EntityStatus.IN_REVIEW);
+
+      Table table = SdkClients.adminClient().tables().create(tableRequest(ns));
+      bot.client()
+          .tables()
+          .patch(
+              table.getId().toString(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"add\",\"path\":\"/tags/-\",\"value\":%s}]"
+                      .formatted(JsonUtils.pojoToJson(glossaryLabel(term)))));
+      assertTrue(tagsOf(table).stream().noneMatch(t -> isTerm(t, term)), "held until approved");
+
+      Task task = awaitOpenApprovalTask(term.getFullyQualifiedName());
+      resolve(task.getId(), "approve", TaskResolutionType.Approved);
+
+      awaitStatus(term, EntityStatus.APPROVED);
+      Awaitility.await("the held tag shows once the term is approved")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> tagsOf(table).stream().anyMatch(t -> isTerm(t, term)));
+    } finally {
+      listBots(approval, List.of());
+    }
+  }
+
+  private static final String GLOSSARY_TERM_APPROVAL = "GlossaryTermApprovalWorkflow";
+
+  // A seeded workflow is shared by the whole suite, so the bot list is set for one test and cleared
+  // after it.
+  private static void listBots(WorkflowDefinition workflow, List<String> bots) {
+    String op = bots.isEmpty() ? "remove" : "add";
+    String value = bots.isEmpty() ? "" : ",\"value\":%s".formatted(JsonUtils.pojoToJson(bots));
+    SdkClients.adminClient()
+        .workflowDefinitions()
+        .patch(
+            workflow.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"%s\",\"path\":\"/trigger/config/triggeringBots\"%s}]"
+                    .formatted(op, value)));
+  }
+
+  private static void awaitStatus(GlossaryTerm term, EntityStatus status) {
+    Awaitility.await("term %s reaches %s".formatted(term.getName(), status))
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                status
+                    == SdkClients.adminClient()
+                        .glossaryTerms()
+                        .get(term.getId().toString())
+                        .getEntityStatus());
+  }
+
+  private static CreateTable tableRequest(TestNamespace ns) {
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    return new CreateTable()
+        .withName(ns.shortPrefix("bottable"))
+        .withDatabaseSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+  }
+
+  private static TagLabel glossaryLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static List<TagLabel> tagsOf(Table table) {
+    List<TagLabel> tags =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tags").getTags();
+    return tags == null ? List.of() : tags;
+  }
+
+  private static boolean isTerm(TagLabel tag, GlossaryTerm term) {
+    return term.getFullyQualifiedName().equals(tag.getTagFQN());
   }
 
   @Test

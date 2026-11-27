@@ -16,6 +16,7 @@ package org.openmetadata.service.governance.approval;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isWorkflowAutomation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -191,9 +192,14 @@ public final class ApprovalGate {
    */
   private static List<GatingRule> rulesForActor(
       List<GatingRule> rules, String user, String impersonatedBy) {
-    return rules.isEmpty() || !isBotChange(user, impersonatedBy)
-        ? rules
-        : rules.stream().filter(rule -> rule.triggeringBotUsers().contains(user)).toList();
+    List<GatingRule> actorRules = rules;
+    if (!rules.isEmpty() && isBotChange(user, impersonatedBy)) {
+      actorRules =
+          isWorkflowAutomation(user, impersonatedBy)
+              ? List.of()
+              : rules.stream().filter(rule -> rule.triggeringBotUsers().contains(user)).toList();
+    }
+    return actorRules;
   }
 
   /** What {@link #admit} would decide for this edit, without recording metrics. */

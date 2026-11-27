@@ -226,7 +226,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     return author;
   }
 
-  private static boolean isWorkflowAutomation(String userName, String impersonatedBy) {
+  /** A write made by a workflow itself: governance-bot, or a user impersonated by it. */
+  public static boolean isWorkflowAutomation(String userName, String impersonatedBy) {
     return GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
   }
 

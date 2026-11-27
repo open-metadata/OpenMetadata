@@ -186,7 +186,7 @@ public final class GovernanceApprovalRegistry {
     Snapshot snapshot = SNAPSHOT.get();
     long now = System.currentTimeMillis();
     if (snapshot == null || now - snapshot.checkedAt() >= RECHECK_MILLIS) {
-      String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
+      String epoch = currentEpoch();
       snapshot =
           snapshot != null && snapshot.epoch().equals(epoch)
               ? new Snapshot(
@@ -199,6 +199,13 @@ public final class GovernanceApprovalRegistry {
       SNAPSHOT.set(snapshot);
     }
     return snapshot;
+  }
+
+  // The listed bots are resolved to the users they write as, so the snapshot is current only while
+  // both the workflow definitions and the bots are unchanged.
+  static String currentEpoch() {
+    var dao = Entity.getCollectionDAO().changeRequestDAO();
+    return "%s|%s".formatted(dao.workflowDefinitionEpoch(), dao.botEpoch());
   }
 
   private static Snapshot compute(String epoch, long now) {
