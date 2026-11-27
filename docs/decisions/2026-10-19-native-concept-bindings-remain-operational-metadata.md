@@ -1,7 +1,7 @@
 # Native concept bindings remain operational metadata
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery) · v4 2026-10-26 (paged cleanup under the lock, lineage between returned assets) · v5 2026-10-26 (stateless combined graph pages) · v6 2026-10-30 (Data mode bindings page size and stale reload budget) · v7 2026-11-15 (UI guards moved to Collate)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery) · v4 2026-10-26 (paged cleanup under the lock, lineage between returned assets) · v5 2026-10-26 (stateless combined graph pages) · v6 2026-10-30 (Data mode bindings page size and stale reload budget) · v7 2026-11-15 (UI guards moved to Collate) · v8 2026-11-17 (bindings projected into the serving knowledge graph)
 - **Deciders:** Ontology Studio implementation review
 - **Guard:** OntologyConceptBindingsIT, OntologyConceptBindingCleanupIT, NativeOntologyDataGraphIT, NativeOntologyDataGraphEdgeScanIT, NativeOntologyDataGraphBindingScanIT, NativeOntologyDataGraphPageIT, NativeOntologyDataGraphContextIT, NativeOntologyDataGraphPagerTest, NativeOntologyDataGraphPagerRequestTest (including #aTokenTheServerKeySealedGetsTheRandomBytesRefusalBeforeAnyRead and #withoutAServerKeyAContinuedTopologyIssuesACursorTheNextRequestAccepts), NativeOntologyTopologyCursorCodecTest (including #aCursorKeyIsTheHmacOfItsServerKeyAndTheCursorLabel, #aCursorSealedUnderTheDerivedSecondKeyOfARotatedListStillOpens, #withoutAServerKeyOneKeyHeldForTheProcessSealsAndOpensCursors and #withoutAServerKeyACursorSealedWithAnotherKeyGetsTheSameRefusal), OntologyPrefixLineageDaoTest, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx *(openmetadata-collate)*, OntologyConceptAssets.test.tsx *(openmetadata-collate)*, OntologyColumnBindingEditor.test.tsx *(openmetadata-collate)*, OntologyPropertyBindings.test.tsx *(openmetadata-collate)*, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx *(openmetadata-collate)*
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models,
@@ -68,3 +68,51 @@ Every bindings selection asks for `limit` 25 (`NATIVE_ASSET_PAGE_SIZE` in `Ontol
 A 412 gets one automatic reload. `useNativeOntologyDataGraph` holds a load generation (`Generation` in the hook, unrelated to the server's topology generation above): an `AbortController` for its requests, a count of stale reloads, and a flag for its single topology restart after a 400. `beginGeneration` starts a new load generation when the hook mounts or its ontology changes, when a model revision or a binding write marks the graph stale (at once if Data mode shows, otherwise when it next shows), and when the user presses Retry. A new load generation aborts the previous one's requests and drops their answers. Within a load generation, the first 412 abandons the selection that received it and reloads from the first clusters page with an empty context. A second 412 before a selection completes and drains its topology ends loading with the stale message and a Retry, which begins a new load generation. A completed selection resets the count, so a later 412 in the same load generation again gets one reload. The reason recorded with the choice is that the client must never retry in a loop. After the second 412 the hook sends nothing on its own, but a **Load more** pressed before the failure still sends its one queued request, because the queue skips only requests from an earlier load generation. A 412 on that request shows the same error without another reload, and nothing else is sent until the user acts. `useNativeOntologyDataGraph.test.tsx` and `OntologyNativeDataGraph.utils.test.ts` assert the limit of 25 and the 412 sequence. The `Guard` line above still names `OntologyConceptDataGraph.test.tsx`, which #36724 deletes. `useNativeOntologyDataGraph.test.tsx`, `OntologyNativeDataGraph.utils.test.ts` and `OntologyNativeDataMode.test.tsx` guard this amendment.
 
 v7 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.
+
+## Amendment 2026-11-17. Bindings in the serving knowledge graph
+
+Decided by the product owner: bindings are projected into the live serving knowledge graph
+(`https://open-metadata.org/graph/knowledge`), so a model exploring the graph can walk from a
+business concept to the data that implements it. Releases, release digests and ontology RDF import
+and export are unchanged: bindings stay out of them, as the decision above says. The optional
+`includeBoundAssets` release export keeps its own permission-filtered links.
+
+- **Shape.** A binding is `<concept> om:boundAsset <asset>`; a column assignment is `<property>
+  om:boundColumn <column>`. The subjects are the IRIs the active release gives the concept and the
+  property, the objects the IRIs the catalog projection mints (`entity/<type>/<id>`, and the column
+  IRI `om:hasColumn` reaches). `om:boundAsset` is the predicate the release export already writes.
+- **Served concepts only.** A binding projects only when its concept is a member of the active
+  release of a live ontology, and an assignment only when its property is too and its column path
+  resolves in the table. Fuseki holds no draft or historical definitions
+  (ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release), so a binding to an unreleased
+  concept would be an edge whose subject no graph describes. Membership is read from the ontology's
+  own active release; a concept reached only through another ontology's import closure projects
+  nothing. Deleting a working concept does not change the graph while the active release holds it.
+- **The asset owns the edges.** They are part of the asset's projection and inside its write scope
+  (`RdfOwnedResources.incomingBindingTriplesPattern`), so every existing write path keeps them in
+  step with SQL: a live differential write or replacement, a bulk reconcile, a recreate reindex, a
+  rebuild journal replay and an entity delete. Dropping or renaming a column, or deleting the
+  asset, removes its edges with no binding-specific hook.
+- **Sync.** A committed binding write or removal enqueues the bound asset's ordinary entity update.
+  A concept's hard-delete cleanup reads its bound assets before deleting the rows and enqueues
+  them. The `ontologyGraph` live write, enqueued on every change of the active release, replaces
+  the release graph and then enqueues an entity update for every asset bound to a concept of that
+  ontology, in pages of 500; it projects none of them itself. Each asset is then its own queued
+  write with its own retries and dead letter, so an asset that cannot be projected neither blocks
+  the release nor the other assets. Enqueueing from inside a delivery takes the queue's enqueue
+  lock, which is independent of the writer fence the delivery holds. Cleanup under the lock only
+  removes rows of deleted assets, whose projection is already gone, and enqueues nothing.
+- **Existing installations.** No migration projects existing bindings: a graph shows no binding
+  edges until the next RDF reindex, or until each bound asset is written again. During a rolling
+  upgrade an older server's entity writes do not know the binding edges are in the asset's scope,
+  so a binding change it misses or a column it drops can leave stale binding edges until a
+  reindex.
+
+Accepted consequence: the bindings API omits links to assets a reader cannot view, and the serving
+graph shows every link to anyone allowed to query it. Access filtering on the graph is deferred
+work. Guarded by `RdfConceptBindingProjectionTest`, `RdfConceptBindingWriteTest`,
+`OntologyServedBindingsStorageTest`, `RdfLiveWriteTest`,
+`RdfUpdaterTest`, `RdfOntologyContractTest`,
+`OntologyActiveGraphStorageTest#aWriteBeingDeliveredQueuesTheBoundAssetsItRefreshesAfterItself`
+and, against the Fuseki image,
+`RdfEntityDiffWriteIT#conceptBindingEdgesFollowTheBindingsAndLeaveTheReleaseGraphAlone`.

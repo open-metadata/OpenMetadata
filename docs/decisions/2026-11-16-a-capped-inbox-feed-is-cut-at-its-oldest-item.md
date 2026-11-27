@@ -1,7 +1,7 @@
 # A capped Inbox feed is cut at its oldest item, and its shortest window is Today
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (the Mentions feed is not cut)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (the Mentions feed is not cut) · v3 2026-11-19 (older task mentions in All) · v4 2026-11-20 (bounded task mentions and seen marks)
 - **Deciders:** Harsh Vador
 - **Guard:** `useInboxActivity.test.tsx` ("cuts the conversations at the oldest event of a capped
   activity list", "cuts the events at the oldest conversation of a capped conversation list",
@@ -44,3 +44,14 @@ events older than its oldest conversation. The day marked "N+" is the one where 
 not the day of its last card: for Mentions, where its conversations stop. When only its events are
 capped no day is marked, since their times don't say where the mentions stop; the end-of-feed note
 still shows. Every other feed is cut as above.
+
+v3 2026-11-19: All retains task-comment mentions before the cutoff for activity and conversations.
+Each visible day at or before that cutoff displays its count as a lower bound, including days
+that contain only task mentions.
+
+v4 2026-11-20: Inbox task mentions keep at most 100 comments, matching the conversation cap.
+A full task-mention result marks the feed as capped; its oldest comment also bounds the complete
+span of All's activity and conversations. Mentions retains older event cards because their event
+time is not their mention time. The sidebar counts at most 100 task mentions and displays 99+.
+The cached mention result carries the time its first request started. Opening it advances the
+seen mark only through that time, never through the later time the view was opened.

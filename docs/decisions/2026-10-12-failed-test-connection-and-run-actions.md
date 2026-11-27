@@ -1,7 +1,7 @@
 # Downstream builds add an action to a failed test connection or agent run
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial) · v2 2026-11-03 (`TestConnection` reads the point in AI mode)
+- **Revisions:** v1 2026-10-12 (initial) · v2 2026-11-03 (`TestConnection` reads the point in AI mode) · v3 2026-11-27 (agent runs get a point)
 - **Deciders:** Ayush Shah
 - **Guard:** `TestConnectionModal.test.tsx` (failure action describe block),
   `RunHistoryDrawer.test.tsx` (run action describe block),
@@ -53,3 +53,14 @@ page, so the reason for limiting the point to the connection details page is gon
   mode (details page, add service, edit connection) shows the action and classic pages never do.
 - `TestConnectionActionProps` is `serviceType`, `serviceName` (the unsaved name while creating),
   `failure` and `onClose`. It no longer carries the page context, which a form has no entity for.
+
+v3 2026-11-27. The AI-mode Agents tab moved into OSS
+(ADR:2026-11-27-ai-mode-service-page-owns-agents-and-insights), so the plugin no longer owns the
+view that passed `renderRunAction`.
+
+- Agent runs now have a point: `service-details.agents.run-actions`
+  (`EXTENSION_POINTS.SERVICE_DETAILS_AGENT_RUN_ACTIONS`). A contribution is an
+  `AgentRunActionContribution`: `key` and a `component` that receives `AgentRunActionProps`
+  (`agent`, `run`, `onClose`).
+- Only the AI-mode `ServiceAgentsTab` reads it and hands it to `MetadataAgentsView` as
+  `renderRunAction`. The classic `Ingestion` page still passes nothing.

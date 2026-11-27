@@ -130,6 +130,36 @@ describe('OMSelectWidget', () => {
     expect(screen.getByTestId('options').children).toHaveLength(2);
   });
 
+  it('does not crash when the options map contains an undefined label', () => {
+    render(
+      <OMSelectWidget
+        {...baseProps}
+        showSearch
+        listValues={
+          {
+            missing: undefined,
+            named: 'Named option',
+          } as unknown as SelectWidgetProps['listValues']
+        }
+      />
+    );
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'named' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(1);
+    expect(screen.getByTestId('options')).toHaveTextContent('Named option');
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: '' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
   it('restores static options when reopened with the toggle', () => {
     render(<OMSelectWidget {...baseProps} showSearch />);
     fireEvent.change(screen.getByRole('combobox'), {

@@ -361,6 +361,29 @@ describe('AlertsClassBase', () => {
       expect(result.description).toBe('Test alert description');
     });
 
+    it('saves the Enabled switch, so an edit can switch an alert off or on', () => {
+      const switchedOff = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, enabled: false },
+        { ...mockInitialData, enabled: true }
+      );
+      const switchedOn = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, enabled: true },
+        { ...mockInitialData, enabled: false }
+      );
+
+      expect(switchedOff.enabled).toBe(false);
+      expect(switchedOn.enabled).toBe(true);
+    });
+
+    it('keeps the stored enabled flag when the form does not set it', () => {
+      const result = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, enabled: undefined },
+        { ...mockInitialData, enabled: false }
+      );
+
+      expect(result.enabled).toBe(false);
+    });
+
     it('should update input filters and actions', () => {
       const updatedInput = {
         filters: [],

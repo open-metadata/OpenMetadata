@@ -93,6 +93,43 @@ describe('VersionButton', () => {
     expect(ownerDisplayName).toBeInTheDocument();
   });
 
+  it('should name the bot that made the change on behalf of the author', () => {
+    render(
+      <VersionButton
+        isMajorVersion={isMajorVersion}
+        selected={selected}
+        summary="Some change description"
+        version={{ ...version, impersonatedBy: 'caip-bot' }}
+        onVersionSelect={onVersionSelect}
+      />
+    );
+
+    const impersonation = screen.getByTestId('version-impersonated-by');
+
+    expect(impersonation).toHaveTextContent('label.impersonated-by-with-colon');
+    expect(impersonation).toHaveTextContent('caip-bot');
+  });
+
+  it.each([
+    ['a direct change', undefined],
+    ['a legacy CSV import', version.updatedBy],
+  ])('does not render an impersonation row for %s', (_, impersonatedBy) => {
+    render(
+      <VersionButton
+        isMajorVersion={isMajorVersion}
+        selected={selected}
+        summary="Some change description"
+        version={{ ...version, impersonatedBy }}
+        onVersionSelect={onVersionSelect}
+      />
+    );
+
+    expect(screen.getByText(version.updatedBy)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('version-impersonated-by')
+    ).not.toBeInTheDocument();
+  });
+
   it('calls onVersionSelect when clicked', () => {
     render(
       <VersionButton

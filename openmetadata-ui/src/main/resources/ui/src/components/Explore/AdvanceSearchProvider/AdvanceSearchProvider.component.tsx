@@ -19,7 +19,7 @@ import {
   Utils as QbUtils,
 } from '@react-awesome-query-builder/ui';
 import '@react-awesome-query-builder/ui/css/styles.css';
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
@@ -29,12 +29,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
+import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
@@ -44,10 +47,16 @@ import {
 import {
   getExploreClearQueryFilterSearchParams,
   getExploreResetFiltersSearchParams,
+  parseExploreQueryFilterParam,
 } from '../../../utils/ExplorePureUtils';
-import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
+import {
+  getEmptyJsonTree,
+  loadExploreQueryFilter,
+  sanitizeQueryBuilderTree,
+} from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { showWarningToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -90,6 +99,7 @@ export const AdvanceSearchProvider = ({
   searchOutputType = SearchOutputType.ElasticSearch,
   entityType,
 }: AdvanceSearchProviderProps) => {
+  const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -147,29 +157,24 @@ export const AdvanceSearchProvider = ({
     [location.search]
   );
 
-  const jsonTree = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      return undefined;
-    }
-
-    try {
-      const filter: OldJsonTree = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(filter);
-      if (QbUtils.isValidTree(immutableTree, config)) {
-        return filter;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
-  }, [parsedSearch]);
+  // Keyed on the filter param alone: paging, sorting or a quick filter must not re-apply the Advanced Search
+  // (rebuilding the tree and repeating its warning).
+  const rawQueryFilter = parsedSearch.queryFilter;
+  const urlFilter = useMemo(
+    () => parseExploreQueryFilterParam(rawQueryFilter),
+    [rawQueryFilter]
+  );
+  // A tree from an older link that names a field this config does not have is ignored.
+  const isValidUrlTree = (tree: OldJsonTree, treeConfig: Config) =>
+    QbUtils.isValidTree(QbUtils.loadTree(tree), treeConfig);
 
   const [showModal, setShowModal] = useState(false);
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    jsonTree
-      ? QbUtils.Validation.sanitizeTree(QbUtils.loadTree(jsonTree), config)
-          .fixedTree
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+    urlFilter.tree && isValidUrlTree(urlFilter.tree, config)
+      ? QbUtils.Validation.sanitizeTree(
+          QbUtils.loadTree(urlFilter.tree),
+          config
+        ).fixedTree
       : defaultTree
   );
   const [queryFilter, setQueryFilter] = useState<
@@ -197,11 +202,11 @@ export const AdvanceSearchProvider = ({
     [setConfig, setTreeInternal]
   );
 
-  const handleTreeUpdate = useCallback(
-    (tree?: ImmutableTree) => {
+  const handleQueryFilterUpdate = useCallback(
+    (qFilter?: Partial<QueryFilterInterface>) => {
       navigate({
         pathname: location.pathname,
-        search: getExploreClearQueryFilterSearchParams(parsedSearch, tree),
+        search: getExploreClearQueryFilterSearchParams(parsedSearch, qFilter),
       });
     },
     [navigate, parsedSearch, location.pathname]
@@ -213,7 +218,7 @@ export const AdvanceSearchProvider = ({
 
   const handleReset = useCallback(() => {
     setTreeInternal(
-      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+      sanitizeQueryBuilderTree(QbUtils.loadTree(getEmptyJsonTree()), config)
     );
 
     setQueryFilter(undefined);
@@ -222,8 +227,8 @@ export const AdvanceSearchProvider = ({
 
   const handleResetQueryFilter = useCallback(() => {
     handleReset();
-    handleTreeUpdate();
-  }, [handleReset, handleTreeUpdate]);
+    handleQueryFilterUpdate();
+  }, [handleReset, handleQueryFilterUpdate]);
 
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
@@ -298,7 +303,10 @@ export const AdvanceSearchProvider = ({
   const loadTree = useCallback(
     async (treeObj: OldJsonTree) => {
       const updatedConfig = config;
-      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+      const tree = sanitizeQueryBuilderTree(
+        QbUtils.loadTree(treeObj),
+        updatedConfig
+      );
 
       setTreeInternal(tree);
       const qFilter = {
@@ -327,18 +335,48 @@ export const AdvanceSearchProvider = ({
     };
   }, [searchOutputType, searchIndex]);
 
+  const applyUrlFilter = () => {
+    if (urlFilter.tree && isValidUrlTree(urlFilter.tree, config)) {
+      loadTree(urlFilter.tree);
+
+      return;
+    }
+    if (!urlFilter.queryFilter) {
+      handleReset();
+
+      return;
+    }
+
+    const { tree, isComplete } = loadExploreQueryFilter(
+      urlFilter.queryFilter,
+      config
+    );
+    const qFilter = { query: urlFilter.queryFilter.query };
+
+    setTreeInternal(tree);
+    setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
+    // Applying the modal writes this same filter to the URL; keep the current object so the page does not search twice.
+    setQueryFilter((current) =>
+      isEqual(current, qFilter) ? current : qFilter
+    );
+
+    if (!isComplete) {
+      showWarningToast(t('message.explore-filter-partially-shown'));
+    }
+  };
+  // Read through a ref so the URL is applied when it changes and once the config has loaded — after custom properties,
+  // which a property's rule is matched to — and not again whenever the config or a handler changes identity, which
+  // would reload the URL's tree over the user's edits.
+  const applyUrlFilterRef = useRef(applyUrlFilter);
+  applyUrlFilterRef.current = applyUrlFilter;
+
   useEffect(() => {
     if (!initialised) {
       return;
     }
-    if (jsonTree) {
-      loadTree(jsonTree);
-    } else {
-      handleReset();
-    }
-
+    applyUrlFilterRef.current();
     setLoading(false);
-  }, [jsonTree, initialised]);
+  }, [urlFilter, initialised]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
@@ -348,9 +386,9 @@ export const AdvanceSearchProvider = ({
     const val = QbUtils.sqlFormat(treeInternal, config);
     setSQLQuery(treeInternal ? val ?? '' : '');
 
-    updateURL && handleTreeUpdate(treeInternal);
+    updateURL && handleQueryFilterUpdate(qFilter);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate, updateURL]);
+  }, [treeInternal, config, handleQueryFilterUpdate, updateURL]);
 
   const contextValues = useMemo(
     () => ({

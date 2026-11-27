@@ -3,8 +3,6 @@ package org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.so
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -40,7 +38,6 @@ public class PaginatedWebAnalyticEventDataSource
       (WebAnalyticEventRepository) Entity.getEntityRepository(entityType);
 
   private final String eventType = WebAnalyticEventType.PAGE_VIEW.toString();
-  private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private String lastFailedCursor = null;
   private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
@@ -186,12 +183,6 @@ public class PaginatedWebAnalyticEventDataSource
       throw new SearchIndexException(indexingError);
     }
     return result;
-  }
-
-  @Override
-  public void reset() {
-    cursor.set(null);
-    isDone.set(false);
   }
 
   @Override

@@ -219,11 +219,12 @@ export const selectOption = async (
   // also close and reopen under a new id while the builder re-renders, so
   // re-resolve it (and reopen if needed) on every retry.
   const control = comboboxInput.or(triggerButton).first();
+  let listboxId: string | null = null;
   await expect(async () => {
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await control.press('ArrowDown');
     }
-    const listboxId = await control.getAttribute('aria-controls');
+    listboxId = await control.getAttribute('aria-controls');
     if (!listboxId) {
       throw new Error('Combobox popup did not open (aria-controls not set)');
     }
@@ -252,27 +253,21 @@ export const selectOption = async (
     await option.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
-  // Close the popup if the click didn't: re-selecting the current value emits
-  // no selection change (so the popup stays open) and MultiSelect popups stay
-  // open by design — either would pollute the next interaction's locators.
-  // The control itself may be GONE by now (selecting a field can morph the
-  // whole rule row), which also unmounts its popup — tolerate that.
-  const openListboxId = await control
-    .getAttribute('aria-controls', { timeout: 1000 })
-    .catch(() => null);
-  if (openListboxId) {
-    const openListbox = page.locator(`[role="listbox"][id="${openListboxId}"]`);
-    await openListbox
+  // aria-controls is set only while open, and the click has already flushed.
+  // Blur only an open popup (MultiSelect, or a field that stays open): blurring
+  // a closed one in a focus-contained drawer reopens it. NEVER send Escape:
+  // surrounding modals and forms dismiss on it.
+  const isPopupOpen =
+    (await page.locator(`[aria-controls="${listboxId}"]`).count()) > 0;
+  if (isPopupOpen) {
+    // Best effort: a re-render can replace the control after the count, and a
+    // focus-trapping modal can pull focus straight back and keep the popup
+    // open, so asserting it closed flakes (seen in an antd ConfirmationModal).
+    await control.blur({ timeout: 1000 }).catch(() => undefined);
+    await page
+      .locator(`[role="listbox"][id="${listboxId}"]`)
       .waitFor({ state: 'hidden', timeout: 2000 })
-      .catch(async () => {
-        // Blur the control — react-aria comboboxes close their popup when
-        // focus leaves. NEVER send Escape here: the surrounding modals and
-        // forms handle Escape themselves and would dismiss.
-        await control.blur({ timeout: 1000 }).catch(() => undefined);
-        await openListbox
-          .waitFor({ state: 'hidden', timeout: 1000 })
-          .catch(() => undefined);
-      });
+      .catch(() => undefined);
   }
 };
 

@@ -226,8 +226,10 @@ class OmniSource(DashboardServiceSource):
     def _resolve_topic(self, table_ref: str | None) -> OmniTopic | None:
         """Resolve a tile's table/view reference to a single topic.
 
-        Returns None when the reference is unknown or ambiguous across models, so we
-        never attach lineage to the wrong model's data model.
+        Returns None when the reference is unknown or several data models share it
+        (the same name in two models, or two topics of one model sitting on a base
+        view that has no data model of its own), so we never attach lineage to the
+        wrong data model.
         """
         if not table_ref:
             return None
@@ -242,13 +244,27 @@ class OmniSource(DashboardServiceSource):
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
+                # Only a name-index hit names a topic; an alias hit names a shared
+                # base view, so a topic spelled like its leaf must not win the tie.
+                exact = self._exact_name_match(table_ref, matches) if index is self._topic_name_index else None
+                if exact:
+                    return exact
                 logger.warning(
-                    "Ambiguous tile reference %r across %d models; skipping lineage",
+                    "Ambiguous tile reference %r matches data models %s; skipping lineage",
                     table_ref,
-                    len(matches),
+                    ", ".join(sorted(self._datamodel_name(match) for match in matches)),
                 )
                 return None
         return None
+
+    @staticmethod
+    def _exact_name_match(table_ref: str, matches: list[OmniTopic]) -> OmniTopic | None:
+        """Pick the one same-model match whose name is spelled exactly as the reference's leaf."""
+        if len({topic.model_id for topic in matches}) != 1:
+            return None
+        leaf = table_ref.replace("__", ".").replace("/", ".").rpartition(".")[-1]
+        exact = [topic for topic in matches if topic.name == leaf]
+        return exact[0] if len(exact) == 1 else None
 
     def _get_columns(self, fields: list[OmniField]) -> list[Column]:
         columns: list[Column] = []
@@ -333,7 +349,7 @@ class OmniSource(DashboardServiceSource):
     def get_dashboards_list(self) -> list[OmniDocument] | None:
         dashboards = []
         for doc in self.client.get_documents() or []:
-            if not doc.hasDashboard or doc.deleted:
+            if not (doc.hasDashboard or doc.hasApp) or doc.deleted:
                 continue
             if filter_by_dashboard(self.source_config.dashboardFilterPattern, doc.name or doc.identifier):
                 self.status.filter(doc.name or doc.identifier, "Dashboard Pattern not allowed")

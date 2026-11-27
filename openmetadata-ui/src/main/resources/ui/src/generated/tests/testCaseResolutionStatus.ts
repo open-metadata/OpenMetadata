@@ -97,6 +97,8 @@ export enum Severities {
  *
  * User working on failure resolution.
  *
+ * Assignee of the incident at resolution.
+ *
  * User who resolved the test case failure.
  *
  * User who updated the test case failure status.
@@ -154,6 +156,8 @@ export interface EntityReference {
 export interface Assigned {
     /**
      * User working on failure resolution.
+     *
+     * Assignee of the incident at resolution.
      */
     assignee?: EntityReference;
     /**

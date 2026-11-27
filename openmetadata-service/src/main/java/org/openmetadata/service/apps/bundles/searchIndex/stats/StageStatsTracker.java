@@ -52,15 +52,6 @@ public class StageStatsTracker {
     this.statsDAO = statsDAO;
   }
 
-  public void record(Stage stage, StatsResult result) {
-    switch (stage) {
-      case READER -> recordReader(result);
-      case PROCESS -> recordProcess(result);
-      case SINK -> recordSink(result);
-      case VECTOR -> recordVector(result);
-    }
-  }
-
   public void recordReader(StatsResult result) {
     reader.record(result);
     checkFlush();
@@ -124,15 +115,6 @@ public class StageStatsTracker {
   }
 
   /**
-   * Increment pending sink operations by a batch count.
-   *
-   * @param count Number of documents being submitted
-   */
-  public void incrementPendingSink(int count) {
-    pendingSinkOps.addAndGet(count);
-  }
-
-  /**
    * Wait for all pending sink operations to complete.
    *
    * @param timeoutMs Maximum time to wait in milliseconds
@@ -187,15 +169,6 @@ public class StageStatsTracker {
 
   public void recordVector(StatsResult result) {
     vector.record(result);
-    checkFlush();
-  }
-
-  /**
-   * Record a Vector batch (embedding API call) with the wall-clock duration. Duration isolates
-   * the embedding service round-trip from local doc-build and bulk write.
-   */
-  public void recordVectorBatch(int successCount, int failedCount, long durationNanos) {
-    vector.add(successCount, failedCount, 0, durationNanos);
     checkFlush();
   }
 

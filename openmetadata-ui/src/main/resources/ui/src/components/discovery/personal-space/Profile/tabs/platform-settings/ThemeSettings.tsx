@@ -12,6 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Moon, Sparkle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,8 +24,8 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import { getThemeConfig } from '../../../../../../utils/ThemeUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import BrandImage from '../../../../../common/BrandImage/BrandImage';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
+import LogoPreview from './LogoPreview';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import SettingValue from './SettingValue';
 import {
@@ -76,21 +77,49 @@ const ThemeSettings = (props: PlatformSettingsPageProps) => {
   return (
     <Box data-testid="theme-settings" direction="col" gap={8}>
       <SettingsSection title={t('label.custom-logo')}>
-        {LOGO_URL_FIELDS.map(({ name, labelKey, isMonogram }) => {
-          const url = applicationConfig?.customLogoConfig?.[name];
+        {LOGO_URL_FIELDS.map(({ name, dark, labelKey, isMonogram }) => {
+          const logoConfig = applicationConfig?.customLogoConfig;
+          const url = logoConfig?.[name];
+          const darkUrl = dark ? logoConfig?.[dark.name] : undefined;
 
           return (
             <ReadOnlyRow key={name} title={t(labelKey)}>
               <Box align="center" direction="row" gap={4}>
-                <SettingValue testId={`${name}-value`} value={url} />
-                <BrandImage
-                  className="tw:rounded-md tw:border tw:border-secondary tw:object-contain tw:p-1"
-                  dataTestId={`${name}-preview`}
-                  height={40}
-                  isMonoGram={isMonogram}
-                  src={url || undefined}
-                  width={isMonogram ? 40 : 100}
-                />
+                {!url && !darkUrl && <SettingValue testId={`${name}-value`} />}
+                <Box align="center" className="tw:gap-1.5" direction="row">
+                  {dark && (
+                    <Sparkle
+                      aria-hidden={false}
+                      aria-label={t('label.light')}
+                      className="tw:text-fg-tertiary"
+                      role="img"
+                      size={14}
+                    />
+                  )}
+                  <LogoPreview
+                    isMonogram={isMonogram}
+                    testId={`${name}-preview`}
+                    theme="light"
+                    url={url}
+                  />
+                </Box>
+                {dark && (
+                  <Box align="center" className="tw:gap-1.5" direction="row">
+                    <Moon
+                      aria-hidden={false}
+                      aria-label={t('label.dark')}
+                      className="tw:text-fg-tertiary"
+                      role="img"
+                      size={14}
+                    />
+                    <LogoPreview
+                      isMonogram={isMonogram}
+                      testId={`${dark.name}-preview`}
+                      theme="dark"
+                      url={darkUrl || url}
+                    />
+                  </Box>
+                )}
               </Box>
             </ReadOnlyRow>
           );

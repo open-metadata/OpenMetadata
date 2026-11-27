@@ -36,10 +36,17 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfStorageMaintenanceConfig;
+import org.openmetadata.schema.api.rdf.EntityGraph;
+import org.openmetadata.schema.api.rdf.GraphEdge;
+import org.openmetadata.schema.api.rdf.GraphFilterOption;
+import org.openmetadata.schema.api.rdf.GraphFilterOptions;
+import org.openmetadata.schema.api.rdf.GraphNode;
+import org.openmetadata.schema.api.rdf.GraphTag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -71,6 +78,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.rdf.storage.StorageFacts;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.LiveTagLookup;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
@@ -228,7 +236,12 @@ public class RdfRepository {
       this.storageService =
           servingChain(materializationStorageService, inferenceRuleRepository, assertedOnlyQueries);
       this.translator =
-          new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
+          new JsonLdTranslator(
+              JsonUtils.getObjectMapper(),
+              config.getBaseUri().toString(),
+              LiveTagLookup.database(),
+              ConceptBindingLookup.database(),
+              ReferenceScope.LIVE);
       this.documentTranslator =
           new JsonLdTranslator(
               JsonUtils.getObjectMapper(),
@@ -587,11 +600,55 @@ public class RdfRepository {
       delete(new EntityReference().withType(entityType).withId(entityId));
       return;
     }
-    createOrUpdate(entity);
+    if (Entity.TABLE.equals(entityType) && isEnabled()) {
+      refreshTable(entity);
+    } else {
+      createOrUpdate(entity);
+    }
+  }
+
+  /**
+   * A column test can show its evidence only while its column resolves and its tags allow it
+   * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
+   */
+  private void refreshTable(final EntityInterface<?> table) {
+    try {
+      final String tableUri = entityUri(Entity.TABLE, table.getId());
+      final Map<String, Set<RDFNode>> previousColumnTags =
+          RdfColumnTags.read(
+              storageService.executeSparqlQuery(
+                  RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
+                  RdfColumnTags.RESULTS_FORMAT));
+      final Model projection = translator.toRdf(table);
+      if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
+        // A failed requeue must leave the previous projection for the retry to compare.
+        projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
+      }
+      storeProjection(table, projection);
+    } catch (RuntimeException failure) {
+      throw projectionFailure(table, failure);
+    }
   }
 
   public void refreshOntologyGraph(final UUID ontologyId) {
     projectionLoaders.ontologyGraphs().get().refresh(ontologyId, storageService);
+  }
+
+  /** Hands the assets bound to a concept of the ontology to {@code pageAction}, page by page. */
+  public void forEachBoundAssetPage(
+      final UUID ontologyId, final Consumer<List<EntityReference>> pageAction) {
+    String after = "";
+    List<EntityReference> page;
+    do {
+      page =
+          projectionLoaders
+              .boundAssets()
+              .page(ontologyId, after, RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
+      if (!page.isEmpty()) {
+        pageAction.accept(page);
+        after = page.getLast().getId().toString();
+      }
+    } while (page.size() == RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
   }
 
   public void rebuildOntologyGraphs() {
@@ -614,27 +671,57 @@ public class RdfRepository {
   }
 
   /**
-   * Replays an added relationship. The graph holds the live catalog only, so an edge one of whose
-   * ends was soft-deleted or removed after the add was queued is left out; the delete already
-   * removed every edge of that end.
+   * Replays an added relationship against current SQL state. The graph holds the live catalog only,
+   * so an edge whose SQL row was deleted or one of whose ends was soft-deleted after the add was
+   * queued removes it instead of resurrecting it.
    */
   public void refreshRelationship(final EntityRelationship relationship) {
+    if (!isEnabled() || relationship == null || relationship.getRelationshipType() == null) {
+      return;
+    }
     if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
       refreshLineage(relationship);
-    } else if (hasLiveEnds(relationship)) {
+    } else if (!projectionLoaders.relationshipExists(relationship) || !hasLiveEnds(relationship)) {
+      removeRelationship(relationship);
+    } else {
       addRelationship(relationship);
     }
   }
 
-  /** Replays an added typed glossary relation, leaving it out unless both terms are live. */
+  /**
+   * Replays an added typed glossary relation against current SQL state. The graph holds the live
+   * catalog only, so an edge whose SQL row was deleted or one of whose terms was soft-deleted after
+   * the add was queued removes its stale triples instead of resurrecting them.
+   */
   public void refreshGlossaryTermRelation(
       final UUID fromTermId, final UUID toTermId, final String relationType) {
+    if (!isEnabled() || fromTermId == null || toTermId == null) {
+      return;
+    }
+    final Optional<RelationshipType> resolvedType = findGlossaryRelationType(relationType);
+    if (resolvedType.isEmpty()) {
+      return;
+    }
+    final RelationshipType type = resolvedType.get();
+    final Optional<RelationshipType> inverse =
+        relationshipTypeResolver().inverseOf(type, Include.ALL);
     final RdfEntityLiveness.Endpoint from =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, fromTermId);
     final RdfEntityLiveness.Endpoint to =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, toTermId);
-    if (projectionLoaders.liveness().areLive(from, to)) {
-      addGlossaryTermRelation(fromTermId, toTermId, relationType);
+    final boolean exists =
+        !Boolean.TRUE.equals(type.getDeleted())
+            && projectionLoaders.liveness().areLive(from, to)
+            && RdfProjectionLoaders.hasGlossaryTermRelation(
+                projectionLoaders.glossaryTermRelationRows().load(fromTermId, toTermId),
+                fromTermId,
+                toTermId,
+                type.getName(),
+                inverse.map(RelationshipType::getName).orElse(null));
+    if (exists) {
+      addGlossaryTermRelation(fromTermId, toTermId, type.getName());
+    } else {
+      removeDirectedGlossaryTermRelation(fromTermId, toTermId, type, inverse.orElse(null));
     }
   }
 
@@ -661,34 +748,40 @@ public class RdfRepository {
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
-    if (!isEnabled()) {
-      return;
+    if (isEnabled()) {
+      try {
+        storeProjection(entity, translator.toRdf(entity));
+      } catch (RuntimeException failure) {
+        throw projectionFailure(entity, failure);
+      }
     }
+  }
 
-    try {
-      String entityType = entity.getEntityReference().getType();
-      LOG.debug(
-          "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
-          entityType,
-          entity.getFullyQualifiedName(),
-          entity.getName(),
-          entity.getId());
-      Model rdfModel = translator.toRdf(entity);
-      storageService.storeEntity(entityType, entity.getId(), rdfModel);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
-    } catch (RdfStorageMaintenanceException heldBack) {
-      recordFailure(heldBack);
-      throw heldBack;
-    } catch (Exception e) {
-      recordFailure(e);
-      LOG.error(
-          "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
-          entity.getId(),
-          entity.getEntityReference().getType(),
-          entity.getFullyQualifiedName(),
-          e);
-      throw new RuntimeException("Failed to create/update entity in RDF", e);
+  private void storeProjection(final EntityInterface<?> entity, final Model projection) {
+    final String entityType = entity.getEntityReference().getType();
+    LOG.debug(
+        "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
+        entityType,
+        entity.getFullyQualifiedName(),
+        entity.getName(),
+        entity.getId());
+    storageService.storeEntity(entityType, entity.getId(), projection);
+    LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+  }
+
+  private RuntimeException projectionFailure(
+      final EntityInterface<?> entity, final RuntimeException failure) {
+    recordFailure(failure);
+    if (failure instanceof RdfStorageMaintenanceException) {
+      return failure;
     }
+    LOG.error(
+        "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
+        entity.getId(),
+        entity.getEntityReference().getType(),
+        entity.getFullyQualifiedName(),
+        failure);
+    return new RuntimeException("Failed to create/update entity in RDF", failure);
   }
 
   /**
@@ -1071,20 +1164,22 @@ public class RdfRepository {
   }
 
   /**
-   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources
-   * and the lineage details of its edges.
+   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources,
+   * the concept binding edges into its columns and the lineage details of its edges.
    */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
-            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } } }",
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } "
+            + "UNION { %5$s } } }",
         KNOWLEDGE_GRAPH,
         entityUri,
         RdfOwnedResources.ownedTriplesPattern(),
         RdfLineage.incidentDetailsTriplesPattern(
-            entityUri.substring(entityUri.lastIndexOf('/') + 1)));
+            entityUri.substring(entityUri.lastIndexOf('/') + 1)),
+        RdfOwnedResources.incomingBindingTriplesPattern());
   }
 
   private static String buildIriValues(Collection<String> iris) {
@@ -1750,11 +1845,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get entity to convert to JSON-LD directly
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-
-      // Convert directly to JSON-LD without going through RDF model
-      return translator.toJsonLdString(entity, true);
+      return translator.toJsonLdString(loadEntityDocument(entityType, entityId), true);
 
     } catch (EntityNotFoundException e) {
       throw e;
@@ -1770,14 +1861,12 @@ public class RdfRepository {
     }
 
     try {
-      // Get the entity and convert to RDF
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-      Model rdfModel = documentTranslator.toRdf(entity);
+      Model rdfModel = documentTranslator.toRdf(loadEntityDocument(entityType, entityId));
 
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
       String rdfFormat =
-          switch (format.toLowerCase()) {
+          switch (format.toLowerCase(Locale.ROOT)) {
             case "turtle", "ttl" -> "TURTLE";
             case "rdfxml", "xml" -> "RDF/XML";
             case "ntriples", "nt" -> "N-TRIPLES";
@@ -1793,6 +1882,18 @@ public class RdfRepository {
       LOG.error("Failed to get entity {} as RDF", entityId, e);
       throw new RuntimeException("Failed to get entity as RDF", e);
     }
+  }
+
+  private EntityInterface<?> loadEntityDocument(final String entityType, final UUID entityId) {
+    final boolean isTestCase = Entity.TEST_CASE.equals(entityType);
+    final String fields =
+        isTestCase ? String.join(",", RdfIndexingFields.forEntityType(entityType)) : "*";
+    final EntityInterface<?> entity =
+        Entity.getEntity(entityType, entityId, fields, Include.NON_DELETED);
+    if (isTestCase) {
+      RdfQualityEvidence.database().attach(entityType, List.of(entity));
+    }
+    return entity;
   }
 
   public String executeSparqlQuery(String query, String format) {
@@ -1994,13 +2095,15 @@ public class RdfRepository {
               entityTypes,
               relationshipTypes);
       graphData =
-          convertEdgesToGraphData(
-              entityUri,
-              filteredGraph.nodeUris(),
-              filteredGraph.edges(),
-              buildEntityTypeFilterOptions(traversalResult.nodeUris()),
-              buildRelationshipFilterOptions(traversalResult.edges()),
-              traversalResult.truncated());
+          JsonUtils.pojoToJson(
+              buildEntityGraph(
+                  entityUri,
+                  filteredGraph,
+                  new GraphFilterOptions()
+                      .withEntityTypes(buildEntityTypeFilterOptions(traversalResult.nodeUris()))
+                      .withRelationshipTypes(
+                          buildRelationshipFilterOptions(traversalResult.edges())),
+                  traversalResult.truncated()));
     } catch (Exception e) {
       LOG.error("Error getting entity graph for {}", entityUri, e);
       throw new IOException("Failed to get entity graph", e);
@@ -3051,22 +3154,15 @@ public class RdfRepository {
     return "entity";
   }
 
-  private com.fasterxml.jackson.databind.node.ObjectNode createNodeFromUri(String entityUri) {
-    com.fasterxml.jackson.databind.node.ObjectNode node =
-        JsonUtils.getObjectMapper().createObjectNode();
-
-    String entityId = extractEntityIdFromUri(entityUri);
-    String entityType = extractEntityTypeFromUri(entityUri);
-
-    node.put("id", entityUri);
-    node.put("entityId", entityId);
-    node.put("type", entityType);
-    node.put("group", entityType.toLowerCase());
-
-    // Set temporary label - will be replaced with actual entity name
-    node.put("label", entityId);
-
-    return node;
+  private GraphNode createNodeFromUri(final String entityUri) {
+    final String entityType = extractEntityTypeFromUri(entityUri);
+    // Generated lists start empty, but explore omits tags for nodes without any.
+    return new GraphNode()
+        .withId(entityUri)
+        .withEntityId(extractEntityIdFromUri(entityUri))
+        .withType(entityType)
+        .withGroup(entityType.toLowerCase(Locale.ROOT))
+        .withTags(null);
   }
 
   private String extractEntityIdFromUri(String entityUri) {
@@ -3090,27 +3186,23 @@ public class RdfRepository {
    * fall back to a {@code type: id} label, preserving the per-node tolerance
    * of the old loop.
    */
-  private void enhanceNodesWithEntityDetails(
-      Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap) {
-    Map<String, EntityInterface<?>> entitiesById = fetchEntitiesForNodes(nodeMap.values());
-    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
-      String entityId = node.get("entityId").asText();
-      String entityType = node.get("type").asText();
-      EntityInterface<?> entity = entitiesById.get(entityId);
+  private void enhanceNodesWithEntityDetails(final Collection<GraphNode> nodes) {
+    final Map<String, EntityInterface<?>> entitiesById = fetchEntitiesForNodes(nodes);
+    for (final GraphNode node : nodes) {
+      final EntityInterface<?> entity = entitiesById.get(node.getEntityId());
       if (entity != null) {
         populateNodeFromEntity(node, entity);
       } else {
-        node.put("label", entityType + ": " + entityId);
+        node.setLabel(node.getType() + ": " + node.getEntityId());
       }
     }
   }
 
-  private Map<String, EntityInterface<?>> fetchEntitiesForNodes(
-      Collection<com.fasterxml.jackson.databind.node.ObjectNode> nodes) {
+  private Map<String, EntityInterface<?>> fetchEntitiesForNodes(final Collection<GraphNode> nodes) {
     Map<String, List<EntityReference>> refsByType = new HashMap<>();
-    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodes) {
-      String entityType = node.get("type").asText();
-      EntityReference ref = toEntityReference(entityType, node.get("entityId").asText());
+    for (final GraphNode node : nodes) {
+      final String entityType = node.getType();
+      final EntityReference ref = toEntityReference(entityType, node.getEntityId());
       if (ref != null) {
         refsByType.computeIfAbsent(entityType, key -> new ArrayList<>()).add(ref);
       }
@@ -3178,35 +3270,24 @@ public class RdfRepository {
     return Entity.entityHasField(entityType, GRAPH_NODE_TAG_FIELDS) ? GRAPH_NODE_TAG_FIELDS : "";
   }
 
-  private void populateNodeFromEntity(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
-    String displayLabel =
+  private void populateNodeFromEntity(final GraphNode node, final EntityInterface<?> entity) {
+    final String displayLabel =
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName();
-    node.put("label", displayLabel);
-    node.put("name", entity.getName());
-    node.put("fullyQualifiedName", entity.getFullyQualifiedName());
+    node.setLabel(displayLabel);
+    node.setName(entity.getName());
+    node.setFullyQualifiedName(entity.getFullyQualifiedName());
     if (!nullOrEmpty(entity.getDescription())) {
-      node.put("description", entity.getDescription());
+      node.setDescription(entity.getDescription());
     }
-    applyNodeTags(node, entity);
-  }
-
-  private void applyNodeTags(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
     if (!nullOrEmpty(entity.getTags())) {
-      com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
-          JsonUtils.getObjectMapper().createArrayNode();
-      entity.getTags().forEach(tag -> tagsArray.add(buildTagNode(tag)));
-      node.set("tags", tagsArray);
+      node.setTags(entity.getTags().stream().map(RdfRepository::buildGraphTag).toList());
     }
   }
 
-  private com.fasterxml.jackson.databind.node.ObjectNode buildTagNode(TagLabel tag) {
-    com.fasterxml.jackson.databind.node.ObjectNode tagNode =
-        JsonUtils.getObjectMapper().createObjectNode();
-    tagNode.put("tagFQN", tag.getTagFQN());
-    tagNode.put("name", tag.getLabelType() + "." + tag.getTagFQN());
-    return tagNode;
+  private static GraphTag buildGraphTag(final TagLabel tag) {
+    return new GraphTag()
+        .withTagFQN(tag.getTagFQN())
+        .withName(tag.getLabelType() + "." + tag.getTagFQN());
   }
 
   /**
@@ -3587,7 +3668,7 @@ public class RdfRepository {
   // caller can toggle back on, so counts reflect what is available, not what is
   // currently shown. (The 3D graph view filters client-side and does not send
   // these server-side filters today.)
-  private List<FilterOptionInfo> buildEntityTypeFilterOptions(Set<String> nodeUris) {
+  private List<GraphFilterOption> buildEntityTypeFilterOptions(Set<String> nodeUris) {
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (String nodeUri : nodeUris) {
       String entityType = extractEntityTypeFromUri(nodeUri);
@@ -3596,7 +3677,7 @@ public class RdfRepository {
     return buildFilterOptions(counts);
   }
 
-  private List<FilterOptionInfo> buildRelationshipFilterOptions(List<EdgeInfo> edges) {
+  private List<GraphFilterOption> buildRelationshipFilterOptions(List<EdgeInfo> edges) {
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (EdgeInfo edge : edges) {
       counts.merge(edge.relation, 1, Integer::sum);
@@ -3604,16 +3685,18 @@ public class RdfRepository {
     return buildFilterOptions(counts);
   }
 
-  private List<FilterOptionInfo> buildFilterOptions(Map<String, Integer> counts) {
+  private List<GraphFilterOption> buildFilterOptions(Map<String, Integer> counts) {
     return counts.entrySet().stream()
         .map(
             entry ->
-                new FilterOptionInfo(
-                    entry.getKey(), formatRelationshipLabel(entry.getKey()), entry.getValue()))
+                new GraphFilterOption()
+                    .withId(entry.getKey())
+                    .withLabel(formatRelationshipLabel(entry.getKey()))
+                    .withCount(entry.getValue()))
         .sorted(
-            Comparator.comparingInt(FilterOptionInfo::count)
+            Comparator.comparingInt(GraphFilterOption::getCount)
                 .reversed()
-                .thenComparing(FilterOptionInfo::label))
+                .thenComparing(GraphFilterOption::getLabel))
         .toList();
   }
 
@@ -3621,19 +3704,8 @@ public class RdfRepository {
     Model model = ModelFactory.createDefaultModel();
     configureEntityGraphPrefixes(model);
 
-    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
-    List<String> orderedNodeUris = nodeUris.stream().sorted().toList();
-
-    for (String nodeUri : orderedNodeUris) {
-      com.fasterxml.jackson.databind.node.ObjectNode node = createNodeFromUri(nodeUri);
-      nodeMap.put(nodeUri, node);
-    }
-
-    enhanceNodesWithEntityDetails(nodeMap);
-
-    for (String nodeUri : orderedNodeUris) {
-      addEntityGraphNodeToModel(model, nodeUri, nodeMap.get(nodeUri));
-    }
+    final List<GraphNode> nodes = hydrateGraphNodes(nodeUris.stream().sorted().toList());
+    nodes.forEach(node -> addEntityGraphNodeToModel(model, node));
 
     for (EdgeInfo edge : edges) {
       if (edge.predicateUri == null || edge.predicateUri.isBlank()) {
@@ -3660,14 +3732,9 @@ public class RdfRepository {
     model.setNsPrefix("dprod", "https://ekgf.github.io/dprod/");
   }
 
-  private void addEntityGraphNodeToModel(
-      Model model, String nodeUri, com.fasterxml.jackson.databind.node.ObjectNode node) {
-    Resource resource = model.createResource(nodeUri);
-    String entityType =
-        node != null
-            ? node.path("type").asText(extractEntityTypeFromUri(nodeUri))
-            : extractEntityTypeFromUri(nodeUri);
-    String rdfTypeUri = resolvePrefixedUri(RdfUtils.getRdfType(entityType));
+  private void addEntityGraphNodeToModel(final Model model, final GraphNode node) {
+    final Resource resource = model.createResource(node.getId());
+    final String rdfTypeUri = resolvePrefixedUri(RdfUtils.getRdfType(node.getType()));
 
     if (rdfTypeUri != null) {
       resource.addProperty(
@@ -3675,26 +3742,22 @@ public class RdfRepository {
           model.createResource(rdfTypeUri));
     }
 
-    if (node == null) {
-      return;
-    }
-
     addLiteralIfPresent(
         resource,
         model.createProperty("http://www.w3.org/2000/01/rdf-schema#", "label"),
-        node.path("label").asText(null));
+        node.getLabel());
     addLiteralIfPresent(
         resource,
         model.createProperty("https://open-metadata.org/ontology/", "name"),
-        node.path("name").asText(null));
+        node.getName());
     addLiteralIfPresent(
         resource,
         model.createProperty("https://open-metadata.org/ontology/", "fullyQualifiedName"),
-        node.path("fullyQualifiedName").asText(null));
+        node.getFullyQualifiedName());
     addLiteralIfPresent(
         resource,
         model.createProperty("https://open-metadata.org/ontology/", "description"),
-        node.path("description").asText(null));
+        node.getDescription());
   }
 
   private void addLiteralIfPresent(Resource resource, Property property, String value) {
@@ -3745,92 +3808,53 @@ public class RdfRepository {
     };
   }
 
-  private String convertEdgesToGraphData(
-      String rootUri,
-      Set<String> nodeUris,
-      List<EdgeInfo> edges,
-      List<FilterOptionInfo> entityTypeOptions,
-      List<FilterOptionInfo> relationshipTypeOptions,
-      boolean truncated) {
-    com.fasterxml.jackson.databind.node.ObjectNode graphData =
-        JsonUtils.getObjectMapper().createObjectNode();
-    com.fasterxml.jackson.databind.node.ArrayNode nodes =
-        JsonUtils.getObjectMapper().createArrayNode();
-    com.fasterxml.jackson.databind.node.ArrayNode graphEdges =
-        JsonUtils.getObjectMapper().createArrayNode();
-    com.fasterxml.jackson.databind.node.ObjectNode filterOptions =
-        JsonUtils.getObjectMapper().createObjectNode();
-    com.fasterxml.jackson.databind.node.ArrayNode entityTypeFilterOptions =
-        JsonUtils.getObjectMapper().createArrayNode();
-    com.fasterxml.jackson.databind.node.ArrayNode relationshipTypeFilterOptions =
-        JsonUtils.getObjectMapper().createArrayNode();
-
-    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
-
-    List<String> orderedNodeUris =
-        nodeUris.stream()
-            .map(uri -> new NodeSortKey(uri, !rootUri.equals(uri), extractEntityTypeFromUri(uri)))
-            .sorted(
-                Comparator.comparing(NodeSortKey::notRoot)
-                    .thenComparing(NodeSortKey::type)
-                    .thenComparing(NodeSortKey::uri))
-            .map(NodeSortKey::uri)
-            .toList();
-
-    for (String nodeUri : orderedNodeUris) {
-      com.fasterxml.jackson.databind.node.ObjectNode node = createNodeFromUri(nodeUri);
-      nodes.add(node);
-      nodeMap.put(nodeUri, node);
-    }
-
-    for (EdgeInfo edge : edges) {
-      com.fasterxml.jackson.databind.node.ObjectNode graphEdge =
-          JsonUtils.getObjectMapper().createObjectNode();
-      graphEdge.put("from", edge.fromUri);
-      graphEdge.put("to", edge.toUri);
-      // Label edges relative to the focal node so the user sees the right semantics:
-      //   focal → X (focal is upstream of X)  → "Downstream"
-      //   X → focal (X is upstream of focal)  → "Upstream"
-      // Edges that don't touch the focal keep the raw relation label.
-      String displayRelation = relativeRelationLabel(edge, rootUri);
-      graphEdge.put("label", formatRelationshipLabel(displayRelation));
-      graphEdge.put("relationType", displayRelation);
-      graphEdge.put("arrows", "to");
-      graphEdges.add(graphEdge);
-    }
-
-    for (FilterOptionInfo filterOption : entityTypeOptions) {
-      entityTypeFilterOptions.add(createFilterOptionNode(filterOption));
-    }
-
-    for (FilterOptionInfo filterOption : relationshipTypeOptions) {
-      relationshipTypeFilterOptions.add(createFilterOptionNode(filterOption));
-    }
-
-    enhanceNodesWithEntityDetails(nodeMap);
-
-    graphData.set("nodes", nodes);
-    graphData.set("edges", graphEdges);
-    graphData.put("totalNodes", nodes.size());
-    graphData.put("totalEdges", graphEdges.size());
-    graphData.put("truncated", truncated);
-    graphData.put("source", "rdf");
-
-    filterOptions.set("entityTypes", entityTypeFilterOptions);
-    filterOptions.set("relationshipTypes", relationshipTypeFilterOptions);
-    graphData.set("filterOptions", filterOptions);
-
-    return JsonUtils.pojoToJson(graphData);
+  private EntityGraph buildEntityGraph(
+      final String rootUri,
+      final FilteredEntityGraph filteredGraph,
+      final GraphFilterOptions filterOptions,
+      final boolean truncated) {
+    final List<GraphNode> nodes = hydrateGraphNodes(orderGraphNodeUris(rootUri, filteredGraph));
+    final List<GraphEdge> edges =
+        filteredGraph.edges().stream().map(edge -> buildGraphEdge(edge, rootUri)).toList();
+    return new EntityGraph()
+        .withNodes(nodes)
+        .withEdges(edges)
+        .withTotalNodes(nodes.size())
+        .withTotalEdges(edges.size())
+        .withTruncated(truncated)
+        .withSource(EntityGraph.Source.RDF)
+        .withFilterOptions(filterOptions);
   }
 
-  private com.fasterxml.jackson.databind.node.ObjectNode createFilterOptionNode(
-      FilterOptionInfo filterOption) {
-    com.fasterxml.jackson.databind.node.ObjectNode option =
-        JsonUtils.getObjectMapper().createObjectNode();
-    option.put("id", filterOption.id());
-    option.put("label", filterOption.label());
-    option.put("count", filterOption.count());
-    return option;
+  private List<String> orderGraphNodeUris(
+      final String rootUri, final FilteredEntityGraph filteredGraph) {
+    return filteredGraph.nodeUris().stream()
+        .map(uri -> new NodeSortKey(uri, !rootUri.equals(uri), extractEntityTypeFromUri(uri)))
+        .sorted(
+            Comparator.comparing(NodeSortKey::notRoot)
+                .thenComparing(NodeSortKey::type)
+                .thenComparing(NodeSortKey::uri))
+        .map(NodeSortKey::uri)
+        .toList();
+  }
+
+  private List<GraphNode> hydrateGraphNodes(final List<String> orderedNodeUris) {
+    final Map<String, GraphNode> nodesByUri = new HashMap<>();
+    for (final String uri : orderedNodeUris) {
+      nodesByUri.put(uri, createNodeFromUri(uri));
+    }
+    enhanceNodesWithEntityDetails(nodesByUri.values());
+    return orderedNodeUris.stream().map(nodesByUri::get).toList();
+  }
+
+  private GraphEdge buildGraphEdge(final EdgeInfo edge, final String rootUri) {
+    final String displayRelation = relativeRelationLabel(edge, rootUri);
+    return new GraphEdge()
+        .withFrom(edge.fromUri)
+        .withTo(edge.toUri)
+        .withLabel(formatRelationshipLabel(displayRelation))
+        .withRelationType(displayRelation)
+        .withArrows(GraphEdge.Arrows.TO);
   }
 
   private boolean isEntityUri(String uri) {
@@ -3953,8 +3977,6 @@ public class RdfRepository {
       Set<String> nodeUris, List<EdgeInfo> edges, boolean truncated) {}
 
   private record FilteredEntityGraph(Set<String> nodeUris, List<EdgeInfo> edges) {}
-
-  private record FilterOptionInfo(String id, String label, int count) {}
 
   public void executeSparqlUpdate(String update) {
     if (!isEnabled()) {
@@ -4126,6 +4148,71 @@ public class RdfRepository {
         .inverseOf(type, Include.ALL)
         .ifPresent(inverse -> predicateUris.add(inverse.getRdfPredicate().toString()));
     return predicateUris;
+  }
+
+  private Optional<RelationshipType> findGlossaryRelationType(final String relationType) {
+    final String requested =
+        relationType == null || relationType.isBlank() ? "relatedTo" : relationType;
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    for (final RelationshipType active : resolver.list()) {
+      if (active.getName() != null && active.getName().equalsIgnoreCase(requested)) {
+        return Optional.of(active);
+      }
+    }
+    return resolver.findReferenced(new EntityReference().withName(requested), Include.ALL);
+  }
+
+  private void removeDirectedGlossaryTermRelation(
+      final UUID fromTermId,
+      final UUID toTermId,
+      final RelationshipType type,
+      final RelationshipType inverse) {
+    if (type.getRdfPredicate() == null) {
+      return;
+    }
+    try {
+      final String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
+      final String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
+      final String predicateUri = type.getRdfPredicate().toString();
+      final String inversePredicateUri =
+          inverse != null && inverse.getRdfPredicate() != null
+              ? inverse.getRdfPredicate().toString()
+              : null;
+      storageService.executeSparqlUpdate(
+          buildDirectedGlossaryTermRelationDeleteUpdate(
+              fromUri, toUri, predicateUri, inversePredicateUri));
+      LOG.debug(
+          "Removed stale glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName());
+    } catch (RuntimeException e) {
+      recordFailure(e);
+      LOG.error(
+          "Failed to remove glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName(),
+          e);
+      throw new IllegalStateException("Failed to remove glossary term relation from RDF", e);
+    }
+  }
+
+  /**
+   * Removes only the directed semantic pair ({@code from -> pred -> to} and its paired inverse
+   * {@code to -> inversePred -> from}) so replaying a stale add after the user flipped an
+   * asymmetric relation's direction cannot erase the live reversed edge.
+   */
+  static String buildDirectedGlossaryTermRelationDeleteUpdate(
+      final String fromUri,
+      final String toUri,
+      final String predicateUri,
+      final String inversePredicateUri) {
+    final String reversePredicate =
+        inversePredicateUri != null ? inversePredicateUri : predicateUri;
+    return String.format(
+        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
+        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, reversePredicate, fromUri);
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(

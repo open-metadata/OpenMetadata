@@ -46,6 +46,7 @@ import {
 import { getEntityDeleteMessage } from '../../../../utils/EntityDisplayPureUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
@@ -53,6 +54,7 @@ import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { RowData } from '../../../Database/SampleDataTable/RowData';
 import { SampleDataType } from '../../../Database/SampleDataTable/SampleData.interface';
+import { useTestCaseStore } from '../useTestCase.store';
 import { FailedTestCaseSampleDataProps } from './FailedTestCaseSampleData.interface';
 
 const DIFF_TYPE = 'diffType';
@@ -96,6 +98,12 @@ const FailedTestCaseSampleData = ({
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const { permissions } = usePermissionProvider();
+  const testCasePermission = useTestCaseStore(
+    (state) => state.testCasePermission
+  );
+  const isPermissionLoading = useTestCaseStore(
+    (state) => state.isPermissionLoading
+  );
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
 
@@ -120,15 +128,19 @@ const FailedTestCaseSampleData = ({
     );
   }, [permissions]);
 
-  const hasEditPermission = useMemo(() => {
-    return isVersionPage
-      ? false
-      : checkPermission(
-          Operation.EditAll,
-          ResourceEntity.TEST_CASE,
-          permissions
-        );
-  }, [permissions, isVersionPage]);
+  // DELETE …/failedRowsSample authorizes DeleteTestCaseFailedRowsSample, which
+  // EditAll does not subsume, and only the test case's own permissions resolve
+  // owner rules (ADR:2026-11-22-deleting-a-failed-rows-sample-is-its-own-grant).
+  const canDeleteFailedRowsSample = useMemo(
+    () =>
+      !isVersionPage &&
+      !isPermissionLoading &&
+      testCasePermission !== undefined &&
+      getDerivedPermissionFlags(testCasePermission).can(
+        Operation.DeleteTestCaseFailedRowsSample
+      ),
+    [isVersionPage, isPermissionLoading, testCasePermission]
+  );
 
   const handleDeleteModal = () => {
     setIsDeleteModalOpen((prev) => !prev);
@@ -312,7 +324,7 @@ const FailedTestCaseSampleData = ({
               {t('label.explore-with-query')}
             </Button>
           )}
-          {hasEditPermission && (
+          {canDeleteFailedRowsSample && (
             <ManageMenu
               data-testid="sample-data-manage-button"
               isOpen={showActions}

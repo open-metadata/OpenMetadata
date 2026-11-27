@@ -19,6 +19,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 const table = new TableClass();
 
 const storedAvailabilityTime = '09:00 UTC';
+const storedRefreshFrequency = { interval: 15, unit: 'minute' };
 // A leaf column name that does NOT exist among the table columns, exercising
 // the unmatched columnName preservation path.
 const unmatchedColumnName = 'UPDATED_AT';
@@ -29,7 +30,7 @@ let contractId: string;
 
 test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
   test.beforeAll(
-    'Seed a table and a contract with a non-HH:mm SLA',
+    'Seed a table and contract with a minute refresh SLA',
     async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -39,7 +40,7 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
           name: `sla_roundtrip_contract_${uuid()}`,
           entity: { id: table.entityResponseData.id, type: 'table' },
           sla: {
-            refreshFrequency: { interval: 1, unit: 'day' },
+            refreshFrequency: storedRefreshFrequency,
             retention: { period: 30, unit: 'day' },
             availabilityTime: storedAvailabilityTime,
             columnName: unmatchedColumnName,
@@ -65,7 +66,7 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
     await afterAction();
   });
 
-  test('editing an unrelated SLA field keeps availabilityTime and an unmatched columnName intact', async ({
+  test('editing an unrelated SLA field keeps minute freshness and other saved fields intact', async ({
     browser,
   }) => {
     test.slow();
@@ -113,7 +114,7 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
         await waitForAllLoadersToDisappear(page);
       });
 
-      await test.step('Verify the stored SLA kept availabilityTime and columnName', async () => {
+      await test.step('Verify the stored SLA kept minute freshness, availabilityTime, and columnName', async () => {
         const contractResponse = await apiContext.get(
           `/api/v1/dataContracts/${contractId}`
         );
@@ -132,7 +133,7 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
         // The retention edit applied.
         expect(sla.retention).toEqual({ period: 45, unit: 'day' });
         // refreshFrequency untouched.
-        expect(sla.refreshFrequency).toEqual({ interval: 1, unit: 'day' });
+        expect(sla.refreshFrequency).toEqual(storedRefreshFrequency);
       });
     } finally {
       await afterAction();

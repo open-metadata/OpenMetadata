@@ -138,9 +138,9 @@
           "title": "Refresh Frequency",
           "properties": {
             "interval": { "type": "integer" },
-            "unit": { "type": "string", "enum": ["hour", "day", "week", "month", "year"] }
+            "unit": { "type": "string", "enum": ["minute", "hour", "day", "week", "month", "year"] }
           },
-          "description": "Expected frequency of data updates (e.g. every 1 day)",
+          "description": "Expected frequency of data updates (e.g. every 15 minutes)",
           "required": ["interval", "unit"]
         },
         "maxLatency": {

@@ -598,15 +598,58 @@ class ODCSQualityRuleMapperTest {
     assertEquals(TABLE_FQN + ".updated_at", sla.columnName());
   }
 
-  @Test
-  void freshnessInMinutesCannotBeExpressedAsARefreshFrequency() {
+  @ParameterizedTest
+  @ValueSource(strings = {"minute", "minutes", "mins", "m", " MINUTES "})
+  void freshnessInMinutesBecomesTheContractRefreshFrequency(String unit) {
+    ODCSQualityRule rule =
+        library("Fresh", ODCSQualityRule.OdcsQualityMetric.FRESHNESS, "updated_at")
+            .withMustBeLessOrEqualTo(15.0)
+            .withUnit(unit);
+    SlaOutcome sla =
+        assertInstanceOf(
+            SlaOutcome.class, ODCSQualityRuleMapper.map(List.of(rule), TARGET).getFirst());
+
+    assertEquals(15, sla.refreshFrequency().getInterval());
+    assertEquals("minute", sla.refreshFrequency().getUnit().value());
+    assertEquals(TABLE_FQN + ".updated_at", sla.columnName());
+    assertEquals(rule, sla.rule());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"seconds", "fortnight"})
+  void freshnessUsesAnUnsupportedUnit(String unit) {
     UnsupportedOutcome outcome =
         mapToUnsupported(
             library("Fresh", ODCSQualityRule.OdcsQualityMetric.FRESHNESS, "updated_at")
                 .withMustBeLessOrEqualTo(30.0)
-                .withUnit("minutes"));
+                .withUnit(unit));
 
-    assertTrue(outcome.reason().contains("minute"));
+    assertTrue(outcome.reason().contains(ODCSTimeUnits.normalize(unit)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(doubles = {15.5, 2147483648.0})
+  void freshnessWithAnUnrepresentableIntervalRemainsUnmapped(double interval) {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            library("Fresh", ODCSQualityRule.OdcsQualityMetric.FRESHNESS, "updated_at")
+                .withMustBeLessOrEqualTo(interval)
+                .withUnit("minute"));
+
+    assertTrue(outcome.reason().contains("whole number"));
+  }
+
+  @Test
+  void freshnessPreservesTheLargestNativeInteger() {
+    ODCSQualityRule rule =
+        library("Fresh", ODCSQualityRule.OdcsQualityMetric.FRESHNESS, "updated_at")
+            .withMustBeLessOrEqualTo((double) Integer.MAX_VALUE)
+            .withUnit("minute");
+    SlaOutcome sla =
+        assertInstanceOf(
+            SlaOutcome.class, ODCSQualityRuleMapper.map(List.of(rule), TARGET).getFirst());
+
+    assertEquals(Integer.MAX_VALUE, sla.refreshFrequency().getInterval());
   }
 
   @Test
