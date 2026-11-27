@@ -182,13 +182,14 @@ def test_ci_routes_each_connector_to_one_step_and_limits_its_credentials():
             "E2E_REDSHIFT_HOST_PORT": "E2E_REDSHIFT_HOST_PORT",
             "E2E_REDSHIFT_USERNAME": "E2E_REDSHIFT_USERNAME",
             "E2E_REDSHIFT_PASSWORD": "E2E_REDSHIFT_PASSWORD",
-            "E2E_REDSHIFT_DB": "E2E_REDSHIFT_DB",
         },
     }
     for owner, secrets in secrets_by_step.items():
         for key, secret in secrets.items():
             assert key not in job["env"]
             assert steps[owner]["env"][key] == f"${{{{ secrets.{secret} }}}}"
+    assert "E2E_REDSHIFT_DB" not in job["env"]
+    assert steps["e2e-v2-redshift-test"]["env"]["E2E_REDSHIFT_DB"] == "dev"
     owners = {
         "TEST_BQ_": "e2e-v2-bigquery-test",
         "TEST_SNOWFLAKE_": "e2e-v2-snowflake-test",

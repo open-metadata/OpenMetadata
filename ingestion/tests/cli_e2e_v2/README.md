@@ -466,7 +466,9 @@ export E2E_REDSHIFT_DB=...          # database the identity may create schemas i
 python -m pytest ingestion/tests/cli_e2e_v2/redshift --e2e-contract-check -n 4 -v
 ```
 
-The identity needs `CREATE` on the database. The system-metrics scenario runs its DML and the
+The identity needs `CREATE` on the database. CI logs in with the v1 identity, which has `CREATE` on
+the cluster's `dev` database but not on v1's `e2e_cli_tests`, so the v2 step sets `E2E_REDSHIFT_DB: dev`
+and v1 keeps its own database untouched. The system-metrics scenario runs its DML and the
 profiler as the same identity, and every user sees its own rows in `STL_INSERT` and `STL_DELETE`, so
 it waits for those statements to appear there before profiling and needs no wider log access.
 
