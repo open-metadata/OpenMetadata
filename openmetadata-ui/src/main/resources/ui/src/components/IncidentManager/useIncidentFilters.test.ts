@@ -300,6 +300,33 @@ describe('useIncidentFilters', () => {
     expect(firstCallArg.search).not.toContain('testCaseFQN');
   });
 
+  it('should drop the page and cursor params via clearAllFilters', () => {
+    const { result } = renderFiltersHook({
+      allParams: {
+        testCaseFQN: 'svc.tbl.tc',
+        assignee: 'bob',
+        testCaseResolutionStatusType: 'Assigned',
+        startTs: '1',
+        endTs: '2',
+        dateField: 'updatedAt',
+        currentPage: '5',
+        cursorType: 'after',
+        cursorValue: 'foo',
+        other: 'z',
+        pageSize: '15',
+      },
+      filters: { testCaseFQN: 'svc.tbl.tc' },
+    });
+
+    act(() => {
+      result.current.clearAllFilters();
+    });
+
+    const [firstCallArg] = mockNavigate.mock.calls[0];
+
+    expect(firstCallArg.search).toBe('other=z&pageSize=15');
+  });
+
   it('should build 5 descriptors in the expected key/controlType order', () => {
     const { result } = renderFiltersHook();
 
