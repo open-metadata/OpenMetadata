@@ -224,7 +224,8 @@ re-probes on every run.
 from this release on. A deployment that runs this image without
 `OPENMETADATA_EXTENSION_ENABLED=true`, or runs upstream Apache Jena Fuseki, keeps serving live
 writes and reads after the upgrade, but its next `RdfIndexApp` run fails readiness and every
-ontology activation fails, both naming the extension. Set the variable (it needs only a restart,
+ontology activation fails, both naming the extension. A failed activation is dead-lettered at once
+and marks the projection degraded, so it does not hold up the live writes behind it. Set the variable (it needs only a restart,
 on the same volume) or move to this image as described below.
 
 **From an earlier `openmetadata/fuseki` tag.** Change the tag and restart on the same volume.

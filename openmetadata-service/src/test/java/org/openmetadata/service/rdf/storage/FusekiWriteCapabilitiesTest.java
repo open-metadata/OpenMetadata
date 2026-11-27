@@ -89,8 +89,8 @@ class FusekiWriteCapabilitiesTest {
 
   @Test
   void stockFusekiFailsNamingTheExtensionAndHowToEnableIt() {
-    final IllegalStateException failure =
-        assertThrows(IllegalStateException.class, () -> negotiate(200, STOCK_FUSEKI));
+    final RdfStorageUnsupportedException failure =
+        assertThrows(RdfStorageUnsupportedException.class, () -> negotiate(200, STOCK_FUSEKI));
 
     assertEquals(
         "Fuseki dataset 'openmetadata' at http://fuseki:3030 does not run the OpenMetadata Graph"

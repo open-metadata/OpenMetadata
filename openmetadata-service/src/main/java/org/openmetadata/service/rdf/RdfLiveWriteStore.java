@@ -26,6 +26,7 @@ import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
+import org.openmetadata.service.rdf.storage.RdfStorageUnsupportedException;
 
 /** Shared, ordered delivery and health state, with exhausted writes retained for reconciliation. */
 @Slf4j
@@ -283,7 +284,8 @@ public final class RdfLiveWriteStore {
       return false;
     }
     final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
-    if (attempts >= MAX_DELIVERY_ATTEMPTS) {
+    if (attempts >= MAX_DELIVERY_ATTEMPTS
+        || RdfStorageUnsupportedException.find(failure).isPresent()) {
       deadLetter(handle, entry, attempts, failure);
       return true;
     }
@@ -323,7 +325,7 @@ public final class RdfLiveWriteStore {
         reason);
     retire(handle, entry.id());
     LOG.error(
-        "Live RDF write {} exhausted {} attempts; dead-lettered for reconciliation",
+        "Live RDF write {} failed after {} attempts; dead-lettered for reconciliation",
         entry.id(),
         attempts,
         failure);

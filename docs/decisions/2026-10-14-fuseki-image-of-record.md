@@ -8,7 +8,8 @@
   access and readiness contract, and `RdfStorageReadinessIT#fusekiWithoutTheExtensionFailsNamingIt`,
   `RdfStorageReadinessIT#ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing` and
   `FusekiWriteCapabilitiesTest` pin that readiness and activation refuse a dataset without the
-  extension
+  extension; `RdfLiveWriteRecoveryIT#aStoreThatCannotServeTheWriteDeadLettersItAtOnceAndDeliversTheNext`
+  pins that the queue does not retry that refusal
 - **Related:** [Fuseki-native reasoning plan](../plans/2026-10-07-fuseki-native-reasoning.md)
   (phase 1, task 4; open decision 6), [rdf-fuseki-image-release.md](../rdf-fuseki-image-release.md)
 
@@ -79,7 +80,9 @@ The extension reads Thrift uploads with its upload bound as the row cap (open-me
 - A guarantee the extension leaves unmet, such as an unset `arq:queryTimeout`, is still logged and
   does not fail readiness.
 - Ontology activation (`replaceGraph`) checks the same capabilities before it uploads, so a
-  release fails with the same message instead of Fuseki's HTTP 500.
+  release fails with the same message instead of Fuseki's HTTP 500. The refusal is an
+  `RdfStorageUnsupportedException`: the live-write queue dead-letters it on the first attempt and
+  marks the projection degraded, instead of retrying it for minutes ahead of every later write.
 - The pinned image loads the extension only when `OPENMETADATA_EXTENSION_ENABLED=true`, which
   every Compose file and the Kubernetes example set. A deployment that supplies its own
   environment must set it too.

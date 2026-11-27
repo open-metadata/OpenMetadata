@@ -15,12 +15,14 @@ package org.openmetadata.service.rdf.storage;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -183,11 +185,56 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
-  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is usable")
-  void datasetWithoutTheExtensionIsUsable() {
+  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is refused before any write")
+  void datasetWithoutTheExtensionIsRefusedBeforeAnyWrite() {
     optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
     try (JenaFusekiStorage storage = storage()) {
-      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+      requests.clear();
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+      assertTrue(
+          failure.getMessage().contains("does not run the OpenMetadata Graph Store extension"),
+          failure.getMessage());
+      assertTrue(
+          failure.getMessage().contains("OPENMETADATA_EXTENSION_ENABLED=true"),
+          failure.getMessage());
+      assertTrue(updates.isEmpty(), updates.toString());
+      assertFalse(requests.contains("POST /$/datasets"), requests.toString());
+    }
+  }
+
+  @Test
+  @DisplayName("an activation that cannot reach Fuseki counts toward the circuit breaker")
+  void unreachableActivationOpensTheCircuitBreaker() throws Exception {
+    final int closedPort;
+    try (ServerSocket socket = new ServerSocket(0)) {
+      closedPort = socket.getLocalPort();
+    }
+    final RdfConfiguration config =
+        new RdfConfiguration()
+            .withEnabled(true)
+            .withBaseUri(URI.create("https://open-metadata.org/"))
+            .withRemoteEndpoint(URI.create("http://localhost:" + closedPort + DATASET_PATH))
+            .withWriteMaxRetries(0);
+    final Model release = ModelFactory.createDefaultModel();
+    try (JenaFusekiStorage storage = new JenaFusekiStorage(config, delayMs -> {})) {
+      RuntimeException last = null;
+      for (int attempt = 0;
+          attempt < 10 && !(last instanceof RdfStorageCircuitOpenException);
+          attempt++) {
+        last =
+            assertThrows(
+                RuntimeException.class,
+                () ->
+                    storage.replaceGraph(
+                        "https://open-metadata.org/graph/ontology/" + UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        release));
+      }
+      assertInstanceOf(RdfStorageCircuitOpenException.class, last, String.valueOf(last));
+    } finally {
+      release.close();
     }
   }
 

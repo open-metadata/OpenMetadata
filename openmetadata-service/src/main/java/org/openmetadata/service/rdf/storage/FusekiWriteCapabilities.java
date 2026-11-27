@@ -101,7 +101,7 @@ record FusekiWriteCapabilities(long timeoutMillis, long maxBytes, List<String> m
     requireRegisteredDataset(headers, server, dataset);
     requireWritableGraphStore(headers, server, dataset);
     if (!hasExtension(headers)) {
-      throw new IllegalStateException(EXTENSION_REQUIRED.formatted(dataset, server));
+      throw new RdfStorageUnsupportedException(EXTENSION_REQUIRED.formatted(dataset, server));
     }
     return advertisedBy(headers);
   }
