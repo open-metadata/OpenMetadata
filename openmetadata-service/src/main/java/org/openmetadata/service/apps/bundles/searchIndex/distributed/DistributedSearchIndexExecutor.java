@@ -50,7 +50,6 @@ import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
-import org.openmetadata.service.search.vector.VectorIndexService;
 
 /**
  * Executor for distributed search index jobs.
@@ -1392,8 +1391,7 @@ public class DistributedSearchIndexExecutor {
       return true;
     }
     EntityReindexContext entityContext =
-        EntityReindexContextMapper.fromStagedContext(
-            stagedIndexContext, entityType, lostAStagedChunkDelete());
+        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType);
 
     boolean promoted = false;
     try {
@@ -1414,24 +1412,6 @@ public class DistributedSearchIndexExecutor {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
     return promoted;
-  }
-
-  /**
-   * Whether a node failed a partition of this run because it missed a delete from the run's staged
-   * chunk generation and could not record it on the cluster. The miss belongs to the generation,
-   * not to the type the node happened to be indexing, so a failed partition of any type counts.
-   * That partition fails for good without a retry, and nothing rewrites a FAILED row, so its error
-   * stays readable here whatever the other partitions did. Every path that finalizes a type reads
-   * it: the per-type promotion and the end of the job.
-   */
-  public boolean lostAStagedChunkDelete() {
-    SearchIndexJob job = currentJob;
-    return job != null
-        && coordinator.getPartitions(job.getId(), PartitionStatus.FAILED).stream()
-            .map(SearchIndexPartition::getLastError)
-            .anyMatch(
-                error ->
-                    error != null && error.startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
   }
 
   /**

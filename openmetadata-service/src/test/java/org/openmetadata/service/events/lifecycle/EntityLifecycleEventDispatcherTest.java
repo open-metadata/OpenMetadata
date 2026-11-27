@@ -16,15 +16,19 @@ package org.openmetadata.service.events.lifecycle;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +41,9 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
@@ -681,6 +688,71 @@ class EntityLifecycleEventDispatcherTest {
     assertFalse(syncHandler.updatedCalled);
     assertFalse(syncHandler.deletedCalled);
     assertFalse(syncHandler.softDeletedOrRestoredCalled);
+  }
+
+  /** Each lane task of a batch holds only the entities of its own lane, and every entity once. */
+  @Test
+  void submitInEntityOrderHandsEachLaneTaskOnlyTheEntitiesOfItsLane() {
+    List<EntityReference> entities = tables(64);
+    ConcurrentLinkedQueue<List<EntityReference>> handed = new ConcurrentLinkedQueue<>();
+
+    dispatcher.submitInEntityOrder(entities, "deleteEntityChunks", handed::add);
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .until(() -> handed.stream().mapToInt(List::size).sum() >= entities.size());
+    try (OrderedLaneExecutor lanes = new OrderedLaneExecutor((task, failure) -> {})) {
+      for (List<EntityReference> lane : handed) {
+        assertEquals(
+            1,
+            lane.stream().map(entity -> lanes.laneFor(entity.getId())).distinct().count(),
+            "a lane task holds the entities of one lane");
+      }
+    }
+    assertEquals(
+        Set.copyOf(entities), handed.stream().flatMap(List::stream).collect(Collectors.toSet()));
+  }
+
+  /** A batch task that fails puts each of its entities on the search retry queue. */
+  @Test
+  void aFailedBatchTaskQueuesARetryForEachOfItsEntities() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO retryQueue = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueue);
+    Entity.setCollectionDAO(collectionDAO);
+    List<EntityReference> entities = tables(3);
+    try {
+      dispatcher.submitInEntityOrder(
+          entities,
+          "deleteEntityChunks",
+          lane -> {
+            throw new IllegalStateException("cluster refused");
+          });
+
+      for (EntityReference entity : entities) {
+        verify(retryQueue, timeout(10_000))
+            .upsert(
+                entity.getId().toString(),
+                entity.getFullyQualifiedName(),
+                "deleteEntityChunks: cluster refused",
+                SearchIndexRetryQueue.STATUS_PENDING,
+                Entity.TABLE);
+      }
+    } finally {
+      Entity.setCollectionDAO(null);
+    }
+  }
+
+  private static List<EntityReference> tables(int count) {
+    List<EntityReference> tables = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      tables.add(
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType(Entity.TABLE)
+              .withFullyQualifiedName("svc.db.schema.table_" + i));
+    }
+    return tables;
   }
 
   // Test handler implementation

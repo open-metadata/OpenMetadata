@@ -707,23 +707,11 @@ public class DistributedSearchIndexCoordinator {
    * @param errorMessage Error message describing the failure
    */
   public void failPartition(UUID partitionId, String errorMessage) {
-    recordPartitionFailure(partitionId, errorMessage, true);
-  }
-
-  /**
-   * Mark a partition as failed for good, without a retry: for a failure no retry on any node can
-   * repair, whose FAILED row and {@code errorMessage} must stay as they are for the rest of the job.
-   */
-  public void failPartitionWithoutRetry(UUID partitionId, String errorMessage) {
-    recordPartitionFailure(partitionId, errorMessage, false);
-  }
-
-  private void recordPartitionFailure(UUID partitionId, String errorMessage, boolean retryable) {
     SearchIndexPartitionRecord record =
         collectionDAO.searchIndexPartitionDAO().findById(partitionId.toString());
     if (record == null) {
       LOG.warn("Partition not found for failure: {}", partitionId);
-    } else if (retryable && record.retryCount() < MAX_PARTITION_RETRIES) {
+    } else if (record.retryCount() < MAX_PARTITION_RETRIES) {
       requeuePartition(record, errorMessage);
     } else {
       failPartitionForGood(record, errorMessage);

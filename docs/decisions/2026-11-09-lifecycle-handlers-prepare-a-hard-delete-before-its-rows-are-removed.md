@@ -1,9 +1,11 @@
 # Lifecycle handlers prepare a hard delete before its rows are removed and clean up after it commits
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-26 (a handler can prepare the entities of
+  one type together)
 - **Deciders:** Adrià Manero
-- **Guard:** `EntityLifecycleHardDeleteTest`
+- **Guard:** `EntityLifecycleHardDeleteTest`, `TestSuiteRepositoryTest` (a logical test suite's
+  hard delete)
 - **Related:** PR #37431; `EntityRepository.preparePostDeleteCleanup`, the repository-side pattern
   this extends
 
@@ -25,8 +27,13 @@ no equivalent.
 - `EntityLifecycleEventHandler.prepareHardDelete(entity)` is the handler-side hook. It returns a
   no-op by default.
 - It runs during a hard delete, **before** the entity's relationships and extensions are removed,
-  in both hard-delete paths. A handler reads what its cleanup needs there and returns the cleanup.
-  It must not change the entity's rows itself.
+  in both hard-delete paths, for every entity the delete removes: the root and each descendant of
+  a recursive delete. A handler reads what its cleanup needs there and returns the cleanup. It
+  must not change the entity's rows itself.
+- The dispatcher hands a handler the entities of one type together, through
+  `prepareHardDelete(List)`. A handler that cleans up many entities in one request overrides it;
+  by default each entity goes to `prepareHardDelete(entity)` on its own, and one that fails does
+  not stop the others.
 - The returned cleanup runs **only after the delete's rows are gone for good**. The delete hands it
   to `PostCommitActionQueue.runOrDefer`, as it does the repository's own cleanup. Inside a
   repository transaction boundary (`flushInOneTransaction`, `executeInTransaction`) it runs after
@@ -45,7 +52,9 @@ no equivalent.
 - Cleanup is best effort after the fact: a cleanup that fails leaves its external resource behind,
   logged, and the delete stands. A handler that needs all-or-nothing must keep its data in the same
   database transaction instead.
-- Soft deletes do not call the hook; `onEntitySoftDeletedOrRestored` covers them.
+- Soft deletes do not call the hook. `onEntitySoftDeletedOrRestored` covers the root of one; each
+  descendant of a recursive soft delete gets only an update event with `deleted` set, so a
+  handler that acts on soft deletes checks that flag on updates too.
 - A new hard-delete path must call `prepareHardDeleteCleanup` before it removes references, and
   queue the result with `PostCommitActionQueue.runOrDefer`, or the handlers it skips lose their
   cleanup without any error.

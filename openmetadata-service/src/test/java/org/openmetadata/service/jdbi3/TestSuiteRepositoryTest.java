@@ -1,26 +1,39 @@
 package org.openmetadata.service.jdbi3;
 
+import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.Entity.TEST_CASE;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 class TestSuiteRepositoryTest {
@@ -171,6 +184,76 @@ class TestSuiteRepositoryTest {
           summary.getColumnTestSummary().stream()
               .map(ColumnTestSummaryDefinition::getEntityLink)
               .toList());
+    }
+  }
+
+  /**
+   * A logical suite, a data contract's among them, is hard deleted outside the generic delete
+   * path, so it prepares the lifecycle handlers itself: before its rows are removed, with the
+   * cleanup run once they are gone. The vector handler deletes the suite's chunks there.
+   */
+  @Test
+  void aLogicalSuiteHardDeletePreparesTheHandlersBeforeItsRowsAreRemoved() {
+    List<String> steps = new ArrayList<>();
+    EntityLifecycleEventDispatcher dispatcher = EntityLifecycleEventDispatcher.getInstance();
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.relationshipDAO())
+        .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
+    Entity.setCollectionDAO(collectionDAO);
+    TestSuite suite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("orders_contract_suite")
+            .withFullyQualifiedName("orders_contract_suite")
+            .withBasic(false);
+    try {
+      TestSuiteRepository suites = spy(new TestSuiteRepository());
+      doNothing().when(suites).preDelete(any(), anyString());
+      doReturn(suite).when(suites).setFieldsInternal(any(), any());
+      doAnswer(call -> steps.add("rows removed")).when(suites).cleanup(anyString(), any());
+      dispatcher.registerHandler(new RecordingHandler(steps));
+
+      suites.deleteLogicalTestSuite("admin", suite, true);
+
+      String deleted = suite.getId().toString();
+      assertEquals(List.of("prepare " + deleted, "rows removed", "clean up " + deleted), steps);
+    } finally {
+      dispatcher.unregisterHandler(RecordingHandler.NAME);
+      dispatcher.unregisterHandler("TestSuitePipelineStatusHandler");
+      Entity.setCollectionDAO(null);
+      Entity.cleanup();
+    }
+  }
+
+  private static final class RecordingHandler implements EntityLifecycleEventHandler {
+    private static final String NAME = "TestSuiteRepositoryTest-recording";
+    private final List<String> steps;
+
+    private RecordingHandler(List<String> steps) {
+      this.steps = steps;
+    }
+
+    @Override
+    public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+      String deleted =
+          entities.stream().map(entity -> entity.getId().toString()).collect(joining(","));
+      steps.add("prepare " + deleted);
+      return () -> steps.add("clean up " + deleted);
+    }
+
+    @Override
+    public String getHandlerName() {
+      return NAME;
+    }
+
+    @Override
+    public boolean isAsync() {
+      return false;
+    }
+
+    @Override
+    public Set<String> getSupportedEntityTypes() {
+      return Set.of(Entity.TEST_SUITE);
     }
   }
 }

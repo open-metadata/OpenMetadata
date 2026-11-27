@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -101,21 +102,29 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Getter private final EmbeddingClient embeddingClient;
   private final Function<VectorSearchParameters, Set<String>> readableAnchors;
   private final Clock clock;
+  private final ChunkIndexCleanup cleanup;
+  private final ChunkSetsDelete chunkSetsDelete = new ChunkSetsDelete(new ChunkDeleteRequests());
 
   protected AbstractVectorIndexService(
       EmbeddingClient embeddingClient,
       Function<VectorSearchParameters, Set<String>> readableAnchors) {
-    this(embeddingClient, readableAnchors, Clock.systemUTC());
+    this(embeddingClient, readableAnchors, Clock.systemUTC(), ChunkIndexCleanup.forCluster());
   }
 
-  /** {@code clock} times the staged generation lookup's cache and its backoff. */
+  /**
+   * {@code clock} times the staged generation lookup's cache and its backoff. {@code cleanup} is
+   * what a staged generation is checked against before it goes live, and runs the live chunk
+   * index's cleanups.
+   */
   protected AbstractVectorIndexService(
       EmbeddingClient embeddingClient,
       Function<VectorSearchParameters, Set<String>> readableAnchors,
-      Clock clock) {
+      Clock clock,
+      ChunkIndexCleanup cleanup) {
     this.embeddingClient = embeddingClient;
     this.readableAnchors = readableAnchors;
     this.clock = clock;
+    this.cleanup = cleanup;
   }
 
   /** Status and body of one engine response. {@code body} is null when the engine sent none. */
@@ -210,10 +219,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
-  private static final String INCOMPLETE_CHUNK_WRITES = "incompleteChunkWrites";
   // Set on a chunk index that holds no chunk its header does not count: one created empty, or one
   // removeChunksNoHeaderCounts has gone through.
   private static final String CHUNK_SETS_BOUNDED = "chunkSetsBounded";
+  // Set on a chunk index that holds no chunk of a deleted entity: one created empty, or one
+  // removeChunksOfDeletedEntities has gone through. A staged generation is created without it.
+  private static final String CHUNKS_OF_DELETED_ENTITIES_REMOVED = "chunksOfDeletedEntitiesRemoved";
   private volatile boolean chunkIndexEnsured = false;
   private volatile boolean ontologyChunkIndexEnsured;
 
@@ -620,33 +631,49 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /**
    * Always deletes from the live index: a staged run can be abandoned, and a delete applied only to
-   * the staged generation would then be lost. Also deletes from an in-flight staged generation, so
-   * a promoted run does not bring the chunks back; a miss there blocks the promotion instead. A
-   * miss in the live index throws once the staged generation was tried, so the caller reports it.
+   * the staged generation would then be lost. Also deletes from an in-flight staged generation this
+   * server knows of, so a promoted run does not bring the chunks back; one it misses, or does not
+   * know of yet, is checked against the database before it goes live. A miss in the live index
+   * throws once the staged generation was tried, so the caller reports it.
    */
   @Override
   public void deleteEntityChunks(String parentId) {
-    String live = getChunkIndexName();
-    Optional<Exception> liveFailure = deleteChunksFrom(live, parentId);
-    String staged = resolveChunkSinkTarget();
-    if (staged != null && deleteChunksFrom(staged, parentId).isPresent()) {
-      blockPromotionForMissedDelete(staged);
-    }
-    if (liveFailure.isPresent()) {
+    Exception failure = deleteEntitiesChunks(List.of(parentId)).get(parentId);
+    if (failure != null) {
       throw new IllegalStateException(
-          "Could not delete the chunks of " + parentId + " from " + live, liveFailure.get());
+          "Could not delete the chunks of " + parentId + " from " + getChunkIndexName(), failure);
     }
   }
 
-  private Optional<Exception> deleteChunksFrom(String indexName, String parentId) {
-    Optional<Exception> failure = Optional.empty();
-    try {
-      replaceChunks(indexName, parentId, List.of(), readStoredChunks(indexName, parentId));
-    } catch (IOException | RuntimeException e) {
-      LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
-      failure = Optional.of(e);
+  /**
+   * The same deletes as {@link #deleteEntityChunks}, a batch of parents at a time. See {@link
+   * ChunkSetsDelete}.
+   */
+  @Override
+  public Map<String, Exception> deleteEntitiesChunks(List<String> parentIds) {
+    String live = getChunkIndexName();
+    Map<String, Exception> liveFailures = chunkSetsDelete.delete(live, parentIds);
+    String staged = resolveChunkSinkTarget();
+    if (staged != null) {
+      Map<String, Exception> stagedFailures = chunkSetsDelete.delete(staged, parentIds);
+      if (!stagedFailures.isEmpty()) {
+        logMissedDeletes(staged, stagedFailures);
+      }
     }
-    return failure;
+    if (!liveFailures.isEmpty()) {
+      logMissedDeletes(live, liveFailures);
+    }
+    return liveFailures;
+  }
+
+  private static void logMissedDeletes(String indexName, Map<String, Exception> failures) {
+    Map.Entry<String, Exception> first = failures.entrySet().iterator().next();
+    LOG.debug(
+        "Failed to delete the chunks of {} parents from {}, {} first: {}",
+        failures.size(),
+        indexName,
+        first.getKey(),
+        first.getValue().getMessage());
   }
 
   /**
@@ -691,14 +718,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   // wipe-and-remigrate), but dropping the live index up front turns any mid-run failure into a
   // retrieval outage. Instead the run writes into a bare next-generation index
   // ({chunk_base}_g<N>), invisible to reads, and only when every vector-indexable entity type
-  // finalizes successfully, and no chunk write into the generation failed, is the generation
-  // promoted: one atomic _aliases call points the read and search aliases at it and removes the
-  // previous target. Any failure before promotion leaves the old chunks fully live; abandoned
-  // generations are swept at the next staged recreate.
+  // finalizes successfully, and the generation checked against the database holds no chunk of a
+  // deleted entity, is the generation promoted: one atomic _aliases call points the read and search
+  // aliases at it and removes the previous target. Any failure before promotion leaves the old
+  // chunks fully live; abandoned generations are swept at the next staged recreate.
 
   private final Object stagedChunkLock = new Object();
   private volatile String stagedChunkIndex;
-  private volatile long stagedChunkIndexCreatedAt;
   private static final Set<String> DATA_ASSET_TYPES_LOWERCASE =
       EmbeddedEntityTypes.DATA_ASSETS.stream()
           .map(type -> type.toLowerCase(Locale.ROOT))
@@ -708,12 +734,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private final Set<String> stagedFinalizedTypes = ConcurrentHashMap.newKeySet();
   // Types whose entity index kept its live index. Any of them keeps the live chunks too.
   private final Set<String> stagedKeptLiveTypes = ConcurrentHashMap.newKeySet();
-  // Generations this JVM saved, or failed to save, the missed-delete flag on. A new staged run or
-  // a participant leaving its run clears them.
-  private final Set<String> flaggedGenerations = ConcurrentHashMap.newKeySet();
-  private final Set<String> unflaggedGenerations = ConcurrentHashMap.newKeySet();
   private final Set<String> warnedMirrorGenerations = ConcurrentHashMap.newKeySet();
-  private volatile boolean stagedDeleteMissed;
   // Run-scoped staged chunk index latched by a non-coordinator participant from its ReindexContext
   // (see latchParticipantStagedTarget). Null on the coordinator, which uses stagedChunkIndex; null
   // on a participant whose reindex thread has not yet latched (startup race). Volatile: set by the
@@ -768,18 +789,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       deleteOrphanChunkGenerations(base, liveTarget);
       generation = nextChunkGenerationName(base);
       try {
-        executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
+        executeGenericRequest("PUT", "/" + generation, buildStagedGenerationMapping());
       } catch (Exception e) {
         throw new RuntimeException("Failed to create staged chunk index " + generation, e);
       }
       stagedChunkIndex = generation;
-      stagedChunkIndexCreatedAt = clock.millis();
       stagedExpectedTypes = DATA_ASSET_TYPES_LOWERCASE;
       stagedFinalizedTypes.clear();
       stagedKeptLiveTypes.clear();
-      flaggedGenerations.clear();
-      unflaggedGenerations.clear();
-      stagedDeleteMissed = false;
       LOG.info(
           "Staged chunk index {} created; chunks stay live at {} until promotion",
           generation,
@@ -894,7 +911,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /**
    * Points the read and search aliases at the staged generation and removes the previous target in
    * one atomic {@code _aliases} call — no window where reads see neither or both generations.
-   * Strict like the orphan sweep: a live target that cannot be resolved fails the promotion.
+   * Strict like the orphan sweep: a live target that cannot be resolved fails the promotion. Once
+   * the generation is live, the leased cleanups check it against the database again, for a delete
+   * that missed it between the check here and the swap; from the swap on, every server deletes
+   * through the alias.
    */
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
@@ -911,6 +931,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               keepLive.get());
         } else {
           swapInStagedGeneration(generation, base, liveTarget);
+          startChunkIndexCleanup();
         }
         stagedChunkIndex = null;
       }
@@ -922,12 +943,41 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String reason = null;
     if (!keptLive.isEmpty()) {
       reason = "the entity indexes of " + keptLive + " kept their live index";
-    } else if (stagedDeleteMissed || isStagedGenerationIncomplete(generation)) {
-      reason = "a delete of a removed entity's chunks failed";
+    } else if (!removeChunksOfDeletedEntitiesFrom(generation)) {
+      reason = "it could not be checked against the database for deleted entities";
     } else if (!stagedCanReplaceLive(generation, liveTarget)) {
       reason = "it holds no chunks while the live index does, or a count could not be read";
     }
     return Optional.ofNullable(reason);
+  }
+
+  /**
+   * The run wrote the generation from the database, but an entity it read can be deleted before
+   * the swap by a server that does not know the generation yet, or whose delete into it fails: its
+   * chunks would go live with the generation. So the generation is checked against the database
+   * first, and the chunks of every entity that no longer exists or is soft deleted are removed. A
+   * check that cannot finish keeps the live chunks.
+   */
+  private boolean removeChunksOfDeletedEntitiesFrom(String generation) {
+    boolean removed;
+    try {
+      executeGenericRequest("POST", "/" + generation + "/_refresh", null);
+      DeletedEntityChunksRemoved outcome =
+          new DeletedEntityChunkSweep(new SweepRequests()).sweep(generation, cleanup.live());
+      LOG.info(
+          "Removed the chunks of {} deleted entities from staged chunk index {} before the swap",
+          outcome.parents(),
+          generation);
+      removed = true;
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Could not check staged chunk index {} against the database: {}",
+          generation,
+          e.getMessage(),
+          e);
+      removed = false;
+    }
+    return removed;
   }
 
   /** An empty generation replaces only an empty live index; an unknown count keeps the live one. */
@@ -962,125 +1012,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
   }
 
-  /**
-   * Any node whose delete from the generation failed flagged it on the index itself (see {@link
-   * #blockPromotionForMissedDelete}), so the coordinator sees participants' failures too. Strict
-   * like the swap: a flag that cannot be read fails the promotion.
-   */
-  private boolean isStagedGenerationIncomplete(String generation) {
-    boolean incomplete;
-    try {
-      String mappingJson = executeGenericRequest("GET", "/" + generation + "/_mapping", null);
-      incomplete =
-          MAPPER
-              .readTree(mappingJson)
-              .path(generation)
-              .path("mappings")
-              .path("_meta")
-              .path(INCOMPLETE_CHUNK_WRITES)
-              .asBoolean(false);
-    } catch (IOException | RuntimeException e) {
-      throw new RuntimeException("Failed to read staged chunk index state " + generation, e);
-    }
-    return incomplete;
-  }
-
-  /**
-   * A delete the staged generation missed would bring a removed entity's chunks back at promotion,
-   * so it is the one chunk failure that blocks promotion. The flag is a {@code _meta} entry rather
-   * than JVM state because the delete may fail on a participant while the coordinator promotes.
-   */
-  private void blockPromotionForMissedDelete(String generation) {
-    if (generation.equals(stagedChunkIndex)) {
-      stagedDeleteMissed = true;
-    }
-    saveMissedDeleteFlagOnce(generation);
-  }
-
-  private void saveMissedDeleteFlagOnce(String generation) {
-    if (!flaggedGenerations.contains(generation)) {
-      if (flagStagedGenerationIncomplete(generation)) {
-        flaggedGenerations.add(generation);
-        unflaggedGenerations.remove(generation);
-      } else {
-        unflaggedGenerations.add(generation);
-      }
-    }
-  }
-
-  private boolean flagStagedGenerationIncomplete(String generation) {
-    boolean flagged;
-    try {
-      ObjectNode body = MAPPER.createObjectNode();
-      body.set("_meta", chunkMeta().put(INCOMPLETE_CHUNK_WRITES, true));
-      executeGenericRequest("PUT", "/" + generation + "/_mapping", body.toString());
-      flagged = true;
-    } catch (RuntimeException e) {
-      LOG.error(
-          "Could not flag staged chunk index {} as missing a delete; the next partition this node "
-              + "finishes fails unless a retry saves the flag: {}",
-          generation,
-          e.getMessage());
-      flagged = false;
-    }
-    return flagged;
-  }
-
-  /**
-   * Fails the caller's partition when this node missed a delete from the run's generation and
-   * could not save the flag that blocks its promotion. The failed partition reaches the coordinator
-   * through the job's partition records and keeps the type's live index, which blocks the swap.
-   */
-  @Override
-  public void requireStagedChunkFailuresRecorded() {
-    String generation = stagedChunkIndex != null ? stagedChunkIndex : participantStagedTarget;
-    if (generation != null && unflaggedGenerations.contains(generation)) {
-      saveMissedDeleteFlagOnce(generation);
-      if (unflaggedGenerations.contains(generation)) {
-        throw new UnrecordedStagedChunkDeleteException(generation);
-      }
-    }
-  }
-
   private static final long SINK_TARGET_CACHE_MS = 15_000;
   private static final long FAILED_PROBE_BACKOFF_MS = 2_000;
-  private static final long DISCOVERY_MARGIN_MS = 1_000;
   private volatile String cachedSinkTarget;
   private volatile long cachedSinkTargetAt;
-
-  /**
-   * A node outside the run finds the staged generation through {@link #probedSinkTarget}, whose
-   * answer it keeps for {@value SINK_TARGET_CACHE_MS} ms, so a node that looked just before the
-   * generation was created misses it for up to that long. Waiting that long before the run reads
-   * its first entity closes the gap: an entity deleted or edited while some node still misses the
-   * generation is read by the run after that change, from the database.
-   */
-  @Override
-  public void awaitStagedGenerationDiscovery(String generation) {
-    long remainingMs =
-        generation != null && generation.equals(stagedChunkIndex)
-            ? stagedChunkIndexCreatedAt
-                + SINK_TARGET_CACHE_MS
-                + DISCOVERY_MARGIN_MS
-                - clock.millis()
-            : 0;
-    if (remainingMs > 0) {
-      LOG.info(
-          "Waiting {} ms before the reindex reads entities, so every node's lookup finds {}",
-          remainingMs,
-          generation);
-      sleepUninterrupted(remainingMs);
-    }
-  }
-
-  private static void sleepUninterrupted(long millis) {
-    try {
-      Thread.sleep(millis);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.warn("Interrupted while waiting for the staged chunk generation to be found");
-    }
-  }
 
   /**
    * Resolves the staged chunk target for the live-edit mirror ({@link #mirrorToStagedGeneration})
@@ -1163,28 +1098,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void clearParticipantStagedTarget() {
-    retryUnsavedMissedDeleteFlags();
     participantStagedTarget = null;
-    flaggedGenerations.clear();
-    unflaggedGenerations.clear();
-  }
-
-  /**
-   * A node leaving its run has no partition left to fail, so a missed delete whose flag it could
-   * not save gets one last attempt here. If that fails too the coordinator cannot learn of it.
-   */
-  private void retryUnsavedMissedDeleteFlags() {
-    for (String generation : List.copyOf(unflaggedGenerations)) {
-      saveMissedDeleteFlagOnce(generation);
-      if (unflaggedGenerations.contains(generation)) {
-        LOG.error(
-            "A delete missed staged chunk index {} and this node, leaving its run, could not record "
-                + "it. If the run promotes {}, the deleted entity's chunks stay searchable until "
-                + "the next full recreate",
-            generation,
-            generation);
-      }
-    }
   }
 
   /**
@@ -1445,10 +1359,25 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return upgraded;
   }
 
+  /** An index created empty holds no chunk past its header and none of a deleted entity. */
   private String buildChunkIndexMapping(boolean withSearchAlias) {
+    return buildChunkIndexMapping(
+        withSearchAlias,
+        chunkMeta().put(CHUNK_SETS_BOUNDED, true).put(CHUNKS_OF_DELETED_ENTITIES_REMOVED, true));
+  }
+
+  /**
+   * A generation fills from entities the run read, some of which may be deleted before it goes
+   * live, so it starts without the record of the sweep, which runs once it is live.
+   */
+  private String buildStagedGenerationMapping() {
+    return buildChunkIndexMapping(false, chunkMeta().put(CHUNK_SETS_BOUNDED, true));
+  }
+
+  private String buildChunkIndexMapping(boolean withSearchAlias, ObjectNode meta) {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
-    mappings.set("_meta", chunkMeta().put(CHUNK_SETS_BOUNDED, true));
+    mappings.set("_meta", meta);
     var root = chunkIndexSettings();
     root.set("mappings", mappings);
     // Staged generations are created bare: attaching the search alias before promotion would make
@@ -1508,12 +1437,39 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     ensureChunkIndex();
     String target = resolveLiveChunkTargetStrict(getChunkIndexName());
     Optional<ChunkSetsBounded> healed = Optional.empty();
-    if (target != null
-        && !chunkIndexMappings(target).path("_meta").path(CHUNK_SETS_BOUNDED).asBoolean(false)) {
+    if (target != null && !recorded(target, CHUNK_SETS_BOUNDED)) {
       healed = Optional.of(new ChunkSetHeal(new HealRequests()).healParentsOf(target));
-      recordChunkSetsBounded(target);
+      record(target, CHUNK_SETS_BOUNDED);
     }
     return healed;
+  }
+
+  /**
+   * Removes the chunks of the entities {@code live} does not report, for chunk sets that recursive
+   * deletes left behind, then records on the index that it holds none. An index created empty starts
+   * with that record, so this runs once per index. A failure throws and leaves the record unset.
+   * See {@link DeletedEntityChunkSweep}.
+   */
+  @Override
+  public Optional<DeletedEntityChunksRemoved> removeChunksOfDeletedEntities(LiveEntities live)
+      throws IOException {
+    ensureChunkIndex();
+    String target = resolveLiveChunkTargetStrict(getChunkIndexName());
+    Optional<DeletedEntityChunksRemoved> removed = Optional.empty();
+    if (target != null && !recorded(target, CHUNKS_OF_DELETED_ENTITIES_REMOVED)) {
+      removed = Optional.of(new DeletedEntityChunkSweep(new SweepRequests()).sweep(target, live));
+      record(target, CHUNKS_OF_DELETED_ENTITIES_REMOVED);
+    }
+    return removed;
+  }
+
+  @Override
+  public void startChunkIndexCleanup() {
+    cleanup.startOn(this);
+  }
+
+  private boolean recorded(String indexName, String flag) throws IOException {
+    return chunkIndexMappings(indexName).path("_meta").path(flag).asBoolean(false);
   }
 
   private JsonNode chunkIndexMappings(String indexName) throws IOException {
@@ -1521,9 +1477,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return MAPPER.readTree(mappingJson).path(indexName).path("mappings");
   }
 
-  private void recordChunkSetsBounded(String indexName) throws IOException {
+  private void record(String indexName, String flag) throws IOException {
     ObjectNode body = MAPPER.createObjectNode();
-    body.set("_meta", existingMeta(chunkIndexMappings(indexName)).put(CHUNK_SETS_BOUNDED, true));
+    body.set("_meta", existingMeta(chunkIndexMappings(indexName)).put(flag, true));
     executeGenericRequest("PUT", "/" + indexName + "/_mapping", body.toString());
   }
 
@@ -1531,8 +1487,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private final class HealRequests implements ChunkSetHeal.Requests {
     @Override
     public JsonNode search(String index, String body) {
-      return sendChunkRequest(
-          "/" + index + "/_search", body, response -> requireEveryShard(index, response));
+      return completeSearch(index, body);
     }
 
     @Override
@@ -1560,6 +1515,37 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           null);
     }
     return response;
+  }
+
+  /** The sweep's requests, retried as every chunk request is. */
+  private final class SweepRequests implements DeletedEntityChunkSweep.Requests {
+    @Override
+    public JsonNode search(String index, String body) {
+      return completeSearch(index, body);
+    }
+
+    @Override
+    public Map<String, Exception> deleteChunkSets(String index, List<String> parentIds) {
+      return chunkSetsDelete.delete(index, parentIds);
+    }
+  }
+
+  private JsonNode completeSearch(String index, String body) {
+    return sendChunkRequest(
+        "/" + index + "/_search", body, response -> requireEveryShard(index, response));
+  }
+
+  /** The batched delete's requests, retried as every by-id chunk request is. */
+  private final class ChunkDeleteRequests implements ChunkSetsDelete.Requests {
+    @Override
+    public Map<String, StoredChunks> readHeaders(String index, List<String> parentIds) {
+      return readStoredChunks(index, parentIds);
+    }
+
+    @Override
+    public List<JsonNode> bulk(String index, String body) {
+      return bulkItems(sendBulk(index, "a batch of chunk sets", new StringBuilder(body)));
+    }
   }
 
   private ObjectNode chunkMeta() {
@@ -1945,12 +1931,22 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * chunks behind and report success.
    */
   private StoredChunks readStoredChunks(String indexName, String parentId) {
-    JsonNode doc =
+    return readStoredChunks(indexName, List.of(parentId)).get(parentId);
+  }
+
+  /** One realtime multi-get of the headers of {@code parentIds}, as above. */
+  private Map<String, StoredChunks> readStoredChunks(String indexName, List<String> parentIds) {
+    JsonNode docs =
         sendChunkRequest(
             "/" + indexName + "/_mget",
-            storedChunksRequest(parentId),
-            response -> readHeaderDoc(indexName, response));
-    return isMissingIndex(doc) ? StoredChunks.NONE : storedChunks(doc);
+            storedChunksRequest(parentIds),
+            response -> readHeaderDocs(indexName, parentIds.size(), response));
+    Map<String, StoredChunks> stored = new LinkedHashMap<>();
+    for (int i = 0; i < parentIds.size(); i++) {
+      JsonNode doc = docs.path(i);
+      stored.put(parentIds.get(i), isMissingIndex(doc) ? StoredChunks.NONE : storedChunks(doc));
+    }
+    return stored;
   }
 
   private static StoredChunks storedChunks(JsonNode doc) {
@@ -1958,10 +1954,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return new StoredChunks(header, header == null ? null : DocVersion.of(doc));
   }
 
-  private static String storedChunksRequest(String parentId) {
+  private static String storedChunksRequest(List<String> parentIds) {
     ObjectNode body = MAPPER.createObjectNode();
-    ObjectNode header = body.putArray("docs").addObject().put("_id", parentId + "_0");
-    header.putObject("_source").set("includes", MAPPER.valueToTree(CHUNK_HEADER_FIELDS));
+    ArrayNode docs = body.putArray("docs");
+    for (String parentId : parentIds) {
+      ObjectNode header = docs.addObject().put("_id", parentId + "_0");
+      header.putObject("_source").set("includes", MAPPER.valueToTree(CHUNK_HEADER_FIELDS));
+    }
     return body.toString();
   }
 
@@ -1969,15 +1968,22 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return INDEX_NOT_FOUND.equals(doc.path("error").path("type").asText());
   }
 
-  // A shard that cannot answer for the document reports it on the document, inside a 200.
-  private static JsonNode readHeaderDoc(String indexName, JsonNode response) {
-    JsonNode doc = response.path("docs").path(0);
-    if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
+  // A shard that cannot answer for a document reports it on the document, inside a 200. Documents
+  // come back in the order they were asked for, so an answer with fewer of them is not read.
+  private static JsonNode readHeaderDocs(String indexName, int requested, JsonNode response) {
+    JsonNode docs = response.path("docs");
+    if (docs.size() < requested) {
       throw new TransientChunkRequestException(
-          "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc,
-          null);
+          "Read " + docs.size() + " of " + requested + " chunk headers in " + indexName, null);
     }
-    return doc;
+    for (JsonNode doc : docs) {
+      if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
+        throw new TransientChunkRequestException(
+            "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc,
+            null);
+      }
+    }
+    return docs;
   }
 
   private static ChunkHeader chunkHeader(JsonNode doc) {
@@ -2173,7 +2179,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /** {@code expected} null deletes whatever is stored; a version deletes only that version. */
-  private static void appendChunkDelete(
+  static void appendChunkDelete(
       StringBuilder bulk, String indexName, String id, DocVersion expected) {
     ObjectNode meta = chunkActionMeta(indexName, id, expected);
     ObjectNode action = MAPPER.createObjectNode();
@@ -2189,7 +2195,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return meta;
   }
 
-  private static void appendChunkDeletes(
+  static void appendChunkDeletes(
       StringBuilder bulk, String indexName, String parentId, int fromIndex, int toExclusive) {
     for (int i = fromIndex; i < toExclusive; i++) {
       appendChunkDelete(bulk, indexName, parentId + "_" + i, null);

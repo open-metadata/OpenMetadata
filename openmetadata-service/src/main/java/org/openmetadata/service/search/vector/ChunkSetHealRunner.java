@@ -5,13 +5,18 @@ import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
+import org.openmetadata.service.search.vector.VectorIndexService.DeletedEntityChunksRemoved;
+import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 
 /**
- * Runs {@link VectorIndexService#removeChunksNoHeaderCounts} at startup until the live chunk index
- * records the heal, on one server at a time. A pass that fails, or finds another server holding
- * the lease, is tried again after a backoff that doubles from {@link #FIRST_RETRY} up to {@link
- * #LONGEST_RETRY}. Each server keeps trying until the record is there, so a server that stops part
- * way leaves the pass to the next one once its lease expires. One line is logged at the end.
+ * Runs the live chunk index's one-time cleanups at startup, {@link
+ * VectorIndexService#removeChunksNoHeaderCounts} and then {@link
+ * VectorIndexService#removeChunksOfDeletedEntities}, until the index records both, on one server at
+ * a time. The sweep deletes by the header's bound, so it runs only once the heal has finished. A
+ * pass that fails, or finds another server holding the lease, is tried again after a backoff that
+ * doubles from {@link #FIRST_RETRY} up to {@link #LONGEST_RETRY}. Each server keeps trying until
+ * both records are there, so a server that stops part way leaves the pass to the next one once its
+ * lease expires. One line per cleanup is logged at the end.
  */
 @Slf4j
 public final class ChunkSetHealRunner implements Runnable {
@@ -32,17 +37,19 @@ public final class ChunkSetHealRunner implements Runnable {
 
   private final VectorIndexService service;
   private final Lease lease;
+  private final LiveEntities live;
   private final Pause pause;
   private boolean warned;
   private boolean warnedAtTheCap;
 
-  public ChunkSetHealRunner(VectorIndexService service, Lease lease) {
-    this(service, lease, duration -> Thread.sleep(duration));
+  public ChunkSetHealRunner(VectorIndexService service, Lease lease, LiveEntities live) {
+    this(service, lease, live, duration -> Thread.sleep(duration));
   }
 
-  ChunkSetHealRunner(VectorIndexService service, Lease lease, Pause pause) {
+  ChunkSetHealRunner(VectorIndexService service, Lease lease, LiveEntities live, Pause pause) {
     this.service = service;
     this.lease = lease;
+    this.live = live;
     this.pause = pause;
   }
 
@@ -92,6 +99,7 @@ public final class ChunkSetHealRunner implements Runnable {
     boolean done = false;
     try {
       logOutcome(service.removeChunksNoHeaderCounts(), attempt);
+      logSweep(service.removeChunksOfDeletedEntities(live), attempt);
       done = true;
     } catch (IOException | RuntimeException e) {
       logFailure(attempt, wait, e);
@@ -120,10 +128,22 @@ public final class ChunkSetHealRunner implements Runnable {
         () -> LOG.debug("The chunk index already holds no chunk its header does not count"));
   }
 
+  private static void logSweep(Optional<DeletedEntityChunksRemoved> swept, int attempts) {
+    swept.ifPresentOrElse(
+        outcome ->
+            LOG.info(
+                "Chunk index {} holds no chunk of a deleted entity: removed the chunks of {}"
+                    + " entities in {} attempts",
+                outcome.index(),
+                outcome.parents(),
+                attempts),
+        () -> LOG.debug("The chunk index already holds no chunk of a deleted entity"));
+  }
+
   /** Warns on this server's first failure and once more when the wait reaches its cap. */
   private void logFailure(int attempt, Duration wait, Exception e) {
     String message =
-        "Could not remove the chunks no header counts (attempt {}); trying again, at most every {}"
+        "Could not finish the chunk index cleanup (attempt {}); trying again, at most every {}"
             + " minutes: {}";
     boolean atTheCap = wait.equals(LONGEST_RETRY);
     boolean warn = !warned || (atTheCap && !warnedAtTheCap);
@@ -141,7 +161,7 @@ public final class ChunkSetHealRunner implements Runnable {
       pause.sleep(wait);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.debug("Stopped waiting to remove the chunks no header counts");
+      LOG.debug("Stopped waiting to finish the chunk index cleanup");
     }
   }
 }

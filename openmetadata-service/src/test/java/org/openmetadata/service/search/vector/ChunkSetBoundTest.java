@@ -63,6 +63,8 @@ class ChunkSetBoundTest {
   private static final String LIVE = "data_asset_embeddings_chunks";
   private static final String STAGED = LIVE + "_g1";
   private static final String ENTITY_INDEX = "table_search_index";
+  private static final VectorIndexService.LiveEntities EVERY_ENTITY_LIVE =
+      (entityType, ids) -> Set.copyOf(ids);
 
   private FakeCluster cluster;
   private AdjustableClock clock;
@@ -175,7 +177,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aHeaderThatCannotBeReadFailsTheStagedDeleteAndKeepsTheGenerationFromGoingLive() {
+  void aHeaderThatCannotBeReadFailsTheStagedDeleteAndDeletesNothingFromIt() {
     service.latchParticipantStagedTarget(STAGED);
     assertTrue(write(STAGED, chunks(3)));
     cluster.failReadsOf(STAGED, 503);
@@ -186,7 +188,6 @@ class ChunkSetBoundTest {
         Set.of(parentId + "_0", parentId + "_1", parentId + "_2"),
         cluster.chunkIds(STAGED, parentId),
         "nothing is deleted from a chunk set whose header could not be read");
-    assertTrue(cluster.flaggedIncomplete(STAGED), "the missed delete is recorded");
   }
 
   @Test
@@ -231,7 +232,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aStagedDeleteRetriesAHeaderReadAndLeavesTheGenerationPromotable() {
+  void aStagedDeleteRetriesAHeaderReadTheClusterRefusedOnce() {
     service.latchParticipantStagedTarget(STAGED);
     assertTrue(write(STAGED, chunks(3)));
     cluster.failNextReadsOf(STAGED, 503, 1);
@@ -239,7 +240,6 @@ class ChunkSetBoundTest {
     service.deleteEntityChunks(parentId);
 
     assertEquals(Set.of(), cluster.chunkIds(STAGED, parentId));
-    assertFalse(cluster.flaggedIncomplete(STAGED), "one 503 no longer flags the generation");
   }
 
   @Test
@@ -353,6 +353,18 @@ class ChunkSetBoundTest {
     assertThrows(IllegalStateException.class, () -> service.deleteEntityChunks(parentId));
 
     assertEquals(4, cluster.headerReads - readsBefore, "the first read and three retries");
+    cluster.acceptAllReads();
+    assertEquals(3, cluster.chunkIds(LIVE, parentId).size(), "nothing is deleted");
+  }
+
+  @Test
+  void aHeaderReadThatLeavesTheHeaderOutFailsTheDeleteAndDeletesNothing() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.leaveDocsOutOfReadsOf(LIVE);
+
+    assertThrows(IllegalStateException.class, () -> service.deleteEntityChunks(parentId));
+
     cluster.acceptAllReads();
     assertEquals(3, cluster.chunkIds(LIVE, parentId).size(), "nothing is deleted");
   }
@@ -536,6 +548,7 @@ class ChunkSetBoundTest {
         new ChunkSetHealRunner(
             service,
             new LeaseTable().leaseOf("server"),
+            EVERY_ENTITY_LIVE,
             wait -> {
               pauses.add(wait);
               if (pauses.size() == 7) {
@@ -573,10 +586,13 @@ class ChunkSetBoundTest {
         new ChunkSetHealRunner(
             service,
             leases.leaseOf("second"),
+            EVERY_ENTITY_LIVE,
             wait -> {
               aggregationsWhileHeld.add(cluster.aggregations);
               first.release();
-              new ChunkSetHealRunner(service, first, ignored -> fail("the pass succeeds")).run();
+              new ChunkSetHealRunner(
+                      service, first, EVERY_ENTITY_LIVE, ignored -> fail("the pass succeeds"))
+                  .run();
               aggregationsOfTheFirstPass[0] = cluster.aggregations;
             });
 
@@ -707,7 +723,12 @@ class ChunkSetBoundTest {
     private final FakeCluster cluster;
 
     InMemoryVectorService(EmbeddingClient embeddingClient, FakeCluster cluster, Clock clock) {
-      super(embeddingClient, parameters -> Set.of(), clock);
+      super(
+          embeddingClient,
+          parameters -> Set.of(),
+          clock,
+          new ChunkIndexCleanup(
+              EVERY_ENTITY_LIVE, () -> new LeaseTable().leaseOf("server"), pass -> {}));
       this.cluster = cluster;
     }
 
@@ -781,6 +802,7 @@ class ChunkSetBoundTest {
     private int requestsToMissingIndices;
     private Predicate<String> rejectHeaderIndex = index -> false;
     private Predicate<String> unreadableIndex = index -> false;
+    private Predicate<String> docsLeftOutIndex = index -> false;
     private int unreadableStatus;
     private String faultyReadIndex;
     private int faultyReads;
@@ -819,6 +841,12 @@ class ChunkSetBoundTest {
 
     void acceptAllReads() {
       unreadableIndex = index -> false;
+      docsLeftOutIndex = index -> false;
+    }
+
+    /** Every header read of {@code index} answers 200 with no documents, as a broken proxy may. */
+    void leaveDocsOutOfReadsOf(String index) {
+      docsLeftOutIndex = index::equals;
     }
 
     /** The next {@code times} reads of {@code index} answer {@code status}, or nothing for 0. */
@@ -878,10 +906,6 @@ class ChunkSetBoundTest {
 
     void storeMeta(String index, Map<String, Object> meta) {
       metas.put(index, MAPPER.valueToTree(meta));
-    }
-
-    boolean flaggedIncomplete(String index) {
-      return meta(index).path("incompleteChunkWrites").asBoolean(false);
     }
 
     JsonNode meta(String index) {
@@ -1009,6 +1033,8 @@ class ChunkSetBoundTest {
         response = failure(faultyReadStatus);
       } else if (unreadableIndex.test(index)) {
         response = failure(unreadableStatus);
+      } else if (docsLeftOutIndex.test(index)) {
+        response = ok("{\"docs\":[]}");
       } else {
         ArrayNode docs = MAPPER.createArrayNode();
         JsonNode request = MAPPER.readTree(body);

@@ -16,7 +16,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
@@ -30,22 +29,14 @@ class DistributedReindexFinalizer {
   private final RecreateIndexHandler indexPromotionHandler;
   private final ReindexContext stagedIndexContext;
   private final PromotionPolicy promotionPolicy;
-  private final BooleanSupplier stagedChunkDeleteUnrecorded;
 
-  /**
-   * {@code stagedChunkDeleteUnrecorded} reads whether a node missed a delete from the run's chunk
-   * generation and could not record it; a type finalized here carries it as the per-type promotion
-   * does.
-   */
   DistributedReindexFinalizer(
       RecreateIndexHandler indexPromotionHandler,
       ReindexContext stagedIndexContext,
-      PromotionPolicy promotionPolicy,
-      BooleanSupplier stagedChunkDeleteUnrecorded) {
+      PromotionPolicy promotionPolicy) {
     this.indexPromotionHandler = indexPromotionHandler;
     this.stagedIndexContext = stagedIndexContext;
     this.promotionPolicy = promotionPolicy;
-    this.stagedChunkDeleteUnrecorded = stagedChunkDeleteUnrecorded;
   }
 
   boolean finalizeRemainingEntities(
@@ -186,8 +177,6 @@ class DistributedReindexFinalizer {
 
   private boolean finalizeEntityReindex(String entityType, boolean success) {
     return indexPromotionHandler.finalizeReindex(
-        EntityReindexContextMapper.fromStagedContext(
-            stagedIndexContext, entityType, stagedChunkDeleteUnrecorded.getAsBoolean()),
-        success);
+        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType), success);
   }
 }

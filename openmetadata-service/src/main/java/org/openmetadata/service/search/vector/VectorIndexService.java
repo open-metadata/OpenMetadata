@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
@@ -20,13 +21,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public interface VectorIndexService {
 
   String VECTOR_EMBEDDING_ALIAS = "dataAssetEmbeddings";
-
-  /**
-   * Starts the error of a partition failed for good by {@link
-   * #requireStagedChunkFailuresRecorded}, so the coordinator can keep the run's chunk generation
-   * from going live.
-   */
-  String UNRECORDED_STAGED_DELETE = "Unrecorded staged chunk delete";
 
   EmbeddingClient getEmbeddingClient();
 
@@ -61,6 +55,13 @@ public interface VectorIndexService {
   void deleteEntityChunks(String parentId);
 
   /**
+   * {@link #deleteEntityChunks} for many parents, in a few requests per batch rather than a few per
+   * parent. Returns, for each parent whose chunks the live index may still hold, why; the caller
+   * retries those.
+   */
+  Map<String, Exception> deleteEntitiesChunks(List<String> parentIds);
+
+  /**
    * Removes, once per chunk index, the chunk documents no chunk header counts, which chunk sets
    * written before the header was a conditional write can hold, and records on the index that it
    * holds none. Returns what was removed, or empty when the index already carried the record or
@@ -71,6 +72,35 @@ public interface VectorIndexService {
 
   /** What one heal pass removed from {@code index}. */
   record ChunkSetsBounded(String index, int parents, int chunks) {}
+
+  /**
+   * Removes, once per chunk index, the chunks of entities that no longer exist or are soft deleted,
+   * which recursive deletes left behind before the vector handler cleaned up their descendants, and
+   * records on the index that it holds none. {@code live} says which entities exist and are not
+   * deleted. Returns what was removed, or empty when the index already carried the record or does
+   * not exist. Throws when the pass could not finish, and the record stays unset. {@link
+   * ChunkSetHealRunner} runs it at startup, after the heal, until it succeeds. A staged generation
+   * starts without the record, so it runs again once a generation goes live.
+   */
+  Optional<DeletedEntityChunksRemoved> removeChunksOfDeletedEntities(LiveEntities live)
+      throws IOException;
+
+  /**
+   * Starts, in the background, {@link #removeChunksNoHeaderCounts} and then {@link
+   * #removeChunksOfDeletedEntities} on the live chunk index, on one server at a time, until it
+   * records both. Startup calls it, and so does a staged generation going live.
+   */
+  void startChunkIndexCleanup();
+
+  /** Which entities exist and are not soft deleted. */
+  @FunctionalInterface
+  interface LiveEntities {
+    /** Those of {@code ids}, entities of {@code entityType}, that exist and are not deleted. */
+    Set<String> of(String entityType, List<String> ids);
+  }
+
+  /** How many entities' chunk sets one sweep removed from {@code index}. */
+  record DeletedEntityChunksRemoved(String index, int parents) {}
 
   /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial
@@ -132,20 +162,14 @@ public interface VectorIndexService {
    */
   String beginStagedChunkRecreate();
 
-  /**
-   * Waits until every node's cached lookup of the staged generation, see {@link
-   * #beginStagedChunkRecreate}, has expired, so a node outside the run can no longer miss {@code
-   * generation}. The run calls it before it reads its first entity.
-   */
-  void awaitStagedGenerationDiscovery(String generation);
-
   /** Forgets {@code generation} as this node's staged recreate, without touching the index. */
   void clearStagedChunkState(String generation);
 
   /**
    * Records whether one entity type's staged entity index replaced its live index, for the run
    * that staged {@code runGeneration}. Once every expected type has finalized, the staged chunk
-   * generation is promoted when all their entity indexes were.
+   * generation is checked against the database for deleted entities and promoted when all their
+   * entity indexes were.
    */
   void markEntityTypeReindexed(
       String entityType, boolean entityIndexPromoted, String runGeneration);
@@ -154,13 +178,6 @@ public interface VectorIndexService {
   void latchParticipantStagedTarget(String staged);
 
   void clearParticipantStagedTarget();
-
-  /**
-   * Throws {@link UnrecordedStagedChunkDeleteException} when this node missed a delete from the
-   * run's staged generation and could not record it, so the caller's partition fails for good and
-   * the generation is not promoted.
-   */
-  void requireStagedChunkFailuresRecorded();
 
   default VectorSearchResponse search(
       String query,

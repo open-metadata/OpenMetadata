@@ -5777,7 +5777,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * before removing references and queue the result with {@link PostCommitActionQueue#runOrDefer}
    * (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed).
    */
-  private Runnable prepareHardDeleteCleanup(List<T> entities) {
+  protected final Runnable prepareHardDeleteCleanup(List<T> entities) {
     Runnable repositoryCleanup = preparePostDeleteCleanup(entities);
     Runnable handlerCleanup =
         EntityLifecycleEventDispatcher.getInstance().prepareHardDelete(entities);

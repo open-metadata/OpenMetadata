@@ -1,14 +1,17 @@
 package org.openmetadata.service.search.vector;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -40,6 +43,12 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     return 200;
   }
 
+  /** A hard delete reaches this handler through {@link #prepareHardDelete(List)}. */
+  @Override
+  public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return eventType != EventType.ENTITY_DELETED;
+  }
+
   @Override
   public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     updateEmbedding(entity);
@@ -54,7 +63,10 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
     }
-    if (entity.getDeleted() != null && entity.getDeleted()) {
+    // A recursive soft delete marks each descendant deleted with this update, and sends it no soft
+    // delete event, so the update removes its chunks.
+    if (Boolean.TRUE.equals(entity.getDeleted())) {
+      deleteChunks(entity);
       return;
     }
     if (!Entity.isVectorEmbeddable(entity)) {
@@ -66,10 +78,51 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
-    // Entity search doc is deleted by SearchIndexHandler; chunk docs live in the dedicated
-    // chunk index and must be cleaned here or the deleted entity keeps matching KNN queries.
-    deleteChunks(entity);
+  public Runnable prepareHardDelete(EntityInterface<?> entity) {
+    return prepareHardDelete(List.of(entity));
+  }
+
+  /**
+   * Every hard delete prepares here, the descendants of a recursive delete included, which get no
+   * delete event. Their chunks are deleted after the delete, in batches, each after the tasks this
+   * server already queued for its entity, so none of those updates writes them back.
+   */
+  @Override
+  public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+    List<EntityReference> embedded =
+        entities.stream()
+            .filter(entity -> entity != null && entity.getId() != null && isSupported(entity))
+            .map(EntityInterface::getEntityReference)
+            .toList();
+    return embedded.isEmpty()
+        ? () -> {}
+        : () ->
+            EntityLifecycleEventDispatcher.getInstance()
+                .submitInEntityOrder(embedded, DELETE_CHUNKS_OPERATION, this::deleteChunksOf);
+  }
+
+  private void deleteChunksOf(List<EntityReference> entities) {
+    Map<String, Exception> failed =
+        vectorService.deleteEntitiesChunks(
+            entities.stream().map(entity -> entity.getId().toString()).toList());
+    for (EntityReference entity : entities) {
+      Exception failure = failed.get(entity.getId().toString());
+      if (failure != null) {
+        queueChunkDelete(entity, failure);
+      }
+    }
+  }
+
+  private static void queueChunkDelete(EntityReference entity, Exception failure) {
+    LOG.warn(
+        "Could not delete the chunks of {}; queued for the search retry worker: {}",
+        entity.getId(),
+        failure.getMessage());
+    SearchIndexRetryQueue.enqueue(
+        entity.getId().toString(),
+        entity.getFullyQualifiedName(),
+        entity.getType(),
+        SearchIndexRetryQueue.failureReason(DELETE_CHUNKS_OPERATION, failure));
   }
 
   /** Invalidates stale stored text without making a provider call on the index-writing thread. */

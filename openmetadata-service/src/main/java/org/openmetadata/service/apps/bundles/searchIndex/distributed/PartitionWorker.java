@@ -38,9 +38,6 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
-import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
-import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -367,7 +364,6 @@ public class PartitionWorker {
       }
     }
 
-    requireStagedChunkFailuresRecorded();
     // Mark partition as completed (stats are now in the database)
     coordinator.completePartition(
         partition.getId(), counts.success().get(), counts.failed().get(), counts.warnings().get());
@@ -827,29 +823,8 @@ public class PartitionWorker {
   public record BatchResult(
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
 
-  // A retry on any node cannot repair a missed staged chunk delete, and the partition's FAILED row
-  // is what keeps the chunk generation from going live, so that failure is final at once.
   private void failPartition(SearchIndexPartition partition, Exception failure) {
-    if (failure instanceof UnrecordedStagedChunkDeleteException) {
-      coordinator.failPartitionWithoutRetry(partition.getId(), failure.getMessage());
-    } else {
-      coordinator.failPartition(partition.getId(), failure.getMessage());
-    }
-  }
-
-  /**
-   * A delete this node missed from the run's staged chunk generation, with no flag saved to block
-   * its promotion, fails the partition for good instead; the coordinator then keeps the old chunks.
-   * Any partition carries it, whatever its type: the miss belongs to the run's generation, and the
-   * next partition this node finishes may not be of a type with embeddings.
-   */
-  private static void requireStagedChunkFailuresRecorded() {
-    SearchRepository searchRepository = Entity.getSearchRepository();
-    VectorIndexService vectorService =
-        searchRepository == null ? null : searchRepository.getVectorIndexService();
-    if (vectorService != null) {
-      vectorService.requireStagedChunkFailuresRecorded();
-    }
+    coordinator.failPartition(partition.getId(), failure.getMessage());
   }
 
   public record PartitionResult(

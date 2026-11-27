@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 
 /**
@@ -166,6 +167,89 @@ class OrderedLaneExecutorTest {
     }
   }
 
+  /**
+   * A batch for many entities runs as one task per lane, each with the entities that lane holds,
+   * and only after the tasks already queued for them.
+   */
+  @Test
+  void aBatchRunsOnceOnEachLaneAfterTheTasksQueuedForItsEntities() throws InterruptedException {
+    try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {})) {
+      List<UUID> entities = new ArrayList<>();
+      for (int i = 0; i < executor.getLaneCount() * 4; i++) {
+        entities.add(UUID.randomUUID());
+      }
+      UUID updated = entities.getFirst();
+      ConcurrentLinkedQueue<String> ran = new ConcurrentLinkedQueue<>();
+      CountDownLatch release = new CountDownLatch(1);
+      executor.submit(
+          updated,
+          () -> {
+            release.await();
+            ran.add("update " + updated);
+          });
+      Set<Integer> lanes = new HashSet<>();
+      entities.forEach(entity -> lanes.add(executor.laneFor(entity)));
+      ConcurrentLinkedQueue<List<UUID>> batches = new ConcurrentLinkedQueue<>();
+
+      executor.submitPerLane(
+          entities,
+          laneIds ->
+              () -> {
+                batches.add(laneIds);
+                ran.add("batch " + laneIds.contains(updated));
+              });
+      release.countDown();
+
+      Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> batches.size() == lanes.size());
+      Set<UUID> deleted = new HashSet<>();
+      batches.forEach(
+          batch -> {
+            assertEquals(1, batch.stream().map(executor::laneFor).distinct().count());
+            deleted.addAll(batch);
+          });
+      assertEquals(Set.copyOf(entities), deleted, "every entity is in exactly one batch");
+      List<String> order = new ArrayList<>(ran);
+      assertTrue(
+          order.indexOf("update " + updated) < order.indexOf("batch true"),
+          "the batch holding the entity runs after the task queued for it: " + order);
+    }
+  }
+
+  @Test
+  void aShedBatchReachesTheFailureHandlerWithEveryEntity() throws InterruptedException {
+    ConcurrentLinkedQueue<OrderedLaneBatchTask> shed = new ConcurrentLinkedQueue<>();
+    try (OrderedLaneExecutor executor =
+        new OrderedLaneExecutor(
+            (task, failure) -> {
+              if (task instanceof OrderedLaneBatchTask batch) {
+                shed.add(batch);
+              }
+            },
+            1,
+            5L)) {
+      UUID entityId = UUID.randomUUID();
+      CountDownLatch release = new CountDownLatch(1);
+      CountDownLatch started = new CountDownLatch(1);
+      executor.submit(
+          entityId,
+          () -> {
+            started.countDown();
+            release.await();
+          });
+      assertTrue(started.await(10, TimeUnit.SECONDS));
+      executor.submit(entityId, () -> {});
+      List<EntityReference> entities =
+          List.of(new EntityReference().withId(entityId).withType("table"));
+
+      executor.submitPerLane(
+          List.of(entityId), ids -> new OrderedLaneBatchTask(() -> {}, "deleteChunks", entities));
+
+      assertEquals(1, shed.size(), "the lane is full, so the batch is shed at once");
+      assertEquals(entities, shed.peek().entities());
+      release.countDown();
+    }
+  }
+
   @Test
   void taskFailureRoutesToFailureHandlerAndLaneSurvives() throws InterruptedException {
     ConcurrentHashMap<String, Throwable> failures = new ConcurrentHashMap<>();
@@ -261,6 +345,45 @@ class OrderedLaneExecutorTest {
       neverReleased.countDown();
     }
     assertEquals(5, flushed.size(), "Tasks dropped on hard-stop must be flushed to the outbox");
+  }
+
+  @Test
+  void aBatchStillQueuedAtShutdownGoesToTheFailureHandlerInsteadOfRunning()
+      throws InterruptedException {
+    ConcurrentLinkedQueue<OrderedLaneBatchTask> flushed = new ConcurrentLinkedQueue<>();
+    AtomicInteger ran = new AtomicInteger();
+    UUID entityId = UUID.randomUUID();
+    List<EntityReference> entities =
+        List.of(new EntityReference().withId(entityId).withType("table"));
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch neverReleased = new CountDownLatch(1);
+    OrderedLaneExecutor executor =
+        new OrderedLaneExecutor(
+            (task, failure) -> {
+              if (task instanceof OrderedLaneBatchTask batch) {
+                flushed.add(batch);
+              }
+            },
+            2000,
+            1L);
+    try {
+      executor.submit(
+          entityId,
+          () -> {
+            firstStarted.countDown();
+            neverReleased.await(10, TimeUnit.SECONDS);
+          });
+      assertTrue(firstStarted.await(10, TimeUnit.SECONDS));
+      executor.submitPerLane(
+          List.of(entityId),
+          ids -> new OrderedLaneBatchTask(ran::incrementAndGet, "deleteChunks", entities));
+      executor.close();
+    } finally {
+      neverReleased.countDown();
+    }
+    assertEquals(0, ran.get(), "a batch dropped at shutdown does not run on a stopping server");
+    assertEquals(1, flushed.size(), "the dropped batch goes to the durable retry outbox");
+    assertEquals(entities, flushed.peek().entities());
   }
 
   @Test

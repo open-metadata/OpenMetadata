@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -30,6 +32,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.hc.core5.http.HttpHost;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -37,17 +40,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService;
+import org.openmetadata.service.search.vector.ChunkIndexCleanup;
+import org.openmetadata.service.search.vector.ChunkSetHealRunner;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
+import org.openmetadata.service.search.vector.VectorIndexService.DeletedEntityChunksRemoved;
+import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.opensearch.testcontainers.OpensearchContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -62,6 +74,17 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 class VectorChunkIndexIT {
 
   private static final String QUESTION = "which table holds online orders";
+  private static final Logger LOG = LoggerFactory.getLogger(VectorChunkIndexIT.class);
+  private static final int CASCADE_SIZE = 200;
+  // OrderedLaneExecutor runs at most 32 lanes.
+  private static final int MAX_LANES = 32;
+
+  // A server registers each entity type as its repository starts, and the vector handler skips an
+  // entity whose type it cannot read. This JVM starts no repository, so the table type is
+  // registered here.
+  static {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(Entity.TABLE, Entity.TABLE);
+  }
 
   /** Returns one vector for any text and counts the texts it is asked to embed. */
   private static final class CountingProvider extends EmbeddingClient {
@@ -93,6 +116,55 @@ class VectorChunkIndexIT {
 
     int textsEmbedded() {
       return textsEmbedded.get();
+    }
+  }
+
+  /**
+   * The database the chunk indexes are checked against, as each scenario declares it: every entity
+   * is live until a scenario deletes it. The cleanups a promotion starts are kept for the scenario
+   * to run, so none runs behind another scenario.
+   */
+  private static final class TestDatabase {
+    private final Set<String> deleted = ConcurrentHashMap.newKeySet();
+    private final List<Runnable> startedCleanups = new CopyOnWriteArrayList<>();
+
+    ChunkIndexCleanup cleanup() {
+      return new ChunkIndexCleanup(
+          (entityType, ids) ->
+              ids.stream().filter(id -> !deleted.contains(id)).collect(Collectors.toSet()),
+          FreeLease::new,
+          startedCleanups::add);
+    }
+
+    void delete(Table table) {
+      deleted.add(id(table));
+    }
+
+    void forgetStartedCleanups() {
+      startedCleanups.clear();
+    }
+
+    int startedCleanups() {
+      return startedCleanups.size();
+    }
+
+    void runStartedCleanups() {
+      List<Runnable> passes = List.copyOf(startedCleanups);
+      startedCleanups.clear();
+      assertTimeoutPreemptively(Duration.ofMinutes(2), () -> passes.forEach(Runnable::run));
+    }
+  }
+
+  /** The lease of a cluster with one server. */
+  private static final class FreeLease implements ChunkSetHealRunner.Lease {
+    @Override
+    public boolean tryAcquire() {
+      return true;
+    }
+
+    @Override
+    public void release() {
+      // Nothing else waits for it.
     }
   }
 
@@ -186,8 +258,11 @@ class VectorChunkIndexIT {
     private final RequestLog requests;
 
     CountedOpenSearchVectorService(
-        OpenSearchClient client, EmbeddingClient provider, RequestLog requests) {
-      super(client, provider);
+        OpenSearchClient client,
+        EmbeddingClient provider,
+        RequestLog requests,
+        ChunkIndexCleanup cleanup) {
+      super(client, provider, cleanup);
       this.requests = requests;
     }
 
@@ -219,8 +294,11 @@ class VectorChunkIndexIT {
     private final RequestLog requests;
 
     CountedElasticSearchVectorService(
-        ElasticsearchClient client, EmbeddingClient provider, RequestLog requests) {
-      super(client, provider);
+        ElasticsearchClient client,
+        EmbeddingClient provider,
+        RequestLog requests,
+        ChunkIndexCleanup cleanup) {
+      super(client, provider, cleanup);
       this.requests = requests;
     }
 
@@ -261,6 +339,7 @@ class VectorChunkIndexIT {
             .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
             .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
     private final RequestLog requests = new RequestLog();
+    private final TestDatabase database = new TestDatabase();
     private OpenSearchClient client;
     private OpenSearchVectorService service;
     private OpenSearchVectorService countedService;
@@ -274,8 +353,9 @@ class VectorChunkIndexIT {
               ApacheHttpClient5TransportBuilder.builder(host)
                   .setHttpClientConfigCallback(builder -> builder.disableContentCompression())
                   .build());
-      service = new OpenSearchVectorService(client, provider);
-      countedService = new CountedOpenSearchVectorService(client, provider, requests);
+      service = new OpenSearchVectorService(client, provider, database.cleanup());
+      countedService =
+          new CountedOpenSearchVectorService(client, provider, requests, database.cleanup());
     }
 
     @AfterAll
@@ -300,8 +380,14 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void aFailedDeleteKeepsTheLiveChunks() {
-      assertAFailedDeleteKeepsTheLiveChunks(service);
+    void aDeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap() {
+      assertADeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap(service, database);
+    }
+
+    @Test
+    void aDeleteAnotherServerSentOnlyToTheLiveIndexDoesNotGoLive() {
+      assertADeleteAnotherServerSentOnlyToTheLiveIndexDoesNotGoLive(
+          service, new OpenSearchVectorService(client, provider, database.cleanup()), database);
     }
 
     @Test
@@ -338,6 +424,32 @@ class VectorChunkIndexIT {
     void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
+
+    @Test
+    void aDescendantOfAHardDeleteLosesItsChunks() {
+      assertADescendantOfAHardDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aDescendantOfASoftDeleteLosesItsChunks() {
+      assertADescendantOfASoftDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aRestoredDescendantGetsItsChunksBack() {
+      assertARestoredDescendantGetsItsChunksBack(service);
+    }
+
+    @Test
+    void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
+      assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
+    }
+
+    @Test
+    void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
+      assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+          service, countedService, requests);
+    }
   }
 
   @Nested
@@ -352,7 +464,9 @@ class VectorChunkIndexIT {
             .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
             .withStartupTimeout(Duration.ofMinutes(5));
     private final RequestLog requests = new RequestLog();
+    private final TestDatabase database = new TestDatabase();
     private Rest5Client restClient;
+    private ElasticsearchClient client;
     private ElasticSearchVectorService service;
     private ElasticSearchVectorService countedService;
 
@@ -364,10 +478,11 @@ class VectorChunkIndexIT {
                   new HttpHost("http", container.getHost(), container.getMappedPort(9200)))
               .setHttpClientConfigCallback(builder -> builder.disableContentCompression())
               .build();
-      ElasticsearchClient client =
+      client =
           new ElasticsearchClient(new Rest5ClientTransport(restClient, new JacksonJsonpMapper()));
-      service = new ElasticSearchVectorService(client, provider);
-      countedService = new CountedElasticSearchVectorService(client, provider, requests);
+      service = new ElasticSearchVectorService(client, provider, database.cleanup());
+      countedService =
+          new CountedElasticSearchVectorService(client, provider, requests, database.cleanup());
     }
 
     @AfterAll
@@ -392,8 +507,14 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void aFailedDeleteKeepsTheLiveChunks() {
-      assertAFailedDeleteKeepsTheLiveChunks(service);
+    void aDeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap() {
+      assertADeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap(service, database);
+    }
+
+    @Test
+    void aDeleteAnotherServerSentOnlyToTheLiveIndexDoesNotGoLive() {
+      assertADeleteAnotherServerSentOnlyToTheLiveIndexDoesNotGoLive(
+          service, new ElasticSearchVectorService(client, provider, database.cleanup()), database);
     }
 
     @Test
@@ -430,6 +551,209 @@ class VectorChunkIndexIT {
     void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
+
+    @Test
+    void aDescendantOfAHardDeleteLosesItsChunks() {
+      assertADescendantOfAHardDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aDescendantOfASoftDeleteLosesItsChunks() {
+      assertADescendantOfASoftDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aRestoredDescendantGetsItsChunksBack() {
+      assertARestoredDescendantGetsItsChunksBack(service);
+    }
+
+    @Test
+    void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
+      assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
+    }
+
+    @Test
+    void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
+      assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+          service, countedService, requests);
+    }
+  }
+
+  /**
+   * A recursive hard delete sends its descendants no delete event: the delete of their ancestor
+   * removes their entity documents by query. Each descendant is still prepared for the hard delete
+   * while its rows exist, and that is where the vector handler removes its chunks, after the delete
+   * and off the calling thread.
+   */
+  private static void assertADescendantOfAHardDeleteLosesItsChunks(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table orders = table("orders", "Orders placed online");
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, orders, null);
+      writeChunks(service, ledger, null);
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+
+      handler.prepareHardDelete(orders).run();
+      handler.prepareHardDelete(ledger).run();
+
+      awaitNoChunks(service, live, List.of(orders, ledger));
+    } finally {
+      service.deleteEntityChunks(id(orders));
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * A recursive soft delete updates each descendant to deleted, in bulk, and sends it no soft
+   * delete event. A kNN reads only chunks marked not deleted, and a chunk keeps the flag it was
+   * written with, so the update itself must remove the descendant's chunks.
+   */
+  private static void assertADescendantOfASoftDeleteLosesItsChunks(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, ledger, null);
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+
+      handler.onEntityUpdated(
+          table("ledger", "word ".repeat(940)).withId(ledger.getId()).withDeleted(true),
+          null,
+          null);
+
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+    } finally {
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * A restore updates each descendant back to not deleted, and for a live entity the vector handler
+   * makes this call (VectorEmbeddingHandlerTest covers that branch). The soft delete removed the
+   * chunk set, header included, so the update writes the whole set again and a kNN finds the
+   * entity once more.
+   */
+  private static void assertARestoredDescendantGetsItsChunksBack(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table ledger = table("ledger", "word ".repeat(940));
+    String entityIndex = "table_search_index_restore";
+    try {
+      service.executeGenericRequest(
+          "PUT",
+          "/" + entityIndex + "/_doc/" + id(ledger) + "?refresh=true",
+          JsonUtils.pojoToJson(Map.of("name", "ledger")));
+      writeChunks(service, ledger, null);
+      handler.onEntityUpdated(
+          table("ledger", "word ".repeat(940)).withId(ledger.getId()).withDeleted(true),
+          null,
+          null);
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+
+      service.updateEntityEmbeddings(ledger, entityIndex);
+
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+      refresh(service, live);
+      assertTrue(parentsFound(service).contains(id(ledger)), "a kNN finds the restored entity");
+    } finally {
+      service.deleteEntityChunks(id(ledger));
+      service.executeGenericRequest("DELETE", "/" + entityIndex, null);
+    }
+  }
+
+  /**
+   * A level of a recursive delete is prepared together. Its chunk sets are deleted in one task per
+   * ordered lane, each reading all its headers in one request and deleting in two bulks, so the
+   * requests grow with the lanes, not with the descendants.
+   */
+  private static void assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+      AbstractVectorIndexService service,
+      AbstractVectorIndexService countedService,
+      RequestLog requests) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(countedService);
+    List<Table> tables =
+        IntStream.range(0, CASCADE_SIZE)
+            .mapToObj(
+                i -> table("t" + i, i % 2 == 0 ? "Orders placed online" : "word ".repeat(940)))
+            .toList();
+    try {
+      tables.forEach(table -> writeChunks(service, table, null));
+      requests.clear();
+
+      handler.prepareHardDelete(tables).run();
+
+      awaitNoChunks(service, live, tables);
+      long headerReads = requests.headerReadsOf(live);
+      long sent = requests.countTo(live);
+      LOG.info(
+          "Deleting the chunks of {} descendants sent {} requests, {} header reads",
+          CASCADE_SIZE,
+          sent,
+          headerReads);
+      assertTrue(headerReads <= MAX_LANES, "one header read per lane at most: " + headerReads);
+      assertTrue(sent <= 3L * MAX_LANES, "three requests per lane at most: " + requests);
+    } finally {
+      requests.clear();
+      service.deleteEntitiesChunks(tables.stream().map(VectorChunkIndexIT::id).toList());
+    }
+  }
+
+  /**
+   * Recursive deletes used to leave their descendants' chunks behind. The sweep removes, once per
+   * index, the chunks of every entity the database no longer holds live, keeping the rest of the
+   * index's metadata. An index created empty records it from the start. A mapping update replaces
+   * the metadata whole, which is how the record is cleared here to stand for an index written by an
+   * earlier release.
+   */
+  private static void assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(
+      AbstractVectorIndexService service) throws IOException {
+    String live = service.getChunkIndexName();
+    Table kept = table("orders", "Orders placed online");
+    Table hardDeleted = table("ledger", "word ".repeat(940));
+    Table softDeleted = table("refunds", "Refunds issued");
+    LiveEntities database = (type, ids) -> Set.of(id(kept));
+    LiveEntities everyEntityLive = (type, ids) -> Set.copyOf(ids);
+    try {
+      service.removeChunksOfDeletedEntities(everyEntityLive);
+      List.of(kept, hardDeleted, softDeleted).forEach(table -> writeChunks(service, table, null));
+      refresh(service, live);
+      assertEquals(
+          Optional.empty(),
+          service.removeChunksOfDeletedEntities(database),
+          "an index that records the sweep is not swept again");
+      String target = liveTarget(service);
+      int docVersion = chunkIndexMeta(service, target).path("chunkDocVersion").asInt();
+      putMeta(service, target, "{\"chunkDocVersion\":" + docVersion + "}");
+
+      Optional<DeletedEntityChunksRemoved> removed =
+          service.removeChunksOfDeletedEntities(database);
+
+      assertTrue(removed.isPresent());
+      assertTrue(removed.get().parents() >= 2, removed::toString);
+      assertEquals(1, storedChunkIds(service, live, kept).size());
+      assertEquals(Set.of(), storedChunkIds(service, live, hardDeleted));
+      assertEquals(Set.of(), storedChunkIds(service, live, softDeleted));
+      JsonNode meta = chunkIndexMeta(service, target);
+      assertTrue(meta.path("chunksOfDeletedEntitiesRemoved").asBoolean(false), meta::toString);
+      assertEquals(docVersion, meta.path("chunkDocVersion").asInt(), meta::toString);
+      assertEquals(Optional.empty(), service.removeChunksOfDeletedEntities(database), "once");
+    } finally {
+      service.deleteEntitiesChunks(List.of(id(kept), id(hardDeleted), id(softDeleted)));
+    }
+  }
+
+  private static void awaitNoChunks(
+      AbstractVectorIndexService service, String index, List<Table> parents) {
+    Awaitility.await("the chunks of " + ids(parents) + " are deleted")
+        .atMost(Duration.ofSeconds(20))
+        .pollInterval(Duration.ofMillis(200))
+        .until(() -> parents.stream().allMatch(t -> storedChunkIds(service, index, t).isEmpty()));
   }
 
   /**
@@ -538,20 +862,18 @@ class VectorChunkIndexIT {
   }
 
   /**
-   * An entity is deleted while a rebuild runs, and the delete from the staged generation fails. The
-   * generation would bring the deleted entity's chunks back, so it is flagged and never promoted;
-   * the live chunks, from which the entity is already gone, stay.
+   * An entity is deleted while a rebuild runs, and its delete from the staged generation fails.
+   * The generation is checked against the database before the swap, so it goes live without the
+   * deleted entity's chunks.
    */
-  private static void assertAFailedDeleteKeepsTheLiveChunks(AbstractVectorIndexService service) {
+  private static void assertADeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap(
+      AbstractVectorIndexService service, TestDatabase database) {
     Table orders = table("orders", "Orders placed online");
     Table refunds = table("refunds", "Refunds issued");
     String staged = null;
     try {
       writeChunks(service, orders, null);
       writeChunks(service, refunds, null);
-      refresh(service, service.getChunkIndexName());
-      Set<String> liveAfterTheDelete = new HashSet<>(parentsFound(service));
-      liveAfterTheDelete.remove(id(refunds));
       staged = service.beginStagedChunkRecreate();
       assertNotNull(staged, "A reachable embedding provider stages a generation");
       writeChunks(service, orders, staged);
@@ -559,21 +881,83 @@ class VectorChunkIndexIT {
       refresh(service, staged);
       writeBlock(service, staged, true);
 
+      database.delete(refunds);
       service.deleteEntityChunks(id(refunds));
-      refresh(service, service.getChunkIndexName());
+      writeBlock(service, staged, false);
+      assertEquals(
+          Set.of(id(refunds) + "_0"),
+          storedChunkIds(service, staged, refunds),
+          "The delete missed the generation");
       String generation = staged;
       EmbeddedEntityTypes.ALL.forEach(
           type -> service.markEntityTypeReindexed(type, true, generation));
 
-      assertEquals(Set.of(), aliasesOf(service, staged), "The generation is not promoted");
-      assertEquals(liveAfterTheDelete, parentsFound(service), "The live chunks stay");
-      assertTrue(missedDeleteFlag(service, staged), "The generation is flagged");
+      assertEquals(
+          Set.of(service.getChunkIndexName(), service.getIndexAlias()),
+          aliasesOf(service, staged),
+          "The generation goes live");
+      assertEquals(Set.of(), storedChunkIds(service, staged, refunds));
+      refresh(service, staged);
+      assertEquals(Set.of(id(orders)), parentsFound(service));
     } finally {
       if (staged != null) {
         writeBlock(service, staged, false);
       }
       service.deleteEntityChunks(id(orders));
       service.deleteEntityChunks(id(refunds));
+      refresh(service, service.getChunkIndexName());
+    }
+  }
+
+  /**
+   * A server that has not found the generation yet deletes two entities from the live index only.
+   * The first is gone from the database when the generation is checked, so its chunks are removed
+   * before the swap. The second is deleted between the check and the swap, so the generation goes
+   * live with its chunks, and the sweep that going live starts removes them.
+   */
+  private static void assertADeleteAnotherServerSentOnlyToTheLiveIndexDoesNotGoLive(
+      AbstractVectorIndexService service,
+      AbstractVectorIndexService anotherServer,
+      TestDatabase database) {
+    Table orders = table("orders", "Orders placed online");
+    Table refunds = table("refunds", "Refunds issued");
+    Table invoices = table("invoices", "Invoices sent");
+    List<Table> tables = List.of(orders, refunds, invoices);
+    try {
+      tables.forEach(table -> writeChunks(service, table, null));
+      anotherServer.deleteEntityChunks(UUID.randomUUID().toString());
+      String staged = service.beginStagedChunkRecreate();
+      assertNotNull(staged, "A reachable embedding provider stages a generation");
+      tables.forEach(table -> writeChunks(service, table, staged));
+
+      anotherServer.deleteEntityChunks(id(refunds));
+      anotherServer.deleteEntityChunks(id(invoices));
+      database.delete(refunds);
+      assertEquals(
+          Set.of(id(refunds) + "_0"),
+          storedChunkIds(service, staged, refunds),
+          "Its lookup still says there is no generation, so it deleted from the live index only");
+      refresh(service, staged);
+      database.forgetStartedCleanups();
+      EmbeddedEntityTypes.ALL.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
+
+      assertEquals(
+          Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
+      assertEquals(Set.of(), storedChunkIds(service, staged, refunds), "Removed before the swap");
+      assertEquals(Set.of(id(invoices) + "_0"), storedChunkIds(service, staged, invoices));
+      assertFalse(chunkIndexMeta(service, staged).has("chunksOfDeletedEntitiesRemoved"));
+      assertEquals(1, database.startedCleanups(), "Going live starts the sweep");
+
+      database.delete(invoices);
+      database.runStartedCleanups();
+
+      assertEquals(Set.of(), storedChunkIds(service, staged, invoices), "Removed once live");
+      assertTrue(
+          chunkIndexMeta(service, staged).path("chunksOfDeletedEntitiesRemoved").asBoolean());
+      refresh(service, staged);
+      assertEquals(Set.of(id(orders)), parentsFound(service));
+    } finally {
+      tables.forEach(table -> service.deleteEntityChunks(id(table)));
       refresh(service, service.getChunkIndexName());
     }
   }
@@ -905,15 +1289,6 @@ class VectorChunkIndexIT {
   private static void writeBlock(AbstractVectorIndexService service, String index, boolean on) {
     service.executeGenericRequest(
         "PUT", "/" + index + "/_settings", "{\"index.blocks.write\":" + on + "}");
-  }
-
-  private static boolean missedDeleteFlag(AbstractVectorIndexService service, String index) {
-    return JsonUtils.readTree(service.executeGenericRequest("GET", "/" + index + "/_mapping", null))
-        .path(index)
-        .path("mappings")
-        .path("_meta")
-        .path("incompleteChunkWrites")
-        .asBoolean(false);
   }
 
   // An integer field holding text fails that bulk item on both engines.
