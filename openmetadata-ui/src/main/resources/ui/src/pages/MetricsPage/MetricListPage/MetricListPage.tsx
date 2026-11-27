@@ -1761,9 +1761,14 @@ const MetricListPage = () => {
               })}
               onClose={() => setIsDeleteDialogOpen(false)}>
               <Dialog.Content>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {t('message.delete-metrics-warning')}
-                </Typography>
+                <Box direction="col" gap={3}>
+                  <Badge color="brand" size="sm">
+                    {selectedMetricIds.length} {t('label.selected-lowercase')}
+                  </Badge>
+                  <Typography className="tw:text-secondary" size="text-sm">
+                    {t('message.delete-metrics-warning')}
+                  </Typography>
+                </Box>
               </Dialog.Content>
               <Dialog.Footer>
                 <Button

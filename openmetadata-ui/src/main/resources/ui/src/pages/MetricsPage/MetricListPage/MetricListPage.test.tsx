@@ -389,6 +389,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Checkbox: ({
       'aria-label': ariaLabel,
       'data-testid': dataTestId,
+      isDisabled,
       isSelected,
       onChange,
     }: Record<string, unknown>) => (
@@ -396,6 +397,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         aria-checked={Boolean(isSelected)}
         aria-label={ariaLabel as string}
         data-testid={dataTestId as string}
+        disabled={Boolean(isDisabled)}
         role="checkbox"
         onClick={() =>
           (onChange as ((selected: boolean) => void) | undefined)?.(!isSelected)
@@ -1229,6 +1231,9 @@ describe('MetricListPage', () => {
 
     (getMetricParentIds as jest.Mock).mockResolvedValueOnce(new Map());
     fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+
+    expect(screen.getAllByText(/2 label.selected-lowercase/)).toHaveLength(2);
+
     fireEvent.click(screen.getByTestId('confirm-button'));
 
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
@@ -1239,27 +1244,36 @@ describe('MetricListPage', () => {
     expect(mockDeleteMetric).toHaveBeenCalledWith('metric-2', true);
   });
 
-  it('does not let stale rows be ticked while a filtered search is still loading', async () => {
-    mockSearchQuery.mockResolvedValue(buildSearchResponse([rootMetric]));
-    renderPage();
-    await screen.findByText('net_sales');
-    fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
+  it.each([
+    ['table', 'select-metric-1'],
+    ['card', 'select-metric-card-metric-1'],
+  ])(
+    'does not let stale rows be ticked in %s view while a filtered search is still loading',
+    async (viewMode, checkboxTestId) => {
+      mockSearchQuery.mockResolvedValue(buildSearchResponse([rootMetric]));
+      renderPage();
+      await screen.findByText('net_sales');
+      if (viewMode === 'card') {
+        fireEvent.click(screen.getByTestId('metric-card-view-button'));
+      }
+      fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
 
-    expect(await screen.findByTestId('select-metric-1')).toBeEnabled();
+      expect(await screen.findByTestId(checkboxTestId)).toBeEnabled();
 
-    mockSearchQuery.mockReturnValue(new Promise(() => undefined));
-    fireEvent.change(screen.getByTestId('metric-search'), {
-      target: { value: 'sales' },
-    });
+      mockSearchQuery.mockReturnValue(new Promise(() => undefined));
+      fireEvent.change(screen.getByTestId('metric-search'), {
+        target: { value: 'sales' },
+      });
 
-    await waitFor(() =>
-      expect(mockSearchQuery).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: 'sales' })
-      )
-    );
+      await waitFor(() =>
+        expect(mockSearchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ query: 'sales' })
+        )
+      );
 
-    expect(await screen.findByTestId('select-metric-1')).toBeDisabled();
-  });
+      expect(await screen.findByTestId(checkboxTestId)).toBeDisabled();
+    }
+  );
 
   it('keeps hidden child selections when their group is collapsed', async () => {
     const groupRow = {

@@ -29,5 +29,8 @@ next save (#35635).
 
 ## Consequences
 Bulk actions must handle records that are not loaded: the metric bulk delete fetches parent links
-for off-page selections before choosing which recursive deletes to send. Revisit if a bulk-action
-table needs selections that survive a filter, for example a "select across filters" basket.
+for off-page selections before choosing which recursive deletes to send, and its confirm dialog
+shows how many metrics are selected. The test-suite "remove from test suite" bulk action
+(`DataQualityTab`) still resolves its selection against the current page and is a known follow-up.
+Revisit if a bulk-action table needs selections that survive a filter, for example a "select across
+filters" basket.
