@@ -13678,14 +13678,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         }
       }
 
-      // Delete tags related to deleted columns
+      final List<Column> removedColumns = new ArrayList<>();
       deletedColumns.forEach(
           deleted -> {
-            daoCollection
-                .tagUsageDAO()
-                .deleteFieldTags(
-                    deleted.getFullyQualifiedName(), addedColumnMap.containsKey(deleted.getName()));
-            deleteColumnExtension(entityId, deleted.getFullyQualifiedName());
+            final Column replacement = addedColumnMap.get(deleted.getName());
+            final String deletedFqn = deleted.getFullyQualifiedName();
+            final boolean remainsAtSameFqn =
+                deletedFqn != null
+                    && replacement != null
+                    && deletedFqn.equals(replacement.getFullyQualifiedName());
+            daoCollection.tagUsageDAO().deleteFieldTags(deletedFqn, replacement != null);
+            if (!remainsAtSameFqn) {
+              removedColumns.add(deleted);
+            }
+            if (!remainsAtSameFqn || !operation.isPut() || replacement.getExtension() != null) {
+              deleteColumnExtension(entityId, deletedFqn);
+            }
           });
 
       // Add tags related to newly added columns
@@ -13747,7 +13755,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-      lineageChanges.include(deletedColumns, originalUpdatedColumnFqns);
+      lineageChanges.include(removedColumns, originalUpdatedColumnFqns);
     }
 
     protected void handleColumnLineageUpdates(
