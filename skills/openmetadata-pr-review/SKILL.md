@@ -233,7 +233,8 @@ Repo-specific gates worth knowing:
 | Check | What it actually gates |
 |---|---|
 | `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run. Skipped entirely when the PR has the `skip-pr-checks` label (test fixes, which need no issue) |
-| `py-checkstyle` | ruff (format + lint), **plus basedpyright when Python paths changed**. Existing violations are grandfathered in `ingestion/.basedpyright/baseline.json`; **any new violation in any file fails**, so a new connector must land type-clean, not baseline-clean |
+| `py-tests-status` | Required aggregate check for the selected Python workloads, including on fork PRs. Open the `python` job in `ci-pr` to identify the failing step. |
+| `py-checkstyle` | Separate static-check report for same-repository PRs. Covers Ruff lint and formatting, plus basedpyright when the `python` path filter matches. `ingestion/.basedpyright/baseline.json` grandfathers existing type errors. New type errors in checked files fail the run. |
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |
 | `Java checkstyle` | spotless |
 | `generate-types` | schema ↔ generated model drift |
