@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -29,11 +30,14 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.io.StringReader;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -166,6 +170,57 @@ class LineageRepositoryTest {
     }
 
     return JsonUtils.pojoToJson(details);
+  }
+
+  @Test
+  void aCompletedLineageDeletionCannotRemoveAReplacementEdge() throws Exception {
+    final AtomicBoolean indexed = new AtomicBoolean(true);
+    final List<Runnable> backgroundTasks = new ArrayList<>();
+    simulateSearchRemoval(indexed, backgroundTasks);
+    deleteFromSearch();
+    assertFalse(
+        indexed.get(), "The deletion must be visible before its caller can add a replacement");
+    indexed.set(true);
+    backgroundTasks.forEach(Runnable::run);
+    assertTrue(indexed.get(), "A completed delete must not later erase the replacement");
+  }
+
+  private static SearchClient lineageSearchClient() throws Exception {
+    final Field clientField = LineageRepository.class.getDeclaredField("searchClient");
+    clientField.setAccessible(true);
+    return (SearchClient) clientField.get(null);
+  }
+
+  private static void simulateSearchRemoval(
+      final AtomicBoolean indexed, final List<Runnable> backgroundTasks) throws Exception {
+    final SearchClient client = lineageSearchClient();
+    doAnswer(
+            call -> {
+              backgroundTasks.add(() -> indexed.set(false));
+              return null;
+            })
+        .when(client)
+        .updateChildren(any(String.class), any(Pair.class), any(Pair.class));
+    doAnswer(
+            call -> {
+              indexed.set(false);
+              return null;
+            })
+        .when(client)
+        .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+    when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
+  }
+
+  private void deleteFromSearch() throws Exception {
+    final Method delete =
+        LineageRepository.class.getDeclaredMethod(
+            "deleteLineageFromSearch",
+            EntityReference.class,
+            EntityReference.class,
+            LineageDetails.class);
+    delete.setAccessible(true);
+
+    delete.invoke(new LineageRepository(), fromEntity, toEntity, null);
   }
 
   @Test

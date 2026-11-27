@@ -9,6 +9,7 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 
 @Slf4j
 public class LineageUtil {
@@ -233,14 +235,23 @@ public class LineageUtil {
 
   private static void doDeleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
-    Entity.getSearchRepository()
-        .getSearchClient()
-        .updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
-            new ImmutablePair<>(
-                REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    final String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
+    try {
+      Entity.getSearchRepository()
+          .getSearchClient()
+          .updateChildren(
+              List.of(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+              "upstreamLineage.docUniqueId",
+              List.of(uniqueValue),
+              new ImmutablePair<>(
+                  REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    } catch (IOException | RuntimeException e) {
+      SearchIndexRetryQueue.enqueue(
+          toEntity.getId() != null ? toEntity.getId().toString() : null,
+          toEntity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("deleteDerivedLineageFromSearch", e));
+      LOG.error("Failed to remove derived lineage edge {}: {}", uniqueValue, e.getMessage());
+    }
   }
 
   private static void insertDomainLineage(EntityReference fromDomain, EntityReference toDomain) {

@@ -1616,15 +1616,16 @@ public class LineageRepository {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     try {
       searchClient.updateChildren(
-          GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+          "upstreamLineage.docUniqueId",
+          List.of(uniqueValue),
           new ImmutablePair<>(
               REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
       invalidateLineageCacheForEdge(fromEntity, toEntity);
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
-          fromEntity.getId() != null ? fromEntity.getId().toString() : null,
-          fromEntity.getFullyQualifiedName(),
+          toEntity.getId() != null ? toEntity.getId().toString() : null,
+          toEntity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("deleteLineageFromSearch", e));
       LOG.error("Failed to delete lineage from search for {}: {}", uniqueValue, e.getMessage());
     }

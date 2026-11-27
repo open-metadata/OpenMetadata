@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -15,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.Conflicts;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -22,8 +25,10 @@ import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.json.JsonData;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -36,6 +41,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.UpdateByQueryReconciler;
 
 class ElasticSearchEntityManagerUpdateByQueryRetryTest {
 
@@ -183,11 +189,129 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
     verify(indices).refresh(any(Function.class));
   }
 
+  @Test
+  void removingAnAbsentLineageEdgeRunsNoUpdateByQuery() throws Exception {
+    indicesHoldingMatches();
+    final UpdateByQueryResponse clean = response(0, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(clean);
+    new ElasticSearchEntityManager(client)
+        .updateChildren(
+            List.of("all"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageTargetsOnlyMatchingIndicesAndRefreshesThem() throws Exception {
+    indicesHoldingMatches("table_search_index", "table_search_index_rebuild");
+    final UpdateByQueryResponse conflicted = response(2, 1);
+    final UpdateByQueryResponse clean = response(1, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted, clean);
+    new ElasticSearchEntityManager(client)
+        .updateChildren(
+            List.of("all", "staged"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    final ArgumentCaptor<UpdateByQueryRequest> requests =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    verify(client, times(2)).updateByQuery(requests.capture());
+    for (final UpdateByQueryRequest request : requests.getAllValues()) {
+      assertEquals(List.of("table_search_index", "table_search_index_rebuild"), request.index());
+      assertEquals(Conflicts.Proceed, request.conflicts());
+      assertEquals(true, request.refresh());
+      assertTrue(request.waitForCompletion() == null || request.waitForCompletion());
+    }
+    verify(indices).refresh(any(Function.class));
+  }
+
+  @Test
+  void removingLineageDoesNotSilentlyIgnoreAnUnreachableShard() throws Exception {
+    matchingIndicesSearch(1);
+    assertThrows(
+        IOException.class,
+        () ->
+            new ElasticSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageRejectsTimedOutMatchingIndexSearch() throws Exception {
+    matchingIndicesSearch(true, 0);
+    assertThrows(
+        IOException.class,
+        () ->
+            new ElasticSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsExhaustedConflicts() throws Exception {
+    assertIncompleteRemoval(response(0, 1), "version conflict");
+    verify(client, times(UpdateByQueryReconciler.MAX_ATTEMPTS))
+        .updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateTimeout() throws Exception {
+    final var result = response(0, 0);
+    when(result.timedOut()).thenReturn(true);
+    assertIncompleteRemoval(result, "timed out");
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateShardFailure() throws Exception {
+    final var failure =
+        BulkIndexByScrollFailure.of(
+            f ->
+                f.index("tables")
+                    .id("to")
+                    .status(403)
+                    .cause(c -> c.type("cluster_block_exception").reason("writes blocked")));
+    final var result = response(0, 0);
+    when(result.failures()).thenReturn(List.of(failure));
+    assertIncompleteRemoval(result, "writes blocked");
+  }
+
+  private void assertIncompleteRemoval(final UpdateByQueryResponse result, final String reason)
+      throws Exception {
+    indicesHoldingMatches("tables");
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(result);
+    final var failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                new ElasticSearchEntityManager(client)
+                    .updateChildren(
+                        List.of("all"),
+                        "upstreamLineage.docUniqueId",
+                        List.of("from--->to"),
+                        Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    assertTrue(failure.getMessage().contains(reason), failure::getMessage);
+  }
+
   private void indicesHoldingMatches(String... names) throws Exception {
     matchingIndicesSearch(0, names);
   }
 
   private void matchingIndicesSearch(int failedShards, String... names) throws Exception {
+    matchingIndicesSearch(false, failedShards, names);
+  }
+
+  private void matchingIndicesSearch(
+      final boolean timedOut, final int failedShards, final String... names) throws Exception {
     List<StringTermsBucket> buckets =
         Arrays.stream(names)
             .map(name -> StringTermsBucket.of(bucket -> bucket.key(name).docCount(1)))
@@ -195,7 +319,7 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
     SearchResponse<JsonData> matches =
         new SearchResponse.Builder<JsonData>()
             .took(1)
-            .timedOut(false)
+            .timedOut(timedOut)
             .shards(shards -> shards.total(2).successful(2 - failedShards).failed(failedShards))
             .hits(hits -> hits.hits(List.of()))
             .aggregations(

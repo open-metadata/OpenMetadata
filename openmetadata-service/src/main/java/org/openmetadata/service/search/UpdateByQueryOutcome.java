@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,6 +29,14 @@ public record UpdateByQueryOutcome(
   public UpdateByQueryOutcome afterAttempts(long updatedDocuments, int attempts) {
     return new UpdateByQueryOutcome(
         operation, indices, updatedDocuments, versionConflicts, failureReasons, attempts);
+  }
+
+  public void requireComplete() throws IOException {
+    if (!failureReasons.isEmpty() || versionConflicts > 0) {
+      throw new IOException(
+          "%s on %s incomplete after %d attempt(s): %d version conflict(s), failures %s"
+              .formatted(operation, indices, attempts, versionConflicts, failureReasons));
+    }
   }
 
   /**

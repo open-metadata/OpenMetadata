@@ -690,18 +690,24 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot update children for indices.");
-      return;
+      throw new IOException(
+          "OpenSearch client is not available. Cannot update children for indices.");
     }
 
+    final Query query = anyOfFieldQuery(field, values);
+    final List<String> indices = indicesHoldingMatches(indexNames, query);
+    if (indices.isEmpty()) {
+      LOG.debug("No documents match {} in {}; nothing to update", values, indexNames);
+      return;
+    }
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
     UpdateByQueryRequest request =
         UpdateByQueryRequest.of(
             u ->
-                u.index(indexNames)
-                    .query(anyOfFieldQuery(field, values))
+                u.index(indices)
+                    .query(query)
                     .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
@@ -717,9 +723,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                         .params(params)))
                     .refresh(Refresh.True));
 
-    runReconciled("updateChildren", request, true);
+    runReconciled("updateChildren", request, true).requireComplete();
 
-    LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
+    LOG.info("Successfully updated children in OpenSearch for indices: {}", indices);
   }
 
   /**
@@ -1246,28 +1252,32 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   // global alias that is one per shard of every index, so a busy node exhausts its open scroll
   // contexts and the engine retries for about a minute before failing with 429 (#37466). A size-0
   // search opens none, so it picks the indices to rewrite.
-  private List<String> indicesHoldingMatches(String indexOrAlias, Query query) throws IOException {
+  private List<String> indicesHoldingMatches(final List<String> indexNames, final Query query)
+      throws IOException {
     SearchResponse<JsonData> response =
         client.search(
             s ->
-                s.index(indexOrAlias)
+                s.index(indexNames)
                     .size(0)
                     .query(query)
                     .aggregations(
                         MATCHING_INDICES,
                         a -> a.terms(t -> t.field("_index").size(MAX_MATCHING_INDICES))),
             JsonData.class);
+    if (Boolean.TRUE.equals(response.timedOut())) {
+      throw new IOException("Search for matching indices timed out in " + indexNames);
+    }
     // A shard the search could not reach may hold a match, so the rename goes to the retry queue.
     if (response.shards().failed() > 0) {
       throw new IOException(
           "Search for the indices tagged in '%s' failed on %s shards"
-              .formatted(indexOrAlias, response.shards().failed()));
+              .formatted(indexNames, response.shards().failed()));
     }
     final List<String> indices =
         response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
             .map(StringTermsBucket::key)
             .toList();
-    return indices.size() < MAX_MATCHING_INDICES ? indices : List.of(indexOrAlias);
+    return indices.size() < MAX_MATCHING_INDICES ? indices : List.copyOf(indexNames);
   }
 
   @Override
@@ -1284,7 +1294,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       List<String> indices =
           indicesHoldingMatches(
-              Entity.getSearchRepository().getIndexOrAliasName(indexName), prefixQuery);
+              List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)), prefixQuery);
       if (indices.isEmpty()) {
         LOG.info("No search documents are tagged under {}; nothing to rewrite", oldFqnPrefix);
         return;
