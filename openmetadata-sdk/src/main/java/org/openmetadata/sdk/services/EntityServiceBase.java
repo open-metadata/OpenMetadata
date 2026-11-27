@@ -1,19 +1,22 @@
 package org.openmetadata.sdk.services;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -30,6 +33,30 @@ public abstract class EntityServiceBase<T> {
   protected final ObjectMapper objectMapper;
 
   private static final int MAX_SNAPSHOTS = 500;
+  private static final String TAGS = "tags";
+
+  // Generated entities have mutable, value-based hash codes. Tag projections belong to an instance.
+  private record TagOwner(Object entity) {
+    @Override
+    public boolean equals(Object other) {
+      return other instanceof TagOwner owner && entity == owner.entity;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(entity);
+    }
+  }
+
+  // The list carries its own baseline when another read or LRU eviction displaces the snapshot.
+  private static final class FetchedTags extends ArrayList<TagLabel> {
+    private JsonNode baseline;
+
+    private FetchedTags(List<TagLabel> tags, JsonNode baseline) {
+      super(tags == null ? List.of() : tags);
+      this.baseline = baseline;
+    }
+  }
 
   /**
    * Stores JSON snapshots of entities returned by get() methods. When update() is called, the
@@ -40,15 +67,21 @@ public abstract class EntityServiceBase<T> {
    * <p>Bounded to {@link #MAX_SNAPSHOTS} entries (LRU eviction) to prevent memory leaks in
    * long-running clients that fetch many entities without updating them.
    */
+  private final Map<String, JsonNode> entitySnapshots = boundedSnapshots();
+
+  // A caller can replace the fetched list with setTags(), losing the baseline carried by that list.
+  private final Map<TagOwner, JsonNode> tagSnapshots = boundedSnapshots();
+
   @SuppressWarnings("serial")
-  private final Map<String, JsonNode> entitySnapshots =
-      Collections.synchronizedMap(
-          new java.util.LinkedHashMap<>(16, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, JsonNode> eldest) {
-              return size() > MAX_SNAPSHOTS;
-            }
-          });
+  private static <K> Map<K, JsonNode> boundedSnapshots() {
+    return Collections.synchronizedMap(
+        new java.util.LinkedHashMap<>(16, 0.75f, true) {
+          @Override
+          protected boolean removeEldestEntry(Map.Entry<K, JsonNode> eldest) {
+            return size() > MAX_SNAPSHOTS;
+          }
+        });
+  }
 
   protected EntityServiceBase(HttpClient httpClient, String basePath) {
     this.httpClient = httpClient;
@@ -61,10 +94,34 @@ public abstract class EntityServiceBase<T> {
 
   private void storeSnapshot(String id, T entity) {
     JsonNode node = objectMapper.valueToTree(entity);
-    if (id != null) {
-      entitySnapshots.put(id, node);
-    } else if (node.has("id")) {
-      entitySnapshots.put(node.get("id").asText(), node);
+    if (entity instanceof EntityInterface<?> tagged) {
+      rememberFetchedTags(tagged, node.get(TAGS));
+    }
+    String snapshotId = id == null ? node.path("id").asText(null) : id;
+    if (snapshotId != null) {
+      entitySnapshots.put(snapshotId, node);
+    }
+  }
+
+  private void rememberFetchedTags(T entity) {
+    if (entity instanceof EntityInterface<?> tagged) {
+      rememberFetchedTags(tagged, objectMapper.valueToTree(tagged.getTags()));
+    }
+  }
+
+  private void rememberFetchedTags(EntityInterface<?> tagged, JsonNode baseline) {
+    JsonNode original =
+        baseline != null && baseline.isArray() ? baseline : objectMapper.createArrayNode();
+    tagged.setTags(new FetchedTags(tagged.getTags(), original));
+    rememberPopulatedTags(tagged, original);
+  }
+
+  private void rememberPopulatedTags(EntityInterface<?> entity, JsonNode tags) {
+    TagOwner owner = new TagOwner(entity);
+    if (tags.isEmpty()) {
+      tagSnapshots.remove(owner);
+    } else {
+      tagSnapshots.put(owner, tags);
     }
   }
 
@@ -213,6 +270,7 @@ public abstract class EntityServiceBase<T> {
         List<T> items = new ArrayList<>();
         for (JsonNode node : rootNode.get("data")) {
           T item = objectMapper.treeToValue(node, getEntityClass());
+          rememberFetchedTags(item);
           items.add(item);
         }
         response.setData(items);
@@ -243,6 +301,12 @@ public abstract class EntityServiceBase<T> {
     return update(id.toString(), entity, etag);
   }
 
+  /**
+   * Updates a fetched entity using its original projection. With no known tag baseline, supplying
+   * a nonempty tag list adds those labels, while an empty list clears them, including a detached
+   * model's default empty list. To replace the full set, fetch with {@code fields=tags} before
+   * editing, or use an explicit JSON Patch.
+   */
   public T update(String id, T entity, String etag) throws OpenMetadataException {
     try {
       JsonNode updatedNode = objectMapper.valueToTree(entity);
@@ -251,63 +315,117 @@ public abstract class EntityServiceBase<T> {
       // This correctly handles field removals: if a field was non-null when fetched
       // and the user set it to null, the snapshot still has the field but the updated
       // JSON (NON_NULL) omits it, producing a "remove" patch operation.
-      JsonNode originalNode = entitySnapshots.remove(id);
-
-      if (originalNode == null) {
-        // No snapshot available — fall back to re-fetching from the server.
-        // This path cannot detect field removals (null fields are omitted by NON_NULL
-        // in both original and updated), but handles additions and modifications.
-        Set<String> fieldsToFetch = new HashSet<>();
-        Iterator<String> fieldNames = updatedNode.fieldNames();
-
-        while (fieldNames.hasNext()) {
-          String fieldName = fieldNames.next();
-          JsonNode fieldValue = updatedNode.get(fieldName);
-
-          if (!isBasicField(fieldName)) {
-            // Empty collections/nulls often represent explicit clears in PATCH flows.
-            // Fetch these fields from server so diff generation can emit remove operations.
-            if (fieldValue == null
-                || fieldValue.isNull()
-                || (fieldValue.isArray() && fieldValue.isEmpty())) {
-              fieldsToFetch.add(fieldName);
-              continue;
-            }
-            if (isReferenceField(fieldValue)) {
-              fieldsToFetch.add(fieldName);
-            }
-          }
-        }
-
-        // Fetch original directly without storing a snapshot (avoids polluting the cache
-        // with a server-state snapshot that doesn't reflect the user's baseline).
-        T original;
-        if (!fieldsToFetch.isEmpty()) {
-          String fields = String.join(",", fieldsToFetch);
-          original = fetchEntity(id, fields);
-        } else {
-          original = fetchEntity(id, null);
-        }
-
-        originalNode = objectMapper.readTree(objectMapper.writeValueAsString(original));
-      }
+      JsonNode snapshot = entitySnapshots.get(id);
+      JsonNode originalNode =
+          snapshot == null ? fetchUpdateBaseline(id, entity, updatedNode) : snapshot.deepCopy();
+      normalizeTagBaseline(entity, originalNode, updatedNode);
 
       // Remove computed/read-only fields that cannot be patched
       removeComputedFields(originalNode);
       removeComputedFields(updatedNode);
       normalizePatchNodes(originalNode, updatedNode, entity);
 
-      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
+      ArrayNode patch = JsonDiff.of(originalNode, updatedNode);
+      if (entity instanceof EntityInterface<?>) {
+        patch = guardTagEdits(originalNode.path(TAGS), updatedNode.path(TAGS), patch);
+      }
 
       RequestOptions options = null;
       if (etag != null) {
         options = RequestOptions.builder().header("If-Match", etag).build();
       }
 
-      return httpClient.execute(
-          HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
+      T saved =
+          httpClient.execute(
+              HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
+      entitySnapshots.remove(id, snapshot);
+      if (saved != null) {
+        boolean changedTags = !originalNode.path(TAGS).equals(updatedNode.path(TAGS));
+        rememberFetchedTags(saved);
+        if (changedTags && entity != saved) {
+          rebaseSubmittedTags(entity, saved);
+        }
+      }
+      return saved;
     } catch (Exception e) {
       throw new OpenMetadataException("Failed to update entity: " + e.getMessage(), e);
+    }
+  }
+
+  private void rebaseSubmittedTags(T entity, T saved) {
+    if (entity instanceof EntityInterface<?> submitted
+        && saved instanceof EntityInterface<?> response
+        && response.getTags() instanceof FetchedTags confirmed) {
+      // PATCH returns the canonical tag order. Subsequent index edits must use that same order.
+      List<TagLabel> labels =
+          objectMapper.convertValue(confirmed.baseline, new TypeReference<>() {});
+      if (submitted.getTags() instanceof FetchedTags previous) {
+        previous.clear();
+        previous.addAll(labels);
+        previous.baseline = confirmed.baseline;
+      } else {
+        submitted.setTags(new FetchedTags(labels, confirmed.baseline));
+      }
+      rememberPopulatedTags(submitted, confirmed.baseline);
+    }
+  }
+
+  private ArrayNode guardTagEdits(JsonNode before, JsonNode after, ArrayNode patch) {
+    ArrayNode checks = objectMapper.createArrayNode();
+    for (int index = 0; index < before.size(); index++) {
+      JsonNode tag = before.get(index);
+      if (!tag.equals(after.path(index))) {
+        // A retry or concurrent removal can put another label at the same array index.
+        for (String key : List.of("tagFQN", "source")) {
+          checks
+              .addObject()
+              .put("op", "test")
+              .put("path", "/tags/" + index + "/" + key)
+              .set("value", tag.get(key));
+        }
+      }
+    }
+    return checks.isEmpty() ? patch : checks.addAll(patch);
+  }
+
+  private JsonNode fetchUpdateBaseline(String id, T entity, JsonNode updated) {
+    Set<String> fields = new HashSet<>();
+    updated
+        .properties()
+        .forEach(
+            field -> {
+              if (requiresFetch(entity, field.getKey(), field.getValue())) {
+                fields.add(field.getKey());
+              }
+            });
+
+    T stored = fetchEntity(id, fields.isEmpty() ? null : String.join(",", fields));
+    return objectMapper.valueToTree(stored);
+  }
+
+  private boolean requiresFetch(T entity, String field, JsonNode value) {
+    return !(TAGS.equals(field) && entity instanceof EntityInterface<?>)
+        && !isBasicField(field)
+        && (value.isNull() || (value.isArray() && value.isEmpty()) || isReferenceField(value));
+  }
+
+  private void normalizeTagBaseline(T entity, JsonNode original, JsonNode updated) {
+    if (entity instanceof EntityInterface<?> tagged && original instanceof ObjectNode object) {
+      List<TagLabel> tags = tagged.getTags();
+      JsonNode baseline =
+          tags instanceof FetchedTags fetched
+              ? fetched.baseline
+              : tagSnapshots.get(new TagOwner(entity));
+      if (baseline != null) {
+        object.set(TAGS, baseline);
+      } else if (tags != null && !tags.isEmpty()) {
+        // A copied, unchanged field needs no patch. Unknown additions must insert into the array.
+        if (!updated.path(TAGS).equals(object.path(TAGS))) {
+          object.putArray(TAGS);
+        }
+      } else {
+        object.remove(TAGS);
+      }
     }
   }
 

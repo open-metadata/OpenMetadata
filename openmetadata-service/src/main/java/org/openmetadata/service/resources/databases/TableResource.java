@@ -1563,7 +1563,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.addDataModel(id, dataModel);
+    Table table =
+        repository.addDataModel(id, dataModel, securityContext.getUserPrincipal().getName());
     return addHref(uriInfo, table);
   }
 

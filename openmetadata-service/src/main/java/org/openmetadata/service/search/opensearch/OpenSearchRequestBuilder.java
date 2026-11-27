@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import os.org.opensearch.client.opensearch._types.FieldSort;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -38,9 +39,12 @@ public class OpenSearchRequestBuilder {
   private SearchType searchType;
   private String preference;
   private boolean contextMemoryVisibilityResolved;
+  private boolean auditReportVisibilityResolved;
 
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private static final AuditReportSearchVisibility REPORT_VISIBILITY =
+      new AuditReportSearchVisibility(new OpenSearchQueryBuilderFactory());
 
   public OpenSearchRequestBuilder() {}
 
@@ -78,6 +82,11 @@ public class OpenSearchRequestBuilder {
    */
   public OpenSearchRequestBuilder contextMemoryVisibilityResolved() {
     this.contextMemoryVisibilityResolved = true;
+    return this;
+  }
+
+  public OpenSearchRequestBuilder auditReportVisibilityResolved() {
+    this.auditReportVisibilityResolved = true;
     return this;
   }
 
@@ -270,6 +279,10 @@ public class OpenSearchRequestBuilder {
    * search path that forgets to evaluate the subject must fail closed rather than leak.
    */
   public SearchRequest build(String... indices) {
+    if (!auditReportVisibilityResolved) {
+      filter(((OpenSearchQueryBuilder) REPORT_VISIBILITY.buildVisibilityFilter(null)).buildV2());
+      auditReportVisibilityResolved = true;
+    }
     if (!contextMemoryVisibilityResolved) {
       filter(((OpenSearchQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2());
       contextMemoryVisibilityResolved = true;

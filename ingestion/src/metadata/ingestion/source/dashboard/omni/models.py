@@ -171,6 +171,7 @@ class OmniDocument(BaseModel):
     connectionId: str | None = None  # noqa: N815
     scope: str | None = None
     hasDashboard: bool | None = False  # noqa: N815
+    hasApp: bool | None = False  # noqa: N815
     url: str | None = None
     deleted: bool | None = False
     labels: list[OmniLabel] | None = Field(default_factory=list)

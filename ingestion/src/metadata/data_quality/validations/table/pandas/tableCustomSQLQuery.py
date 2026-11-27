@@ -68,4 +68,4 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
                 else:
                     total_rows += len(dataframe.index)
 
-        return total_rows if total_rows > 0 else None
+        return total_rows

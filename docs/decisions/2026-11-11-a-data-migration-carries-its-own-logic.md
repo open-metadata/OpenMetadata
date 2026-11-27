@@ -1,7 +1,7 @@
 # A versioned migration carries its own logic: it reads and writes rows itself, and work that must follow current code runs outside it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-23 (the server deploys changed workflows on start)
 - **Deciders:** Adrià Manero
 - **Guard:** `MigrationArchitectureTest` (an allowlist: a step may use only the libraries, framework classes and contracts it names)
 - **Related:** ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step; ADR:2026-10-09-data-migration-backfills-walk-ids-in-batches; ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration
@@ -42,7 +42,9 @@ that had been removed
    classes would miss whatever is added next; a short list of allowed ones changes only when the
    team decides that something is a contract.
 4. **Work that must follow current code does not go in a versioned step.** Seed data follows the
-   resource files through each resource's `initialize`, which runs on every start. Deploying
+   resource files through each resource's `initialize`, which runs on every start, and so does
+   deploying a workflow whose stored definition or builders changed
+   (ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts). Deploying
    ingestion pipelines, reindexing and moving secrets are the `deploy-pipelines`, `reindex` and
    `migrate-secrets` commands. A step that needs one of them says so in the upgrade notes.
 5. **The rest is a named exception.** When a step cannot avoid other code, for example because a
@@ -60,9 +62,16 @@ the `CollectionDAO` methods for them.
 
 The 1.x, 2.0.x and 2.1.0 steps were written before this rule and are left as they are; one is
 rewritten when it breaks. Most 2.1.0 steps use `CollectionDAO`, `Entity` or generated classes, so
-the guard starts with the first folder after 2.1.0. Until that folder exists the guard checks no
-class.
+the guard starts with the first folder after 2.1.0.
 
 The guard reads each step's own dependencies. An allowed class does not hide what it calls, so the
 allowed framework classes are kept to ones that only read and write rows; a helper added to that
 list is held to the same bar.
+
+## Amendment
+
+v2 2026-11-23. A step that changes a stored workflow changes only its row: the server deploys each
+workflow whose BPMN differs from its deployment when it starts
+(ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts). The 2.1.1 step, which
+deployed `SuggestionTaskWorkflow` itself as the first named exception, now only edits its row, and
+`MigrationArchitectureTest` lists no exception. The 2.1.1 folder exists, so the guard checks classes.

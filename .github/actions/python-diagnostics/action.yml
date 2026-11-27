@@ -1,0 +1,24 @@
+name: Collect Python diagnostics
+description: Save runner and service diagnostics for failed or cancelled Python jobs.
+inputs:
+  artifact-name:
+    description: Name of the uploaded diagnostics artifact.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Collect runner and service diagnostics
+      continue-on-error: true
+      run: bash .github/scripts/python_ci_diagnostics.sh
+      shell: bash
+      if: ${{ always() && (job.status == 'failure' || job.status == 'cancelled') }}
+    - name: Upload runner and service diagnostics
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/python-ci-diagnostics/
+        if-no-files-found: warn
+        retention-days: 14
+        compression-level: 1
+      if: ${{ always() && (job.status == 'failure' || job.status == 'cancelled') }}

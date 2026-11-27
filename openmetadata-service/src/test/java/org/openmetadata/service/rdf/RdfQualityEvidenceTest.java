@@ -442,6 +442,8 @@ class RdfQualityEvidenceTest {
             null,
             null,
             null,
+            null,
+            null,
             testCaseRequeue));
   }
 
