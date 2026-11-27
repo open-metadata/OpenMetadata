@@ -45,8 +45,10 @@ import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -70,13 +72,21 @@ import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.OpenMetadataWorkflowConfig;
+import org.openmetadata.schema.metadataIngestion.ServiceConnections;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
+import org.openmetadata.schema.security.ssl.VerifySSL;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -1793,6 +1803,176 @@ public class IngestionPipelineResourceIT
     assertEquals(400, refused.getStatusCode(), refused.getMessage());
   }
 
+  /** The connections a test suite pipeline carries are masked for readers, as a service's are. */
+  @Test
+  void test_testSuiteConnectionSecretsAreMaskedForReaders(final TestNamespace ns) {
+    final String password = "suite-password-" + ns.uniqueShortId();
+    final IngestionPipeline pipeline =
+        createEntity(testSuitePipelineRequest(ns, mysqlTestSuiteConfig(password)));
+    final String path = getResourcePath() + pipeline.getId();
+    final String asAdmin =
+        SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+    final String asBot =
+        SdkClients.ingestionBotClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null);
+
+    assertFalse(asAdmin.contains(password), asAdmin);
+    assertTrue(asAdmin.contains(PasswordEntityMasker.PASSWORD_MASK), asAdmin);
+    assertTrue(asBot.contains(password), "the ingestion bot runs the suite with the stored secret");
+  }
+
+  /**
+   * An owner who sees a test suite connection's password masked must re-enter it when pointing the
+   * connection at another host.
+   */
+  @Test
+  void test_testSuiteConnectionSecretsMustBeReenteredWhenRetargeted(final TestNamespace ns)
+      throws Exception {
+    final User owner = createSuiteOwner(ns);
+    final OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    final IngestionPipeline pipeline =
+        createEntity(
+            testSuitePipelineRequest(
+                    ns, mysqlTestSuiteConfig("suite-password-" + ns.uniqueShortId()))
+                .withOwners(List.of(owner.getEntityReference())));
+
+    assertTestSuiteRetargetPatchRefused(asOwner, pipeline);
+    assertTestSuiteRetargetPutRefused(asOwner, pipeline);
+    asOwner
+        .ingestionPipelines()
+        .patch(pipeline.getId(), replace("/sourceConfig/config/testCases", List.of("tc1")));
+    asOwner
+        .ingestionPipelines()
+        .patch(
+            pipeline.getId(),
+            JsonUtils.getObjectMapper()
+                .createArrayNode()
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/serviceConnections/0/serviceConnection/config/hostPort",
+                        "retargeted.example:3306"))
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/serviceConnections/0/serviceConnection/config/authType/password",
+                        "entered-again")));
+  }
+
+  private static User createSuiteOwner(final TestNamespace ns) {
+    final String ownerName = "suiteowner" + ns.shortPrefix();
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+  }
+
+  private static void assertTestSuiteRetargetPatchRefused(
+      final OpenMetadataClient asOwner, final IngestionPipeline pipeline) {
+    final OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .ingestionPipelines()
+                    .patch(
+                        pipeline.getId(),
+                        replace(
+                            "/sourceConfig/config/serviceConnections/0/serviceConnection/config/hostPort",
+                            "elsewhere.example:3306")));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static void assertTestSuiteRetargetPutRefused(
+      final OpenMetadataClient asOwner, final IngestionPipeline pipeline) {
+    final IngestionPipeline masked = asOwner.ingestionPipelines().get(pipeline.getId().toString());
+    final TestSuitePipeline maskedSuite =
+        JsonUtils.convertValue(masked.getSourceConfig().getConfig(), TestSuitePipeline.class);
+    final DatabaseConnection conn =
+        JsonUtils.convertValue(
+            maskedSuite.getServiceConnections().getFirst().getServiceConnection(),
+            DatabaseConnection.class);
+    final MysqlConnection mysql = JsonUtils.convertValue(conn.getConfig(), MysqlConnection.class);
+    conn.setConfig(mysql.withHostPort("elsewhere.example:3306"));
+    maskedSuite.getServiceConnections().getFirst().setServiceConnection(conn);
+    final CreateIngestionPipeline putRequest =
+        new CreateIngestionPipeline()
+            .withName(pipeline.getName())
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withService(pipeline.getService())
+            .withSourceConfig(new SourceConfig().withConfig(maskedSuite))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+    final OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        INGESTION_PIPELINES_PATH,
+                        putRequest,
+                        IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static TestSuitePipeline mysqlTestSuiteConfig(final String password) {
+    return new TestSuitePipeline()
+        .withServiceConnections(
+            List.of(
+                new ServiceConnections()
+                    .withServiceName("suite_mysql")
+                    .withServiceConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withHostPort("localhost:3306")
+                                    .withUsername("suite_user")
+                                    .withAuthType(new basicAuth().withPassword(password))))));
+  }
+
+  /** A test suite connection that cannot be typed would keep its secrets out of reach. */
+  @Test
+  void test_testSuiteConnectionOfNoKnownTypeIsRefused(TestNamespace ns) {
+    Map<String, Object> connection =
+        Map.of(
+            "serviceName",
+            "suite_unknown",
+            "serviceConnection",
+            Map.of(
+                "config",
+                Map.of(
+                    "type",
+                    "NotAConnectionType",
+                    "password",
+                    "suite-password-" + ns.uniqueShortId())));
+    CreateIngestionPipeline create =
+        testSuitePipelineRequest(
+            ns, Map.of("type", "TestSuite", "serviceConnections", List.of(connection)));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, getResourcePath(), create, IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static CreateIngestionPipeline testSuitePipelineRequest(
+      TestNamespace ns, Object testSuiteConfig) {
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("suite_connections")));
+    return new CreateIngestionPipeline()
+        .withName(ns.prefix("suite_connections"))
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withService(logicalSuite.getEntityReference())
+        .withSourceConfig(new SourceConfig().withConfig(testSuiteConfig))
+        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+  }
+
   /**
    * An owner who sees the dbt Cloud token masked may change the pipeline's other settings, but
    * pointing the source at another host means entering the token again: restoring the stored one
@@ -1953,6 +2133,80 @@ public class IngestionPipelineResourceIT
     assertEquals(412, failure.getStatusCode());
     assertEquals(stored, storedPipelineJson(pipeline.getId()));
     assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
+  }
+
+  /**
+   * The certificates and key used to fetch dbt artifacts over HTTPS are stored encrypted, masked for
+   * readers, and kept when an edit sends the masks back.
+   */
+  @Test
+  void test_dbtHttpSslSecretsAreEncryptedAndMasked(final TestNamespace ns) {
+    final ValidateSSLClientConfig sslConfig = dbtSslConfig(ns.uniqueShortId());
+    final IngestionPipeline pipeline = createDbtHttpSslPipeline(ns, sslConfig);
+
+    assertDbtSslEncryptedAndMasked(pipeline.getId(), sslConfig);
+    patchDbtPipelineWithMaskedSsl(pipeline.getId());
+    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
+    assertHoldsNoDbtSslSecret(storedPipelineJson(pipeline.getId()), sslConfig);
+  }
+
+  private static ValidateSSLClientConfig dbtSslConfig(final String unique) {
+    return new ValidateSSLClientConfig()
+        .withCaCertificate("dbt-ca-" + unique)
+        .withSslCertificate("dbt-cert-" + unique)
+        .withSslKey("dbt-key-" + unique);
+  }
+
+  private IngestionPipeline createDbtHttpSslPipeline(
+      final TestNamespace ns, final ValidateSSLClientConfig sslConfig) {
+    final DbtPipeline dbt =
+        new DbtPipeline()
+            .withDbtConfigSource(
+                new DbtHttpConfig()
+                    .withDbtManifestHttpPath("https://dbt.example.com/manifest.json")
+                    .withDbtVerifySSL(VerifySSL.VALIDATE)
+                    .withDbtSSLConfig(sslConfig));
+    return createEntity(
+        createMinimalRequest(ns)
+            .withName(ns.prefix("dbt_http_ssl"))
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(dbt)));
+  }
+
+  private void assertDbtSslEncryptedAndMasked(
+      final UUID pipelineId, final ValidateSSLClientConfig sslConfig) {
+    final String stored = storedPipelineJson(pipelineId);
+    assertHoldsNoDbtSslSecret(stored, sslConfig);
+    assertTrue(stored.contains(Fernet.FERNET_PREFIX), "Stored certificates must be encrypted");
+    final IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipelineId);
+    final String asAdminJson = JsonUtils.pojoToJson(asAdmin);
+    assertHoldsNoDbtSslSecret(asAdminJson, sslConfig);
+    assertTrue(asAdminJson.contains(PasswordEntityMasker.PASSWORD_MASK), asAdminJson);
+    assertEquals(sslConfig, botDbtSslConfig(pipelineId));
+  }
+
+  private static void patchDbtPipelineWithMaskedSsl(final UUID pipelineId) {
+    final IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipelineId);
+    final DbtPipeline maskedDbt =
+        JsonUtils.convertValue(asAdmin.getSourceConfig().getConfig(), DbtPipeline.class)
+            .withDbtUpdateDescriptions(true);
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.add(replaceOp("/sourceConfig", new SourceConfig().withConfig(maskedDbt)));
+    SdkClients.adminClient().ingestionPipelines().patch(pipelineId, patch);
+  }
+
+  private static void assertHoldsNoDbtSslSecret(String json, ValidateSSLClientConfig sslConfig) {
+    assertFalse(json.contains(sslConfig.getCaCertificate()), json);
+    assertFalse(json.contains(sslConfig.getSslCertificate()), json);
+    assertFalse(json.contains(sslConfig.getSslKey()), json);
+  }
+
+  private static ValidateSSLClientConfig botDbtSslConfig(UUID pipelineId) {
+    IngestionPipeline asBot = SdkClients.ingestionBotClient().ingestionPipelines().get(pipelineId);
+    DbtPipeline dbt =
+        JsonUtils.convertValue(asBot.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtHttpConfig source = JsonUtils.convertValue(dbt.getDbtConfigSource(), DbtHttpConfig.class);
+    return JsonUtils.convertValue(source.getDbtSSLConfig(), ValidateSSLClientConfig.class);
   }
 
   private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {

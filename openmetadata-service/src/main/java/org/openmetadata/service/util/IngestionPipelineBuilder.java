@@ -15,7 +15,9 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
 import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.METADATA;
+import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.TEST_SUITE;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,8 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline.StorageMetadataConfigType;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline.TestSuiteConfigType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
@@ -33,6 +37,7 @@ import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 public final class IngestionPipelineBuilder {
   private static final String CONFIG_TYPE_FIELD = "type";
   private static final String MANIFEST_SOURCE_FIELD = "storageMetadataConfigSource";
+  private static final String SERVICE_CONNECTIONS_FIELD = "serviceConnections";
 
   private IngestionPipelineBuilder() {
     // Final
@@ -67,6 +72,9 @@ public final class IngestionPipelineBuilder {
     } else if (ingestionPipeline.getSourceConfig() != null
         && isStorageMetadata(ingestionPipeline)) {
       typeStorageMetadata(ingestionPipeline, forRead);
+    } else if (ingestionPipeline.getSourceConfig() != null
+        && carriesServiceConnections(ingestionPipeline)) {
+      typeTestSuite(ingestionPipeline, forRead);
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(
@@ -113,12 +121,69 @@ public final class IngestionPipelineBuilder {
     }
   }
 
+  /**
+   * A test suite pipeline may carry the connections of the services it tests, with their
+   * credentials. Without connections there is nothing to type, so such a config is left as sent.
+   */
+  private static boolean carriesServiceConnections(IngestionPipeline ingestionPipeline) {
+    Object config = ingestionPipeline.getSourceConfig().getConfig();
+    return config instanceof TestSuitePipeline typed
+        ? typed.getServiceConnections() != null
+        : config instanceof Map<?, ?> map
+            && isTestSuite(ingestionPipeline, map)
+            && hasServiceConnections(map.get(SERVICE_CONNECTIONS_FIELD));
+  }
+
+  private static boolean isTestSuite(IngestionPipeline ingestionPipeline, Map<?, ?> config) {
+    return TEST_SUITE.equals(ingestionPipeline.getPipelineType())
+        || TestSuiteConfigType.TEST_SUITE.value().equals(config.get(CONFIG_TYPE_FIELD));
+  }
+
+  private static boolean hasServiceConnections(Object serviceConnections) {
+    return serviceConnections != null
+        && !(serviceConnections instanceof Collection<?> connections && connections.isEmpty());
+  }
+
+  private static void typeTestSuite(IngestionPipeline ingestionPipeline, boolean forRead) {
+    try {
+      ingestionPipeline
+          .getSourceConfig()
+          .setConfig(
+              ClassConverterFactory.getConverter(TestSuitePipeline.class)
+                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
+    } catch (IllegalArgumentException e) {
+      String problem =
+          String.format(
+              "Test suite config of pipeline [%s] does not match its schema: %s",
+              ingestionPipeline.getName(), e.getMessage());
+      if (!forRead) {
+        throw new BadRequestException(problem, e);
+      }
+      LOG.warn("{}; its service connections are left out", problem);
+      withoutServiceConnections(ingestionPipeline.getSourceConfig());
+    }
+  }
+
+  private static void withoutServiceConnections(SourceConfig sourceConfig) {
+    if (sourceConfig.getConfig() instanceof TestSuitePipeline typed) {
+      typed.setServiceConnections(null);
+    } else {
+      withoutProperty(sourceConfig, SERVICE_CONNECTIONS_FIELD);
+    }
+  }
+
   private static void withoutManifestSource(SourceConfig sourceConfig) {
     if (sourceConfig.getConfig() instanceof StorageServiceMetadataPipeline typed) {
       typed.setStorageMetadataConfigSource(null);
-    } else if (sourceConfig.getConfig() instanceof Map<?, ?> config) {
+    } else {
+      withoutProperty(sourceConfig, MANIFEST_SOURCE_FIELD);
+    }
+  }
+
+  private static void withoutProperty(SourceConfig sourceConfig, String property) {
+    if (sourceConfig.getConfig() instanceof Map<?, ?> config) {
       Map<Object, Object> kept = new HashMap<>(config);
-      kept.remove(MANIFEST_SOURCE_FIELD);
+      kept.remove(property);
       sourceConfig.setConfig(kept);
     }
   }

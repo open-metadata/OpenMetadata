@@ -41,6 +41,7 @@ public class ReflectionUtil {
   private static final String HASHED_NAME_PREFIX = "h";
   private static final int HASHED_NAME_LENGTH = 16;
   private static final Pattern HASHED_NAME = Pattern.compile("h[0-9a-f]{16}");
+  private static final List<String> ELEMENT_NAME_GETTERS = List.of("getName", "getServiceName");
 
   private ReflectionUtil() {
     /* Hidden construction */
@@ -208,19 +209,35 @@ public class ReflectionUtil {
   }
 
   /** The name an element reports, or null when it has none - see {@link #getCollectionElementKeys}. */
-  private static String readName(Object element) {
+  private static String readName(final Object element) {
+    String resolved = null;
+    for (final String getter : ELEMENT_NAME_GETTERS) {
+      final String candidate = readStringGetter(element, getter);
+      if (candidate != null) {
+        resolved = candidate;
+        break;
+      }
+    }
+    return resolved;
+  }
+
+  private static String readStringGetter(final Object element, final String methodName) {
+    String result = null;
     try {
-      Method getName = element.getClass().getMethod("getName");
-      if (String.class.equals(getName.getReturnType())) {
-        String name = (String) getName.invoke(element);
-        return nullOrEmpty(name) ? null : name;
+      final Method getter = element.getClass().getMethod(methodName);
+      if (String.class.equals(getter.getReturnType())) {
+        final String name = (String) getter.invoke(element);
+        result = nullOrEmpty(name) ? null : name;
       }
     } catch (NoSuchMethodException e) {
-      LOG.debug("{} exposes no getName(); keying by position", element.getClass().getName());
+      LOG.debug(
+          "{} exposes no {}(); trying next identity getter",
+          element.getClass().getName(),
+          methodName);
     } catch (IllegalAccessException | InvocationTargetException e) {
-      LOG.debug("Could not read getName() from {}", element.getClass().getName(), e);
+      LOG.debug("Could not read {}() from {}", methodName, element.getClass().getName(), e);
     }
-    return null;
+    return result;
   }
 
   /**

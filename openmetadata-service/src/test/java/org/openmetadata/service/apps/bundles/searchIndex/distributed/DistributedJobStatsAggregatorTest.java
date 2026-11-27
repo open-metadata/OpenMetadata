@@ -86,6 +86,7 @@ class DistributedJobStatsAggregatorTest {
 
   @Test
   void testStartAndStop() {
+    stubRunningJob();
     aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
 
     assertFalse(aggregator.isRunning());
@@ -99,6 +100,7 @@ class DistributedJobStatsAggregatorTest {
 
   @Test
   void testMultipleStartCallsAreIdempotent() {
+    stubRunningJob();
     aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
 
     aggregator.start();
@@ -110,6 +112,7 @@ class DistributedJobStatsAggregatorTest {
 
   @Test
   void testMultipleStopCallsAreIdempotent() {
+    stubRunningJob();
     aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
 
     aggregator.start();
@@ -118,6 +121,11 @@ class DistributedJobStatsAggregatorTest {
     aggregator.stop();
 
     assertFalse(aggregator.isRunning());
+  }
+
+  private void stubRunningJob() {
+    when(coordinator.getJobWithAggregatedStats(jobId))
+        .thenReturn(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build());
   }
 
   @Test

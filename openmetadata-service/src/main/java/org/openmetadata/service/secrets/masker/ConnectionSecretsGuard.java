@@ -92,8 +92,8 @@ public final class ConnectionSecretsGuard {
 
   /**
    * The same guard for an ingestion pipeline, whose secrets live in the source it reads from: a dbt
-   * project or a storage manifest. Only that source is compared, so a change to the pipeline's
-   * other settings never asks for the secrets again.
+   * project, a storage manifest, or a test suite's service connections. Only those sources are
+   * compared, so a change to the pipeline's other settings never asks for the secrets again.
    */
   public static void requireSecretsReenteredOnRetarget(
       IngestionPipeline incoming, IngestionPipeline stored) {
@@ -162,7 +162,7 @@ public final class ConnectionSecretsGuard {
   }
 
   private static final List<String> PIPELINE_SECRET_SOURCES =
-      List.of("dbtConfigSource", "storageMetadataConfigSource");
+      List.of("dbtConfigSource", "storageMetadataConfigSource", "serviceConnections");
 
   private static boolean retargetsWithStoredSecret(
       JsonNode incoming,

@@ -1,9 +1,9 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets); v7 2026-11-25 (test suite service connections: retarget guard, serviceName identity, and fail-closed typing)
 - **Deciders:** backend security
-- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
+- **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `ReflectionUtilCollectionKeysTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`, `IngestionPipelineResourceIT.test_testSuiteConnectionSecretsAreMaskedForReaders`, `IngestionPipelineResourceIT.test_testSuiteConnectionOfNoKnownTypeIsRefused`, `IngestionPipelineResourceIT.test_testSuiteConnectionSecretsMustBeReenteredWhenRetargeted`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
 
 ## Context
@@ -93,3 +93,15 @@ password fields, not map entries, so a typed value at one is a re-entered secret
 accepted: rotating `sasl.oauthbearer.client.secret` no longer asks for the connection's other
 secrets. Entries the schema does not declare keep the v5 rule. Pinned by
 `ConnectionSecretsGuardTest.rotatingADeclaredSecretInsideTheConfigMapKeepsTheOthersMasked`.
+
+## Amendment (v7, 2026-11-25)
+
+Test suite pipelines carry per-service connections in `sourceConfig.config.serviceConnections`.
+- **Retarget guard and identity:** `serviceConnections` is included in
+  `ConnectionSecretsGuard.PIPELINE_SECRET_SOURCES`, so changing any non-exempt field on a test
+  suite connection while leaving its secret masked is refused with 400. `ServiceConnections`
+  elements are keyed by `serviceName` (`ReflectionUtil.readName`) so reordering or removing entries
+  never shifts a stored secret into another service's connection.
+- **Fail-closed typing:** A test suite pipeline's `serviceConnections` entry whose `config.type`
+  names no connection schema is refused with 400 on write. When read back, the entry is omitted, so
+  the runner uses the service's stored connection, and a secrets-manager migration drops it.

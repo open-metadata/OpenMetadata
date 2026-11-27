@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.metadataIngestion.ServiceConnections;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 
 /** Secret ids of list elements stay distinct and stable; masked secrets follow their element. */
@@ -84,6 +85,27 @@ class ReflectionUtilCollectionKeysTest {
   void identifiesDistinctNamesByNameAndEscapesAPositionLikeName() {
     assertEquals(List.of("Prod", "prod", "3"), identities("Prod", "prod", "3"));
     assertEquals(List.of("##1", "#1", "#2"), identities("#1", "dup", "dup"));
+  }
+
+  /** Test suite connections expose serviceName rather than name and must still key by it. */
+  @Test
+  void keysAndIdentifiesServiceConnectionsByServiceName() {
+    final List<ServiceConnections> original = serviceConnections("mysql_svc", "pg_svc");
+    final List<ServiceConnections> reordered = serviceConnections("pg_svc", "mysql_svc");
+    final List<ServiceConnections> trimmed = serviceConnections("pg_svc");
+
+    assertEquals(List.of("mysql_svc", "pg_svc"), ReflectionUtil.getCollectionElementKeys(original));
+    assertEquals(
+        List.of("mysql_svc", "pg_svc"), ReflectionUtil.getCollectionElementIdentities(original));
+    assertEquals(
+        List.of("pg_svc", "mysql_svc"), ReflectionUtil.getCollectionElementIdentities(reordered));
+    assertEquals(List.of("pg_svc"), ReflectionUtil.getCollectionElementIdentities(trimmed));
+  }
+
+  private static List<ServiceConnections> serviceConnections(final String... serviceNames) {
+    return Arrays.stream(serviceNames)
+        .map(name -> new ServiceConnections().withServiceName(name))
+        .toList();
   }
 
   private static List<String> identities(String... names) {

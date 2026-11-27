@@ -24,7 +24,9 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
@@ -183,6 +185,11 @@ public final class ClassConverterFactory {
                       "authType",
                       List.of(
                           PersonalAccessToken.class, DatabricksOAuth.class, AzureADSetup.class)))),
+          Map.entry(
+              DbtHttpConfig.class,
+              new NestedConfigClassConverter(
+                  DbtHttpConfig.class,
+                  Map.of("dbtSSLConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               Db2Connection.class,
               new NestedConfigClassConverter(
@@ -367,6 +374,7 @@ public final class ClassConverterFactory {
                     new StorageServiceMetadataPipelineClassConverter()),
                 Map.entry(
                     StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
+                Map.entry(TestSuitePipeline.class, new TestSuitePipelineClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),

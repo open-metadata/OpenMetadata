@@ -245,6 +245,66 @@ class ConnectionSecretsGuardTest {
                 dbtHttp(PASSWORD_MASK, PASSWORD_MASK), stored));
   }
 
+  @Test
+  void aTestSuiteConnectionPointedElsewhereCannotKeepTheMaskedPassword() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite("attacker.example:3306", PASSWORD_MASK, false),
+                testSuite("localhost:3306", STORED_TOKEN, false)));
+  }
+
+  @Test
+  void aTestSuiteConnectionPointedElsewhereTakesANewPassword() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite("attacker.example:3306", "entered-again", false),
+                testSuite("localhost:3306", STORED_TOKEN, false)));
+  }
+
+  @Test
+  void aTestSuitePipelineKeepsItsMaskedPasswordWhileOtherSettingsChange() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite("localhost:3306", PASSWORD_MASK, true),
+                testSuite("localhost:3306", STORED_TOKEN, false)));
+  }
+
+  private static IngestionPipeline testSuite(
+      final String hostPort, final String password, final boolean includeTestCase) {
+    return new IngestionPipeline()
+        .withName("test-suite")
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    Map.of(
+                        "type",
+                        "TestSuite",
+                        "testCases",
+                        includeTestCase ? List.of("tc1") : List.of(),
+                        "serviceConnections",
+                        List.of(
+                            Map.of(
+                                "serviceName",
+                                "mysql_svc",
+                                "serviceConnection",
+                                Map.of(
+                                    "config",
+                                    Map.of(
+                                        "type",
+                                        "Mysql",
+                                        "hostPort",
+                                        hostPort,
+                                        "username",
+                                        "suite_user",
+                                        "authType",
+                                        Map.of("password", password))))))));
+  }
+
   private static IngestionPipeline dbtHttp(String forwardedHost, String token) {
     return new IngestionPipeline()
         .withName("dbt-http")
