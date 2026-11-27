@@ -1,5 +1,7 @@
 package org.openmetadata.it.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URLEncoder;
@@ -21,6 +23,7 @@ public final class LineageCsvExport {
   private static final String EXPORT_PATH = "/v1/lineage/exportAsync";
   private static final String COMPLETED = "COMPLETED";
   private static final int HTTP_OK = 200;
+  private static final int HTTP_RELEASED = 404;
   private static final Duration EXPORT_TIMEOUT = Duration.ofMinutes(3);
 
   private LineageCsvExport() {}
@@ -69,6 +72,11 @@ public final class LineageCsvExport {
                 + URLEncoder.encode(fqn, StandardCharsets.UTF_8));
     jobs.awaitJobStatus(jobId, COMPLETED);
     final HttpResponse<String> result = jobs.downloadResult(jobId);
-    return result.statusCode() == HTTP_OK ? Optional.of(result.body()) : Optional.empty();
+    // Only a released result (404) is retried; any other failure fails the test.
+    if (result.statusCode() == HTTP_RELEASED) {
+      return Optional.empty();
+    }
+    assertEquals(HTTP_OK, result.statusCode(), "lineage export download of " + fqn);
+    return Optional.of(result.body());
   }
 }
