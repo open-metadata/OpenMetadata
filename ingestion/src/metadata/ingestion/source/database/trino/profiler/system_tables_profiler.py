@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any
 
 from more_itertools import partition
-from pydantic import TypeAdapter, ValidationError, field_validator
+from pydantic import ValidationError, ValidatorFunctionWrapHandler, field_validator
 from sqlalchemy import Table, text
 from sqlalchemy.engine import Engine  # noqa: TC002
 
@@ -40,7 +40,6 @@ from trino.sqlalchemy.dialect import TrinoDialect
 logger = profiler_logger()
 
 
-_BOUND_ADAPTER = TypeAdapter(int | float | datetime | Decimal)
 _TRAILING_ZONE = re.compile(r"\s+[A-Za-z][A-Za-z0-9_/+\-]*$")
 
 
@@ -66,12 +65,15 @@ class ColumnStats(BaseModel):
             return None
         return int(value)
 
-    @field_validator("low_value", "high_value", mode="before")
+    @field_validator("low_value", "high_value", mode="wrap")
     @classmethod
-    def bound_validator(cls, value):
+    def bound_validator(
+        cls, value: Any, handler: ValidatorFunctionWrapHandler
+    ) -> int | float | datetime | Decimal | None:
         """Coerce Trino min/max values that the strict union cannot parse.
 
-        Trino returns booleans as 'true'/'false' and `timestamp with time zone`
+        Boolean bounds are omitted to match the default profiler. Trino returns
+        booleans as 'true'/'false' and `timestamp with time zone`
         as strings with a zone-name suffix (e.g. '2014-03-06 08:00:00.000 UTC').
         Values that still cannot be parsed are dropped instead of failing the
         validation of the whole table's statistics.
@@ -79,16 +81,16 @@ class ColumnStats(BaseModel):
         if value is None:
             return None
         if isinstance(value, bool):
-            return int(value)
+            return None
         if isinstance(value, str):
             lowered = value.strip().lower()
             if lowered in ("true", "false"):
-                return int(lowered == "true")
+                return None
             value = _TRAILING_ZONE.sub("", value.strip())
         try:
-            return _BOUND_ADAPTER.validate_python(value)
+            return handler(value)
         except ValidationError:
-            logger.debug(f"Ignoring unparseable Trino column bound: {value!r}")
+            logger.debug("Ignoring unparseable Trino column bound: %r", value)
             return None
 
 
