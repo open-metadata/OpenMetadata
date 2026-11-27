@@ -24,7 +24,7 @@ else:
 
 
 class DynamoDB(NoSQLAdaptor):
-    """A MongoDB client that serves as an adaptor for profiling data assets on MongoDB"""
+    """A DynamoDB client that serves as an adaptor for profiling data assets on DynamoDB"""
 
     def __init__(self, client: DynamoDBServiceResource):
         self.client = client
