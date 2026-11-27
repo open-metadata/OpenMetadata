@@ -87,6 +87,10 @@ public class SearchIndexMetrics {
         .description("Shard usage as a percentage (0-100)")
         .register(meterRegistry);
 
+    Gauge.builder(METRIC_PREFIX + "shard_usage_ratio", this::getShardUsageRatio)
+        .description("Fraction of configured search shard capacity in use")
+        .register(meterRegistry);
+
     Gauge.builder(METRIC_PREFIX + "missing_count", () -> cachedStats.get().missingIndices())
         .description("Expected indices not found in the search cluster")
         .register(meterRegistry);
@@ -96,6 +100,12 @@ public class SearchIndexMetrics {
         .register(meterRegistry);
 
     LOG.info("Search index metrics registered with Prometheus");
+  }
+
+  private double getShardUsageRatio() {
+    IndexStats stats = cachedStats.get();
+    double ratio = stats.maxShards() > 0 ? (double) stats.currentShards() / stats.maxShards() : 0.0;
+    return Math.clamp(ratio, 0.0, 1.0);
   }
 
   public void refreshStats() {

@@ -18,7 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Reads series out of the Prometheus text format that {@code /prometheus} serves. */
-final class PrometheusText {
+public final class PrometheusText {
   private static final Pattern LABEL = Pattern.compile("(\\w+)=\"((?:[^\"\\\\]|\\\\.)*)\"");
 
   private PrometheusText() {}
@@ -28,7 +28,7 @@ final class PrometheusText {
    *
    * @throws IllegalStateException when no series matches, so a misspelled meter cannot read as zero
    */
-  static double sum(String scrape, String name, String... tags) {
+  public static double sum(String scrape, String name, String... tags) {
     double sum = 0;
     int matched = 0;
     for (String line : scrape.split("\n")) {
@@ -42,6 +42,11 @@ final class PrometheusText {
           "No series " + name + " with labels " + String.join(",", tags));
     }
     return sum;
+  }
+
+  /** Whether the scrape has a sample with every requested label and the exact metric name. */
+  public static boolean contains(String scrape, String name, String... tags) {
+    return scrape.lines().anyMatch(line -> matches(line, name, tags));
   }
 
   private static boolean matches(String line, String name, String[] tags) {
