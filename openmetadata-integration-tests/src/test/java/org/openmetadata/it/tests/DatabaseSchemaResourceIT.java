@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -52,10 +53,13 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 /**
@@ -81,6 +85,65 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;
+  }
+
+  private static final String CERTIFICATION_PATCH =
+      """
+      [
+        {
+          "op": "add",
+          "path": "/certification",
+          "value": {
+            "tagLabel": {"tagFQN": "Certification.Gold", "source": "Classification",
+                         "labelType": "Automated", "state": "Suggested"},
+            "appliedDate": 0,
+            "expiryDate": 0
+          }
+        }
+      ]
+      """;
+
+  @Test
+  void conditionalIngestionPatchPreservesServerCertificationDates(TestNamespace ns) {
+    final DatabaseSchema original = createEntity(createMinimalRequest(ns));
+    final OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    final DatabaseSchema updated = patchCertification(bot, original);
+    final DatabaseSchema stored = getEntityWithFields(original.getId().toString(), "certification");
+    assertServerCertification(stored.getCertification());
+    assertEquals(stored.getVersion(), updated.getVersion());
+    assertEquals(
+        412,
+        assertThrows(OpenMetadataException.class, () -> patchCertification(bot, original))
+            .getStatusCode());
+    patchCertification(bot, stored);
+    final DatabaseSchema repeated =
+        getEntityWithFields(original.getId().toString(), "certification");
+    assertEquals(stored.getVersion(), repeated.getVersion());
+    assertEquals(stored.getCertification(), repeated.getCertification());
+  }
+
+  private static DatabaseSchema patchCertification(
+      OpenMetadataClient client, DatabaseSchema schema) {
+    final RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "application/json-patch+json")
+            .header("If-Match", "W/\"%s\"".formatted(schema.getVersion()))
+            .build();
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PATCH,
+            "/v1/databaseSchemas/" + schema.getId(),
+            CERTIFICATION_PATCH,
+            DatabaseSchema.class,
+            options);
+  }
+
+  private static void assertServerCertification(AssetCertification certification) {
+    assertNotNull(certification);
+    assertEquals("Certification.Gold", certification.getTagLabel().getTagFQN());
+    assertTrue(certification.getAppliedDate() > 0);
+    assertTrue(certification.getExpiryDate() > certification.getAppliedDate());
   }
 
   // Store last created schema for import/export tests

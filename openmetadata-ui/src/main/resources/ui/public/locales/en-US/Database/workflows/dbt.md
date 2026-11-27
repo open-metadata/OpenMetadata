@@ -421,3 +421,12 @@ $$section
 
 Mark the workflow as failed or avoid raising exceptions.
 $$
+$$section
+### Include dbt Source Schema Metadata $(id="includeSchemaMetadata")
+
+Enable this option to apply the metadata declared on dbt sources to their existing database schemas. It is off by default. The workflow reads the manifest's `source_meta` separately from the table-level `meta`.
+
+Set `openmetadata.domain`, `openmetadata.tier`, `openmetadata.certification`, `openmetadata.glossary`, or `openmetadata.customProperties` on the source. Enable **Update Owners** to apply a source `owner` or `openmetadata.owner`. Use the full tag name for certification when the ingestion identity cannot read certification settings.
+
+Already curated owners, domains, tiers and certifications are preserved. The workflow adds glossary terms and updates only the valid custom property keys declared by the source. If multiple sources disagree on a value for the same schema, the workflow skips the conflicting field or property key.
+$$

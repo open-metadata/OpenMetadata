@@ -68,6 +68,8 @@ source:
       #     dbtBucketName: bucket_name
       #     dbtObjectPrefix: main_dir/dbt_files/
       # dbtUpdateDescriptions: true or false
+      # includeSchemaMetadata: true  # Apply dbt source metadata to existing database schemas
+      # dbtUpdateOwners: true  # Also apply declared source owners
       # includeTags: true or false
       # dbtClassificationName: dbtTags
       # databaseFilterPattern:

@@ -146,6 +146,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
+from metadata.ingestion.source.database.dbt.schema_metadata import DbtSchemaMetadata
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
@@ -171,6 +172,8 @@ class DbtSource(DbtServiceSource):
     Class defines method to extract metadata from DBT
     """
 
+    schema_metadata: DbtSchemaMetadata | None = None
+
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -193,6 +196,7 @@ class DbtSource(DbtServiceSource):
         # its own model and again for every model and test that depends on it. Reset per
         # project in yield_data_models.
         self.resolved_tables: LRUCache[Table] = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
+        self.schema_source_tables: dict[str, Table | None] = {}
         self._load_omd_custom_properties()
 
     @cached_property
@@ -1007,6 +1011,24 @@ class DbtSource(DbtServiceSource):
             self.resolved_tables.put(key, table_entity)
         return table_entity
 
+    def _iter(self) -> Iterable[Either]:
+        if self.source_config.includeSchemaMetadata:
+            self.schema_metadata = DbtSchemaMetadata(self)
+        try:
+            yield from super()._iter()
+        finally:
+            self.schema_metadata = None
+            self.schema_source_tables.clear()
+
+    def collect_dbt_schema_metadata(self, dbt_objects: DbtObjects) -> None:
+        if self.schema_metadata and dbt_objects.dbt_manifest:
+            self.schema_metadata.collect(dbt_objects.dbt_manifest.sources, self.schema_source_tables)
+            self.schema_source_tables.clear()
+
+    def apply_dbt_schema_metadata(self) -> None:
+        if self.schema_metadata:
+            self.schema_metadata.apply()
+
     # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:  # noqa: C901
         """
@@ -1129,12 +1151,21 @@ class DbtSource(DbtServiceSource):
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if table_entity := self._resolve_table(
+                    table_entity = self._resolve_table(
                         get_corrected_name(node_database),
                         get_corrected_name(node_schema),
                         model_name,
                         literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
+                    )
+                    if (
+                        self.schema_metadata
+                        and resource_type == DbtCommonEnum.SOURCE.value
+                        and key in dbt_objects.dbt_manifest.sources
+                        and getattr(manifest_node, "source_meta", None)
                     ):
+                        self.schema_source_tables[key] = table_entity
+
+                    if table_entity:
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
                             f"with id {table_entity.id}"
