@@ -204,14 +204,16 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   data-asset chunk index through a composite aggregation on `parentId` and `entityType`, refusing a
   partial answer as the heal does, looks the entities of each page up a type at a time in their
   table, soft deleted ones excluded, and deletes the chunk sets of the rest as a batch delete does.
-  The lookup reads ids only, so a row the server cannot build an entity from counts as live and
-  cannot fail every pass. A parent with no entity type, of a type the server has no repository for, or whose
+  The lookup reads a few columns of each row without building the entity, so a row the server
+  cannot build an entity from still counts as live when it is not soft deleted, and cannot fail
+  every pass. A parent with no entity type, of a type the server has no repository for, or whose
   id is not an entity id, keeps its chunks. The sweep deletes by the header's bound, so it runs
   only after the heal. It then sets `_meta.chunksOfDeletedEntitiesRemoved` on the index; an index
   created empty starts with it. An entity restored in the moment the sweep reads it can lose its
   chunks until its next update or reindex. Chunks orphaned after the sweep is recorded stay until
-  the next full staged recreate: those of a server that stops between a delete's commit and its
-  lane task, which is held only in memory; those a write brings back after a delete, as above; and
+  the next full staged recreate: those of a server that dies before a delete's lane task runs, as
+  the task is held only in memory (a clean shutdown runs it or hands it to the search retry
+  queue); those a write brings back after a delete, as above; and
   those a server still on an earlier release leaves during a rolling upgrade.
 - **By-id chunk requests retry a busy or briefly unavailable cluster.** The header read, the
   chunk bulks and the heal's requests go through their own retry policy, `vector-chunk-request`:

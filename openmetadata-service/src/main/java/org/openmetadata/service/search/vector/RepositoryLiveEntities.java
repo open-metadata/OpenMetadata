@@ -14,10 +14,10 @@ import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 
 /**
  * The live entities as their tables hold them, soft deleted ones excluded: one query per entity
- * type and page that reads each row's id without building the entity from its JSON, so a row the
- * server could not read as an entity still counts as live and cannot fail the sweep. An id this
- * server cannot check, of a type it has no repository for or not an entity id at all, counts as
- * live, so its chunks stay.
+ * type and page that reads a few columns of each row without building the entity from its JSON,
+ * so a row the server could not read as an entity still counts as live when it is not soft
+ * deleted, and cannot fail the sweep. An id this server cannot check, of a type it has no
+ * repository for or not an entity id at all, counts as live, so its chunks stay.
  */
 public final class RepositoryLiveEntities implements LiveEntities {
 

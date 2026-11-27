@@ -348,6 +348,45 @@ class OrderedLaneExecutorTest {
   }
 
   @Test
+  void aBatchStillQueuedAtShutdownGoesToTheFailureHandlerInsteadOfRunning()
+      throws InterruptedException {
+    ConcurrentLinkedQueue<OrderedLaneBatchTask> flushed = new ConcurrentLinkedQueue<>();
+    AtomicInteger ran = new AtomicInteger();
+    UUID entityId = UUID.randomUUID();
+    List<EntityReference> entities =
+        List.of(new EntityReference().withId(entityId).withType("table"));
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch neverReleased = new CountDownLatch(1);
+    OrderedLaneExecutor executor =
+        new OrderedLaneExecutor(
+            (task, failure) -> {
+              if (task instanceof OrderedLaneBatchTask batch) {
+                flushed.add(batch);
+              }
+            },
+            2000,
+            1L);
+    try {
+      executor.submit(
+          entityId,
+          () -> {
+            firstStarted.countDown();
+            neverReleased.await(10, TimeUnit.SECONDS);
+          });
+      assertTrue(firstStarted.await(10, TimeUnit.SECONDS));
+      executor.submitPerLane(
+          List.of(entityId),
+          ids -> new OrderedLaneBatchTask(ran::incrementAndGet, "deleteChunks", entities));
+      executor.close();
+    } finally {
+      neverReleased.countDown();
+    }
+    assertEquals(0, ran.get(), "a batch dropped at shutdown does not run on a stopping server");
+    assertEquals(1, flushed.size(), "the dropped batch goes to the durable retry outbox");
+    assertEquals(entities, flushed.peek().entities());
+  }
+
+  @Test
   void nullEntityKeyRunsInline() {
     AtomicInteger ran = new AtomicInteger();
     try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {})) {
