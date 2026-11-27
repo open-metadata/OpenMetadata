@@ -1066,6 +1066,52 @@ describe('TaskTabNew Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('diffs a markdown description against its editor HTML re-save word by word', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                description: {
+                  removed: [
+                    'Ordered **deal → segment** for the "Acquisition" deal\'s team.',
+                  ],
+                  added: [
+                    '<p>Ordered <strong>deal → segment</strong> for the &#34;Acquisition&#34; deal&#39;s team. Test change</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const diff = screen.getByTestId('proposed-changes-description-diff');
+
+    expect(diff).toHaveTextContent(
+      'Ordered deal → segment for the "Acquisition" deal\'s team. Test change'
+    );
+    expect(diff).not.toHaveTextContent('&#34;');
+    expect(diff).not.toHaveTextContent('**');
+    expect(screen.queryByTestId('diff-removed')).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByTestId('diff-added')
+        .map((node) => node.textContent)
+        .join('')
+    ).toBe('Test change');
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,

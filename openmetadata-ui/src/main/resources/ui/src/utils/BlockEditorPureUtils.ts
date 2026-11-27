@@ -528,6 +528,31 @@ export const getTextFromHtmlString = (description?: string): string => {
   return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
 
+const READABLE_BLOCK_END = /<\/(p|li|h[1-6]|div|pre|blockquote|tr)>|<br\s*\/?>/gi;
+
+/**
+ * The text a reader sees, one line per block, whether the value is stored as
+ * Markdown (CSV import, API) or as editor HTML. Comparing two descriptions in
+ * different formats only shows the real edit once both are reduced to this.
+ */
+export const getReadableText = (content?: string): string => {
+  if (!content) {
+    return '';
+  }
+
+  const html = getHtmlStringFromMarkdownString(content).replace(
+    READABLE_BLOCK_END,
+    (tag) => `${tag}\n`
+  );
+  const text =
+    new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '';
+
+  return text
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ *\n\s*/g, '\n')
+    .trim();
+};
+
 export const stripPendingUploadNodes = (html: string): string => {
   if (!html.includes('data-uploading="true"')) {
     return html;

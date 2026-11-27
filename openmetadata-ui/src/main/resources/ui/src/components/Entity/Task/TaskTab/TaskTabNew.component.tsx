@@ -100,6 +100,8 @@ import {
   formatDate,
   formatIsoDuration,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getReadableText } from '../../../../utils/BlockEditorPureUtils';
+import { getTextDiffElements } from '../../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import ontologyExplorerClassBase from '../../../../utils/OntologyExplorerClassBase';
@@ -202,13 +204,6 @@ const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   relatedTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
   domains: (fqn) => getDomainDetailsPath(fqn),
 };
-
-const stripHtmlTags = (value: string): string =>
-  value
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1875,46 +1870,63 @@ export const TaskTabNew = ({
             {Object.entries(proposedChanges).map(
               ([field, { added, removed }]) => {
                 const getUrl = FIELD_ROUTE_MAP[field];
+                // A replaced text value (description, display name) arrives
+                // whole on both sides; diff it so reviewers see only the edit.
+                const isTextEdit =
+                  !getUrl && removed.length === 1 && added.length === 1;
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
                     <Typography className="task-proposed-changes-field-name">
                       {startCase(field)}
                     </Typography>
-                    <div className="task-proposed-changes-chips">
-                      {removed.map((val) =>
-                        getUrl ? (
-                          <Link
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            key={`${field}-removed-${val}`}
-                            to={getUrl(val)}>
-                            {val}
-                          </Link>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            key={`${field}-removed-${val}`}>
-                            {stripHtmlTags(val)}
-                          </span>
-                        )
-                      )}
-                      {added.map((val) =>
-                        getUrl ? (
-                          <Link
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            key={`${field}-added-${val}`}
-                            to={getUrl(val)}>
-                            {val}
-                          </Link>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            key={`${field}-added-${val}`}>
-                            {stripHtmlTags(val)}
-                          </span>
-                        )
-                      )}
-                    </div>
+                    {isTextEdit ? (
+                      <Typography
+                        as="div"
+                        className="tw:whitespace-pre-wrap tw:break-words"
+                        data-testid={`proposed-changes-${field}-diff`}
+                        size="text-sm">
+                        {getTextDiffElements(
+                          getReadableText(removed[0]),
+                          getReadableText(added[0])
+                        )}
+                      </Typography>
+                    ) : (
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}`}>
+                              {getReadableText(val)}
+                            </span>
+                          )
+                        )}
+                        {added.map((val) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}`}>
+                              {getReadableText(val)}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               }
