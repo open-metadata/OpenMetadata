@@ -397,7 +397,7 @@ def cli_e2e(session):
         test = INGESTION_ROOT / "tests/cli_e2e_v2" / connector
         report = f"v2-{connector}"
         pytest_args.extend(["-v", "--e2e-contract-check"])
-        workers = {"bigquery": "6", "snowflake": "4"}.get(connector)
+        workers = {"bigquery": "6", "snowflake": "4", "athena": "4"}.get(connector)
         if workers:
             pytest_args.extend(["-n", workers])
     if not connector.replace("_", "").isalnum() or not (test.is_dir() if args.suite == "v2" else test.is_file()):

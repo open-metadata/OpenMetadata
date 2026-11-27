@@ -11,6 +11,7 @@ MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is th
 | `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 | `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
 | `mssql` | disposable testcontainers SQL Server + restricted login, one owned database, fresh schema per test | `cli_e2e/test_cli_mssql.py` |
+| `athena` | fresh Glue database and S3 prefix per test in one real AWS account | `cli_e2e/test_cli_athena.py` |
 
 ## Run
 
@@ -31,7 +32,7 @@ nox --no-venv -s cli-e2e -- mysql --suite v2 --no-cov
 ```
 
 The `cli-e2e` session defaults to legacy tests; `--suite v2` selects the replacement directory and
-enforces its contracts. BigQuery uses six workers and Snowflake four. Both workflows use
+enforces its contracts. BigQuery uses six workers, Snowflake and Athena four. Both workflows use
 `reusable-py-cli-e2e-tests.yml` for stack setup, reporting, failure diagnostics and teardown.
 V2 remains manually dispatched with coverage disabled during stabilization.
 
@@ -68,6 +69,7 @@ cli_e2e_v2/
   oracle/              owned container and one Oracle user per test, same layout as mysql/
   snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
   mssql/               owned SQL Server database and one schema per test, same layout as postgres/
+  athena/              owned Glue databases over owned S3 prefixes, same layout as postgres/
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -448,3 +450,61 @@ runs when it is dispatched rather than on every PR; the command above still runs
 
 Remove the v1 MSSQL test and its `ci-nightly.yml` default connector entry only after this suite has passed
 for the agreed stability window.
+
+## Athena
+
+Athena cannot run in a container, so `athena/` owns one fresh Glue database per test
+(`e2e_athena_<uuid>`, parameter `owner=cli-e2e-v2`) whose tables live under one fresh S3 prefix,
+`<data root>/<database>/`. Cleanup deletes that database's Glue tables, the database and every object
+under that prefix, on success and failure, and refuses any name or prefix it did not create. Every
+workflow carries an anchored `schemaFilterPattern` for the owned databases, because the catalog also
+holds unowned ones; the invocation helper rejects a schema filter naming anything else. Missing
+configuration is an error, not a skip.
+
+```bash
+export E2E_ATHENA_REGION=... E2E_ATHENA_S3STAGINGDIR=s3://.../ E2E_ATHENA_WORKGROUP=...
+export E2E_ATHENA_DATA_ROOT=s3://.../prefix/   # optional; default s3://<staging bucket>/cli-e2e-v2/
+python -m pytest ingestion/tests/cli_e2e_v2/athena --e2e-contract-check -v
+```
+
+AWS credentials come from the default chain, for the fixtures and the CLI alike (`awsConfig` sets only
+the region). In CI that is the role `configure-aws-credentials` assumes; locally, export temporary
+credentials or select a profile with `AWS_PROFILE`. Athena tables are Glue entries over S3, so the
+baseline writes Hive (`STORED AS PARQUET`) and Iceberg DDL rather than SQLAlchemy `create_all`.
+
+**IAM.** One identity seeds and ingests. It needs, on the owned databases and prefix:
+
+| Service | Actions |
+|---|---|
+| Athena (workgroup) | `StartQueryExecution`, `GetQueryExecution`, `GetQueryResults`, `StopQueryExecution`, `GetWorkGroup`, `ListTableMetadata`, `GetTableMetadata`, `ListDatabases`, `GetDataCatalog` |
+| Glue | `CreateDatabase`, `DeleteDatabase`, `GetDatabase`, `GetDatabases`, `CreateTable`, `UpdateTable`, `DeleteTable`, `GetTable`, `GetTables`, `GetPartitions`, `BatchCreatePartition`, `CreatePartition` |
+| S3 (data root) | `ListBucket`, `GetObject`, `PutObject`, `DeleteObject`, `GetBucketLocation` |
+| S3 (staging dir) | `ListBucket`, `GetObject`, `PutObject`, `GetBucketLocation` |
+| Lake Formation | `GetResourceLFTags` (optional: without it ingestion only warns that LF-tags were skipped) |
+
+v1 → v2 mapping. v1 was skipped wholesale (`pytestmark = skip`, "AWS credentials not available"),
+read a pre-existing, unowned `e2e_db` and asserted only status-count floors:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ 7 records | `catalog.metadata` (complete inventory, native types, descriptions, External / Iceberg / Partitioned / View table types) |
+| profiler on ≥ 2 tables (`profileSample: 5`) | `profile.metrics` (exact row counts on every table format, column metrics) |
+| auto-classification, 50 sample rows | `sample.limit`, `classification.tags` |
+| schema include filter | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include `.*customers.*` / exclude `.*sales.*` / mix (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.regex-exclude-wins`, `filter.table.exclude-wins` |
+| deleted table (`delete_table_and_view` was a no-op) | `deletion.tables` |
+
+Added beyond v1: `schema.description` (the Glue database description), `partition.columns` (Hive
+partition keys become `tablePartition`), `lineage.view`, `ingest.repeat`, `sample.values.native`,
+`sample.values.replacement` (on the Iceberg table, the only format Athena can `UPDATE`).
+`fk.relationships` and `procedure.code` are declared `unsupported`: Glue tables have no keys and
+Athena has no stored procedures. v1's lineage test skipped itself, its usage test has an empty body,
+and it configured no time partition or data-quality case.
+
+Ingestion maps `tinyint` and `smallint` to `INT` and `double` to `FLOAT` (`athena/utils.py`); the
+suite encodes what OM stores rather than renaming types for existing tables.
+
+The manually dispatched v2 workflow runs Athena with four workers in its own step, which receives only
+the `E2E_ATHENA_*` values; the AWS role comes from the job's existing `configure-aws-credentials` step.
+Remove the v1 Athena test and its `ci-nightly.yml` default connector entry only after this suite has
+passed for the agreed stability window.

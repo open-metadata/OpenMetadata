@@ -27,7 +27,7 @@ _CALLERS = {
     "legacy": ("ci-nightly.yml", "python-cli-e2e", "plan"),
     "v2": ("py-cli-e2e-tests-v2.yml", "py-cli-e2e-tests-v2", "prepare-classification-models"),
 }
-_TEST_STEP_IDS = ("tests", "e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test")
+_TEST_STEP_IDS = ("tests", "e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test", "e2e-v2-athena-test")
 _SECRET_REFERENCE = re.compile(r"secrets\.([A-Za-z0-9_]+)")
 
 
@@ -123,6 +123,7 @@ def _run_workflow(tmp_path, connector, command_exit=0, caller="v2"):
         ("v2", "mysql", 1, "v2", False),
         ("v2", "bigquery", 0, "v2", False),
         ("v2", "snowflake", 0, "v2", False),
+        ("v2", "athena", 0, "v2", False),
     ],
 )
 def test_ci_forwards_caller_inputs_and_command_status(
@@ -177,12 +178,21 @@ def test_ci_routes_each_connector_to_one_step_and_limits_its_credentials():
             "E2E_SNOWFLAKE_WAREHOUSE": "TEST_SNOWFLAKE_WAREHOUSE",
             "E2E_SNOWFLAKE_DATABASE": "TEST_SNOWFLAKE_DATABASE_E2E",
         },
+        "e2e-v2-athena-test": {
+            "E2E_ATHENA_REGION": "E2E_AWS_REGION",
+            "E2E_ATHENA_S3STAGINGDIR": "E2E_ATHENA_S3STAGINGDIR",
+            "E2E_ATHENA_WORKGROUP": "E2E_ATHENA_WORKGROUP",
+        },
     }
     for owner, secrets in secrets_by_step.items():
         for key, secret in secrets.items():
             assert key not in job["env"]
             assert steps[owner]["env"][key] == f"${{{{ secrets.{secret} }}}}"
-    owners = {"TEST_BQ_": "e2e-v2-bigquery-test", "TEST_SNOWFLAKE_": "e2e-v2-snowflake-test"}
+    owners = {
+        "TEST_BQ_": "e2e-v2-bigquery-test",
+        "TEST_SNOWFLAKE_": "e2e-v2-snowflake-test",
+        "E2E_ATHENA_": "e2e-v2-athena-test",
+    }
     scopes = [("the job", {key: value for key, value in job.items() if key != "steps"})]
     scopes += [
         (step.get("id", step.get("name", step.get("uses"))), step) for step in job["steps"] if step.get("id") != "tests"
