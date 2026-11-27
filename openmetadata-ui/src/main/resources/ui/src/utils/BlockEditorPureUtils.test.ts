@@ -817,6 +817,21 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ]);
   });
 
+  it.each(['https', 'http', 'ftp'])(
+    'autolinks %s URLs immediately after a colon',
+    (scheme) => {
+      const url = `${scheme}://example.com`;
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(`Docs:${url}`),
+        'text/html'
+      );
+
+      expect(doc.querySelector('a')?.getAttribute('href')).toBe(url);
+      expect(doc.querySelector('a')?.textContent).toBe(url);
+      expect(doc.body.textContent).toBe(`Docs:${url}`);
+    }
+  );
+
   it.each(['range ~10-~20 rows', '~5~ ms', 'PROGRA~1\\foo~2'])(
     'keeps single tildes literal in %s',
     (content) => {
@@ -859,6 +874,41 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     expect(
       getHtmlStringFromMarkdownString('__underline with **bold**__')
     ).toContain('<u>underline with <strong>bold</strong></u>');
+  });
+
+  it.each([
+    [':+1:', '👍'],
+    [':heart:', '❤️'],
+    [':smile:', '😄'],
+  ])('keeps the existing Unicode value for %s', (shortcode, emoji) => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(shortcode),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe(emoji);
+  });
+
+  it('leaves the legacy octocat shortcode as text', () => {
+    expect(getHtmlStringFromMarkdownString(':octocat:')).toBe(
+      '<p>:octocat:</p>'
+    );
+  });
+
+  it('does not resolve inherited object properties as emoji', () => {
+    expect(getHtmlStringFromMarkdownString(':constructor: :toString:')).toBe(
+      '<p>:constructor: :toString:</p>'
+    );
+  });
+
+  it.each([
+    ['*italic* and _plain_', '<p><em>italic</em> and _plain_</p>'],
+    ['_a **b**_', '<p>_a <strong>b</strong>_</p>'],
+    ['*a _b_ c*', '<p><em>a _b_ c</em></p>'],
+    ['___x___', '<p><u>x</u></p>'],
+    ['___x__ y_', '<p>_<u>x</u> y_</p>'],
+  ])('keeps single underscores literal in %s', (markdown, expected) => {
+    expect(getHtmlStringFromMarkdownString(markdown)).toBe(expected);
   });
 
   it('leaves unknown and escaped emoji shortcodes as text', () => {

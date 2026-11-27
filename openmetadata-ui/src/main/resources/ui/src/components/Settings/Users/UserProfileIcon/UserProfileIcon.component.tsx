@@ -13,6 +13,8 @@
 
 import {
   Badge,
+  Box,
+  Divider,
   Dropdown,
   RadioButtonBase,
   Tooltip,
@@ -53,7 +55,6 @@ import {
   getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
-import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
@@ -127,6 +128,7 @@ export const UserProfileIcon = () => {
 
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
+  const extraItems = navbarUtilClassBase.getUserProfileExtraItems();
   const profilePicture = getImageWithResolutionAndFallback(
     ImageQuality['6x'],
     currentUser?.profile?.images
@@ -376,10 +378,18 @@ export const UserProfileIcon = () => {
             onAction={onLogoutHandler}
           />
         </Dropdown.Menu>
-        <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
-          <InterfaceModeMenuItem />
-          {navbarUtilClassBase.getUserProfileExtraItems()}
-        </div>
+        {extraItems.length > 0 && (
+          <>
+            <Divider />
+            <Box
+              className="tw:px-4 tw:py-3"
+              data-testid="user-profile-extra-items"
+              direction="col"
+              gap={3}>
+              {extraItems}
+            </Box>
+          </>
+        )}
       </Dropdown.Popover>
     </Dropdown.Root>
   );

@@ -796,6 +796,51 @@ class DbtUnitTest(TestCase):
         }
         self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
 
+    def test_dbt_relationships_test_skipped_when_tested_table_not_in_openmetadata(self):
+        """A tested model whose table is not in OpenMetadata is dropped from the upstreams,
+        leaving only the `to:` table; attaching the test there sends a column it does not
+        have and the server rejects it with "Invalid column name"."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_tested_table_is_ambiguous(self):
+        """An unresolved tested model with several non-`to:` candidates (e.g. an ephemeral
+        model expanded into its parents) must not be attached to an arbitrary one, nor to
+        the `to:` table dbt lists first in depends_on."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.STG_A", "svc.db.sch.STG_B"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_referenced_table_is_unidentifiable(self):
+        """When the `to:` table cannot be identified (its name matches two upstreams), it
+        cannot be excluded, so falling back to depends_on[0] could land on it again."""
+        manifest_node = self._get_relationships_test_node()
+        upstream_nodes = [
+            UpstreamNode(name="customers", qualified_name="jaffle_shop.customers", fqn="svc.db.sch.CUSTOMERS"),
+            UpstreamNode(name="customers", qualified_name="raw.customers", fqn="svc.db.raw.CUSTOMERS"),
+        ]
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [node.fqn for node in upstream_nodes],
+            "upstream_by_name": build_upstream_name_map(upstream_nodes),
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
     def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
         """A model and a source table can share a dbt name; the bare name must not
         silently resolve to whichever happened to be indexed last."""
@@ -6143,6 +6188,34 @@ class TestDbtSourceIdentifiers:
             assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
         else:
             assert freshness is None
+        lineage = list(source.create_dbt_lineage(links[self.MODEL_FQN]))
+        assert [edge.right.lineage_request.edge.fromEntity.id.root for edge in lineage] == (
+            [links[physical_fqn].table_entity.id.root] if literal_exists else []
+        )
+
+    def test_wildcard_source_is_kept_for_lineage_where_the_engine_has_wildcard_tables(self, monkeypatch):
+        # Engines without wildcard tables keep the identifier literal (the parametrized test above)
+        from metadata.ingestion.source.database.dbt import metadata as dbt_metadata
+
+        resolve = dbt_metadata.get_table_binding_resolution
+
+        def with_wildcard_tables(metadata, service_name):
+            resolution = resolve(metadata, service_name)
+            resolution.supports_wildcard_tables = True
+            return resolution
+
+        monkeypatch.setattr(dbt_metadata, "get_table_binding_resolution", with_wildcard_tables)
+        source = self._source(self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = "raw_orders_*"
+        # A previous run's expansion must not answer for tables ingested since
+        source.wildcard_expansions.put("trino_svc.RAW_DB.RAW.raw_orders_*", None)
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert links[self.MODEL_FQN].datamodel.upstream == ["trino_svc.RAW_DB.RAW.raw_orders_*"]
+        assert "trino_svc.RAW_DB.RAW.raw_orders_*" not in source.wildcard_expansions
+        assert source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness") is None
 
     @pytest.mark.parametrize("missing_location", ["database", "schema"])
     def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):

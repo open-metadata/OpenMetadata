@@ -62,7 +62,6 @@ const botData = {
 const mockAuthMechanism = {
   config: {
     JWTToken:
-      // eslint-disable-next-line max-len
       'eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODciLCJpc0JvdCI6dHJ1ZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJleHAiOjE2NjY3OTE5NjAsImlhdCI6MTY2NDE5OTk2MCwiZW1haWwiOiJzYWNoaW5jaGF1cmFzaXlhY2hvdGV5ODdAZ21haWwuY29tIn0.e5y5hh61EksbcWlLet_GpE84raDYvMho6OXAOLe5MCKrimHYj1roqoY54PFlJDSdrPWJOOeAFsTOxlqnMB_FGhOIufNW9yJwlkIOspWCusNJisLpv8_oYw9ZbrB5ATKyDz9MLTaZRZptx3JirA7s6tV-DJZId-mNzQejW2kiecYZeLZ-ipHqQeVxfzryfxUqcBUGTv-_de0uxlPdklqBuwt24bCy29qVIGxUweFDhrstmdRx_ZyQdrRvmeMHifUB6FCB1OBbII8mKYvF2P0CWF_SsxVLlRHUeOsxKeAeUk1MAA1mHm4UYdMD9OAuFMTZ10gpiELebVWiKrFYYjdICA',
     JWTTokenExpiry: '30',
     JWTTokenExpiresAt: 1666791960664,

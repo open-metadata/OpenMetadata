@@ -66,6 +66,26 @@ class BulkRetryPolicyTest {
   }
 
   @Test
+  void anItemRejectedForIndexingCapacityIsWorthReSendingButABadDocumentIsNot() {
+    assertTrue(
+        BulkRetryPolicy.isCapacityRejection(
+            429,
+            "rejected execution of primary operation [coordinating_and_primary_bytes=170375573,"
+                + " replica_bytes=335672130, all_bytes=506047703, primary_operation_bytes=11466,"
+                + " max_coordinating_and_primary_bytes=429496729]"));
+    assertTrue(BulkRetryPolicy.isCapacityRejection(503, "no shard available"));
+    assertTrue(BulkRetryPolicy.isCapacityRejection(200, "es_rejected_execution_exception"));
+    assertTrue(BulkRetryPolicy.isCapacityRejection(500, "circuit_breaking_exception"));
+
+    assertFalse(
+        BulkRetryPolicy.isCapacityRejection(
+            400, "can't merge a non object mapping [topicConfig.a.b] with an object mapping"));
+    assertFalse(BulkRetryPolicy.isCapacityRejection(409, "version_conflict_engine_exception"));
+    assertFalse(BulkRetryPolicy.isCapacityRejection(404, "document_missing_exception"));
+    assertFalse(BulkRetryPolicy.isCapacityRejection(400, null));
+  }
+
+  @Test
   void aBulkGivesUpTwoMinutesAfterItsFirstSendUnlessToldOtherwise() {
     assertEquals(120_000, new BulkRetryPolicy(3, 1_000, 10_000).maxLifetimeMillis());
     assertEquals(500, new BulkRetryPolicy(3, 1_000, 10_000, 500).maxLifetimeMillis());

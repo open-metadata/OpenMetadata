@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { useLocation } from 'react-router-dom';
-import { getBasePath } from '../../utils/HistoryUtils';
+import { stripBasePath } from '../../utils/HistoryUtils';
 
 const useCustomLocation = (): ReturnType<typeof useLocation> => {
   const location = useLocation();
-  const modifiedPathname = location.pathname.replace(getBasePath(), '');
+  const modifiedPathname = stripBasePath(location.pathname);
 
   return {
     ...location,

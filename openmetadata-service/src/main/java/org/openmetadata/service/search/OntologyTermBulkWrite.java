@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
+import org.openmetadata.service.search.vector.StoredEmbeddingReuse;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.Script;
@@ -84,7 +85,7 @@ final class OntologyTermBulkWrite {
     final int dimension = client == null ? -1 : client.getDimension();
     final var cached = vectorService.getExistingEmbeddingsBatch(source, fingerprints);
     return cached.entrySet().stream()
-        .filter(entry -> VectorIndexService.canReuseCachedEmbedding(entry.getValue(), dimension))
+        .filter(entry -> StoredEmbeddingReuse.isSpliceable(entry.getValue(), dimension))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 

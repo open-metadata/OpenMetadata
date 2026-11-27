@@ -89,7 +89,6 @@ const WorksheetDetailsPage = () => {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.WORKSHEET, resolvedEntityFqn);
 
   const { id: worksheetId, version: currentVersion } = worksheetDetails;
@@ -400,7 +399,7 @@ const WorksheetDetailsPage = () => {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewBasic) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
