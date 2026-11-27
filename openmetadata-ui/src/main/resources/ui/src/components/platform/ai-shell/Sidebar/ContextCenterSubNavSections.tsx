@@ -246,7 +246,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
               type="button"
               onClick={onUploadFile}>
               <span className="ask-sub-panel__item-icon">
-                <Plus size={18} strokeWidth={1.8} />
+                <Plus size={18} />
               </span>
               <span className="ask-sub-panel__item-label">
                 {t('label.upload-file')}
@@ -260,7 +260,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
               type="button"
               onClick={onCreateArticle}>
               <span className="ask-sub-panel__item-icon">
-                <Plus size={18} strokeWidth={1.8} />
+                <Plus size={18} />
               </span>
               <span className="ask-sub-panel__item-label">
                 {t('label.create-entity', { entity: t('label.article') })}
@@ -274,7 +274,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
               type="button"
               onClick={onAddQuickLink}>
               <span className="ask-sub-panel__item-icon">
-                <Plus size={18} strokeWidth={1.8} />
+                <Plus size={18} />
               </span>
               <span className="ask-sub-panel__item-label">
                 {t('label.add-entity', { entity: t('label.quick-link') })}

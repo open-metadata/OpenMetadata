@@ -533,7 +533,7 @@ public final class AIContextMarkdown {
    * breaks that delimit a markdown table. Values are flattened to one line and capped so a single
    * blob column cannot crowd the rest of the context out of the model's window.
    */
-  private static String sampleCell(Object value) {
+  static String sampleCell(Object value) {
     String text = value == null ? "" : cell(Objects.toString(value).replaceAll("\\R+", " "));
     return text.length() > MAX_SAMPLE_CELL_CHARS
         ? text.substring(0, MAX_SAMPLE_CELL_CHARS) + "…"
@@ -668,11 +668,11 @@ public final class AIContextMarkdown {
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
+          .append("\n_Excerpt — fetch the full content with get_entity_details(entityType=`")
           .append(item.getType() == null ? "" : item.getType().value())
           .append("`, fqn=`")
           .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
-          .append("`)._\n");
+          .append("`, include=[\"content\"])._\n");
     }
   }
 

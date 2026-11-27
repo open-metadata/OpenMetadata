@@ -482,8 +482,8 @@ describe('IncidentGroupsView', () => {
       'label.group-count:5'
     );
     expect(
-      screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('label.recurring-count:2');
+      screen.getByTestId('incident-groups-rising-count')
+    ).toHaveTextContent('label.rising-groups-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 

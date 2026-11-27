@@ -1484,8 +1484,8 @@ public class ListFilter extends Filter<ListFilter> {
     String inCondition = buildIndexedBindParams(bindPrefix, hashCsv);
     String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
     return String.format(
-        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s)))",
-        fqnHashColumn, source.ordinal(), inCondition);
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s) AND tu.%s))",
+        fqnHashColumn, source.ordinal(), inCondition, CollectionDAO.TagUsageDAO.NOT_PENDING);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {

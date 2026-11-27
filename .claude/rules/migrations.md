@@ -45,7 +45,10 @@ ADR:2026-11-11-a-data-migration-carries-its-own-logic
   `Relationship`. Everything else fails the test, including `CollectionDAO`, `Entity`,
   repositories and generated classes.
 - **Work that must follow current code goes elsewhere.** Seeding runs in each resource's
-  `initialize` on every start; deploying ingestion pipelines, reindexing and moving secrets are the
-  `deploy-pipelines`, `reindex` and `migrate-secrets` commands.
+  `initialize` on every start, and so does deploying a workflow whose stored definition or
+  builders changed
+  (ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts); deploying ingestion
+  pipelines, reindexing and moving secrets are the `deploy-pipelines`, `reindex` and
+  `migrate-secrets` commands.
 - **An unavoidable exception** is added to `MigrationArchitectureTest` with its reason, and the step
   checks the data shape it expects and fails when it differs. That test fails on anything else.

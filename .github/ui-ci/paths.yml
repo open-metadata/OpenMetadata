@@ -1,0 +1,34 @@
+# Read by the plan job of ci-pr.yml and ci-merge-queue.yml (dorny/paths-filter).
+# `ui` selects checkstyle and browser tests (which then select by impact);
+# `ui-unit` selects Jest, and the plan job also selects `ui` whenever it matches.
+ui:
+  - openmetadata-ui/src/main/resources/ui/**
+  - openmetadata-ui-core-components/src/main/resources/ui/**
+  - openmetadata-spec/src/main/resources/json/schema/**
+  - .github/ui-ci/**
+  - .github/actions/ci-status-gate/**
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-*/**
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/ui-ci.yml
+  - .github/workflows/ui-browser-tests.yml
+ui-unit:
+  - openmetadata-ui/src/main/resources/ui/src/**
+  - openmetadata-ui/src/main/resources/ui/scripts/sso-dev-server*
+  - openmetadata-ui/src/main/resources/ui/jest.config.js
+  - openmetadata-ui/src/main/resources/ui/package.json
+  - openmetadata-ui/src/main/resources/ui/yarn.lock
+  - openmetadata-ui/src/main/resources/ui/tsconfig.json
+  - openmetadata-ui/src/main/resources/ui/babel.config.json
+  - openmetadata-ui/src/main/resources/ui/.nvmrc
+  - openmetadata-ui-core-components/src/main/resources/ui/src/**
+  - openmetadata-ui-core-components/src/main/resources/ui/package.json
+  - openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+  - openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts
+  - .github/ui-ci/**
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-unit/**
+  - .github/workflows/ui-ci.yml

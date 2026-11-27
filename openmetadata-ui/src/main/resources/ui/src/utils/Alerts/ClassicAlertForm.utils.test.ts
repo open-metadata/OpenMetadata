@@ -13,8 +13,14 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { ModifiedCreateEventSubscription } from '../../utils/AlertsClassBase.interface';
-import { applyAlertValueChanges } from './ClassicAlertForm.utils';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../../utils/AlertsClassBase.interface';
+import {
+  applyAlertValueChanges,
+  getClassicAlertInitialValues,
+} from './ClassicAlertForm.utils';
 
 const initial = {
   name: 'alert',
@@ -69,5 +75,21 @@ describe('applyAlertValueChanges', () => {
 
     expect(result.current.form.getValues('resources')).toEqual(['pipeline']);
     expect(result.current.destinations.fields).toHaveLength(0);
+  });
+});
+
+describe('getClassicAlertInitialValues', () => {
+  it('opens the Enabled switch as the alert is stored', () => {
+    const disabled = getClassicAlertInitialValues({
+      name: 'alert',
+      enabled: false,
+    } as ModifiedEventSubscription);
+    const enabled = getClassicAlertInitialValues({
+      name: 'alert',
+      enabled: true,
+    } as ModifiedEventSubscription);
+
+    expect(disabled.enabled).toBe(false);
+    expect(enabled.enabled).toBe(true);
   });
 });

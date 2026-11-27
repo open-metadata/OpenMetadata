@@ -33,8 +33,6 @@
     // collate useAutomationLogs.test.
     "src/pages/DataInsightPage/DataInsightProvider.tsx",
     "src/components/common/LogViewerModal/useLogStream.ts",
-    // Shared fixtures used by Collate useNativeOntologyDataGraph.test.tsx.
-    "src/utils/governance/ontology/OntologyNativeDataGraph.mock.ts",
     // Type-only compat forward: collate CustomizeMyDataPageClassCollate imports
     // AnnouncementsWidgetProps; the widget component itself was removed.
     "src/components/MyData/RightSidebar/AnnouncementsWidget.tsx"

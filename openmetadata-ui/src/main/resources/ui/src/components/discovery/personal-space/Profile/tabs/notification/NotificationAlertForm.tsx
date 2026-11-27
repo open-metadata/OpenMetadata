@@ -36,6 +36,7 @@ import {
 import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   createNotificationAlert,
   getAlertsFromName,
@@ -83,6 +84,7 @@ const getEmptyFormValues = (): ModifiedCreateEventSubscription => ({
   readTimeout: DEFAULT_READ_TIMEOUT,
   resources: [],
   timeout: ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+  enabled: true,
 });
 
 const alertToFormValues = (
@@ -131,6 +133,12 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   );
 
   const isEditMode = Boolean(fqn);
+  // Only someone who can edit the alert can switch it off or on.
+  const { canEditAll } = useEntityPermissions(
+    ResourceEntity.EVENT_SUBSCRIPTION,
+    fqn ?? '',
+    { enabled: isEditMode }
+  );
   const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     !isEqual(formData, loadedFormData)
   );
@@ -272,6 +280,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <AlertAiForm
             alert={alert}
+            canEditEnabled={!isEditMode || canEditAll}
             fieldDocDisplay="popover"
             fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}

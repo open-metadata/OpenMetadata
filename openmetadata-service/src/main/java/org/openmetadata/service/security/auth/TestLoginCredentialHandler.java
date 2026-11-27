@@ -40,6 +40,9 @@ import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -233,11 +236,21 @@ final class TestLoginCredentialHandler {
   /** Mirrors Basic login: an active, non-bot account whose stored password matches. */
   static TestLoginResult verifyBasic(
       SecurityConfiguration candidate, String email, String password) {
+    return verifyBasic(
+        candidate, email, password, Entity.getUserRepository(), Entity.getTokenRepository());
+  }
+
+  static TestLoginResult verifyBasic(
+      SecurityConfiguration candidate,
+      String email,
+      String password,
+      UserRepository users,
+      TokenRepository tokens) {
     TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(TestLoginProtocol.BASIC);
     recorder.pass(TestLoginStage.STARTED);
     TestLoginResult result;
     try {
-      User user = requireMatchingAccount(email, password);
+      final User user = requireMatchingAccount(email, password, users, tokens);
       recorder.pass(TestLoginStage.CREDENTIALS_VERIFIED, user.getName());
       result =
           TestLoginService.resolveCredentialIdentity(
@@ -256,14 +269,14 @@ final class TestLoginCredentialHandler {
     return result;
   }
 
-  private static User requireMatchingAccount(String email, String password) {
+  private static User requireMatchingAccount(
+      String email, String password, UserRepository users, TokenRepository tokens) {
     User user;
     try {
       user =
-          Entity.getUserRepository()
-              .getActiveUserByEmailForAuth(
-                  email,
-                  new EntityUtil.Fields(BASIC_USER_FIELDS, "authenticationMechanism,roles,teams"));
+          users.getActiveUserByEmailForAuth(
+              email,
+              new EntityUtil.Fields(BASIC_USER_FIELDS, "authenticationMechanism,roles,teams"));
     } catch (RuntimeException e) {
       // Not found, deactivated, or duplicate-email collision: login would refuse all three.
       LOG.debug("Test login found no usable account for {}", email, e);
@@ -272,6 +285,11 @@ final class TestLoginCredentialHandler {
     if (Boolean.TRUE.equals(user.getIsBot())
         || !BasicAuthenticator.matchesStoredPassword(user, password)) {
       throw credentialFailure("The email or password was not accepted for " + email + ".");
+    }
+    try {
+      BasicAuthenticator.requireConfirmedRegistration(user, tokens);
+    } catch (AuthenticationException e) {
+      throw credentialFailure(e.getMessage());
     }
     return user;
   }
