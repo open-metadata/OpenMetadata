@@ -13,6 +13,7 @@
 import { isString, isUndefined, omit, parseInt } from 'lodash';
 import QueryString from 'qs';
 import { useMemo } from 'react';
+import { PAGING_URL_PARAMS } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -42,8 +43,14 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
+  // Keyed on the filter part of the query string: a page change rewrites the
+  // URL, and must not hand the list a new `filters` object that refetches it.
+  const filterSearch = QueryString.stringify(
+    omit(allParams, ['key', 'title', ...PAGING_URL_PARAMS])
+  );
+
   const filters = useMemo(() => {
-    const urlParams = omit(allParams, ['key', 'title']);
+    const urlParams = QueryString.parse(filterSearch);
 
     const params: TestCaseIncidentStatusParams = {
       ...urlParams,
@@ -60,7 +67,7 @@ export const useIncidentManagerListPage = ({
     }
 
     return params;
-  }, [allParams]);
+  }, [filterSearch]);
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;

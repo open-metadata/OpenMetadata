@@ -16,6 +16,10 @@ import QueryString, { ParsedQs } from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGING_URL_PARAMS,
+} from '../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { EntityReference } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
@@ -99,9 +103,33 @@ export const useIncidentFilters = ({
       dateRangeParams?: { key: string; title: string }
     ) => {
       const updatedFilters = { ...filters, ...newFilters };
+      // A changed value yields a different result set, and keeping the old page
+      // would request an offset past its end. An unchanged value (e.g.
+      // re-selecting the same option) keeps the page.
+      const filterChanged = Object.keys(newFilters).some(
+        (key) =>
+          !isEqual(
+            (filters as Record<string, unknown>)[key],
+            (newFilters as Record<string, unknown>)[key]
+          )
+      );
+      const pagingReset = filterChanged
+        ? {
+            currentPage: INITIAL_PAGING_VALUE,
+            cursorType: undefined,
+            cursorValue: undefined,
+          }
+        : {};
+      // `filters` leaves out usePaging's params, so a date-range update, which
+      // rebuilds the query from `filters`, carries them over from the URL.
       const allUpdatedParams = dateRangeParams
-        ? { ...updatedFilters, ...dateRangeParams }
-        : { ...allParams, ...updatedFilters };
+        ? {
+            ...pick(allParams, PAGING_URL_PARAMS),
+            ...updatedFilters,
+            ...dateRangeParams,
+            ...pagingReset,
+          }
+        : { ...allParams, ...updatedFilters, ...pagingReset };
 
       navigate(
         {
@@ -146,6 +174,9 @@ export const useIncidentFilters = ({
       'key',
       'title',
       'dateField',
+      'currentPage',
+      'cursorType',
+      'cursorValue',
     ]);
     navigate(
       {
