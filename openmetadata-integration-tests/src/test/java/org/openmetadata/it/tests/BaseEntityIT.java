@@ -4157,12 +4157,12 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
   private void assertExportedPipelineRow(T upstream, T downstream, Pipeline pipeline) {
     CSVRecord row =
-        // Longer than one LineageCsvExport call, which re-runs an export whose result the server
-        // released under concurrent exports.
+        // Polls until search has indexed the edge, so the export lists it. Longer than one
+        // LineageCsvExport call, which re-runs only an export whose result the server released
+        // (404); a failed job or any other status fails the test instead of being retried here.
         Awaitility.await("lineage export lists the " + getEntityType() + " edge")
             .atMost(Duration.ofMinutes(5))
             .pollInterval(Duration.ofSeconds(3))
-            .ignoreExceptions()
             .until(
                 () ->
                     LineageCsvExport.edgeRows(
