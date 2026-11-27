@@ -866,7 +866,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance = self.get_by_id(entity=entity, entity_id=entity_id)
+        # The server omits `extension` unless asked for it; without it there is nothing to merge
+        # with, and the PATCH below would replace every stored custom property with the new ones.
+        instance = self.get_by_id(entity=entity, entity_id=entity_id, fields=["extension"])
 
         if not instance:
             logger.warning(f"Cannot find an instance of {entity.__name__} with the given ID.")
