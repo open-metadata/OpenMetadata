@@ -198,6 +198,23 @@ export const getTimeZone = (): string => {
 export const getUtcOffsetLabel = (): string =>
   DateTime.local().toFormat("'UTC'ZZ");
 
+/** The viewer's IANA zone, the natural default for a new schedule. */
+export const getBrowserTimezone = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+// Intl.supportedValuesOf is ES2022, above the lib target, and absent in older
+// browsers: the list then holds only UTC and the zone already saved.
+export const getTimezoneOptions = (current?: string): string[] => {
+  const intl = Intl as unknown as {
+    supportedValuesOf?: (key: 'timeZone') => string[];
+  };
+  const zones = intl.supportedValuesOf?.('timeZone') ?? [];
+
+  return Array.from(
+    new Set(['UTC', ...zones, ...(current ? [current] : [])])
+  ).sort((a, b) => a.localeCompare(b));
+};
+
 /**
  * @param timeStamp EPOCH millis
  * @returns Formatted date with timezone
@@ -572,7 +589,10 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   return sevenDaysStartGMTArrayInMillis;
 };
 
-export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+export const getScheduleDescriptionTexts = (
+  scheduleInterval: string,
+  timezone?: string
+) => {
   if (!cronstrueModule) {
     loadCronstrue();
 
@@ -588,9 +608,11 @@ export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
       }
     );
     const firstSentenceEndIndex = scheduleDescription.indexOf(',');
-    const descriptionFirstPart = scheduleDescription
+    const scheduleTime = scheduleDescription
       .slice(0, firstSentenceEndIndex)
       .trim();
+    const descriptionFirstPart =
+      scheduleTime && timezone ? `${scheduleTime} (${timezone})` : scheduleTime;
     const descriptionSecondPart = capitalize(
       scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
     );

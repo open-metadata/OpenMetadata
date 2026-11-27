@@ -12,7 +12,8 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, render, screen } from '@testing-library/react';
+import userClassBase from '../../../utils/UserClassBase';
 import ProfilePicture from './ProfilePicture';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -214,6 +215,32 @@ describe('Test ProfilePicture component', () => {
     expect(props.contrastBorder).toBe(false);
     expect(props.style).toEqual({ backgroundColor: 'transparent' });
     expect(props.className).toBe('custom');
+  });
+
+  it('draws a registered bot icon instead of the logo and initials', () => {
+    const { Avatar: RealAvatar } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const mockAvatar = Avatar as jest.Mock;
+    const mockedAvatarImpl = mockAvatar.getMockImplementation();
+    mockAvatar.mockImplementation(RealAvatar);
+    const getBotIcon = jest
+      .spyOn(userClassBase, 'getBotIcon')
+      .mockReturnValue(() => <svg data-testid="bot-icon" />);
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true, name: 'collateaiapplicationbot' },
+    ]);
+
+    const { container } = render(<ProfilePicture {...mockData} />);
+
+    expect(screen.getByTestId('bot-icon')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByText('T')).not.toBeInTheDocument();
+
+    getBotIcon.mockRestore();
+    mockAvatar.mockImplementation(mockedAvatarImpl);
   });
 
   it('keeps the tinted, outlined avatar for a bot without a logo', () => {

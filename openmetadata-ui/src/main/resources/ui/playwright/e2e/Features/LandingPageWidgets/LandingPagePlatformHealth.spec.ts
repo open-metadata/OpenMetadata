@@ -229,7 +229,7 @@ test.describe(
     test.beforeAll(
       'Seed services in every health bucket',
       async ({ browser }) => {
-        test.slow();
+        test.setTimeout(test.info().timeout * 3);
 
         const { apiContext, afterAction } = await performAdminLogin(browser);
         const now = Date.now();

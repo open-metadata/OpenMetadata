@@ -11,16 +11,20 @@
 """
 Column-level lineage for MicroStrategy cubes.
 
-A cube's SQL names its output columns with aliases MicroStrategy generates (``WJXBFS1``,
-``CATEGORY0``), so a data model column is matched on the warehouse columns a projection reads,
-never on the alias. ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
+A cube's SQL names its output columns with aliases. MicroStrategy generates them (``WJXBFS1``,
+``CATEGORY0``), or derives a metric's from its name (``REVENUERANK`` for ``Revenue Rank``).
+An attribute is matched on the warehouse columns a projection reads, never on the alias; a metric
+may be matched on an alias derived from its name.
+ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
 """
 
 from __future__ import annotations
 
 import re
 import traceback
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 import sqlglot
@@ -34,6 +38,8 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.timeout import timeout
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from metadata.ingestion.lineage.models import Dialect
 
 logger = ingestion_logger()
@@ -41,14 +47,24 @@ logger = ingestion_logger()
 # A warehouse column a cube reads: the table as the SQL names it, lowercased and dot-joined
 # (``project.dataset.table``), and the column, lowercased.
 SourceColumn = tuple[str, str]
+# The warehouse columns each projection alias reads, by its normalized alias, across all passes.
+AliasReads = Mapping[str, frozenset[SourceColumn]]
+NO_ALIASES: AliasReads = MappingProxyType({})
 
 
 @dataclass(frozen=True)
 class ParsedCube:
-    """What a cube's SQL reads: its tables, and the warehouse columns each projection reads"""
+    """
+    What a cube's SQL reads: its tables, and the warehouse columns each projection reads, in all and
+    by alias. ``cube`` is the cube the SQL came from: a report dataset's source cube, else the
+    dataset itself.
+    """
 
     tables: tuple[str, ...] = ()
     read_columns: frozenset[SourceColumn] = field(default_factory=frozenset)
+    cube: str | None = None
+    # A default the class shares must be hashable on Python 3.11, and a mapping proxy is not.
+    alias_reads: AliasReads = field(default_factory=lambda: NO_ALIASES)
 
 
 def table_name_of(table: exp.Table) -> str:
@@ -177,12 +193,18 @@ def sql_passes(sql: str, escapes: bool = False, brackets: bool = False) -> list[
 
 
 def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
+    """The (table, column) pairs the projections of every SELECT in the SQL read"""
+    return read_projections(sql, dialect)[0]
+
+
+def read_projections(sql: str, dialect: Dialect) -> tuple[frozenset[SourceColumn], AliasReads]:
     """
-    The (table, column) pairs the projections of every SELECT in the SQL read. A column whose
-    table cannot be told is left out, and a pass that does not parse reads nothing: it yields no
-    column lineage and leaves table lineage to the lineage parser.
+    The (table, column) pairs the projections of every SELECT in the SQL read, in all and by
+    normalized alias. A column whose table cannot be told is left out, and a pass that does not
+    parse reads nothing: it yields no column lineage and leaves table lineage to the lineage parser.
     """
     columns: set[SourceColumn] = set()
+    aliases: dict[str, set[SourceColumn]] = {}
     for sql_pass in sql_passes(sql, backslash_escapes(dialect), bracket_quotes(dialect)):
         # A cube built from a file answers with a note, not SQL.
         if not starts_with_sql(sql_pass):
@@ -198,8 +220,11 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
         for statement in statements:
             scopes: Scopes = {}
             for select in statement.find_all(exp.Select) if statement else ():
-                columns.update(_select_columns(select, scopes))
-    return frozenset(columns)
+                for alias, read in _projection_columns(select, scopes):
+                    columns.update(read)
+                    if read and (key := normalized(alias)):
+                        aliases.setdefault(key, set()).update(read)
+    return frozenset(columns), MappingProxyType({key: frozenset(read) for key, read in aliases.items()})
 
 
 def _cte_names(node: exp.Expression) -> set[str]:
@@ -297,11 +322,12 @@ def _resolve(select: exp.Select, alias: str, scopes: Scopes) -> str | None:
     return None
 
 
-def _select_columns(select: exp.Select, scopes: Scopes) -> set[SourceColumn]:
+def _projection_columns(select: exp.Select, scopes: Scopes) -> Iterable[tuple[str, set[SourceColumn]]]:
+    """(alias, the warehouse columns it reads) for each projection of a SELECT"""
     sources = set(_own_sources(select, scopes).values())
     only_table = next(iter(sources)) if len(sources) == 1 else None
-    columns = set()
     for projection in select.expressions:
+        columns = set()
         for column in projection.find_all(exp.Column):
             # A column of a nested query is read with that query, against its own aliases first.
             if column.find_ancestor(exp.Select) is not select:
@@ -310,7 +336,7 @@ def _select_columns(select: exp.Select, scopes: Scopes) -> set[SourceColumn]:
             table = _resolve(select, qualifier.lower(), scopes) if qualifier else only_table
             if table:
                 columns.add((table, column.name.lower()))
-    return columns
+        yield projection.alias_or_name, columns
 
 
 def normalized(name: str) -> str:

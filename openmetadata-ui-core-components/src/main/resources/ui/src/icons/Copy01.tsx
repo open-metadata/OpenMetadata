@@ -33,16 +33,16 @@ export const Copy01: FC<Props> = ({
     width={size}
     {...props}>
     <rect
-      height={13.333}
-      rx={2.5}
+      height={11.27}
+      rx={2}
       stroke="currentColor"
       strokeWidth={1.3}
-      width={13.333}
-      x={2}
-      y={4.668}
+      width={11.272}
+      x={3}
+      y={5.715}
     />
     <path
-      d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667"
+      d="M6.773 3.012H14.5a2.5 2.5 0 0 1 2.5 2.5v7.726"
       stroke="currentColor"
       strokeWidth={1.3}
     />

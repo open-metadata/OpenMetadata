@@ -24,6 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -38,6 +40,57 @@ import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 
 class DataInsightsAppTest {
+  private static final List<String> HEALTHY_ENRICHER_STEPS =
+      List.of(
+          "identity",
+          "testCaseParent",
+          "entityStatus",
+          "descriptionSources",
+          "tagTierSources",
+          "ownerName",
+          "tier",
+          "descriptionStats",
+          "customProperties");
+
+  @Test
+  void jobStatsExcludeEnricherDiagnosticStepsWhileRetainingThemInEntityStats() {
+    final DataInsightsApp app = newAppWithJobStats();
+    app.updateStats("[DataAssetsWorkflow] table", stepStats(100, 100, 0));
+    app.updateStats("[DataAssetsWorkflow] dashboard", stepStats(25, 24, 1));
+    recordTenEnricherSteps(app);
+
+    final Map<String, StepStats> entityStats =
+        app.jobData.getStats().getEntityStats().getAdditionalProperties();
+    assertEquals(12, entityStats.size());
+    assertStepStats(entityStats.get("[Enricher] team"), 125, 120, 5);
+    assertStepStats(app.jobData.getStats().getJobStats(), 125, 124, 1);
+  }
+
+  @Test
+  void jobStatsHandleNullCountersAndAllEnricherMapsSafely() {
+    final DataInsightsApp app = new DataInsightsApp(null, null);
+    app.jobData = new EventPublisherJob().withEntities(null).withStats(new Stats());
+
+    app.updateStats("[Enricher] team", stepStats(50, 48, 2));
+    assertStepStats(app.jobData.getStats().getJobStats(), 0, 0, 0);
+
+    app.updateStats("[DataAssetsWorkflow] table", nullCounterStepStats());
+    app.updateStats("[DataAssetsWorkflow] topic", null);
+    assertStepStats(app.jobData.getStats().getJobStats(), 0, 0, 0);
+    assertEquals(3, app.jobData.getStats().getEntityStats().getAdditionalProperties().size());
+  }
+
+  @Test
+  void jobStatsIncludeSiblingWorkflowsWhileSkippingEnricherDiagnostics() {
+    final DataInsightsApp app = newAppWithJobStats();
+    app.updateStats("[WebAnalyticsWorkflow] Entity View Report Data Sink", stepStats(40, 40, 0));
+    app.updateStats("[CostAnalysisWorkflow] snowflake_prod", stepStats(10, 9, 1));
+    app.updateStats("[DataAssetsWorkflow] table", stepStats(100, 100, 0));
+    app.updateStats("[Enricher] identity", stepStats(100, 100, 0));
+
+    assertEquals(4, app.jobData.getStats().getEntityStats().getAdditionalProperties().size());
+    assertStepStats(app.jobData.getStats().getJobStats(), 150, 149, 1);
+  }
 
   @Test
   void jobStatsSumAccumulatedStepsWithoutCountingProgressSnapshotsTwice() {
@@ -113,6 +166,37 @@ class DataInsightsAppTest {
 
     verify(activeWorkflow).stop();
     verify(lateWorkflow).stop();
+  }
+
+  private static DataInsightsApp newAppWithJobStats() {
+    final DataInsightsApp app = new DataInsightsApp(null, null);
+    app.jobData = new EventPublisherJob().withStats(new Stats().withJobStats(new StepStats()));
+    return app;
+  }
+
+  private static void recordTenEnricherSteps(final DataInsightsApp app) {
+    for (final String step : HEALTHY_ENRICHER_STEPS) {
+      app.updateStats("[Enricher] " + step, stepStats(125, 125, 0));
+    }
+    app.updateStats("[Enricher] team", stepStats(125, 120, 5));
+  }
+
+  private static StepStats stepStats(final int total, final int success, final int failed) {
+    return new StepStats()
+        .withTotalRecords(total)
+        .withSuccessRecords(success)
+        .withFailedRecords(failed);
+  }
+
+  private static StepStats nullCounterStepStats() {
+    return new StepStats().withTotalRecords(null).withSuccessRecords(null).withFailedRecords(null);
+  }
+
+  private static void assertStepStats(
+      final StepStats actual, final int total, final int success, final int failed) {
+    assertEquals(total, actual.getTotalRecords());
+    assertEquals(success, actual.getSuccessRecords());
+    assertEquals(failed, actual.getFailedRecords());
   }
 
   private static class TestableDataInsightsApp extends DataInsightsApp {

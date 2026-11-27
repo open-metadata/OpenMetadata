@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.util.FreshReadScope;
 
 /**
@@ -120,14 +122,20 @@ public class MemorySourceLifecycle {
 
   /**
    * Releases every memory linked to a source being permanently deleted. Archiving the source first
-   * soft-deleted some of them, so the lookup includes deleted memories.
+   * soft-deleted some of them, so the lookup includes deleted memories. A memory a person decided
+   * is left — its source's hard delete clears the link — since the engine never releases a decision.
    */
   public void releaseExtractedMemories(UUID sourceId, String sourceType) {
     EntityReference source = new EntityReference().withId(sourceId).withType(sourceType);
     for (EntityReference memory :
         memories.findTo(
             sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL)) {
-      releaseExtractedMemory(memory.getId(), source);
+      if (!releaseExtractedMemory(memory.getId(), source)) {
+        LOG.info(
+            "Memory {} left as source {} was permanently deleted; a decision overtook its release",
+            memory.getId(),
+            sourceId);
+      }
     }
   }
 
@@ -162,15 +170,46 @@ public class MemorySourceLifecycle {
 
   /**
    * Releases {@code source}'s link to a memory. A memory nothing else states is hard-deleted; one
-   * that only archived sources state waits in the Archive with them.
+   * that only archived sources state waits in the Archive with them. The release decides on the
+   * memory as last committed, its row locked for it, so a decision a person made while the source
+   * was re-extracted — a correction (sourceType turned Manual) or a review that retired it — leaves
+   * the link, as the reconciler's other conditional writes do; a memory already gone is no release.
+   *
+   * @return whether the release went ahead, or the memory was already gone; {@code false} when a
+   *     decision overtook it and the link was left for the next extraction to reconcile.
    */
-  public void releaseExtractedMemory(UUID memoryId, EntityReference source) {
-    List<EntityReference> remaining = otherSources(memoryId, source);
-    if (remaining.isEmpty()) {
-      memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
-    } else {
-      detachSource(memoryId, source, remaining.stream().anyMatch(other -> !isArchived(other)));
-    }
+  public boolean releaseExtractedMemory(UUID memoryId, EntityReference source) {
+    return memories.executeInTransaction(
+        () -> {
+          try (var ignored = FreshReadScope.enter()) {
+            ContextMemory latest = lockedMemory(memoryId);
+            if (latest == null) {
+              return true;
+            }
+            if (!isStillReleasable(latest)) {
+              return false;
+            }
+            List<EntityReference> remaining = otherSources(memoryId, source);
+            if (remaining.isEmpty()) {
+              memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
+            } else {
+              detachSource(
+                  memoryId, source, remaining.stream().anyMatch(other -> !isArchived(other)));
+            }
+            return true;
+          }
+        });
+  }
+
+  /**
+   * Whether {@code memory} still qualifies for a re-extraction's release, as the reconciler planned
+   * it: an engine-managed pill (automated and Approved or Unprocessed) or one held in Draft. A pill a
+   * person decided — Manual, or moved to any retired stage — is no longer the engine's to release.
+   */
+  private static boolean isStillReleasable(ContextMemory memory) {
+    return MemoryReviewHolds.isEngineManaged(memory)
+        || (ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType())
+            && memory.getEntityStatus() == ContextMemoryStatus.DRAFT);
   }
 
   /** Whether another source, archived ones included, still states the memory. */

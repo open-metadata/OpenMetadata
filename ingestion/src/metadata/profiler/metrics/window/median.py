@@ -130,9 +130,6 @@ class Median(StaticMetric, PercentilMixin):
 
     @staticmethod
     def update_accumulator(acc: MedianAccumulator, df: "pd.DataFrame", column) -> MedianAccumulator:
-        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: F401
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: F401
-
         series = df[column.name].dropna()
         if series.empty:
             return acc

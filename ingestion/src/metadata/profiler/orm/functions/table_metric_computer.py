@@ -419,7 +419,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or res.rowCount < 0 or (res.rowCount == 0 and self._entity.tableType == TableType.View):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
         return res

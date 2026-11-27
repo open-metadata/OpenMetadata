@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { DEFAULT_PIPELINE_TIMEZONE } from '../constants/Schedular.constants';
 import {
   IngestionPipeline,
   PipelineType,
@@ -78,11 +79,13 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
 
 const ScheduleFieldCell = ({
   scheduleInterval,
+  timezone,
 }: {
   scheduleInterval: string;
+  timezone: string;
 }) => {
   const { descriptionFirstPart, descriptionSecondPart } =
-    useScheduleDescriptionTexts(scheduleInterval);
+    useScheduleDescriptionTexts(scheduleInterval, timezone);
 
   return (
     <Box align="start" gap={2} wrap="nowrap">
@@ -118,6 +121,9 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   return (
     <ScheduleFieldCell
       scheduleInterval={record.airflowConfig.scheduleInterval}
+      timezone={
+        record.airflowConfig.pipelineTimezone ?? DEFAULT_PIPELINE_TIMEZONE
+      }
     />
   );
 };

@@ -33,6 +33,8 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   id,
   name,
   displayName,
+  entityName,
+  entityDisplayName,
   onEditDisplayName,
   link,
   allowRename,
@@ -123,8 +125,14 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
         <EntityNameModal
           allowRename={allowRename}
           entity={{
-            name: isString(name) ? name : '',
-            displayName: isString(displayName) ? displayName : undefined,
+            // Prefer the raw `entityName` (e.g. `record.name`) for seeding the
+            // modal — `name` may be a search-highlight ReactNode that
+            // `EntityNameModal` (whose `name` is a required, possibly-disabled
+            // string) cannot consume, which would seed `''` and block Save.
+            name: entityName ?? (isString(name) ? name : ''),
+            displayName:
+              entityDisplayName ??
+              (isString(displayName) ? displayName : undefined),
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),

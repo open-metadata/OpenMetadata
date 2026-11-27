@@ -86,6 +86,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.TriggerKey;
@@ -133,9 +134,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       IndexMappingLanguage.EN;
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
 
-  // Default images (can be overridden by system properties)
-  private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
-  private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
+  // Default images (can be overridden by system properties). The database image defaults to the
+  // shipped one; -DdatabaseImage replaces it for a run.
   private static final String DEFAULT_MYSQL_MAX_ALLOWED_PACKET = "64M";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
@@ -335,7 +335,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     if ("mysql".equalsIgnoreCase(databaseType)) {
       if (image == null) {
-        image = DEFAULT_MYSQL_IMAGE;
+        image = TestDatabaseImages.mysql();
       }
       LOG.info("Starting MySQL container with image: {}", image);
       String mysqlMaxAllowedPacket =
@@ -387,7 +387,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           mysqlMaxAllowedPacket);
     } else {
       if (image == null) {
-        image = DEFAULT_POSTGRES_IMAGE;
+        image = TestDatabaseImages.postgres();
       }
       LOG.info("Starting PostgreSQL container with image: {}", image);
       PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(image);
@@ -636,8 +636,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return FUSEKI_CONTAINER;
   }
 
-  /** The isolated metadata database, for scale resource sampling. */
-  public static GenericContainer<?> getDatabaseContainer() {
+  /** The metadata database server, for scale resource sampling and scratch databases. */
+  public static JdbcDatabaseContainer<?> getDatabaseContainer() {
     return DATABASE_CONTAINER;
   }
 
@@ -1044,6 +1044,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping object storage container", e);
     }
+
+    try {
+      stopOnDemandContainers();
+    } catch (Exception e) {
+      LOG.warn("Error stopping on-demand containers", e);
+    }
   }
 
   // === On-demand S3 container for object-storage tests ===
@@ -1118,6 +1124,104 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         + OBJECT_STORAGE_CONTAINER.getHost()
         + ":"
         + OBJECT_STORAGE_CONTAINER.getMappedPort(9000);
+  }
+
+  // === On-demand containers for tests that need a topology or isolation the shared ones lack ===
+
+  public static final String LOCALSTACK_ACCESS_KEY = "test";
+  public static final String LOCALSTACK_SECRET_KEY = "test";
+  public static final String LOCALSTACK_REGION = "us-east-1";
+  private static final int LOCALSTACK_PORT = 4566;
+  private static final int MAX_ON_DEMAND_CONTAINERS = 8;
+  private static final Map<String, GenericContainer<?>> ON_DEMAND_CONTAINERS =
+      new java.util.LinkedHashMap<>();
+
+  private static synchronized GenericContainer<?> onDemandContainer(
+      String name, java.util.function.Supplier<GenericContainer<?>> factory) {
+    GenericContainer<?> existing = ON_DEMAND_CONTAINERS.get(name);
+    if (existing != null && existing.isRunning()) {
+      return existing;
+    }
+    if (existing == null && ON_DEMAND_CONTAINERS.size() >= MAX_ON_DEMAND_CONTAINERS) {
+      throw new IllegalStateException("Too many on-demand containers; cannot start " + name);
+    }
+    LOG.info("Starting on-demand container '{}'", name);
+    GenericContainer<?> container = factory.get();
+    container.start();
+    ON_DEMAND_CONTAINERS.put(name, container);
+    return container;
+  }
+
+  /**
+   * A Redis server of its own, started on first request and reused for the rest of the run. For
+   * tests that need a mode the shared Redis does not run in (cluster-enabled) or that pause the
+   * server, which would stall every other test using the shared one. Each {@code name} is a
+   * separate server, so tests that flush or count keys do not see each other.
+   */
+  public static GenericContainer<?> onDemandRedis(String name, String... serverArgs) {
+    return onDemandContainer(
+        "redis-" + name,
+        () -> {
+          String[] command = new String[serverArgs.length + 1];
+          command[0] = "redis-server";
+          System.arraycopy(serverArgs, 0, command, 1, serverArgs.length);
+          return new GenericContainer<>(
+                  DockerImageName.parse(System.getProperty("redisImage", DEFAULT_REDIS_IMAGE)))
+              .withExposedPorts(REDIS_PORT)
+              .withCommand(command)
+              .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+        });
+  }
+
+  /** One LocalStack serving S3, Secrets Manager and SSM, with the {@code LOCALSTACK_*} credentials. */
+  public static GenericContainer<?> localStack() {
+    return onDemandContainer(
+        "localstack",
+        () ->
+            new GenericContainer<>(DockerImageName.parse("localstack/localstack:3.8.1"))
+                .withEnv("SERVICES", "s3,secretsmanager,ssm")
+                .withExposedPorts(LOCALSTACK_PORT)
+                .waitingFor(
+                    Wait.forLogMessage(".*Ready\\.\n", 1)
+                        .withStartupTimeout(Duration.ofMinutes(3))));
+  }
+
+  public static URI localStackEndpoint() {
+    GenericContainer<?> localStack = localStack();
+    return URI.create(
+        "http://" + localStack.getHost() + ":" + localStack.getMappedPort(LOCALSTACK_PORT));
+  }
+
+  /**
+   * An OpenSearch of its own for tests whose fixtures must occupy index and alias names the
+   * application already owns on the shared cluster (for example {@code all} or {@code
+   * di-data-assets-*}). Runs the OpenSearch image of the lane.
+   */
+  public static GenericContainer<?> dedicatedOpenSearch() {
+    return onDemandContainer(
+        "opensearch",
+        () -> {
+          String image =
+              "opensearch".equalsIgnoreCase(searchType) && System.getProperty("searchImage") != null
+                  ? System.getProperty("searchImage")
+                  : DEFAULT_OPENSEARCH_IMAGE;
+          return new GenericContainer<>(DockerImageName.parse(image))
+              .withEnv("discovery.type", "single-node")
+              .withEnv("DISABLE_SECURITY_PLUGIN", "true")
+              .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+              .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
+              .withExposedPorts(9200)
+              .waitingFor(
+                  Wait.forHttp("/")
+                      .forPort(9200)
+                      .forStatusCode(200)
+                      .withStartupTimeout(Duration.ofMinutes(3)));
+        });
+  }
+
+  private static synchronized void stopOnDemandContainers() {
+    ON_DEMAND_CONTAINERS.values().forEach(GenericContainer::stop);
+    ON_DEMAND_CONTAINERS.clear();
   }
 
   // === Static accessor methods for tests ===

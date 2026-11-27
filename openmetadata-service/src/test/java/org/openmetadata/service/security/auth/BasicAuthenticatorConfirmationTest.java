@@ -16,19 +16,30 @@ package org.openmetadata.service.security.auth;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.lang.reflect.Field;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.system.TestLoginResult;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 
 /**
@@ -48,6 +59,37 @@ class BasicAuthenticatorConfirmationTest {
     Field tokenRepositoryField = BasicAuthenticator.class.getDeclaredField("tokenRepository");
     tokenRepositoryField.setAccessible(true);
     tokenRepositoryField.set(authenticator, tokenRepository);
+  }
+
+  @Test
+  void testLoginRejectsTheSamePendingConfirmationAsLiveLogin() {
+    UserRepository users = mock(UserRepository.class);
+    user.withAuthenticationMechanism(
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+            .withConfig(
+                new LinkedHashMap<>(
+                    Map.of(
+                        "password",
+                        BCrypt.withDefaults().hashToString(4, "secret".toCharArray())))));
+    when(users.getActiveUserByEmailForAuth(anyString(), any())).thenReturn(user);
+    when(tokenRepository.findByUserIdAndType(user.getId(), TokenType.EMAIL_VERIFICATION.toString()))
+        .thenReturn(List.of(mock(TokenInterface.class)));
+    SecurityConfiguration candidate =
+        new SecurityConfiguration()
+            .withAuthenticationConfiguration(new AuthenticationConfiguration())
+            .withAuthorizerConfiguration(new AuthorizerConfiguration());
+    TestLoginResult result =
+        TestLoginCredentialHandler.verifyBasic(
+            candidate, user.getEmail(), "secret", users, tokenRepository);
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(List.of(BasicAuthenticator.EMAIL_CONFIRMATION_PENDING), result.getErrors());
+    user.setIsEmailVerified(true);
+    assertEquals(
+        TestLoginResult.Status.SUCCESS,
+        TestLoginCredentialHandler.verifyBasic(
+                candidate, user.getEmail(), "secret", users, tokenRepository)
+            .getStatus());
   }
 
   @Test

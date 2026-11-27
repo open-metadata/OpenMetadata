@@ -39,13 +39,9 @@ class NestedSecretConverterCoverageTest {
   /**
    * Secret-bearing {@code oneOf} branches that jsonschema2pojo never materialised into a class, so
    * no converter can be written until the branch is extracted into its own schema file. Shrink this
-   * set; never grow it.
+   * set; never grow it. ADR:2026-11-19-secret-bearing-oneof-branches-live-in-their-own-schema-files
    */
-  private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of(
-          "NatsConnection.authType",
-          "QlikSenseConnection.certificates",
-          "SapS4HanaConnection.authType");
+  private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
   @Test
   void everySecretBearingOneOfPropertyHasAConverter() {
@@ -67,16 +63,22 @@ class NestedSecretConverterCoverageTest {
       String connection = simpleJavaName(schema, path);
       JsonNode properties = schema.path("properties");
       for (String property : iterable(properties.fieldNames())) {
-        Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
-        if (oneOf == null || !containsPasswordFormat(oneOf.node(), oneOf.path(), schemas)) {
-          continue;
-        }
         String id = connection + "." + property;
-        if (staleAllowlist.remove(id)) {
-          continue;
-        }
-        if (leavesSecretsInAMap(schema, property, oneOf, schemas)) {
-          uncovered.add(id);
+        final Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
+        final Ref typed =
+            oneOf == null
+                ? resolveToNestedOneOfHolder(properties.get(property), path, schemas)
+                : null;
+        boolean secretOneOf =
+            oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas);
+        if ((secretOneOf || typed != null) && !staleAllowlist.remove(id)) {
+          boolean leaks =
+              secretOneOf
+                  ? leavesSecretsInAMap(schema, property, oneOf, schemas)
+                  : leavesSecretsInATypedProperty(schema, property, typed, schemas);
+          if (leaks) {
+            uncovered.add(id);
+          }
         }
       }
     }
@@ -113,6 +115,42 @@ class NestedSecretConverterCoverageTest {
       leaks |= convertsWithASecretLeftUntyped(connectionClass, payload);
     }
     return leaks;
+  }
+
+  /**
+   * A typed property ({@code $ref} to another config, e.g. SSIS {@code databaseConnection}) is only
+   * typed itself: a secret-bearing {@code oneOf} inside it is typed only if the connection's
+   * converter runs it through its own converter.
+   */
+  private boolean leavesSecretsInATypedProperty(
+      JsonNode schema, String property, Ref typed, JsonSchemas schemas) {
+    Class<?> connectionClass;
+    try {
+      connectionClass = Class.forName(schema.path("javaType").asText(""));
+    } catch (ClassNotFoundException e) {
+      return false;
+    }
+    final Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put(property, secretPayload(typed.node(), typed.path(), schemas));
+    return convertsWithASecretLeftUntyped(connectionClass, payload);
+  }
+
+  /**
+   * Returns the object schema a {@code $ref} property resolves to when that object holds a
+   * secret-bearing {@code oneOf} among its own properties, or {@code null}.
+   */
+  private Ref resolveToNestedOneOfHolder(JsonNode property, String path, JsonSchemas schemas) {
+    final String ref = property.path("$ref").asText("");
+    final Ref resolved = ref.isEmpty() ? null : schemas.resolve(ref, path);
+    boolean holdsSecretOneOf = false;
+    if (resolved != null && resolved.node().has("properties")) {
+      for (JsonNode child : resolved.node().get("properties")) {
+        final Ref oneOf = resolveToOneOfNode(child, resolved.path(), schemas);
+        holdsSecretOneOf |=
+            oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas);
+      }
+    }
+    return holdsSecretOneOf ? resolved : null;
   }
 
   private boolean convertsWithASecretLeftUntyped(
@@ -173,7 +211,7 @@ class NestedSecretConverterCoverageTest {
    * by its fields or by an enum discriminator sees what it would see in production.
    */
   private Object secretPayload(JsonNode branch, String path, JsonSchemas schemas) {
-    Map<String, Object> payload = new LinkedHashMap<>();
+    final Map<String, Object> payload = new LinkedHashMap<>();
     JsonNode properties = branch.path("properties");
     for (String name : iterable(properties.fieldNames())) {
       JsonNode property = properties.get(name);

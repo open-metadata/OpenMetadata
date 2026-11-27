@@ -33,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.SearchScope;
@@ -40,9 +41,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextAccess;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class PersonaSearchScopeTest {
   private static final String PERSONA_FILTER =
@@ -134,6 +138,41 @@ class PersonaSearchScopeTest {
           assertTrue(scope.orElseThrow().queryFilter().contains("finance"));
         }
       }
+    }
+  }
+
+  @Test
+  void sharedContextSuppliesSearchScopeWhenTheCallerHasNoActivePersona() throws IOException {
+    ContextRule rule =
+        new ContextRule()
+            .withName("Finance tables")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter(PERSONA_FILTER)
+            .withFilteredInSearch(true);
+    Persona shared =
+        new Persona()
+            .withId(UUID.randomUUID())
+            .withContextDefinition(new PersonaContextDefinition().withRules(List.of(rule)));
+    CatalogSecurityContext caller = mock(CatalogSecurityContext.class);
+    SearchRepository repository = searchRepository();
+    try (var entities = mockStatic(Entity.class);
+        var subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mock(UserRepository.class));
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(caller))
+          .thenReturn(new SubjectContext(new User().withName("member"), null));
+
+      assertTrue(PersonaSearchScope.resolve(caller).isEmpty());
+      PersonaContextAccess.setMissingActivePersonaFallback(() -> shared);
+      PersonaSearchScope scope = PersonaSearchScope.resolve(caller).orElseThrow();
+
+      assertTrue(scope.entityTypes().contains(Entity.TABLE));
+      assertTrue(scope.queryFilter().contains("service.name.keyword"));
+    } finally {
+      PersonaContextAccess.setMissingActivePersonaFallback(null);
     }
   }
 

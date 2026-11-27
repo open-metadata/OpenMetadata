@@ -226,6 +226,28 @@ describe('WorkflowHeader — System badge', () => {
     jest.clearAllMocks();
   });
 
+  it('allows editing incident settings while explaining the system workflow restriction', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ isNoOp: true })
+    );
+    render(
+      <WorkflowHeader {...defaultProps} handleToggleSuspend={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('edit-workflow-button')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('suspend-workflow-button')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-workflow-button')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('system-workflow-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-title',
+      'message.system-workflow-edit-restriction'
+    );
+  });
+
   it('renders the workflow title and name', () => {
     mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
 

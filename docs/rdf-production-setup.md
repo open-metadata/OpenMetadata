@@ -42,7 +42,7 @@ materialize need separate sizing. See
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
-(today `6.2.0-318ff87`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+(today `6.2.0-91a23ac`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
 environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
 - **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,

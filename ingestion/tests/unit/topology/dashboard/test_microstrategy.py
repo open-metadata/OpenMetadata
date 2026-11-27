@@ -38,11 +38,16 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.dashboard.microstrategy.client import (
     CACHE_SIZE,
+    CubeSql,
     MicroStrategyApiError,
     MicroStrategyClient,
     strip_engine_steps,
 )
-from metadata.ingestion.source.dashboard.microstrategy.column_lineage import read_columns, table_matches
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    read_columns,
+    read_projections,
+    table_matches,
+)
 from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource, remember
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard, MstrDataset
 
@@ -425,8 +430,8 @@ class TestClient:
         assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary"
 
     def test_cube_sql_is_read_once_per_cube_and_failures_are_cached(self, server, client):
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
         server.overrides["/v2/cubes/C2/sqlView"] = lambda: (400, {"code": "ERR010", "message": "local file"})
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
@@ -443,21 +448,66 @@ class TestClient:
         with pytest.raises(MicroStrategyApiError, match="ERR001"):
             client.get_dashboard_details(TUTORIAL["id"], "D1")
 
-    def test_a_report_used_as_a_dataset_has_no_sql_and_is_not_requested_again(self, server, client, caplog):
-        server.overrides["/v2/cubes/R1/sqlView"] = lambda: (
-            400,
-            {
-                "code": "ERR006",
-                "message": "Cannot get the SQL view of object 'R1'. Only cube is supported to get SQL view.",
-                "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
-            },
-        )
+    @pytest.mark.parametrize(
+        ("prompts", "warning"),
+        [
+            ([], "Dataset R1 is a report on warehouse tables, not on an Intelligent Cube"),
+            ([{"key": "P1", "required": True}], "Dataset R1 is a prompted report on warehouse tables"),
+        ],
+    )
+    def test_a_report_on_warehouse_tables_has_no_sql_and_is_not_requested_again(
+        self, server, client, caplog, prompts, warning
+    ):
+        _report_route(server, "R1", source=None)
+        server.overrides["/reports/R1/prompts"] = lambda: (200, prompts)
 
         assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
         assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
 
         assert len(server.requests_to("/v2/cubes/R1")) == 1
-        assert "Dataset R1 is a report, not an Intelligent Cube" in caplog.text
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert warning in caplog.text
+
+    def test_a_report_on_an_intelligent_cube_reads_the_cube_sql_once(self, server, client):
+        _report_route(server, "R1", source="C9")
+
+        # The SQL comes with the cube it was read from.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+        # Another dossier using the cube itself reads it from the cache.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C9") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert len(server.requests_to("/v2/cubes/C9/sqlView")) == 1
+
+    # A Live cube is a dataset of its own, or the source of a report dataset.
+    @pytest.mark.parametrize("dataset_id", ["L1", "R1"])
+    def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog, dataset_id):
+        _report_route(server, "R1", source="L1")
+        server.overrides["/v2/cubes/L1/sqlView"] = lambda: (
+            400,
+            {
+                "code": "ERR010",
+                "message": "(SQLEngine got an Exception from DFC: DE93362; Live Intelligent Cubes cannot be published.)",
+            },
+        )
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
+
+        assert len(server.requests_to("/v2/cubes/L1")) == 1
+        assert len(server.requests_to("/v2/reports/")) == (dataset_id == "R1")
+        assert "Cube L1 is a Live Intelligent Cube" in caplog.text
+        assert "Could not read" not in caplog.text
+
+    def test_a_report_whose_source_cannot_be_read_has_no_sql(self, server, client, caplog):
+        _report_route(server, "R1", source=None)
+        server.overrides["/v2/reports/R1"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+
+        assert "Could not read the source of report R1" in caplog.text
+        assert "warehouse tables" not in caplog.text
 
     @pytest.mark.parametrize(
         "sql, expected",
@@ -938,6 +988,21 @@ select\t`order_items`.`order_item_id` `order_item_id`,
 \t`order_items`.`unit_price` `unit_price`
 from\t`project-x`.`sales`.`order_items`\t `order_items`
 """
+# A schema cube whose metric aliases MicroStrategy derives from the metric names, as on servers
+# set to do so; a metric computed over a derived table keeps a generated alias inside it.
+RANK_SQL = """select\tmax(`pa11`.`REVENUERANK`)  `REVENUERANK`,
+\tsum(`pa12`.`WJXBFS1`)  `LINECOUNT`
+from\t(select\t`a11`.`region_id`  `region_id`,
+\t\tsum(`a11`.`revenue`)  `REVENUERANK`
+\tfrom\t`project-x`.`sales`.`order_lines`\t`a11`
+\tgroup by\t1
+\t)\t`pa11`
+\tjoin\t(select\t`a11`.`region_id`  `region_id`,
+\t\tcount(distinct `a11`.`line_id`)  `WJXBFS1`
+\tfrom\t`project-x`.`sales`.`order_lines`\t`a11`
+\tgroup by\t1
+\t)\t`pa12`
+\t  on \t(`pa11`.`region_id` = `pa12`.`region_id`)"""
 SCHEMA_CUBE = "E4793A9AC5455CFBE8106FA2B22D7AF6"
 IMPORT_CUBE = "F87325B1B54ECAF0E42113AD060B2300"
 ID_FORM = {"id": "45C11FA478E745FEA08D781CEA190FE5", "name": "ID"}
@@ -948,6 +1013,51 @@ MODEL_ATTRIBUTES = {
     "A_PRODUCT": [(ID_FORM, "product_id", ["T_OI", "T_P"]), (NAME_FORM, "product_name", ["T_P"])],
     "A_STATUS": [(ID_FORM, "status", ["T_O"])],
 }
+MODEL_FACTS = {
+    "F_QTY": ("quantity", ["T_OI"]),
+    "F_UNIT": ("unit_price", ["T_OI"]),
+    "F_REV": ("revenue", ["T_OI"]),
+}
+# Each metric's expression references these (subtype, id, name).
+MODEL_METRICS = {
+    "M_QTY": [("fact", "F_QTY", "Quantity")],
+    # A metric built in Workstation: its tree shows only an embedded aggregation, its tokens the fact.
+    "M_UI_QTY": [("function", "F_SUM", "Sum"), ("fact", "F_QTY", "Quantity")],
+    "M_PRICE": [("fact", "F_PRICE", "Unit Price")],
+    "M_AVG": [("metric", "M_PRICE", "Total Unit Price"), ("metric", "M_QTY", "Total Quantity")],
+    "M_LOOP": [("metric", "M_LOOP_BACK", "Loop back")],
+    "M_LOOP_BACK": [("metric", "M_LOOP", "Loop")],
+    "M_PCT_QTY": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE": [("metric", "M_PCT_QTY", "% Margin")],
+    "M_REV_SHARE": [("metric", "M_PCT_REV", "% Revenue")],
+    "M_PCT_REV": [("fact", "F_QTY", "Quantity")],
+    "M_RANK": [("fact", "F_QTY", "Quantity")],
+    "M_REV": [("fact", "F_REV", "Revenue")],
+    "M_MARGIN": [("fact", "F_REV", "Revenue")],
+    "M_REV_C": [("fact", "F_UNIT", "Unit Price")],
+    "M_NET_C": [("fact", "F_QTY", "Quantity")],
+    "M_REV_N": [("fact", "F_UNIT", "Unit Price")],
+    "M_PART_C": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE_C": [("metric", "M_PART_C", "Part")],
+}
+# The column alias set on a metric, which the SQL names its projection after in place of its name.
+MODEL_METRIC_ALIASES = {"M_REV_C": "NETAMOUNT", "M_NET_C": "REVENUE", "M_PART_C": "PARTQTY"}
+
+
+def _report_route(server: FakeMicroStrategy, report_id: str, source: str | None) -> None:
+    """A dataset that is a report: the SQL view refuses it, and its definition names its cube"""
+    server.overrides[f"/v2/cubes/{report_id}/sqlView"] = lambda: (
+        400,
+        {
+            "code": "ERR006",
+            "message": f"Cannot get the SQL view of object '{report_id}'. Only cube is supported to get SQL view.",
+            "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
+        },
+    )
+    server.overrides[f"/v2/reports/{report_id}"] = lambda: (
+        200,
+        {"id": report_id, "name": "report", "source": {"id": source, "name": "cube"} if source else None},
+    )
 
 
 def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> None:
@@ -974,6 +1084,30 @@ def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> N
             200,
             {"physicalTable": {"namespace": "project-x.sales", "tableName": name}},
         )
+    for fact, (column, tables) in MODEL_FACTS.items():
+        body = {
+            "expressions": [
+                {
+                    "expression": {"tree": {"type": "column_reference", "columnName": column}},
+                    "tables": [{"objectId": table, "subType": "logical_table"} for table in tables],
+                }
+            ]
+        }
+        server.overrides[f"/model/facts/{fact}"] = lambda body=body: (200, body)
+    for metric, references in MODEL_METRICS.items():
+        # The resolved tokens of the expression, as showExpressionAs=tokens answers them.
+        tokens = [{"type": "character", "value": "("}] + [
+            {
+                "type": "object_reference",
+                "value": name,
+                "target": {"objectId": object_id, "subType": sub_type, "name": name},
+            }
+            for sub_type, object_id, name in references
+        ]
+        body = {"expression": {"tokens": tokens}}
+        if metric in MODEL_METRIC_ALIASES:
+            body["columnNameAlias"] = MODEL_METRIC_ALIASES[metric]
+        server.overrides[f"/model/metrics/{metric}"] = lambda body=body: (200, body)
 
 
 def _dataset(cube_id: str, objects: list[dict]) -> MstrDataset:
@@ -1188,9 +1322,12 @@ class TestColumnLineage:
         )
 
         # product_id is read from order_items, but the dataset holds only Product's Name form;
-        # the metric reads quantity, but nothing tells which fact column it aggregates.
+        # the metric's alias is generated, so it maps through the fact it aggregates.
         # An attribute maps to its own column: the lineage view draws no edge to a nested form.
-        assert _pairs(order_items) == [(["order_id"], f"{SCHEMA_CUBE}.Order")]
+        assert _pairs(order_items) == [
+            (["order_id"], f"{SCHEMA_CUBE}.Order"),
+            (["quantity"], f"{SCHEMA_CUBE}.Total Quantity"),
+        ]
         assert _pairs(products) == [(["product_name"], f"{SCHEMA_CUBE}.Product")]
 
     def test_every_form_of_an_attribute_maps_to_one_attribute_column(self, server, client):
@@ -1210,6 +1347,312 @@ class TestColumnLineage:
         )
 
         assert _pairs(lineage) == [(["product_id", "product_name"], f"{SCHEMA_CUBE}.Product")]
+
+    def test_a_projection_alias_reads_the_columns_of_its_own_query(self):
+        _, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        # The outer REVENUERANK reads the derived table; the inner one reads the warehouse.
+        assert aliases["revenuerank"] == {("project-x.sales.order_lines", "revenue")}
+        assert aliases["wjxbfs1"] == {("project-x.sales.order_lines", "line_id")}
+        assert "linecount" not in aliases
+
+    def test_a_schema_metric_maps_to_the_projection_named_after_it(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_RANK", "name": "Revenue Rank", "type": "metric"}])
+        cube_reads, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["region_id", "revenue", "line_id"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["revenue"], f"{SCHEMA_CUBE}.Revenue Rank")]
+        # Its definition is read for its column alias, and none is set, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
+
+    def test_a_metric_the_sql_does_not_name_maps_through_what_it_is_built_from(self, server, client):
+        # Average Price is Total Unit Price / Total Quantity: the SQL names the first, and the
+        # second, under a generated alias, is followed to its fact.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_AVG", "name": "Average Price", "type": "metric"}])
+        cube_reads, aliases = read_projections(
+            "select a11.order_id order_id, sum(a11.quantity) WJXBFS1, sum(a11.unit_price) TOTALUNITPRICE"
+            " from `project-x`.`sales`.`order_items` a11 group by 1",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["order_id", "quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity", "unit_price"], f"{SCHEMA_CUBE}.Average Price")]
+        # The SQL names Total Unit Price, so its fact is never read.
+        assert server.requests_to("/model/facts/F_PRICE") == []
+
+    def test_a_metric_built_in_workstation_maps_through_the_fact_its_tokens_resolve(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(SCHEMA_CUBE, [{"id": "M_UI_QTY", "name": "Units", "type": "metric"}])
+        cube_reads, aliases = read_projections(SCHEMA_CUBE_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["order_id", "quantity"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity"], f"{SCHEMA_CUBE}.Units")]
+        assert server.requests_to("/model/metrics/M_UI_QTY")[0].params["showExpressionAs"] == "tokens"
+
+    def test_a_metric_name_another_object_shares_matches_no_alias(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_VAR", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT", "name": "% Margin", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN from `project-x`.`sales`.`order_lines` a11", Dialect.BIGQUERY
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert lineage == []
+
+    def test_a_referenced_metric_whose_name_another_object_shares_is_followed_to_its_definition(self, server, client):
+        # Margin Share is built from % Margin, whose name Margin shares: the MARGIN projection may be
+        # Margin's, so both are followed to their facts instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_MARGIN", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+                {"id": "M_SHARE", "name": "Margin Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.% Margin"),
+            (["quantity"], f"{SCHEMA_CUBE}.Margin Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Margin"),
+        ]
+
+    def test_a_referenced_metric_outside_the_dataset_takes_no_alias_a_dataset_object_owns(self, server, client):
+        # Revenue Share is built from % Revenue, which the dataset does not hold: REVENUE is Revenue's
+        # projection, so % Revenue is followed to its fact instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV", "name": "Revenue", "type": "metric"},
+                {"id": "M_REV_SHARE", "name": "Revenue Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) REVENUE, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Revenue Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
+    def test_a_metric_maps_to_the_projection_its_column_alias_names_not_its_name(self, server, client):
+        # Revenue is aliased NETAMOUNT and Net Amount is aliased REVENUE: each name matches the
+        # other metric's projection, and only the column aliases tell them apart.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_C", "name": "Revenue", "type": "metric"},
+                {"id": "M_NET_C", "name": "Net Amount", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) NETAMOUNT, sum(a11.quantity) REVENUE from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Net Amount"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
+    def test_a_referenced_metric_maps_to_the_projection_its_column_alias_names(self, server, client):
+        # Share is built from Part, which the dataset does not hold and whose column alias is PARTQTY.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_N", "name": "Revenue", "type": "metric"},
+                {"id": "M_SHARE_C", "name": "Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) REVENUE, sum(a11.quantity) PARTQTY from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Share"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+        # Both are matched on their projections, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
+
+    def test_a_metric_that_cannot_be_read_still_keeps_its_name_from_other_metrics(self, server, client):
+        # Margin cannot be read, so its column alias is unknown: the MARGIN projection may be its own,
+        # and % Margin is followed to its fact instead of taking it.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/metrics/M_BROKEN"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_BROKEN", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity"], f"{SCHEMA_CUBE}.% Margin")]
+
+    def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        for metric in ("M_D1", "M_D2"):
+            server.overrides[f"/model/metrics/{metric}"] = lambda: (
+                404,
+                {"code": "ERR004", "message": "The object does not exist in the metadata"},
+            )
+
+        for metric in ("M_D1", "M_D2", "M_D1"):
+            assert client.get_metric_parts("P", metric) is None
+
+        assert not client.modeling_denied
+        assert len(server.requests_to("/model/metrics/")) == 2
+        assert caplog.text.count("further metrics that cannot be read are logged at debug level") == 1
+
+    def test_a_metric_that_references_itself_is_read_once(self, server, client):
+        _model_routes(server, {SCHEMA_CUBE: 776})
+
+        parts = client.get_metric_parts("P", "M_LOOP")
+
+        assert parts.metrics == {("M_LOOP_BACK", "Loop back")}
+        assert parts.facts == set()
+        assert len(server.requests_to("/model/metrics/")) == 2
+
+    def test_without_modeling_privileges_a_metric_gets_no_column_lineage(self, server, client, caplog):
+        # Revenue Rank's projection is named after it, but unread, its column alias is unknown, so the
+        # projection may be another metric's.
+        server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})
+        server.overrides["/model/metrics/M_TX"] = lambda: (
+            403,
+            {"code": "ERR014", "message": "You do not have Use Architect Editors privilege"},
+        )
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_TX", "name": "Line Count", "type": "metric"},
+                {"id": "M_RANK", "name": "Revenue Rank", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(RANK_SQL, Dialect.BIGQUERY)
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_lines", ["region_id", "revenue", "line_id"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert lineage == []
+        assert client.modeling_denied
+        assert caplog.text.count("column-level lineage needs the service account") == 1
 
     def test_a_data_import_cube_is_matched_on_the_names_it_derives_from_columns(self, server, client):
         _model_routes(server, {IMPORT_CUBE: 779})
@@ -1417,13 +1860,17 @@ class TestColumnLineage:
         assert len(server.requests_to("/model/attributes/")) == 2
         assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
 
-    def test_the_lineage_edge_carries_the_column_pairs(self, server, client):
-        _model_routes(server, {IMPORT_CUBE: 779})
+    # A report built on the Data Import cube is matched like the cube: on names, also once the
+    # report and parse caches have evicted it while the SQL cache still holds it.
+    @pytest.mark.parametrize(("dataset_id", "evicted"), [(IMPORT_CUBE, False), ("R1", False), ("R1", True)])
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id, evicted):
+        _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
+        _report_route(server, "R1", source=IMPORT_CUBE)
         server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
         source = _source(client)
         source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
         source.get_query_parser_type = MagicMock(return_value=None)
-        dataset = _dataset(IMPORT_CUBE, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
+        dataset = _dataset(dataset_id, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
         details = _details(source, OFFICE_ROYALE).model_copy(update={"datasets": [dataset]})
         service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
         model = _data_model(source, dataset)
@@ -1434,7 +1881,7 @@ class TestColumnLineage:
         full = _table("order_items", ["order_item_id", "order_id", "unit_price"])
 
         def get_by_name(entity, fqn, **_):
-            return {"bq": service, f"mstr.model.{IMPORT_CUBE}": model, full.fullyQualifiedName.root: full}.get(fqn)
+            return {"bq": service, f"mstr.model.{dataset_id}": model, full.fullyQualifiedName.root: full}.get(fqn)
 
         source.metadata.get_by_name.side_effect = get_by_name
         source.metadata.list_all_entities.return_value = [SimpleNamespace(name=SimpleNamespace(root="project-x"))]
@@ -1442,8 +1889,13 @@ class TestColumnLineage:
             "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
             side_effect=lambda table_name, **_: [bare] if table_name.endswith("order_items") else [],
         ):
+            if evicted:
+                list(source.yield_dashboard_lineage_details(details, "bq"))
+                client._report_cubes.clear()
+                source._source_tables.clear()
+                assert dataset_id in client._cube_sql
             results = list(source.yield_dashboard_lineage_details(details, "bq"))
 
         assert [either.left for either in results if either.left] == []
         (edge,) = [either.right for either in results]
-        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]
+        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{dataset_id}.Order Id")]

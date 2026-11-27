@@ -34,7 +34,7 @@ UTILS_MODULE = "metadata.ingestion.source.database.db2.utils"
 ARCHIVE = "linuxx64_odbc_cli.tar.gz"
 
 
-def _write_driver_archive(mirror: Path, version: str, libdb2: bytes) -> None:
+def _write_driver_archive(mirror: Path, version: str, libdb2: bytes, extra: dict[str, bytes] | None = None) -> None:
     """Lay out an IBM-style clidriver archive under <mirror>/v<version>/."""
     target = mirror / f"v{version}" / ARCHIVE
     target.parent.mkdir(parents=True)
@@ -42,6 +42,7 @@ def _write_driver_archive(mirror: Path, version: str, libdb2: bytes) -> None:
         for name, payload in {
             "clidriver/lib/libdb2.so.1": libdb2,
             "clidriver/license/UNIX/odbc_LI_en": b"terms",
+            **(extra or {}),
         }.items():
             member = tarfile.TarInfo(name)
             member.size = len(payload)
@@ -178,6 +179,51 @@ def test_installs_windows_zip_archive(mirrors: tuple[Path, Path, Path]):
         install_clidriver("11.5.9")
 
     assert (bundled / "bin" / "db2app64.dll").read_bytes() == b"v11.5.9"
+
+
+@pytest.mark.parametrize("escaping_entry", ["../../escaped.dll", "/escaped.dll"])
+def test_zip_archive_with_escaping_entry_keeps_bundled_driver(mirrors: tuple[Path, Path, Path], escaping_entry: str):
+    ibm, _, bundled = mirrors
+    target = ibm / "v11.5.9" / "ntx64_odbc_cli.zip"
+    target.parent.mkdir(parents=True)
+    with zipfile.ZipFile(target, "w") as archive:
+        archive.writestr("clidriver/bin/db2app64.dll", b"v11.5.9")
+        archive.writestr(escaping_entry, b"payload")
+
+    with (
+        patch("platform.system", return_value="Windows"),
+        pytest.raises(RuntimeError, match=r"escaped\.dll"),
+    ):
+        install_clidriver("11.5.9")
+
+    assert (bundled / "lib" / "libdb2.so.1").read_bytes() == b"bundled"
+    assert not (bundled / "bin").exists()
+    assert sorted(path.name for path in bundled.parent.iterdir()) == ["clidriver"]
+
+
+def test_tar_archive_with_escaping_member_keeps_bundled_driver(mirrors: tuple[Path, Path, Path]):
+    ibm, _, bundled = mirrors
+    _write_driver_archive(ibm, "11.5.9", b"v11.5.9", extra={"../../escaped.so": b"payload"})
+
+    with pytest.raises(tarfile.OutsideDestinationError):
+        install_clidriver("11.5.9")
+
+    assert (bundled / "lib" / "libdb2.so.1").read_bytes() == b"bundled"
+    assert sorted(path.name for path in bundled.parent.iterdir()) == ["clidriver"]
+
+
+def test_tar_archive_is_refused_without_extraction_filters(
+    mirrors: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+):
+    ibm, _, bundled = mirrors
+    _write_driver_archive(ibm, "11.5.9", b"v11.5.9", extra={"../../escaped.so": b"payload"})
+    monkeypatch.delattr(tarfile, "data_filter")
+
+    with pytest.raises(RuntimeError, match="extraction filters"):
+        install_clidriver("11.5.9")
+
+    assert (bundled / "lib" / "libdb2.so.1").read_bytes() == b"bundled"
+    assert sorted(path.name for path in bundled.parent.iterdir()) == ["clidriver"]
 
 
 def test_unsupported_platform_installs_nothing(mirrors: tuple[Path, Path, Path]):

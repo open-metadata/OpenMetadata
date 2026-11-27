@@ -9,7 +9,7 @@
 ## Context
 Yarn v1 does not retry HTTP 5xx responses on tarball fetches. One `502 Bad Gateway` from
 `registry.yarnpkg.com` aborts the whole install and fails the job before any test runs, as it did
-in the RDF Playwright run above. `playwright-e2e-reusable.yml` already wrapped its installs in a
+in the RDF Playwright run above. `reusable-playwright-e2e.yml` already wrapped its installs in a
 retry loop; the other workflows did not.
 
 ## Decision

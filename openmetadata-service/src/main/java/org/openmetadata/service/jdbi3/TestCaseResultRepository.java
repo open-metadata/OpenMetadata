@@ -43,6 +43,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
+  static final String AUTO_RESOLVED_COMMENT = "AutoResolved";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private static final String CLEAR_INDEXED_STATUS_SCRIPT =
@@ -175,7 +176,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             TaskResolutionType.Completed,
             null,
             null,
-            "AutoResolved",
+            AUTO_RESOLVED_COMMENT,
             WorkflowEventConsumer.GOVERNANCE_BOT);
   }
 

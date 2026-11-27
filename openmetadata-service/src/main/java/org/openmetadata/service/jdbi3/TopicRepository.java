@@ -742,7 +742,11 @@ public class TopicRepository extends EntityRepository<Topic> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (Field added : addedFields) {

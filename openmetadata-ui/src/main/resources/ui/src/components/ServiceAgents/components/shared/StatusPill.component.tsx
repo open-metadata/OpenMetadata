@@ -24,18 +24,22 @@ interface StatusPillProps {
 
 const STATUS_LABEL_KEY: Record<AgentStatus, string> = {
   failed: 'label.failed',
+  stopped: 'label.stopped',
   queued: 'label.queued',
   running: 'label.running',
   success: 'label.success',
   none: 'label.no-status',
 };
 
+const IDLE_DOT_CLASS = 'tw:bg-utility-gray-400';
+
 const DOT_CLASS: Record<AgentStatus, string> = {
   failed: 'tw:bg-utility-error-500',
-  queued: 'tw:bg-utility-gray-400',
+  stopped: 'tw:bg-utility-warning-500',
+  queued: IDLE_DOT_CLASS,
   running: 'tw:bg-utility-brand-500',
   success: 'tw:bg-utility-success-500',
-  none: 'tw:bg-utility-gray-400',
+  none: IDLE_DOT_CLASS,
 };
 
 const StatusPill: FC<StatusPillProps> = ({

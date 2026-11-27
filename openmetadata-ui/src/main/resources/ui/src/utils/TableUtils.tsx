@@ -13,6 +13,7 @@
 
 import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
+  Badge,
   Box,
   ButtonUtility,
   Tooltip,
@@ -66,7 +67,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { FC, Fragment } from 'react';
+import { Fragment } from 'react';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import ConstraintIcon from '../components/discovery/database/ConstraintIcon/ConstraintIcon';
 import { ConstraintTypes } from '../enums/table.enum';
@@ -76,6 +77,7 @@ import {
   TableConstraint,
 } from '../generated/entity/data/table';
 import { t } from './i18next/LocalUtil';
+import { getConstraintGroupLabel } from './TablePureUtils';
 
 // These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
 // drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
@@ -146,35 +148,38 @@ export const getConstraintIcon = ({
   width = '16px',
   isConstraintAdded,
   isConstraintDeleted,
+  compositeGroup,
 }: {
   constraint?: string;
   className?: string;
   width?: string;
   isConstraintAdded?: boolean;
   isConstraintDeleted?: boolean;
+  compositeGroup?: { columns: string[]; label: string };
 }) => {
   const config = CONSTRAINT_ICON_CONFIG[constraint];
   if (!config) {
     return null;
   }
 
-  const title = config.getTitle();
+  const isComposite =
+    constraint === ConstraintTypes.UNIQUE && compositeGroup !== undefined;
+  const title = isComposite
+    ? `${t('label.composite-unique-constraint')} ${compositeGroup.label}`
+    : config.getTitle();
+  const accessibleName = isComposite
+    ? `${title}: ${compositeGroup.columns.join(', ')}`
+    : title;
   const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
   const dataTestId = config.dataTestId;
 
   const ConstraintIcon = icon;
-
-  return (
-    <Tooltip
-      arrow
-      excludeTriggerFromTabOrder
-      placement="bottom"
-      title={title}
-      triggerClassName={classNames('tw:inline-flex', className)}>
+  const indicator = (
+    <span className="tw:inline-flex tw:items-center tw:gap-0.5">
       <ConstraintIcon
         // The core icons default to aria-hidden; this one carries the label.
         aria-hidden={false}
-        aria-label={title}
+        aria-label={accessibleName}
         className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,
           'diff-removed': isConstraintDeleted,
@@ -184,6 +189,39 @@ export const getConstraintIcon = ({
         role="img"
         width={width}
       />
+      {isComposite && (
+        <Typography aria-hidden as="span" size="text-xs" weight="semibold">
+          {compositeGroup.label}
+        </Typography>
+      )}
+    </span>
+  );
+
+  return (
+    <Tooltip
+      arrow
+      description={
+        isComposite ? (
+          <Box align="start" direction="col" gap={2}>
+            <span>{compositeGroup.columns.join(' + ')}</span>
+            <span>{t('message.composite-unique-constraint-description')}</span>
+          </Box>
+        ) : undefined
+      }
+      excludeTriggerFromTabOrder={!isComposite}
+      placement="bottom"
+      title={title}
+      triggerClassName={classNames('tw:inline-flex', className, {
+        'tw:focus-visible:outline-2 tw:focus-visible:outline-solid tw:focus-visible:outline-brand tw:focus-visible:outline-offset-4':
+          isComposite,
+      })}>
+      {isComposite ? (
+        <Badge color="blue" size="sm" type="color">
+          {indicator}
+        </Badge>
+      ) : (
+        indicator
+      )}
     </Tooltip>
   );
 };
@@ -268,8 +306,7 @@ export const getColumnDataTypeIcon = ({
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string,
-  DragIcon: FC<{ className?: string }> = Reorder
+  expandIconClass?: string
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) => {
@@ -277,7 +314,7 @@ export function getTableExpandableConfig<T>(
 
       return expandable ? (
         <>
-          {isDraggable && <DragIcon className="drag-icon" />}
+          {isDraggable && <Reorder className="drag-icon" />}
           <ButtonUtility
             aria-label={expanded ? t('label.collapse') : t('label.expand')}
             className={classNames(
@@ -295,7 +332,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <DragIcon className="drag-icon" />
+            <Reorder className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -310,6 +347,7 @@ export const prepareConstraintIcon = ({
   columnName,
   columnConstraint,
   tableConstraints,
+  labelSourceConstraints = tableConstraints,
   iconClassName,
   iconWidth,
   isColumnConstraintAdded,
@@ -320,6 +358,7 @@ export const prepareConstraintIcon = ({
   columnName: string;
   columnConstraint?: string;
   tableConstraints?: TableConstraint[];
+  labelSourceConstraints?: TableConstraint[];
   iconClassName?: string;
   iconWidth?: string;
   isColumnConstraintAdded?: boolean;
@@ -328,12 +367,28 @@ export const prepareConstraintIcon = ({
   isTableConstraintDeleted?: boolean;
 }) => {
   // get the table constraints for column
-  const filteredTableConstraints = uniqBy(
+  const matchingTableConstraints =
     tableConstraints?.filter((constraint) =>
       constraint.columns?.includes(columnName)
+    ) ?? [];
+  const filteredTableConstraints = uniqBy(
+    matchingTableConstraints.filter(
+      ({ constraintType, columns }) =>
+        constraintType !== ConstraintType.Unique || (columns?.length ?? 0) <= 1
     ),
     'constraintType'
   );
+  const compositeUniqueConstraints =
+    tableConstraints?.filter(
+      ({ constraintType, columns }) =>
+        constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
+    ) ?? [];
+
+  const compositeLabelConstraints =
+    labelSourceConstraints?.filter(
+      ({ constraintType, columns }) =>
+        constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
+    ) ?? [];
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
@@ -348,20 +403,53 @@ export const prepareConstraintIcon = ({
 
   // prepare table constraint element
   const tableConstraintEl = filteredTableConstraints
-    ? filteredTableConstraints.map((tableConstraint) =>
-        getConstraintIcon({
-          constraint: tableConstraint.constraintType,
+    ? filteredTableConstraints.map((tableConstraint) => (
+        <Fragment
+          key={`${tableConstraint.constraintType}-${
+            (tableConstraint.columns?.length ?? 0) > 1
+          }`}>
+          {getConstraintIcon({
+            constraint: tableConstraint.constraintType,
+            className: iconClassName ?? 'm-r-xs',
+            width: iconWidth,
+            isConstraintAdded: isTableConstraintAdded,
+            isConstraintDeleted: isTableConstraintDeleted,
+          })}
+        </Fragment>
+      ))
+    : null;
+
+  const compositeConstraintEls = compositeUniqueConstraints.map(({ columns }) =>
+    columns?.includes(columnName) ? (
+      <Fragment key={JSON.stringify(columns)}>
+        {getConstraintIcon({
+          constraint: ConstraintType.Unique,
+          compositeGroup: {
+            columns,
+            label: getConstraintGroupLabel(
+              compositeLabelConstraints.findIndex(
+                (constraint) =>
+                  constraint.columns?.length === columns.length &&
+                  columns.every((column) =>
+                    constraint.columns?.includes(column)
+                  )
+              )
+            ),
+          },
           className: iconClassName ?? 'm-r-xs',
           width: iconWidth,
           isConstraintAdded: isTableConstraintAdded,
           isConstraintDeleted: isTableConstraintDeleted,
-        })
-      )
-    : null;
+        })}
+      </Fragment>
+    ) : null
+  );
 
   return (
-    <span data-testid="constraints">
-      {columnConstraintEl} {tableConstraintEl}
+    <span
+      className="tw:inline-flex tw:shrink-0 tw:items-center"
+      data-testid="constraints">
+      {columnConstraintEl} {tableConstraintEl} {compositeConstraintEls}
     </span>
   );
 };

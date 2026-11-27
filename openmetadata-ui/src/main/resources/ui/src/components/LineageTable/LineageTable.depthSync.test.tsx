@@ -231,6 +231,7 @@ const setupStore = (config: LineageConfig = mockLineageConfig) => {
     setSelectedQuickFilters: jest.fn(),
     lineageConfig: config,
     setLineageConfig: jest.fn(),
+    timeFilter: {},
   });
 };
 

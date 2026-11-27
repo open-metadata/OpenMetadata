@@ -18,7 +18,6 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
@@ -202,9 +201,9 @@ const AiSidebarEditor = ({
             className="tw:w-full tw:justify-between tw:group"
             direction="row">
             <Box align="center" direction="row" gap={2}>
-              <DotsGrid
-                aria-hidden
-                className="tw:size-4 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:invisible tw:group-hover:visible"
+              <Tree.DragButton
+                aria-label={t('label.move')}
+                className="tw:opacity-0 tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
                 data-testid="ai-sidebar-drag-handle"
               />
               {Icon && (

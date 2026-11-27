@@ -347,6 +347,57 @@ class TestBuildGcpTokenCallback:
 
         assert expiry == future
 
+    @patch("google.auth.default")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
+    def test_naive_utc_expiry_is_normalized_to_aware_utc(self, _mock_set, mock_default):
+        """google-auth's ``credentials.expiry`` is a *naive* UTC datetime by
+        construction (``google.auth._helpers.utcnow`` strips ``tzinfo`` for
+        backward compatibility). The callback must return it as aware UTC so
+        the ometa REST/SSE consumers' ``expiry.timestamp()`` round-trips
+        correctly regardless of the host's local timezone."""
+        # Mock the naive datetime google-auth actually produces. Using a
+        # MagicMock(spec=datetime) would not reproduce .tzinfo/.timestamp()
+        # behavior, so use the real datetime constructor.
+        naive_utc = datetime(2030, 1, 1, 15, 0)  # 15:00 UTC, naive, as google-auth does
+        mock_creds = MagicMock(token="tok")
+        mock_creds.expiry = naive_utc
+        mock_default.return_value = (mock_creds, "project")
+
+        gcp_creds = self._make_gcp_credentials()
+        cb = build_gcp_token_callback(gcp_creds)
+
+        with patch("google.auth.transport.requests.Request"):
+            _, expiry = cb()
+
+        assert expiry.tzinfo is not None, "naive google-auth expiry must be normalized to aware UTC"
+        assert expiry == naive_utc.replace(tzinfo=timezone.utc)
+        # And the returned expiry must epoch-convert as UTC, not local time.
+        assert expiry.timestamp() == naive_utc.replace(tzinfo=timezone.utc).timestamp()
+
+    @patch("google.auth.default")
+    @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
+    def test_naive_utc_expiry_timestamp_is_utc_under_non_utc_host(self, _mock_set, mock_default, local_tz):
+        """On a host west of UTC the naive expiry's ``.timestamp()`` would
+        otherwise be several hours ahead of the real UTC epoch. The fix
+        keeps the returned expiry's epoch equal to the UTC epoch of the
+        naive datetime even when the host TZ is non-UTC."""
+        naive_utc = datetime(2030, 1, 1, 15, 0)
+        expected_epoch = naive_utc.replace(tzinfo=timezone.utc).timestamp()
+        mock_creds = MagicMock(token="tok")
+        mock_creds.expiry = naive_utc
+        mock_default.return_value = (mock_creds, "project")
+
+        gcp_creds = self._make_gcp_credentials()
+        cb = build_gcp_token_callback(gcp_creds)
+
+        local_tz("America/New_York")
+        with patch("google.auth.transport.requests.Request"):
+            _, expiry = cb()
+
+        # Pre-fix, on a New_York host expiry was the naive datetime, so
+        # ``.timestamp()`` would be ``expected_epoch + 5*3600``.
+        assert expiry.timestamp() == expected_epoch
+
 
 # ── GCP credential type coverage ─────────────────────────────────────────────
 

@@ -85,10 +85,8 @@ export interface ExploreProps {
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
 
   sortValue: string;
-  onChangeSortValue: (sortValue: string) => void;
-
   sortOrder: string;
-  onChangeSortOder: (sortOder: SORT_ORDER) => void;
+  onChangeSort: (sortValue: string, sortOrder: SORT_ORDER) => void;
 
   showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;

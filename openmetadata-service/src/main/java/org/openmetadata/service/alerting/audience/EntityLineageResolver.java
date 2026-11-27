@@ -72,11 +72,4 @@ public interface EntityLineageResolver {
    * @return Set of parent EntityReferences, or empty set if entity is lineage-capable
    */
   Set<EntityReference> resolveTraversalEntities(UUID entityId, String entityType);
-
-  /**
-   * Returns the entity type this resolver handles.
-   *
-   * @return entity type constant (e.g., Entity.TEST_CASE, Entity.THREAD, Entity.TEST_SUITE, "*" for default)
-   */
-  String getEntityType();
 }
