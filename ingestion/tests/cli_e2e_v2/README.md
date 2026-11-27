@@ -11,6 +11,7 @@ MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is th
 | `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 | `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
 | `mssql` | disposable testcontainers SQL Server + restricted login, one owned database, fresh schema per test | `cli_e2e/test_cli_mssql.py` |
+| `exasol` | disposable privileged Exasol container + restricted user, fresh schema per test | `cli_e2e/test_cli_exasol.py` |
 
 ## Run
 
@@ -68,6 +69,7 @@ cli_e2e_v2/
   oracle/              owned container and one Oracle user per test, same layout as mysql/
   snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
   mssql/               owned SQL Server database and one schema per test, same layout as postgres/
+  exasol/              owned Exasol container and one schema per test, same layout as mssql/; adds query-log usage
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -448,3 +450,54 @@ runs when it is dispatched rather than on every PR; the command above still runs
 
 Remove the v1 MSSQL test and its `ci-nightly.yml` default connector entry only after this suite has passed
 for the agreed stability window.
+
+## Exasol
+
+`exasol/` boots a disposable Exasol via testcontainers (`exasol/docker-db:2025.1.8`, the version v1
+and the Exasol integration tests pin; amd64 only, run privileged) and owns one schema per test,
+dropped with `CASCADE` on success and failure. A separate ingestion user owns nothing: it holds
+`CREATE SESSION`, `SELECT ANY DICTIONARY` — the usage and system-metric queries read
+`EXA_STATISTICS.EXA_DBA_AUDIT_*` — and `SELECT` on exactly the owned schemas. The suite starts the
+image directly rather than through ITDE, so v1's port forwards, environment name and `docker kill`
+are gone and there are no `E2E_EXASOL_*` secrets.
+
+```bash
+docker compose -f docker/development/docker-compose.yml up -d
+python -m pytest ingestion/tests/cli_e2e_v2/exasol --e2e-contract-check -v
+```
+
+A cold boot initialises the database inside the container; under emulation on an arm64 machine it
+takes several minutes, and the fixture's readiness budget is sized for that. Every workflow carries
+an anchored `schemaFilterPattern` for the owned schemas, because `EXA_SCHEMAS` lists every schema in
+the instance to any session.
+
+**Usage.** Exasol is the one suite whose v1 test asserted the query-log usage workflow, so
+`exasol/connector.py` builds that workflow itself (`exasol-usage` source, `query-parser`,
+`table-usage` stage, `metadata-usage` bulk sink); the shared database factory still rejects usage
+pipelines. Its `filterCondition` restricts the audit log to statements naming the owned schema, so
+another test's queries cannot reach the assertions. The scenario flushes Exasol's statistics buffer
+and waits until the join is visible in `EXA_DBA_AUDIT_SQL` before running the workflow.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ 1 record | `catalog.metadata` (complete inventory, types, keys, view) |
+| table and column comments, column order (`test_table_metadata_contains_comments`) | `catalog.metadata` (exact descriptions on every declared entity) |
+| create table + profiler, `rowCount == 2` | `profile.metrics` (row counts of every owned table, numeric column metrics) |
+| auto-classification, exactly 2 sample rows | `sample.values.original`, `sample.values.updated`, `sample.values.replacement`, `sample.limit`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` (the dependent view too) |
+| schema include / exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include / exclude (`IGNORE_TABLE`) / mix filters (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.mix`, `filter.table.regex-exclude-wins`, `filter.table.exclude-wins` |
+| view lineage, 6 column edges | `lineage.view` — the table edge and every projected column |
+| usage: usage summary counts, `lifeCycle.accessed`, SELECT query attached, `col_boolean` join | `usage.queries` |
+
+Added beyond v1: `fk.relationships`, `ingest.repeat`. v1's `test_profiler_with_time_partition`
+skips because Exasol configures no partition, and `test_data_quality` returns because Exasol declares
+no data-quality table; neither exercises anything. Exasol has no stored procedures the connector
+reads, so `procedure.code` does not apply.
+
+The `exasol` matrix job runs in the generic `Run CLI E2E v2 tests` step and keeps the existing
+`Reclaim unused disk for Exasol` step, which applies to both suites. Remove the v1 Exasol test and its
+`ci-nightly.yml` default connector entry only after this suite has passed for the agreed stability
+window.
