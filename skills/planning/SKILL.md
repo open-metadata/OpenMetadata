@@ -62,7 +62,7 @@ Once an approach is approved, break it into ordered tasks:
 
 For Python changes, use the locked Nox sessions through Make from the checkout root:
 `make unit_ingestion ARGS="-n 0 tests/unit/PATH"`.
-Include lock validation with the pinned `ingestion/.nox/bootstrap/bin/uv lock --check --project ingestion`.
+Include lock validation with the pinned `"$(python3 scripts/python_tools.py uv-path)" lock --check --project ingestion`.
 When generation inputs change, include `make generate ARGS=--python-only` and
 `python3 scripts/check_generated_models.py --check`. Preserve public aliases and
 intentional test exclusions when migrating command callers.

@@ -1,0 +1,43 @@
+name: Run Python tests
+description: Run a Nox test suite, stream its logs, and optionally collect and upload coverage.
+inputs:
+  suite:
+    description: suite
+    required: true
+  nox-args:
+    description: Whitespace-separated pytest arguments forwarded to Nox.
+    default: ''
+  collect-coverage:
+    description: Collect branch coverage and upload the data.
+    default: 'false'
+  coverage-name:
+    description: coverage-name
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Run Python suite
+      env:
+        SUITE: ${{ inputs.suite }}
+        NOX_ARGS: ${{ inputs.nox-args }}
+        COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
+      run: |
+        set -o pipefail
+        source env/bin/activate
+        cd ingestion
+        read -r -a args <<< "$NOX_ARGS"
+        if [[ "$COLLECT_COVERAGE" == 'true' ]]; then
+          args+=(--cov-report=)
+        else
+          args+=(--no-cov)
+        fi
+        nox --no-venv -s "${SUITE}-tests" -- "${args[@]}" 2>&1 | tee "${SUITE}-test-run.log"
+      shell: bash
+    - name: Upload coverage artifact
+      if: ${{ inputs.collect-coverage == 'true' && !cancelled() && hashFiles('ingestion/.coverage') != '' }}
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ${{ inputs.coverage-name }}
+        path: ingestion/.coverage
+        include-hidden-files: true

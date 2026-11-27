@@ -107,7 +107,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
                   {about.tier.displayName || startCase(about.tier.name)}
                 </Badge>
               )}
-              {Boolean(about?.piiColumnCount) && (
+              {about?.isPii && (
                 <Badge color="error" size="sm" type="color">
                   {t('label.pii-uppercase')}
                 </Badge>

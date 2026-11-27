@@ -30,7 +30,8 @@ env:
 jobs:
   ui-coverage-sonar:
     name: Coverage + Sonar
-    timeout-minutes: 90
+    # Jest plus the unsharded browser suite (~1,070 tests).
+    timeout-minutes: 180
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -73,6 +74,7 @@ jobs:
         run: sudo make install_antlr_cli
 
       - name: Install Yarn Packages
+        id: yarn_install
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           # Retry transient registry failures (5xx on tarball fetches) —
@@ -87,16 +89,53 @@ jobs:
             sleep $((attempt * 15))
           done
 
+      # test:cov-summary writes only json-summary; Sonar reads lcov.info.
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:cov-summary
+        run: yarn test:cov-summary --coverageReporters lcov --silent
+
+      # Deps and ANTLR come from the steps above, so only Chromium is added here
+      # (no --with-deps: the runner image has its libraries; see ui-browser-setup).
+      - name: Install Chromium
+        if: ${{ !cancelled() && steps.yarn_install.outcome == 'success' }}
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: npx playwright install chromium
+
+      # Writes src/test/browser/coverage/lcov.info even when a test fails.
+      - name: Run Browser Test Coverage
+        if: ${{ !cancelled() && steps.yarn_install.outcome == 'success' }}
+        continue-on-error: false
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn test:ui:coverage
+
+      # A failed test run still fails the job (and notifies Slack), but the
+      # scan runs on the coverage it wrote. Without both reports (the install
+      # failed, or a suite crashed before writing one) the scan is skipped:
+      # it would publish a false coverage drop on main.
+      - name: Check coverage reports
+        id: coverage
+        if: ${{ !cancelled() && steps.yarn_install.outcome == 'success' }}
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          ready=true
+          for report in src/test/unit/coverage/lcov.info src/test/browser/coverage/lcov.info; do
+            if [ ! -s "$report" ]; then
+              echo "::error::$report is missing; skipping the Sonar scan"
+              ready=false
+            fi
+          done
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          # Fail the job (and so notify Slack) rather than silently skip the scan.
+          [ "$ready" = true ]
 
       - name: Install sonar-scanner
+        if: ${{ !cancelled() && steps.coverage.outputs.ready == 'true' }}
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner@^4.3.0
 
       - name: SonarCloud Branch Scan
         id: sonar_branch_scan
+        if: ${{ !cancelled() && steps.coverage.outputs.ready == 'true' }}
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
@@ -109,12 +148,12 @@ jobs:
           SONARCLOUD_URL: https://sonarcloud.io
 
       - name: Wait to retry 'SonarCloud Branch Scan'
-        if: ${{ !cancelled() && steps.sonar_branch_scan.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.coverage.outputs.ready == 'true' && steps.sonar_branch_scan.outcome != 'success' }}
         run: sleep 20s
         shell: bash
 
       - name: Retry 'SonarCloud Branch Scan'
-        if: ${{ !cancelled() && steps.sonar_branch_scan.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.coverage.outputs.ready == 'true' && steps.sonar_branch_scan.outcome != 'success' }}
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
