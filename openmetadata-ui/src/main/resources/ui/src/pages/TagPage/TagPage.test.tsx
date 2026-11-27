@@ -420,9 +420,11 @@ describe('TagPage', () => {
         fireEvent.click(await screen.findByTestId('delete-button'));
 
         const modal = await screen.findByTestId('delete-modal');
+
         expect(modal).toHaveTextContent(
           'This permanently deletes NonSensitive and all its descendant tags.'
         );
+
         const confirm = within(modal).getByRole('button', { name: 'Delete' });
 
         act(() => {
