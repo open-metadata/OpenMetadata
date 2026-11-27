@@ -4718,13 +4718,16 @@ class TestDbtTestOnMissingColumn:
         assert results[0].right is not None, results[0].left
         assert source.status.warnings == []
 
-    def test_unknown_table_is_left_to_the_server(self):
-        source = self._source(None)
+    @pytest.mark.parametrize("columns_known", [False, True], ids=["unknown_table", "table_without_columns"])
+    def test_unverifiable_column_is_left_to_the_server(self, columns_known):
+        table = Table(id=uuid.uuid4(), name="product_eng", fullyQualifiedName=self.TABLE_FQN, columns=[])
+        source = self._source(table if columns_known else None)
 
         results = list(source.create_dbt_test_case(self._dbt_test("TOTAL_REQUEST")))
 
         assert len(results) == 1
         assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
 
 
 class TestAddDbtSourceFreshnessResults:

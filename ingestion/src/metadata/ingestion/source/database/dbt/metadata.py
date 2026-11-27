@@ -2463,7 +2463,7 @@ class DbtSource(DbtServiceSource):
                     description = get_dbt_test_description(manifest_node)
                     if test_case is None and (missing_column := self._missing_test_column(table_fqn, manifest_node)):
                         # The server rejects it with "Invalid column name"; that is a schema.yml
-                        # mistake, not an ingestion failure, so it must not fail the run (#38812)
+                        # mistake, not an ingestion failure, so it must not fail the run
                         dbt_test[DbtCommonEnum.SKIPPED_MISSING_COLUMN.value] = True
                         self.status.warning(
                             test_case_fqn,
