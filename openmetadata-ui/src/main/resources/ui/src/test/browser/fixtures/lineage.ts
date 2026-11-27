@@ -92,7 +92,9 @@ export const lineageTable = (
     displayName: 'pw_mysql',
     type: 'databaseService',
   },
-  // A table's search document always lists its columns.
+  // Real search docs list a table's columns; a node without them now draws
+  // with no children (EntityLineageNodeUtils.test.ts) instead of blanking
+  // the canvas.
   columns: [],
   ...fields,
 });
@@ -281,7 +283,12 @@ export const edgeBetween = (
 });
 
 export interface ServeLineageSpec {
-  /** The entity whose Lineage tab is open; the shared root table by default. */
+  /**
+   * The entity whose Lineage tab is open; the shared root table by default.
+   * Every lineage handler answers for it. The page's own entity request
+   * (`tables/name/:fqn` here) is served only for the default table root; a
+   * test with another root serves that entity itself.
+   */
   root?: LineageDoc;
   upstream?: LineageNode[];
   downstream?: LineageNode[];
@@ -381,7 +388,7 @@ export const serveLineage = ({
 
       return HttpResponse.json({
         nodes: Object.fromEntries([
-          [rootDoc.fullyQualifiedName, { entity: rootDoc, nodeDepth: 0 }],
+          [root.fullyQualifiedName, { entity: root, nodeDepth: 0 }],
           ...page.map(({ doc, depth }) => [
             doc.fullyQualifiedName,
             { entity: doc, nodeDepth: depth, paging: {} },
@@ -501,7 +508,7 @@ export const serveLineage = ({
         )
       );
     }),
-    http.get('/api/v1/lineage/getLineage/:direction', ({ request }) => {
+    http.get('/api/v1/lineage/getLineage/:direction', ({ request, params }) => {
       const url = new URL(request.url);
       calls.directional.push(url);
       // column_filter "columnName:x,..." keeps the column mappings that name x.
@@ -523,22 +530,32 @@ export const serveLineage = ({
           ),
         }))
         .filter((edge) => edge.columns.length > 0);
-      const docs = downstream.map(({ doc }) => doc);
-
-      return HttpResponse.json({
-        nodes: Object.fromEntries(
-          [rootDoc, ...docs].map((doc) => [
-            doc.fullyQualifiedName,
-            { entity: doc, nodeDepth: doc === rootDoc ? 0 : 1 },
-          ])
-        ),
-        upstreamEdges: {},
-        downstreamEdges: Object.fromEntries(
-          edges.map((edge) => [
+      // Like the server, a direction returns only its own side: downstream
+      // edges leave the root, upstream edges reach it.
+      const upstreamView = params.direction === LineageDirection.Upstream;
+      const docs = (upstreamView ? upstream : downstream).map(({ doc }) => doc);
+      const sideEdges = Object.fromEntries(
+        edges
+          .filter(
+            (edge) =>
+              (upstreamView ? edge.toEntity : edge.fromEntity)
+                .fullyQualifiedName === root.fullyQualifiedName
+          )
+          .map((edge) => [
             `${edge.fromEntity.fullyQualifiedName}-->${edge.toEntity.fullyQualifiedName}`,
             edge,
           ])
+      );
+
+      return HttpResponse.json({
+        nodes: Object.fromEntries(
+          [root, ...docs].map((doc) => [
+            doc.fullyQualifiedName,
+            { entity: doc, nodeDepth: doc === root ? 0 : 1 },
+          ])
         ),
+        upstreamEdges: upstreamView ? sideEdges : {},
+        downstreamEdges: upstreamView ? {} : sideEdges,
       });
     })
   );
@@ -546,23 +563,27 @@ export const serveLineage = ({
   return calls;
 };
 
-/** An edge from the root to `to` carrying column mappings (from -> to name). */
+/**
+ * An edge from `from` (the shared root table by default) to `to`, carrying
+ * column mappings (from -> to name).
+ */
 export const columnEdge = (
   to: LineageDoc,
-  mappings: Array<[from: string, to: string]>
+  mappings: Array<[from: string, to: string]>,
+  from: LineageDoc = rootDoc
 ): EdgeDetails => ({
   fromEntity: {
-    id: rootDoc.id,
-    type: 'table',
-    fullyQualifiedName: rootDoc.fullyQualifiedName,
+    id: from.id,
+    type: from.type,
+    fullyQualifiedName: from.fullyQualifiedName,
   },
   toEntity: {
     id: to.id,
     type: to.type,
     fullyQualifiedName: to.fullyQualifiedName,
   },
-  columns: mappings.map(([from, toCol]) => ({
-    fromColumns: [`${rootDoc.fullyQualifiedName}.${from}`],
+  columns: mappings.map(([fromCol, toCol]) => ({
+    fromColumns: [`${from.fullyQualifiedName}.${fromCol}`],
     toColumn: `${to.fullyQualifiedName}.${toCol}`,
   })),
 });
