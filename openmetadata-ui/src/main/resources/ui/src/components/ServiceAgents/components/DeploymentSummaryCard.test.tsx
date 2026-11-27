@@ -374,6 +374,30 @@ describe('DeploymentSummaryCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should not count a never-run agent in the service total as queued', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ status: 'failed', pct: 100 }),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'none',
+            pct: 0,
+          }),
+        ]}
+        totalAgents={2}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'label.deployment-complete'
+    );
+    expect(
+      screen.queryByTestId('deployment-progress-bar')
+    ).not.toBeInTheDocument();
+  });
+
   it('should exclude never-run agents from the overall progress percent', () => {
     render(
       <DeploymentSummaryCard

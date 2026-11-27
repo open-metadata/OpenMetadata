@@ -1598,7 +1598,7 @@ wheels = [
 
 [[package]]
 name = "collate-sqlfluff"
-version = "3.5.3"
+version = "3.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chardet" },
@@ -1610,7 +1610,6 @@ dependencies = [
     { name = "pathspec" },
     { name = "platformdirs", version = "4.12.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "platformdirs", version = "4.14.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pytest" },
     { name = "pyyaml" },
     { name = "regex", version = "2026.9.29", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "regex", version = "2026.11.19", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1618,14 +1617,14 @@ dependencies = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/08/2a666ccaf1fe9d5722b1be5f7e3086b6581d9a71ab245432fb54605c06b5/collate_sqlfluff-3.5.3.tar.gz", hash = "sha256:feed770a232250b66f77d34aa1c1471a09e4f77b78f1824aca6d2400a06ec9ca", size = 919496, upload-time = "2026-05-28T12:30:05.872Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/27/8e9f7d7cdd0680c0e4bb23859087f09378f0d3e3cc87c1d7c29cd1643eb7/collate_sqlfluff-3.6.0.tar.gz", hash = "sha256:cb9df9cb1b0dcba7791ba9635b0303afc8cf0b767aacf970af6920b11148ede7", size = 924025, upload-time = "2026-11-19T10:39:13.023Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/f1/a8a878b20c3dd575ff54f45180da5bebe39935cc2576ddc2cf1e68596d11/collate_sqlfluff-3.5.3-py3-none-any.whl", hash = "sha256:1022ae3362f749e330adc173aa3962864caaae05ab231280b2ce66e44f41080e", size = 923298, upload-time = "2026-05-28T12:30:04.312Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/fe/bceb3aad6c80d52e25d215863e4d4e59593e047d6167340b7b440a2e45c6/collate_sqlfluff-3.6.0-py3-none-any.whl", hash = "sha256:429c8e53aba604e9220257fdbc1a04435fdc06993e2cf855fff726ef30708fae", size = 928933, upload-time = "2026-11-19T10:39:11.585Z" },
 ]
 
 [[package]]
 name = "collate-sqllineage"
-version = "2.1.9"
+version = "2.1.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "collate-sqlfluff" },
@@ -1635,9 +1634,9 @@ dependencies = [
     { name = "sqlglot" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/bb/b887135efedb5cc0df011ab81e7919c9f81e00ada184b9b9b71796a37c8c/collate_sqllineage-2.1.9.tar.gz", hash = "sha256:86c37ee89be99aa4ec3cf3562302e8098f620a9d64b3bae116c8c3de8b97d256", size = 557543, upload-time = "2026-11-05T10:06:07.709Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/50/f942ef44e7c9ffbe6a1c0b8fe9147ed765eb37d6c69c1d0582e9a440acec/collate_sqllineage-2.1.10.tar.gz", hash = "sha256:a5c226357c5e8ff60d8b2e544fd441398ba07be2d441d5519304ec116111fcf8", size = 460642, upload-time = "2026-11-27T07:29:46.8Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/a4/ee253440feea0c4104a37edcac3efb560b1bb39c561e0bf66c5b9da43c44/collate_sqllineage-2.1.9-py3-none-any.whl", hash = "sha256:7259930e54b939de6d48a9e019860170684e6b6f60114739041e1965b773eff7", size = 268844, upload-time = "2026-11-05T10:06:06.192Z" },
+    { url = "https://files.pythonhosted.org/packages/96/21/fd6e8200661815964fd42c62f1e683d9f46bd44cc316cf3b9783089052b7/collate_sqllineage-2.1.10-py3-none-any.whl", hash = "sha256:862e2769b110fea1333e2a43d8a804854ed5a110f12dca0e1dc990cd66f109d5", size = 162857, upload-time = "2026-11-27T07:29:45.681Z" },
 ]
 
 [[package]]
@@ -2107,29 +2106,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/9d/10179b0a08cafbee9ea1efd7f1d93ab336e24f05ca58ee413269933ce061/cymem-2.0.16-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:37a41290dbac4a827ddbb081f88dcd37bcb66a975ec28652cc44c6347ab53b31", size = 302281, upload-time = "2026-10-24T17:50:32.898Z" },
     { url = "https://files.pythonhosted.org/packages/be/7d/aecd1d7e5de677b3c13f6af42a15562fcc7b17e629f8905a3ee9bfc9e4d4/cymem-2.0.16-cp315-cp315t-win_amd64.whl", hash = "sha256:fe206b31d4e6f82b2879d1b9374cc1de9a5a3083f464e8bada14831e3bf2e243", size = 45458, upload-time = "2026-10-24T17:50:34.3Z" },
     { url = "https://files.pythonhosted.org/packages/98/7b/75332323360c8b1ccffb191b7e70f7c05007a4ba98f2728ed2b81f610d68/cymem-2.0.16-cp315-cp315t-win_arm64.whl", hash = "sha256:6ebe3d92acb1bf06d1834290a733853cb552cd2db63ff6f66afe462588ce9f82", size = 42977, upload-time = "2026-10-24T17:50:35.535Z" },
-]
-
-[[package]]
-name = "dbt-extractor"
-version = "0.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f1/06/1f7b5d277af4bd7c3ab5065f79407c46a73950f0879fac69e51067c87649/dbt_extractor-0.6.0.tar.gz", hash = "sha256:d6cf08ec793b8bc2bd6e260ef818230ae68a4f71436fa489f08d7db1a52e2ffe", size = 270461, upload-time = "2025-04-07T16:46:30.532Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9f/dd/ec8f9e48e7dd5a52a69cca7907681d1779cf1cc8b02f2aa2acb6a2bf8bb4/dbt_extractor-0.6.0-cp39-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:4b6b1e70dde78cb904ca7a8958c2c803e77779b6ce108f4ea7ac479f5700db89", size = 790206, upload-time = "2025-04-07T16:46:05.352Z" },
-    { url = "https://files.pythonhosted.org/packages/03/5f/233f326336aa21fbd9e7268f239a8464af145abd398a360d894c3286699d/dbt_extractor-0.6.0-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:dcf14ed245de8df269815ff4c4f555fa72d2621f4fff37c023b8c99d0e421b4f", size = 404381, upload-time = "2025-04-07T16:46:07.471Z" },
-    { url = "https://files.pythonhosted.org/packages/c9/2a/e14c13b9a437780c5712525ce537915b531bba45481fc7102deb4492ff83/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:af451633390ac19669d3bde6c79822e657d32f5d903b3388bb00d56333fd52d5", size = 435109, upload-time = "2025-04-07T16:46:09.443Z" },
-    { url = "https://files.pythonhosted.org/packages/58/2e/1ef1cd2b36973bea0a6823a7b7cd1b3db29b61ddebb015ceaea88b9e9347/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:05bcfab7ebd70296ceb31742e8333ba66a2c939de44e61a7088bebafa939aaf6", size = 434550, upload-time = "2025-04-07T16:46:10.916Z" },
-    { url = "https://files.pythonhosted.org/packages/40/5a/468a2855181aaee5402efbf9ef757d074cd306eec22bbcd267cdd0edbe94/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:71b3f8897138cc6698d313b9a3d0450fd021937ff5463269ee18ed415541781b", size = 470137, upload-time = "2025-04-07T16:46:12.36Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/18/611dceb2fa7ea668471f290f34fec55fa3283e3ee9d0475d964e6ffaff97/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:868af715a6328d7317ce6e4db238f850f660fef13fb36b7ab4cf9163ed5f54ff", size = 524331, upload-time = "2025-04-07T16:46:14.177Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/ad/9dd410d4d95e336ae6b10c53c939bf1ff8e9991e1adb5ea4aefc4a87c445/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:c1fd2b083a75e80b13e9874dc9699bfdfddf3baa9b6a8dea48de06d51a082733", size = 517959, upload-time = "2025-04-07T16:46:15.68Z" },
-    { url = "https://files.pythonhosted.org/packages/a4/4f/6994cdfb51c5652fad0c8f9cf5b3ec1816cb10e99ed145eb27e6a9bcc16b/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:311f0d3a4994751c541a4fa303d205727ba90e90c85286c03d3d9284e2bf0bd4", size = 494850, upload-time = "2025-04-07T16:46:17.265Z" },
-    { url = "https://files.pythonhosted.org/packages/df/5e/fad01e18d68ffd09c0f39cdedeed8fcaaea74a8b46d1a944472b5f95b72b/dbt_extractor-0.6.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aecfa43f7e6f139e76d47e4e1d7b189655ae19a8cf697686230bacb89a94ae74", size = 442739, upload-time = "2025-04-07T16:46:19.002Z" },
-    { url = "https://files.pythonhosted.org/packages/9d/82/49068ee2b9f38aa34d0f3196bb7b71d11af86630d5ed5cb6626108c97cd6/dbt_extractor-0.6.0-cp39-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a5cb810edc60c0486f78cc29739ebda70c81b10a1686861e78addc9f91fcd7de", size = 618014, upload-time = "2025-04-07T16:46:21.571Z" },
-    { url = "https://files.pythonhosted.org/packages/18/c6/cdaf1ac8959d571b5cb3587b8afef9e5fe60b99fe59aca94560808501d8b/dbt_extractor-0.6.0-cp39-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:080fd1edf123926ed97929c65a75874d0fea687ccd5d3ebbc9e81b339f099604", size = 697290, upload-time = "2025-04-07T16:46:23.089Z" },
-    { url = "https://files.pythonhosted.org/packages/94/6d/46bdb9a809c66784fcc19b853311568cfd3041c075f0a578cb7116686841/dbt_extractor-0.6.0-cp39-abi3-musllinux_1_2_i686.whl", hash = "sha256:1b9ed7b15df983a735f87773f6765db8458680c02fcebbf89df4e238503c0e08", size = 644443, upload-time = "2025-04-07T16:46:24.463Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/02/b111856273e414ac80ef58d2103c9b7c6a5b29b1ec248999d3d5873ada00/dbt_extractor-0.6.0-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:caeaba8d8c813f8e32d586c12615c0c7d6b99bee4f1be845312e80ef731de164", size = 613017, upload-time = "2025-04-07T16:46:25.913Z" },
-    { url = "https://files.pythonhosted.org/packages/c4/de/d1492ab6beaf0a18aee17c7a9562592ac2981e962b4058262f5eb6dabfc5/dbt_extractor-0.6.0-cp39-abi3-win32.whl", hash = "sha256:369dcc3499f160256756585783f1308868076d5a65d0a051348d22da8b90e67d", size = 252721, upload-time = "2025-04-07T16:46:27.295Z" },
-    { url = "https://files.pythonhosted.org/packages/60/36/f5b1c4159fa911607f3a49fcbc535e4783870fd887bc0a1b3ad42587cb73/dbt_extractor-0.6.0-cp39-abi3-win_amd64.whl", hash = "sha256:a79a570fdcb672505ac2bdc12360a2a7aec622ef604d8c607225854ff862518c", size = 277146, upload-time = "2025-04-07T16:46:28.991Z" },
 ]
 
 [[package]]
@@ -5135,7 +5111,6 @@ dependencies = [
     { name = "collate-data-diff" },
     { name = "collate-sqllineage" },
     { name = "cryptography" },
-    { name = "dbt-extractor" },
     { name = "dnspython", version = "2.9.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "email-validator" },
     { name = "filelock", version = "4.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -5382,10 +5357,10 @@ requires-dist = [
     { name = "cloud-sql-python-connector", extras = ["pymysql"], marker = "extra == 'mysql'", specifier = ">=1.0.0,<2.0.0" },
     { name = "cloud-sql-python-connector", extras = ["pymysql"], marker = "extra == 'playwright'", specifier = ">=1.0.0,<2.0.0" },
     { name = "cloud-sql-python-connector", extras = ["pymysql"], marker = "extra == 'slim'", specifier = ">=1.0.0,<2.0.0" },
-    { name = "collate-data-diff", specifier = ">=0.11.18" },
-    { name = "collate-data-diff", marker = "extra == 'all'", specifier = ">=0.11.18" },
-    { name = "collate-data-diff", marker = "extra == 'all-dev-env'", specifier = ">=0.11.18" },
-    { name = "collate-data-diff", marker = "extra == 'slim'", specifier = ">=0.11.18" },
+    { name = "collate-data-diff", specifier = ">=0.11.19" },
+    { name = "collate-data-diff", marker = "extra == 'all'", specifier = ">=0.11.19" },
+    { name = "collate-data-diff", marker = "extra == 'all-dev-env'", specifier = ">=0.11.19" },
+    { name = "collate-data-diff", marker = "extra == 'slim'", specifier = ">=0.11.19" },
     { name = "collate-data-diff", extras = ["clickhouse"], marker = "extra == 'all'" },
     { name = "collate-data-diff", extras = ["clickhouse"], marker = "extra == 'all-dev-env'" },
     { name = "collate-data-diff", extras = ["clickhouse"], marker = "extra == 'clickhouse'" },
@@ -5432,10 +5407,10 @@ requires-dist = [
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'playwright'", specifier = ">=0.1.5" },
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'slim'", specifier = ">=0.1.5" },
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'test'", specifier = ">=0.1.5" },
-    { name = "collate-sqllineage", specifier = "==2.1.9" },
-    { name = "collate-sqllineage", marker = "extra == 'all'", specifier = "==2.1.9" },
-    { name = "collate-sqllineage", marker = "extra == 'all-dev-env'", specifier = "==2.1.9" },
-    { name = "collate-sqllineage", marker = "extra == 'slim'", specifier = "==2.1.9" },
+    { name = "collate-sqllineage", specifier = "==2.1.10" },
+    { name = "collate-sqllineage", marker = "extra == 'all'", specifier = "==2.1.10" },
+    { name = "collate-sqllineage", marker = "extra == 'all-dev-env'", specifier = "==2.1.10" },
+    { name = "collate-sqllineage", marker = "extra == 'slim'", specifier = "==2.1.10" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'all'", specifier = ">=2.15.0,<3" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'all-dev-env'", specifier = ">=2.15.0,<3" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'kafka'", specifier = ">=2.15.0,<3" },
@@ -5491,10 +5466,6 @@ requires-dist = [
     { name = "databricks-sqlalchemy", marker = "extra == 'databricks'", specifier = "~=2.0.9" },
     { name = "databricks-sqlalchemy", marker = "extra == 'slim'", specifier = "~=2.0.9" },
     { name = "datamodel-code-generator", marker = "extra == 'dev'", specifier = "==0.83.0" },
-    { name = "dbt-extractor", specifier = ">=0.5.0" },
-    { name = "dbt-extractor", marker = "extra == 'all'", specifier = ">=0.5.0" },
-    { name = "dbt-extractor", marker = "extra == 'all-dev-env'", specifier = ">=0.5.0" },
-    { name = "dbt-extractor", marker = "extra == 'slim'", specifier = ">=0.5.0" },
     { name = "dirty-equals", marker = "extra == 'test'" },
     { name = "dirty-equals", marker = "extra == 'test-unit'" },
     { name = "dnspython", marker = "python_full_version >= '3.11'", specifier = ">=2.9.2" },

@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.getHttpSession;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,6 +49,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
@@ -163,13 +165,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.issuer = issuer;
   }
 
-  /**
-   * Gets the SSO handler from SecurityConfigurationManager. This is resolved dynamically from
-   * database configuration, allowing configuration changes without server restart.
-   */
-  private AuthenticationCodeFlowHandler getSsoHandler() {
+  /** Both ends of the OIDC round trip resolve the handler installed for this server. */
+  public AuthenticationCodeFlowHandler getSsoHandler(ServletContext context) {
     try {
-      return AuthenticationCodeFlowHandler.getInstance();
+      return AuthServeletHandlerRegistry.getOidcHandlerForMcp(context, getBaseUrl());
     } catch (Exception e) {
       LOG.warn("SSO handler not available: {}", e.getMessage());
       return null;
@@ -337,7 +336,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private CompletableFuture<String> handleSSOAuthorization(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
-    AuthenticationCodeFlowHandler ssoHandler = getSsoHandler();
+    AuthenticationCodeFlowHandler ssoHandler =
+        getSsoHandler(currentRequest.get().getServletContext());
     if (ssoHandler == null) {
       throw new AuthorizeException(
           "server_error", "SSO authentication is not available. SSO handler not initialized.");
@@ -352,13 +352,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       LOG.debug("Created pending auth request: {}", authRequestId);
 
-      // Use serverUrl + "/mcp/callback" as the redirectUri parameter for MCP flow detection.
-      // AuthenticationCodeFlowHandler.handleLogin() matches this against expectedMcpCallback
-      // to detect MCP flow, then uses the SSO-registered callback URL for the actual redirect_uri
-      // sent to the SSO provider. After auth, AuthCallbackServlet forwards to /mcp/callback.
-      String serverUrl =
-          SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration().getServerUrl();
-      String mcpCallbackUrl = serverUrl + "/mcp/callback";
+      // Public OIDC returns directly to the MCP callback. Confidential OIDC can share the
+      // registered web callback, which forwards the pending MCP state to this same servlet.
+      String mcpCallbackUrl = ssoHandler.getMcpCallbackUrl();
       LOG.info("Starting SSO redirect for MCP OAuth (MCP callback: {})", mcpCallbackUrl);
 
       HttpServletRequest wrappedRequest =

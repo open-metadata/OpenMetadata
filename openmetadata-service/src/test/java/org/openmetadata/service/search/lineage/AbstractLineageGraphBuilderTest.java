@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.QueryFilterParser;
 
 class AbstractLineageGraphBuilderTest {
@@ -738,6 +739,48 @@ class AbstractLineageGraphBuilderTest {
     assertTrue(builder.hasNodeLevelFilters("{\"wildcard\":{\"name\":{\"value\":\"*sales*\"}}}"));
     assertTrue(builder.hasNodeLevelFilters("{\"term\":{\"ownerName\":\"harsha\"}}"));
     assertTrue(builder.hasNodeLevelFilters("{\"term\":{\"domains.name.keyword\":\"Finance\"}}"));
+  }
+
+  @Test
+  void applyInMemoryFiltersWithPathPreservationMatchesLeafColumnAndDatabase() {
+    Map<String, NodeInformation> nodes = new HashMap<>();
+    nodes.put(ROOT_FQN, nodeAtDepth(0));
+    nodes.put(
+        "svc.db.schema.mid",
+        new NodeInformation()
+            .withEntity(
+                Map.of(
+                    "columns", List.of(Map.of("name", "id")),
+                    "database", Map.of("displayName", "mid_db")))
+            .withNodeDepth(1));
+    nodes.put(
+        "svc.db.schema.leaf",
+        new NodeInformation()
+            .withEntity(
+                Map.of(
+                    "columns", List.of(Map.of("name", "id"), Map.of("name", "email")),
+                    "database", Map.of("displayName", "leaf_db")))
+            .withNodeDepth(2));
+    SearchLineageResult result = resultWithNodes(nodes);
+    Map<String, EsLineageData> downEdges = new HashMap<>();
+    downEdges.put("e1", edge(ROOT_FQN, "svc.db.schema.mid"));
+    downEdges.put("e2", edge("svc.db.schema.mid", "svc.db.schema.leaf"));
+    result.setDownstreamEdges(downEdges);
+
+    for (String filter :
+        List.of(
+            "{\"term\":{\"columns.name.keyword\":\"email\"}}",
+            "{\"term\":{\"database.displayName.keyword\":\"leaf_db\"}}")) {
+      SearchLineageRequest request =
+          new SearchLineageRequest().withFqn(ROOT_FQN).withQueryFilter(filter);
+      SearchLineageResult out =
+          builder.applyInMemoryFiltersWithPathPreservation(
+              JsonUtils.deepCopy(result, SearchLineageResult.class), request);
+      assertEquals(
+          Set.of(ROOT_FQN, "svc.db.schema.mid", "svc.db.schema.leaf"),
+          out.getNodes().keySet(),
+          filter);
+    }
   }
 
   @Test
