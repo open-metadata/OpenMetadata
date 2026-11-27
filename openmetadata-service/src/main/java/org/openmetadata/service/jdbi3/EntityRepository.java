@@ -4680,6 +4680,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // Data product lineage is recounted from the HAS rows, so the pairs the rewrite can change are
+    // read before it as well as after it.
+    Set<Pair<UUID, UUID>> dataProductPairs = importDataProductPairs(originals, updatedEntities);
+
     // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
     // parents before the flush rewrites their edges.
     List<List<EntityReference>> previousParents =
@@ -4700,6 +4704,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           for (T entity : updatedEntities) {
             invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
           }
+          recountImportedDataProductLineage(dataProductPairs, originals, updatedEntities);
         });
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
@@ -4718,6 +4723,58 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return new ChangeDescription()
         .withPreviousVersion(original.getVersion())
         .withChangeSummary(changeSummary);
+  }
+
+  /**
+   * The data product pairs an import can change: each product a changed entity gains or loses,
+   * against each product its lineage neighbours hold when this runs. Read before and after the HAS
+   * rewrite, they cover the neighbours' products on both sides too.
+   */
+  private Set<Pair<UUID, UUID>> importDataProductPairs(List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    for (int i = 0; i < originals.size(); i++) {
+      Set<UUID> moved = movedDataProducts(originals.get(i), updates.get(i));
+      if (!moved.isEmpty()) {
+        pairs.addAll(dataProductPairs(originals.get(i).getId(), moved));
+      }
+    }
+    return pairs;
+  }
+
+  private void recountImportedDataProductLineage(
+      Set<Pair<UUID, UUID>> pairsBefore, List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>(pairsBefore);
+    pairs.addAll(importDataProductPairs(originals, updates));
+    LineageUtil.recountDataProductsLineage(pairs);
+  }
+
+  // A product the entity keeps changes no pair of its own: a changed neighbour's entry covers it.
+  private Set<UUID> movedDataProducts(T original, T update) {
+    Set<UUID> before = referenceIds(listOrEmpty(original.getDataProducts()));
+    Set<UUID> after = referenceIds(listOrEmpty(update.getDataProducts()));
+    Set<UUID> moved = new HashSet<>(before);
+    moved.addAll(after);
+    moved.removeIf(product -> before.contains(product) && after.contains(product));
+    return moved;
+  }
+
+  private Set<Pair<UUID, UUID>> dataProductPairs(UUID entityId, Set<UUID> dataProductIds) {
+    Set<UUID> downstream =
+        heldDataProducts(
+            daoCollection.relationshipDAO().findDownstreamDataProducts(entityId, entityType));
+    Set<UUID> upstream =
+        heldDataProducts(
+            daoCollection.relationshipDAO().findUpstreamDataProducts(entityId, entityType));
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    for (UUID dataProductId : dataProductIds) {
+      downstream.forEach(neighbour -> pairs.add(Pair.of(dataProductId, neighbour)));
+      upstream.forEach(neighbour -> pairs.add(Pair.of(neighbour, dataProductId)));
+    }
+    return pairs;
+  }
+
+  private static Set<UUID> heldDataProducts(List<CollectionDAO.EntityRelationshipObject> has) {
+    return has.stream().map(row -> UUID.fromString(row.getFromId())).collect(Collectors.toSet());
   }
 
   @SuppressWarnings("unused")
@@ -10404,13 +10461,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   static List<List<EntityReference>> moveTargets(
       final List<EntityReference> ownDomains, final List<EntityReference> written) {
-    final Set<UUID> storedIds = domainIds(ownDomains);
+    final Set<UUID> storedIds = referenceIds(ownDomains);
     final List<List<EntityReference>> added =
         written.stream()
             .filter(domain -> !storedIds.contains(domain.getId()))
             .map(List::of)
             .toList();
-    final boolean removesOnly = added.isEmpty() && !storedIds.equals(domainIds(written));
+    final boolean removesOnly = added.isEmpty() && !storedIds.equals(referenceIds(written));
     return removesOnly ? List.of(written) : added;
   }
 
@@ -10440,8 +10497,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     };
   }
 
-  private static Set<UUID> domainIds(final List<EntityReference> domains) {
-    return domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  private static Set<UUID> referenceIds(final List<EntityReference> references) {
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   // A user's write is never let through unchecked: without an authorizer it is refused.
@@ -12586,8 +12643,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           Relationship.HAS,
           entityType,
           original.getId());
-      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
-      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      // The rollups follow the persisted entity; consolidation replays this diff against reverted
+      // baselines they never saw.
+      if (isIndexBaselinePass()
+          && !referenceIds(origDataProducts).equals(referenceIds(updatedDataProducts))) {
+        removeDataProductsLineage(original.getId(), entityType, origDataProducts);
+        addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      }
     }
 
     private void updateExperts() {
