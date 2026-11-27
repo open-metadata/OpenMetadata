@@ -1614,7 +1614,8 @@ class LookerSource(DashboardServiceSource):
 
         The data model's columns are the view's fields, so a table column reaches the data model
         only through the fields reading it. A field whose SQL names no column keeps the match on
-        its own name: Looker reads a field without `sql` as `${TABLE}.<field>`."""
+        its own name: Looker reads a field without `sql` as `${TABLE}.<field>`.
+        ADR:2026-11-27-looker-view-column-lineage-reaches-the-fields-reading-each-column"""
         column_lineage = self._extract_column_lineage(view)
         mapped_fields = {field_name for _, field_name in column_lineage}
         fields_by_column: dict[str, set[str]] = {}
