@@ -62,11 +62,16 @@ function getActiveAgents(agents: Agent[]): Agent[] {
 
 function getAgentCounts(
   activeAgents: Agent[],
+  neverRunOnPage: number,
   totalAgents: number | undefined
 ): AgentCounts {
   // Denominator counts the agents this page cannot see; the render gate below stays on the page's own
-  // active agents, so a service whose agents have all never run still shows nothing.
-  const total = Math.max(activeAgents.length, totalAgents ?? 0);
+  // active agents, so a service whose agents have all never run still shows nothing. `totalAgents`
+  // includes the page's never-run agents, which would otherwise surface as "queued" forever.
+  const total = Math.max(
+    activeAgents.length,
+    (totalAgents ?? 0) - neverRunOnPage
+  );
   const running = activeAgents.filter((a) => a.status === 'running').length;
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
@@ -191,7 +196,11 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const activeAgents = getActiveAgents(agents);
-  const counts = getAgentCounts(activeAgents, totalAgents);
+  const counts = getAgentCounts(
+    activeAgents,
+    agents.length - activeAgents.length,
+    totalAgents
+  );
   const { total } = counts;
   const assets = getLatestMetadataAssets(activeAgents);
   const errors = getTotalErrors(activeAgents);

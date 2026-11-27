@@ -450,6 +450,10 @@ configSource:
   confirmProviderChange: ${SECURITY_CONFIG_SOURCE_CONFIRM_PROVIDER_CHANGE:-false}
   watchIntervalSeconds: ${CONFIG_SOURCE_WATCH_INTERVAL_SECONDS:-10}
 
+mcpConfiguration:
+  offeredTools: ${MCP_OFFERED_TOOLS:-[]}
+  # extensions: {}
+
 appConfiguration:
   # Tenant default app mode ("ai" or "classic") for users who have not chosen one.
   # Admins change it at runtime; user and persona app mode still win over it.

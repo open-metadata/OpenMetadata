@@ -52,42 +52,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
-
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-
-      - name: Caching Yarn dependencies
-        uses: actions/cache@v6
-        id: yarn-cache
-        with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-yarn-
-
-      - name: Install Antlr4 CLI
-        run: sudo make install_antlr_cli
-
-      - name: Install Yarn Packages
+      - name: Install UI dependencies
         id: yarn_install
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: |
-          # Retry transient registry failures (5xx on tarball fetches) —
-          # yarn v1 does not retry HTTP errors on its own.
-          for attempt in 1 2 3; do
-            yarn install --network-timeout 100000 && break
-            if [[ "$attempt" -eq 3 ]]; then
-              echo "yarn install failed after 3 attempts" >&2
-              exit 1
-            fi
-            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
-            sleep $((attempt * 15))
-          done
+        uses: ./.github/actions/setup-ui
 
       # test:cov-summary writes only json-summary; Sonar reads lcov.info.
       - name: Run Coverage

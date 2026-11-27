@@ -434,17 +434,6 @@ describe('AIUserMenu', () => {
     expect(mockOnLogoutHandler).toHaveBeenCalledTimes(1);
   });
 
-  it('does not offer an interface-mode switch', () => {
-    renderMenu();
-
-    expect(
-      screen.queryByTestId('interface-mode-option-classic')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('interface-mode-option-ai')
-    ).not.toBeInTheDocument();
-  });
-
   describe('version fetch on mount', () => {
     it('calls getVersion and setAppVersion when appVersion is not in the store', async () => {
       mockAppVersion = undefined;

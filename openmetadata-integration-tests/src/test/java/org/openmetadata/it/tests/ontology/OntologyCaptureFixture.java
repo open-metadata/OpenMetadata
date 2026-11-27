@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.ontology;
 
 import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
 import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withRepositories;
 
 import java.net.URI;
 import java.time.Clock;
@@ -20,15 +21,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
@@ -41,17 +38,12 @@ public final class OntologyCaptureFixture {
     withDatabase(
         handle -> {
           migrate(handle, dialect);
-          final var registry = EntityRegistrySnapshot.capture();
-          Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
-          Entity.setEntityRelationshipRepository(
-              new EntityRelationshipRepository(Entity.getCollectionDAO()));
-          try {
-            new SystemRepository();
-            new TaskRepository();
-            assertion.accept(new Fixture(handle));
-          } finally {
-            registry.restore();
-          }
+          withRepositories(
+              handle,
+              () -> {
+                new TaskRepository();
+                assertion.accept(new Fixture(handle));
+              });
         });
   }
 

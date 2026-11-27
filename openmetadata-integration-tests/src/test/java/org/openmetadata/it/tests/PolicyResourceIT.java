@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -55,10 +57,12 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.policies.PolicyResource;
 
 /**
@@ -73,6 +77,7 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
   private static final String ALL_RESOURCES = "All";
+  private static final String DEFAULT_POLICY = "ScimBotPolicy";
 
   public PolicyResourceIT() {
     supportsEntityStatus = false;
@@ -361,6 +366,86 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
     assertNotNull(policy1);
     assertNotNull(policy2);
+  }
+
+  @Test
+  void put_defaultPolicy_keepsSystemMarks(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    assertEquals(ProviderType.SYSTEM, policy.getProvider());
+    assertEquals(Boolean.FALSE, policy.getAllowDelete());
+
+    CreatePolicy putBody =
+        new CreatePolicy()
+            .withName(policy.getName())
+            .withDisplayName(policy.getDisplayName())
+            .withDescription(ns.prefix("replaced"))
+            .withRules(policy.getRules())
+            .withEnabled(policy.getEnabled());
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/policies", putBody, Policy.class);
+
+    Policy reloaded = client.policies().getByName(DEFAULT_POLICY);
+    assertEquals(ns.prefix("replaced"), reloaded.getDescription());
+    assertEquals(ProviderType.SYSTEM, reloaded.getProvider());
+    assertEquals(Boolean.FALSE, reloaded.getAllowDelete());
+    String policyId = reloaded.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(policyId));
+    assertEquals(400, deleteError.getStatusCode());
+  }
+
+  @Test
+  void patch_defaultPolicyProvider_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/policies/" + policy.getId(),
+                        providerToUser,
+                        Policy.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(ProviderType.SYSTEM, client.policies().getByName(DEFAULT_POLICY).getProvider());
+  }
+
+  @Test
+  void patch_defaultPolicyAllowDelete_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    JsonNode allowDeleteToTrue =
+        new ObjectMapper()
+            .readTree(
+                "[{\"op\":\"replace\",\"path\":\"/allowDelete\",\"value\":true},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + ns.prefix("lifted")
+                    + "\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/policies/" + policy.getId(),
+                        allowDeleteToTrue,
+                        Policy.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(Boolean.FALSE, client.policies().getByName(DEFAULT_POLICY).getAllowDelete());
+    String policyId = policy.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(policyId));
+    assertEquals(400, deleteError.getStatusCode());
   }
 
   @Test

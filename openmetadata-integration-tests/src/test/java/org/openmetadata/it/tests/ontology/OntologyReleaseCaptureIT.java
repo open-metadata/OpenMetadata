@@ -2,11 +2,14 @@ package org.openmetadata.it.tests.ontology;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withRepositories;
 
 import jakarta.ws.rs.ForbiddenException;
 import java.net.URI;
@@ -49,9 +52,64 @@ import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.BoundAssetLinks;
 import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
+import org.openmetadata.service.util.AsyncService;
 
 @Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
 class OntologyReleaseCaptureIT {
+  @Test
+  void fixtureRestoresNullRepositoryRegistration() {
+    withDatabase(
+        handle -> {
+          var repositories = EntityRegistrySnapshot.registeredRepositories();
+          String entityType = Entity.WORKFLOW_DEFINITION;
+          boolean wasRegistered = repositories.containsKey(entityType);
+          var previous = repositories.put(entityType, null);
+          try {
+            withRepositories(handle, () -> assertNotNull(repositories.get(entityType)));
+            assertTrue(repositories.containsKey(entityType));
+            assertNull(repositories.get(entityType));
+          } finally {
+            if (wasRegistered) {
+              repositories.put(entityType, previous);
+            } else {
+              repositories.remove(entityType);
+            }
+          }
+        });
+  }
+
+  @Test
+  void reportsFailureFromNestedFixtureWorkBeforeClosingTheDatabase() {
+    ConnectionType dialect = ScratchDatabase.dialect();
+    var expected = new IllegalStateException("Expected background test failure");
+    AssertionError failure =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                withCapture(
+                    dialect,
+                    fixture ->
+                        AsyncService.getInstance()
+                            .execute(
+                                () ->
+                                    AsyncService.getInstance()
+                                        .execute(
+                                            () -> {
+                                              assertSame(
+                                                  fixture.ontologies,
+                                                  Entity.getEntityRepository(Entity.ONTOLOGY));
+                                              assertEquals(
+                                                  fixture.ontology.getId(),
+                                                  fixture
+                                                      .ontologies
+                                                      .getDao()
+                                                      .findEntityById(fixture.ontology.getId())
+                                                      .getId());
+                                              throw expected;
+                                            }))));
+    assertSame(expected, failure.getCause());
+  }
+
   @Test
   void decidedReleasesCannotBeSubmittedForAnotherReview() {
     ConnectionType dialect = ScratchDatabase.dialect();

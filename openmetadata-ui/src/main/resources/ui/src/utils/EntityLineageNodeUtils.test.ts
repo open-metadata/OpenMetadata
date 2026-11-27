@@ -46,6 +46,22 @@ describe('getNodeLineageData', () => {
 
     expect(result.lineageSqlQueries).toEqual(lineageSqlQueries);
   });
+
+  // A lineage node is a search document; one without a `columns` array used
+  // to throw inside the layout and blank the whole canvas.
+  it.each(['table', 'dashboardDataModel'])(
+    'should give a %s without columns no children instead of throwing',
+    (entityType) => {
+      const node = {
+        id: 'n1',
+        name: 'target',
+        fullyQualifiedName: 'svc.db.sch.target',
+        entityType,
+      } as unknown as EntityReference;
+
+      expect(getNodeLineageData(node).flattenChildren).toEqual([]);
+    }
+  );
 });
 
 describe('getUpstreamDownstreamNodesEdges', () => {
