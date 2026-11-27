@@ -69,12 +69,10 @@ class DistinctCount(StaticMetric):
                 df_col_value = df[self.col.name].dropna().to_list()
                 try:
                     counter.update(df_col_value)
-                except TypeError as err:
-                    if isinstance(df_col_value, list):
-                        for value in df_col_value:
-                            counter.update([json.dumps(value)])
-                    else:
-                        raise err  # noqa: TRY201
+                except TypeError:
+                    # unhashable values (e.g. lists or dicts) are counted by their JSON form
+                    for value in df_col_value:
+                        counter.update([json.dumps(value)])
             return len(counter.keys())
         except Exception as err:
             logger.debug(
