@@ -2466,7 +2466,7 @@ class DbtSource(DbtServiceSource):
                         # mistake, not an ingestion failure, so it must not fail the run
                         dbt_test[DbtCommonEnum.SKIPPED_MISSING_COLUMN.value] = True
                         self.status.warning(
-                            test_case_fqn,
+                            test_case_fqn or manifest_node.name,
                             f"Skipped dbt test [{manifest_node.name}]: column [{missing_column}] does not exist"
                             f" in table [{table_fqn}]. Fix the column name in the dbt schema.yml, or re-run"
                             " the metadata ingestion of the table if the column was added recently.",
@@ -2498,13 +2498,15 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def _missing_test_column(self, table_fqn: str, manifest_node) -> str | None:
+    def _missing_test_column(self, table_fqn: str, manifest_node: Any) -> str | None:
         """
         The column a dbt test names when the table in OpenMetadata provably lacks it. An
         unknown table or one without columns is left for the server to judge.
         """
         column_name = get_manifest_column_name(manifest_node)
-        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn) if column_name else None
+        if not column_name:
+            return None
+        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         if table and table.columns and resolve_column_path(table, column_name)[0] is None:
             return column_name
         return None
