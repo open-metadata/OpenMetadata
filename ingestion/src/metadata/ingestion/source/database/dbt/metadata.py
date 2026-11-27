@@ -23,6 +23,7 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any
 
+from metadata.data_quality.processor.test_case_runner import resolve_column_path
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup
 from metadata.entity_resolution.table_search import get_table_binding_resolution
@@ -2412,7 +2413,17 @@ class DbtSource(DbtServiceSource):
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
                     description = get_dbt_test_description(manifest_node)
-                    if test_case is None:
+                    if test_case is None and (missing_column := self._missing_test_column(table_fqn, manifest_node)):
+                        # The server rejects it with "Invalid column name"; that is a schema.yml
+                        # mistake, not an ingestion failure, so it must not fail the run
+                        dbt_test[DbtCommonEnum.SKIPPED_MISSING_COLUMN.value] = True
+                        self.status.warning(
+                            test_case_fqn or manifest_node.name,
+                            f"Skipped dbt test [{manifest_node.name}]: column [{missing_column}] does not exist"
+                            f" in table [{table_fqn}]. Fix the column name in the dbt schema.yml, or re-run"
+                            " the metadata ingestion of the table if the column was added recently.",
+                        )
+                    elif test_case is None:
                         # Create the test case only if it does not exist
                         entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
                         test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
@@ -2438,6 +2449,19 @@ class DbtSource(DbtServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _missing_test_column(self, table_fqn: str, manifest_node: Any) -> str | None:
+        """
+        The column a dbt test names when the table in OpenMetadata provably lacks it. An
+        unknown table or one without columns is left for the server to judge.
+        """
+        column_name = get_manifest_column_name(manifest_node)
+        if not column_name:
+            return None
+        table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        if table and table.columns and resolve_column_path(table, column_name)[0] is None:
+            return column_name
+        return None
 
     def patch_dbt_test_case_description(self, test_case: TestCase, description: str | None) -> None:
         """
@@ -2612,7 +2636,7 @@ class DbtSource(DbtServiceSource):
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-            if manifest_node:
+            if manifest_node and not dbt_test.get(DbtCommonEnum.SKIPPED_MISSING_COLUMN.value):
                 node_name = manifest_node.name
                 logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
