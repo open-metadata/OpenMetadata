@@ -12,7 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { ReactNode, useCallback, useMemo } from 'react';
+import { toast } from '@openmetadata/ui-core-components';
+import { ReactNode, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -56,6 +57,8 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
     useAuthProvider();
 
+  const loginErrorToastRef = useRef<string>();
+
   const handleLogin = useCallback(
     async (email: string, password: string) => {
       try {
@@ -88,7 +91,12 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
           // password.
           const err = error as AxiosError<{ message?: string; error?: string }>;
 
-          showErrorToast(
+          // Replace the previous attempt's error rather than stacking under it,
+          // so the latest result (e.g. the lockout notice) is the one shown.
+          if (loginErrorToastRef.current) {
+            toast.dismiss(loginErrorToastRef.current);
+          }
+          loginErrorToastRef.current = showErrorToast(
             err.response?.data?.message ??
               err.response?.data?.error ??
               LOGIN_FAILED_ERROR
