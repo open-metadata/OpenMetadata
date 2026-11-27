@@ -17,21 +17,12 @@ import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyEditModalProps } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal.interface';
 import HeaderCustomPropertyEditor from './HeaderCustomPropertyEditor';
 
-const mockOnPropertyValueSave = jest.fn().mockResolvedValue(undefined);
+const mockOnSave = jest.fn().mockResolvedValue(undefined);
 const mockShowErrorToast = jest.fn();
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
-
-jest.mock(
-  '../../common/CustomPropertyTable/useCustomPropertyValueSave',
-  () => ({
-    useCustomPropertyValueSave: () => ({
-      onPropertyValueSave: mockOnPropertyValueSave,
-    }),
-  })
-);
 
 jest.mock(
   '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal',
@@ -56,9 +47,12 @@ const property = {
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 describe('HeaderCustomPropertyEditor', () => {
-  it('opens the editor from its trigger and saves through the entity update', async () => {
+  it('opens the editor from its trigger and saves the value', async () => {
     render(
-      <HeaderCustomPropertyEditor property={property} value={undefined}>
+      <HeaderCustomPropertyEditor
+        property={property}
+        value={undefined}
+        onSave={mockOnSave}>
         <Button data-testid="open-editor">add</Button>
       </HeaderCustomPropertyEditor>
     );
@@ -71,15 +65,18 @@ describe('HeaderCustomPropertyEditor', () => {
 
     await user.click(screen.getByTestId('save-value'));
 
-    expect(mockOnPropertyValueSave).toHaveBeenCalledWith(property, 'Karan');
+    expect(mockOnSave).toHaveBeenCalledWith('Karan');
     expect(screen.queryByTestId('save-value')).not.toBeInTheDocument();
   });
 
   it('keeps the editor open and reports the error when the save fails', async () => {
     const error = new Error('save failed');
-    mockOnPropertyValueSave.mockRejectedValueOnce(error);
+    mockOnSave.mockRejectedValueOnce(error);
     render(
-      <HeaderCustomPropertyEditor property={property} value="Anika">
+      <HeaderCustomPropertyEditor
+        property={property}
+        value="Anika"
+        onSave={mockOnSave}>
         <Button data-testid="open-editor">edit</Button>
       </HeaderCustomPropertyEditor>
     );

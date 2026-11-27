@@ -15,6 +15,7 @@ import { PageType } from '../../../src/generated/system/ui/page';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -81,6 +82,36 @@ const setShowEmpty = (panel: Locator, on: boolean) =>
     on
   );
 
+/** Sets a pinned custom property from the header, then checks the value survives a reload. */
+const setPinnedValueFromHeader = async (
+  page: Page,
+  property: Locator,
+  entityApiPath: string,
+  value: string
+) => {
+  await property.getByTestId('edit-custom-property-value').click();
+  const dialog = page.getByTestId('custom-property-edit-modal');
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId('value-input').fill(value);
+
+  const patch = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().includes(entityApiPath) &&
+      response.request().method() === 'PATCH',
+    200
+  );
+  await dialog.getByTestId('inline-save-btn').click();
+  await patch;
+
+  await expect(property).toContainText(value);
+
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(property).toContainText(value);
+};
+
 const openCustomizeHeader = async (page: Page, persona: PersonaClass) => {
   await page.goto(
     `/customize-page/${encodeURIComponent(
@@ -101,6 +132,7 @@ test.describe(
   { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     let table: TableClass;
+    let topic: TopicClass;
     let viewer: UserClass;
     // Customized through the customize page by the tests below.
     let editorPersona: PersonaClass;
@@ -108,13 +140,15 @@ test.describe(
     let viewerPersona: PersonaClass;
     let propertyName: string;
     let propertyValue: string;
+    let topicPropertyName: string;
 
     test.beforeAll(
-      'Create the personas, the persona user and a table with a custom property',
+      'Create the personas, the persona user, and a table and a topic with custom properties',
       async ({ browser }) => {
         test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         table = new TableClass();
+        topic = new TopicClass();
         viewer = new UserClass();
         editorPersona = new PersonaClass();
         viewerPersona = new PersonaClass();
@@ -122,6 +156,7 @@ test.describe(
 
         await settleAll([
           table.create(apiContext),
+          topic.create(apiContext),
           viewer.create(apiContext),
           editorPersona.create(apiContext),
         ]);
@@ -133,8 +168,21 @@ test.describe(
           [CustomPropertyTypeByName.STRING]
         );
         propertyName = Object.values(customProperties)[0].property.name;
+        const { customProperties: topicProperties } =
+          await createCustomPropertyForEntity(
+            apiContext,
+            EntityTypeEndpoint.Topic,
+            [CustomPropertyTypeByName.STRING]
+          );
+        topicPropertyName = Object.values(topicProperties)[0].property.name;
 
-        // The persona user owns the table, so it may edit the custom property.
+        const ownedByViewer = {
+          op: 'add' as const,
+          path: '/owners',
+          value: [{ id: viewer.responseData.id, type: 'user' }],
+        };
+        // The persona user owns both, so it may edit their custom properties.
+        await topic.patch({ apiContext, patchData: [ownedByViewer] });
         await table.patch({
           apiContext,
           patchData: [
@@ -143,22 +191,24 @@ test.describe(
               path: '/extension',
               value: { [propertyName]: propertyValue },
             },
-            {
-              op: 'add',
-              path: '/owners',
-              value: [{ id: viewer.responseData.id, type: 'user' }],
-            },
+            ownedByViewer,
           ],
         });
-        await createPersonaEntityHeaderDoc(
-          apiContext,
-          viewerPersona,
-          PageType.Table,
+        await createPersonaEntityHeaderDoc(apiContext, viewerPersona, [
           {
-            properties: [`extension.${propertyName}`, 'tier', 'domains'],
-            showEmptyProperties: false,
-          }
-        );
+            pageType: PageType.Table,
+            entityHeader: {
+              properties: [`extension.${propertyName}`, 'tier', 'domains'],
+              showEmptyProperties: false,
+            },
+          },
+          {
+            pageType: PageType.Topic,
+            entityHeader: {
+              properties: [`extension.${topicPropertyName}`, 'owners'],
+            },
+          },
+        ]);
         await setDefaultPersona(apiContext, viewer, viewerPersona);
         viewerSession = await signInAndSaveSession(browser, viewer);
 
@@ -172,8 +222,10 @@ test.describe(
         deletePersonaDocument(apiContext, editorPersona),
         deletePersonaDocument(apiContext, viewerPersona),
         table.delete(apiContext),
+        topic.delete(apiContext),
       ]);
       await removeCustomPropertyViaApi(apiContext, 'table', propertyName);
+      await removeCustomPropertyViaApi(apiContext, 'topic', topicPropertyName);
       await viewer.delete(apiContext);
       await settleAll([
         editorPersona.delete(apiContext),
@@ -307,32 +359,33 @@ test.describe(
       });
 
       await test.step('the pencil edits the value, which survives a reload', async () => {
-        await property.getByTestId('edit-custom-property-value').click();
-        const dialog = personaUserPage.getByTestId(
-          'custom-property-edit-modal'
-        );
-        await expect(dialog).toBeVisible();
-        await dialog.getByTestId('value-input').fill(newValue);
-
-        const patch = waitForResponseWithStatus(
+        await setPinnedValueFromHeader(
           personaUserPage,
-          (response) =>
-            response
-              .url()
-              .includes(`/api/v1/tables/${table.entityResponseData.id}`) &&
-            response.request().method() === 'PATCH',
-          200
+          property,
+          `/api/v1/tables/${table.entityResponseData.id}`,
+          newValue
         );
-        await dialog.getByTestId('inline-save-btn').click();
-        await patch;
-
-        await expect(property).toContainText(newValue);
-
-        await personaUserPage.reload();
-        await waitForAllLoadersToDisappear(personaUserPage);
-
-        await expect(property).toContainText(newValue);
       });
+    });
+
+    test('the persona fills a custom property pinned to a Topic header', async ({
+      personaUserPage,
+    }) => {
+      await topic.visitEntityPage(personaUserPage);
+      const property = personaUserPage
+        .getByTestId('data-asset-header-metadata')
+        .getByTestId(`header-custom-property-${topicPropertyName}`);
+
+      await expect(
+        property.getByTestId('edit-custom-property-value')
+      ).toHaveText('Add');
+
+      await setPinnedValueFromHeader(
+        personaUserPage,
+        property,
+        `/api/v1/topics/${topic.entityResponseData.id}`,
+        `pw-topic-header-value-${uuid()}`
+      );
     });
   }
 );

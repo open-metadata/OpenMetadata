@@ -249,14 +249,13 @@ export const createPersonaAppLayoutDoc = async (
 };
 
 /**
- * Creates the persona's customization document with one page's entity header —
+ * Creates the persona's customization document with the given pages' entity headers —
  * what the customize page's Save writes for a persona without a document.
  */
 export const createPersonaEntityHeaderDoc = async (
   apiContext: APIRequestContext,
   persona: PersonaClass,
-  pageType: PageType,
-  entityHeader: EntityHeader
+  pages: { pageType: PageType; entityHeader: EntityHeader }[]
 ) => {
   const personaFqn =
     persona.responseData.fullyQualifiedName ?? persona.responseData.name;
@@ -265,7 +264,7 @@ export const createPersonaEntityHeaderDoc = async (
       name: `${persona.responseData.name}-persona.${personaFqn}`,
       fullyQualifiedName: `persona.${personaFqn}`,
       entityType: 'Page',
-      data: { pages: [{ pageType, entityHeader }] },
+      data: { pages },
     },
   });
 

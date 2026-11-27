@@ -17,29 +17,29 @@ import { CustomProperty } from '../../../generated/type/customProperty';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
 import { CustomPropertyEditModal } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
-import { useCustomPropertyValueSave } from '../../common/CustomPropertyTable/useCustomPropertyValueSave';
 
 interface HeaderCustomPropertyEditorProps {
   property: CustomProperty;
   value: unknown;
+  onSave: (value: unknown) => Promise<void>;
   /** The button that opens the editor. */
   children: ReactElement;
 }
 
-/** Opens the custom property's value editor from a header trigger and saves through the entity update. */
+/** Opens the custom property's value editor from a header trigger. */
 const HeaderCustomPropertyEditor = ({
   property,
   value,
+  onSave,
   children,
 }: HeaderCustomPropertyEditorProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { onPropertyValueSave } = useCustomPropertyValueSave();
 
   const handleSave = async (updatedValue: unknown) => {
     setIsSaving(true);
     try {
-      await onPropertyValueSave(property, updatedValue);
+      await onSave(updatedValue);
       setIsEditing(false);
     } catch (error) {
       showErrorToast(error as AxiosError);

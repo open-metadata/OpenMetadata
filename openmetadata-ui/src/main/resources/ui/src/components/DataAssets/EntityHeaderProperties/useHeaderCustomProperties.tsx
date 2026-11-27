@@ -11,25 +11,33 @@
  *  limitations under the License.
  */
 import { isUndefined } from 'lodash';
+import { useCallback } from 'react';
 import { CUSTOM_PROPERTY_HEADER_ID_PREFIX } from '../../../constants/EntityHeaderProperties.constants';
 import { EntityHeader } from '../../../generated/system/ui/page';
 import { useEntityTypeCustomProperties } from '../../../hooks/useEntityTypeCustomProperties';
+import { getAPIfromSource } from '../../../utils/Assets/AssetsUtils';
 import { getCustomPropertyHeaderId } from '../../../utils/EntityHeaderProperties.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
 import { getPropertyRenderer } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
+import { useCustomPropertyValueSave } from '../../common/CustomPropertyTable/useCustomPropertyValueSave';
+import { EntityWithExtension } from '../../common/CustomPropertyTable/useCustomPropertyValueSave.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
+import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { HeaderProperty } from './EntityHeaderProperties.types';
 import HeaderCustomPropertyEditor from './HeaderCustomPropertyEditor';
 
 interface UseHeaderCustomPropertiesArgs {
   entityType: string;
-  extension?: Record<string, unknown>;
+  entity: EntityWithExtension;
   entityHeader?: EntityHeader;
   /** The customize page lists every custom property, pinned or not. */
   listAll: boolean;
-  /** Whether the user may edit custom properties; saving also needs the page's entity update. */
+  /** Whether the user may edit custom properties. */
   canEdit: boolean;
+  /** Refreshes the page's entity after a save made outside its GenericProvider. */
+  onEntityUpdated?: (entity: DataAssetWithDomains) => void;
 }
 
 /**
@@ -39,24 +47,42 @@ interface UseHeaderCustomPropertiesArgs {
  */
 export const useHeaderCustomProperties = ({
   entityType,
-  extension,
+  entity,
   entityHeader,
   listAll,
   canEdit,
+  onEntityUpdated,
 }: UseHeaderCustomPropertiesArgs): HeaderProperty[] => {
   const pinsCustomProperty = Boolean(
     entityHeader?.properties.some((id) =>
       id.startsWith(CUSTOM_PROPERTY_HEADER_ID_PREFIX)
     )
   );
-  const { onUpdate } = useGenericContext();
+  const { onUpdate: providerUpdate } = useGenericContext<EntityWithExtension>();
+  const patchExtension = useCallback(
+    async (updated: EntityWithExtension) => {
+      const response = await getAPIfromSource(entityType as AssetsUnion)(
+        entity.id,
+        [{ op: 'add', path: '/extension', value: updated.extension }]
+      );
+      onEntityUpdated?.(response as DataAssetWithDomains);
+    },
+    [entityType, entity.id, onEntityUpdated]
+  );
+  const onUpdate =
+    providerUpdate ?? (onEntityUpdated ? patchExtension : undefined);
+  const { onPropertyValueSave } =
+    useCustomPropertyValueSave<EntityWithExtension>({
+      entityDetails: entity,
+      onUpdate,
+    });
   const canSave = canEdit && !isUndefined(onUpdate);
   const { customProperties } = useEntityTypeCustomProperties(
     listAll || pinsCustomProperty ? entityType : undefined
   );
 
   return customProperties.map((property) => {
-    const value = extension?.[property.name];
+    const value = entity.extension?.[property.name];
     const { View } = getPropertyRenderer(property.propertyType.name);
 
     return {
@@ -70,7 +96,12 @@ export const useHeaderCustomProperties = ({
       content: <View isCompact property={property} value={value} />,
       renderEditor: canSave
         ? (trigger) => (
-            <HeaderCustomPropertyEditor property={property} value={value}>
+            <HeaderCustomPropertyEditor
+              property={property}
+              value={value}
+              onSave={(updatedValue) =>
+                onPropertyValueSave(property, updatedValue)
+              }>
               {trigger}
             </HeaderCustomPropertyEditor>
           )

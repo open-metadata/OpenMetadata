@@ -128,6 +128,7 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
 import EntityHeaderProperties from '../EntityHeaderProperties/EntityHeaderProperties';
 import { HeaderProperty } from '../EntityHeaderProperties/EntityHeaderProperties.types';
+import { EntityWithExtension } from '../../common/CustomPropertyTable/useCustomPropertyValueSave.interface';
 import { useHeaderCustomProperties } from '../EntityHeaderProperties/useHeaderCustomProperties';
 import './data-asset-header.less';
 import {
@@ -552,10 +553,11 @@ export const DataAssetsHeader = ({
   );
   const customHeaderProperties = useHeaderCustomProperties({
     entityType,
-    extension: (dataAsset as { extension?: Record<string, unknown> }).extension,
+    entity: dataAsset as EntityWithExtension,
     entityHeader: headerConfig,
     listAll: isCustomizedView,
     canEdit: flags.canEditCustomFields,
+    onEntityUpdated: afterDomainUpdateAction,
   });
   const { can: canAutoPilot } = useEntityPermissions(
     ResourceEntity.APPLICATION,

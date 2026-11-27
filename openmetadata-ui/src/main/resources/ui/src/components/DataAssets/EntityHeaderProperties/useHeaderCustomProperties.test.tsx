@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook } from '@testing-library/react';
+import { render, renderHook } from '@testing-library/react';
+import { ReactElement } from 'react';
 import { useEntityTypeCustomProperties } from '../../../hooks/useEntityTypeCustomProperties';
+import HeaderCustomPropertyEditor from './HeaderCustomPropertyEditor';
 import { useHeaderCustomProperties } from './useHeaderCustomProperties';
 
 jest.mock('../../../hooks/useEntityTypeCustomProperties', () => ({
@@ -28,6 +30,11 @@ jest.mock(
 );
 
 const mockUseGenericContext = jest.fn();
+const mockPatchEntity = jest.fn();
+
+jest.mock('../../../utils/Assets/AssetsUtils', () => ({
+  getAPIfromSource: () => mockPatchEntity,
+}));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: () => mockUseGenericContext(),
@@ -53,6 +60,8 @@ const customProperties = [
   },
 ];
 
+const entity = { id: 'topic-id', extension: { steward: 'Karan' } };
+
 describe('useHeaderCustomProperties', () => {
   beforeEach(() => {
     mockUseEntityTypeCustomProperties.mockReturnValue({ customProperties });
@@ -63,6 +72,7 @@ describe('useHeaderCustomProperties', () => {
     renderHook(() =>
       useHeaderCustomProperties({
         entityType: 'table',
+        entity,
         entityHeader: { properties: ['owners'] },
         listAll: false,
         canEdit: false,
@@ -79,6 +89,7 @@ describe('useHeaderCustomProperties', () => {
     renderHook(() =>
       useHeaderCustomProperties({
         entityType: 'table',
+        entity,
         entityHeader,
         listAll,
         canEdit: false,
@@ -92,7 +103,7 @@ describe('useHeaderCustomProperties', () => {
     const { result } = renderHook(() =>
       useHeaderCustomProperties({
         entityType: 'table',
-        extension: { steward: 'Karan' },
+        entity,
         listAll: true,
         canEdit: true,
       })
@@ -127,14 +138,46 @@ describe('useHeaderCustomProperties', () => {
 
   it.each([
     ['the user cannot edit custom properties', false, { onUpdate: jest.fn() }],
-    ['the page cannot save the entity', true, {}],
+    ['the page can neither save nor refresh the entity', true, {}],
   ])('offers no editor when %s', (_case, canEdit, context) => {
     mockUseGenericContext.mockReturnValue(context);
 
     const { result } = renderHook(() =>
-      useHeaderCustomProperties({ entityType: 'table', listAll: true, canEdit })
+      useHeaderCustomProperties({
+        entityType: 'table',
+        entity,
+        listAll: true,
+        canEdit,
+      })
     );
 
     expect(result.current[0].renderEditor).toBeUndefined();
+  });
+
+  it('saves through the entity API and refreshes the page outside its GenericProvider', async () => {
+    const updatedTopic = { ...entity, extension: { steward: 'Anika' } };
+    const onEntityUpdated = jest.fn();
+    mockUseGenericContext.mockReturnValue({});
+    mockPatchEntity.mockResolvedValue(updatedTopic);
+
+    const { result } = renderHook(() =>
+      useHeaderCustomProperties({
+        entityType: 'topic',
+        entity,
+        listAll: true,
+        canEdit: true,
+        onEntityUpdated,
+      })
+    );
+    render(result.current[0].renderEditor?.(<button />) as ReactElement);
+    const { onSave } = (HeaderCustomPropertyEditor as jest.Mock).mock
+      .calls[0][0];
+
+    await onSave('Anika');
+
+    expect(mockPatchEntity).toHaveBeenCalledWith('topic-id', [
+      { op: 'add', path: '/extension', value: { steward: 'Anika' } },
+    ]);
+    expect(onEntityUpdated).toHaveBeenCalledWith(updatedTopic);
   });
 });
