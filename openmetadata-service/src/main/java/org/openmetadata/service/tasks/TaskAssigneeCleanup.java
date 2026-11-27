@@ -90,19 +90,37 @@ public final class TaskAssigneeCleanup {
     }
     final Task original = repository.getDao().jsonToEntity(lockedJson, taskId);
     repository.setFieldsInternal(original, fields);
-    final List<EntityReference> remaining = withoutAssignee(original, entityId, entityType);
+    final List<EntityReference> remaining =
+        withoutAssignee(original.getAssignees(), entityId, entityType);
     if (remaining.size() != listOrEmpty(original.getAssignees()).size()) {
       final Task updated = JsonUtils.deepCopy(original, Task.class);
       updated.setAssignees(remaining);
+      handOverToOwnersIfUnassigned(repository, updated, entityId, entityType);
       repository.update(
           null, original, updated, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
     }
     return true;
   }
 
+  /**
+   * An open task that loses its last assignee goes to the owners of the asset it is about, by the
+   * rule a task gets at creation, and never back to the entity being deleted
+   * (ADR:2026-11-27-hard-deleting-an-assignee-hands-an-unassigned-task-to-the-assets-owners).
+   */
+  private static void handOverToOwnersIfUnassigned(
+      final TaskRepository repository,
+      final Task task,
+      final UUID entityId,
+      final String entityType) {
+    if (task.getAssignees().isEmpty() && !TaskRepository.isTerminalStatus(task.getStatus())) {
+      repository.setDefaultAssigneesFromEntityOwners(task);
+      task.setAssignees(withoutAssignee(task.getAssignees(), entityId, entityType));
+    }
+  }
+
   private static List<EntityReference> withoutAssignee(
-      final Task task, final UUID entityId, final String entityType) {
-    final List<EntityReference> remaining = new ArrayList<>(listOrEmpty(task.getAssignees()));
+      final List<EntityReference> assignees, final UUID entityId, final String entityType) {
+    final List<EntityReference> remaining = new ArrayList<>(listOrEmpty(assignees));
     remaining.removeIf(ref -> entityId.equals(ref.getId()) && entityType.equals(ref.getType()));
     remaining.sort(EntityUtil.compareEntityReference);
     return remaining;

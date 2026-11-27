@@ -42,6 +42,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -227,6 +228,85 @@ class TaskAssigneeCleanupTest {
     verify(repository, never()).update(any(), any(), any(), any(), any(), any());
   }
 
+  @Test
+  void handsTaskThatLostItsLastAssigneeToTheAssetOwners() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference owner = entityRef(UUID.randomUUID(), Entity.USER, "owner");
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask =
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"));
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
+    stubOwnersFallback(owner);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    assertSavedAssignees(lockedTask, List.of(owner));
+  }
+
+  @Test
+  void neverHandsTheTaskBackToTheEntityBeingDeleted() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference deleted = entityRef(userId, Entity.USER, "alice");
+    final EntityReference owner = entityRef(UUID.randomUUID(), Entity.USER, "owner");
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask = taskWithAssignees(liveRef.getId(), deleted);
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
+    stubOwnersFallback(deleted, owner);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    assertSavedAssignees(lockedTask, List.of(owner));
+  }
+
+  @Test
+  void leavesTaskUnassignedWhenTheOnlyOwnerIsTheEntityBeingDeleted() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference deleted = entityRef(userId, Entity.USER, "alice");
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask = taskWithAssignees(liveRef.getId(), deleted);
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
+    stubOwnersFallback(deleted);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    assertTrue(captureSavedTask(lockedTask).getAssignees().isEmpty());
+  }
+
+  @Test
+  void doesNotHandOverAFinishedTask() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask =
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"))
+            .withStatus(TaskEntityStatus.Cancelled);
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    verify(repository, never()).setDefaultAssigneesFromEntityOwners(any());
+    assertTrue(captureSavedTask(lockedTask).getAssignees().isEmpty());
+  }
+
+  @Test
+  void doesNotHandOverWhileOtherAssigneesRemain() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference survivor = entityRef(UUID.randomUUID(), Entity.USER, "bob");
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    final Task lockedTask =
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice"), survivor);
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLockedTask(liveRef.getId(), lockedTask);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    verify(repository, never()).setDefaultAssigneesFromEntityOwners(any());
+    assertSavedAssignees(lockedTask, List.of(survivor));
+  }
+
   private void stubAssignedTasks(
       final UUID entityId, final String entityType, final List<EntityReference> refs) {
     when(repository.findTo(
@@ -237,6 +317,16 @@ class TaskAssigneeCleanupTest {
   private void stubLockedTask(final UUID taskId, final Task lockedTask) {
     when(taskDao.findJsonByIdForUpdate(taskId, Include.NON_DELETED)).thenReturn(LOCKED_JSON);
     when(taskDao.jsonToEntity(LOCKED_JSON, taskId)).thenReturn(lockedTask);
+  }
+
+  private void stubOwnersFallback(final EntityReference... owners) {
+    doAnswer(
+            invocation -> {
+              invocation.<Task>getArgument(0).setAssignees(new ArrayList<>(List.of(owners)));
+              return null;
+            })
+        .when(repository)
+        .setDefaultAssigneesFromEntityOwners(any());
   }
 
   private void assertSavedAssignees(

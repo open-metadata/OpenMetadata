@@ -151,11 +151,72 @@ public class EntityDeleteTaskCleanupIT {
     assertSoftDeletedTaskKeepsAssignees(deletedTask.getId(), List.of(survivingUser.getId()));
   }
 
+  @Test
+  void hardDeleteUser_whoIsTheOnlyAssignee_handsTheTaskToTheAssetOwner(TestNamespace ns) {
+    User deletedUser = createUser(ns, "soleu");
+    User owner = createUser(ns, "ownu");
+    Glossary glossary = createGlossaryOwnedBy(ns, owner);
+    Task task =
+        createTask(
+            ns, glossary, "sole_user_task", List.of(deletedUser.getFullyQualifiedName()), null);
+
+    hardDelete("users", deletedUser.getId());
+
+    assertLiveTaskUpdatedWithAssignees(task, List.of(owner.getId()));
+  }
+
+  @Test
+  void hardDeleteUser_whoOwnsTheAssetAndIsTheOnlyAssignee_leavesTheTaskUnassigned(
+      TestNamespace ns) {
+    User deletedUser = createUser(ns, "ownsu");
+    Glossary glossary = createGlossaryOwnedBy(ns, deletedUser);
+    Task task =
+        createTask(
+            ns, glossary, "own_user_task", List.of(deletedUser.getFullyQualifiedName()), null);
+
+    hardDelete("users", deletedUser.getId());
+
+    assertLiveTaskUpdatedWithAssignees(task, List.of());
+  }
+
+  @Test
+  void hardDeleteTeam_whoIsTheOnlyAssigneeOfAClosedTask_leavesTheTaskAlone(TestNamespace ns) {
+    Team deletedTeam = createGroupTeam(ns, "closedteam");
+    User owner = createUser(ns, "ownc");
+    Glossary glossary = createGlossaryOwnedBy(ns, owner);
+    Task task =
+        createTask(
+            ns, glossary, "closed_team_task", List.of(deletedTeam.getFullyQualifiedName()), null);
+    SdkClients.adminClient().tasks().close(task.getId().toString());
+    Task closed =
+        SdkClients.adminClient()
+            .tasks()
+            .get(task.getId().toString(), TaskRepository.FIELD_ASSIGNEES);
+
+    hardDelete("teams", deletedTeam.getId());
+
+    Task after =
+        SdkClients.adminClient()
+            .tasks()
+            .get(task.getId().toString(), TaskRepository.FIELD_ASSIGNEES);
+    assertEquals(closed.getStatus(), after.getStatus());
+    assertEquals(List.of(), extractIds(after.getAssignees()));
+  }
+
   private Glossary createGlossary(TestNamespace ns) {
     CreateGlossary create =
         new CreateGlossary()
             .withName(ns.shortPrefix("edtc"))
             .withDescription("Glossary for entity-delete task cleanup test");
+    return ns.trackRoot(Entity.GLOSSARY, SdkClients.adminClient().glossaries().create(create));
+  }
+
+  private Glossary createGlossaryOwnedBy(TestNamespace ns, User owner) {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.shortPrefix("edtc") + ns.uniqueShortId())
+            .withDescription("Glossary for entity-delete task cleanup test")
+            .withOwners(List.of(owner.getEntityReference()));
     return ns.trackRoot(Entity.GLOSSARY, SdkClients.adminClient().glossaries().create(create));
   }
 
