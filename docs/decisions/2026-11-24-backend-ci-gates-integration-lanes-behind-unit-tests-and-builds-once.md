@@ -1,9 +1,9 @@
 # Backend CI gates integration-test lanes behind unit tests and builds once
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-25 (check names and stage reporting) · v3 2026-11-26 (merge-queue triggers) · v4 2026-11-26 (smoke image and dispatch)
+- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-25 (check names and stage reporting) · v3 2026-11-26 (merge-queue triggers) · v4 2026-11-26 (smoke image and dispatch) · v5 2026-11-27 (nightly runs every setup)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests` in `.github/scripts/tests/test_ci_speed_java_and_cache.py`
+- **Guard:** `test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests` in `.github/scripts/tests/test_ci_speed_java_and_cache.py`; `test_one_nightly_schedule_runs_java_without_waiting_for_python` in `.github/scripts/tests/test_ci_speed_workload_plan.py`
 - **Related:** PR #38624, ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue, ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback
 
 ## Context
@@ -42,3 +42,12 @@ Java integration paths change.
 
 Manual merge-queue runs default to `all` and can select an individual workload. The manual
 data access request suite runs only on `main`.
+
+## Amendment: nightly runs every setup (2026-11-27)
+
+`ci-nightly.yml` runs all three integration-test setups from its single integration-test build:
+MySQL + Elasticsearch on the oldest supported MySQL, and PostgreSQL + OpenSearch and PostgreSQL +
+Elasticsearch + Redis with the same inputs as the merge queue. Pushes to `main` no longer run
+integration tests, and the merge queue runs them only when Java paths change, so the nightly is
+the daily run of every setup on `main`. It also covers a merge that bypasses the queue. A failed
+setup fails the nightly status and its alert.

@@ -389,6 +389,15 @@ def test_one_nightly_schedule_runs_java_without_waiting_for_python():
     assert jobs["it-mysql-elasticsearch"]["needs"] == "integration-test-build"
     assert jobs["it-mysql-elasticsearch"]["with"]["store_database_version"] == "oldest"
 
+    # Pushes to main no longer run integration tests, so the nightly runs the
+    # PostgreSQL profiles exactly as the merge queue does.
+    queue = yaml.load((WORKFLOWS / "ci-merge-queue.yml").read_text(), Loader=yaml.BaseLoader)["jobs"]
+    for name in ("it-postgres-opensearch", "it-postgres-elasticsearch-redis"):
+        assert jobs[name]["needs"] == "integration-test-build"
+        assert jobs[name]["uses"] == queue[name]["uses"]
+        assert jobs[name]["with"] == queue[name]["with"]
+        assert jobs[name]["permissions"] == queue[name]["permissions"]
+
     callers = set()
     for path in WORKFLOWS.glob("*.y*ml"):
         workflow = yaml.load(path.read_text(), Loader=yaml.BaseLoader)

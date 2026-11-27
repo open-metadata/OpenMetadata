@@ -26,7 +26,13 @@ PYTHON = CONNECTORS | {
     "airflow-apis",
     "sonar-cloud-coverage-upload",
 }
-JAVA = {"integration-test-build", "it-mysql-elasticsearch", "maven-sonarcloud-ci"}
+JAVA = {
+    "integration-test-build",
+    "it-mysql-elasticsearch",
+    "it-postgres-opensearch",
+    "it-postgres-elasticsearch-redis",
+    "maven-sonarcloud-ci",
+}
 
 
 @pytest.fixture
@@ -102,6 +108,8 @@ def test_nightly_slack_lists_failures_before_skipped_jobs(report):
             "python-unit": "failure",
             "integration-test-build": "failure",
             "it-mysql-elasticsearch": "skipped",
+            "it-postgres-opensearch": "skipped",
+            "it-postgres-elasticsearch-redis": "skipped",
         },
     )
     assert status == "failed=true"
@@ -119,6 +127,8 @@ def test_nightly_slack_lists_failures_before_skipped_jobs(report):
     assert text[1].splitlines() == [
         "*Did not complete*",
         "• Java integration tests (MySQL + Elasticsearch) — skipped",
+        "• Java integration tests (PostgreSQL + OpenSearch) — skipped",
+        "• Java integration tests (PostgreSQL + Elasticsearch + Redis) — skipped",
     ]
     assert "https://github.com/example/project/actions/runs/123" in text[2]
     assert "test-on-call" in text[2]

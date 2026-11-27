@@ -33,6 +33,8 @@ PYTHON_JOBS = {
 JAVA_JOBS = {
     "integration-test-build": "Java integration runtime build",
     "it-mysql-elasticsearch": "Java integration tests (MySQL + Elasticsearch)",
+    "it-postgres-opensearch": "Java integration tests (PostgreSQL + OpenSearch)",
+    "it-postgres-elasticsearch-redis": "Java integration tests (PostgreSQL + Elasticsearch + Redis)",
     "maven-sonarcloud-ci": "Java Sonar analysis",
 }
 JOB_LABELS = {**CONNECTOR_JOBS, **PYTHON_JOBS, **JAVA_JOBS}
