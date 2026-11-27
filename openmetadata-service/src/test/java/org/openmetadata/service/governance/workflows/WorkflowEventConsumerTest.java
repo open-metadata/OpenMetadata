@@ -31,8 +31,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGED_BY_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.sql.SQLException;
@@ -157,7 +157,7 @@ class WorkflowEventConsumerTest {
                           .equals(
                               variables.get(
                                   getNamespacedVariableName(
-                                      GLOBAL_NAMESPACE, TRIGGERING_BOT_VARIABLE)))));
+                                      GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE)))));
     }
   }
 
@@ -181,7 +181,7 @@ class WorkflowEventConsumerTest {
   }
 
   @Test
-  void testSendMessage_PersonsChangeCarriesNoTriggeringBot() {
+  void testSendMessage_PersonsChangeCarriesNoBot() {
     ChangeEvent event = createChangeEvent("alice", EventType.ENTITY_UPDATED);
 
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
@@ -202,7 +202,7 @@ class WorkflowEventConsumerTest {
               argThat(
                   variables ->
                       !variables.containsKey(
-                          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_BOT_VARIABLE))));
+                          getNamespacedVariableName(GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE))));
     }
   }
 

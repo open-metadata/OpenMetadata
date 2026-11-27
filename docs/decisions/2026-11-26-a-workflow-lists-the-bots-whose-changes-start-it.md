@@ -35,9 +35,9 @@ deleted later never blocks another edit; it simply starts nothing. Workflow auto
 governance-bot or impersonating as it, never starts a workflow, whatever a list says.
 
 `WorkflowEventConsumer` drops a bot's change before Flowable unless a workflow on that entity type
-lists the bot, so an unlisted bot costs no process instance. A listed bot's change carries the bot
-in the `triggeringBot` process variable, and each workflow's trigger filter starts the run only if
-that workflow lists it. Both read the lists from `GovernanceApprovalRegistry`'s snapshot, which
+lists the bot, so an unlisted bot costs no process instance. A workflow may list several bots; a
+change has one author, so a listed bot's change carries that one bot in the `changedByBot` process
+variable, and each workflow's trigger filter starts the run only if its own list contains it. Both read the lists from `GovernanceApprovalRegistry`'s snapshot, which
 maps each bot to the user it writes as.
 
 ## Consequences

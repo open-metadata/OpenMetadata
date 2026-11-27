@@ -1,11 +1,11 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGED_BY_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
@@ -170,7 +170,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
     Map<String, Object> variables;
     try {
-      variables = withTriggeringBot(handler.apply(event), author, event);
+      variables = withChangedByBot(handler.apply(event), author, event);
 
       if (variables != null && !variables.isEmpty()) {
         LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
@@ -230,15 +230,15 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     return GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
   }
 
-  // Tells each workflow's trigger filter which bot made the change, so a workflow that does not
-  // list it skips the run.
-  private static Map<String, Object> withTriggeringBot(
+  // Tells each workflow's trigger filter which bot made the change, so a workflow whose
+  // triggeringBots list does not contain it skips the run.
+  private static Map<String, Object> withChangedByBot(
       Map<String, Object> variables, Author author, ChangeEvent event) {
     Map<String, Object> result = variables;
     if (author == Author.TRIGGERING_BOT && variables != null && !variables.isEmpty()) {
       result = new HashMap<>(variables);
       result.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_BOT_VARIABLE),
+          getNamespacedVariableName(GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE),
           event.getUserName());
     }
     return result;

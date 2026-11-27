@@ -30,7 +30,9 @@ import static org.openmetadata.it.tests.ChangeRequestITSupport.requestsFor;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -86,6 +89,24 @@ class WorkflowTriggeringBotsIT {
 
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
     assertEquals(bot.userName(), onlyPendingRequest(glossary.getId()).getRequestedBy());
+  }
+
+  @Test
+  void everyBotAWorkflowListsHasItsEditHeld(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns);
+    TestBot first = TestBot.create(ns, "mfa");
+    TestBot second = TestBot.create(ns, "mfb");
+    deployWorkflow(ns, ENFORCE_MODE, glossary, List.of(first.name(), second.name()));
+
+    patchAs(first.client(), glossary.getId(), DESCRIPTION_PATCH);
+    patchAs(second.client(), glossary.getId(), DESCRIPTION_PATCH);
+
+    assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+    assertEquals(
+        Set.of(first.userName(), second.userName()),
+        requestsFor(glossary.getId()).stream()
+            .map(ChangeRequest::getRequestedBy)
+            .collect(Collectors.toSet()));
   }
 
   @Test
