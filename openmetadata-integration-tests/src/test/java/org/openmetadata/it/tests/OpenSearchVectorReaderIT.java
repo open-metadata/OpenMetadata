@@ -167,7 +167,7 @@ class OpenSearchVectorReaderIT {
   private String createIndex(OpenSearchVectorService vectorService, boolean chunks)
       throws IOException {
     if (chunks) {
-      vectorService.writeEntityChunks("seed", List.of());
+      vectorService.writeEntityChunks("seed", List.of(), null);
       return vectorService.getChunkIndexName();
     }
     final String index = new TestNamespace("vector_reader").prefix("test_case_search_index");

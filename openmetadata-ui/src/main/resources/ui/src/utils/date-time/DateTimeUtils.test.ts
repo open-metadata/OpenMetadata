@@ -20,6 +20,7 @@ import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
   DATE_TIME_WITH_OFFSET_FORMAT,
   DATE_TIME_WITH_OFFSET_SHORT,
+  ensureCronstrueLoaded,
   formatDate,
   formatDateTime,
   formatDateTimeLong,
@@ -704,6 +705,22 @@ describe('convertSecondsToHumanReadableFormat', () => {
 });
 
 describe('getScheduleDescriptionTexts', () => {
+  it('should append the timezone to the schedule time', async () => {
+    await ensureCronstrueLoaded();
+
+    expect(
+      getScheduleDescriptionTexts('0 0 * * 0', 'UTC').descriptionFirstPart
+    ).toBe('At 12:00 AM (UTC)');
+  });
+
+  it('should leave the schedule time unchanged without a timezone', async () => {
+    await ensureCronstrueLoaded();
+
+    expect(getScheduleDescriptionTexts('0 0 * * 0').descriptionFirstPart).toBe(
+      'At 12:00 AM'
+    );
+  });
+
   it('should parse daily cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * *');
 

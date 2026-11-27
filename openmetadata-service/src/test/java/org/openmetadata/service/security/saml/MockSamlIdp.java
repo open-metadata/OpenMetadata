@@ -23,7 +23,12 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import org.apache.xml.security.encryption.XMLCipher;
+import org.apache.xml.security.keys.KeyInfo;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
  * Minimal SAML 2.0 Identity Provider test double that mints signed SAML Responses which
@@ -135,6 +140,33 @@ public final class MockSamlIdp {
       throw new IllegalStateException("Failed to build assertion-signed SAML response", e);
     }
     return result;
+  }
+
+  public String encryptedResponse(String email, String acs, String sp) throws Exception {
+    Document document =
+        Util.loadXML(
+            new String(
+                Util.base64decoder(
+                    assertionSignedResponse(email, acs, sp, "request-123", "request-123")),
+                StandardCharsets.UTF_8));
+    Element assertion = (Element) Util.query(document, "/samlp:Response/saml:Assertion").item(0);
+    Element wrapper =
+        document.createElementNS(
+            "urn:oasis:names:tc:SAML:2.0:assertion", "saml:EncryptedAssertion");
+    assertion.getParentNode().replaceChild(wrapper, assertion);
+    wrapper.appendChild(assertion);
+    KeyGenerator generator = KeyGenerator.getInstance("AES");
+    generator.init(128);
+    SecretKey key = generator.generateKey();
+    XMLCipher keyCipher = XMLCipher.getInstance(XMLCipher.RSA_OAEP);
+    keyCipher.init(XMLCipher.WRAP_MODE, signingCertificate.getPublicKey());
+    XMLCipher cipher = XMLCipher.getInstance(XMLCipher.AES_128);
+    cipher.init(XMLCipher.ENCRYPT_MODE, key);
+    KeyInfo keyInfo = new KeyInfo(document);
+    keyInfo.add(keyCipher.encryptKey(document, key));
+    cipher.getEncryptedData().setKeyInfo(keyInfo);
+    cipher.doFinal(document, assertion, false);
+    return Util.base64encoder(Util.convertDocumentToString(document));
   }
 
   /** An unsigned, base64 SAML Response — to assert the SP rejects assertions with no signature. */

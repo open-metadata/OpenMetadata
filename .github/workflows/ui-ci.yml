@@ -1,0 +1,74 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# All UI CI for one revision, called as the single `ui` job of ci-pr.yml and
+# ci-merge-queue.yml. Checkstyle runs first; Jest and the browser tests fan out
+# to parallel shards only once it passes, so a lint failure costs one runner
+# and the slowest path is checkstyle plus the slowest shard.
+#
+# Every job checks out the commit that triggered the run (a pull request's merge
+# commit, the queue entry, or the dispatched ref); no caller-supplied ref is
+# checked out, so no job runs code other than the triggering commit.
+name: UI CI
+
+on:
+  workflow_call:
+    inputs:
+      unit:
+        description: Whether the change selects Jest (the ui-unit paths).
+        type: boolean
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          # Changed-file detection diffs against the base.
+          fetch-depth: 0
+          filter: blob:none
+      - uses: ./.github/actions/setup-ui
+      - uses: ./.github/actions/ui-checkstyle
+
+  unit:
+    name: unit (shard ${{ matrix.shard }})
+    needs: lint
+    if: ${{ inputs.unit }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: ./.github/actions/setup-ui
+      - uses: ./.github/actions/ui-unit
+        with:
+          shard: ${{ matrix.shard }}/4
+
+  browser:
+    name: browser
+    needs: lint
+    permissions:
+      contents: read
+      # Downloads the impact map from earlier runs.
+      actions: read
+    uses: ./.github/workflows/ui-browser-tests.yml

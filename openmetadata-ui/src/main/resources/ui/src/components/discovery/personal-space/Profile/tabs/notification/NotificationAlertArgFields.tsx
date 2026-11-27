@@ -18,12 +18,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DATA_CONTRACT_STATUS_OPTIONS } from '../../../../../../constants/Alerts.constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
-import { StatusType } from '../../../../../../generated/entity/data/pipeline';
-import { PipelineState } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCaseStatus } from '../../../../../../generated/tests/testCase';
 import { EventType } from '../../../../../../generated/type/changeEvent';
 import {
   getDataContractSuggestions,
@@ -33,7 +29,6 @@ import {
   getOptionsByFqns,
   getOwnerOptions,
   getTableSuggestions,
-  getTestSuiteSuggestions,
   getUserBotOptions,
   getUserOptions,
   searchEntity,
@@ -269,10 +264,6 @@ export const getControlledArgumentFieldCoreUI = (
     });
   };
 
-  const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
-    (option) => ({ id: String(option.value), label: t(option.label) })
-  );
-
   const asyncField = (
     api: (search: string) => Promise<{ value: string; label: string }[]>,
     testId: string,
@@ -363,42 +354,6 @@ export const getControlledArgumentFieldCoreUI = (
           : valuesToSelectItems(supportedEventTypes),
         'event-type-select',
         t('label.search-by-type', { type: t('label.event-type-lowercase') })
-      ),
-    pipelineStateList: () =>
-      staticField(
-        enumToSelectItems(StatusType),
-        'pipeline-status-select',
-        t('label.select-field', { field: t('label.pipeline-state') })
-      ),
-    ingestionPipelineStateList: () =>
-      staticField(
-        enumToSelectItems(PipelineState),
-        'pipeline-status-select',
-        t('label.select-field', { field: t('label.pipeline-state') })
-      ),
-    testStatusList: () =>
-      staticField(
-        enumToSelectItems(TestCaseStatus),
-        'test-status-select',
-        t('label.select-field', { field: t('label.test-suite-status') })
-      ),
-    testResultList: () =>
-      staticField(
-        enumToSelectItems(TestCaseStatus),
-        'test-result-select',
-        t('label.select-field', { field: t('label.test-case-result') })
-      ),
-    contractStatusList: () =>
-      staticField(
-        translatedContractStatusOptions,
-        'contract-status-select',
-        t('label.select-field', { field: t('label.data-contract-status') })
-      ),
-    testSuiteList: () =>
-      asyncField(
-        getTestSuiteSuggestions,
-        'test-suite-select',
-        t('label.search-by-type', { type: t('label.test-suite') })
       ),
     entityIdList: () =>
       asyncField(

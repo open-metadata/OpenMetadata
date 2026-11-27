@@ -107,10 +107,30 @@ describe('renderScheduleField', () => {
     expect(screen.getByText('at 12:00 AM')).toBeInTheDocument();
   });
 
-  it('should call useScheduleDescriptionTexts with correct schedule interval', () => {
+  it('should describe the schedule in UTC when the pipeline stores no timezone', () => {
     render(renderScheduleField('', mockRecord));
 
-    expect(useScheduleDescriptionTexts).toHaveBeenCalledWith('0 0 * * *');
+    expect(useScheduleDescriptionTexts).toHaveBeenCalledWith(
+      '0 0 * * *',
+      'UTC'
+    );
+  });
+
+  it('should describe the schedule in the pipeline timezone', () => {
+    render(
+      renderScheduleField('', {
+        ...mockRecord,
+        airflowConfig: {
+          scheduleInterval: '0 0 * * *',
+          pipelineTimezone: 'Europe/Berlin',
+        },
+      })
+    );
+
+    expect(useScheduleDescriptionTexts).toHaveBeenCalledWith(
+      '0 0 * * *',
+      'Europe/Berlin'
+    );
   });
 
   it('should render no data placeholder when schedule interval is not available', () => {

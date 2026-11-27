@@ -1198,13 +1198,22 @@ const BulkEntityImportPage = () => {
       fetchCsvJobs();
 
       // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
-      // reset to upload step. If rows were processed but all failed, fall through to
-      // show the validation grid so the user can inspect and fix errors.
+      // reset to upload step — but only in the import wizard, which has a step-0 upload
+      // surface. Bulk-edit mode only renders steps 1/2, so resetting there blanks the page
+      // with no recovery UI; stay on the grid and surface abortReason from validationData
+      // instead. If rows were processed but all failed, fall through to show the
+      // validation grid so the user can inspect and fix errors.
       if (isAbortedOrEmptyFailureImport(resolvedResults)) {
         setValidationData(resolvedResults);
 
-        handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+        if (!isBulkEdit) {
+          handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+        }
 
+        // Bulk-edit keeps the grid mounted; unblock the footer buttons so the user
+        // can re-validate or cancel. (The import wizard shows its abort card at step 0,
+        // whose controls don't gate on isValidating.)
+        setIsValidating(false);
         handleResetImportJob();
 
         return;
@@ -1244,6 +1253,7 @@ const BulkEntityImportPage = () => {
       readString,
       onCSVReadComplete,
       handleImportWebsocketResponseWithActiveStep,
+      isBulkEdit,
     ]
   );
 

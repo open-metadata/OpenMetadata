@@ -21,7 +21,7 @@
 # Observed 2026-09-04: 11.3 GB active against a 10 GB budget, with 5.1 GB of it
 # in four ~1.28 GB ingestion images on queue refs, three of them already dead.
 #
-# playwright-e2e-reusable.yml no longer saves from merge_group, which stops the
+# reusable-playwright-e2e.yml no longer saves from merge_group, which stops the
 # Playwright assets accumulating, and setup-uv is now gated the same way (it
 # does take an `enable-cache` input — the earlier note here claiming otherwise
 # was wrong, and it cost 3.3 GB across 19 dead queue refs). This workflow is

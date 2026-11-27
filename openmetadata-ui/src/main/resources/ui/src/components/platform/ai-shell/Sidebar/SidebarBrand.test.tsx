@@ -19,6 +19,23 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+let mockCustomLogoConfig: Record<string, string> = {};
+let mockTheme = 'light';
+jest.mock('../../../../context/UntitledUIThemeProvider/theme-provider', () => ({
+  useResolvedTheme: () => mockTheme,
+}));
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({
+    applicationConfig: { customLogoConfig: mockCustomLogoConfig },
+  }),
+}));
+
+jest.mock('../../../common/BrandImage/BrandImage', () =>
+  jest.fn(({ isMonoGram }) => (
+    <img alt="" data-testid={isMonoGram ? 'custom-monogram' : 'custom-logo'} />
+  ))
+);
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -32,7 +49,11 @@ jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
 }));
 
 describe('SidebarBrand', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCustomLogoConfig = {};
+    mockTheme = 'light';
+  });
 
   // `/my-data` is the personal-space My Data page in app mode; the brand is
   // the way home, which is the landing page at `/`.
@@ -52,5 +73,44 @@ describe('SidebarBrand', () => {
     render(<SidebarBrand />);
 
     expect(screen.getByRole('button', { name: 'label.home' })).toBeVisible();
+  });
+
+  it('shows the build brand mark when no custom logo is set', () => {
+    const { rerender } = render(<SidebarBrand />);
+
+    expect(screen.getByTestId('logo')).toBeInTheDocument();
+
+    rerender(<SidebarBrand variant="rail" />);
+
+    expect(screen.getByTestId('monogram')).toBeInTheDocument();
+  });
+
+  it('shows the admin custom logo and monogram when set', () => {
+    mockCustomLogoConfig = {
+      customLogoUrlPath: 'https://cdn.example.com/logo.svg',
+      customMonogramUrlPath: 'https://cdn.example.com/mark.svg',
+    };
+    const { rerender } = render(<SidebarBrand />);
+
+    expect(screen.getByTestId('custom-logo')).toBeInTheDocument();
+    expect(screen.queryByTestId('logo')).not.toBeInTheDocument();
+
+    rerender(<SidebarBrand variant="rail" />);
+
+    expect(screen.getByTestId('custom-monogram')).toBeInTheDocument();
+  });
+
+  it('uses a dark-only custom logo in the dark theme and the build mark in light', () => {
+    mockCustomLogoConfig = {
+      customLogoDarkUrlPath: 'https://cdn.example.com/logo-dark.svg',
+    };
+    const { rerender } = render(<SidebarBrand />);
+
+    expect(screen.getByTestId('logo')).toBeInTheDocument();
+
+    mockTheme = 'dark';
+    rerender(<SidebarBrand />);
+
+    expect(screen.getByTestId('custom-logo')).toBeInTheDocument();
   });
 });

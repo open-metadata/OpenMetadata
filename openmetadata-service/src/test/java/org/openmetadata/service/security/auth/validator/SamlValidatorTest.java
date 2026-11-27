@@ -1235,6 +1235,40 @@ class SamlValidatorTest {
   }
 
   @Test
+  void validatesRolloverBundlesButStillRejectsInactiveSpCertificates() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String pem;
+      try (InputStream input = getClass().getResourceAsStream("/saml/" + inactive + "-idp.crt")) {
+        pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
+      }
+      invokePrivate(
+          "validateX509Certificate",
+          new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+          pem + "\n" + GENERIC_CERT,
+          "IdP X509 certificate",
+          baseConfig("http://localhost/unused"));
+      String inactivePem = pem;
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+                  inactivePem,
+                  "IdP X509 certificate",
+                  baseConfig("http://localhost/unused")));
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class},
+                  inactivePem,
+                  "SP X509 certificate"));
+    }
+  }
+
+  @Test
   void validateX509CertificateTwoArgumentOverloadRejectsBrokenPem() {
     InvocationTargetException exception =
         assertThrows(

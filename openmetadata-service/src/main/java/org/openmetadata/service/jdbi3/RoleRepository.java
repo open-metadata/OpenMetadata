@@ -286,6 +286,9 @@ public class RoleRepository extends EntityRepository<Role> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
+      restrictAllowDeleteChange(
+          original.getAllowDelete(), updated.getAllowDelete(), updated::setAllowDelete);
       compareAndUpdate(
           "policies",
           () -> {

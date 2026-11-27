@@ -414,22 +414,26 @@ describe('Image transformation in setEditorContent', () => {
       expect(transformedHtml).toContain('<strong>Bold text</strong>');
     });
 
-    it('should sanitize the markup the last markdown conversion builds from escaped text', () => {
+    it('should sanitize mixed markdown and HTML before transforming images', () => {
+      // Raw HTML passes through Marked, so this exercises sanitization even when
+      // the renderer safely escapes quotes in Markdown image and link URLs.
       const description =
-        '<details>\\\\\\!\\\\\\[a\\\\\\](x"onerror="alert(1)) \\\\\\[b\\\\\\](y"onmouseover="alert(2)) <code>**c**</code></details>';
-      const previewContent = formatClientContent(
-        formatClientContent(description)
-      );
+        '![a](x) <img src="z" onerror="alert(1)"> <a href="y" onmouseover="alert(2)">b</a> **c**';
+      const convertedContent = getHtmlStringFromMarkdownString(description);
 
-      expect(previewContent).toContain('![a](x"onerror="alert(1))');
+      expect(convertedContent).toContain('<strong>c</strong>');
+      expect(convertedContent).toContain('onerror="alert(1)"');
+      expect(convertedContent).toContain('onmouseover="alert(2)"');
 
       const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
 
-      setEditorContent(mockEditor as unknown as Editor, previewContent);
+      setEditorContent(mockEditor as unknown as Editor, description);
 
       const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
 
       expect(transformedHtml).toContain('data-url="x"');
+      expect(transformedHtml).toContain('data-url="z"');
+      expect(transformedHtml).toContain('<strong>c</strong>');
       expect(transformedHtml).toContain('href="y"');
       expect(transformedHtml).not.toContain('onerror');
       expect(transformedHtml).not.toContain('onmouseover');
@@ -560,7 +564,6 @@ describe('transformImgTagsToFileAttachment', () => {
     it('should validate base64 image detection', () => {
       const base64Examples = [
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-        // eslint-disable-next-line max-len
         'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRwfDx/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAhEQACAQIHAQAAAAAAAAAAAAABAgADBAUREiExQVFhkf/aAAwDAQACEQMRAD8A0s91CKWOBIgECogDALzEb3PttHb0zKO8B6sSMEckE5hPBhHQ96L6Cxl5o8XPGJ6lF68VVc2ZJNTXVr0sE09+bAE4I4gg4POD1O9fTpZ1rPtXJm9xCx02HXIkE9Dm1yCXQ0PdnX1rnLqrPUNYSWcmIqCpR5YogBGNOv8Ao',
       ];
 

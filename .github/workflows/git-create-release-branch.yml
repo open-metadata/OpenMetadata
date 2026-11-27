@@ -21,6 +21,9 @@ jobs:
       uses: actions/checkout@v7
       with:
         ref: ${{ inputs.base_branch_name }}
+    - name: Install uv
+      if: ${{ hashFiles('.github/actions/setup-uv/action.yml') != '' }}
+      uses: ./.github/actions/setup-uv
     - name: Update application versions
       run: |
         make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}

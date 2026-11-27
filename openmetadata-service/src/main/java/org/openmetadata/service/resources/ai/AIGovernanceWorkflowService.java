@@ -93,12 +93,13 @@ final class AIGovernanceWorkflowService {
     } else {
       authorizeViewAcrossSupportedTypes(securityContext);
     }
-    return GovernanceActivity.compute(entityType, entityId, limit);
+    return GovernanceActivity.compute(
+        new AIGovernanceAssetReader(authorizer, securityContext), entityType, entityId, limit);
   }
 
   AIGovernanceDashboardResponse getDashboard(SecurityContext securityContext) {
     authorizeViewAcrossSupportedTypes(securityContext);
-    return DashboardRollup.compute();
+    return DashboardRollup.compute(new AIGovernanceAssetReader(authorizer, securityContext));
   }
 
   AIGovernancePolicyStatusResponse getPolicyStatus(
@@ -116,7 +117,9 @@ final class AIGovernanceWorkflowService {
         new ResourceContext<>(Entity.AI_GOVERNANCE_POLICY, policyId, null));
     authorizeViewAcrossSupportedTypes(securityContext);
     return new AIGovernancePolicyViolationsResponse()
-        .withData(PolicyEvaluator.recentViolations(policyId, since, limit));
+        .withData(
+            PolicyEvaluator.recentViolations(
+                new AIGovernanceAssetReader(authorizer, securityContext), policyId, since, limit));
   }
 
   AIGovernanceBulkTriageResponse bulkTriage(
@@ -225,7 +228,12 @@ final class AIGovernanceWorkflowService {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType) {
+          @Override
+          public boolean isEntityTypeLevel() {
+            return true;
+          }
+        });
   }
 
   private void authorizePatch(

@@ -20,6 +20,9 @@ without needing a running OpenMetadata server.
 import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+from botocore.exceptions import ClientError
+
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
@@ -129,6 +132,33 @@ class TestListKeys:
         results = list(source.list_keys("bucket", "data/"))
 
         assert results == [("data/file.parquet", 0)]
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_client_error_propagates(self, mock_list):
+        """list_keys must let list_s3_objects errors propagate instead of
+        degrading to an empty candidate list (misleading 'no files matched')."""
+        mock_list.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "AccessDenied"}}, "ListObjectsV2"
+        )
+        source = _make_s3_source()
+        with pytest.raises(ClientError):
+            list(source.list_keys("bucket", "data/"))
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_mid_pagination_error_propagates(self, mock_list):
+        """A mid-pagination failure must not silently truncate the key list."""
+
+        def _gen(_client, **_):
+            yield {"Key": "data/a.parquet", "Size": 1}
+            raise ClientError({"Error": {"Code": "Throttling", "Message": "Throttling"}}, "ListObjectsV2")
+
+        mock_list.side_effect = _gen
+        source = _make_s3_source()
+        collected = []
+        with pytest.raises(ClientError):
+            for key, size in source.list_keys("bucket", "data/"):
+                collected.append((key, size))
+        assert collected == [("data/a.parquet", 1)]
 
 
 class TestFetchMetric:
@@ -282,17 +312,19 @@ class TestGetBucketRegion:
 
         assert source.get_aws_bucket_region("bucket") == "eu-west-1"
 
-    def test_falls_back_to_config_region(self):
+    def test_null_location_constraint_is_us_east_1(self):
         source = _make_s3_source()
+        source.service_connection.awsConfig.awsRegion = "eu-central-1"
         source.s3_client.get_bucket_location.return_value = {"LocationConstraint": None}
 
         assert source.get_aws_bucket_region("bucket") == "us-east-1"
 
-    def test_falls_back_on_error(self):
+    def test_falls_back_to_config_region_on_error(self):
         source = _make_s3_source()
+        source.service_connection.awsConfig.awsRegion = "eu-central-1"
         source.s3_client.get_bucket_location.side_effect = Exception("Denied")
 
-        assert source.get_aws_bucket_region("bucket") == "us-east-1"
+        assert source.get_aws_bucket_region("bucket") == "eu-central-1"
 
 
 class TestFetchBuckets:
@@ -633,6 +665,92 @@ class TestGenerateStructuredContainersByDepth:
         # Only users should be discovered, _delta_log filtered
         assert source._generate_container_details.call_count == 1
 
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_listing_error_records_status_failed(self, mock_list):
+        """When list_s3_objects raises (e.g. AccessDenied), the error must be
+        surfaced on ``status.failed`` instead of being silently logged —
+        otherwise the workflow reports success with a partial/empty catalog."""
+        source = _make_s3_source()
+        source.status = Mock()
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
+        )
+        source._generate_container_details = Mock()
+
+        mock_list.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "AccessDenied"}}, "ListObjectsV2"
+        )
+
+        entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
+        bucket = S3BucketResponse(Name="bucket")
+
+        results = list(source._generate_structured_containers_by_depth(bucket, entry))
+
+        assert results == []
+        source.status.failed.assert_called_once()
+        # The StackTraceError must carry the entry path and the error.
+        failed_arg = source.status.failed.call_args[0][0]
+        assert failed_arg.name == "data/raw"
+        assert "AccessDenied" in failed_arg.error
+        # A listing failure must mark the listing incomplete so that container
+        # deletion is skipped (the source state is missing unlisted containers).
+        assert source._listing_incomplete is True
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_mid_pagination_listing_error_records_status_failed(self, mock_list):
+        """A mid-pagination failure must also surface on status.failed, not
+        be swallowed after yielding partial results."""
+
+        def _gen(_client, **_):
+            yield {"Key": "data/raw/users/part.parquet"}
+            raise ClientError({"Error": {"Code": "Throttling", "Message": "Throttling"}}, "ListObjectsV2")
+
+        source = _make_s3_source()
+        source.status = Mock()
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
+        )
+        source._generate_container_details = Mock(return_value=Mock(spec=S3ContainerDetails))
+
+        mock_list.side_effect = _gen
+
+        entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
+        bucket = S3BucketResponse(Name="bucket")
+
+        list(source._generate_structured_containers_by_depth(bucket, entry))
+
+        source.status.failed.assert_called_once()
+        assert source._listing_incomplete is True
+
+    def test_listing_failure_skips_container_deletion(self):
+        """``mark_containers_as_deleted`` must yield nothing when an S3 listing
+        failed mid-run, otherwise live containers absent from the incomplete
+        source state would be marked deleted."""
+        source = _make_s3_source()
+        source._listing_incomplete = True
+        source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+        # If deletion were not skipped, the base implementation would be
+        # invoked; here it must never be called.
+        source.container_source_state = set()
+        source.source_config.markDeletedContainers = True
+
+        results = list(source.mark_containers_as_deleted())
+
+        assert results == []
+
+    def test_listing_complete_runs_container_deletion(self):
+        """When no listing failed, deletion must delegate to the base step."""
+        source = _make_s3_source()
+        source._listing_incomplete = False
+        with patch(
+            "metadata.ingestion.source.storage.s3.metadata.StorageServiceSource.mark_containers_as_deleted"
+        ) as base:
+            base.return_value = iter([("deleted",)])
+            source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+            results = list(source.mark_containers_as_deleted())
+        base.assert_called_once()
+        assert results == [("deleted",)]
+
 
 class TestGenerateUnstructuredContainers:
     """S3Source._generate_unstructured_containers — dispatches by format."""
@@ -680,48 +798,68 @@ class TestGenerateUnstructuredContainers:
 
 
 class TestSourceUrls:
-    """S3Source URL generation methods."""
+    """S3Source console link generation for buckets and prefixes."""
 
-    def _bind(self):
+    def _bind(self, endpoint_url=None, console_url=None):
         source = _make_s3_source()
         source._get_bucket_source_url = S3Source._get_bucket_source_url.__get__(source)
         source._get_object_source_url = S3Source._get_object_source_url.__get__(source)
-        source.get_aws_bucket_region = Mock(return_value="us-east-1")
+        source.get_aws_bucket_region = Mock(return_value="eu-west-1")
+        source.service_connection.awsConfig.endPointURL = endpoint_url
+        source.service_connection.consoleEndpointURL = console_url
         return source
 
-    def test_bucket_url_aws(self):
+    def test_aws_bucket_url(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = None
-        source.service_connection.consoleEndpointURL = None
 
-        url = source._get_bucket_source_url("my-bucket")
+        assert (
+            source._get_bucket_source_url("my-bucket")
+            == "https://s3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-1&tab=objects"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "my-bucket" in url_str
-        assert "us-east-1" in url_str
-
-    def test_bucket_url_custom_endpoint(self):
+    def test_aws_object_url(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = "http://minio:9000"
-        source.service_connection.consoleEndpointURL = "http://minio-console:9001"
 
-        url = source._get_bucket_source_url("my-bucket")
+        assert source._get_object_source_url("my-bucket", "data/events") == (
+            "https://s3.console.aws.amazon.com/s3/buckets/my-bucket"
+            "?region=eu-west-1&prefix=data/events/&showversions=false"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "minio-console" in url_str
-
-    def test_object_url_aws(self):
+    def test_aws_object_url_encodes_prefix(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = None
-        source.service_connection.consoleEndpointURL = None
 
-        url = source._get_object_source_url("my-bucket", "data/events")
+        assert source._get_object_source_url("my-bucket", "raw/a&b #1") == (
+            "https://s3.console.aws.amazon.com/s3/buckets/my-bucket"
+            "?region=eu-west-1&prefix=raw/a%26b%20%231/&showversions=false"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "my-bucket" in url_str
+    def test_console_bucket_url(self):
+        source = self._bind(endpoint_url="http://minio:9000", console_url="http://minio-console:9001/browser/")
+
+        assert source._get_bucket_source_url("my-bucket") == "http://minio-console:9001/browser/my-bucket/"
+
+    def test_console_object_url_encodes_prefix(self):
+        source = self._bind(endpoint_url="http://minio:9000", console_url="http://minio-console:9001/browser")
+
+        assert (
+            source._get_object_source_url("my-bucket", "data/my events")
+            == "http://minio-console:9001/browser/my-bucket/data/my%20events/"
+        )
+
+    def test_custom_endpoint_without_console_has_no_url(self):
+        source = self._bind(endpoint_url="http://fakes3:4567")
+
+        assert source._get_bucket_source_url("my-bucket") is None
+        assert source._get_object_source_url("my-bucket", "data/events") is None
+        source.get_aws_bucket_region.assert_not_called()
+
+    def test_alternate_aws_endpoint_keeps_aws_console_url(self):
+        source = self._bind(endpoint_url="https://bucket.vpce-0a1b2c3d-x.s3.eu-west-1.vpce.amazonaws.com")
+
+        assert (
+            source._get_bucket_source_url("my-bucket")
+            == "https://s3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-1&tab=objects"
+        )
 
 
 class TestLoadMetadataFile:

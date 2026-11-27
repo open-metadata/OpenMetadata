@@ -331,9 +331,20 @@ export const getChangeEventDataFromTypedEvent = (
   };
 };
 
+const alertStatusOf = (enabled?: boolean) => {
+  const statusKey = enabled ? 'label.enabled' : 'label.disabled';
+
+  return isUndefined(enabled) ? undefined : t(statusKey);
+};
+
 export const getDiagnosticItems = (
   diagnosticData: EventSubscriptionDiagnosticInfo | undefined
 ) => [
+  {
+    key: t('label.status'),
+    value: alertStatusOf(diagnosticData?.enabled),
+    description: t('message.alert-status-description'),
+  },
   {
     key: t('label.latest-offset'),
     value: diagnosticData?.latestOffset,
@@ -367,7 +378,7 @@ export const getDiagnosticItems = (
 ];
 
 /** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
-export const formatDiagnosticValue = (value?: number | boolean) => {
+export const formatDiagnosticValue = (value?: number | boolean | string) => {
   if (isBoolean(value)) {
     return t(value ? 'label.yes' : 'label.no');
   }

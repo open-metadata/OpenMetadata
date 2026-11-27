@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration;
 
+import static com.tngtech.archunit.base.DescribedPredicate.alwaysFalse;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
@@ -16,7 +17,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import java.util.regex.Pattern;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
@@ -28,7 +28,6 @@ import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.MigrationTableUtil;
-import org.openmetadata.service.migration.utils.v211.SuggestionTaskOwnerFallbackMigration;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -49,28 +48,22 @@ class MigrationArchitectureTest {
       resideInAnyPackage(
           MIGRATION + ".mysql.*..", MIGRATION + ".postgres.*..", MIGRATION + ".utils.*..");
 
-  /** The 1.x, 2.0.x and 2.1.0 steps were written before this rule and are left as they are. */
+  /**
+   * The 1.x, 2.0.0 to 2.0.9 and 2.1.0 steps were written before this rule and are left as they are.
+   * The 2.0.10 steps ({@code v2010}) came after it and are checked.
+   */
   private static final DescribedPredicate<JavaClass> WRITTEN_BEFORE_THE_RULE =
       resideInAnyPackage(
           MIGRATION + ".*.v1*..",
           MIGRATION + ".*.V1*..",
-          MIGRATION + ".*.v20*..",
+          MIGRATION + ".*.[v200|v201|v202|v203|v204|v205|v206|v207|v208|v209]..",
           MIGRATION + ".*.v210..");
 
   /**
    * Steps that may use more than the allowed classes. Each entry says what it uses and why the work
    * cannot be done with rows and SQL instead.
-   *
-   * <ul>
-   *   <li>{@link SuggestionTaskOwnerFallbackMigration} deploys SuggestionTaskWorkflow through the
-   *       WorkflowHandler after changing its row: the deployed process keeps the assignee settings
-   *       it was deployed with, and an upgrade never deploys a workflow that already exists again.
-   *   <li>The 2.1.1 {@code Migration} classes run that step.
-   * </ul>
    */
-  private static final DescribedPredicate<JavaClass> EXCEPTIONS =
-      belongToAnyOf(SuggestionTaskOwnerFallbackMigration.class)
-          .or(nameMatching(Pattern.quote(MIGRATION) + "\\.(mysql|postgres)\\.v211\\.Migration"));
+  private static final DescribedPredicate<JavaClass> EXCEPTIONS = alwaysFalse();
 
   private static final DescribedPredicate<JavaClass> CHECKED_STEPS =
       VERSIONED_MIGRATIONS.and(not(WRITTEN_BEFORE_THE_RULE)).and(not(EXCEPTIONS));
@@ -107,15 +100,13 @@ class MigrationArchitectureTest {
           JsonUtils.class,
           Relationship.class);
 
-  // Every class after 2.1.0 may be a listed exception, so the rules may match no class.
   @ArchTest
   static final ArchRule versionedMigrationsUseOnlyAllowedClasses =
       classes()
           .that(CHECKED_STEPS)
           .should()
           .onlyDependOnClassesThat(CHECKED_STEPS.or(LIBRARIES).or(FRAMEWORK).or(CONTRACTS))
-          .as("A versioned migration step uses only the classes MigrationArchitectureTest allows")
-          .allowEmptyShould(true);
+          .as("A versioned migration step uses only the classes MigrationArchitectureTest allows");
 
   @ArchTest
   static final ArchRule versionedMigrationsDoNotReachWorkflowsThroughTheirBaseClass =
@@ -126,6 +117,5 @@ class MigrationArchitectureTest {
               target(owner(assignableTo(MigrationProcessImpl.class)))
                   .and(target(nameMatching("initializeWorkflowHandler|getPipelineServiceClient"))))
           .as(
-              "A versioned migration step does not reach workflows or pipelines from its base class")
-          .allowEmptyShould(true);
+              "A versioned migration step does not reach workflows or pipelines from its base class");
 }

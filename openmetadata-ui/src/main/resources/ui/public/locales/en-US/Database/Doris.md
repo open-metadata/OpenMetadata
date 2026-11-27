@@ -6,6 +6,25 @@ In this section, we provide guides and references to use the Doris connector.
 
 You can find further information on the Doris connector in the <a href="https://docs.open-metadata.org/connectors/database/doris" target="_blank">docs</a>.
 
+### Usage
+
+The usage workflow reads the queries Doris 4.1 or later records in `__internal_schema.audit_log`. The table holds the SQL text of every user's queries; grant the user `SELECT_PRIV` on it:
+
+```sql
+GRANT SELECT_PRIV ON internal.__internal_schema.audit_log TO '<username>'@'%';
+```
+
+Doris records queries while `enable_audit_plugin` is `true`, the default since 3.1.2. A cluster upgraded from an earlier release keeps `false`; turn it on with `SET GLOBAL enable_audit_plugin = true`. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a>.
+
+### Profiler & Data Quality
+
+For tables, the profiler reads `information_schema.tables.TABLE_ROWS` for `rowCount` instead of running `SELECT COUNT(*)`. Keep two Doris limitations in mind:
+
+- For `UNIQUE` and `AGGREGATE` key tables, `TABLE_ROWS` includes rows that background compaction has not merged yet, so `rowCount` can temporarily exceed `SELECT COUNT(*)`.
+- Newly loaded tables can report `0` in `TABLE_ROWS` for up to ~60 seconds after a load completes.
+
+For views, Doris reports `-1` in `TABLE_ROWS`, so the profiler automatically falls back to `SELECT COUNT(*)`.
+
 ## Connection Details
 
 $$section

@@ -534,6 +534,14 @@ export interface Pipeline {
      */
     includeDataModels?: boolean;
     /**
+     * Optional configuration to toggle direct lineage from a chart's upstream sources to the
+     * chart, such as Looker Explore to Chart and Metabase Table to Chart. When disabled, the
+     * charts are not looked up for this lineage and no direct edges are written, while the
+     * lineage from those sources to the dashboard and the Dashboard to Chart lineage are still
+     * created.
+     */
+    includeDirectChartLineage?: boolean;
+    /**
      * Optional Configuration to include/exclude draft dashboards. By default it will include
      * draft dashboards
      */
@@ -2624,6 +2632,9 @@ export interface DBTPrefixConfig {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
@@ -2882,6 +2893,11 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
  * validation, 'validate' to verify against a CA certificate.
+ *
+ * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+ * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+ * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+ * Config.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
  *
@@ -6268,6 +6284,18 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+     * is 'validate'.
+     */
+    sslConfig?: DbtSSLConfigClass;
+    /**
+     * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+     * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+     * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+     * Config.
+     */
+    verifySSL?: VerifySSL;
+    /**
      * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
      * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
      */
@@ -7279,6 +7307,9 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
@@ -8213,6 +8244,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.

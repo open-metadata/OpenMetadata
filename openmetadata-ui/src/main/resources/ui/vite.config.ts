@@ -29,7 +29,8 @@ import {
 
 // Test Login reuses the registered /callback redirect URI. In a packaged deployment the backend
 // owns that path; under `yarn start` Vite serves the SPA there instead. Forward only the callbacks
-// whose state carries the Test Login marker, so every real login still reaches the SPA.
+// whose state carries the Test Login marker, and SAML POSTs handled by the backend.
+// Ordinary OIDC GET callbacks still reach the SPA.
 const TEST_LOGIN_STATE_PREFIX = 'omtest:';
 const isTestLoginCallback = (url = ''): boolean =>
   new URL(url, 'http://localhost').searchParams
@@ -203,8 +204,11 @@ export default defineConfig(async ({ mode }) => {
         },
         '/callback': {
           target: devServerTarget,
-          changeOrigin: true,
-          bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
+          changeOrigin: false,
+          bypass: (req) =>
+            req.method === 'POST' || isTestLoginCallback(req.url)
+              ? undefined
+              : req.url,
         },
       },
       watch: {
@@ -409,6 +413,8 @@ export default defineConfig(async ({ mode }) => {
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),
+      'process.env.DEV_SERVER_TARGET': JSON.stringify(devServerTarget),
+      'process.env.SSO_SERVER_URL': JSON.stringify(env.VITE_SSO_SERVER_URL || ''),
       global: 'globalThis',
     },
   };

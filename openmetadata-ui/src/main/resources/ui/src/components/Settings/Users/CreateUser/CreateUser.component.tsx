@@ -220,9 +220,8 @@ const CreateUser = ({
       props: { inputDataTestId: 'password' },
       rules: {
         required: t('label.field-required', { field: t('label.password') }),
-        // passwordRegex is global; a fresh instance avoids lastIndex carry-over.
         pattern: {
-          value: new RegExp(passwordRegex.source),
+          value: passwordRegex,
           message: t('message.password-error-message'),
         },
       },

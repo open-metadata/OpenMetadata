@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getBasePath } from './HistoryUtils';
+import { getBasePath, stripBasePath } from './HistoryUtils';
 
 describe('configured base path', () => {
   const originalBasePath = Object.getOwnPropertyDescriptor(
@@ -46,6 +46,22 @@ describe('configured base path', () => {
       Reflect.set(globalThis, 'BASE_PATH', value);
 
       expect(getBasePath()).toBe(expected);
+    }
+  );
+
+  it.each([
+    ['/data', '/data/explore', '/explore'],
+    ['/data', '/data', '/'],
+    ['/data', '/data-insights', '/data-insights'],
+    ['/data', '/explore/data/tables', '/explore/data/tables'],
+    ['/data', '/database/data', '/database/data'],
+    ['', '/data-insights', '/data-insights'],
+  ])(
+    'with base path %p strips only a leading base path from %p',
+    (basePath, pathname, expected) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+
+      expect(stripBasePath(pathname)).toBe(expected);
     }
   );
 });

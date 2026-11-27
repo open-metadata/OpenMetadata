@@ -885,7 +885,7 @@ describe('PlatformLineage Component Logic', () => {
       expect(container.querySelector('[data-testid="loader"]')).toBeTruthy();
     });
 
-    it('should render loader while loading=true', async () => {
+    it('should render loader while the entity request is pending', async () => {
       mockGetEntityAPIfromSource.mockImplementation(
         () =>
           new Promise((resolve) => {
