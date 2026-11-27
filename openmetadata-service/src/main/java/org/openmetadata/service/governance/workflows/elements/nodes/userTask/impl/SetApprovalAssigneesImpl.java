@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -37,7 +38,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -200,20 +200,18 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         }
       }
 
-      boolean workflowManagedTask =
-          Boolean.TRUE.equals(execution.getVariable("taskWorkflowManaged"))
-              || execution.getVariable("taskEntityId") != null;
+      boolean workflowManagedTask = isTaskWorkflowStep(execution);
       List<String> assigneeList = new ArrayList<>(assignees);
 
       // Prevent self-approval: remove the requester from the assignees. Task-managed workflows
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. A
-      // non-workflow-managed task under the "none" strategy keeps the requester when no one else is
-      // available, so the task stays actionable; "assignAdmins" and "wait" have a fallback of their
-      // own below, and workflow-managed tasks rely on it too. A change request is never given back
-      // to its requester.
+      // workflow family — reading only one silently leaves the other's requester on the list. The
+      // requester is never given back their own approval, even when no one else is left: the task
+      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so only an admin
+      // could act on it. An emptied list goes to the empty-assignee strategy below instead.
+      // ADR:2026-11-25-an-approval-never-goes-to-its-requester
       // A stored definition may carry the key with a null value; it means the default, none.
       final EmptyAssigneeStrategy emptyAssigneeStrategy =
           Optional.ofNullable(assigneesConfig.get("emptyAssigneeStrategy"))
@@ -221,16 +219,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               .map(EmptyAssigneeStrategy::fromValue)
               .orElse(NONE);
       final boolean assignAdmins = emptyAssigneeStrategy == ASSIGN_ADMINS;
-      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
-      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
-      if (removedRequester
-          && assigneeList.isEmpty()
-          && !workflowManagedTask
-          && !reviewsChangeRequest
-          && emptyAssigneeStrategy == NONE) {
-        assigneeList.addAll(preRemovalAssignees);
-      }
+      assigneeList.removeAll(requesterEntityLinks);
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
@@ -243,7 +232,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         assigneeList.addAll(admins);
         if (assigneeList.isEmpty()) {
           LOG.warn(
-              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; task left unassigned",
+              "[Process: {}] Admin fallback resolved no assignees — the only platform admin is the requester; the task falls back to the asset's owners other than the requester",
               execution.getProcessInstanceId());
         }
       }
@@ -471,6 +460,33 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     }
   }
 
+  /**
+   * A task workflow's start sets taskWorkflowManaged and taskEntityId. In an entity workflow an
+   * earlier approval step's CreateTask also leaves taskEntityId at process scope, so a task id whose
+   * task belongs to an entity-event workflow does not make this step a task workflow's: without
+   * this, a later step with nobody to ask opened a task instead of approving.
+   */
+  private static boolean isTaskWorkflowStep(DelegateExecution execution) {
+    final Object taskEntityId = execution.getVariable("taskEntityId");
+    return Boolean.TRUE.equals(execution.getVariable("taskWorkflowManaged"))
+        || (taskEntityId != null && !belongsToEntityEventWorkflow(taskEntityId.toString()));
+  }
+
+  private static boolean belongsToEntityEventWorkflow(String taskEntityId) {
+    boolean entityEventTask = false;
+    try {
+      final TaskRepository taskRepository =
+          (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      final Task task =
+          taskRepository.get(null, UUID.fromString(taskEntityId), taskRepository.getFields(""));
+      entityEventTask =
+          TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId());
+    } catch (EntityNotFoundException | IllegalArgumentException exc) {
+      LOG.debug("Task '{}' not found; treating the step as a task workflow's", taskEntityId);
+    }
+    return entityEventTask;
+  }
+
   private List<String> resolveCurrentTaskAssignees(DelegateExecution execution) {
     Object taskEntityId = execution.getVariable("taskEntityId");
     if (taskEntityId == null) {
@@ -482,7 +498,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       Task task =
           taskRepository.get(
               null,
-              java.util.UUID.fromString(taskEntityId.toString()),
+              UUID.fromString(taskEntityId.toString()),
               taskRepository.getFields(TaskRepository.FIELD_ASSIGNEES));
       if (TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId())
           || task.getAssignees() == null

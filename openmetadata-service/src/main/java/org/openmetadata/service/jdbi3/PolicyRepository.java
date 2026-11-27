@@ -249,6 +249,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
+      restrictAllowDeleteChange(
+          original.getAllowDelete(), updated.getAllowDelete(), updated::setAllowDelete);
       compareAndUpdate(
           ENABLED, () -> recordChange(ENABLED, original.getEnabled(), updated.getEnabled()));
       compareAndUpdate("rules", () -> updateRules(original.getRules(), updated.getRules()));

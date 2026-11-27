@@ -2,7 +2,7 @@
 name: test-locally
 description: Build and deploy a full local OpenMetadata stack with Docker to test your connector in the UI. Handles code generation, build optimization, health checks, and guided testing.
 user-invocable: true
-argument-hint: "[--skip-maven] [--rebuild] [--teardown]"
+argument-hint: "[--skip-maven] [--database mysql|postgresql] [--rebuild] [--teardown]"
 allowed-tools:
   - Bash
   - Read
@@ -21,21 +21,29 @@ When a user asks to "test locally", "start docker", "deploy locally", "test in t
 ## Arguments
 
 - `--skip-maven` or `--fast`: Skip the Maven build (use when only ingestion Python code changed)
+- `--database mysql|postgresql`: Select the database and its matching search service. A new deployment defaults to MySQL.
 - `--rebuild`: Tear down existing containers and rebuild
-- `--teardown` or `--down`: Just stop and remove containers
+- `--teardown` or `--down`: Stop the selected stack and remove its Compose-managed volumes
 - No arguments: Auto-detect what changed and choose the optimal build strategy
 
 ## Process
 
-### Step 0: Handle Teardown
+### Step 0: Select the stack
 
-If the user asked to tear down / stop:
+Run commands from the repo root. Use the selected row for every shell call, including troubleshooting. Set `database`, `compose_file` and `db_port` in the shell that runs the command. If the deployment used Compose overlays, pass the same additional `-f` files in the same order.
+
+| `database` | `compose_file` | `db_port` | Search service |
+|---|---|---|---|
+| `mysql` | `docker/development/docker-compose.yml` | `3306` | Elasticsearch |
+| `postgresql` | `docker/development/docker-compose-postgres.yml` | `5432` | OpenSearch |
+
+For teardown or reset, use the database selected at launch. If the request omits `--database` and the stack is unknown, ask which database to stop before running Compose. For `--teardown` or `--down`, stop the selected stack and remove its Compose-managed volumes. Database files in the host bind mount survive this command:
 
 ```bash
-cd docker/development && docker compose down -v
+docker compose -f "$compose_file" down -v
 ```
 
-Report success and exit.
+For teardown, report the result and exit. For deployment, continue below.
 
 ### Step 1: Check Prerequisites
 
@@ -97,23 +105,23 @@ git diff --name-only HEAD~5 | grep -E "^(openmetadata-spec|openmetadata-service|
 ### Step 5: Check for Running Containers
 
 ```bash
-docker compose -f docker/development/docker-compose.yml ps --format json 2>/dev/null | head -5
+docker compose -f "$compose_file" ps --all
 ```
 
-If containers are already running:
-- Ask the user if they want to rebuild or just open the UI
-- If rebuild, tear down first: `cd docker/development && docker compose down`
+If a stack is already running, offer to reuse it. The launcher stops both development Compose configurations before starting the selected one, so confirm a switch before replacing an active stack.
 
 ### Step 6: Build and Deploy
 
-**Full build**:
+**Full build**
+
+This resets the local database files in `docker/development/docker-volume/`, which both stacks share.
 ```bash
-./docker/run_local_docker.sh -m ui -d mysql -s false -i true -r true
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```
 
-**Fast rebuild** (ingestion-only):
+**Fast rebuild** (ingestion-only, keeps local database data)
 ```bash
-./docker/run_local_docker.sh -m ui -d mysql -s true -i true -r false
+./docker/run_local_docker.sh -m ui -d "$database" -s true -i true -r false
 ```
 
 Tell the user which strategy was chosen and why. The build takes:
@@ -128,13 +136,13 @@ The `run_local_docker.sh` script handles waiting internally. After it completes,
 # Check OpenMetadata server is responding
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8585/api/v1/system/version
 
-# Check Elasticsearch
-curl -s -o /dev/null -w "%{http_code}" http://localhost:9200
+# Check search cluster health (Elasticsearch or OpenSearch)
+curl -fsS http://localhost:9200/_cluster/health
 ```
 
 ### Step 8: Guide the User
 
-Once services are up, tell the user:
+Once services are up, fill in the selected row's service names and database port in this summary:
 
 ```
 The local OpenMetadata stack is running.
@@ -142,8 +150,8 @@ The local OpenMetadata stack is running.
 Services:
   - OpenMetadata UI:  http://localhost:8585
   - Airflow:          http://localhost:8080 (admin / admin)
-  - Elasticsearch:    http://localhost:9200
-  - MySQL:            localhost:3306
+  - <search service>: http://localhost:9200
+  - <database>:       localhost:<db_port>
 
 To test your connector:
   1. Open http://localhost:8585
@@ -154,7 +162,7 @@ To test your connector:
   6. If test passes, run metadata ingestion
 
 To tear down when done:
-  /test-locally --teardown
+  /test-locally --database <database> --teardown
 ```
 
 ## Troubleshooting
@@ -167,13 +175,13 @@ If the user reports issues, check these:
 grep -l "YourConnector" openmetadata-spec/src/main/resources/json/schema/entity/services/*Service.json
 
 # Need to rebuild without skip-maven
-./docker/run_local_docker.sh -m ui -d mysql -s false -i true -r true
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```
 
 **Test connection fails?**
 ```bash
 # Check ingestion container logs
-docker compose -f docker/development/docker-compose.yml logs ingestion --tail 50
+docker compose -f "$compose_file" logs --tail 50 ingestion
 
 # Check test_fn keys match test connection JSON
 cat openmetadata-service/src/main/resources/json/data/testConnections/{service_type}/{name}.json
@@ -185,10 +193,7 @@ cat openmetadata-service/src/main/resources/json/data/testConnections/{service_t
 docker system info | grep "Total Memory"
 
 # Check port conflicts
-lsof -i :8585 -i :8080 -i :9200 -i :3306 | grep LISTEN
-
-# Full reset
-cd docker/development && docker compose down -v && docker system prune -f
+lsof -i :8585 -i :8080 -i :9200 -i ":$db_port" | grep LISTEN
 ```
 
 **Build fails?**
@@ -196,5 +201,5 @@ cd docker/development && docker compose down -v && docker system prune -f
 # Format first, then rebuild
 make py_format
 mvn spotless:apply
-./docker/run_local_docker.sh -m ui -d mysql -s false -i true -r true
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```

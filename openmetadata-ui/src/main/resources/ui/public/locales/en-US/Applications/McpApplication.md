@@ -80,3 +80,10 @@ $$section
 MCP tools to turn off for every MCP client and every user, admins included, whatever their permissions. Use it to hide single tools, read or write; Read-only Mode still applies to the rest. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.
 
 $$
+
+$$section
+### Offered Tools $(id="offeredTools")
+
+MCP tools this server offers. Leave the list empty to offer every registered tool. Disabled Tools and Read-only Mode still apply. Distributions may define additional values.
+
+$$

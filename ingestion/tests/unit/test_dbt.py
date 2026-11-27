@@ -4639,6 +4639,97 @@ class TestAddDbtTestResultFailureReporting:
         assert "unknown" in recorded.name
 
 
+class TestDbtTestOnMissingColumn:
+    """A schema.yml test on a column the table does not have is a warning, not a failed record (#38812)."""
+
+    TABLE_FQN = "svc.db.sch.orders"
+
+    def _source(self, table):
+        from metadata.ingestion.api.status import Status
+
+        source = DbtSource.__new__(DbtSource)
+        source.status = Status()
+        source.metadata = MagicMock()
+        # The test case does not exist yet; only the table is found
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: table if entity is Table else None
+        source.context = MagicMock()
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 1, 1, 0, 0, 0)
+        return source
+
+    def _table(self):
+        return Table(
+            id=uuid.uuid4(),
+            name="orders",
+            fullyQualifiedName=self.TABLE_FQN,
+            columns=[
+                Column(name="ORDER_TOTAL", dataType=DataType.INT),
+                Column(
+                    name="ADDRESS",
+                    dataType=DataType.STRUCT,
+                    children=[Column(name="CITY", dataType=DataType.STRING)],
+                ),
+            ],
+        )
+
+    def _dbt_test(self, column_name):
+        manifest_node = MagicMock()
+        manifest_node.name = f"not_null_orders_{column_name}"
+        manifest_node.description = None
+        manifest_node.meta = None
+        manifest_node.column_name = column_name
+        manifest_node.test_metadata.name = "not_null"
+        manifest_node.test_metadata.kwargs = {
+            "column_name": column_name,
+            "model": "{{ get_where_subquery(ref('orders')) }}",
+        }
+        result = MagicMock()
+        result.message = "Got 3 results, configured to fail if != 0"
+        result.status.value = "fail"
+        result.unique_id = f"test.demo.{manifest_node.name}"
+        result.timing = []
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: result,
+            DbtCommonEnum.UPSTREAM.value: [self.TABLE_FQN],
+        }
+
+    def test_missing_column_is_skipped_with_an_actionable_warning(self):
+        source = self._source(self._table())
+        dbt_test = self._dbt_test("ORDER_AMOUNT")
+
+        assert list(source.create_dbt_test_case(dbt_test)) == []
+        source.add_dbt_test_result(dbt_test)
+
+        assert source.status.failures == []
+        assert len(source.status.warnings) == 1
+        reason = next(iter(source.status.warnings[0].values()))
+        assert "ORDER_AMOUNT" in reason
+        assert self.TABLE_FQN in reason
+        assert "schema.yml" in reason
+        source.metadata.add_test_case_results.assert_not_called()
+
+    @pytest.mark.parametrize("column_name", ["order_total", "ORDER_TOTAL", "address.city"])
+    def test_existing_column_is_created(self, column_name):
+        source = self._source(self._table())
+
+        results = list(source.create_dbt_test_case(self._dbt_test(column_name)))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
+
+    @pytest.mark.parametrize("columns_known", [False, True], ids=["unknown_table", "table_without_columns"])
+    def test_unverifiable_column_is_left_to_the_server(self, columns_known):
+        table = Table(id=uuid.uuid4(), name="orders", fullyQualifiedName=self.TABLE_FQN, columns=[])
+        source = self._source(table if columns_known else None)
+
+        results = list(source.create_dbt_test_case(self._dbt_test("ORDER_AMOUNT")))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
+
+
 class TestAddDbtSourceFreshnessResults:
     """
     `dbt source freshness` writes sources.json, whose result objects are a different
@@ -6188,6 +6279,34 @@ class TestDbtSourceIdentifiers:
             assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
         else:
             assert freshness is None
+        lineage = list(source.create_dbt_lineage(links[self.MODEL_FQN]))
+        assert [edge.right.lineage_request.edge.fromEntity.id.root for edge in lineage] == (
+            [links[physical_fqn].table_entity.id.root] if literal_exists else []
+        )
+
+    def test_wildcard_source_is_kept_for_lineage_where_the_engine_has_wildcard_tables(self, monkeypatch):
+        # Engines without wildcard tables keep the identifier literal (the parametrized test above)
+        from metadata.ingestion.source.database.dbt import metadata as dbt_metadata
+
+        resolve = dbt_metadata.get_table_binding_resolution
+
+        def with_wildcard_tables(metadata, service_name):
+            resolution = resolve(metadata, service_name)
+            resolution.supports_wildcard_tables = True
+            return resolution
+
+        monkeypatch.setattr(dbt_metadata, "get_table_binding_resolution", with_wildcard_tables)
+        source = self._source(self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = "raw_orders_*"
+        # A previous run's expansion must not answer for tables ingested since
+        source.wildcard_expansions.put("trino_svc.RAW_DB.RAW.raw_orders_*", None)
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert links[self.MODEL_FQN].datamodel.upstream == ["trino_svc.RAW_DB.RAW.raw_orders_*"]
+        assert "trino_svc.RAW_DB.RAW.raw_orders_*" not in source.wildcard_expansions
+        assert source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness") is None
 
     @pytest.mark.parametrize("missing_location", ["database", "schema"])
     def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):

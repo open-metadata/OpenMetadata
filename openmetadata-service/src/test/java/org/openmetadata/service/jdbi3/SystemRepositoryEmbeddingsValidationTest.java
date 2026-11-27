@@ -6,16 +6,23 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.search.SearchRepository;
@@ -54,7 +61,6 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
-    when(searchRepository.usesHybridSearchPipeline()).thenReturn(true);
 
     systemRepository = new SystemRepository();
   }
@@ -66,7 +72,7 @@ class SystemRepositoryEmbeddingsValidationTest {
   }
 
   @Test
-  void testEmbeddingsPassWithPipelineAvailable() {
+  void testEmbeddingsPassWhenTheClientWorks() {
     VectorIndexService vectorService = mock(VectorIndexService.class);
     EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
@@ -74,7 +80,6 @@ class SystemRepositoryEmbeddingsValidationTest {
     when(embeddingClient.embed("OpenMetadata embedding validation test"))
         .thenReturn(new float[] {0.1f, 0.2f});
     when(embeddingClient.getDimension()).thenReturn(2);
-    when(searchRepository.checkHybridSearchPipeline()).thenReturn(Optional.empty());
 
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
@@ -83,39 +88,47 @@ class SystemRepositoryEmbeddingsValidationTest {
   }
 
   @Test
-  void testEmbeddingsFailWhenPipelineMissing() {
-    VectorIndexService vectorService = mock(VectorIndexService.class);
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
-    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
-    when(embeddingClient.embed("OpenMetadata embedding validation test"))
-        .thenReturn(new float[] {0.1f, 0.2f});
-    when(embeddingClient.getDimension()).thenReturn(2);
-    when(searchRepository.checkHybridSearchPipeline())
-        .thenReturn(Optional.of("Hybrid search pipeline 'hybrid-rrf' not found."));
+  void reportsEmbeddingDeploymentWhenInitializationFails() {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(
+                new LLMOpenAIConfig()
+                    .withEndpoint("https://example.com")
+                    .withDeploymentName("chat"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(new LLMOpenAIEmbeddingConfig().withDeploymentName("vectors")));
+    try (MockedStatic<LlmConfigHolder> holder = mockStatic(LlmConfigHolder.class)) {
+      holder.when(LlmConfigHolder::get).thenReturn(config);
 
-    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+      StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
-    assertFalse(result.getPassed());
-    assertTrue(result.getMessage().contains("not found"));
+      assertFalse(result.getPassed());
+      assertTrue(result.getMessage().contains("deploymentName: vectors"), result.getMessage());
+    }
   }
 
-  @Test
-  void testPipelineCheck5xxReportsSpecificError() {
-    VectorIndexService vectorService = mock(VectorIndexService.class);
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
-    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
-    when(embeddingClient.embed("OpenMetadata embedding validation test"))
-        .thenReturn(new float[] {0.1f, 0.2f});
-    when(embeddingClient.getDimension()).thenReturn(2);
-    when(searchRepository.checkHybridSearchPipeline())
-        .thenReturn(Optional.of("Unexpected status 500"));
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"  "})
+  void reportsMissingEndpointForAnEmbeddingDeployment(String endpoint) {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(new LLMOpenAIConfig().withEndpoint(endpoint))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(new LLMOpenAIEmbeddingConfig().withDeploymentName("vectors")));
+    try (MockedStatic<LlmConfigHolder> holder = mockStatic(LlmConfigHolder.class)) {
+      holder.when(LlmConfigHolder::get).thenReturn(config);
 
-    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+      StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
-    assertFalse(result.getPassed());
-    assertTrue(result.getMessage().contains("Unexpected status 500"));
+      assertFalse(result.getPassed());
+      assertTrue(result.getMessage().contains("LLM_OPENAI_ENDPOINT"), result.getMessage());
+      assertFalse(result.getMessage().contains("api.openai.com"), result.getMessage());
+    }
   }
 
   @Test
@@ -164,8 +177,8 @@ class SystemRepositoryEmbeddingsValidationTest {
 
   @Test
   void testElasticsearchEmbeddingsValidatedSameAsOpenSearch() {
-    // ES is now a first-class supported backend; the validator should run the
-    // same checks (embedding generation + hybrid pipeline) instead of short-circuiting.
+    // ES is a first-class supported backend; the validator runs the same embedding generation
+    // check on it instead of short-circuiting.
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
 
@@ -176,14 +189,12 @@ class SystemRepositoryEmbeddingsValidationTest {
     when(embeddingClient.embed("OpenMetadata embedding validation test"))
         .thenReturn(new float[] {0.1f, 0.2f});
     when(embeddingClient.getDimension()).thenReturn(2);
-    when(searchRepository.usesHybridSearchPipeline()).thenReturn(false);
 
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
     assertTrue(result.getPassed(), "ES embeddings validation should pass when the client works");
     assertTrue(result.getMessage().startsWith("Embeddings are working correctly."));
     assertFalse(
-        result.getMessage().contains("pipeline"),
-        "an engine without the RRF pipeline must not claim one");
+        result.getMessage().contains("pipeline"), "no engine has a search pipeline to report on");
   }
 }

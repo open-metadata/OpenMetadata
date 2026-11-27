@@ -168,6 +168,33 @@ export interface InputField {
      * The namespace of the input dataset.
      */
     namespace: string;
+    /**
+     * Transformations applied to this input field.
+     */
+    transformations?: InputFieldTransformation[];
+    [property: string]: any;
+}
+
+/**
+ * How an input column contributes to an output column.
+ */
+export interface InputFieldTransformation {
+    /**
+     * A description of the transformation.
+     */
+    description?: string;
+    /**
+     * Whether the transformation masks data.
+     */
+    masking?: boolean;
+    /**
+     * The transformation subtype, such as AGGREGATION or FILTER.
+     */
+    subtype?: string;
+    /**
+     * The transformation type, such as DIRECT or INDIRECT.
+     */
+    type?: string;
     [property: string]: any;
 }
 

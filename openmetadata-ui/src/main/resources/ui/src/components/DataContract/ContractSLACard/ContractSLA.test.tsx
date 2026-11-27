@@ -12,6 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { createInstance } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import {
   DataContract,
   MaxLatencyUnit,
@@ -22,6 +24,7 @@ import {
   DataContractResult,
   RefreshedAtSource,
 } from '../../../generated/entity/datacontract/dataContractResult';
+import germanTranslations from '../../../locale/languages/de-de.json';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
@@ -116,6 +119,41 @@ describe('ContractSLA Component', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByTestId('check-icon')).toBeInTheDocument();
+  });
+
+  it.each([
+    [1, '1 Minute'],
+    [15, '15 Minuten'],
+    [1000, '1.000 Minuten'],
+  ])('renders localized minute intervals of %s', async (interval, expected) => {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'de-DE',
+      resources: { 'de-DE': { translation: germanTranslations } },
+    });
+    jest.mocked(useTranslation).mockReturnValueOnce({
+      ...useTranslation(),
+      i18n,
+      t: i18n.t,
+    });
+    render(
+      <ContractSLA
+        contract={{
+          ...MOCK_DATA_CONTRACT,
+          sla: {
+            refreshFrequency: { interval, unit: RefreshFrequencyUnit.Minute },
+          },
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        `message.freshness-sla-description - ${i18n.t(
+          'label.freshness'
+        )}: ${expected}`
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render SLA card with availability time', () => {

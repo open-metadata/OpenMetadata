@@ -876,6 +876,41 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ).toContain('<u>underline with <strong>bold</strong></u>');
   });
 
+  it.each([
+    [':+1:', '👍'],
+    [':heart:', '❤️'],
+    [':smile:', '😄'],
+  ])('keeps the existing Unicode value for %s', (shortcode, emoji) => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(shortcode),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe(emoji);
+  });
+
+  it('leaves the legacy octocat shortcode as text', () => {
+    expect(getHtmlStringFromMarkdownString(':octocat:')).toBe(
+      '<p>:octocat:</p>'
+    );
+  });
+
+  it('does not resolve inherited object properties as emoji', () => {
+    expect(getHtmlStringFromMarkdownString(':constructor: :toString:')).toBe(
+      '<p>:constructor: :toString:</p>'
+    );
+  });
+
+  it.each([
+    ['*italic* and _plain_', '<p><em>italic</em> and _plain_</p>'],
+    ['_a **b**_', '<p>_a <strong>b</strong>_</p>'],
+    ['*a _b_ c*', '<p><em>a _b_ c</em></p>'],
+    ['___x___', '<p><u>x</u></p>'],
+    ['___x__ y_', '<p>_<u>x</u> y_</p>'],
+  ])('keeps single underscores literal in %s', (markdown, expected) => {
+    expect(getHtmlStringFromMarkdownString(markdown)).toBe(expected);
+  });
+
   it('leaves unknown and escaped emoji shortcodes as text', () => {
     expect(getHtmlStringFromMarkdownString('\\:smile: :not_an_emoji:')).toBe(
       '<p>:smile: :not_an_emoji:</p>'

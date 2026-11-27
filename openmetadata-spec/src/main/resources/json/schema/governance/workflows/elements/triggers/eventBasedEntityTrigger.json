@@ -62,6 +62,15 @@
           ],
           "default": "Default"
         },
+        "triggeringBots": {
+          "title": "Triggering Bots",
+          "description": "Names of the bots whose changes start this workflow. A change made by any other bot never starts it. Only bots an admin created can be listed: system bots and application bots cannot.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
         "include": {
           "title": "Include Fields",
           "description": "Array of field names that must be present in the change description to trigger the workflow. Takes priority over exclude fields.",

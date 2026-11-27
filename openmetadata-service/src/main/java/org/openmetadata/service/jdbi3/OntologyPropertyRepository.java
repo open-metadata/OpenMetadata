@@ -22,6 +22,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyPropertyRules;
 import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Repository
@@ -272,7 +273,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     final OntologyProperty updated =
         JsonUtils.deepCopy(stored, OntologyProperty.class)
             .withInverse(inverse == null ? null : URI.create(inverse));
-    updated.setUpdatedBy(actor);
+    EntityUtil.recordWriter(updated, actor);
     updated.setUpdatedAt(System.currentTimeMillis());
     prepareInternal(updated, true);
     getUpdater(stored, updated, Operation.PATCH, null).update();

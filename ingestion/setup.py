@@ -50,7 +50,7 @@ VERSIONS = {
     # both entries: their markers are mutually exclusive.
     "pyarrow": "pyarrow>=26.0.0,<27; python_version >= '3.11'",
     "pyarrow-py310": "pyarrow>=23.0.1,<26; python_version < '3.11'",
-    "pydantic": "pydantic>=2.12.5,<3",
+    "pydantic": "pydantic>=2.14.2,<3",  # GHSA-qpmf-fgh3-ff25, GHSA-3r8g-cqwr-jr29 extra-data validation bypasses
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     # 2.6.0 annotates with typing.Self (3.11+) but declares no requires-python floor, so
@@ -228,18 +228,15 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.9",
+    "collate-sqllineage==2.1.10",  # imports collate_sqlfluff, which coexists with upstream sqlfluff
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=83",  # CVE-2026-59890: MANIFEST.in exclusion bypass through Unicode normalization
     "shapely",
-    "collate-data-diff>=0.11.18",  # get_stats_dict(sample_size=...) and UTC on every pooled connection
-    # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
-    # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
-    # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
-    "dbt-extractor>=0.5.0",
+    # 0.11.19 moves dbt-core to an extra so dbt 2 (`dbt`/`dbt-oss`) can share the environment
+    "collate-data-diff>=0.11.19",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",

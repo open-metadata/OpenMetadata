@@ -530,6 +530,10 @@ describe('SpreadsheetVersion', () => {
       ViewAll: false,
     };
 
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+
     renderSpreadsheetVersion({
       entityPermissions: limitedPermissions,
     });
@@ -537,9 +541,6 @@ describe('SpreadsheetVersion', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
-
-    const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
-    fireEvent.click(customPropertiesTab);
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
@@ -603,6 +604,32 @@ describe('SpreadsheetVersion', () => {
     expect(
       screen.getByTestId('data-assets-version-header')
     ).toBeInTheDocument();
+  });
+
+  it('should follow the tab route param when it changes without a remount', async () => {
+    const { rerender } = renderSpreadsheetVersion();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /schema/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(
+      <MemoryRouter>
+        <SpreadsheetVersion {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('tab', { name: /custom/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {

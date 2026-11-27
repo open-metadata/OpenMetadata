@@ -75,6 +75,10 @@ export const EXTENSION_POINTS = {
   // recent-chats list (expanded panel) and its collapsed-rail popover.
   APP_MODE_SIDEBAR_RECENT: 'app-mode.sidebar.recent',
   APP_MODE_SIDEBAR_RECENT_RAIL: 'app-mode.sidebar.recentRail',
+  // Global search (⌘K) — extra result types a plugin adds, and an action on
+  // the typed query it shows above the results.
+  APP_MODE_GLOBAL_SEARCH_SOURCES: 'app-mode.globalSearch.sources',
+  APP_MODE_GLOBAL_SEARCH_QUERY_ACTION: 'app-mode.globalSearch.queryAction',
 
   // Inbox task overview — a plugin contributes a task-type-specific detail
   // panel (e.g. a Data Access Request panel) that replaces the generic task
@@ -93,6 +97,12 @@ export const EXTENSION_POINTS = {
   // (ADR:2026-10-12-failed-test-connection-and-run-actions).
   SERVICE_DETAILS_TEST_CONNECTION_ACTIONS:
     'service-details.test-connection.actions',
+  // The AI-mode Agents tab (ADR:2026-11-27-ai-mode-service-page-owns-agents-and-insights) reads
+  // these: the widget listing AI agents (its presence adds the AI sub-tab), the control that adds
+  // an agent in place of the default one, and an action shown on a failed or partial agent run.
+  SERVICE_DETAILS_AI_AGENTS_WIDGET: 'service-details.agents.ai-widget',
+  SERVICE_DETAILS_ADD_AGENT_ACTION: 'service-details.agents.add-action',
+  SERVICE_DETAILS_AGENT_RUN_ACTIONS: 'service-details.agents.run-actions',
   CONNECTIONS_LIST_ONBOARDING: 'connections.list.onboarding',
   CONNECTIONS_ROUTES: 'connections.routes',
 } as const;

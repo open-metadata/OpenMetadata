@@ -322,8 +322,8 @@ _(empty — first run pending)_
   `sampled` flag rather than failing. `sampled` and the node counts are published as counters for
   exactly this reason — a p95 that improved because the response got smaller must be visible, not
   celebrated.
-- `LineageRepository.getUpstream/DownstreamLineage` resolves an entity reference per record inside
-  its recursion (an N+1), bounded only by the endpoint's `@Max(3)`.
+- `LineageRepository.walkLineage` resolves an entity reference per record (an N+1), bounded only by
+  the endpoint's `@Max(3)`.
 - **Found and fixed: a large scene opened on its context nodes.** A scene too big for the canvas at
   its band's minimum readable zoom (0.55 for ASSET, just above the 0.5 zoom-out threshold) used to
   clamp the zoom and keep the centre of the whole graph in view. In the layered layout that centre
