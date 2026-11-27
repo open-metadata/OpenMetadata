@@ -15,6 +15,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  HintText: ({ children }: { children?: ReactNode }) => (
+    <span data-testid="comment-hint">{children}</span>
+  ),
   ModalOverlay: ({
     isOpen,
     onOpenChange,
@@ -135,6 +139,28 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+jest.mock(
+  '../../../../common/RichTextEditor/RichTextEditor',
+  () =>
+    ({
+      initialValue,
+      onTextChange,
+      readonly,
+    }: {
+      initialValue: string;
+      onTextChange: (value: string) => void;
+      readonly?: boolean;
+    }) =>
+      (
+        <textarea
+          aria-label="Comment"
+          disabled={readonly}
+          value={initialValue}
+          onChange={(event) => onTextChange(event.target.value)}
+        />
+      )
+);
+
 import TaskActionCommentModal from './TaskActionCommentModal';
 
 jest.mock('./TaskAssigneeSelect', () => ({
@@ -177,7 +203,7 @@ describe('TaskActionCommentModal', () => {
   it('confirms with the trimmed comment', () => {
     render(<TaskActionCommentModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('task-action-comment'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '  looks good  ' },
     });
     fireEvent.click(screen.getByTestId('task-action-comment-confirm'));
@@ -188,6 +214,21 @@ describe('TaskActionCommentModal', () => {
       assignee: undefined,
     });
   });
+
+  it.each(['<p>   </p>', '<p></p><p></p>', '<p><br></p>', '<p>&nbsp;</p>'])(
+    'rejects blank editor markup %s for a required comment',
+    (markup) => {
+      render(
+        <TaskActionCommentModal {...defaultProps} requiredMessage="required" />
+      );
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: markup },
+      });
+
+      expect(screen.getByTestId('task-action-comment-confirm')).toBeDisabled();
+      expect(defaultProps.onConfirm).not.toHaveBeenCalled();
+    }
+  );
 
   it('allows an empty comment when not required', () => {
     render(<TaskActionCommentModal {...defaultProps} />);
@@ -228,7 +269,7 @@ describe('TaskActionCommentModal', () => {
       />
     );
 
-    const field = screen.getByTestId('task-action-comment');
+    const field = screen.getByRole('textbox');
     fireEvent.change(field, { target: { value: 'typed' } });
 
     expect(screen.getByTestId('task-action-comment-confirm')).toBeEnabled();
@@ -249,7 +290,7 @@ describe('TaskActionCommentModal', () => {
       />
     );
 
-    fireEvent.change(screen.getByTestId('task-action-comment'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'closing this' },
     });
     fireEvent.click(screen.getByTestId('task-action-comment-confirm'));
@@ -289,7 +330,7 @@ describe('TaskActionCommentModal', () => {
   it('requires a root cause when shown', () => {
     render(<TaskActionCommentModal {...defaultProps} showRootCause />);
 
-    fireEvent.change(screen.getByTestId('task-action-comment'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'resolved it' },
     });
 
@@ -308,7 +349,7 @@ describe('TaskActionCommentModal', () => {
     fireEvent.change(screen.getByTestId('task-action-root-cause'), {
       target: { value: 'FalsePositive' },
     });
-    fireEvent.change(screen.getByTestId('task-action-comment'), {
+    fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'resolved it' },
     });
     fireEvent.click(screen.getByTestId('task-action-comment-confirm'));

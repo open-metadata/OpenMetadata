@@ -685,6 +685,21 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedOrigins?: string[];
     /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
+    /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
      * external-facing URL.
@@ -703,6 +718,15 @@ export interface PipelineServiceClientConfiguration {
      */
     disabledTools?: string[];
     /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
+    /**
+     * Distribution-specific MCP settings ignored by OpenMetadata.
+     */
+    extensions?: { [key: string]: any };
+    /**
      * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
      * it bounds how much of the MCP client's context one call can use. A saved change applies
      * right away on the server that handled the save; other servers in a cluster pick it up on
@@ -717,6 +741,12 @@ export interface PipelineServiceClientConfiguration {
      * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
+    /**
+     * Allowlist of MCP tool names this server offers. An empty list offers every registered
+     * tool. Disabled tools and read-only mode still apply. Distributions may define additional
+     * values.
+     */
+    offeredTools?: string[];
     /**
      * Expected origin header URI for validation
      */
@@ -1807,7 +1837,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -1849,7 +1882,8 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
@@ -1861,7 +1895,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**
@@ -2156,14 +2192,14 @@ export interface GlobalSettings {
      */
     highlightFields?: string[];
     /**
-     * Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search in hybrid search (0.0-1.0)
      */
     keywordWeight?:     number;
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
     /**
-     * Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
     /**
@@ -2291,7 +2327,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
@@ -2585,7 +2622,7 @@ export interface NaturalLanguageSearch {
      */
     hybridSearch?: HybridSearch;
     /**
-     * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search results in hybrid search (0.0-1.0)
      */
     keywordWeight?: number;
     /**
@@ -2603,7 +2640,7 @@ export interface NaturalLanguageSearch {
      */
     semanticSearchEnabled?: boolean;
     /**
-     * Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search results in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
 }
@@ -2656,11 +2693,12 @@ export interface HybridSearch {
      */
     maxQueryTerms?: number;
     /**
-     * Pagination depth used by the hybrid query for RRF normalization.
+     * Number of documents each leg of a hybrid search retrieves before the legs are fused.
      */
     paginationDepth?: number;
     /**
-     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
+     * Ignored. Hybrid search no longer uses an OpenSearch search pipeline; the key is kept so
+     * that configuration files that still set it keep loading.
      */
     searchPipeline?: string;
     /**
@@ -2876,6 +2914,11 @@ export interface SavedSparqlQuery {
      * Display name for the saved query.
      */
     name: string;
+    /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
     /**
      * SPARQL query body.
      */

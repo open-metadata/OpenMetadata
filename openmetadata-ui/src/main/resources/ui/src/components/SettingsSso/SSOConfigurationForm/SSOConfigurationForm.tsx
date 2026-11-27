@@ -22,7 +22,8 @@ import Form from '@rjsf/core';
 import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
-import { useEffect, useState } from 'react';
+import { upperFirst } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { transformErrors } from '../../../utils/formPureUtils';
@@ -47,6 +48,7 @@ import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
 import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
+import { labelConfigurationPaths } from '../SsoTestLogin/SsoTestLogin.utils';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../useSsoConfiguration';
 import './sso-configuration-form.less';
@@ -186,6 +188,36 @@ const SSOConfigurationFormRJSF = ({
     isReadOnly,
   });
 
+  // Server messages name fields by configuration path and can arrive in lower case straight
+  // from the identity provider; show the form's label, as a sentence.
+  const labelPaths = useCallback(
+    (message: string) =>
+      upperFirst(
+        labelConfigurationPaths(message, uiSchema as Record<string, unknown>)
+      ),
+    [uiSchema]
+  );
+  const readableConfigurationCheck = useMemo(
+    () =>
+      testLoginConfigurationCheck && {
+        ...testLoginConfigurationCheck,
+        problems: testLoginConfigurationCheck.problems?.map(labelPaths),
+      },
+    [testLoginConfigurationCheck, labelPaths]
+  );
+  const readableTestLoginResult = useMemo(
+    () =>
+      testLoginResult && {
+        ...testLoginResult,
+        errors: testLoginResult.errors?.map(labelPaths),
+        stages: testLoginResult.stages?.map((stage) => ({
+          ...stage,
+          message: stage.message && labelPaths(stage.message),
+        })),
+      },
+    [testLoginResult, labelPaths]
+  );
+
   const customFields: RegistryFieldsType = {
     ArrayField: SsoConfigurationFormArrayFieldTemplate,
     RolesSelectField: SsoRolesSelectField,
@@ -274,12 +306,12 @@ const SSOConfigurationFormRJSF = ({
           </Button>
         </div>
         <SsoTestLoginModal
-          configurationCheck={testLoginConfigurationCheck}
+          configurationCheck={readableConfigurationCheck}
           error={testLoginError}
           isAwaitingCredentials={isAwaitingTestLoginCredentials}
           isTesting={isTestingLogin}
           open={showTestLoginModal}
-          result={testLoginResult}
+          result={readableTestLoginResult}
           onClose={handleTestLoginModalClose}
           onSubmitCredentials={submitTestLoginCredentials}
         />

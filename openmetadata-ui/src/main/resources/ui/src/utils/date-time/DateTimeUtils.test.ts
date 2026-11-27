@@ -20,9 +20,11 @@ import {
   DATE_TIME_WEEKDAY_WITH_ORDINAL,
   DATE_TIME_WITH_OFFSET_FORMAT,
   DATE_TIME_WITH_OFFSET_SHORT,
+  ensureCronstrueLoaded,
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatDuration,
   formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
@@ -93,6 +95,19 @@ describe('DateTimeUtils tests', () => {
     expect(formatDurationToHHMMSS(210)).toBe('210 ms');
     expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
     expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
+  });
+
+  it(`formatDuration should keep sub-minute precision`, () => {
+    expect(formatDuration(0)).toBe('<1ms');
+    expect(formatDuration(210)).toBe('210ms');
+    expect(formatDuration(1999)).toBe('2.0s');
+    expect(formatDuration(42_300)).toBe('42.3s');
+  });
+
+  it(`formatDuration should roll long runs up into hours and minutes`, () => {
+    expect(formatDuration(125_000)).toBe('2m 5s');
+    expect(formatDuration(9_936_000)).toBe('2h 45m 36s');
+    expect(formatDuration(90_000_000)).toBe('1d 1h');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {
@@ -690,6 +705,22 @@ describe('convertSecondsToHumanReadableFormat', () => {
 });
 
 describe('getScheduleDescriptionTexts', () => {
+  it('should append the timezone to the schedule time', async () => {
+    await ensureCronstrueLoaded();
+
+    expect(
+      getScheduleDescriptionTexts('0 0 * * 0', 'UTC').descriptionFirstPart
+    ).toBe('At 12:00 AM (UTC)');
+  });
+
+  it('should leave the schedule time unchanged without a timezone', async () => {
+    await ensureCronstrueLoaded();
+
+    expect(getScheduleDescriptionTexts('0 0 * * 0').descriptionFirstPart).toBe(
+      'At 12:00 AM'
+    );
+  });
+
   it('should parse daily cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * *');
 

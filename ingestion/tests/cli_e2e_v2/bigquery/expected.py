@@ -77,6 +77,7 @@ def bigquery_database(project: str, dataset: str, *, tables: Collection[str] | N
     """Return one expected project/dataset subtree; ``tables`` narrows it for complete-inventory filters."""
     expected = derive_expected_tables(build_bigquery_baseline(project, dataset).metadata, BIGQUERY_TYPE_MAP)
     expected.append(_expected_customer_txn_summary_view())
+    expected.append(_expected_struct_fields_view())
     if tables is not None:
         kept = set(tables)
         expected = [table for table in expected if table.name in kept]
@@ -116,5 +117,19 @@ def _expected_customer_txn_summary_view() -> ExpectedTable:
             ExpectedColumn("customer_status", DataType.STRING),
             ExpectedColumn("txn_count", DataType.INT),
             ExpectedColumn("total_amount", DataType.NUMERIC),
+        ],
+    )
+
+
+def _expected_struct_fields_view() -> ExpectedTable:
+    """`SELECT id, struct_col, struct_col.*`: the STRUCT itself, then one column per field."""
+    return ExpectedTable(
+        name="struct_fields_view",
+        table_type=TableType.View,
+        columns=[
+            ExpectedColumn("id", DataType.INT),
+            ExpectedColumn("struct_col", DataType.STRUCT),
+            ExpectedColumn("x", DataType.INT),
+            ExpectedColumn("y", DataType.STRING),
         ],
     )

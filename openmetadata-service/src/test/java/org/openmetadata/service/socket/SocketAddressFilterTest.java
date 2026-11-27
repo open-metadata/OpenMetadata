@@ -1,5 +1,8 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -14,6 +17,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -29,6 +33,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,15 +42,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
@@ -53,6 +64,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.SessionStore;
 import org.openmetadata.service.security.session.UserSession;
 
 @ExtendWith(MockitoExtension.class)
@@ -185,6 +197,54 @@ class SocketAddressFilterTest {
         tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
     org.junit.jupiter.api.Assertions.assertEquals(
         "session-1", wrappedRequest.getHeader("SessionId"));
+  }
+
+  /**
+   * WebSocketManager closes a socket that registers under a provider other than the configured one,
+   * so the stamp must name the provider whose filter validated the handshake, never the client's.
+   */
+  @Test
+  void handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+    lenient().when(request.getHeader("AuthProvider")).thenReturn("azure");
+    lenient()
+        .when(request.getHeaders("AuthProvider"))
+        .thenReturn(java.util.Collections.enumeration(List.of("azure")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    assertEquals(
+        List.of("google"), java.util.Collections.list(wrappedRequest.getHeaders("AuthProvider")));
+  }
+
+  /**
+   * WebSocketManager judges a registering or swept socket against this, so it names the provider
+   * of the configuration the filter validates under, and none when it has no configuration.
+   */
+  @Test
+  void validatingProviderNamesTheProviderTheFilterValidatesUnder() {
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+
+    assertEquals(AuthProvider.GOOGLE, filter.validatingProvider());
+
+    filter.updateConfiguration(authConfig, null);
+
+    assertNull(filter.validatingProvider());
+    assertNull(new SocketAddressFilter().validatingProvider());
   }
 
   @Test
@@ -383,6 +443,69 @@ class SocketAddressFilterTest {
   }
 
   /**
+   * The MCP OAuth server binds its access tokens to the MCP resource through {@code aud}. The
+   * handshake's own validator serves the OpenMetadata API, so it answers such a token with the
+   * generic 401 even while the token is stored and its user exists: a token minted for {@code /mcp}
+   * never opens a push-feed socket. ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  @Test
+  void realValidatorRejectsATokenIssuedForTheMcpResource() throws Exception {
+    SocketAddressFilter productionFilter =
+        new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+    String mcpToken =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                "sam",
+                Set.of(),
+                false,
+                "sam@open-metadata.org",
+                600,
+                false,
+                ServiceTokenType.OM_USER,
+                List.of("openid"),
+                "mcp-client",
+                "https://om.example/mcp")
+            .getJWTToken();
+    mockRequest(null, "Bearer " + mcpToken);
+    CollectionDAO storedTokens = storing(mcpToken);
+
+    try (MockedStatic<Entity> entityMock =
+        mockStatic(Entity.class, withSettings().strictness(Strictness.LENIENT))) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(storedTokens);
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      productionFilter.doFilter(request, response, chain);
+    }
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** {@code oauth_access_tokens} holding {@code token}, as issuing an MCP token stores it. */
+  private static CollectionDAO storing(String token) {
+    CollectionDAO dao = mock(CollectionDAO.class, withSettings().strictness(Strictness.LENIENT));
+    CollectionDAO.OAuthAccessTokenDAO accessTokens =
+        mock(
+            CollectionDAO.OAuthAccessTokenDAO.class, withSettings().strictness(Strictness.LENIENT));
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    String hash = OAuthDAOs.hashToken(token);
+    when(accessTokens.findByTokenHash(hash))
+        .thenReturn(
+            new OAuthAccessTokenRecord(
+                UUID.randomUUID(),
+                hash,
+                "encrypted",
+                "mcp-client",
+                "sam",
+                List.of(),
+                Long.MAX_VALUE));
+    return dao;
+  }
+
+  /**
    * A field the handshake did not establish must leave the header absent on the polling path too:
    * an external token carries no session, so a client-sent SessionId must not reach the servlet.
    */
@@ -462,6 +585,46 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     verify(chain, never()).doFilter(any(), any());
+  }
+
+  /**
+   * REST already rejects a session that the swapped-out provider issued; its cookie must not reopen
+   * the push feed either.
+   */
+  @Test
+  void cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured() {
+    String sessionId = validSessionId('p');
+    SocketAddressFilter swapped =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.GOOGLE, sessionIssuedBy(AuthProvider.BASIC, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeRejectedException rejected =
+        assertThrows(HandshakeRejectedException.class, () -> swapped.authenticate(request));
+
+    assertEquals(HttpServletResponse.SC_UNAUTHORIZED, rejected.getStatus());
+    assertEquals("Session is no longer active", rejected.getMessage());
+  }
+
+  @Test
+  void cookieHandshakeAcceptsTheOtherNativePasswordProviderName() {
+    String sessionId = validSessionId('o');
+    SocketAddressFilter renamed =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.BASIC, sessionIssuedBy(AuthProvider.OPENMETADATA, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeIdentity identity = renamed.authenticate(request);
+
+    assertEquals(sessionId, identity.sessionId());
   }
 
   /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
@@ -641,6 +804,20 @@ class SocketAddressFilterTest {
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private UserSession sessionIssuedBy(AuthProvider provider, String sessionId) {
+    return activeSession(sessionId, "sam", UUID.randomUUID().toString()).toBuilder()
+        .provider(provider.value())
+        .build();
+  }
+
+  private static SessionService sessionServiceConfiguredWith(
+      AuthProvider configuredProvider, UserSession stored) {
+    SessionStore store = mock(SessionStore.class);
+    when(store.findById(stored.getId())).thenReturn(Optional.of(stored));
+    return new SessionService(
+        new AuthenticationConfiguration().withProvider(configuredProvider), store);
   }
 
   private SocketAddressFilter defaultConfigFilter() {

@@ -192,6 +192,23 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   },
 }));
 
+jest.mock(
+  '../../common/DomainMismatchAlert/DomainMismatchAlert.component',
+  () => ({
+    DomainMismatchAlert: ({
+      entityId,
+      domains,
+    }: {
+      entityId: string;
+      domains?: { fullyQualifiedName: string }[];
+    }) => (
+      <div data-entity-id={entityId} data-testid="domain-mismatch-alert">
+        {domains?.map((domain) => domain.fullyQualifiedName).join(',')}
+      </div>
+    ),
+  })
+);
+
 const renderComponent = (onPageChange = jest.fn()) =>
   render(<KnowledgePageDetailComponent onPageChange={onPageChange} />, {
     wrapper: MemoryRouter,
@@ -216,6 +233,22 @@ describe('KnowledgePageDetailComponent permissions', () => {
       expect(resource).toBe(expectedResource);
       expect(identifier).toEqual(expectedIdentifier);
     });
+  });
+
+  it('renders the domain mismatch alert with the article domains', async () => {
+    (getKnowledgePageByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...MOCK_KNOWLEDGE_PAGE,
+        domains: [{ id: 'd1', type: 'domain', fullyQualifiedName: 'Beta' }],
+      })
+    );
+
+    renderComponent();
+
+    const alert = await screen.findByTestId('domain-mismatch-alert');
+
+    expect(alert).toHaveTextContent('Beta');
+    expect(alert).toHaveAttribute('data-entity-id', MOCK_KNOWLEDGE_PAGE.id);
   });
 
   it('fetches permissions for the knowledge page fqn', async () => {

@@ -24,7 +24,6 @@ import static org.openmetadata.it.tests.DomainReassignmentAuthorizationIT.create
 import static org.openmetadata.it.tests.DomainReassignmentAuthorizationIT.domainOf;
 import static org.openmetadata.it.tests.DomainReassignmentAuthorizationIT.domainScopedUser;
 import static org.openmetadata.it.tests.DomainReassignmentAuthorizationIT.patchDomains;
-import static org.openmetadata.it.tests.DomainReassignmentAuthorizationIT.patchWholeDocument;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,8 +56,7 @@ class DomainMoveApprovalAuthorizationIT {
     gateDomainsOf(ns, table);
 
     assertThrows(
-        ForbiddenException.class,
-        () -> patchWholeDocument(scoped.client(), table, scoped.otherDomain()));
+        ForbiddenException.class, () -> patchDomains(scoped.client(), table, scoped.otherDomain()));
     assertTrue(requestsFor(table.getId()).isEmpty(), "a refused move submits no change request");
     assertEquals(scoped.heldDomain().getId(), domainOf(table));
   }

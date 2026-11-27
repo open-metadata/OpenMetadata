@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.SuccessContext;
@@ -177,6 +178,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // RDF is optional, so a server without it completes the run with nothing indexed, as
       // RdfInferenceApp does. Set directly: no rebuild ran, so no rebuild metrics are recorded.
       LOG.info("RDF is not configured on this server, skipping RDF indexing");
+      projectionUnchanged = true;
       jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       sendUpdates(jobExecutionContext, true);
       return;
@@ -752,7 +754,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
               });
     } catch (RuntimeException e) {
       LOG.error("Failed to clear RDF data", e);
-      throw new IllegalStateException("Failed to clear RDF data", e);
+      // The run's failure message is all CI keeps, so it names the underlying cause.
+      throw new IllegalStateException(
+          "Failed to clear RDF data: " + ExceptionUtils.getRootCauseMessage(e), e);
     }
   }
 
@@ -1035,6 +1039,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+    }
+    if (projectionUnchanged && jobData.getFailure() == null) {
+      appRecord.setSuccessContext(RdfProjectionStateResolver.successContextOfUnchangedProjection());
     }
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
 

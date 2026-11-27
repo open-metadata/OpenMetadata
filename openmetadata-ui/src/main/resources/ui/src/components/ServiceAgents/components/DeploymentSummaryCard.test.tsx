@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { useTranslation } from 'react-i18next';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent } from '../AgentsPage.interface';
 import DeploymentSummaryCard from './DeploymentSummaryCard.component';
@@ -78,6 +79,109 @@ describe('DeploymentSummaryCard', () => {
     expect(
       screen.queryByTestId('summary-eta-remaining')
     ).not.toBeInTheDocument();
+  });
+
+  it('should treat a stopped agent as finished, not queued', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({}),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'stopped',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'label.deployment-complete'
+    );
+    expect(
+      screen.queryByTestId('deployment-progress-bar')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('subtitle', () => {
+    beforeEach(() => {
+      (useTranslation as jest.Mock).mockReturnValue({
+        t: (key: string, params?: Record<string, string | number>) =>
+          `${key}${params?.attentionSuffix ?? ''}${params?.failedSuffix ?? ''}`,
+      });
+    });
+
+    afterEach(() => {
+      (useTranslation as jest.Mock).mockReturnValue({
+        t: (key: string) => key,
+      });
+    });
+
+    it('should not call a deployment with stopped agents healthy', () => {
+      render(
+        <DeploymentSummaryCard
+          agents={[
+            buildAgent({ status: 'stopped' }),
+            buildAgent({
+              id: 'agent-2',
+              fqn: 'service.agent-2',
+              status: 'stopped',
+            }),
+          ]}
+        />
+      );
+
+      const subtitle = screen.getByTestId('deployment-summary-subtitle');
+
+      expect(subtitle).toHaveTextContent('2 label.stopped-lowercase');
+      expect(subtitle).not.toHaveTextContent('message.everything-healthy');
+    });
+
+    it('should report failed and stopped agents together', () => {
+      render(
+        <DeploymentSummaryCard
+          agents={[
+            buildAgent({ status: 'failed' }),
+            buildAgent({
+              id: 'agent-2',
+              fqn: 'service.agent-2',
+              status: 'stopped',
+            }),
+          ]}
+        />
+      );
+
+      expect(
+        screen.getByTestId('deployment-summary-subtitle')
+      ).toHaveTextContent('1 label.need-attention · 1 label.stopped-lowercase');
+    });
+
+    it('should call a deployment healthy when every agent succeeded', () => {
+      render(<DeploymentSummaryCard agents={[buildAgent({})]} />);
+
+      expect(
+        screen.getByTestId('deployment-summary-subtitle')
+      ).toHaveTextContent('message.everything-healthy');
+    });
+
+    it('should count stopped agents in the in-progress summary', () => {
+      render(
+        <DeploymentSummaryCard
+          agents={[
+            buildAgent({ status: 'running', pct: 40 }),
+            buildAgent({
+              id: 'agent-2',
+              fqn: 'service.agent-2',
+              status: 'stopped',
+            }),
+          ]}
+        />
+      );
+
+      expect(
+        screen.getByTestId('deployment-summary-subtitle')
+      ).toHaveTextContent('1 label.stopped-lowercase');
+    });
   });
 
   it('should take the newest Metadata run rather than summing the agents', () => {
@@ -259,6 +363,30 @@ describe('DeploymentSummaryCard', () => {
             pct: 0,
           }),
         ]}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'label.deployment-complete'
+    );
+    expect(
+      screen.queryByTestId('deployment-progress-bar')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not count a never-run agent in the service total as queued', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ status: 'failed', pct: 100 }),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'none',
+            pct: 0,
+          }),
+        ]}
+        totalAgents={2}
       />
     );
 

@@ -99,6 +99,42 @@ export const visitInbox = async (page: Page) => {
   await expect(page.getByTestId('inbox-activity-tab')).toBeVisible();
 };
 
+/**
+ * Wait for an entry in the Inbox Activity tab, scrolling as far as it has to.
+ *
+ * The tab loads the 200 newest events of every user and renders them 40 at a
+ * time, revealing the next 40 when `inbox-activity-sentinel` nears the
+ * viewport. On a busy shard other workers' events land above this one within
+ * seconds, so it can sit below the first batch and is in the DOM only once the
+ * list is scrolled to it.
+ */
+export const expectInboxActivity = async (
+  page: Page,
+  entry: string | RegExp
+) => {
+  await expect(async () => {
+    await visitInbox(page);
+    const item = page.getByText(entry);
+    const sentinel = page.getByTestId('inbox-activity-sentinel');
+
+    await expect
+      .poll(
+        async () => {
+          if ((await item.count()) > 0) {
+            return true;
+          }
+          if ((await sentinel.count()) > 0) {
+            await sentinel.scrollIntoViewIfNeeded();
+          }
+
+          return false;
+        },
+        { timeout: 15_000 }
+      )
+      .toBe(true);
+  }).toPass({ timeout: 90_000 });
+};
+
 /** Open the Inbox on Triage, its task queue. */
 export const visitTriage = async (page: Page) => {
   await openInboxFromSidebar(page);

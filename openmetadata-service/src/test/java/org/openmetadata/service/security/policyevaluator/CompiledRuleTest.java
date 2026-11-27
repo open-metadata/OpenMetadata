@@ -10,11 +10,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -164,6 +167,28 @@ class CompiledRuleTest {
             List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC));
   }
 
+  @Test
+  void editAllDoesNotSubsumeDeleteTestCaseFailedRowsSample() {
+    MetadataOperation deleteSample = MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE;
+    CompiledRule editAll = rule(Entity.TEST_CASE, MetadataOperation.EDIT_ALL, Rule.Effect.ALLOW);
+
+    assertFalse(
+        allowsOnTestCase(editAll, deleteSample),
+        "Deleting a failed-rows sample is its own grant; EditAll must not imply it");
+    assertTrue(allowsOnTestCase(editAll, MetadataOperation.EDIT_TESTS));
+    assertTrue(
+        allowsOnTestCase(
+            rule(Entity.TEST_CASE, MetadataOperation.ALL, Rule.Effect.ALLOW), deleteSample));
+    assertTrue(
+        allowsOnTestCase(rule(Entity.TEST_CASE, deleteSample, Rule.Effect.ALLOW), deleteSample));
+  }
+
+  private static boolean allowsOnTestCase(CompiledRule rule, MetadataOperation operation) {
+    OperationContext operationContext = new OperationContext(Entity.TEST_CASE, operation);
+    rule.evaluateAllowRule(operationContext, null, null, null);
+    return !operationContext.getOperations(null).contains(operation);
+  }
+
   private static CompiledRule rule(
       String resource, MetadataOperation operation, Rule.Effect effect) {
     return new CompiledRule(
@@ -242,5 +267,89 @@ class CompiledRuleTest {
         new PolicyContext(
             Entity.ROLE, "botRole", "botRole", "BotNonAdminImpersonationPolicy", null);
     denyRule.evaluateDenyRule(operationContext, botSubject, targetResource, policyContext);
+  }
+
+  @Test
+  void entityTypeRequestSkipsDenyThatReadsTheAsset() {
+    CompiledRule denyOutsideTeam = conditionalDeny("!matchTeam()");
+
+    assertDoesNotThrow(() -> evaluateViewCustomFieldsDeny(denyOutsideTeam, ownerlessTable(true)));
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(denyOutsideTeam, ownerlessTable(false)),
+        "an ordinary context still evaluates the condition");
+  }
+
+  @Test
+  void entityTypeRequestSkipsEveryConditionalDenyButEnforcesUnconditionalOnes() {
+    ResourceContextInterface typeLevel = ownerlessTable(true);
+
+    for (String condition :
+        List.of("!isImpersonated()", "!isAdminUser()", "!matchTeam() || !isImpersonated()")) {
+      assertDoesNotThrow(
+          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel), condition);
+    }
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(conditionalDeny(null), typeLevel));
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            evaluateViewCustomFieldsDeny(
+                conditionalDeny("!isImpersonated()"), ownerlessTable(false)),
+        "an ordinary context still enforces a conditional deny");
+  }
+
+  private static CompiledRule conditionalDeny(String condition) {
+    return new CompiledRule(
+        new Rule()
+            .withName("deny")
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition(condition));
+  }
+
+  private static void evaluateViewCustomFieldsDeny(
+      CompiledRule denyRule, ResourceContextInterface resourceContext) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_CUSTOM_FIELDS);
+    SubjectContext subject = new SubjectContext(new User().withName("caller"), null);
+    PolicyContext policyContext = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
+    denyRule.evaluateDenyRule(operationContext, subject, resourceContext, policyContext);
+  }
+
+  private static ResourceContextInterface ownerlessTable(boolean entityTypeLevel) {
+    return new ResourceContextInterface() {
+      @Override
+      public String getResource() {
+        return Entity.TABLE;
+      }
+
+      @Override
+      public List<EntityReference> getOwners() {
+        return null;
+      }
+
+      @Override
+      public List<TagLabel> getTags() {
+        return null;
+      }
+
+      @Override
+      public EntityInterface<?> getEntity() {
+        return null;
+      }
+
+      @Override
+      public List<EntityReference> getDomains() {
+        return null;
+      }
+
+      @Override
+      public boolean isEntityTypeLevel() {
+        return entityTypeLevel;
+      }
+    };
   }
 }

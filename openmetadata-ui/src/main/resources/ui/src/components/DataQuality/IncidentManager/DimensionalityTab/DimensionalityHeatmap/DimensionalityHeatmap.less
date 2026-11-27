@@ -151,85 +151,32 @@
     }
   }
 
+  // Holds the scroll button over the faded edge; only the button takes the
+  // pointer, so the cells under the fade stay hoverable.
   &__scroll-indicator {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 60px;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
     z-index: var(--om-z-1);
-    pointer-events: auto;
-    border: none;
-    padding: 0;
-    font: inherit;
-    background: transparent;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
 
     &--left {
       left: 0;
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-background-color-surface);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%) rotate(180deg);
-        width: 14px;
-        height: 14px;
-        color: var(--tw-color-fg-quaternary);
-        z-index: var(--om-z-1);
-      }
+      justify-content: flex-start;
+      padding-left: calc(var(--tw-spacing) * 2);
     }
 
     &--right {
       right: 0;
-
-      &::after {
-        content: '';
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-background-color-surface);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        right: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        color: var(--tw-color-fg-quaternary);
-        z-index: var(--om-z-1);
-      }
+      justify-content: flex-end;
+      padding-right: calc(var(--tw-spacing) * 2);
     }
   }
 

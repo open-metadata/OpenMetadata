@@ -17,15 +17,20 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Ticker;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -113,6 +120,45 @@ class JWTTokenGeneratorTest {
     assertEquals("admin@attacker.example", claims.get("email").asString());
     assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
     assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  /**
+   * A bot token minted under a mapping must resolve to the bot's stored email, whichever claim the
+   * username maps to: upn holds the bare name, and under username:email so does the email claim.
+   * The principal domain differs from the bot's, as in a deployment whose ingestion-bot keeps the
+   * default open-metadata.org address.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"username:upn", "username:email"})
+  void botTokenMintedUnderMappingResolvesToTheBotsStoredEmail(String usernameMapping) {
+    List<String> order = List.of("upn", "mail", "email", "preferred_username", "sub");
+    List<String> mappingConfig = List.of(usernameMapping, "email:mail");
+    initGenerator(order, mappingConfig);
+    Map<String, Claim> claims =
+        decodedJWT(
+                jwtTokenGenerator
+                    .generateJWTToken(
+                        "ingestion-bot",
+                        Set.of(),
+                        false,
+                        "ingestion-bot@open-metadata.org",
+                        3600,
+                        true,
+                        ServiceTokenType.BOT)
+                    .getJWTToken())
+            .getClaims();
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        new JwtIdentityResolver(
+                null,
+                buildPrincipalClaimsMapping(mappingConfig),
+                order,
+                "openmetadata.local",
+                email -> "ignored")
+            .resolve(claims, true, true);
+
+    assertEquals("ingestion-bot", identity.userName());
+    assertEquals("ingestion-bot@open-metadata.org", identity.email());
   }
 
   @Test
@@ -373,6 +419,81 @@ class JWTTokenGeneratorTest {
   }
 
   @Test
+  void mcpAccessTokenWithAudienceWritesSingleStringAudAndPreservesOtherClaims() throws Exception {
+    String canonicalResource = "https://om.example/data-catalog/mcp";
+    JWTAuthMechanism boundToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid", "profile"),
+            "mcp-client",
+            canonicalResource);
+
+    DecodedJWT jwt = decodedJWT(boundToken.getJWTToken());
+    assertEquals(List.of(canonicalResource), jwt.getAudience());
+    assertEquals("mcp-client", jwt.getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertEquals("openid profile", jwt.getClaim(JWTTokenGenerator.SCOPE_CLAIM).asString());
+    assertNotNull(jwt.getId());
+
+    String payloadJson =
+        new String(Base64.getUrlDecoder().decode(jwt.getPayload()), StandardCharsets.UTF_8);
+    JsonNode payload = new ObjectMapper().readTree(payloadJson);
+    assertTrue(payload.get("aud").isTextual());
+    assertEquals(canonicalResource, payload.get("aud").asText());
+  }
+
+  @Test
+  void omittingOrPassingBlankAudienceOmitsAudClaim() {
+    JWTAuthMechanism nineArgToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client");
+    JWTAuthMechanism nullAudienceToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client",
+            null);
+    JWTAuthMechanism blankAudienceToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client",
+            "   ");
+
+    for (JWTAuthMechanism mechanism :
+        List.of(nineArgToken, nullAudienceToken, blankAudienceToken)) {
+      DecodedJWT jwt = decodedJWT(mechanism.getJWTToken());
+      assertTrue(jwt.getClaim("aud").isMissing());
+      assertNull(jwt.getAudience());
+    }
+  }
+
+  @Test
   void testECAlgorithmSupport() {
     // Test that the EC algorithms are supported in the enum
     AuthenticationConfiguration.TokenValidationAlgorithm es256 =
@@ -448,6 +569,47 @@ class JWTTokenGeneratorTest {
         JWTTokenGenerator.getAlgorithm(
             AuthenticationConfiguration.TokenValidationAlgorithm.ES_512, ecPublicKey, ecPrivateKey);
     assertNotNull(es512);
+  }
+
+  @Test
+  void tokensAreSignedWithRs256WhateverAlgorithmTheProviderUses() {
+    jwtTokenGenerator.init(
+        new AuthenticationConfiguration()
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER)
+            .withTokenValidationAlgorithm(
+                AuthenticationConfiguration.TokenValidationAlgorithm.ES_256),
+        jwtTokenConfiguration);
+
+    String token =
+        jwtTokenGenerator
+            .generateJWTToken(
+                "mohit",
+                Set.of(),
+                false,
+                "mohit@getcollate.io",
+                60,
+                false,
+                ServiceTokenType.OM_USER)
+            .getJWTToken();
+
+    assertEquals("RS256", JWT.decode(token).getAlgorithm());
+    assertDoesNotThrow(() -> decodedJWT(token));
+  }
+
+  @Test
+  void ownTokensVerifyOnlyWithTheRsaAlgorithmsTheServerHasSignedWith() {
+    RSAPublicKey publicKey = jwtTokenGenerator.getPublicKey();
+    for (String algorithm : List.of("RS256", "RS384", "RS512")) {
+      assertEquals(
+          algorithm,
+          JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey).getName());
+    }
+    for (String algorithm : Arrays.asList("HS256", "none", "ES256", null)) {
+      assertThrows(
+          AuthenticationException.class,
+          () -> JWTTokenGenerator.ownTokenVerificationAlgorithm(algorithm, publicKey),
+          String.valueOf(algorithm));
+    }
   }
 
   private DecodedJWT decodedJWT(String token) {

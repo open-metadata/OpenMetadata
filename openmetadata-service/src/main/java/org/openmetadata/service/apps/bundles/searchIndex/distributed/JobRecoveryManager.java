@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.JobSnapshot;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.RecordCounts;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 
 /**
@@ -55,6 +57,8 @@ public class JobRecoveryManager {
   private static final String REINDEX_LOCK_KEY = "SEARCH_REINDEX_LOCK";
 
   private static final String SEARCH_INDEX_APP_NAME = "SearchIndexingApplication";
+
+  private static final String ABANDONED_JOB_ERROR = "Job abandoned due to server crash or shutdown";
 
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
@@ -190,7 +194,9 @@ public class JobRecoveryManager {
           job.getId(),
           stoppingDuration,
           STOPPING_GRACE_PERIOD_MS);
-      failJob(job, "Force-completed: stuck in STOPPING state");
+      if (failJob(job, "Force-completed: stuck in STOPPING state")) {
+        collectionDAO.searchReindexLockDAO().releaseLock(REINDEX_LOCK_KEY, job.getId().toString());
+      }
       return true;
     }
     LOG.info(
@@ -305,9 +311,31 @@ public class JobRecoveryManager {
     } else if (hasFinishedProcessing(job)) {
       terminalizeUnpromotedJob(job, resultBuilder);
     } else {
-      failJob(job, "Job abandoned due to server crash or shutdown");
-      resultBuilder.incrementFailed();
-      LOG.info("Job {} has been marked as FAILED", job.getId());
+      failAbandonedJob(job, resultBuilder);
+    }
+  }
+
+  /**
+   * Fail an orphaned job while holding the reindex lock, as {@link #recoverJob} and {@link
+   * #terminalizeUnpromotedJob} do. The sweep runs on every server; the lock keeps it from acting on
+   * a job at the same time as another server's sweep, or while a running reindex holds the lock. A
+   * job it cannot lock now is checked again on the next sweep. See
+   * ADR:2026-11-18-the-reindex-orphan-sweep-fails-a-job-only-under-its-lock-and-unchanged.
+   */
+  private void failAbandonedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
+    if (coordinator.tryAcquireReindexLock(job.getId())) {
+      try {
+        if (failJob(job, ABANDONED_JOB_ERROR)) {
+          resultBuilder.incrementFailed();
+        }
+      } finally {
+        coordinator.releaseReindexLock(job.getId());
+      }
+    } else {
+      LOG.info(
+          "Not failing orphaned job {} yet: another server's sweep or a running reindex holds the "
+              + "reindex lock; the next sweep checks it again",
+          job.getId());
     }
   }
 
@@ -466,58 +494,68 @@ public class JobRecoveryManager {
   }
 
   /**
-   * Mark a job as failed.
+   * Mark a job as failed, but only if nothing has written it since this sweep read it. The sweep
+   * runs on every server, so a coordinator, a worker or another server's sweep may have moved the job
+   * on in between; the write compares the status and updatedAt that were read, and the cleanup runs
+   * only when it lands.
    *
-   * @param job The job to fail
+   * @param job The job as this sweep read it
    * @param errorMessage Error message explaining the failure
+   * @return true if the job was marked FAILED
    */
-  private void failJob(SearchIndexJob job, String errorMessage) {
-    CollectionDAO.SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
-
-    // Get final stats if available
-    CollectionDAO.SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-    CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
-        partitionDAO.getAggregatedStats(job.getId().toString());
-
+  private boolean failJob(SearchIndexJob job, String errorMessage) {
     long now = System.currentTimeMillis();
+    boolean failed = markFailedIfUnchanged(job, errorMessage, now);
+    if (failed) {
+      collectionDAO.searchIndexPartitionDAO().cancelPendingPartitions(job.getId().toString());
+      endInterruptedAppRuns(job, errorMessage, now);
+      LOG.info("Marked job {} as FAILED: {}", job.getId(), errorMessage);
+    } else {
+      LOG.info(
+          "Job {} changed after this sweep read it as {}; not failing it",
+          job.getId(),
+          job.getStatus());
+    }
+    return failed;
+  }
 
-    jobDAO.update(
-        job.getId().toString(),
-        IndexJobStatus.FAILED.name(),
-        stats != null ? stats.processedRecords() : job.getProcessedRecords(),
-        stats != null ? stats.successRecords() : job.getSuccessRecords(),
-        stats != null ? stats.failedRecords() : job.getFailedRecords(),
-        null, // stats JSON
-        job.getStartedAt(),
-        now, // completedAt
-        now, // updatedAt
-        errorMessage);
+  private boolean markFailedIfUnchanged(SearchIndexJob job, String errorMessage, long now) {
+    JobSnapshot read =
+        new JobSnapshot(job.getId().toString(), job.getStatus().name(), job.getUpdatedAt());
+    int updated =
+        collectionDAO
+            .searchIndexJobDAO()
+            .failIfUnchanged(read, finalCounts(job), now, errorMessage);
+    return updated > 0;
+  }
 
-    // Cancel any remaining partitions
-    partitionDAO.cancelPendingPartitions(job.getId().toString());
+  private RecordCounts finalCounts(SearchIndexJob job) {
+    CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
+        collectionDAO.searchIndexPartitionDAO().getAggregatedStats(job.getId().toString());
+    return stats != null
+        ? new RecordCounts(stats.processedRecords(), stats.successRecords(), stats.failedRecords())
+        : new RecordCounts(
+            job.getProcessedRecords(), job.getSuccessRecords(), job.getFailedRecords());
+  }
 
-    // Release any lock held by this job
-    collectionDAO.searchReindexLockDAO().releaseLock(REINDEX_LOCK_KEY, job.getId().toString());
-
-    // Sync app_extension_time_series so the UI reflects FAILED instead of RUNNING.
-    // OmAppJobListener.jobWasExecuted() is bypassed during recovery (no Quartz context),
-    // so we update the time-series record here directly.
+  /**
+   * Ends the app run that owned the failed job so the UI shows FAILED instead of RUNNING;
+   * OmAppJobListener.jobWasExecuted() is bypassed during recovery (no Quartz context). Only runs
+   * that started before the job was created can own it. A later run, such as the one whose start
+   * triggered this sweep, keeps running.
+   */
+  private void endInterruptedAppRuns(SearchIndexJob job, String errorMessage, long now) {
     try {
       collectionDAO
           .appExtensionTimeSeriesDao()
           .markRunningEntriesInterrupted(
-              List.of(SEARCH_INDEX_APP_NAME), AppRunInterruption.failure(errorMessage), now, now);
+              List.of(SEARCH_INDEX_APP_NAME),
+              AppRunInterruption.failure(errorMessage),
+              now,
+              job.getCreatedAt());
     } catch (Exception e) {
       LOG.warn("Failed to update app_extension_time_series for failed job {}", job.getId(), e);
     }
-
-    LOG.info(
-        "Marked job {} as FAILED: {} (processed: {}, success: {}, failed: {})",
-        job.getId(),
-        errorMessage,
-        stats != null ? stats.processedRecords() : 0,
-        stats != null ? stats.successRecords() : 0,
-        stats != null ? stats.failedRecords() : 0);
   }
 
   /**

@@ -74,31 +74,7 @@ const mockEditor = {
   chain: mockChain,
 } as unknown as Editor;
 
-const renderTableMenu = () => {
-  const rendered = render(<TableMenu editor={mockEditor} />);
-
-  const safeUnmount = () => {
-    const calls = (tippy as unknown as jest.Mock).mock.calls;
-    const latestCall = calls[calls.length - 1];
-    const tippyOptions = latestCall?.[1] as
-      | {
-          content?: HTMLElement;
-        }
-      | undefined;
-    const menuContent = tippyOptions?.content;
-
-    if (menuContent && !menuContent.isConnected) {
-      rendered.container.appendChild(menuContent);
-    }
-
-    rendered.unmount();
-  };
-
-  return {
-    ...rendered,
-    safeUnmount,
-  };
-};
+const renderTableMenu = () => render(<TableMenu editor={mockEditor} />);
 
 describe('TableMenu', () => {
   beforeEach(() => {
@@ -112,7 +88,7 @@ describe('TableMenu', () => {
   });
 
   it('anchors menu to clicked table cell instead of full table bounds', () => {
-    const { safeUnmount } = renderTableMenu();
+    const { unmount } = renderTableMenu();
 
     const tableWrapper = document.createElement('div');
     tableWrapper.className = 'tableWrapper';
@@ -167,12 +143,12 @@ describe('TableMenu', () => {
       expect(tippyProps.getReferenceClientRect()).not.toEqual(wrapperRect);
     } finally {
       tableWrapper.remove();
-      safeUnmount();
+      unmount();
     }
   });
 
   it('anchors to selected-cells bounding area when click target is table wrapper', () => {
-    const { safeUnmount } = renderTableMenu();
+    const { unmount } = renderTableMenu();
 
     const tableWrapper = document.createElement('div');
     tableWrapper.className = 'tableWrapper';
@@ -226,12 +202,12 @@ describe('TableMenu', () => {
       expect(rect.height).toBe(70);
     } finally {
       tableWrapper.remove();
-      safeUnmount();
+      unmount();
     }
   });
 
   it('falls back to table wrapper bounds when no selected cells exist', () => {
-    const { safeUnmount } = renderTableMenu();
+    const { unmount } = renderTableMenu();
 
     const tableWrapper = document.createElement('div');
     tableWrapper.className = 'tableWrapper';
@@ -263,7 +239,18 @@ describe('TableMenu', () => {
       expect(tippyProps.getReferenceClientRect()).toEqual(wrapperRect);
     } finally {
       tableWrapper.remove();
-      safeUnmount();
+      unmount();
     }
+  });
+
+  it('unmounts on its own while its parent stays mounted', () => {
+    const Host = ({ showMenu }: { showMenu: boolean }) => (
+      <div>{showMenu && <TableMenu editor={mockEditor} />}</div>
+    );
+    const { rerender } = render(<Host showMenu />);
+
+    // The editor turning read-only unmounts the menu but keeps the editor.
+    expect(() => rerender(<Host showMenu={false} />)).not.toThrow();
+    expect(mockDestroy).toHaveBeenCalled();
   });
 });

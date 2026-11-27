@@ -126,6 +126,10 @@ class JwtFilterTest {
       "Not Authorized! The given token does not match the current bot's token!";
   private static final String INVALID_PAT = "Not Authorized! Invalid personal access token!";
   private static final String UNRECOGNIZED = "Not Authorized! Unrecognized token type!";
+  private static final String ISSUED_FOR_ANOTHER_RESOURCE =
+      "Not Authorized! Token was issued for another resource.";
+  private static final String MCP_RESOURCE = "https://om.example/mcp";
+  private static final String MCP_CLIENT = "mcp-client";
 
   /** A real verifier over an in-memory source, replaced for every test. */
   private static CredentialVerifierFixture credentials;
@@ -759,6 +763,37 @@ class JwtFilterTest {
     verify(impersonating, never()).setSecurityContext(any());
   }
 
+  /** MCP applies X-Impersonate-User as REST does: a bot acts as the target it is granted. */
+  @Test
+  void mcpContextActsAsTheTargetABotImpersonates() {
+    String jwt = botToken(BOT);
+    credentials.withJwtMechanisms(Map.of(BOT, jwt));
+    User target = new User().withName(USER).withEmail(emailOf(USER));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<ImpersonationAuthorizer> grant = mockStatic(ImpersonationAuthorizer.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, USER, "", Include.NON_DELETED))
+          .thenReturn(target);
+
+      CatalogSecurityContext context = omFilter.getCatalogSecurityContext(jwt, null, USER);
+
+      assertEquals(USER, context.getUserPrincipal().getName());
+      assertEquals(BOT, context.impersonatedUser());
+      grant.verify(() -> ImpersonationAuthorizer.authorize(BOT, target));
+    }
+  }
+
+  @Test
+  void mcpContextRefusesImpersonationFromATokenThatIsNotABot() {
+    String pat = personalAccessToken(USER);
+    credentials.withPats(Map.of(USER, List.of(pat)));
+
+    assertThrows(
+        ImpersonationDeniedException.class,
+        () -> omFilter.getCatalogSecurityContext(pat, null, BOT));
+  }
+
   @ParameterizedTest
   @EnumSource(EntryPoint.class)
   void everyEntryPointRejectsARevokedPersonalAccessToken(EntryPoint entryPoint) {
@@ -835,6 +870,53 @@ class JwtFilterTest {
 
     assertEquals(userName, principal.getName());
     assertEquals(email, principal.getEmail());
+  }
+
+  /**
+   * tokenValidationAlgorithm names the identity provider's algorithm: the tokens OpenMetadata
+   * issued keep verifying with the one it signed them with when it changes.
+   */
+  @Test
+  void ownTokensStayValidUnderAnotherProviderAlgorithm() throws Exception {
+    String userName = "algorithm_user";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                new HashSet<>(),
+                false,
+                emailOf(userName),
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+    Field providerAlgorithm = JwtFilter.class.getDeclaredField("tokenValidationAlgorithm");
+    providerAlgorithm.setAccessible(true);
+    providerAlgorithm.set(filter, AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) filter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+  }
+
+  @Test
+  void ownKeyIdWithoutAnRsaSignatureIsRejected() {
+    String forged =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer(OpenMetadataSigningKey.ISSUER)
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", USER)
+            .withClaim("email", emailOf(USER))
+            .sign(Algorithm.HMAC256(generator.getPublicKey().getEncoded()));
+
+    assertRejectedBy(
+        omFilter, forged, "Not Authorized! Invalid token. Unsupported signing algorithm.");
   }
 
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
@@ -983,6 +1065,99 @@ class JwtFilterTest {
     assertRejectedBy(omFilter, neverStored, BOT_MISMATCH);
   }
 
+  /**
+   * The MCP OAuth server binds its access tokens to the MCP resource through {@code aud}. A filter
+   * serving the OpenMetadata API (REST, the push-feed handshake) refuses one with a 401 through
+   * every way it authenticates, even while the token is stored and valid for {@code /mcp}.
+   * ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void everyEntryPointOfTheApiRefusesATokenIssuedForTheMcpResource(EntryPoint entryPoint) {
+    String token = mcpAccessTokenFor(MCP_RESOURCE);
+
+    try (MockedStatic<Entity> entity = storingMcpAccessTokens(token)) {
+      AuthenticationException rejected =
+          assertThrows(
+              AuthenticationException.class, () -> entryPoint.authenticate(omFilter, token));
+
+      assertEquals(ISSUED_FOR_ANOTHER_RESOURCE, rejected.getMessage());
+      assertEquals(401, rejected.getResponse().getStatus());
+    }
+  }
+
+  /**
+   * Tokens OpenMetadata signs without {@code aud} keep working on the API exactly as before: login
+   * tokens, bot tokens, personal access tokens, and MCP access tokens minted before tokens were
+   * bound to a resource.
+   */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void everyEntryPointOfTheApiStillAcceptsOpenMetadataTokensWithoutAnAudience(
+      EntryPoint entryPoint) {
+    assertAcceptsOpenMetadataTokensWithoutAnAudience(omFilter, entryPoint);
+  }
+
+  private static void assertAcceptsOpenMetadataTokensWithoutAnAudience(
+      JwtFilter filter, EntryPoint entryPoint) {
+    String pat = personalAccessToken(USER);
+    String bot = botToken(BOT);
+    String unboundMcpToken = mcpAccessTokenFor(null);
+    credentials.withPats(Map.of(USER, List.of(pat))).withJwtMechanisms(Map.of(BOT, bot));
+
+    try (MockedStatic<Entity> entity = storingMcpAccessTokens(unboundMcpToken)) {
+      for (String token : List.of(loginToken(USER), pat, bot, unboundMcpToken)) {
+        entryPoint.authenticate(filter, token);
+      }
+    }
+  }
+
+  /**
+   * The filter the MCP endpoint builds accepts a token whose {@code aud} names its resource,
+   * through every way it authenticates, while the API filter refuses that same token.
+   */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void theMcpEntryPointAcceptsATokenIssuedForItsResource(EntryPoint entryPoint) {
+    String token = mcpAccessTokenFor(MCP_RESOURCE);
+
+    try (MockedStatic<Entity> entity = storingMcpAccessTokens(token)) {
+      entryPoint.authenticate(mcpFilter(), token);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void theMcpEntryPointRefusesATokenIssuedForAnotherResource(EntryPoint entryPoint) {
+    String token = mcpAccessTokenFor("https://another-server.example/mcp");
+    JwtFilter mcpFilter = mcpFilter();
+
+    try (MockedStatic<Entity> entity = storingMcpAccessTokens(token)) {
+      AuthenticationException rejected =
+          assertThrows(
+              AuthenticationException.class, () -> entryPoint.authenticate(mcpFilter, token));
+
+      assertEquals(ISSUED_FOR_ANOTHER_RESOURCE, rejected.getMessage());
+    }
+  }
+
+  /** {@code /mcp} keeps accepting the tokens OpenMetadata signs without {@code aud}, as before. */
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void theMcpEntryPointStillAcceptsOpenMetadataTokensWithoutAnAudience(EntryPoint entryPoint) {
+    assertAcceptsOpenMetadataTokensWithoutAnAudience(mcpFilter(), entryPoint);
+  }
+
+  /** As the MCP transport and {@code McpServer} build theirs, for the resource they serve. */
+  private static JwtFilter mcpFilter() {
+    return new JwtFilter(
+        OpenMetadataSigningKey.keyLookup(),
+        List.of("sub", "email"),
+        "openmetadata.org",
+        VERIFIER,
+        TokenAudience.servedResourceNamedBy(MCP_RESOURCE::equals));
+  }
+
   /** The public ways a caller authenticates a token; each must run the stored-credential check. */
   private enum EntryPoint {
     REQUEST_FILTER {
@@ -1042,6 +1217,63 @@ class JwtFilterTest {
             JWTTokenGenerator.getExpiryDate(JWTTokenExpiry.Seven),
             null)
         .getJWTToken();
+  }
+
+  /** A login or refresh token, as {@code /v1/users/login} and {@code /v1/users/refresh} mint it. */
+  private static String loginToken(String userName) {
+    return generator
+        .generateJWTToken(
+            userName,
+            new HashSet<>(),
+            false,
+            emailOf(userName),
+            3600,
+            false,
+            ServiceTokenType.OM_USER)
+        .getJWTToken();
+  }
+
+  /**
+   * An access token as {@code UserSSOOAuthProvider.issueAccessToken} mints it, bound to {@code
+   * resource} through {@code aud}; null mints one as it was minted before audience binding.
+   */
+  private static String mcpAccessTokenFor(String resource) {
+    return generator
+        .generateJWTToken(
+            USER,
+            new HashSet<>(),
+            false,
+            emailOf(USER),
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            MCP_CLIENT,
+            resource)
+        .getJWTToken();
+  }
+
+  /** {@code oauth_access_tokens} holding {@code tokens}, as issuing them stores them. */
+  private static MockedStatic<Entity> storingMcpAccessTokens(String... tokens) {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.OAuthAccessTokenDAO accessTokens = mock(CollectionDAO.OAuthAccessTokenDAO.class);
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    for (String token : tokens) {
+      String hash = OAuthDAOs.hashToken(token);
+      when(accessTokens.findByTokenHash(hash))
+          .thenReturn(
+              new OAuthAccessTokenRecord(
+                  UUID.randomUUID(),
+                  hash,
+                  "encrypted",
+                  MCP_CLIENT,
+                  USER,
+                  List.of(),
+                  Long.MAX_VALUE));
+    }
+    MockedStatic<Entity> entity = mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+    entity.when(Entity::getCollectionDAO).thenReturn(dao);
+    return entity;
   }
 
   private static String emailOf(String name) {

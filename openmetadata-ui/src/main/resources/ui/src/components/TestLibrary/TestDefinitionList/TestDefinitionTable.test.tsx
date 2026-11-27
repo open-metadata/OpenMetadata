@@ -64,6 +64,7 @@ const makeProps = (
   onSortChange: mockOnSortChange,
   onEnableToggle: jest.fn(),
   onEdit: jest.fn(),
+  onView: jest.fn(),
   onDelete: jest.fn(),
   ...overrides,
 });
@@ -294,5 +295,18 @@ describe('TestDefinitionTable sorting', () => {
     fireEvent.click(headerFor(/label.name/));
 
     expect(mockOnSortChange).toHaveBeenCalledWith('name', 'desc');
+  });
+});
+
+describe('TestDefinitionTable name cell', () => {
+  it('should open the details panel from the name', () => {
+    const onView = jest.fn();
+    render(<TestDefinitionTable {...makeProps({ onView })} />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Column Values To Be Not Null' })
+    );
+
+    expect(onView).toHaveBeenCalledWith(TEST_DEFINITIONS[0]);
   });
 });

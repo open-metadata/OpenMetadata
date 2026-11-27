@@ -63,6 +63,7 @@ export function useObservabilityAlertForm({
       provider: ProviderType.User,
       timeout: 10,
       readTimeout: DEFAULT_READ_TIMEOUT,
+      enabled: true,
     },
   });
   const form = providedForm ?? internalForm;

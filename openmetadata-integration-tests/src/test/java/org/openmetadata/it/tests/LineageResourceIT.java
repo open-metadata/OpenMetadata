@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.CsvJobClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateStoredProcedure;
@@ -62,6 +65,7 @@ import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineageLevelKind;
 import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Container;
@@ -69,6 +73,7 @@ import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.StoredProcedure;
@@ -103,6 +108,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -778,8 +784,48 @@ public class LineageResourceIT {
     cleanupTable(client, targetTable);
   }
 
+  @Test
+  // A focused scene applies node filters in memory through the shared lineage builder, so only a
+  // filter that fails to parse is the caller's error there; root scenes also reject what the
+  // search engine refuses (see testLineageSceneRejectsMalformedQueryFilter).
+  void testFocusedLineageSceneRejectsMalformedQueryFilter() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database database = createDatabase(client, namespace, service, "rejected_filter_db");
+    DatabaseSchema schema = createSchema(client, namespace, database, "rejected_filter_schema");
+    Table table = createTableInSchema(client, namespace, schema, "rejected_filter", columns("id"));
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("focusFqn", table.getFullyQualifiedName())
+            .queryParam("entityType", Entity.TABLE)
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", LineageBand.ASSET.value())
+            .queryParam("query_filter", "{\"term\":{}}")
+            .build();
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+    cleanupDatabaseService(client, service);
+  }
+
   @ParameterizedTest
-  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  @ValueSource(
+      strings = {
+        "{\"query\":",
+        "{\"term\":{}}",
+        "[\"not\",\"a\",\"query\"]",
+        // Parses as a query, but the search engine rejects its syntax.
+        "{\"query_string\":{\"query\":\"name:(\"}}"
+      })
   void testLineageSceneRejectsMalformedQueryFilter(String queryFilter) {
     OpenMetadataClient client = SdkClients.adminClient();
     RequestOptions options =
@@ -1282,8 +1328,24 @@ public class LineageResourceIT {
             columns("id"),
             List.of(blockedDomain.getFullyQualifiedName()));
 
+    // A service whose visible tables only send lineage is reached only as an upstream end.
+    DatabaseService upstreamService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database upstreamDatabase =
+        createDatabase(admin, namespace, upstreamService, "upstream_lineage_db");
+    DatabaseSchema upstreamSchema =
+        createSchema(admin, namespace, upstreamDatabase, "upstream_lineage_schema");
+    Table upstreamSource =
+        createTableInSchema(
+            admin,
+            namespace,
+            upstreamSchema,
+            "upstream_source",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+
     addLineage(admin, allowedSource, allowedTarget);
     addLineage(admin, blockedSource, blockedTarget);
+    addLineage(admin, upstreamSource, allowedSource);
 
     getRootLineageSceneWithRetry(
         admin,
@@ -1317,10 +1379,20 @@ public class LineageResourceIT {
             995,
             scene ->
                 hasSceneNode(scene, allowedService.getFullyQualifiedName())
+                    && hasSceneEdge(
+                        scene,
+                        upstreamService.getFullyQualifiedName(),
+                        allowedService.getFullyQualifiedName())
                     && sceneNodeCount(
                             scene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE)
                         == 4);
     assertFalse(hasSceneNode(restrictedScene, blockedService.getFullyQualifiedName()));
+    // Other concurrent tests can add edges between domainless assets, so assert this edge only.
+    assertTrue(
+        hasSceneEdge(
+            restrictedScene,
+            upstreamService.getFullyQualifiedName(),
+            allowedService.getFullyQualifiedName()));
     assertEquals(
         4,
         sceneNodeCount(
@@ -1372,9 +1444,11 @@ public class LineageResourceIT {
 
     admin.users().delete(restrictedUser.getId().toString());
     deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
+    deleteLineage(admin, upstreamSource.getEntityReference(), allowedSource.getEntityReference());
     deleteLineage(admin, blockedSource.getEntityReference(), blockedTarget.getEntityReference());
     cleanupDatabaseService(admin, allowedService);
     cleanupDatabaseService(admin, blockedService);
+    cleanupDatabaseService(admin, upstreamService);
     admin.domains().delete(allowedDomain.getId().toString());
     admin.domains().delete(blockedDomain.getId().toString());
   }
@@ -4213,5 +4287,209 @@ public class LineageResourceIT {
     createTable.setColumns(
         List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
     return client.tables().create(createTable);
+  }
+
+  @Test
+  void columnLineage_tableColumnToMetric() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Table table = createTable(client, namespace, "metric_col_source");
+    Metric metric = createMetric(client, namespace, "metric_col_target");
+    String column = table.getColumns().getFirst().getFullyQualifiedName();
+
+    addColumnLineage(
+        client,
+        table.getEntityReference(),
+        metric.getEntityReference(),
+        new ColumnLineage()
+            .withFromColumns(List.of(column))
+            .withToColumn(metric.getFullyQualifiedName()));
+
+    assertColumnPairPersisted(
+        client, table.getEntityReference(), column, metric.getFullyQualifiedName());
+    awaitColumnPairInDownstreamView(
+        client, table.getFullyQualifiedName(), column, metric.getFullyQualifiedName());
+  }
+
+  @Test
+  void columnLineage_metricToTableColumn() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Metric metric = createMetric(client, namespace, "metric_col_from");
+    Table table = createTable(client, namespace, "metric_col_to");
+    String column = table.getColumns().getFirst().getFullyQualifiedName();
+
+    addColumnLineage(
+        client,
+        metric.getEntityReference(),
+        table.getEntityReference(),
+        new ColumnLineage()
+            .withFromColumns(List.of(metric.getFullyQualifiedName()))
+            .withToColumn(column));
+
+    assertColumnPairPersisted(
+        client, metric.getEntityReference(), metric.getFullyQualifiedName(), column);
+    awaitColumnPairInDownstreamView(
+        client, metric.getFullyQualifiedName(), metric.getFullyQualifiedName(), column);
+  }
+
+  @Test
+  void tempLineageTables_roundTrip() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Table from = createTable(client, namespace, "temp_hop_from");
+    Table to = createTable(client, namespace, "temp_hop_to");
+    List<TempLineageTable> hops =
+        List.of(
+            new TempLineageTable().withFromEntity("tmp_stage_a").withToEntity("tmp_stage_b"),
+            new TempLineageTable().withFromEntity("tmp_stage_b").withToEntity("tmp_stage_c"));
+
+    executeAddLineage(
+        client,
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from.getEntityReference())
+                    .withToEntity(to.getEntityReference())
+                    .withLineageDetails(new LineageDetails().withTempLineageTables(hops))));
+
+    assertEquals(
+        hops, fetchEdgeLineageDetails(client, from, to).orElseThrow().getTempLineageTables());
+    awaitTempTablesInSearchLineage(
+        client, from, List.of("tmp_stage_a", "tmp_stage_b", "tmp_stage_c"));
+  }
+
+  @Test
+  void testExportLineageIncludesPipelineAndServiceColumns() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Table from = createTable(client, namespace, "export_svc_from");
+    Table to = createTable(client, namespace, "export_svc_to");
+    Pipeline pipeline = createPipeline(client, namespace, "export_svc_pipeline");
+
+    executeAddLineage(
+        client,
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from.getEntityReference())
+                    .withToEntity(to.getEntityReference())
+                    .withLineageDetails(
+                        new LineageDetails().withPipeline(pipeline.getEntityReference()))));
+    waitForEdgeInSearchLineage(client, from, to);
+
+    CSVRecord row = exportedAsyncRow(from, to);
+    assertEquals(from.getService().getName(), row.get("fromServiceName"));
+    assertEquals(DatabaseServiceType.Postgres.value(), row.get("fromServiceType"));
+    assertEquals(to.getService().getName(), row.get("toServiceName"));
+    assertEquals(DatabaseServiceType.Postgres.value(), row.get("toServiceType"));
+    assertEquals(pipeline.getName(), row.get("pipelineName"));
+  }
+
+  private Metric createMetric(OpenMetadataClient client, TestNamespace namespace, String name) {
+    return client
+        .metrics()
+        .create(
+            new CreateMetric()
+                .withName(namespace.prefix(name))
+                .withDescription("Metric used as a column lineage endpoint"));
+  }
+
+  private void addColumnLineage(
+      OpenMetadataClient client,
+      EntityReference from,
+      EntityReference to,
+      ColumnLineage columnLineage) {
+    executeAddLineage(
+        client,
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(from)
+                    .withToEntity(to)
+                    .withLineageDetails(
+                        new LineageDetails().withColumnsLineage(List.of(columnLineage)))));
+  }
+
+  private void assertColumnPairPersisted(
+      OpenMetadataClient client, EntityReference from, String fromColumn, String toColumn)
+      throws Exception {
+    EntityLineage lineage = getLineage(client, from.getType(), from.getId().toString(), "0", "1");
+    boolean persisted =
+        lineage.getDownstreamEdges().stream()
+            .filter(edge -> edge.getLineageDetails() != null)
+            .flatMap(edge -> edge.getLineageDetails().getColumnsLineage().stream())
+            .anyMatch(
+                column ->
+                    column.getFromColumns().contains(fromColumn)
+                        && toColumn.equals(column.getToColumn()));
+    assertTrue(persisted, "Column lineage " + fromColumn + " -> " + toColumn + " not persisted");
+  }
+
+  private void awaitColumnPairInDownstreamView(
+      OpenMetadataClient client, String rootFqn, String fromColumn, String toColumn) {
+    Awaitility.await("Column view shows " + fromColumn + " -> " + toColumn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> downstreamColumnPairs(client, rootFqn).contains(fromColumn + "->" + toColumn));
+  }
+
+  private Set<String> downstreamColumnPairs(OpenMetadataClient client, String rootFqn)
+      throws Exception {
+    JsonNode result =
+        OBJECT_MAPPER.readTree(
+            client
+                .lineage()
+                .searchLineageWithDirection(rootFqn, "Downstream", 0, 1, false, null, null));
+    Set<String> pairs = new HashSet<>();
+    for (JsonNode edge : result.path("downstreamEdges")) {
+      for (JsonNode column : edge.path("columns")) {
+        column
+            .path("fromColumns")
+            .forEach(from -> pairs.add(from.asText() + "->" + column.path("toColumn").asText()));
+      }
+    }
+    return pairs;
+  }
+
+  private void awaitTempTablesInSearchLineage(
+      OpenMetadataClient client, Table from, List<String> expectedTempTables) {
+    Awaitility.await("Search lineage edge carries temp tables")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> searchedTempTables(client, from).containsAll(expectedTempTables));
+  }
+
+  private Set<String> searchedTempTables(OpenMetadataClient client, Table from) throws Exception {
+    JsonNode result =
+        searchLineageWithWindow(client, from.getFullyQualifiedName(), 0, 1, null, null);
+    Set<String> tempTables = new HashSet<>();
+    for (JsonNode edge : result.path("downstreamEdges")) {
+      for (JsonNode hop : edge.path("tempLineageTables")) {
+        tempTables.add(hop.path("fromEntity").asText());
+        tempTables.add(hop.path("toEntity").asText());
+      }
+    }
+    return tempTables;
+  }
+
+  private CSVRecord exportedAsyncRow(Table from, Table to) throws Exception {
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String jobId =
+        jobs.startExport(
+            LINEAGE_PATH
+                + "/exportAsync?type=table&upstreamDepth=0&downstreamDepth=1&fqn="
+                + URLEncoder.encode(from.getFullyQualifiedName(), StandardCharsets.UTF_8));
+    jobs.awaitJobStatus(jobId, "COMPLETED");
+    List<CSVRecord> rows = parseCsvRows(jobs.downloadResult(jobId).body());
+    return rows.stream()
+        .filter(
+            row ->
+                from.getFullyQualifiedName().equals(row.get("fromEntityFQN"))
+                    && to.getFullyQualifiedName().equals(row.get("toEntityFQN")))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Exported CSV has no row for the edge: " + rows));
   }
 }

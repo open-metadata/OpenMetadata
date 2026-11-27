@@ -47,6 +47,8 @@ const STAT_VALUE_CLASS: Record<string, string> = {
 interface AgentCounts {
   done: number;
   failed: number;
+  // Stopped runs ended without finishing: not queued, and not holding the banner in progress.
+  stopped: number;
   queued: number;
   running: number;
   total: number;
@@ -60,17 +62,23 @@ function getActiveAgents(agents: Agent[]): Agent[] {
 
 function getAgentCounts(
   activeAgents: Agent[],
+  neverRunOnPage: number,
   totalAgents: number | undefined
 ): AgentCounts {
   // Denominator counts the agents this page cannot see; the render gate below stays on the page's own
-  // active agents, so a service whose agents have all never run still shows nothing.
-  const total = Math.max(activeAgents.length, totalAgents ?? 0);
+  // active agents, so a service whose agents have all never run still shows nothing. `totalAgents`
+  // includes the page's never-run agents, which would otherwise surface as "queued" forever.
+  const total = Math.max(
+    activeAgents.length,
+    (totalAgents ?? 0) - neverRunOnPage
+  );
   const running = activeAgents.filter((a) => a.status === 'running').length;
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
-  const queued = total - done - running - failed;
+  const stopped = activeAgents.filter((a) => a.status === 'stopped').length;
+  const queued = total - done - running - failed - stopped;
 
-  return { done, failed, queued, running, total };
+  return { done, failed, queued, running, stopped, total };
 }
 
 // Assets ingested reflects only the Metadata agent — other agents count
@@ -120,17 +128,27 @@ function getOverallPercent(activeAgents: Agent[], total: number): number {
 }
 
 function isAllDone(counts: AgentCounts): boolean {
-  return counts.running === 0 && counts.done + counts.failed === counts.total;
+  return (
+    counts.running === 0 &&
+    counts.done + counts.failed + counts.stopped === counts.total
+  );
 }
 
 function getFailedSuffix(failed: number, t: TFunction): string {
   return failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
 }
 
-function getAttentionSuffix(failed: number, t: TFunction): string {
-  return failed > 0
-    ? ` · ${failed} ${t('label.need-attention')}`
-    : ` · ${t('message.everything-healthy')}`;
+function getStoppedSuffix(stopped: number, t: TFunction): string {
+  return stopped > 0 ? ` · ${stopped} ${t('label.stopped-lowercase')}` : '';
+}
+
+function getAttentionSuffix(counts: AgentCounts, t: TFunction): string {
+  const stoppedSuffix = getStoppedSuffix(counts.stopped, t);
+  if (counts.failed > 0) {
+    return ` · ${counts.failed} ${t('label.need-attention')}${stoppedSuffix}`;
+  }
+
+  return stoppedSuffix || ` · ${t('message.everything-healthy')}`;
 }
 
 function getSubtitle(
@@ -140,7 +158,7 @@ function getSubtitle(
 ): string {
   if (allDone) {
     return t('message.agents-finished-summary', {
-      attentionSuffix: getAttentionSuffix(counts.failed, t),
+      attentionSuffix: getAttentionSuffix(counts, t),
       done: counts.done,
       total: counts.total,
     });
@@ -148,7 +166,10 @@ function getSubtitle(
 
   return t('message.agents-deploy-progress', {
     done: counts.done,
-    failedSuffix: getFailedSuffix(counts.failed, t),
+    failedSuffix: `${getFailedSuffix(counts.failed, t)}${getStoppedSuffix(
+      counts.stopped,
+      t
+    )}`,
     queued: counts.queued,
     running: counts.running,
   });
@@ -175,7 +196,11 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const activeAgents = getActiveAgents(agents);
-  const counts = getAgentCounts(activeAgents, totalAgents);
+  const counts = getAgentCounts(
+    activeAgents,
+    agents.length - activeAgents.length,
+    totalAgents
+  );
   const { total } = counts;
   const assets = getLatestMetadataAssets(activeAgents);
   const errors = getTotalErrors(activeAgents);
@@ -246,7 +271,9 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
               ? t('label.deployment-complete')
               : t('message.agents-deploying-ingesting')}
           </div>
-          <div className="tw:mt-0.5 tw:text-sm tw:text-tertiary">
+          <div
+            className="tw:mt-0.5 tw:text-sm tw:text-tertiary"
+            data-testid="deployment-summary-subtitle">
             {subtitle}
           </div>
         </div>

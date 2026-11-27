@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 
 public class ElasticSearchLineChartAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -53,8 +55,9 @@ public class ElasticSearchLineChartAggregator
    * <p>Ranking on the wrapper's document count rather than the metric's own value is what makes
    * this safe for every function: an empty {@code min} reads as larger than any real minimum and an
    * empty {@code sum} is zero, so ordering by either would float the empty categories to the top. A
-   * document count is never negative, and is zero exactly when the category matched nothing, which
-   * keeps those categories in the response but last, where they cannot displace one that has data.
+   * document count is never negative, and is zero exactly when the wrapper matched nothing in that
+   * category: another metric counts it, or this metric's {@code q=} finds nothing there. Such a
+   * category sorts last, where it cannot displace one that has data.
    */
   private static ObjectBuilder<TermsAggregation> termsAxis(
       TermsAggregation.Builder builder,
@@ -79,6 +82,32 @@ public class ElasticSearchLineChartAggregator
   private static ObjectBuilder<Aggregation> withSubAggregations(
       Aggregation.Builder.ContainerBuilder container, Map<String, Aggregation> subAggregations) {
     return subAggregations.isEmpty() ? container : container.aggregations(subAggregations);
+  }
+
+  /** Whether the x-axis holds categories rather than the snapshot timeline. */
+  private static boolean hasCategoricalAxis(LineChart lineChart) {
+    return lineChart.getxAxisField() != null
+        && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD);
+  }
+
+  /** The documents some metric counts, or null when a metric counts every document. */
+  private static Query chartPopulation(List<LineChartMetric> metrics) {
+    List<String> filters = DataInsightMetricFilter.populationFilters(metrics);
+    return filters.isEmpty() ? null : anyOf(filters);
+  }
+
+  private static Query anyOf(List<String> filters) {
+    List<Query> clauses =
+        filters.stream().map(ElasticSearchDynamicChartAggregatorInterface::queryFromJson).toList();
+    return clauses.size() == 1
+        ? clauses.get(0)
+        : Query.of(q -> q.bool(b -> b.should(clauses).minimumShouldMatch("1")));
+  }
+
+  private static Query withinPopulation(Query range, Query population) {
+    return population == null
+        ? range
+        : Query.of(q -> q.bool(b -> b.filter(range).filter(population)));
   }
 
   @Override
@@ -125,8 +154,7 @@ public class ElasticSearchLineChartAggregator
               metricName,
               formulas);
 
-      if (lineChart.getxAxisField() != null
-          && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
+      if (hasCategoricalAxis(lineChart)) {
         metricAggregations.put(
             metricName,
             Aggregation.of(
@@ -198,6 +226,9 @@ public class ElasticSearchLineChartAggregator
 
     SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
     final long finalStartTime = startTime;
+    // After the loop, so a filter populateDateHistogram refused has already failed the request.
+    Query population =
+        hasCategoricalAxis(lineChart) ? chartPopulation(lineChart.getMetrics()) : null;
     if (!live) {
       Query rangeQuery =
           Query.of(
@@ -214,9 +245,10 @@ public class ElasticSearchLineChartAggregator
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
 
-      searchRequestBuilder.query(rangeQuery);
+      searchRequestBuilder.query(withinPopulation(rangeQuery, population));
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
+      Optional.ofNullable(population).ifPresent(searchRequestBuilder::query);
       searchRequestBuilder.index(
           DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
     }

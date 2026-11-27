@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { ChevronRight } from '@openmetadata/ui-core-components/icons';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../common/Loader/Loader';
@@ -96,13 +103,15 @@ const DimensionalityHeatmap = ({
 
         <div className="dimensionality-heatmap__scroll-wrapper tw:relative tw:flex-1">
           {showLeftIndicator && (
-            <button
-              aria-label={`${t('label.scroll')} ${t('label.left')}`}
-              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left tw:cursor-pointer tw:outline-focus-ring"
-              type="button"
-              onClick={handleScrollLeft}>
-              <ChevronRight />
-            </button>
+            <div className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--left">
+              <ButtonUtility
+                aria-label={`${t('label.scroll')} ${t('label.left')}`}
+                color="secondary"
+                icon={ChevronLeft}
+                size="lg"
+                onPress={handleScrollLeft}
+              />
+            </div>
           )}
 
           <div
@@ -144,13 +153,15 @@ const DimensionalityHeatmap = ({
           </div>
 
           {showRightIndicator && (
-            <button
-              aria-label={`${t('label.view')} ${t('label.more')}`}
-              className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right tw:cursor-pointer tw:outline-focus-ring"
-              type="button"
-              onClick={handleScrollRight}>
-              <ChevronRight />
-            </button>
+            <div className="dimensionality-heatmap__scroll-indicator dimensionality-heatmap__scroll-indicator--right">
+              <ButtonUtility
+                aria-label={`${t('label.view')} ${t('label.more')}`}
+                color="secondary"
+                icon={ChevronRight}
+                size="lg"
+                onPress={handleScrollRight}
+              />
+            </div>
           )}
         </div>
       </div>

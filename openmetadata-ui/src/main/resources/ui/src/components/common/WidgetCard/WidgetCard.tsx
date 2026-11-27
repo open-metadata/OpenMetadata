@@ -91,7 +91,7 @@ const WidgetCard = ({
               {!isExpandDisabled && (
                 <ButtonUtility
                   className={classNames(
-                    'tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    'tw:transition-transform tw:duration-200',
                     { 'tw:rotate-180': !isExpanded }
                   )}
                   data-testid="expand-collapse-icon"
@@ -104,7 +104,13 @@ const WidgetCard = ({
             </div>
           }
           title={
-            <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+            // Match the chevron's height so the title stays centred on it
+            // whether or not a header action is rendered beside the title.
+            <div
+              className={classNames(
+                'tw:flex tw:min-w-0 tw:items-center tw:gap-2',
+                { 'tw:min-h-8': !isExpandDisabled }
+              )}>
               {titleIcon}
               {title && (
                 <Typography

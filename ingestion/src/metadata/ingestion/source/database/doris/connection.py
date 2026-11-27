@@ -35,6 +35,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.doris.queries import DORIS_TEST_GET_QUERIES
 from metadata.utils.constants import THREE_MIN
 
 if TYPE_CHECKING:
@@ -92,5 +93,6 @@ class DorisConnection(BaseConnection[DorisConnectionConfig, Engine]):
             engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
+            queries={"GetQueries": DORIS_TEST_GET_QUERIES},
             timeout_seconds=timeout_seconds,
         )

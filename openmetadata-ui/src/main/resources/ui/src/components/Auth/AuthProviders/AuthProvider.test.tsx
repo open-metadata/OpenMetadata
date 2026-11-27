@@ -26,15 +26,11 @@ import {
   ClientType,
 } from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
-import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useAppModeStore } from '../../../hooks/useAppMode';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
-import {
-  activateTourMock,
-  isTourMockActive,
-} from '../../../rest/product-tour/productTourMock';
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import {
@@ -550,14 +546,8 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     return () => logout?.();
   };
 
-  it('ends a running product tour on sign-out, so the next user starts clean', async () => {
-    useProductTourStore.setState({
-      isActive: true,
-      stepIndex: 3,
-      tourMode: 'default',
-      returnPath: '/explore',
-    });
-    activateTourMock(async () => []);
+  it('closes an open product tour on sign-out, so it does not reopen at the next sign-in', async () => {
+    useProductTourStore.getState().open();
     const logout = await renderForLogout();
 
     await act(async () => {
@@ -565,14 +555,8 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     });
 
     await waitFor(() =>
-      expect(useProductTourStore.getState()).toMatchObject({
-        isActive: false,
-        stepIndex: 0,
-        returnPath: undefined,
-      })
+      expect(useProductTourStore.getState().isOpen).toBe(false)
     );
-
-    expect(isTourMockActive()).toBe(false);
   });
 
   describe('refresh failure → one silent re-authentication, then sign-out', () => {
@@ -1262,6 +1246,56 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
       '/new-protected-path',
       expect.anything()
     );
+  });
+
+  it('stores the deep link an unauthenticated user opened even after the router has moved to /signin', async () => {
+    const useCustomLocationMock = jest.requireMock<jest.Mock>(
+      '../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    useCustomLocationMock.mockImplementation(() => ({
+      pathname: '/table/sample.ecommerce.shopify.orders',
+      search: '?tab=schema',
+    }));
+    let resolveToken: ((token: string) => void) | undefined;
+    mockGetOidcToken.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveToken = resolve;
+        })
+    );
+
+    try {
+      const { rerender } = render(<WrapperComponent />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: '/signin',
+        search: '',
+      }));
+
+      await act(async () => {
+        rerender(<WrapperComponent />);
+      });
+
+      await act(async () => {
+        resolveToken?.('');
+      });
+
+      expect(mockCookieSetItem).toHaveBeenCalledWith(
+        REDIRECT_PATHNAME,
+        '/table/sample.ecommerce.shopify.orders?tab=schema',
+        expect.anything()
+      );
+    } finally {
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: 'pathname',
+        search: '',
+      }));
+      mockGetOidcToken.mockResolvedValue('');
+    }
   });
 
   it('disposes the interceptor and event subscriptions on unmount', async () => {

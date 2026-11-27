@@ -74,7 +74,7 @@ import {
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { removeMetricTabAssets } from '../../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
@@ -415,6 +415,7 @@ const AssetsTabs = forwardRef(
       assetCount,
       preloadedData,
       skipSearch = false,
+      useQueryPost = false,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -569,7 +570,8 @@ const AssetsTabs = forwardRef(
               )
             : queryParam;
 
-          const res = await searchQuery({
+          const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+          const res = await searchFn({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
@@ -596,6 +598,7 @@ const AssetsTabs = forwardRef(
         skipSearch,
         preloadedData,
         applySearchResults,
+        useQueryPost,
       ]
     );
 

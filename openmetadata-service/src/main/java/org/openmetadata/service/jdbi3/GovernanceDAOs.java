@@ -391,6 +391,14 @@ public interface GovernanceDAOs {
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByTaskId(@BindUUID("taskId") UUID taskId);
 
+    @SqlQuery("SELECT * FROM change_request WHERE taskId IN (<taskIds>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByTaskIds(@BindList("taskIds") List<String> taskIds);
+
+    @SqlQuery("SELECT * FROM change_request WHERE id IN (<ids>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByIds(@BindList("ids") List<String> ids);
+
     @SqlQuery("SELECT COUNT(*) FROM change_request WHERE status = :status")
     int countByStatus(@Bind("status") String status);
 
@@ -463,6 +471,11 @@ public interface GovernanceDAOs {
     @SqlQuery(
         "SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM workflow_definition_entity")
     String workflowDefinitionEpoch();
+
+    // Workflows resolve the bots they list to bot users, so a bot created, deleted or reassigned to
+    // another user changes what they resolve to.
+    @SqlQuery("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM bot_entity")
+    String botEpoch();
 
     @SqlUpdate(
         "UPDATE change_request SET deliveryStatus = 'Pending', deliveryAttempts = 0,"

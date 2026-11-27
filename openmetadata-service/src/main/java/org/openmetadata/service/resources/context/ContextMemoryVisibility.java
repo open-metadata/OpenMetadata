@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.context;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
@@ -99,6 +101,42 @@ public final class ContextMemoryVisibility {
   @FunctionalInterface
   interface AnchorFinder {
     List<EntityReference> findAnchors(List<UUID> candidateIds);
+  }
+
+  private static final int LISTING_ANCHOR_PAGE_SIZE = 100;
+
+  /** Context Center evaluates each memory anchor before the search applies its offset and limit. */
+  public static Set<String> readableListingAnchorIds(
+      String userName, Collection<String> matchingAnchorIds) {
+    ContextMemoryRepository repository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    return readableListingAnchorIds(
+        userName, matchingAnchorIds, repository::findAnchors, ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableListingAnchorIds(
+      String userName,
+      Collection<String> matchingAnchorIds,
+      AnchorFinder finder,
+      AnchorAccess access) {
+    Set<String> readable = new LinkedHashSet<>();
+    List<UUID> candidates =
+        matchingAnchorIds.stream()
+            .filter(Objects::nonNull)
+            .map(ContextMemoryVisibility::parseAnchorId)
+            .flatMap(Optional::stream)
+            .distinct()
+            .toList();
+    for (int start = 0; start < candidates.size(); start += LISTING_ANCHOR_PAGE_SIZE) {
+      List<UUID> batch =
+          candidates.subList(start, Math.min(start + LISTING_ANCHOR_PAGE_SIZE, candidates.size()));
+      for (EntityReference anchor : finder.findAnchors(batch)) {
+        if (access.canView(userName, anchor)) {
+          readable.add(anchor.getId().toString());
+        }
+      }
+    }
+    return Set.copyOf(readable);
   }
 
   private ContextMemoryVisibility() {}
@@ -435,7 +473,7 @@ public final class ContextMemoryVisibility {
    * An anonymous caller matches no owner, shared principal or anchor reader, so it keeps only the
    * unanchored ENTITY memories; search's unresolvable-subject fallback keeps every ENTITY memory.
    */
-  private static String callerName(SecurityContext securityContext) {
+  static String callerName(SecurityContext securityContext) {
     return securityContext == null || securityContext.getUserPrincipal() == null
         ? null
         : securityContext.getUserPrincipal().getName();
@@ -478,16 +516,30 @@ public final class ContextMemoryVisibility {
    * signs up under a team's name is not a member of that team.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
+    return isSharedWith(sharedWith, () -> resolvePrincipalIdentifiers(userName));
+  }
+
+  /**
+   * As {@link #isSharedWith(List, String)}, with the caller's ids from {@code principalIds}, read
+   * only when the list names someone; pass {@link #principalIdsOf} to resolve them once per list.
+   */
+  public static boolean isSharedWith(
+      List<MemorySharedPrincipal> sharedWith, Supplier<Set<String>> principalIds) {
     if (nullOrEmpty(sharedWith)) {
       return false;
     }
-    Set<String> principalIds = resolvePrincipalIdentifiers(userName);
+    Set<String> ids = principalIds.get();
     return sharedWith.stream()
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
                     && sp.getPrincipal().getId() != null
-                    && principalIds.contains(sp.getPrincipal().getId().toString()));
+                    && ids.contains(sp.getPrincipal().getId().toString()));
+  }
+
+  /** {@code userName}'s principal ids, resolved on first use and then reused. */
+  public static Supplier<Set<String>> principalIdsOf(String userName) {
+    return Suppliers.memoize(() -> resolvePrincipalIdentifiers(userName));
   }
 
   /**

@@ -1,9 +1,9 @@
 # An `RdfIndexApp` run that ends before indexing leaves the projection state alone
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial)
+- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-12 (a run that finds RDF off is one)
 - **Deciders:** Chirag Madlani
-- **Guard:** `RdfProjectionStateResolverTest`, `RdfIndexAppTest` (`RunLockTests`, `AdmissionTests`)
+- **Guard:** `RdfProjectionStateResolverTest`, `RdfIndexAppTest` (`RunLockTests`, `AdmissionTests`, `RdfNotInitializedTests`)
 - **Related:** ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists, ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule, `RdfProjectionStateResolver`, `RdfIndexApp`
 
 ## Context
@@ -35,3 +35,18 @@ A redundant trigger no longer takes agent SPARQL offline. A new early-exit path 
 must set `projectionUnchanged` or it reintroduces the bug; the `RdfIndexAppTest` cases feed the
 pushed record through the real resolver to catch that. Revisit this record if the resolver stops
 reading the run store, or if a run can end before indexing but still change the projection.
+
+## Amendment — 2026-11-12: a run that finds RDF off is one (#36440)
+
+`RdfIndexApp` on a server with RDF off completes with nothing indexed. That is a run that ends
+before indexing, so it must not count as a build of the graph, but it is not a failure either:
+it stays `COMPLETED`/`SUCCESS` so the app's history and alerting show a normal run. Its
+`projectionUnchanged: true` therefore sits on the record's **success** context, not only on the
+failure context. The resolver reads the flag from either context; `RdfProjectionStateResolver`
+stays the only writer (`failureContext`, `successContextOfUnchangedProjection`) and the only
+reader. With the flag, such records do not turn a never-built graph into `READY`
+(ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists, 2026-11-12 amendment).
+
+`OmAppJobListener.jobWasExecuted` reuses the record's success context and sets only its `stats`,
+so the flag survives to the stored record. `RdfIndexAppTest` (`RdfNotInitializedTests`) feeds the
+pushed record through the real resolver.

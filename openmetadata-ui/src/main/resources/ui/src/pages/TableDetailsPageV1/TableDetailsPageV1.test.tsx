@@ -328,11 +328,6 @@ jest.mock('../../components/common/Loader/Loader', () => ({
 
 jest.useFakeTimers();
 
-jest.mock('./TableLinkedConcepts', () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest
     .fn()
@@ -518,6 +513,27 @@ describe('TestDetailsPageV1 component', () => {
     expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
+  });
+
+  it('renders the permission placeholder in place when the table fetch is forbidden', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 403 } })
+    );
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('no-data-placeholder')).not.toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalledWith('/403', { replace: true });
   });
 
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
@@ -949,8 +965,9 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     it('should render the skeleton instead of a count while the request is in flight', async () => {
-      let resolveCount: (value: { paging: { total: number } }) => void = () =>
-        undefined;
+      let resolveCount: (value: { paging: { total: number } }) => void = (
+        _value
+      ) => undefined;
       (getQueriesList as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -970,7 +987,6 @@ describe('TestDetailsPageV1 component', () => {
       ).toBeTruthy();
 
       await act(async () => {
-        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
         resolveCount({ paging: { total: 7 } });
       });
 

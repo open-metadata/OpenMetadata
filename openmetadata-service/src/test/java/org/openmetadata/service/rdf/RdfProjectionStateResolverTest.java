@@ -33,7 +33,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -45,6 +47,11 @@ class RdfProjectionStateResolverTest {
   private final AtomicBoolean degraded = new AtomicBoolean();
   private final RdfProjectionStateResolver resolver =
       new RdfProjectionStateResolver(runStore, degraded::get);
+
+  private void givenRuns(final String... runs) {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(List.of(runs));
+  }
 
   @Test
   void reportsRebuildingUntilTheFirstPostMigrationRun() {
@@ -158,6 +165,38 @@ class RdfProjectionStateResolverTest {
     assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
     verify(runStore, times(RdfProjectionStateResolver.MAX_RUN_PAGES))
         .listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status"));
+  }
+
+  @Test
+  void aSuccessfulRunThatFoundRdfOffIsSkippedLikeAFlaggedFailure() {
+    givenRuns(unchangedRun(), run(AppRunRecord.Status.FAILED));
+
+    assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
+  }
+
+  @Test
+  void onlyRunsThatFoundRdfOffReportRebuilding() {
+    givenRuns(unchangedRun(), unchangedRun());
+
+    assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
+  }
+
+  @Test
+  void aSuccessContextWithoutTheFlagIsNotSkipped() {
+    final AppRunRecord indexed =
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.SUCCESS)
+            .withSuccessContext(new SuccessContext().withStats(new Stats()));
+    givenRuns(JsonUtils.pojoToJson(indexed));
+
+    assertEquals(RdfProjectionState.READY, resolver.resolve());
+  }
+
+  private static String unchangedRun() {
+    return JsonUtils.pojoToJson(
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.SUCCESS)
+            .withSuccessContext(RdfProjectionStateResolver.successContextOfUnchangedProjection()));
   }
 
   private static String run(final AppRunRecord.Status status) {

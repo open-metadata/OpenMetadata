@@ -47,11 +47,11 @@ This is the command to trust — it runs the fixing steps (organize-imports, esl
 headers, i18n sync, app-docs) **and** the audit gates (`tw-audit`, `tw-guard`).
 The gates are collected rather than short-circuited, so one failure does not hide the others.
 
-In CI, warnings appear in the sticky GitHub Actions comment on the PR titled
-**UI Checkstyle passed — lint findings in changed files**. The comment groups findings by rule and
-includes file, line, column, and message details for the PR's changed files. The same output is
-available in **Actions → UI Checkstyle → checkstyle → ESLint + Prettier + Organise Imports (src)**.
-Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-checkstyle`.
+In CI, warnings appear in the job summary of the `ui / lint` job, titled
+**UI Checkstyle passed — lint findings in changed files**. The summary groups findings by rule and
+includes file, line, column, and message details for the PR's changed files. The same output is in
+that job's **ESLint + Prettier + Organise Imports (src)** step.
+Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-tests-status`.
 
 ## What each gate enforces
 
@@ -199,7 +199,7 @@ on `make ui-checkstyle-changed`.
 
 ## SonarCloud configuration (admin — must be done once)
 
-Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/yarn-coverage.yml`.
+Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/ui-sonarcloud-nightly.yml`.
 
 ### Quality profile
 
@@ -232,9 +232,9 @@ adds or modifies.
 >
 > Two mechanical consequences worth knowing:
 > - A PR that only **moves or reformats** code can still register those lines as new and uncovered.
-> - Coverage comes from `sonar.typescript.lcov.reportPaths` (`src/test/unit/coverage/lcov.info`), so
->   if the Jest run fails or the lcov is missing, new-code coverage reads as 0% and the gate fails.
->   Fix the test run, not the gate.
+> - Coverage comes from `sonar.typescript.lcov.reportPaths` (Jest's `src/test/unit/coverage/lcov.info`
+>   and the browser suite's `src/test/browser/coverage/lcov.info`); if either test run fails or a
+>   report is missing the nightly job fails and Slack is notified. Fix the test run, not the gate.
 
 ### New Code definition
 
@@ -243,12 +243,20 @@ project settings, not on the gate.
 
 ### Branch protection
 
-Mark these checks required on `main`:
+Mark `ui-tests-status` (from `ci-pr.yml` and `ci-merge-queue.yml`) required on `main`. It passes
+only when every selected UI job passed:
 
-| Required check | Enforces |
-|---|---|
-| `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
-| `ui-coverage` | Jest run completed |
+The `ui` job (`ui-ci.yml`) runs:
+
+| Check | Runs | Enforces |
+|---|---|---|
+| `ui / lint` | `.github/actions/ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard`, bundle budget, knip |
+| `ui / unit` | `.github/actions/ui-unit`, four shards | Jest |
+| `ui / browser` | `ui-browser-tests.yml` | browser tests selected by impact |
+
+`ui / unit` and `ui / browser` start only after `ui / lint` passes. Until the ruleset switches
+to `ui-tests-status`, the entrypoints also report it under the old names `ui-checkstyle` and
+`ui-coverage`.
 
 Do not require `ui-sonar-gate` or SonarCloud's PR check. PR jobs do not receive Sonar credentials,
 including same-repository PRs, under ADR:2026-11-10-pr-jobs-never-receive-credentials.
@@ -275,3 +283,15 @@ GET https://sonarcloud.io/api/measures/search_history
 
 Expectation: flat or falling on a growing `ncloc`. Two consecutive months climbing is the signal to
 schedule targeted cleanup — Clean as You Code only retires debt where people happen to edit.
+
+## Unit-test lint scope
+
+Unit tests keep type and correctness checks but exclude production accessibility,
+rendering-cost, architecture, design-token and complexity rules on their mock JSX
+and fixtures. Production files retain those checks. Jest rules match the runner's
+`src/**/*.test.{js,jsx,ts,tsx}` pattern; Playwright and the Vitest component library
+keep separate policies. Unused disable directives fail lint.
+
+See ADR:2026-11-23-unit-tests-enforce-runner-correctness for the measured rollout
+and rejected rule candidates. Warning removal through scope correction is reported
+separately from fixes to test logic and promotions from warning to error.

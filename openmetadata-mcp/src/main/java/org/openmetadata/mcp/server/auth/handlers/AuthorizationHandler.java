@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,10 +13,15 @@ import org.openmetadata.mcp.auth.InvalidScopeException;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class AuthorizationHandler {
+
+  private static final String RESOURCE_PARAM = "resource";
 
   private final OAuthAuthorizationServerProvider provider;
 
@@ -30,6 +36,23 @@ public class AuthorizationHandler {
    * redirect URL or an error
    */
   public CompletableFuture<AuthorizationResponse> handle(Map<String, String> params) {
+    List<String> resourceValues =
+        params.containsKey(RESOURCE_PARAM)
+            ? Collections.singletonList(params.get(RESOURCE_PARAM))
+            : null;
+    return handle(params, resourceValues);
+  }
+
+  /**
+   * Handle an authorization request with all {@code resource} parameter values preserved (RFC 8707).
+   * @param params The single-valued request parameters
+   * @param resourceValues All {@code resource} values sent by the client, or {@code null} when
+   *     omitted
+   * @return A CompletableFuture that resolves to a response object containing either a
+   * redirect URL or an error
+   */
+  public CompletableFuture<AuthorizationResponse> handle(
+      Map<String, String> params, List<String> resourceValues) {
     String clientId = params.get("client_id");
     String redirectUriStr = params.get("redirect_uri");
     String responseType = params.get("response_type");
@@ -77,6 +100,18 @@ public class AuthorizationHandler {
               } catch (InvalidRedirectUriException e) {
                 return CompletableFuture.completedFuture(
                     createErrorResponse("invalid_request", e.getMessage(), state, null));
+              }
+
+              // Validate RFC 8707 resource parameter(s) only after client_id and redirect_uri are
+              // verified so unknown clients or unregistered callbacks cannot become open redirects.
+              if (!McpResourceUri.validateRequested(
+                  resourceValues, provider.getIssuer(), "/mcp/authorize")) {
+                return CompletableFuture.completedFuture(
+                    createErrorResponse(
+                        McpResourceUri.INVALID_TARGET_ERROR,
+                        McpResourceUri.INVALID_TARGET_DESCRIPTION,
+                        state,
+                        redirectUri));
               }
 
               // Validate scope
@@ -168,6 +203,12 @@ public class AuthorizationHandler {
         new AuthorizationErrorResponse(error, errorDescription, state);
 
     if (redirectUri != null) {
+      try {
+        new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+            .validateRedirect(redirectUri);
+      } catch (IllegalArgumentException e) {
+        return new AuthorizationResponse(null, false, errorResponse);
+      }
       // Redirect with error parameters. RFC 9207 requires "iss" on error responses too. A remote
       // web callback gets the same URL as a link to click, not a redirect.
       String redirectUrl =

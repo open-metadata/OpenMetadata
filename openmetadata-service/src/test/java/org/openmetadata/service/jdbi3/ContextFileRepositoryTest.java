@@ -3,12 +3,17 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,12 +21,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository.Operation;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -29,12 +39,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 class ContextFileRepositoryTest {
   private static final String NEVER_EXTRACTED = "neverExtracted";
   private ContextFileRepository repository;
+  private final CollectionDAO.AssetDAO assets = mock(CollectionDAO.AssetDAO.class);
 
   @BeforeEach
   void setUp() {
     CollectionDAO dao = mock(CollectionDAO.class);
     when(dao.contextFileDAO()).thenReturn(mock(CollectionDAO.ContextFileDAO.class));
     when(dao.contextFileContentDAO()).thenReturn(mock(CollectionDAO.ContextFileContentDAO.class));
+    when(dao.assetDAO()).thenReturn(assets);
     Entity.setCollectionDAO(dao);
     Jdbi jdbi = mock(Jdbi.class);
     when(jdbi.onDemand(CollectionDAO.class)).thenReturn(dao);
@@ -44,6 +56,40 @@ class ContextFileRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void assetMetadataIsRemovedOnlyAfterStorageDeletionSucceeds(boolean failure) {
+    Asset asset = new Asset().withId(UUID.randomUUID().toString());
+    AtomicReference<String> stored = new AtomicReference<>(JsonUtils.pojoToJson(asset));
+    when(assets.getById(asset.getId())).thenAnswer(call -> stored.get());
+    doAnswer(
+            call -> {
+              stored.set(null);
+              return null;
+            })
+        .when(assets)
+        .delete(asset.getId());
+    AssetService storage = mock(AssetService.class);
+    CompletableFuture<Void> deleted = new CompletableFuture<>();
+    when(storage.delete(asset)).thenReturn(deleted);
+    try (var factory = mockStatic(AssetServiceFactory.class)) {
+      factory.when(AssetServiceFactory::getService).thenReturn(storage);
+
+      repository.deleteAsset(asset);
+
+      assertEquals(asset.getId(), repository.getAssetRepository().getById(asset.getId()).getId());
+      if (failure) {
+        deleted.completeExceptionally(new IllegalStateException("Storage unavailable"));
+        assertEquals(asset.getId(), repository.getAssetRepository().getById(asset.getId()).getId());
+      } else {
+        deleted.complete(null);
+        assertThrows(
+            EntityNotFoundException.class,
+            () -> repository.getAssetRepository().getById(asset.getId()));
+      }
+    }
   }
 
   @ParameterizedTest

@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -176,6 +177,13 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({
+    version: '0.2',
+    tab: 'apiEndpoint',
+  });
+});
+
 describe('APICollectionVersionPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -222,6 +230,25 @@ describe('APICollectionVersionPage', () => {
     expect(getApiCollectionByFQN).not.toHaveBeenCalled();
   });
 
+  it('should follow the tab route param when it changes without a remount', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      version: '0.2',
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(<APICollectionVersionPage />);
+
+    expect(await screen.findByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      version: '0.2',
+      tab: 'apiEndpoint',
+    });
+    rerender(<APICollectionVersionPage />);
+
+    expect(await screen.findByText(API_ENDPOINTS_TAB)).toBeInTheDocument();
+    expect(screen.queryByText(CUSTOM_PROPERTY_TABLE)).not.toBeInTheDocument();
+  });
+
   it('should show the Loader while permissions are still loading', async () => {
     setMockPermissions({}, { isLoading: true });
 
@@ -255,10 +282,5 @@ describe('APICollectionVersionPage', () => {
     expect(mockCustomPropertyTable).toHaveBeenCalledWith(
       expect.objectContaining({ hasPermission: false })
     );
-
-    (useParams as jest.Mock).mockReturnValue({
-      version: '0.2',
-      tab: 'apiEndpoint',
-    });
   });
 });

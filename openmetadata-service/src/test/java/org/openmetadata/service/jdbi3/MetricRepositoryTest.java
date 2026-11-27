@@ -228,6 +228,25 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void groupInDomainPickSkipsTheBatchLookupWhenThePickHasNoMetrics() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      EntityReference group =
+          new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC_GROUP);
+
+      java.util.function.Predicate<EntityReference> inPick =
+          fixture.repository().groupInDomainPick(java.util.Optional.empty(), Set.of());
+
+      assertFalse(inPick.test(group));
+      verify(fixture.relationshipDAO(), never())
+          .findFromBatch(
+              anyList(),
+              org.mockito.ArgumentMatchers.anyInt(),
+              any(String.class),
+              any(org.openmetadata.schema.type.Include.class));
+    }
+  }
+
+  @Test
   void metricWithoutReviewersStartsInDraftWhenALifecyclePlaybookOwnsItsStage() {
     try (RepositoryFixture fixture = repositoryFixture()) {
       fixture.repository().stageOwnership = new PlaybookStageOwnership();

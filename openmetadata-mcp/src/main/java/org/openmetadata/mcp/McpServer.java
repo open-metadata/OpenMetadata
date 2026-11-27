@@ -1,5 +1,7 @@
 package org.openmetadata.mcp;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -9,6 +11,8 @@ import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,12 +24,15 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -39,6 +46,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ImpersonationDeniedException;
+import org.openmetadata.service.security.ImpersonationTargetNotFoundException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -56,6 +65,7 @@ public class McpServer implements McpServerProvider {
   protected DefaultPromptsContext promptsContext;
   private Environment environment;
   private volatile String mcpBotName;
+  volatile Supplier<String> expectedResourceSupplier;
 
   // Default constructor for dynamic loading
   public McpServer() {
@@ -75,7 +85,7 @@ public class McpServer implements McpServerProvider {
       Limits limits,
       OpenMetadataApplicationConfig config) {
     this.jwtFilter =
-        new JwtFilter(
+        newJwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
     // Tokens must be checked against the security settings in effect, which reload without a
@@ -83,7 +93,7 @@ public class McpServer implements McpServerProvider {
     SecurityConfigurationManager.getInstance()
         .addConfigurationChangeListener(
             (authConfig, authzConfig, mcpConfig) ->
-                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
+                this.jwtFilter = newJwtFilter(authConfig, authzConfig));
     this.authorizer = authorizer;
     this.limits = limits;
     this.environment = environment;
@@ -96,6 +106,23 @@ public class McpServer implements McpServerProvider {
             (authConfig, authzConfig, mcpConfig) -> logToolGating(tools, mcpConfig));
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
+  }
+
+  /**
+   * Tool and prompt calls authenticate the caller's token again, so it must be addressed to the MCP
+   * resource the transport serves or carry no {@code aud}. Before the transport publishes that
+   * resource no {@code aud} names it.
+   * ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  JwtFilter newJwtFilter(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    return new JwtFilter(
+        authConfig, authzConfig, McpResourceUri.tokenAudienceOf(this::expectedResource));
+  }
+
+  private String expectedResource() {
+    Supplier<String> resource = expectedResourceSupplier;
+    return resource != null ? resource.get() : null;
   }
 
   /**
@@ -153,23 +180,29 @@ public class McpServer implements McpServerProvider {
   }
 
   /**
-   * Read-only mode and disabled tools, for every caller including admins, whom no policy can deny.
+   * Tool availability rules for every caller including admins, whom no policy can deny.
    * Every tool is registered at startup, after a subclass has added its own in {@link #getTools()};
    * this filter hides the refused ones on each tools/list from the setting as it is now, and {@link
    * #executeTool} refuses them on each call. See ADR:2026-11-04-mcp-read-only-mode-hides-write-tools
    * and ADR:2026-11-05-mcp-admins-can-disable-single-tools.
    */
-  static McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
+  McpSyncListFilter<McpSchema.Tool> toolFilter(Supplier<MCPConfiguration> config) {
     return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
   }
 
-  static McpStatelessSyncServer buildServer(
+  /** Collate overrides this to supply initialization instructions to MCP clients. */
+  protected String serverInstructions() {
+    return null;
+  }
+
+  McpStatelessSyncServer buildServer(
       McpStatelessServerTransport transport,
       McpSchema.ServerCapabilities capabilities,
       Supplier<MCPConfiguration> mcpConfig) {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
         .serverInfo(serverInfo(mcpConfig.get()))
         .capabilities(capabilities)
+        .instructions(serverInstructions())
         // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
         // tools accept looser shapes on purpose, see
         // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
@@ -194,11 +227,11 @@ public class McpServer implements McpServerProvider {
   }
 
   // tools/list follows the setting live, so say what it hides each time the setting loads.
-  private static void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
+  private void logToolGating(List<McpSchema.Tool> tools, MCPConfiguration config) {
     long hidden = tools.stream().filter(tool -> refusalReason(tool, config).isPresent()).count();
     if (hidden > 0) {
       LOG.info(
-          "[MCP] Read-only mode and disabled tools hide {} of {} tool(s) from tools/list",
+          "[MCP] Tool availability settings hide {} of {} tool(s) from tools/list",
           hidden,
           tools.size());
     }
@@ -224,6 +257,12 @@ public class McpServer implements McpServerProvider {
         : config.getDisabledTools();
   }
 
+  /** Distributions can override this to interpret additional {@code offeredTools} values. */
+  protected boolean isOfferedByAllowlist(McpSchema.Tool tool, MCPConfiguration config) {
+    final Set<String> offered = config == null ? null : config.getOfferedTools();
+    return nullOrEmpty(offered) || offered.contains(tool.name());
+  }
+
   // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
   // describe_entity_type only reads, but it exists to prepare a create_entity call.
   private static boolean isAvailableInReadOnlyMode(McpSchema.Tool tool) {
@@ -232,12 +271,12 @@ public class McpServer implements McpServerProvider {
     return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
   }
 
-  private static Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
+  private Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
     Optional<String> reason = Optional.empty();
     if (isReadOnlyMode(config) && !isAvailableInReadOnlyMode(tool)) {
       reason =
           Optional.of("The MCP server is in read-only mode, so " + tool.name() + " is unavailable");
-    } else if (disabledTools(config).contains(tool.name())) {
+    } else if (disabledTools(config).contains(tool.name()) || !isOfferedByAllowlist(tool, config)) {
       reason = Optional.of(tool.name() + " is disabled on this MCP server");
     }
     return reason;
@@ -293,6 +332,7 @@ public class McpServer implements McpServerProvider {
               authProvider,
               allowedOrigins);
       statelessOauthTransport.setContextPath(contextHandler.getContextPath());
+      this.expectedResourceSupplier = authProvider::getIssuer;
       McpStatelessSyncServer server =
           buildServer(
               statelessOauthTransport,
@@ -311,6 +351,8 @@ public class McpServer implements McpServerProvider {
       BasicAuthLoginServlet basicAuthLoginServlet = new BasicAuthLoginServlet(authProvider);
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
+
+      registerAvailabilityFilter(environment);
 
       // Register well-known filter via Dropwizard's environment.servlets() API.
       // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
@@ -364,9 +406,15 @@ public class McpServer implements McpServerProvider {
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
       // invokes this handler, which asks the user to approve the client before a code is minted.
+      // The SAML ACS is not under /mcp/, so it checks availability itself.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
-          (req, resp, username, email, relayState) ->
-              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+          (req, resp, username, email, relayState) -> {
+            if (McpAvailabilityFilter.isMcpAvailable()) {
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState);
+            } else {
+              McpAvailabilityFilter.refuse(resp);
+            }
+          });
       LOG.info("Registered MCP SAML callback handler for SAML SSO support");
 
       // Register MCP callback servlet unconditionally — SSO availability is checked at
@@ -385,6 +433,16 @@ public class McpServer implements McpServerProvider {
               + "and restart.",
           ex);
     }
+  }
+
+  /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
+  private static void registerAvailabilityFilter(Environment environment) {
+    McpAvailabilityFilter.startAppStateRefresh();
+    environment
+        .servlets()
+        .addFilter("mcp-availability", new McpAvailabilityFilter())
+        .addMappingForUrlPatterns(
+            EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD), false, "/mcp/*");
   }
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
@@ -437,7 +495,7 @@ public class McpServer implements McpServerProvider {
     String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
     DefaultToolContext.CallToolOutcome outcome = null;
     try {
-      ImpersonationContext.setImpersonatedBy(getMcpBotName());
+      ImpersonationContext.setImpersonatedBy(attributedBot(securityContext));
       outcome =
           refusalReason(tool, SecurityConfigurationManager.getCurrentMcpConfig())
               .map(DefaultToolContext::forbidden)
@@ -473,14 +531,27 @@ public class McpServer implements McpServerProvider {
                         securityContextFrom(context), prompt.name(), arguments)));
   }
 
+  /** An impersonated call is attributed to the bot that asked; every other call to the MCP bot. */
+  private String attributedBot(CatalogSecurityContext securityContext) {
+    return Optional.ofNullable(securityContext.impersonatedUser()).orElseGet(this::getMcpBotName);
+  }
+
   /** Tools and prompts both resolve the caller from the request headers, never from the body. */
   private CatalogSecurityContext securityContextFrom(McpTransportContext context) {
     String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
     String activePersona =
         (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
-    return activePersona == null
-        ? jwtFilter.getCatalogSecurityContext(token)
-        : jwtFilter.getCatalogSecurityContext(token, activePersona);
+    String impersonateUser =
+        (String) context.get(AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER);
+    CatalogSecurityContext securityContext;
+    if (impersonateUser != null) {
+      securityContext = jwtFilter.getCatalogSecurityContext(token, activePersona, impersonateUser);
+    } else if (activePersona == null) {
+      securityContext = jwtFilter.getCatalogSecurityContext(token);
+    } else {
+      securityContext = jwtFilter.getCatalogSecurityContext(token, activePersona);
+    }
+    return securityContext;
   }
 
   /**
@@ -490,12 +561,16 @@ public class McpServer implements McpServerProvider {
    *
    * <p>The SDK answers an exception that is not an {@link McpError} with -32603 and the
    * exception's own message. A token the server could not confirm becomes an {@link McpError} that
-   * reads as temporarily unavailable, without that message, which names the principal.
+   * reads as temporarily unavailable, without that message, which names the principal. A refused
+   * {@code X-Impersonate-User} is the caller's error, as REST answers it with 401/403, so it reads
+   * as unauthorized with the same message REST sends.
    */
   private static <T> T runCallback(String name, Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
+    } catch (ImpersonationDeniedException | ImpersonationTargetNotFoundException e) {
+      throw McpError.builder(JsonRpcErrorBody.UNAUTHORIZED).message(e.getMessage()).build();
     } catch (CredentialUnavailableException e) {
       LOG.debug("MCP callback token could not be confirmed", e);
       throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)

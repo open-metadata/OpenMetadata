@@ -171,6 +171,7 @@ public class DefaultAuthorizer implements Authorizer {
       SubjectContext subjectContext,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    AuditReportAccess.authorize(subjectContext, resourceContext);
     if (!subjectContext.isAdmin() && !isReviewer(resourceContext, subjectContext)) {
       PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
     }

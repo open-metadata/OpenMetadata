@@ -55,12 +55,25 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
   private List<TagLabel> serviceTags;
   private boolean serviceTagsLoaded;
   private Boolean serviceResource;
+  @Getter private boolean entityTypeLevel;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
     this.id = null;
     this.name = null;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
+  /**
+   * A context for a request about the entity type itself, such as its custom property definitions.
+   * Conditional deny rules are skipped for it, so never use it for a request that returns asset
+   * data.
+   */
+  public static <T extends EntityInterface<?>> ResourceContext<T> forEntityType(
+      @NonNull String resource) {
+    ResourceContext<T> context = new ResourceContext<>(resource);
+    context.entityTypeLevel = true;
+    return context;
   }
 
   public ResourceContext(@NonNull String resource, UUID id, String name) {

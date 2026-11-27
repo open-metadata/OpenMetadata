@@ -21,6 +21,11 @@ public class Workflow {
   public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   // The type of the change event that started the run. Only a create may carry no change to judge.
   public static final String TRIGGERING_EVENT_TYPE_VARIABLE = "triggeringEventType";
+  // The user of the one bot that made the triggering change, set only when some workflow on the
+  // entity type lists that bot in triggeringBots. Each workflow's trigger filter starts the run
+  // only
+  // if its own triggeringBots list contains this bot.
+  public static final String CHANGED_BY_BOT_VARIABLE = "changedByBot";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
@@ -53,6 +58,10 @@ public class Workflow {
   // WorkflowInstance record, so this string stays fixed for the whitelist match.
   public static final String TERMINATED_BY_ADMIN =
       "Workflow instance terminated by an administrator";
+  // Cause string passed to deleteProcessInstance when a user closes the task the process waits on.
+  // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for it.
+  public static final String TASK_CLOSED_BY_USER =
+      "Workflow process ended because its task was closed";
   public static final String APPROVE_CONDITION = "approve";
   public static final String REJECT_CONDITION = "reject";
   public static final String LEGACY_APPROVE_CONDITION = "true";

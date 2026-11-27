@@ -614,4 +614,26 @@ public class OpenMetadataAssetServletTest {
     assertFalse(servlet.isSpaRoute("/api/v1/system/version"));
     assertFalse(servlet.isSpaRoute("/openapi.json"));
   }
+
+  @Test
+  public void testStaysWithinRootAllowsNormalAndSpaPaths() {
+    assertTrue(OpenMetadataAssetServlet.staysWithinRoot("/assets", null));
+    assertTrue(OpenMetadataAssetServlet.staysWithinRoot("/assets", ""));
+    assertTrue(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/"));
+    assertTrue(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/assets/index-abc.js"));
+    assertTrue(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/glossary/term"));
+  }
+
+  @Test
+  public void testStaysWithinRootRejectsPathsResolvingOutsideRoot() {
+    assertFalse(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/../conf/openmetadata.yaml"));
+    assertFalse(
+        OpenMetadataAssetServlet.staysWithinRoot("/assets", "/a/../../conf/openmetadata.yaml"));
+    assertFalse(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/../../etc/hostname"));
+  }
+
+  @Test
+  public void testStaysWithinRootFailsClosedOnUnparseablePath() {
+    assertFalse(OpenMetadataAssetServlet.staysWithinRoot("/assets", "/foo\u0000bar"));
+  }
 }

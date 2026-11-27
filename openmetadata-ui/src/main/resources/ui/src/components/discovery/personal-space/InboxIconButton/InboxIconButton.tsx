@@ -60,39 +60,34 @@ const InboxIconButton: React.FC = () => {
 
   const isActive =
     pathname === PERSONAL_SPACE_ROUTES.INBOX ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`) ||
-    pathname === PERSONAL_SPACE_ROUTES.MY_DATA ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.MY_DATA}/`);
+    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`);
 
   return (
     <Tooltip arrow placement="right" title={t('label.inbox')}>
-      <TooltipTrigger>
-        <button
-          aria-label={t('label.inbox')}
-          className={classNames('ask-rail__item', {
-            'ask-rail__item--active': isActive,
-          })}
-          data-testid="ai-inbox-icon-btn"
-          type="button"
-          onClick={() =>
-            navigate(
-              openTaskCount > 0
-                ? PERSONAL_SPACE_ROUTES.INBOX_TASKS
-                : PERSONAL_SPACE_ROUTES.INBOX
-            )
-          }>
-          {isActive ? (
-            <InboxFilled className="tw:text-brand-800" size={20} />
-          ) : (
-            <Inbox01 size={20} />
-          )}
+      <TooltipTrigger
+        aria-label={t('label.inbox')}
+        className={classNames('ask-rail__item', {
+          'ask-rail__item--active': isActive,
+        })}
+        data-testid="ai-inbox-icon-btn"
+        onPress={() =>
+          navigate(
+            openTaskCount > 0
+              ? PERSONAL_SPACE_ROUTES.INBOX_TASKS
+              : PERSONAL_SPACE_ROUTES.INBOX
+          )
+        }>
+        {isActive ? (
+          <InboxFilled className="tw:text-brand-800" size={20} />
+        ) : (
+          <Inbox01 size={20} />
+        )}
 
-          {badgeLabel && (
-            <span className={INBOX_BADGE_CLASS} data-testid="ai-inbox-badge">
-              {badgeLabel}
-            </span>
-          )}
-        </button>
+        {badgeLabel && (
+          <span className={INBOX_BADGE_CLASS} data-testid="ai-inbox-badge">
+            {badgeLabel}
+          </span>
+        )}
       </TooltipTrigger>
     </Tooltip>
   );

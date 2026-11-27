@@ -12,24 +12,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.update.UpdateAction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup.ServedBinding;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup.ServedColumn;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 final class RdfProjectionFixtures {
   private static final String BASE = "https://open-metadata.org/";
@@ -54,7 +63,41 @@ final class RdfProjectionFixtures {
       entity.close();
     }
     projectRelationships(projection);
+    projectConceptBindings(projection);
     return projection;
+  }
+
+  private static void projectConceptBindings(final Model projection) {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+    final Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("customers")
+            .withFullyQualifiedName("service.db.schema.customers")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("email")
+                        .withDataType(ColumnDataType.STRING)
+                        .withFullyQualifiedName("service.db.schema.customers.email")));
+    final JsonLdTranslator translator =
+        new JsonLdTranslator(
+            JsonUtils.getObjectMapper(),
+            BASE,
+            (type, fqns) -> Map.of(),
+            assetIds ->
+                Map.of(
+                    table.getId(),
+                    List.of(
+                        new ServedBinding(
+                            "https://example.org/onto/Customer",
+                            List.of(
+                                new ServedColumn(
+                                    "https://example.org/onto/email", List.of("email")))))),
+            ReferenceScope.ALL);
+    final Model bound = translator.toRdf(table);
+    projection.add(bound);
+    bound.close();
   }
 
   private static void projectRelationships(final Model projection) throws IOException {

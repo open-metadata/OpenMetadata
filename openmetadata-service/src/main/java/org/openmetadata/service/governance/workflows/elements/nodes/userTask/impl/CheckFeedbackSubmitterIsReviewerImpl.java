@@ -37,6 +37,7 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
+      WorkflowVariableHandler.requireRecognizerFeedback(feedback, execution);
 
       String assigneesVarName = assigneesVarNameExpr.getValue(execution).toString();
       String assigneesJson = (String) execution.getVariable(assigneesVarName);

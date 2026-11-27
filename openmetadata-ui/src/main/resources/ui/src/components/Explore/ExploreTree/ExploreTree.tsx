@@ -49,6 +49,7 @@ import {
   findTreeNodeByKey,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
+  getBrowsePathAncestorKeys,
   getDisabledExploreTreeKeys,
   getExploreQueryFilterMust,
   getQueryFilterMust,
@@ -353,6 +354,13 @@ const ExploreTree = ({
   // re-fires a lazy load (antd kept the same bookkeeping as loadedKeys). Cleared
   // when the tree rebuilds, since rebuilt roots carry no children.
   const requestedKeysRef = useRef<Set<string>>(new Set());
+  // Path ancestors already auto-expanded, so a node the user collapses is not
+  // re-opened by a later load. Cleared with requestedKeysRef on rebuild.
+  const autoExpandedKeysRef = useRef<Set<string>>(new Set());
+  // The browsePath the root counts were last refreshed for. Until a count fetch
+  // for the current path commits, root counts are stale and must not decide
+  // which categories auto-expand.
+  const rootCountsBrowsePathRef = useRef<unknown>(undefined);
   // Latest selection for the browse-path sync effect to read without taking a
   // dependency on it — that would re-run the effect on every click and fight
   // the highlight the click handler just set. Mirrored during render (not in an
@@ -654,6 +662,7 @@ const ExploreTree = ({
         return;
       }
 
+      rootCountsBrowsePathRef.current = parsedSearch.browsePath;
       presenceBucketsRef.current = {
         key: presenceCacheKey,
         buckets: presenceBuckets,
@@ -664,6 +673,7 @@ const ExploreTree = ({
       // roots would never re-fetch on their existing expansion.
       if (!preserveExpandedTree) {
         requestedKeysRef.current.clear();
+        autoExpandedKeysRef.current.clear();
       }
 
       // Rebuild the root set from the present static roots so a category an
@@ -773,6 +783,25 @@ const ExploreTree = ({
     }
   }, [parsedSearch.browsePath, treeData]);
 
+  useEffect(() => {
+    // Rebuilt or deep-linked trees carry fresh keys below the roots, so expand
+    // the loaded ancestors of the browse path; each expand lazy-loads the next
+    // level, which lands here again until the browsed node is revealed.
+    const keysToExpand = getBrowsePathAncestorKeys(
+      treeData,
+      parseBrowsePathFields(parsedSearch.browsePath),
+      {
+        rootCountsMatchPath:
+          rootCountsBrowsePathRef.current === parsedSearch.browsePath,
+      }
+    ).filter((key) => !autoExpandedKeysRef.current.has(key));
+    if (isEmpty(keysToExpand)) {
+      return;
+    }
+    keysToExpand.forEach((key) => autoExpandedKeysRef.current.add(key));
+    setExpandedKeys((prev) => [...new Set([...prev, ...keysToExpand])]);
+  }, [parsedSearch.browsePath, treeData]);
+
   // Top-level categories that cannot hold the selected asset type are grayed
   // out so the user can't browse into services that won't contain it.
   const disabledRootKeys = useMemo(
@@ -868,7 +897,7 @@ const ExploreTree = ({
           description={t('message.add-service-and-data-assets')}
           footer={
             <>
-              <Typography as="p" className="tw:text-secondary" size="text-xs">
+              <Typography as="p" color="secondary" size="text-xs">
                 <Transi18next
                   i18nKey="message.need-help-message"
                   renderElement={

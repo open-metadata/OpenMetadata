@@ -18,6 +18,7 @@ import org.openmetadata.it.server.sso.MockOidcServer;
 import org.openmetadata.it.server.sso.SsoProfile;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -220,7 +221,7 @@ public final class ContainerizedServer implements AutoCloseable {
   }
 
   private static MySQLContainer<?> newMysql(final Network network) {
-    return new MySQLContainer<>(DockerImageName.parse("mysql:8.3.0"))
+    return new MySQLContainer<>(DockerImageName.parse(TestDatabaseImages.mysql()))
         .withNetwork(network)
         .withNetworkAliases(DB_ALIAS)
         .withDatabaseName(DB_NAME)

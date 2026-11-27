@@ -55,6 +55,15 @@ export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
+// usePaging keeps these in the query string. A paging action sets the page in state first and in
+// the URL in a later (transition) render, so a list that parses its filters from the query string
+// must leave these out, or the URL catching up refetches with the filters alone.
+export const PAGING_URL_PARAMS = [
+  'currentPage',
+  'pageSize',
+  'cursorType',
+  'cursorValue',
+];
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
@@ -152,7 +161,6 @@ export const ROUTES = {
   PLATFORM_LINEAGE: '/lineage',
   PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
-  TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,

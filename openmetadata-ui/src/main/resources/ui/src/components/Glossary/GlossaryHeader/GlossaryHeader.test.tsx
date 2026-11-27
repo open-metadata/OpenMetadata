@@ -50,12 +50,14 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     glossaryFqn: 'glossaryFqn',
     action: 'action',
   }),
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: ({
     children,
     to,
@@ -174,7 +176,7 @@ jest.mock('../../../hooks/useAppMode', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue('glossary.test1'),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'glossary.test1' }),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -291,7 +293,7 @@ describe('GlossaryHeader component', () => {
     }
   );
 
-  it('should render import and export dropdown menu items only for glossary', async () => {
+  it('should render export, import and import ontology dropdown menu items for glossary', async () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -381,8 +383,9 @@ describe('GlossaryHeader component', () => {
     expect(screen.getByText('label.style')).toBeInTheDocument();
     expect(screen.getByText('label.change-parent-entity')).toBeInTheDocument();
 
-    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+    expect(screen.getByText('label.import')).toBeInTheDocument();
     expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.import-ontology')).not.toBeInTheDocument();
   });
 
   it('should not render ChangeParentHierarchy component when it is close', () => {
@@ -572,6 +575,76 @@ describe('GlossaryHeader component', () => {
       });
 
       expect(screen.getByText('label.rename')).toBeInTheDocument();
+    });
+  });
+
+  describe('CSV import entry', () => {
+    beforeEach(() => {
+      mockNavigate.mockClear();
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+    });
+
+    afterEach(() => {
+      mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockContext.type = EntityType.GLOSSARY;
+      mockGlossaryTermPermission.All = true;
+      mockGlossaryTermPermission[Operation.EditAll] = true;
+    });
+
+    it.each([
+      [EntityType.GLOSSARY, '/bulk/import/glossary/glossary.test1'],
+      [EntityType.GLOSSARY_TERM, '/bulk/import/glossaryTerm/glossary.test1'],
+    ])(
+      'opens the %s import page from its manage menu',
+      async (entityType, importPath) => {
+        mockContext.type = entityType;
+        mockContext.permissions = {
+          ...DEFAULT_ENTITY_PERMISSION,
+          EditAll: true,
+        };
+
+        render(
+          <GlossaryHeader
+            updateVote={mockOnUpdateVote}
+            onAddGlossaryTerm={mockOnDelete}
+            onDelete={mockOnDelete}
+          />
+        );
+
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('manage-button'));
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByText('label.import'));
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith(importPath);
+      }
+    );
+
+    it('hides the glossary term import entry without edit permission', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditDisplayName: true,
+      };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.getByText('label.rename')).toBeInTheDocument();
+      expect(screen.queryByText('label.import')).not.toBeInTheDocument();
     });
   });
 

@@ -97,7 +97,7 @@ async function expectOwnerInPanel(
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {

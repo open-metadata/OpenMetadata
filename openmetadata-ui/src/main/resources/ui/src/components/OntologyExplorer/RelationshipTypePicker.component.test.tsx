@@ -19,6 +19,10 @@ import {
 } from '../../generated/entity/data/relationshipType';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 
 jest.mock('../../rest/ontologyAPI', () => ({
@@ -352,6 +356,29 @@ describe('RelationshipTypePicker', () => {
     fireEvent.click(screen.getByTestId('relation-type-create'));
 
     expect(onSelect).toHaveBeenLastCalledWith('new:ships to');
+  });
+
+  it('names the typed type in the create option and drops the empty message beside it', () => {
+    useEnUsTranslations();
+    render(
+      <RelationshipTypePicker
+        canCreateType
+        groups={[]}
+        sourceLabel="Customer"
+        targetLabel="Order"
+        onSelect={jest.fn()}
+      />
+    );
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: 'places' },
+    });
+
+    expect(screen.getByTestId('relation-type-create')).toHaveTextContent(
+      'Create relationship type ‘places’'
+    );
+    expect(screen.queryByTestId('no-relation-types')).not.toBeInTheDocument();
+
+    useKeyEchoTranslations();
   });
 
   it('hides the new link without the right to create one', () => {

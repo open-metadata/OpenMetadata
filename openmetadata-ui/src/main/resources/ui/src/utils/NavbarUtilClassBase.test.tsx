@@ -12,11 +12,13 @@
  */
 
 import { ROUTES } from '../constants/constants';
+import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
 import {
   URL_JOIN_SLACK,
   URL_OM_RELEASE_UPDATES,
   URL_OPEN_METADATA_DOCS,
 } from '../constants/URL.constants';
+import { useProductTourStore } from '../hooks/useProductTourStore';
 import navbarUtilClassBase from './NavbarUtilClassBase';
 
 describe('NavbarUtilClassBase', () => {
@@ -24,7 +26,6 @@ describe('NavbarUtilClassBase', () => {
     const result = navbarUtilClassBase.getHelpItems();
     const stringifyResult = JSON.stringify(result);
 
-    expect(stringifyResult).toContain(ROUTES.TOUR);
     expect(stringifyResult).toContain(URL_OPEN_METADATA_DOCS);
     expect(stringifyResult).toContain(ROUTES.SWAGGER);
     expect(stringifyResult).toContain(URL_JOIN_SLACK);
@@ -34,6 +35,18 @@ describe('NavbarUtilClassBase', () => {
     expect(stringifyResult).toContain('label.api-uppercase');
     expect(stringifyResult).toContain('label.slack-support');
     expect(stringifyResult).toContain('label.version');
+  });
+
+  it('should open the product tour from the tour item', () => {
+    const tourItem = navbarUtilClassBase
+      .getHelpItems()
+      .find((item) => item.key === HELP_ITEMS_ENUM.TOUR);
+
+    tourItem?.handleSupportItemClick?.();
+
+    expect(useProductTourStore.getState().isOpen).toBe(true);
+
+    useProductTourStore.getState().close();
   });
 
   it('should return no user profile extra items by default', () => {

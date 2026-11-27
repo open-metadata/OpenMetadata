@@ -68,9 +68,9 @@ test.beforeAll('Setup', async ({ browser }) => {
   // return undefined and the item is silently dropped from the rendered nav.
   // governance is the sole exception — its key is the literal string 'governance'.
   //
-  // This saved nav simulates a persona created before Ontology Studio and
-  // Metrics existed: governance only has Glossary and Tags (Tags is hidden).
-  // Ontology Studio and Metrics are entirely absent — new items shipped later.
+  // This saved nav simulates a persona created before Metrics existed:
+  // governance only has Glossary and Tags (Tags is hidden). Metrics is
+  // entirely absent — a new item shipped later.
   const savedNavigation = [
     {
       id: '/explore',
@@ -96,9 +96,8 @@ test.beforeAll('Setup', async ({ browser }) => {
           isHidden: true,
           pageId: '/tags',
         },
-        // '/metrics' and '/governance/ontology' (Ontology Studio) are
-        // deliberately absent — they simulate new items shipped after this
-        // persona's nav snapshot was saved.
+        // '/metrics' is deliberately absent — it simulates a new item
+        // shipped after this persona's nav snapshot was saved.
       ],
     },
     // '/data-insights' deliberately absent — top-level new item test
@@ -154,7 +153,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await test.step('admin: Ontology Studio toggle is OFF for items absent from saved nav', async () => {
+      await test.step('admin: toggle is OFF for items absent from saved nav', async () => {
         await redirectToHomePage(adminPage);
 
         const personaListResponse =
@@ -171,16 +170,8 @@ test.describe(
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByTestId('navigation').click();
 
-        // Ontology Studio was not in the saved nav (shipped after persona
-        // was created) — its toggle must be OFF, not ON.
-        await expect(
-          adminPage
-            .getByTestId('page-layout-v1')
-            .getByRole('row', { name: 'Ontology Studio', exact: true })
-            .getByRole('switch')
-        ).not.toBeChecked();
-
-        // Metrics was also not in the saved nav — toggle must be OFF.
+        // Metrics was not in the saved nav (shipped after persona was
+        // created) — its toggle must be OFF, not ON.
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
@@ -262,15 +253,6 @@ test.describe(
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.METRICS}"]`)
-            .first()
-        ).not.toBeVisible();
-
-        // Ontology Studio is absent from saved nav's governance children — must not be visible
-        await expect(
-          userPage
-            .locator(
-              `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
-            )
             .first()
         ).not.toBeVisible();
 

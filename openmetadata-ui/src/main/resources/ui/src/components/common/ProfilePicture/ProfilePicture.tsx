@@ -23,6 +23,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
+import { getBotAvatar } from './ProfilePicture.utils';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
@@ -51,9 +52,6 @@ const TRANSPARENT_BACKGROUND: CSSProperties = {
 };
 
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
-
-const isBotLogo = (profileURL: string | null, user?: User) =>
-  Boolean(profileURL && user?.isBot);
 
 // Resolve the effective Avatar size: prefer the defined `size`, otherwise map
 // the legacy numeric `width` to the nearest defined size (default `sm`).
@@ -225,15 +223,15 @@ const ProfilePicture = ({
     );
   }
 
-  if (isBotLogo(profileURL, user)) {
+  const botAvatar = getBotAvatar(profileURL, character, user);
+  if (botAvatar) {
     return (
       <Avatar
+        {...botAvatar}
         className={className}
         contrastBorder={false}
         data-testid="profile-avatar"
-        initials={character}
         size={avatarSize}
-        src={profileURL}
         style={TRANSPARENT_BACKGROUND}
       />
     );

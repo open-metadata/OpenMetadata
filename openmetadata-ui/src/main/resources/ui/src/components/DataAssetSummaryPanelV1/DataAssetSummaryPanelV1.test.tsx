@@ -34,13 +34,12 @@ import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { patchTableDetails } from '../../rest/tableAPI';
-import { listTestCases } from '../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { generateEntityLink } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataAssetSummaryPanelV1 } from './DataAssetSummaryPanelV1';
 import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface';
@@ -53,14 +52,14 @@ jest.mock('../../utils/TablePureUtils', () => {
   const mockGetTagsWithoutTier = jest.fn(() => []);
   const mockGetUsagePercentile = jest.fn(() => 0);
   const mockGetDataTypeString = jest.fn(() => 'string');
-  const mockGenerateEntityLink = jest.fn();
 
   return {
-    generateEntityLink: mockGenerateEntityLink,
     getTierTags: mockGetTierTags,
     getTagsWithoutTier: mockGetTagsWithoutTier,
     getUsagePercentile: mockGetUsagePercentile,
     getDataTypeString: mockGetDataTypeString,
+    generateEntityLink: jest.requireActual('../../utils/TablePureUtils')
+      .generateEntityLink,
   };
 });
 
@@ -90,7 +89,7 @@ jest.mock('../../rest/incidentManagerAPI', () => ({
 }));
 
 jest.mock('../../rest/testAPI', () => ({
-  listTestCases: jest.fn(),
+  getListTestCaseBySearch: jest.fn(),
 }));
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
@@ -428,26 +427,22 @@ const mockEntityPermissions = {
   EditDescription: true,
 };
 
-const mockTestCaseData = [
-  {
-    id: 'test-case-1',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Success,
-    },
-  },
-  {
-    id: 'test-case-2',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Failed,
-    },
-  },
-  {
-    id: 'test-case-3',
-    testCaseResult: {
-      testCaseStatus: TestCaseStatus.Aborted,
-    },
-  },
-];
+// The search listing's total for each status filter, as a `limit: 0` request returns it.
+const mockTestCaseStatusTotals = (
+  totals: Partial<Record<TestCaseStatus, number>>
+) =>
+  (getListTestCaseBySearch as jest.Mock).mockImplementation(
+    async ({ testCaseStatus }: { testCaseStatus: TestCaseStatus }) => ({
+      data: [],
+      paging: { total: totals[testCaseStatus] ?? 0 },
+    })
+  );
+
+const mockTestCaseStatusCounts = {
+  [TestCaseStatus.Success]: 1,
+  [TestCaseStatus.Failed]: 1,
+  [TestCaseStatus.Aborted]: 1,
+};
 
 const mockIncidentData = {
   paging: {
@@ -497,11 +492,10 @@ describe('DataAssetSummaryPanelV1', () => {
     mockGetEntityPermission.mockResolvedValue(mockEntityPermissions);
     (getCurrentMillis as jest.Mock).mockReturnValue(1234567890);
     (getEpochMillisForPastDays as jest.Mock).mockReturnValue(1234567890);
-    (generateEntityLink as jest.Mock).mockReturnValue('test-link');
     (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue(
       mockIncidentData
     );
-    (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
+    mockTestCaseStatusTotals(mockTestCaseStatusCounts);
     (getEntityOverview as jest.Mock).mockImplementation(
       (
         _entityType: unknown,
@@ -670,11 +664,21 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(listTestCases).toHaveBeenCalledWith({
-          entityLink: 'test-link',
+        expect(getListTestCaseBySearch).toHaveBeenCalledTimes(4);
+      });
+
+      // Scoped to this table's entity link, so ViewTests is checked on this table.
+      [
+        TestCaseStatus.Success,
+        TestCaseStatus.Failed,
+        TestCaseStatus.Aborted,
+        TestCaseStatus.Queued,
+      ].forEach((testCaseStatus) => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith({
+          entityLink: `<#E::table::${mockDataAsset.fullyQualifiedName}>`,
           includeAllTests: true,
-          limit: 100,
-          fields: ['testCaseResult', 'incidentId'],
+          testCaseStatus,
+          limit: 0,
         });
       });
     });
@@ -835,9 +839,7 @@ describe('DataAssetSummaryPanelV1', () => {
       // Ensure clean state for this test
       jest.clearAllMocks();
       mockGetEntityPermission.mockResolvedValue(mockEntityPermissions);
-      (listTestCases as jest.Mock).mockResolvedValue({
-        data: mockTestCaseData,
-      });
+      mockTestCaseStatusTotals(mockTestCaseStatusCounts);
       (getEntityOverview as jest.Mock).mockReturnValue([]);
 
       await act(async () => {
@@ -864,8 +866,107 @@ describe('DataAssetSummaryPanelV1', () => {
       );
     });
 
+    it('should count every test case of a table with more than 100 tests', async () => {
+      mockTestCaseStatusTotals({
+        [TestCaseStatus.Success]: 90,
+        [TestCaseStatus.Failed]: 40,
+        [TestCaseStatus.Aborted]: 20,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('150');
+      });
+
+      expect(screen.getByTestId('test-success')).toHaveTextContent(
+        'success: 90'
+      );
+      expect(screen.getByTestId('test-failed')).toHaveTextContent('failed: 40');
+      expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        'aborted: 20'
+      );
+    });
+
+    it('should count queued test cases in the total only', async () => {
+      mockTestCaseStatusTotals({
+        [TestCaseStatus.Success]: 1,
+        [TestCaseStatus.Queued]: 1,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('2');
+      });
+
+      expect(screen.getByTestId('test-success')).toHaveTextContent(
+        'success: 1'
+      );
+      expect(screen.getByTestId('test-failed')).toHaveTextContent('failed: 0');
+      expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        'aborted: 0'
+      );
+    });
+
+    it('should not fetch test case counts without ViewTests permission', async () => {
+      mockGetEntityPermission.mockResolvedValue({
+        ...mockEntityPermissions,
+        ViewTests: false,
+      });
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
+      });
+
+      expect(getListTestCaseBySearch).not.toHaveBeenCalled();
+      expect(screen.getByTestId('total-tests')).toHaveTextContent('0');
+    });
+
+    it('should clear the counts once ViewTests is no longer granted', async () => {
+      const { rerender } = render(
+        <DataAssetSummaryPanelV1 {...defaultProps} />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('3');
+      });
+
+      mockGetEntityPermission.mockResolvedValue({
+        ...mockEntityPermissions,
+        ViewTests: false,
+      });
+
+      // A new id with the same FQN re-reads permissions without the FQN-change refetch.
+      await act(async () => {
+        rerender(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            dataAsset={
+              { ...mockDataAsset, id: 'other-id' } as unknown as DataAssetType
+            }
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-tests')).toHaveTextContent('0');
+      });
+
+      // One fetch: a count request per status.
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(4);
+    });
+
     it('should not render data quality section when no test cases', async () => {
-      (listTestCases as jest.Mock).mockResolvedValue({ data: [] });
+      mockTestCaseStatusTotals({});
 
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...defaultProps} />);
@@ -889,7 +990,7 @@ describe('DataAssetSummaryPanelV1', () => {
 
     it('should handle test cases fetch error', async () => {
       const mockError = new Error('Test fetch failed') as AxiosError;
-      (listTestCases as jest.Mock).mockRejectedValue(mockError);
+      (getListTestCaseBySearch as jest.Mock).mockRejectedValue(mockError);
 
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...defaultProps} />);
@@ -1089,7 +1190,7 @@ describe('DataAssetSummaryPanelV1', () => {
       // TABLE: `fetchTestCases`/`fetchIncidentCount` early-return when the
       // `entityType` prop is not TABLE, which keeps init's async chain shallow
       // (only `setEntityPermissions` lands post-mount). With TABLE, the deeper
-      // `listTestCases`/incident `setState`s can land after the `t` switch below
+      // test-count/incident `setState`s can land after the `t` switch below
       // and force a memo recompute that masks the missing-`t`-dep bug.
       { name: 'common layout', summaryEntityType: EntityType.DATABASE },
       { name: 'knowledge page', summaryEntityType: EntityType.KNOWLEDGE_PAGE },

@@ -49,6 +49,12 @@ jest.mock('../../../utils/WebAnalyticsSessionUtils', () => ({
   resetWebAnalyticSession: jest.fn(),
 }));
 
+const mockToastDismiss = jest.fn();
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  toast: { dismiss: (key: string) => mockToastDismiss(key) },
+}));
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showInfoToast: jest.fn(),
@@ -142,5 +148,37 @@ describe('BasicAuthProvider failed login', () => {
     await failLoginWith();
 
     expect(showErrorToast).toHaveBeenCalledWith(LOGIN_FAILED_ERROR);
+  });
+
+  // A retry replaces the previous attempt's error, so the lockout notice is not
+  // hidden under the "invalid username or password" toasts left by earlier tries.
+  it('should replace the previous error toast on a retry', async () => {
+    (showErrorToast as jest.Mock).mockReturnValueOnce('first-toast');
+    mockBasicAuthSignIn
+      .mockRejectedValueOnce({ response: { status: 401, data: {} } })
+      .mockRejectedValueOnce({
+        response: { status: 401, data: { error: LOCKED_OUT } },
+      });
+    render(
+      <BasicAuthProvider>
+        <LoginTrigger password="Passw0rd!" />
+      </BasicAuthProvider>
+    );
+    const button = screen.getByRole('button', { name: 'login' });
+
+    await userEvent.click(button, { advanceTimers: jest.advanceTimersByTime });
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(LOGIN_FAILED_ERROR)
+    );
+
+    expect(mockToastDismiss).not.toHaveBeenCalled();
+
+    await userEvent.click(button, { advanceTimers: jest.advanceTimersByTime });
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(LOCKED_OUT)
+    );
+
+    expect(mockToastDismiss).toHaveBeenCalledWith('first-toast');
   });
 });

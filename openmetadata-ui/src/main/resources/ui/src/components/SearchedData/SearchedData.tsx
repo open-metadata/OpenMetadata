@@ -15,7 +15,6 @@ import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/StringUtils';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -134,10 +133,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           ) : (
             <div className="flex-center h-full">
               {children}
-              <SearchEmptyState
-                query={filter}
-                type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
+              <SearchEmptyState query={filter} />
             </div>
           )}
         </div>

@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
+import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -59,7 +60,8 @@ public final class RdfProjectionStateResolver {
 
   /**
    * A run that ended before indexing (the reindex lock held or unavailable, or deferred behind a
-   * search reindex) never touched the projection, so the state comes from the newest run that did.
+   * search reindex) or that found RDF off never touched the projection, so the state comes from the
+   * newest run that did.
    */
   private Optional<RdfProjectionState> latestProjectingRunState() {
     Optional<RdfProjectionState> state;
@@ -91,6 +93,11 @@ public final class RdfProjectionStateResolver {
     return context;
   }
 
+  /** The success context of a run that completed without touching the projection. */
+  public static SuccessContext successContextOfUnchangedProjection() {
+    return new SuccessContext().withAdditionalProperty(PROJECTION_UNCHANGED, true);
+  }
+
   private RdfProjectionState applyRuntimeHealth(final RdfProjectionState persistedState) {
     return persistedState == RdfProjectionState.READY && isDegraded.getAsBoolean()
         ? RdfProjectionState.DEGRADED
@@ -114,10 +121,19 @@ public final class RdfProjectionStateResolver {
   }
 
   private static boolean leftProjectionUnchanged(final AppRunRecord run) {
-    return run != null
-        && run.getFailureContext() != null
+    return run != null && (failureFlagsUnchanged(run) || successFlagsUnchanged(run));
+  }
+
+  private static boolean failureFlagsUnchanged(final AppRunRecord run) {
+    return run.getFailureContext() != null
         && Boolean.TRUE.equals(
             run.getFailureContext().getAdditionalProperties().get(PROJECTION_UNCHANGED));
+  }
+
+  private static boolean successFlagsUnchanged(final AppRunRecord run) {
+    return run.getSuccessContext() != null
+        && Boolean.TRUE.equals(
+            run.getSuccessContext().getAdditionalProperties().get(PROJECTION_UNCHANGED));
   }
 
   static RdfProjectionState fromStatus(final AppRunRecord.Status status) {

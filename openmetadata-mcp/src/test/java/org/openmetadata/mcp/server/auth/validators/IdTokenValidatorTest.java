@@ -25,7 +25,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator.IdTokenValidationException;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler.McpTokenVerification;
 
 /**
  * Unit tests for IdTokenValidator - JWKS-based ID token signature verification.
@@ -35,6 +40,13 @@ import org.openmetadata.mcp.server.auth.validators.IdTokenValidator.IdTokenValid
  */
 public class IdTokenValidatorTest {
 
+  private static final String TENANT_ID = "8f6bd38f-4e6a-4f8e-9c5b-0d2a5e1c7b11";
+  private static final String TENANT_ISSUER =
+      "https://login.microsoftonline.com/" + TENANT_ID + "/v2.0";
+  private static final String ENTRA_TEMPLATE = "https://login.microsoftonline.com/{tenantid}/v2.0";
+  private static final String ENCODED_ENTRA_TEMPLATE =
+      "https://login.microsoftonline.com/%7Btenantid%7D/v2.0";
+  private volatile String signingKeyIssuer;
   private final AtomicInteger jwksRequests = new AtomicInteger();
   private HttpServer jwksServer;
   private String jwksUrl;
@@ -63,19 +75,25 @@ public class IdTokenValidatorTest {
 
   private void startJwksServer() throws IOException {
     jwksServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    final byte[] body = createJwksResponse(publicKey, keyId).getBytes(StandardCharsets.UTF_8);
+    publishKeySet("/jwks", keyId);
+    jwksServer.start();
+    jwksUrl = "http://127.0.0.1:" + jwksServer.getAddress().getPort() + "/jwks";
+  }
+
+  private String publishKeySet(String path, String publishedKeyId) {
     jwksServer.createContext(
-        "/jwks",
+        path,
         exchange -> {
           jwksRequests.incrementAndGet();
+          final byte[] body =
+              createJwksResponse(publicKey, publishedKeyId).getBytes(StandardCharsets.UTF_8);
           try (exchange) {
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
           }
         });
-    jwksServer.start();
-    jwksUrl = "http://127.0.0.1:" + jwksServer.getAddress().getPort() + "/jwks";
+    return "http://localhost:" + jwksServer.getAddress().getPort() + path;
   }
 
   @AfterEach
@@ -105,6 +123,189 @@ public class IdTokenValidatorTest {
     assertThatThrownBy(() -> validator.validateAndDecode(expiredToken))
         .isInstanceOf(IdTokenValidationException.class)
         .hasMessageContaining("expired");
+  }
+
+  @Test
+  void googleIssuerWithoutASchemeIsAccepted() throws Exception {
+    IdTokenValidator google =
+        new IdTokenValidator(List.of(jwksUrl), "https://accounts.google.com", expectedAudience);
+    String idToken = createValidIdToken("accounts.google.com", expectedAudience, "a@example.com");
+
+    assertThat(google.validateAndDecode(idToken).getIssuer()).isEqualTo("accounts.google.com");
+  }
+
+  @Test
+  void googleIssuerWithoutASchemeIsRefusedForAnotherProvider() {
+    String idToken = createValidIdToken("accounts.google.com", expectedAudience, "a@example.com");
+
+    assertThatThrownBy(() -> validator.validateAndDecode(idToken))
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {ENTRA_TEMPLATE, TENANT_ISSUER})
+  void acceptsSignedTokenForTenantAndSigningKeyIssuer(String keyIssuer) throws Exception {
+    signingKeyIssuer = keyIssuer;
+    final IdTokenValidator entra =
+        new IdTokenValidator(List.of(jwksUrl), ENCODED_ENTRA_TEMPLATE, expectedAudience);
+
+    assertThat(entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)).getIssuer())
+        .isEqualTo(TENANT_ISSUER);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(
+      strings = {"https://login.microsoftonline.com/00000000-0000-0000-0000-000000000001/v2.0"})
+  void refusesSigningKeyOutsideItsIssuerScope(String keyIssuer) {
+    signingKeyIssuer = keyIssuer;
+    final IdTokenValidator entra =
+        new IdTokenValidator(List.of(jwksUrl), ENCODED_ENTRA_TEMPLATE, expectedAudience);
+
+    assertThatThrownBy(() -> entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("Signing key issuer");
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"other", "00000000-0000-0000-0000-000000000001"})
+  void refusesTokenWhenTenantCannotResolveItsIssuer(String tenant) {
+    signingKeyIssuer = ENTRA_TEMPLATE;
+    final IdTokenValidator entra =
+        new IdTokenValidator(List.of(jwksUrl), ENCODED_ENTRA_TEMPLATE, expectedAudience);
+
+    assertThatThrownBy(() -> entra.validateAndDecode(tenantToken(TENANT_ISSUER, tenant)))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @Test
+  void refusesNonGuidTenantEvenWhenTheIssuerMatchesTheClaim() {
+    signingKeyIssuer = ENTRA_TEMPLATE;
+    final IdTokenValidator entra =
+        new IdTokenValidator(List.of(jwksUrl), ENCODED_ENTRA_TEMPLATE, expectedAudience);
+    final String token = tenantToken("https://login.microsoftonline.com/common/v2.0", "common");
+
+    assertThatThrownBy(() -> entra.validateAndDecode(token))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void concreteEntraAuthorityAcceptsLegacyKeysWithoutAnIssuer(boolean publicClient)
+      throws Exception {
+    final String legacyKeys = publishKeySet("/common/discovery/keys", keyId);
+    final IdTokenValidator entra =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(legacyKeys),
+                TENANT_ISSUER,
+                expectedAudience,
+                publicClient,
+                AuthProvider.AZURE));
+
+    assertThat(entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)).getIssuer())
+        .isEqualTo(TENANT_ISSUER);
+    final String otherTenant = "00000000-0000-0000-0000-000000000001";
+    assertThatThrownBy(
+            () ->
+                entra.validateAndDecode(
+                    tenantToken(
+                        "https://login.microsoftonline.com/" + otherTenant + "/v2.0", otherTenant)))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/common/discovery/v2.0/keys", "/organizations/discovery/v2.0/keys"})
+  void concreteEntraAuthorityChecksTheSetThatSuppliedTheKey(String sharedPath) throws Exception {
+    final String tenantKeys = publishKeySet("/" + TENANT_ID + "/discovery/v2.0/keys", "tenant-key");
+    final String sharedKeys = publishKeySet(sharedPath, "shared-key");
+    final IdTokenValidator entra =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(sharedKeys, tenantKeys),
+                TENANT_ISSUER,
+                expectedAudience,
+                true,
+                AuthProvider.AZURE));
+
+    assertThat(
+            entra
+                .validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID, "tenant-key"))
+                .getIssuer())
+        .isEqualTo(TENANT_ISSUER);
+    assertThatThrownBy(
+            () -> entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID, "shared-key")))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("Signing key issuer");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/common/discovery/keys",
+        "/common/discovery/v2.0/keys",
+        "/tenant/discovery/v2.0/keys"
+      })
+  void concreteEntraAuthorityHonorsAnExplicitKeyScope(String keySetPath) {
+    signingKeyIssuer =
+        "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000001/v2.0";
+    final String keys = publishKeySet(keySetPath, keyId);
+    final IdTokenValidator entra =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(keys), TENANT_ISSUER, expectedAudience, true, AuthProvider.AZURE));
+
+    assertThatThrownBy(() -> entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("Signing key issuer");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {ENTRA_TEMPLATE, TENANT_ISSUER})
+  void concreteEntraAuthorityAcceptsAMatchingSharedKey(String scope) throws Exception {
+    signingKeyIssuer = scope;
+    final String shared = publishKeySet("/common/discovery/v2.0/keys", keyId);
+    final IdTokenValidator entra =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(shared), TENANT_ISSUER, expectedAudience, true, AuthProvider.AZURE));
+    assertThat(entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)).getIssuer())
+        .isEqualTo(TENANT_ISSUER);
+  }
+
+  @Test
+  void customProviderCanUseItsOwnKeyAttributes() throws Exception {
+    signingKeyIssuer = "provider-specific key attribute";
+    final String keys = publishKeySet("/common/discovery/keys", keyId);
+    final IdTokenValidator custom =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(keys), expectedIssuer, expectedAudience, true, AuthProvider.CUSTOM_OIDC));
+
+    assertThat(
+            custom
+                .validateAndDecode(
+                    createValidIdToken(expectedIssuer, expectedAudience, "a@example.com"))
+                .getIssuer())
+        .isEqualTo(expectedIssuer);
+  }
+
+  private String tenantToken(String issuer, String tenant) {
+    return tenantToken(issuer, tenant, keyId);
+  }
+
+  private String tenantToken(String issuer, String tenant, String signingKeyId) {
+    return JWT.create()
+        .withIssuer(issuer)
+        .withAudience(expectedAudience)
+        .withClaim("tid", tenant)
+        .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+        .withKeyId(signingKeyId)
+        .sign(Algorithm.RSA256(null, privateKey));
   }
 
   @Test
@@ -294,10 +495,10 @@ public class IdTokenValidatorTest {
             "use": "sig",
             "alg": "RS256",
             "n": "%s",
-            "e": "%s"
+            "e": "%s"%s
           }]
         }
         """,
-        kid, n, e);
+        kid, n, e, signingKeyIssuer == null ? "" : ", \"issuer\": \"" + signingKeyIssuer + "\"");
   }
 }

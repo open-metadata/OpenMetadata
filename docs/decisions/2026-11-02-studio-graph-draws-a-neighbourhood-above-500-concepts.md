@@ -1,6 +1,6 @@
 # The Studio graph draws a neighbourhood above 500 concepts
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-15-studio-focused-graph-draws-only-the-links-its-walk-followed
 - **Revisions:** v1 2026-11-02 (initial)
 - **Deciders:** Ontology Studio program
 - **Guard:** `studioFocusedGraph.test.ts`, `OntologyGraphView.test.tsx` ("above the node limit"), `OntologyLargeGraph.spec.ts`

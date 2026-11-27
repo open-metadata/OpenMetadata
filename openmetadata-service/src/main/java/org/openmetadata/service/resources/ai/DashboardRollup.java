@@ -68,11 +68,11 @@ final class DashboardRollup {
 
   private DashboardRollup() {}
 
-  static AIGovernanceDashboardResponse compute() {
+  static AIGovernanceDashboardResponse compute(final AIGovernanceAssetReader reader) {
     List<RolledAsset> assets = new ArrayList<>();
-    collectAssets(Entity.AI_APPLICATION, "owners,domains,governanceMetadata", assets);
-    collectAssets(Entity.MCP_SERVER, "owners,domains,governanceMetadata", assets);
-    collectAssets(Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", assets);
+    collectAssets(reader, Entity.AI_APPLICATION, "owners,domains,governanceMetadata", assets);
+    collectAssets(reader, Entity.MCP_SERVER, "owners,domains,governanceMetadata", assets);
+    collectAssets(reader, Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", assets);
 
     return new AIGovernanceDashboardResponse()
         .withEstateStats(estateStats(assets))
@@ -83,21 +83,13 @@ final class DashboardRollup {
         .withGeneratedAt(System.currentTimeMillis());
   }
 
-  private static void collectAssets(String entityType, String fields, List<RolledAsset> out) {
+  private static void collectAssets(
+      final AIGovernanceAssetReader reader,
+      String entityType,
+      String fields,
+      List<RolledAsset> out) {
     try {
-      EntityRepository<? extends EntityInterface<?>> repository =
-          Entity.getEntityRepository(entityType);
-      Fields parsedFields = repository.getFields(fields);
-      ListFilter filter = new ListFilter();
-      String after = null;
-      do {
-        ResultList<? extends EntityInterface<?>> page =
-            repository.listAfter(null, parsedFields, filter, PAGE_SIZE, after);
-        for (EntityInterface<?> entity : page.getData()) {
-          out.add(RolledAsset.from(entityType, entity));
-        }
-        after = page.getPaging() == null ? null : page.getPaging().getAfter();
-      } while (after != null);
+      reader.forEach(entityType, fields, entity -> out.add(RolledAsset.from(entityType, entity)));
     } catch (Exception error) {
       LOG.warn("Dashboard rollup: failed to list {}", entityType, error);
     }

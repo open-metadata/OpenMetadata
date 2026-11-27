@@ -267,15 +267,15 @@ export const OntologyConceptDataAssets = ({
       ) : null}
       {remainingCount > 0 ? (
         <Button
+          showTextWhileLoading
           className="tw:self-start"
           color="link-color"
           data-testid="authoring-more-assets"
           isDisabled={isLoadingMore}
+          isLoading={isLoadingMore}
           size="sm"
           onClick={handleLoadMore}>
-          {isLoadingMore
-            ? t('label.loading')
-            : t('label.show-count-more', { count: remainingCount })}
+          {t('label.show-count-more', { count: remainingCount })}
         </Button>
       ) : null}
       {picker}

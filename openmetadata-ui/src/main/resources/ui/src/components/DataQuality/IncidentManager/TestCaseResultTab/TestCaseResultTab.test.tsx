@@ -84,6 +84,7 @@ const mockTestCaseData: TestCase = {
 const mockUseTestCaseStore = {
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
   showAILearningBanner: false,
   isPermissionLoading: false,
   testCasePermission: MOCK_PERMISSIONS,
@@ -354,7 +355,7 @@ describe('TestCaseResultTab', () => {
     const updateButton = await screen.findByTestId('update-test');
     fireEvent.click(updateButton);
 
-    expect(mockUseTestCaseStore.setTestCase).toHaveBeenCalledWith(
+    expect(mockUseTestCaseStore.mergeTestCase).toHaveBeenCalledWith(
       mockTestCaseData
     );
   });

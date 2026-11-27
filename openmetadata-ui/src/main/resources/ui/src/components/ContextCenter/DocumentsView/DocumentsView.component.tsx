@@ -26,7 +26,6 @@ import {
 import {
   Check,
   ChevronRight,
-  Copy01,
   Documents,
   DotsVertical,
   Download01,
@@ -63,12 +62,13 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import MemoryExtractionMenuItem from '../../discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
@@ -150,7 +150,6 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                     aria-hidden="true"
                     className="tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
                     size={16}
-                    strokeWidth={2}
                   />
                 )}
               </Box>
@@ -347,7 +346,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -414,7 +412,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -725,13 +722,20 @@ const FileRow: FC<FileRowProps> = ({
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
-              <Typography
-                className="tw:text-quaternary"
+              {/* The row opens the preview; keep clicks on the user link from reaching it. */}
+              <span
+                className="tw:min-w-0"
                 data-testid="document-updated-by"
-                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
-                size="text-xs">
-                {file.updatedBy}
-              </Typography>
+                role="presentation"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}>
+                <UserPopOverCard
+                  showUserName
+                  className="tw:min-w-0 tw:overflow-hidden tw:text-xs tw:text-quaternary"
+                  profileWidth={16}
+                  userName={file.updatedBy}
+                />
+              </span>
             </>
           )}
           {file.updatedAt && (
@@ -787,9 +791,7 @@ const FileRow: FC<FileRowProps> = ({
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton size="lg" url={rowUrl}>
-          <Copy01 data-icon aria-hidden="true" />
-        </CopyLinkButton>
+        <CopyButton size="lg" value={rowUrl} />
         <FileActions
           canDelete={canDelete}
           canEdit={canEdit}

@@ -3,17 +3,28 @@ package org.openmetadata.mcp.server.auth.handlers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.auth.InvalidRedirectUriException;
@@ -21,6 +32,9 @@ import org.openmetadata.mcp.auth.InvalidScopeException;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationHandlerTest {
@@ -47,6 +61,37 @@ class AuthorizationHandlerTest {
     params.put("state", "state123");
     params.put("redirect_uri", "https://example.com/callback");
     return params;
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "http://127.0.0.1:33418/callback",
+        "cursor://callback",
+        "https://blocked.example/callback"
+      })
+  void policyRejectionNeverReturnsAnErrorCallback(String callback) throws Exception {
+    OAuthClientInformation registered = new OAuthClientInformation();
+    registered.setRedirectUris(List.of(URI.create(callback)));
+    when(provider.getClient("test-client"))
+        .thenReturn(CompletableFuture.completedFuture(registered));
+    when(provider.authorize(eq(registered), any()))
+        .thenThrow(new AuthorizeException("invalid_request", "Redirect rejected by policy"));
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", callback);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(
+              new MCPConfiguration()
+                  .withAllowLoopbackRedirects(false)
+                  .withAllowNativeRedirects(false)
+                  .withAllowedRedirectHosts(Set.of("trusted.example")));
+      var response = handler.handle(params).join();
+      assertThat(response.isRedirect()).isFalse();
+      assertThat(response.getRedirectUrl()).isNull();
+      assertThat(response.getError().getError()).isEqualTo("invalid_request");
+    }
   }
 
   @Test
@@ -314,5 +359,235 @@ class AuthorizationHandlerTest {
         .startsWith("https://example.com/callback?")
         .contains("error=invalid_scope")
         .contains("state=state123");
+  }
+
+  // ── RFC 8707 resource validation ──────────────────────────────────────────
+
+  private static final String EXPECTED_RESOURCE = "https://om.example.com/mcp";
+
+  @ParameterizedTest
+  @ValueSource(strings = {"https://om.example.com/mcp", "https://om.example.com/mcp/"})
+  void validResource_proceedsToProviderAuthorization(String requestedResource) throws Exception {
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(List.of("openid"));
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", LOOPBACK_CALLBACK);
+    params.put("resource", requestedResource);
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isTrue();
+    verify(provider).authorize(eq(client), any());
+  }
+
+  @Test
+  void omittedResource_isAcceptedForBackwardCompatibility() throws Exception {
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope(any())).thenReturn(List.of("openid"));
+    when(provider.authorize(eq(client), any()))
+        .thenReturn(CompletableFuture.completedFuture("auth-code-123"));
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(validParams()).join();
+
+    assertThat(response.isSuccess()).isTrue();
+    verify(provider).authorize(eq(client), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"http://127.0.0.1:33418/callback", "cursor://anysphere.cursor-mcp/oauth/callback"})
+  void foreignResourceWithLoopbackOrNativeCallback_redirectsInvalidTargetWithoutCallingProvider(
+      String callback) throws Exception {
+    URI redirectUri = URI.create(callback);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+
+    String attackerResource = "https://evil.example/mcp?x=<script>alert(1)</script>";
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", callback);
+    params.put("resource", attackerResource);
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isRedirect()).isTrue();
+    assertThat(response.getError().getError()).isEqualTo("invalid_target");
+    assertThat(response.getError().getErrorDescription())
+        .isEqualTo("The requested resource is not valid for this server")
+        .doesNotContain("evil.example")
+        .doesNotContain("script");
+    assertThat(response.getRedirectUrl())
+        .startsWith(callback + "?")
+        .contains("error=invalid_target")
+        .contains("state=state123")
+        .contains("iss=" + URLEncoder.encode(EXPECTED_RESOURCE, StandardCharsets.UTF_8))
+        .doesNotContain("evil.example");
+    verify(provider, never()).authorize(any(), any());
+  }
+
+  @Test
+  void authorizeLogsExpectedAndReceivedResourceAtWarn() throws Exception {
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(URI.create(LOOPBACK_CALLBACK));
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", LOOPBACK_CALLBACK);
+    params.put("resource", "http://om.example.com/mcp?detail=private");
+
+    Logger logger = (Logger) LoggerFactory.getLogger("org.openmetadata.mcp.server.auth");
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+      assertThat(response.getError().getError()).isEqualTo("invalid_target");
+      assertThat(logs.list)
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .extracting(ILoggingEvent::getFormattedMessage)
+          .anySatisfy(
+              message ->
+                  assertThat(message)
+                      .contains("/mcp/authorize", EXPECTED_RESOURCE, "http://om.example.com/mcp")
+                      .doesNotContain("detail=private"));
+    } finally {
+      logger.detachAppender(logs);
+      logs.stop();
+    }
+  }
+
+  @Test
+  void foreignResourceWithRemoteWebCallback_returnsLinkNotRedirect() throws Exception {
+    URI redirectUri = URI.create("https://claude.ai/api/mcp/auth_callback");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", redirectUri.toString());
+    params.put("resource", "https://other.example/mcp");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isRedirect()).isFalse();
+    assertThat(response.getError().getError()).isEqualTo("invalid_target");
+    assertThat(response.getRedirectUrl())
+        .startsWith("https://claude.ai/api/mcp/auth_callback?")
+        .contains("error=invalid_target")
+        .contains("state=state123")
+        .contains("iss=" + URLEncoder.encode(EXPECTED_RESOURCE, StandardCharsets.UTF_8));
+    verify(provider, never()).authorize(any(), any());
+  }
+
+  @Test
+  void unknownClientWithForeignResource_returnsDirectInvalidRequestWithNoRedirect() {
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(null));
+
+    Map<String, String> params = validParams();
+    params.put("resource", "https://other.example/mcp");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isRedirect()).isFalse();
+    assertThat(response.getRedirectUrl()).isNull();
+    assertThat(response.getError().getError()).isEqualTo("invalid_request");
+  }
+
+  @Test
+  void unregisteredRedirectUriWithForeignResource_returnsDirectInvalidRequestWithNoRedirect()
+      throws Exception {
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any()))
+        .thenThrow(new InvalidRedirectUriException("URI not registered"));
+
+    Map<String, String> params = validParams();
+    params.put("resource", "https://other.example/mcp");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.isRedirect()).isFalse();
+    assertThat(response.getRedirectUrl()).isNull();
+    assertThat(response.getError().getError()).isEqualTo("invalid_request");
+    verify(provider, never()).authorize(any(), any());
+  }
+
+  @Test
+  void policyBlockedRedirectUriWithForeignResource_returnsDirectInvalidTargetWithNoRedirect()
+      throws Exception {
+    URI redirectUri = URI.create("https://blocked.example/callback");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", redirectUri.toString());
+    params.put("resource", "https://other.example/mcp");
+
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withAllowedRedirectHosts(Set.of("trusted.example")));
+
+      AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+      assertThat(response.isSuccess()).isFalse();
+      assertThat(response.isRedirect()).isFalse();
+      assertThat(response.getRedirectUrl()).isNull();
+      assertThat(response.getError().getError()).isEqualTo("invalid_target");
+      verify(provider, never()).authorize(any(), any());
+    }
+  }
+
+  @Test
+  void blankAndMultiValuedForeignResource_areRejectedWithInvalidTarget() throws Exception {
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(EXPECTED_RESOURCE);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+
+    Map<String, String> blankParams = validParams();
+    blankParams.put("redirect_uri", LOOPBACK_CALLBACK);
+    blankParams.put("resource", "");
+    AuthorizationHandler.AuthorizationResponse blankResponse = handler.handle(blankParams).join();
+    assertThat(blankResponse.getError().getError()).isEqualTo("invalid_target");
+
+    AuthorizationHandler.AuthorizationResponse multiResponse =
+        handler
+            .handle(
+                validParams(), List.of("https://om.example.com/mcp", "https://evil.example/mcp"))
+            .join();
+    assertThat(multiResponse.getError().getError()).isEqualTo("invalid_target");
+    verify(provider, never()).authorize(any(), any());
+  }
+
+  @Test
+  void unresolvedExpectedResourceWithSuppliedResource_failsClosed() throws Exception {
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(provider.getIssuer()).thenReturn(null);
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", LOOPBACK_CALLBACK);
+    params.put("resource", "https://om.example.com/mcp");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isSuccess()).isFalse();
+    assertThat(response.getError().getError()).isEqualTo("invalid_target");
+    verify(provider, never()).authorize(any(), any());
   }
 }

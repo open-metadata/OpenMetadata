@@ -79,7 +79,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -747,7 +746,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected Team createNewEntity(Team team) {
-    team.setProfile(ProfileWebhookSecrets.ofANewEntity(holderOf(team), team.getProfile()));
+    team.setProfile(ProfileWebhookSecrets.ofANewEntity(team.getProfile()));
     return super.createNewEntity(team);
   }
 
@@ -771,12 +770,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private static Team withNewProfileEncrypted(Team team) {
     Team stored = JsonUtils.deepCopy(team, Team.class);
-    return stored.withProfile(
-        ProfileWebhookSecrets.ofANewEntity(holderOf(stored), stored.getProfile()));
-  }
-
-  private static ProfileWebhookSecrets.Holder holderOf(Team team) {
-    return new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId());
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
   }
 
   @Override
@@ -845,16 +839,13 @@ public class TeamRepository extends EntityRepository<Team> {
   public EntityRepository<Team>.EntityUpdater getUpdater(
       Team original, Team updated, Operation operation, ChangeSource changeSource) {
     // Before the diff, so the change description and the stored row carry ciphertext only.
-    updated.setProfile(
-        ProfileWebhookSecrets.updated(
-            holderOf(original), original.getProfile(), updated.getProfile()));
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new TeamUpdater(original, updated, operation);
   }
 
   @Override
   protected void validatePatch(Team original, Team updated, JsonPatch patch) {
-    ProfileWebhookSecrets.validatePatch(
-        holderOf(original), original.getProfile(), updated.getProfile(), patch);
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
@@ -899,6 +890,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected void entitySpecificCleanup(Team team) {
+    TaskAssigneeCleanup.removeAssignee(team.getId(), TEAM);
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -948,10 +940,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getInheritedRoles(Team team) {
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
-  }
-
-  protected void entitySpecificCleanup(User entityInterface) {
-    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), TEAM);
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
@@ -1327,7 +1315,13 @@ public class TeamRepository extends EntityRepository<Team> {
       throw new IllegalArgumentException(
           "Default persona can only be set for teams of type Group.");
     }
-    Entity.getEntityReferenceById(Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED);
+    // Hydrate the reference so the change recorded downstream (and any governance rule matching
+    // on its value) carries a fullyQualifiedName. The request body only requires id + type, so
+    // without this the recorded ChangeDescription holds a sparse reference that governance rules
+    // cannot match. Mirrors validateDefaultDomain in UserRepository.
+    team.setDefaultPersona(
+        Entity.getEntityReferenceById(
+            Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED));
   }
 
   private void validateDirectUserAddition(Team team, List<EntityReference> users) {

@@ -99,7 +99,7 @@ export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
       className="hover-icon-group tw:flex tw:min-w-0 tw:flex-col tw:items-start tw:gap-1 tw:text-xs"
       data-testid={property.name}>
       <div
-        className="tw:flex tw:min-w-0 tw:max-w-full"
+        className="tw:flex tw:w-full tw:min-w-0"
         data-testid="property-value">
         {renderValue()}
       </div>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import type { Metric } from '../../../generated/entity/data/metric';
 import {
   EntityStatus,
@@ -136,10 +136,31 @@ const props: MetricVersionProp = {
   },
 };
 
+const HistoryControls = () => {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button data-testid="history-back" onClick={() => navigate(-1)}>
+        Back
+      </button>
+      <button data-testid="history-forward" onClick={() => navigate(1)}>
+        Forward
+      </button>
+    </>
+  );
+};
+
 const renderVersion = (override: Partial<MetricVersionProp> = {}) =>
   render(
-    <MemoryRouter>
-      <MetricVersion {...props} {...override} />
+    <MemoryRouter initialEntries={['/metric/finance.margin/versions/0.2']}>
+      <Routes>
+        <Route
+          element={<MetricVersion {...props} {...override} />}
+          path="/:entityType/:fqn/versions/:version/:tab?"
+        />
+      </Routes>
+      <HistoryControls />
     </MemoryRouter>
   );
 
@@ -212,6 +233,32 @@ describe('MetricVersion', () => {
     expect(screen.getByTestId('version-custom-properties')).toHaveTextContent(
       'can-view'
     );
+  });
+
+  it('keeps the selected tab in sync with the URL on back and forward navigation', () => {
+    renderVersion();
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    );
+
+    expect(screen.getByTestId('version-custom-properties')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('history-back'));
+
+    expect(screen.getByRole('tab', { name: 'label.overview' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      screen.queryByTestId('version-custom-properties')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('history-forward'));
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('renders a loading state', () => {

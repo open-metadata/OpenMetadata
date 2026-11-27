@@ -33,6 +33,7 @@ import {
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
+import DomainTags from '../../../DomainTags/DomainTags';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -130,6 +131,21 @@ export const renderDomainOwnersCell = (
       showDashPlaceholder={options?.showDashPlaceholder}
       showLabel={false}
     />
+  );
+
+// Domain chips resolve their colour and icon by id, which references do not carry
+// (ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id).
+export const renderDomainsCell = (entity: {
+  domains?: EntityReference[];
+}): ReactNode =>
+  entity.domains?.length ? (
+    withNestedLinkGuard(
+      <div className={COMPACT_CELL_CLIP_CLASS}>
+        <DomainTags domains={entity.domains} maxVisible={1} maxWidth="100%" />
+      </div>
+    )
+  ) : (
+    <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
 export const renderDomainExpertsCell = (

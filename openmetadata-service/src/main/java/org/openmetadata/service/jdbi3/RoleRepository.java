@@ -204,6 +204,19 @@ public class RoleRepository extends EntityRepository<Role> {
     return List.of("policies");
   }
 
+  /**
+   * "Admin" is the {@code isAdmin} flag, not a role, so no new role may take the name
+   * (ADR:2026-11-12-admin-is-a-reserved-role-name). Checked here because POST and PUT both create
+   * through this method, and roles cannot be renamed. Existing roles with the name stay editable.
+   */
+  @Override
+  protected Role createNewEntity(Role role) {
+    if (Entity.ADMIN_ROLE.equalsIgnoreCase(role.getName())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.reservedRoleName(role.getName()));
+    }
+    return super.createNewEntity(role);
+  }
+
   @Override
   public void storeEntity(Role role, boolean update) {
     store(role, update);
@@ -273,6 +286,9 @@ public class RoleRepository extends EntityRepository<Role> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
+      restrictAllowDeleteChange(
+          original.getAllowDelete(), updated.getAllowDelete(), updated::setAllowDelete);
       compareAndUpdate(
           "policies",
           () -> {

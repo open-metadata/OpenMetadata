@@ -41,6 +41,12 @@ export interface PanelProps {
   titleStrong?: boolean;
   wrapInCard?: boolean;
   allowScroll?: boolean;
+  /**
+   * Second panel only: also hold `minWidth` in CSS. react-reflex turns both panels'
+   * `minWidth` into flex ratios, so when their sum exceeds the container this panel
+   * is squeezed below its minimum.
+   */
+  enforceMinWidth?: boolean;
 }
 
 export interface Overlay {

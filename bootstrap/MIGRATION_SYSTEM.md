@@ -32,7 +32,10 @@ This means a version's SQL and its Java data migration run on the schema of ever
 below it, native and extension alike, and on nothing newer. A native migration may depend on
 an older extension migration and the other way round, but neither may depend on a later version.
 Java data migrations run with the current code, so a data migration must not call code paths
-that read or write tables or columns added by a later version.
+that read or write tables or columns added by a later version. An entity-lookup helper may
+still probe every registered entity table when it treats one the database reports missing as
+empty — see `EntityFqnHolders` and
+ADR:2026-11-17-a-migration-entity-lookup-treats-only-a-missing-table-as-empty.
 
 ## Migration Tracking Tables
 

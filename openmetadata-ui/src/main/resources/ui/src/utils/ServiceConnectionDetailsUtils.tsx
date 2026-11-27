@@ -19,15 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
-import {
-  get,
-  isArray,
-  isEmpty,
-  isNull,
-  isObject,
-  isString,
-  startCase,
-} from 'lodash';
+import { get, isArray, isEmpty, isNull, isString, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
@@ -195,7 +187,43 @@ export const getSchemaProperties = (
     return {};
   }
 
-  const valueKeys = isObject(value) ? Object.keys(value) : [];
+  /**
+   * Counts the stored keys a branch declares, nested objects included.
+   *
+   * Branches often share their top-level keys -- every Datalake/PowerBI file source has a
+   * `securityConfig`, AWS in one branch and GCP in another -- so matching only the top level
+   * picks the first branch, and a secret declared in the stored branch loses its
+   * `format: password` marker one level down.
+   */
+  const getBranchMatchScore = (
+    properties: Record<string, unknown>,
+    branchValue: unknown,
+    branchDepth: number
+  ): number => {
+    if (!isRecord(branchValue) || branchDepth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+      return 0;
+    }
+
+    return Object.keys(branchValue).reduce(
+      (score, key) =>
+        key in properties
+          ? score +
+            1 +
+            getBranchMatchScore(
+              getSchemaProperties(
+                properties[key],
+                branchValue[key],
+                schema,
+                branchDepth + 1
+              ),
+              branchValue[key],
+              branchDepth + 1
+            )
+          : score,
+      0
+    );
+  };
+
   let merged: Record<string, unknown> = {};
   let bestMatch: Record<string, unknown> = {};
   let bestScore = 0;
@@ -203,7 +231,7 @@ export const getSchemaProperties = (
   branches.forEach((branch) => {
     const properties = getSchemaProperties(branch, value, schema, depth + 1);
     merged = { ...properties, ...merged };
-    const score = valueKeys.filter((key) => key in properties).length;
+    const score = getBranchMatchScore(properties, value, depth + 1);
     if (score > bestScore) {
       bestScore = score;
       bestMatch = properties;
@@ -360,88 +388,7 @@ const handleSpecialServiceConfig = (
   return null;
 };
 
-// Handles database service config source
-const handleDatabaseConfigSource = (
-  key: string,
-  value: Record<string, unknown>,
-  schemaPropertyObject: Record<string, unknown>,
-  schema: Record<string, unknown>,
-  serviceCategory: string
-): ReactNode | null => {
-  const securityConfig = value.securityConfig;
-  if (!isRecord(securityConfig)) {
-    return null;
-  }
-
-  if (securityConfig.gcpConfig) {
-    const gcpConfigSchema = isRecord(securityConfig.gcpConfig)
-      ? getSchemaProperties(
-          get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues'
-          ),
-          securityConfig.gcpConfig,
-          schema
-        )
-      : getSchemaProperties(
-          get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath'
-          ),
-          value,
-          schema
-        );
-
-    return getKeyValues({
-      obj: isRecord(securityConfig.gcpConfig)
-        ? securityConfig.gcpConfig
-        : value,
-      schemaPropertyObject: gcpConfigSchema,
-      schema,
-      serviceCategory,
-    });
-  }
-
-  const schemaProperty = schemaPropertyObject[key];
-  if (!isRecord(schemaProperty)) {
-    return null;
-  }
-
-  if (
-    'oneOf' in schemaProperty &&
-    (securityConfig.awsAccessKeyId || securityConfig.awsSecretAccessKey)
-  ) {
-    return getKeyValues({
-      obj: securityConfig,
-      schemaPropertyObject: getSchemaProperties(
-        get(schema, 'definitions.S3Config.properties.securityConfig'),
-        securityConfig,
-        schema
-      ),
-      schema,
-      serviceCategory,
-    });
-  }
-
-  if (typeof schemaProperty.$ref === 'string') {
-    const definition = schemaProperty.$ref.split('/').splice(2);
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: getSchemaProperties(
-        get(schema, ['definitions', String(definition)]),
-        value,
-        schema
-      ),
-      schema,
-      serviceCategory,
-    });
-  }
-
-  return null;
-};
-
-// Resolves special, database, or default object configurations for a key
+// Resolves special or default object configurations for a key
 const getNestedConfigValue = ({
   serviceType,
   key,
@@ -467,19 +414,6 @@ const getNestedConfigValue = ({
   );
   if (specialConfig !== null) {
     return specialConfig;
-  }
-
-  if (serviceType === EntityType.DATABASE_SERVICE && key === 'configSource') {
-    const configSource = handleDatabaseConfigSource(
-      key,
-      value,
-      schemaPropertyObject,
-      schema,
-      serviceCategory
-    );
-    if (configSource !== null) {
-      return configSource;
-    }
   }
 
   return getKeyValues({

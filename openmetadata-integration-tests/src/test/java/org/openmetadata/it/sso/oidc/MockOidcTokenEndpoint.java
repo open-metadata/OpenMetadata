@@ -44,8 +44,10 @@ final class MockOidcTokenEndpoint implements HttpHandler {
   private final MockRequestJournal journal;
   private final String clientId;
   private final String clientSecret;
+  private volatile boolean browserOnlyRedirect;
   private final AtomicReference<RefreshOutcome> refreshOutcome =
       new AtomicReference<>(RefreshOutcome.renew());
+  private final AtomicReference<RefreshOutcome> nextCodeExchangeFailure = new AtomicReference<>();
   private final Queue<MockResponseGate> pendingGates = new ConcurrentLinkedQueue<>();
 
   MockOidcTokenEndpoint(
@@ -56,8 +58,20 @@ final class MockOidcTokenEndpoint implements HttpHandler {
     this.clientSecret = clientSecret;
   }
 
+  void registerRedirectForBrowserOnly() {
+    browserOnlyRedirect = true;
+  }
+
   void answerRefreshesWith(RefreshOutcome outcome) {
     refreshOutcome.set(outcome);
+  }
+
+  /** A rejection or failure for the next authorization-code grant; a renewal makes no sense here. */
+  void answerNextCodeExchangeWith(RefreshOutcome failure) {
+    if (failure instanceof RefreshOutcome.Renew) {
+      throw new IllegalArgumentException("A code exchange can only be failed: " + failure);
+    }
+    nextCodeExchangeFailure.set(failure);
   }
 
   /** Gates are taken in order: the first queued gate holds the next token request, and so on. */
@@ -71,20 +85,37 @@ final class MockOidcTokenEndpoint implements HttpHandler {
   public void handle(HttpExchange exchange) throws IOException {
     Map<String, String> form = MockHttp.formParameters(exchange);
     journal.record(exchange, form);
-    Optional.ofNullable(pendingGates.poll()).ifPresent(MockResponseGate::holdResponse);
-    if (isRegisteredClient(exchange, form)) {
-      respondToGrant(exchange, form);
-    } else {
-      respondError(exchange, UNAUTHORIZED, INVALID_CLIENT);
+    Optional<MockResponseGate> gate = Optional.ofNullable(pendingGates.poll());
+    gate.ifPresent(MockResponseGate::holdResponse);
+    try {
+      if (isRegisteredClient(exchange, form)) {
+        respondToGrant(exchange, form);
+      } else {
+        respondError(exchange, UNAUTHORIZED, INVALID_CLIENT);
+      }
+    } finally {
+      gate.ifPresent(MockResponseGate::complete);
     }
   }
 
   private void respondToGrant(HttpExchange exchange, Map<String, String> form) throws IOException {
     switch (String.valueOf(form.get(GRANT_TYPE))) {
-      case GRANT_AUTHORIZATION_CODE -> respondWithTokens(exchange, redeemCode(form));
+      case GRANT_AUTHORIZATION_CODE -> respondToCodeExchange(exchange, form);
       case GRANT_REFRESH_TOKEN -> respondToRefresh(exchange, form.get(REFRESH_TOKEN));
       case GRANT_CLIENT_CREDENTIALS -> respondJson(exchange, tokens.forClientCredentials());
       default -> respondError(exchange, BAD_REQUEST, UNSUPPORTED_GRANT_TYPE);
+    }
+  }
+
+  private void respondToCodeExchange(HttpExchange exchange, Map<String, String> form)
+      throws IOException {
+    RefreshOutcome failure = nextCodeExchangeFailure.getAndSet(null);
+    if (browserOnlyRedirect && exchange.getRequestHeaders().getFirst("Origin") == null) {
+      respondError(exchange, BAD_REQUEST, "invalid_request");
+    } else if (failure == null) {
+      respondWithTokens(exchange, redeemCode(form));
+    } else {
+      respondWith(exchange, failure);
     }
   }
 
@@ -128,6 +159,12 @@ final class MockOidcTokenEndpoint implements HttpHandler {
 
   private boolean isRegisteredClient(HttpExchange exchange, Map<String, String> form) {
     String authorization = exchange.getRequestHeaders().getFirst(MockHttp.AUTHORIZATION);
+    if (clientSecret == null) {
+      return authorization == null
+          && !form.containsKey(CLIENT_SECRET)
+          && clientId.equals(form.get(CLIENT_ID))
+          && GRANT_AUTHORIZATION_CODE.equals(form.get(GRANT_TYPE));
+    }
     String[] credentials =
         authorization == null
             ? new String[] {form.get(CLIENT_ID), form.get(CLIENT_SECRET)}

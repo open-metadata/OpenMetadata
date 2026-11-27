@@ -1,4 +1,18 @@
 {
+  "ontologyConcept": {
+    "indexName": "ontology_concept_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyConcept",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
+  "ontologyProperty": {
+    "indexName": "ontology_property_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyProperty",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
   "table": {
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
@@ -250,8 +264,7 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
     "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
-    "childAliases": ["testCaseResolutionStatus", "testCaseResult"],
-    "dataInsightAliases": ["di-data-assets-testcase"]
+    "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
   },
   "testCaseResult": {
     "indexName": "test_case_result_search_index",

@@ -307,18 +307,19 @@ class RestSource(ApiServiceSource):
 
     def _generate_endpoint_url(self, collection: RESTCollection, endpoint: RESTEndpoint) -> AnyUrl | None:
         """generate endpoint url"""
+        fallback_url = self._get_fallback_url()
         try:
-            if not collection.url or not endpoint.operationId:
+            if not collection.url or collection.url == fallback_url or not endpoint.operationId:
                 logger.debug(
                     f"Could not generate endpoint url for {str(endpoint.name)},"  # noqa: RUF010
                     f" collection url: {str(collection.url)},"  # noqa: RUF010
                     f" endpoint operation id: {str(endpoint.operationId)}"  # noqa: RUF010
                 )
-                return self._get_fallback_url()
+                return fallback_url
             return AnyUrl(f"{str(collection.url)}/{endpoint.operationId}")  # noqa: RUF010
         except Exception as err:
             logger.warning(f"Error while generating collection url: {err}")
-        return self._get_fallback_url()
+        return fallback_url
 
     def _get_api_request_method(self, method_type: str) -> str | None:
         """fetch endpoint request method"""

@@ -62,6 +62,8 @@ import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -139,6 +141,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityCacheRepair;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermPendingLabels;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -162,6 +165,7 @@ import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
 import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
+import org.openmetadata.service.rdf.RdfDisabledMark;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -201,6 +205,7 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager.ConfigurationChangeListener;
 import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
@@ -217,6 +222,7 @@ import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionTimeoutResolver;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -396,6 +402,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // use columns a pending migration adds, and must not run against a schema it has not reached.
     startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
 
+    // After migration validation, because nothing should write to the database before its schema is
+    // validated. Here, not in a helper subclasses override or in app registration, which the ops
+    // CLI also reaches without starting a server.
+    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
+
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
         "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
@@ -498,6 +509,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
+    // The mark is written twice at stop. When the stop begins, because a shutdown that outlasts
+    // the platform's grace period is killed before any hook below runs. And after ManagedShutdown
+    // (registered before it; hooks stop in reverse order), to follow the hooks that stop this
+    // server's background writers.
+    environment
+        .lifecycle()
+        .addEventListener(
+            RdfDisabledMark.whenStopBegins(catalogConfig.getRdfConfiguration(), jdbi));
+    environment
+        .lifecycle()
+        .manage(RdfDisabledMark.atStop(catalogConfig.getRdfConfiguration(), jdbi));
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -521,6 +543,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
+    environment.lifecycle().manage(new GlossaryTermPendingLabels());
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);
@@ -1451,13 +1474,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SocketAddressFilter websocketFilter = socketAddressFilter;
     SecurityConfigurationManager.getInstance()
         .addConfigurationChangeListener(
-            (authConfig, authzConfig, mcpConfig) ->
-                websocketFilter.updateConfiguration(authConfig, authzConfig));
+            pushFeedReloadListener(
+                websocketFilter,
+                SecurityConfigurationManager.getCurrentAuthConfig().getProvider(),
+                WebSocketManager::getInstance));
 
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
-    WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    buildPushFeedSockets(eioOptions, websocketFilter);
     initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
@@ -1489,6 +1514,56 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  /**
+   * Applies a security reload to the push feed: handshakes from now on are validated under the new
+   * configuration, and a provider switch closes the sockets already open. Each reload is compared
+   * with the provider the previous one (or the boot) applied. The manager is looked up when a
+   * reload fires, as the feed servlet does, because the listener is registered before it is built.
+   */
+  @VisibleForTesting
+  static ConfigurationChangeListener pushFeedReloadListener(
+      SocketAddressFilter websocketFilter,
+      AuthProvider bootProvider,
+      Supplier<WebSocketManager> sockets) {
+    AtomicReference<AuthProvider> appliedProvider = new AtomicReference<>(bootProvider);
+    return (authConfig, authzConfig, mcpConfig) -> {
+      websocketFilter.updateConfiguration(authConfig, authzConfig);
+      AuthProvider current = authConfig.getProvider();
+      closeSocketsOnProviderSwitch(appliedProvider.getAndSet(current), current, sockets.get());
+    };
+  }
+
+  /**
+   * The manager judges a registering or swept socket's provider against the one this filter
+   * validates under, not the published configuration: a reload publishes before it initializes the
+   * new authenticator and rolls back if that fails, while only a reload that succeeded rebuilds the
+   * filter. ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  @VisibleForTesting
+  static void buildPushFeedSockets(
+      EngineIoServerOptions options, SocketAddressFilter websocketFilter) {
+    WebSocketManager.WebSocketManagerBuilder.build(options, websocketFilter::validatingProvider);
+  }
+
+  /**
+   * A provider switch closes every push-feed socket on this server; each client must handshake
+   * again under the new configuration. A rename between the two native-password names closes
+   * nothing.
+   * ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  @VisibleForTesting
+  static void closeSocketsOnProviderSwitch(
+      AuthProvider previous, AuthProvider current, WebSocketManager sockets) {
+    if (SessionProviders.isFromAnotherProvider(previous.value(), current)) {
+      LOG.info(
+          "Authentication provider changed from {} to {}; closing every push-feed socket on this"
+              + " server",
+          previous.value(),
+          current.value());
+      sockets.disconnectAll();
     }
   }
 

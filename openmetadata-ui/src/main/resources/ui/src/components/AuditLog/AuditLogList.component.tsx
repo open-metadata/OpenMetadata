@@ -11,38 +11,33 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { compact, startCase } from 'lodash';
 import {
-  FC,
-  isValidElement,
-  lazy,
-  ReactNode,
-  Suspense,
-  useCallback,
-  useMemo,
-} from 'react';
+  Badge,
+  Box,
+  OwnerChip,
+  Skeleton,
+  Tag,
+  TagGroup,
+  TagList,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { startCase } from 'lodash';
+import { FC, Fragment, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  ChangeDescription,
-  FieldChange,
-} from '../../generated/type/changeEvent';
-import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
-import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
+  formatDateTime,
+  getRelativeTime,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
-import {
-  getDomainPath,
-  getTagPath,
-  getTeamsWithFqnPath,
-  getUserPath,
-} from '../../utils/RouterUtils';
+import { toOwnerRef } from '../../utils/Owner/ownerConversionUtils';
+import { getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
-import { isValidJSONString } from '../../utils/StringUtils';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
@@ -51,183 +46,31 @@ import {
   AuditLogListItemProps,
   AuditLogListProps,
 } from './AuditLogList.interface';
+import {
+  ChangeRef,
+  ChangeRow,
+  ChangeValue,
+  CHANGE_ACTION_STYLES,
+  EVENT_TYPE_COLORS,
+  findEntityType,
+  formatCellValue,
+  getChangeRows,
+  getEntityRefLink,
+  getLineageEdge,
+  getReadableSummary,
+  isAuthEvent,
+  isOwnerRef,
+  LineageEdge,
+  REF_DOT_CLASSES,
+} from './AuditLogList.utils';
 
-const RichTextEditorPreviewerV1 = lazy(
-  () => import('../common/RichTextEditor/RichTextEditorPreviewerV1')
-);
+/** How a value is drawn: plain, or red/struck (old / removed) and green (new) on an update. */
+type ValueTone = 'plain' | 'before' | 'after';
 
-const getFieldLabel = (name?: string) => {
-  if (!name) {
-    return '';
-  }
-  const parts = name.split('.');
+type RecordsValue = Extract<ChangeValue, { type: 'records' }>;
 
-  return startCase(parts[parts.length - 1]);
-};
-
-const parseValue = (value: unknown): unknown => {
-  if (value === null || value === undefined) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    if (isValidJSONString(value)) {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
-
-    return value;
-  }
-
-  return value;
-};
-
-const formatObjectChangeValue = (parsed: object): string => {
-  const maybeEntity = parsed as { displayName?: string; name?: string };
-  if (maybeEntity.displayName || maybeEntity.name) {
-    return maybeEntity.displayName ?? maybeEntity.name ?? '';
-  }
-
-  return JSON.stringify(parsed);
-};
-
-const formatChangeValue = (value: unknown): string => {
-  const parsed = parseValue(value);
-  if (parsed === null || parsed === undefined) {
-    return '';
-  }
-  if (Array.isArray(parsed)) {
-    return compact(parsed.map((item) => formatChangeValue(item))).join(', ');
-  }
-  if (typeof parsed === 'string') {
-    const asText = getTextFromHtmlString(parsed);
-
-    return asText || parsed;
-  }
-  if (typeof parsed === 'object') {
-    return formatObjectChangeValue(parsed);
-  }
-
-  return String(parsed);
-};
-
-interface EntityInfo {
-  fqn: string;
-  name: string;
-  displayName?: string;
-}
-
-const extractEntityInfo = (value: unknown): EntityInfo[] => {
-  const parsed = parseValue(value);
-  if (!parsed) {
-    return [];
-  }
-
-  const items = Array.isArray(parsed) ? parsed : [parsed];
-
-  return compact(
-    items.map((item) => {
-      if (typeof item === 'object' && item !== null) {
-        const entity = item as {
-          fullyQualifiedName?: string;
-          tagFQN?: string;
-          fqn?: string;
-          name?: string;
-          displayName?: string;
-        };
-        const fqn =
-          entity.fullyQualifiedName ??
-          entity.tagFQN ??
-          entity.fqn ??
-          entity.name;
-        if (fqn) {
-          return {
-            fqn,
-            name: entity.name ?? Fqn.split(fqn).pop() ?? fqn,
-            displayName: entity.displayName,
-          };
-        }
-      }
-
-      return null;
-    })
-  );
-};
-
-const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
-  tags: getTagPath,
-  dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-  teams: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
-  domain: getDomainPath,
-  owner: getUserPath,
-  reviewers: getUserPath,
-  experts: getUserPath,
-};
-
-const findLinkableFieldKey = (field: string): string | undefined =>
-  Object.keys(LINKABLE_FIELD_RESOLVERS).find(
-    (key) => field === key || field.endsWith(`.${key}`)
-  );
-
-const isDescriptionField = (fieldName: string): boolean =>
-  fieldName === 'description' || fieldName.endsWith('.description');
-
-const getEntityLinkForField = (
-  fieldName: string,
-  entityInfo: EntityInfo
-): string | null => {
-  const field = fieldName.toLowerCase();
-  const matchedKey = findLinkableFieldKey(field);
-
-  return matchedKey
-    ? LINKABLE_FIELD_RESOLVERS[matchedKey](entityInfo.fqn)
-    : null;
-};
-
-const renderEntityLinks = (
-  fieldName: string,
-  value: unknown,
-  keyPrefix: string
-): ReactNode[] => {
-  const entities = extractEntityInfo(value);
-  if (entities.length === 0) {
-    const plainValue = formatChangeValue(value);
-
-    return plainValue ? [plainValue] : [];
-  }
-
-  return entities.map((entity) => {
-    const link = getEntityLinkForField(fieldName, entity);
-    const label = entity.displayName ?? entity.name;
-    const entityKey = `${keyPrefix}-${entity.fqn ?? entity.name}`;
-
-    if (link) {
-      return (
-        <Link
-          className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-          key={entityKey}
-          to={link}>
-          {label}
-        </Link>
-      );
-    }
-
-    return <span key={entityKey}>{label}</span>;
-  });
-};
-
-const resolveEntityType = (value?: string): EntityType | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.toLowerCase();
-
-  return Object.values(EntityType).find(
-    (entityType) => entityType.toLowerCase() === normalized
-  );
-};
+const LINK_CLASS =
+  'tw:font-semibold tw:text-fg-brand-primary tw:hover:underline';
 
 const resolveEntityLabel = (
   log: AuditLogListItemProps['log'],
@@ -246,86 +89,246 @@ const resolveEntityLabel = (
   );
 };
 
-const getAuditLogDisplayInfo = (
+const getEntityHref = (
   log: AuditLogListItemProps['log'],
-  systemUserLabel: string
-) => {
-  const userName = log.userName || systemUserLabel;
-  const eventType = log.eventType ? startCase(log.eventType) : '';
-  const entityType = log.entityType ?? log.changeEvent?.entityType;
-  const entityFQN =
-    log.entityFQN ??
-    log.changeEvent?.entityFullyQualifiedName ??
-    log.changeEvent?.entity?.fullyQualifiedName;
-  const entityLabel = resolveEntityLabel(log, entityFQN);
-  const normalizedType = resolveEntityType(entityType);
-
-  return {
-    userName,
-    eventType,
-    entityType,
-    entityFQN,
-    entityLabel,
-    normalizedType,
-    timestamp: log.eventTs,
-  };
-};
-
-const getUserEntityLink = (
-  log: AuditLogListItemProps['log'],
-  entityLabel?: string
-): ReactNode | null => {
-  const userNameForLink =
-    log.changeEvent?.entity?.name ??
-    log.changeEvent?.entity?.fullyQualifiedName ??
-    log.userName ??
-    entityLabel;
-  if (!userNameForLink) {
-    return null;
-  }
-
-  return (
-    <Link
-      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={getSettingsLink(getUserPath(userNameForLink))}>
-      {entityLabel ?? userNameForLink}
-    </Link>
-  );
-};
-
-const getTypedEntityLink = (
-  entityFQN?: string,
   normalizedType?: EntityType,
-  entityLabel?: string
-): ReactNode | null => {
-  if (!normalizedType || !entityFQN) {
-    return null;
+  entityFQN?: string
+): string | undefined => {
+  if (normalizedType === EntityType.USER) {
+    const userName =
+      log.changeEvent?.entity?.name ??
+      log.changeEvent?.entity?.fullyQualifiedName ??
+      entityFQN ??
+      log.userName;
+
+    return userName ? getSettingsLink(getUserPath(userName)) : undefined;
   }
-  const link = getEntityLinkFromType(entityFQN, normalizedType);
-  if (!link) {
-    return null;
+  if (!normalizedType || !entityFQN) {
+    return undefined;
   }
 
+  return getEntityLinkFromType(entityFQN, normalizedType) || undefined;
+};
+
+/** Inline values of a change line; lists of objects render below it as records instead. */
+const getLineValues = (
+  row: ChangeRow
+): { value: ChangeValue; tone: ValueTone }[] => {
+  if (row.newValue?.type === 'records' || row.oldValue?.type === 'records') {
+    return [];
+  }
+  if (row.oldValue && row.newValue) {
+    return [
+      { value: row.oldValue, tone: 'before' },
+      { value: row.newValue, tone: 'after' },
+    ];
+  }
+  if (row.newValue) {
+    return [{ value: row.newValue, tone: 'plain' }];
+  }
+
+  return row.oldValue ? [{ value: row.oldValue, tone: 'before' }] : [];
+};
+
+const RefValue: FC<{
+  refs: ChangeRef[];
+  label: string;
+  isStruck: boolean;
+}> = ({ refs, label, isStruck }) => {
+  const tags = refs.filter((ref) => ref.refKind !== 'entity');
+  const entities = refs.filter((ref) => ref.refKind === 'entity');
+
   return (
-    <Link
-      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={link}>
-      {entityLabel ?? entityFQN}
-    </Link>
+    <>
+      {tags.length > 0 && (
+        <TagGroup label={label}>
+          <TagList className="tw:flex tw:flex-wrap tw:gap-1.5">
+            {tags.map((ref) => (
+              <Tag
+                dot
+                className={classNames({ 'tw:line-through': isStruck })}
+                dotClassName={REF_DOT_CLASSES[ref.refKind]}
+                id={`${ref.refKind}-${ref.fqn}`}
+                key={`${ref.refKind}-${ref.fqn}`}>
+                {ref.label}
+              </Tag>
+            ))}
+          </TagList>
+        </TagGroup>
+      )}
+      {entities.map((ref) =>
+        isOwnerRef(ref) && ref.id ? (
+          <OwnerChip
+            avatarSize={20}
+            className={classNames({ 'tw:line-through': isStruck })}
+            isCompactView={false}
+            key={`${ref.entityType}-${ref.fqn}`}
+            owner={toOwnerRef({
+              id: ref.id,
+              name: ref.name ?? ref.fqn,
+              displayName: ref.label,
+              type: ref.entityType,
+            })}
+          />
+        ) : (
+          <Badge
+            className={classNames({ 'tw:line-through': isStruck })}
+            color="gray"
+            data-testid="change-ref"
+            href={getEntityRefLink(ref)}
+            key={`${ref.entityType}-${ref.fqn}`}
+            size="sm"
+            type="pill-color">
+            {ref.entityType ? `${ref.label} (${ref.entityType})` : ref.label}
+          </Badge>
+        )
+      )}
+    </>
   );
 };
 
-interface AuditLogItemHeaderProps {
-  userLink: ReactNode;
-  eventType: string;
-  impersonatedBy?: string;
-}
+const InlineCell: FC<{ name: string; value: unknown }> = ({ name, value }) => {
+  const { t } = useTranslation();
+  const cell = formatCellValue(name, value);
 
-const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
-  userLink,
-  eventType,
-  impersonatedBy,
-}) => {
+  if (cell.color) {
+    return (
+      <Badge color={cell.color} size="sm" type="pill-color">
+        {cell.text}
+      </Badge>
+    );
+  }
+
+  return (
+    <span className="tw:text-primary">
+      {cell.isEmpty ? t('label.empty').toLowerCase() : cell.text}
+    </span>
+  );
+};
+
+/** `key value, key value` on one line — keys muted, values formatted by key. */
+const InlineEntries: FC<{ entries: [string, unknown][] }> = ({ entries }) => (
+  <span className="tw:inline-flex tw:flex-wrap tw:items-center tw:gap-x-1.5 tw:gap-y-1">
+    {entries.map(([key, entryValue], index) => (
+      <span className="tw:inline-flex tw:items-center tw:gap-1.5" key={key}>
+        <span className="tw:text-tertiary">{key}</span>
+        <InlineCell name={key} value={entryValue} />
+        {index < entries.length - 1 && (
+          <span className="tw:text-tertiary">,</span>
+        )}
+      </span>
+    ))}
+  </span>
+);
+
+const TEXT_TONE_CLASSES: Record<ValueTone, string> = {
+  plain: '',
+  before: 'tw:line-through tw:text-utility-error-700',
+  after: 'tw:text-utility-success-700',
+};
+
+/**
+ * Long values such as descriptions are cut to three lines so one entry cannot fill the list
+ * (ADR:2026-11-25-audit-log-rows-show-five-records-and-three-lines-of-a-change).
+ */
+const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => (
+  <span
+    className={classNames(
+      'tw:line-clamp-3 tw:break-words',
+      TEXT_TONE_CLASSES[tone]
+    )}
+    data-testid="change-text">
+    {text}
+  </span>
+);
+
+const InlineValue: FC<{
+  value: ChangeValue;
+  tone: ValueTone;
+  label: string;
+}> = ({ value, tone, label }) => {
+  switch (value.type) {
+    case 'refs':
+      return (
+        <RefValue
+          isStruck={tone === 'before'}
+          label={label}
+          refs={value.refs}
+        />
+      );
+    case 'keyValue':
+      return <InlineEntries entries={value.entries} />;
+    case 'records':
+      // Shown as records under the line by `RecordList`.
+      return null;
+    default:
+      return <TextValue text={value.text} tone={tone} />;
+  }
+};
+
+const RecordList: FC<{ value: RecordsValue }> = ({ value }) => {
+  const { t } = useTranslation();
+  const hiddenCount = value.totalCount - value.records.length;
+
+  return (
+    <Box className="tw:mt-1.5" direction="col" gap={1}>
+      {value.records.map((record, index) => (
+        <div
+          className="tw:rounded-md tw:bg-secondary tw:px-3 tw:py-2 tw:text-sm"
+          data-testid="change-record"
+          // Records are untyped API objects with no stable id; their order is the change's order.
+          // eslint-disable-next-line react/no-array-index-key
+          key={index}>
+          <InlineEntries entries={Object.entries(record)} />
+        </div>
+      ))}
+      {hiddenCount > 0 && (
+        <Typography color="secondary" size="text-xs">
+          {t('label.plus-count-more', { count: hiddenCount })}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+const ChangeLine: FC<{ row: ChangeRow }> = ({ row }) => {
+  const { t } = useTranslation();
+  const action = CHANGE_ACTION_STYLES[row.action];
+  const values = getLineValues(row);
+  const records = [row.newValue, row.oldValue].find(
+    (value): value is RecordsValue => value?.type === 'records'
+  );
+
+  return (
+    <div data-testid="change-row">
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-1.5 tw:gap-y-1 tw:text-sm">
+        <span
+          className={classNames('tw:font-semibold', action.className)}
+          data-testid="change-action">
+          {t(action.labelKey)}
+        </span>
+        <span
+          className="tw:font-semibold tw:text-primary"
+          data-testid="change-field-path">
+          {`${row.path || t('label.field')}:`}
+        </span>
+        {values.map(({ value, tone }, index) => (
+          <Fragment key={tone}>
+            {index > 0 && <span className="tw:text-tertiary">→</span>}
+            <InlineValue label={row.path} tone={tone} value={value} />
+          </Fragment>
+        ))}
+      </div>
+      {records && <RecordList value={records} />}
+    </div>
+  );
+};
+
+const AuditLogItemHeader: FC<{
+  log: AuditLogListItemProps['log'];
+  userName: string;
+  entity: ReactNode;
+}> = ({ log, userName, entity }) => {
   const { t } = useTranslation();
 
   return (
@@ -333,341 +336,186 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
       align="center"
       data-testid="item-header"
       direction="row"
-      gap={1}
+      gap={2}
       wrap="wrap">
-      {userLink}
-      <Typography className="tw:text-quaternary">–</Typography>
-      <Typography
-        className="tw:text-fg-brand-primary"
-        data-testid="event-type"
-        weight="medium">
-        {eventType}
-      </Typography>
-      {impersonatedBy && (
-        <>
-          <Typography className="tw:text-quaternary">–</Typography>
-          <Typography data-testid="impersonated-by">
-            {t('label.impersonated-by-with-colon')}
-          </Typography>{' '}
-          <Link
-            className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-            to={getSettingsLink(getUserPath(impersonatedBy))}>
-            {impersonatedBy}
-          </Link>
-        </>
+      {log.userName ? (
+        <Link
+          className={LINK_CLASS}
+          to={getSettingsLink(getUserPath(log.userName))}>
+          {userName}
+        </Link>
+      ) : (
+        <Typography weight="semibold">{userName}</Typography>
       )}
+      {log.actorType === 'BOT' && (
+        <Badge color="gray" data-testid="bot-badge" size="sm" type="color">
+          {t('label.bot')}
+        </Badge>
+      )}
+      <Typography color="quaternary">–</Typography>
+      {log.eventType && (
+        <Badge
+          color={EVENT_TYPE_COLORS[log.eventType] ?? 'gray'}
+          data-testid="event-type"
+          size="sm"
+          type="color">
+          {startCase(log.eventType)}
+        </Badge>
+      )}
+      {log.impersonatedBy && (
+        <Typography
+          color="secondary"
+          data-testid="impersonated-by"
+          size="text-sm">
+          {t('label.impersonated-by-with-colon')}{' '}
+          <Link
+            className={LINK_CLASS}
+            to={getSettingsLink(getUserPath(log.impersonatedBy))}>
+            {log.impersonatedBy}
+          </Link>
+        </Typography>
+      )}
+      {entity}
     </Box>
   );
 };
 
-interface AuditLogItemDescriptionProps {
-  descriptionNodes: ReactNode[];
-  eventType: string;
-  entityLink: ReactNode;
-}
-
-const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
-  descriptionNodes,
-  eventType,
-  entityLink,
-}) => (
-  <div data-testid="description-content">
-    {descriptionNodes.length > 0 ? (
-      <div>
-        {descriptionNodes.map((node, idx) => (
-          <div key={isValidElement(node) ? node.key : undefined}>
-            {node}
-            {idx < descriptionNodes.length - 1 && (
-              <span className="tw:text-quaternary">; </span>
-            )}
-          </div>
-        ))}
-      </div>
+const AuditLogItemEntity: FC<{
+  entityLabel: string;
+  entityFQN?: string;
+  entityHref?: string;
+}> = ({ entityLabel, entityFQN, entityHref }) => (
+  <Box
+    align="baseline"
+    data-testid="affected-entity"
+    direction="row"
+    gap={2}
+    wrap="wrap">
+    {entityHref ? (
+      <Link className={LINK_CLASS} to={entityHref}>
+        {entityLabel}
+      </Link>
     ) : (
-      <Box align="center" direction="row" gap={1}>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {eventType}
-        </Typography>
-        {entityLink}
-      </Box>
+      <Typography weight="semibold">{entityLabel}</Typography>
     )}
-  </div>
+    {entityFQN && entityFQN !== entityLabel && (
+      <Typography
+        className="tw:break-all"
+        color="secondary"
+        data-testid="affected-entity-fqn"
+        size="text-xs">
+        ({entityFQN})
+      </Typography>
+    )}
+  </Box>
 );
 
-interface AuditLogItemMetaProps {
-  entityType?: string;
-  timestamp?: number;
-}
+const EntityRefLink: FC<{ entityRef: ChangeRef }> = ({ entityRef }) => {
+  const href = getEntityRefLink(entityRef);
 
-const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
+  return href ? (
+    <Link className={LINK_CLASS} to={href}>
+      {entityRef.label}
+    </Link>
+  ) : (
+    <Typography weight="semibold">{entityRef.label}</Typography>
+  );
+};
+
+const AuditLogItemLineage: FC<{ edge: LineageEdge }> = ({ edge }) => (
+  <Box
+    align="center"
+    data-testid="affected-entity"
+    direction="row"
+    gap={2}
+    wrap="wrap">
+    <EntityRefLink entityRef={edge.from} />
+    <Typography color="secondary">→</Typography>
+    <EntityRefLink entityRef={edge.to} />
+  </Box>
+);
+
+const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
   entityType,
   timestamp,
 }) => (
   <Box
     align="center"
-    className="tw:mt-1"
     data-testid="item-meta"
     direction="row"
-    gap={2}>
+    gap={2}
+    wrap="wrap">
     {entityType && (
       <Typography
-        className="tw:text-fg-brand-primary"
+        color="secondary"
         data-testid="entity-type-badge"
         size="text-xs">
         {startCase(entityType)}
       </Typography>
     )}
     {entityType && timestamp && (
-      <Typography className="tw:text-quaternary" size="text-xs">
-        |
-      </Typography>
+      <span
+        aria-hidden="true"
+        className="tw:h-3 tw:border-l tw:border-secondary"
+      />
     )}
     {timestamp && (
-      <Typography
-        className="tw:text-quaternary"
-        data-testid="timestamp"
-        size="text-xs">
-        {getRelativeTime(timestamp)}
+      <Typography color="secondary" data-testid="timestamp" size="text-xs">
+        <time dateTime={new Date(timestamp).toISOString()}>
+          {formatDateTime(timestamp)}
+        </time>
+        {` · ${getRelativeTime(timestamp)}`}
       </Typography>
     )}
   </Box>
 );
 
+/** What the event happened to: the lineage edge, the changed asset, or nothing for login/logout. */
+const AuditLogItemSubject: FC<{
+  log: AuditLogListItemProps['log'];
+  entityType?: string;
+  entityFQN?: string;
+  entityLabel?: string;
+}> = ({ log, entityType, entityFQN, entityLabel }) => {
+  const lineageEdge = getLineageEdge(log);
+  if (lineageEdge) {
+    return <AuditLogItemLineage edge={lineageEdge} />;
+  }
+  // A login/logout's entity is the actor already shown in the header.
+  if (!entityLabel || isAuthEvent(log.eventType)) {
+    return null;
+  }
+
+  return (
+    <AuditLogItemEntity
+      entityFQN={entityFQN}
+      entityHref={getEntityHref(log, findEntityType(entityType), entityFQN)}
+      entityLabel={entityLabel}
+    />
+  );
+};
+
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const { t } = useTranslation();
-
-  const {
-    userName,
-    eventType,
-    entityType,
-    entityFQN,
-    entityLabel,
-    normalizedType,
-    timestamp,
-  } = getAuditLogDisplayInfo(log, t('label.system'));
-
-  const isLinkableField = useCallback((fieldName?: string): boolean => {
-    if (!fieldName) {
-      return false;
-    }
-    const field = fieldName.toLowerCase();
-    const linkableFields = [
-      'tags',
-      'dataproducts',
-      'teams',
-      'domain',
-      'owner',
-      'reviewers',
-      'experts',
-    ];
-
-    return linkableFields.some((f) => field === f || field.endsWith(`.${f}`));
-  }, []);
-
-  const isUserField = useCallback((fieldName?: string): boolean => {
-    if (!fieldName) {
-      return false;
-    }
-    const field = fieldName.toLowerCase();
-    const userFields = ['owner', 'reviewers', 'experts'];
-
-    return userFields.some((f) => field === f || field.endsWith(`.${f}`));
-  }, []);
-
-  const renderChangeValue = useCallback(
-    (change: FieldChange, value: unknown, keyPrefix: string): ReactNode => {
-      if (!value) {
-        return null;
-      }
-
-      const fieldName = change.name ?? '';
-
-      if (isLinkableField(fieldName)) {
-        const links = renderEntityLinks(fieldName, value, keyPrefix);
-        if (links.length > 0) {
-          const showProfilePic = isUserField(fieldName);
-
-          return (
-            <span className="tw:inline">
-              {links.map((link, idx) => {
-                const entities = extractEntityInfo(value);
-                const entity = entities[idx];
-
-                return (
-                  <span
-                    className="tw:inline-flex tw:items-center tw:gap-1"
-                    key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
-                    {showProfilePic && entity && (
-                      <ProfilePicture
-                        className="tw:align-middle"
-                        displayName={entity.displayName ?? entity.name}
-                        height="16"
-                        name={entity.name}
-                        width="16"
-                      />
-                    )}
-                    {link}
-                    {idx < links.length - 1 && ', '}
-                  </span>
-                );
-              })}
-            </span>
-          );
-        }
-      }
-
-      if (isDescriptionField(fieldName)) {
-        const markdown =
-          typeof value === 'string' ? value : formatChangeValue(value);
-
-        return (
-          <Suspense fallback={<span>{formatChangeValue(value)}</span>}>
-            <RichTextEditorPreviewerV1 markdown={markdown} />
-          </Suspense>
-        );
-      }
-
-      return <span>{formatChangeValue(value)}</span>;
-    },
-    [isLinkableField, isUserField]
+  const entityType = log.entityType ?? log.changeEvent?.entityType;
+  const entityFQN =
+    log.entityFQN ??
+    log.changeEvent?.entityFullyQualifiedName ??
+    log.changeEvent?.entity?.fullyQualifiedName;
+  const entityLabel = resolveEntityLabel(log, entityFQN);
+  const userName = log.userName || t('label.system');
+  const changeRows = useMemo(
+    () => getChangeRows(log.changeEvent?.changeDescription),
+    [log.changeEvent?.changeDescription]
   );
-
-  const getChangeDetails = useCallback(
-    (changeDescription?: ChangeDescription): ReactNode[] => {
-      if (!changeDescription) {
-        return [];
-      }
-
-      const details: ReactNode[] = [];
-      const addedLabel = startCase(t('label.added-lowercase'));
-      const updatedLabel = startCase(t('label.updated-lowercase'));
-      const removedLabel = startCase(t('label.removed-lowercase'));
-      const fallbackField = t('label.field', { defaultValue: 'field' });
-
-      (changeDescription.fieldsAdded ?? []).forEach((change) => {
-        const label = getFieldLabel(change.name);
-        const valueNode = renderChangeValue(
-          change,
-          change.newValue,
-          `added-${change.name}`
-        );
-
-        details.push(
-          <span key={`added-${change.name}`}>
-            <Typography as="span" className="tw:text-tertiary">
-              {addedLabel}
-            </Typography>{' '}
-            <Typography as="span" weight="medium">
-              {label || fallbackField}
-            </Typography>
-            {valueNode && <>: {valueNode}</>}
-          </span>
-        );
-      });
-
-      (changeDescription.fieldsUpdated ?? [])
-        .filter((change) => change.name !== 'deleted')
-        .forEach((change) => {
-          const label = getFieldLabel(change.name);
-          const oldValueNode = renderChangeValue(
-            change,
-            change.oldValue,
-            `updated-old-${change.name}`
-          );
-          const newValueNode = renderChangeValue(
-            change,
-            change.newValue,
-            `updated-new-${change.name}`
-          );
-          const hasValueChange = oldValueNode || newValueNode;
-
-          details.push(
-            <span key={`updated-${change.name}`}>
-              <Typography as="span" className="tw:text-tertiary">
-                {updatedLabel}
-              </Typography>{' '}
-              <Typography as="span" weight="medium">
-                {label || fallbackField}
-              </Typography>
-              {hasValueChange && (
-                <>
-                  : {oldValueNode}
-                  {oldValueNode && newValueNode && ' → '}
-                  {newValueNode}
-                </>
-              )}
-            </span>
-          );
-        });
-
-      (changeDescription.fieldsDeleted ?? []).forEach((change) => {
-        const label = getFieldLabel(change.name);
-        const valueNode = renderChangeValue(
-          change,
-          change.oldValue,
-          `deleted-${change.name}`
-        );
-
-        details.push(
-          <span key={`deleted-${change.name}`}>
-            <Typography as="span" className="tw:text-tertiary">
-              {removedLabel}
-            </Typography>{' '}
-            <Typography as="span" weight="medium">
-              {label || fallbackField}
-            </Typography>
-            {valueNode && <>: {valueNode}</>}
-          </span>
-        );
-      });
-
-      return details;
-    },
-    [t, renderChangeValue]
-  );
-
-  const descriptionNodes = useMemo((): ReactNode[] => {
-    if (log.summary) {
-      return [<span key="summary">{log.summary}</span>];
-    }
-    if (log.changeEvent?.changeDescription) {
-      return getChangeDetails(log.changeEvent.changeDescription);
-    }
-
-    return [];
-  }, [log, getChangeDetails]);
-
-  const entityLink = useMemo(() => {
-    if (normalizedType === EntityType.USER) {
-      const userLinkNode = getUserEntityLink(log, entityLabel);
-      if (userLinkNode) {
-        return userLinkNode;
-      }
-    }
-
-    const typedLinkNode = getTypedEntityLink(
-      entityFQN,
-      normalizedType,
-      entityLabel
-    );
-    if (typedLinkNode) {
-      return typedLinkNode;
-    }
-
-    return (
-      <Typography size="text-sm">{entityLabel ?? entityFQN ?? '--'}</Typography>
-    );
-  }, [normalizedType, entityFQN, entityLabel, log]);
-
-  // Built per render: `getSettingsLink` reads the current mode and search.
-  const userLink = log.userName ? (
-    <Link
-      className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-      to={getSettingsLink(getUserPath(log.userName))}>
-      {userName}
-    </Link>
-  ) : (
-    <Typography weight="semibold">{userName}</Typography>
+  const summary = getReadableSummary(log);
+  const entity = (
+    <AuditLogItemSubject
+      entityFQN={entityFQN}
+      entityLabel={entityLabel}
+      entityType={entityType}
+      log={log}
+    />
   );
 
   return (
@@ -675,7 +523,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       className="tw:p-4 tw:border-b tw:border-primary tw:transition-colors tw:hover:bg-secondary tw:last:border-b-0"
       data-testid="audit-log-list-item"
       direction="row"
-      gap={2}>
+      gap={3}>
       <div className="tw:shrink-0" data-testid="item-avatar">
         <ProfilePicture
           displayName={userName}
@@ -684,25 +532,42 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           width="32"
         />
       </div>
-      <Box
-        className="tw:flex-1 tw:min-w-0 tw:items-start"
-        direction="col"
-        gap={1}>
-        <AuditLogItemHeader
-          eventType={eventType}
-          impersonatedBy={log.impersonatedBy}
-          userLink={userLink}
-        />
-        <AuditLogItemDescription
-          descriptionNodes={descriptionNodes}
-          entityLink={entityLink}
-          eventType={eventType}
-        />
-        <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        <AuditLogItemHeader entity={entity} log={log} userName={userName} />
+        <Box data-testid="description-content" direction="col" gap={1}>
+          {changeRows.length > 0
+            ? changeRows.map((row) => <ChangeLine key={row.key} row={row} />)
+            : summary && <Typography size="text-sm">{summary}</Typography>}
+        </Box>
+        <AuditLogItemMeta entityType={entityType} timestamp={log.eventTs} />
       </Box>
     </Box>
   );
 };
+
+const AuditLogListSkeleton: FC = () => (
+  <div data-testid="audit-log-list-skeleton">
+    {[1, 2, 3, 4, 5].map((i) => (
+      <Box
+        className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
+        direction="row"
+        gap={3}
+        key={i}>
+        <Skeleton
+          className="tw:shrink-0"
+          height={32}
+          variant="circular"
+          width={32}
+        />
+        <Box className="tw:flex-1" direction="col" gap={1}>
+          <Skeleton variant="text" width="60%" />
+          <Skeleton variant="text" width="100%" />
+          <Skeleton variant="text" width="75%" />
+        </Box>
+      </Box>
+    ))}
+  </div>
+);
 
 const AuditLogList: FC<AuditLogListProps> = ({
   logs,
@@ -714,34 +579,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
   const { t } = useTranslation();
 
   if (isLoading) {
-    return (
-      <div data-testid="audit-log-list-skeleton">
-        <div className="tw:px-4 tw:py-2 tw:bg-secondary tw:border-b tw:border-primary">
-          <Skeleton variant="text" width={200} />
-        </div>
-        <div>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Box
-              className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
-              direction="row"
-              gap={3}
-              key={i}>
-              <Skeleton
-                className="tw:shrink-0"
-                height={32}
-                variant="circular"
-                width={32}
-              />
-              <Box className="tw:flex-1" direction="col" gap={1}>
-                <Skeleton variant="text" width="60%" />
-                <Skeleton variant="text" width="100%" />
-                <Skeleton variant="text" width="75%" />
-              </Box>
-            </Box>
-          ))}
-        </div>
-      </div>
-    );
+    return <AuditLogListSkeleton />;
   }
 
   if (logs.length === 0) {
@@ -758,7 +596,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
         ]
       : undefined;
 
-    let emptyContent: React.ReactNode;
+    let emptyContent: ReactNode;
 
     if (hasActiveSearch) {
       emptyContent = (
@@ -796,14 +634,12 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
   return (
     <div className="tw:w-full" data-testid="audit-log-list">
-      <div>
-        {logs.map((log, index) => (
-          <AuditLogListItem
-            key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
-            log={log}
-          />
-        ))}
-      </div>
+      {logs.map((log, index) => (
+        <AuditLogListItem
+          key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
+          log={log}
+        />
+      ))}
     </div>
   );
 };

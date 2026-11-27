@@ -25,8 +25,8 @@ import {
   getMcpTools,
   updateMcpConfig,
 } from '../../../../rest/mcpConfigAPI';
-import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { getSettingsSource } from '../../../../rest/settingConfigAPI';
+import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useMcpConfiguration } from './useMcpConfiguration';
 
@@ -61,6 +61,7 @@ const storedConfig = {
   maxResponseChars: 100000,
   readOnly: true,
   connectionTimeoutSecs: 30,
+  extensions: { distribution: { enabled: true } },
 };
 
 const mcpSource = (managedPaths: string[]): SettingSource => ({
@@ -173,9 +174,38 @@ describe('useMcpConfiguration', () => {
     expect(result.current.isSaving).toBe(false);
   });
 
+  it('saves the server switch and registration policy while preserving hidden settings', async () => {
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    const policy = {
+      enabled: false,
+      dynamicClientRegistrationEnabled: false,
+      allowedRedirectHosts: ['trusted.example'],
+      allowLoopbackRedirects: false,
+      allowNativeRedirects: false,
+    };
+    await act(async () => result.current.saveMcpConfig(policy));
+
+    expect(mockUpdateMcpConfig).toHaveBeenCalledWith({
+      ...storedConfig,
+      ...policy,
+    });
+    expect(result.current.formConfig).toMatchObject(policy);
+  });
+
+  it('blocks saves after a failed read so hidden settings cannot be lost', async () => {
+    mockGetMcpConfig.mockRejectedValue({ response: { status: 500 } });
+    const { result } = renderUseMcpConfiguration();
+    await waitFor(() => expect(result.current.isFetching).toBe(false));
+    await act(async () => result.current.saveMcpConfig({ enabled: false }));
+
+    expect(mockUpdateMcpConfig).not.toHaveBeenCalled();
+    expect(result.current.fetchFailed).toBe(true);
+  });
+
   it('disables fields the deployment manages', async () => {
     mockGetSettingsSource.mockResolvedValue({
-      settings: [mcpSource(['/allowedOrigins'])],
+      settings: [mcpSource(['/allowedOrigins', '/offeredTools'])],
     });
 
     const { result } = renderUseMcpConfiguration();
@@ -187,6 +217,9 @@ describe('useMcpConfiguration', () => {
     );
 
     expect(result.current.formUiSchema.baseUrl?.['ui:disabled']).toBeFalsy();
+    expect(result.current.formUiSchema.offeredTools?.['ui:disabled']).toBe(
+      true
+    );
     expect(result.current.isEveryFieldManaged).toBe(false);
   });
 
@@ -194,11 +227,17 @@ describe('useMcpConfiguration', () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [
         mcpSource([
+          '/enabled',
+          '/dynamicClientRegistrationEnabled',
+          '/allowedRedirectHosts',
+          '/allowLoopbackRedirects',
+          '/allowNativeRedirects',
           '/baseUrl',
           '/allowedOrigins',
           '/maxResponseChars',
           '/readOnly',
           '/disabledTools',
+          '/offeredTools',
         ]),
       ],
     });
@@ -208,24 +247,28 @@ describe('useMcpConfiguration', () => {
     await waitFor(() => expect(result.current.isEveryFieldManaged).toBe(true));
   });
 
-  it("offers the server's tools, plus saved names it no longer has, as the tools to disable", async () => {
-    mockGetMcpConfig.mockResolvedValue({
-      ...storedConfig,
-      disabledTools: ['sparql_query'],
-    });
+  it.each(['disabledTools', 'offeredTools'])(
+    'includes registered and saved names as options for %s',
+    async (field) => {
+      mockGetMcpConfig.mockResolvedValue({
+        ...storedConfig,
+        [field]: ['sparql_query'],
+      });
 
-    const { result } = renderUseMcpConfiguration();
+      const { result } = renderUseMcpConfiguration();
 
-    await waitFor(() =>
-      expect(
-        (result.current.formSchema.properties?.disabledTools as RJSFSchema)
-          .items
-      ).toEqual({
-        type: 'string',
-        enum: ['search_metadata', 'nlq_search', 'sparql_query'],
-      })
-    );
-  });
+      await waitFor(() =>
+        expect(
+          (result.current.formSchema.properties?.[field] as RJSFSchema).items
+        ).toEqual({
+          type: 'string',
+          enum: ['search_metadata', 'nlq_search', 'sparql_query'],
+        })
+      );
+
+      expect(result.current.formConfig).toHaveProperty(field, ['sparql_query']);
+    }
+  );
 
   it('falls back to typing tool names when the tool list fails to load', async () => {
     const error = { response: { status: 500 } } as AxiosError;
@@ -237,6 +280,12 @@ describe('useMcpConfiguration', () => {
 
     expect(
       result.current.formSchema.properties?.disabledTools
+    ).not.toHaveProperty('uiFieldType');
+    expect(result.current.formSchema.properties?.offeredTools).toEqual(
+      expect.objectContaining({ items: { type: 'string' } })
+    );
+    expect(
+      result.current.formSchema.properties?.offeredTools
     ).not.toHaveProperty('uiFieldType');
   });
 });

@@ -24,9 +24,9 @@ The fork's workflow tests the extension and the reasoner, smoke-tests the image,
 | `<version>-<commit>`, e.g. `6.2.0-600514c` | Never | Everything OpenMetadata ships or tests |
 | `<version>`, e.g. `6.2.0` | On every publish from the release branch | Trying the image by hand only |
 
-OpenMetadata pins **`openmetadata/fuseki:6.2.0-318ff87`** (index digest
-`sha256:d9f38513e21c234f1329ff9c637e52b9213ff0b262c06e5dfae9087d7c03ecd1`, built from
-`release/6.2.0` at `318ff875`). The pin lives in
+OpenMetadata pins **`openmetadata/fuseki:6.2.0-91a23ac`** (index digest
+`sha256:f1ea04940de6665b111c10a673d5aec0543034b7d65216391bab38a96b666aa2`, built from
+`release/6.2.0` at `91a23ac4`). The pin lives in
 [FusekiTestImage](../openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/FusekiTestImage.java),
 the Compose files under `docker/`, and
 [fuseki-deployment.yaml](../docker/rdf-store/kubernetes/fuseki-deployment.yaml). Moving it is a
@@ -138,7 +138,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: fuseki
-          image: openmetadata/fuseki:6.2.0-318ff87
+          image: openmetadata/fuseki:6.2.0-91a23ac
           ports:
             - containerPort: 3030
           env:
@@ -217,7 +217,7 @@ volume and run `RdfIndexApp` with `recreateIndex: true`) or, with Fuseki stopped
 
 ```bash
 docker run --rm --user 0 --entrypoint sh \
-  -v <old-volume>:/old:ro -v <new-volume>:/fuseki openmetadata/fuseki:6.2.0-318ff87 \
+  -v <old-volume>:/old:ro -v <new-volume>:/fuseki openmetadata/fuseki:6.2.0-91a23ac \
   -c 'mkdir -p /fuseki/databases \
       && cp -a /old/openmetadata /old/openmetadata_a /old/openmetadata_b /fuseki/databases/ \
       && chown -R 1000:0 /fuseki'

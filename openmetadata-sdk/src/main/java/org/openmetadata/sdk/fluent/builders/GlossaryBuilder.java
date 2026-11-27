@@ -51,6 +51,7 @@ public class GlossaryBuilder {
    * Set custom extension data.
    */
   public GlossaryBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { getBasePath } from './HistoryUtils';
+import { stripBasePath } from './HistoryUtils';
 
 export const getPathNameFromWindowLocation = () => {
-  return globalThis.location.pathname.replace(getBasePath() ?? '', '');
+  return stripBasePath(globalThis.location.pathname);
 };

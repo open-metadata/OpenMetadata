@@ -14,6 +14,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -29,11 +30,10 @@ class TableTotalCountAggregationIT {
     OpenMetadataClient client = SdkClients.adminClient();
     String service = DatabaseServiceTestFactory.createPostgres(ns).getFullyQualifiedName();
     String database = DatabaseTestFactory.create(ns, service).getFullyQualifiedName();
-    String schema =
-        DatabaseSchemaTestFactory.create(database, ns.prefix("case_fqn")).getFullyQualifiedName();
-    createTable(client, schema, "Orders");
-    createTable(client, schema, "orders");
-    String scopedQuery = DataQualityTableTotal.scopedQuery(schema);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(database, ns.prefix("case_fqn"));
+    createTable(client, schema.getFullyQualifiedName(), "Orders");
+    createTable(client, schema.getFullyQualifiedName(), "orders");
+    String scopedQuery = DataQualityTableTotal.scopedQuery(schema.getId());
 
     Awaitility.await("both case-only tables indexed")
         .atMost(Duration.ofSeconds(60))

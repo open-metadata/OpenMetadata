@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -30,6 +31,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
@@ -98,6 +101,7 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
@@ -377,6 +381,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             new CreateDataContract()
                 .withName(ns.prefix("schema_contract"))
                 .withEntity(table.getDatabaseSchema())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15)))
                 .withEntityStatus(EntityStatus.APPROVED));
 
     DataContract effective =
@@ -385,6 +390,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(schemaContract.getName(), effective.getName());
     assertEquals(table.getId(), effective.getEntity().getId());
     assertTrue(effective.getInherited());
+    assertEquals(minuteFrequency(15), effective.getSla().getRefreshFrequency());
   }
 
   @Test
@@ -3048,6 +3054,193 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testMinuteRefreshFrequencyCreateReadAndPatch(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("minute_refresh"))
+                .withEntity(table.getEntityReference())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15))));
+
+    String contractId = contract.getId().toString();
+    ContractSLA initialSla = client.dataContracts().get(contractId, "sla").getSla();
+    assertEquals(minuteFrequency(15), initialSla.getRefreshFrequency());
+    assertNull(initialSla.getColumnName());
+
+    JsonNode patch =
+        JsonUtils.readTree(
+            Json.createPatchBuilder()
+                .replace("/sla/refreshFrequency/interval", 0)
+                .add("/sla/columnName", "id")
+                .build()
+                .toJsonArray()
+                .toString());
+    client.dataContracts().patch(contract.getId(), patch);
+    ContractSLA edit = client.dataContracts().get(contractId, "sla").getSla();
+    assertEquals(minuteFrequency(0), edit.getRefreshFrequency());
+    assertEquals("id", edit.getColumnName());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0.25", "15.5", "15.000000000000000001", "2147483648", "null"})
+  void testInvalidRefreshIntervalIsRejectedByNativeRequests(String interval, TestNamespace ns) {
+    Table table = createTestTable(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String name = ns.prefix("invalid_refresh");
+    List<String> units = "null".equals(interval) ? List.of("minute") : List.of("minute", "hour");
+    for (String unit : units) {
+      String request =
+          """
+          {
+            "name": "%s",
+            "entity": {"id": "%s", "type": "table"},
+            "sla": {"refreshFrequency": {"unit": "%s", "interval": %s}}
+          }
+          """
+              .formatted(name, table.getId(), unit, interval);
+      assertInvalidRefreshRequest(
+          client, HttpMethod.POST, "/v1/dataContracts", request, "application/json");
+      String yaml =
+          """
+          name: %s
+          entity: {id: %s, type: table}
+          sla:
+            refreshFrequency:
+              interval: %s
+              unit: %s
+          """
+              .formatted(name, table.getId(), interval, unit);
+      assertInvalidRefreshRequest(
+          client, HttpMethod.PUT, "/v1/dataContracts", yaml, "application/yaml");
+    }
+
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(name)
+                .withEntity(table.getEntityReference())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15))));
+    String path = "/v1/dataContracts/" + contract.getId();
+    String minutePatch =
+        """
+        [{"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}]
+        """
+            .formatted(interval);
+    assertInvalidRefreshRequest(
+        client, HttpMethod.PATCH, path, minutePatch, "application/json-patch+json");
+    if (!"null".equals(interval)) {
+      String hourPatch =
+          """
+          [
+            {"op": "replace", "path": "/sla/refreshFrequency/unit", "value": "hour"},
+            {"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}
+          ]
+          """
+              .formatted(interval);
+      assertInvalidRefreshRequest(
+          client, HttpMethod.PATCH, path, hourPatch, "application/json-patch+json");
+    }
+
+    assertEquals(
+        minuteFrequency(15),
+        client
+            .dataContracts()
+            .get(contract.getId().toString(), "sla")
+            .getSla()
+            .getRefreshFrequency());
+  }
+
+  private static void assertInvalidRefreshRequest(
+      OpenMetadataClient client, HttpMethod method, String path, String body, String contentType) {
+    RequestOptions options = RequestOptions.builder().header("Content-Type", contentType).build();
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.getHttpClient().execute(method, path, body, DataContract.class, options));
+
+    assertEquals(400, error.getStatusCode());
+  }
+
+  @Test
+  void testMinuteFreshnessRoundTripsThroughVersionedODCS(TestNamespace ns) throws Exception {
+    String timestamp = "updated_at";
+    List<Column> columns =
+        List.of(new Column().withName(timestamp).withDataType(ColumnDataType.TIMESTAMP));
+    Table table = createTestTable(ns, columns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContractSLA freshness =
+        new ContractSLA().withRefreshFrequency(minuteFrequency(15)).withColumnName(timestamp);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("minute_export"))
+                .withEntity(table.getEntityReference())
+                .withSla(freshness));
+
+    JsonNode clearSla = JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/sla\"}]");
+    for (String version : ODCSProfiles.supportedVersions()) {
+      for (boolean yaml : List.of(false, true)) {
+        String route = yaml ? "/odcs/yaml" : "/odcs";
+        String exportPath =
+            "/v1/dataContracts/" + contract.getId() + route + "?odcsVersion=" + version;
+        String document = client.getHttpClient().executeForString(HttpMethod.GET, exportPath, null);
+        JsonNode tree = new YAMLMapper().readTree(document);
+        assertEquals(List.of(), ODCSProfiles.validate(version, tree));
+        assertMinuteFreshnessProperty(version, tree.at("/slaProperties/0"), timestamp);
+
+        DataContract cleared = client.dataContracts().patch(contract.getId(), clearSla);
+        assertNull(cleared.getSla(), version);
+        DataContract imported = reimportMinuteFreshness(client, table, route, document, yaml);
+        assertEquals(contract.getId(), imported.getId(), version);
+        DataContract stored = client.dataContracts().get(contract.getId().toString(), "sla");
+        assertEquals(
+            freshness.getRefreshFrequency(), stored.getSla().getRefreshFrequency(), version);
+        assertEquals(
+            FullyQualifiedName.add(table.getFullyQualifiedName(), timestamp),
+            stored.getSla().getColumnName(),
+            version);
+      }
+    }
+  }
+
+  private static void assertMinuteFreshnessProperty(
+      String version, JsonNode property, String column) {
+    assertEquals("freshness", property.path("property").asText(), version);
+    JsonNode value = property.path("value");
+    if (version.equals("v2.2.1")) {
+      assertEquals("15", value.textValue(), version);
+    } else {
+      assertTrue(value.isNumber(), version);
+      assertEquals(0, value.decimalValue().compareTo(BigDecimal.valueOf(15)), version);
+    }
+    assertEquals("minute", property.path("unit").asText(), version);
+    assertEquals(
+        column, property.path(version.startsWith("v2") ? "column" : "element").asText(), version);
+  }
+
+  private static DataContract reimportMinuteFreshness(
+      OpenMetadataClient client, Table table, String route, String document, boolean yaml) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", table.getId().toString())
+            .queryParam("entityType", "table")
+            .queryParam("createTestCases", "false")
+            .queryParam("mode", "replace")
+            .header("Content-Type", yaml ? "application/yaml" : "application/json")
+            .build();
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/dataContracts" + route, document, DataContract.class, options);
+  }
+
+  private static RefreshFrequency minuteFrequency(int interval) {
+    return new RefreshFrequency().withInterval(interval).withUnit(RefreshFrequency.Unit.MINUTE);
+  }
+
+  @Test
   void testODCSExportWithSLA(TestNamespace ns) {
     Table table = createTestTable(ns);
 
@@ -3759,6 +3952,95 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testODCSImportAndReimportPreservesAndUpdatesReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    EntityReference user1 = shared().USER1_REF;
+    EntityReference user2 = shared().USER2_REF;
+
+    String initialYaml =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.0
+            status: draft
+            team:
+              members:
+                - username: %s
+                  role: owner
+                - username: %s
+                  role: reviewer
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            UUID.randomUUID(),
+            ns.prefix("reviewer_odcs"),
+            user1.getName(),
+            user2.getName(),
+            table.getName());
+
+    DataContract imported =
+        client.dataContracts().importFromODCSYaml(initialYaml, table.getId(), "table", false);
+    assertEquals(
+        List.of(user1.getId()), imported.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        imported.getReviewers().stream().map(EntityReference::getId).toList());
+
+    DataContract fetched =
+        client.dataContracts().getByEntityId(table.getId(), "table", "owners,reviewers");
+    assertEquals(
+        List.of(user2.getId()),
+        fetched.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Re-import in merge mode without reviewers: existing reviewers and owners must be preserved
+    String reimportWithoutTeam =
+        String.format(
+            """
+            apiVersion: v3.1.0
+            kind: DataContract
+            id: %s
+            name: %s
+            version: 1.0.1
+            status: active
+            schema:
+              - name: %s
+                logicalType: object
+                properties:
+                  - name: id
+                    logicalType: integer
+            """,
+            imported.getId(), ns.prefix("reviewer_odcs"), table.getName());
+
+    DataContract merged =
+        client
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                reimportWithoutTeam, table.getId(), "table", "merge", false);
+    assertEquals(
+        List.of(user1.getId()), merged.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(user2.getId()),
+        merged.getReviewers().stream().map(EntityReference::getId).toList());
+
+    // Export back to ODCS and verify reviewer role is emitted
+    ODCSDataContract exported = client.dataContracts().exportToODCS(merged.getId());
+    assertTrue(
+        exported.getTeam().getMembers().stream()
+            .anyMatch(
+                member ->
+                    user2.getName().equals(member.getUsername())
+                        && "reviewer".equals(member.getRole())));
+  }
+
+  @Test
   void testImportedContractExportsAcrossVersionsWithRenamedTargetAndDescriptions(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -3917,12 +4199,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
       }
     }
     DataContract stored = client.dataContracts().get(imported.getId().toString());
+    // The import stores a rule whose assertion no native number holds as a custom odcs wrapper,
+    // and the export embeds such a wrapper whole, so the edit replaces it with a native SQL rule.
     ODCSQualityRule edited =
-        stored.getOdcsQualityRules().stream()
-            .filter(rule -> "precise_response".equals(rule.getName()))
-            .findFirst()
-            .orElseThrow();
-    edited.setMustBe(7.0);
+        new ODCSQualityRule()
+            .withName("precise_response")
+            .withType(ODCSQualityRule.Type.SQL)
+            .withQuery("SELECT ratio")
+            .withMustBe(7.0);
     client
         .dataContracts()
         .createOrUpdate(
@@ -4283,39 +4567,44 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testIncompatiblePreservedMetadataBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns)
-      throws Exception {
+  void testIncompatibleStoredRuleBlocksAllExportRoutesWithoutLosingIt(TestNamespace ns) {
     Table table = createTestTable(ns);
-    String yaml =
-        """
-        apiVersion: v3.1.0
-        kind: DataContract
-        id: %s
-        name: %s
-        version: '1.0.0'
-        status: active
-        futureSection: {retained: true}
-        """
-            .formatted(UUID.randomUUID(), ns.prefix("incompatible_odcs"));
+    // Unknown imported fields travel in a source-metadata annotation and never block export
+    // (ADR:2026-11-09-odcs-imports-validate-declared-published-profiles); a native rule v3.1.0
+    // cannot express, on a contract with no import metadata, blocks every route.
     OpenMetadataClient client = SdkClients.adminClient();
-    DataContract imported =
-        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    DataContract contract =
+        client
+            .dataContracts()
+            .createOrUpdate(
+                new CreateDataContract()
+                    .withName(ns.prefix("incompatible_odcs"))
+                    .withEntity(table.getEntityReference())
+                    .withOdcsQualityRules(
+                        List.of(
+                            new ODCSQualityRule()
+                                .withName("legacy_rule")
+                                .withType(ODCSQualityRule.Type.LIBRARY)
+                                .withMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES)
+                                .withMustBe(1.0))));
     for (String route :
         List.of(
-            "/v1/dataContracts/" + imported.getId() + "/odcs",
-            "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
-            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
-            "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+            "/v1/dataContracts/" + contract.getId() + "/odcs",
+            "/v1/dataContracts/" + contract.getId() + "/odcs/yaml",
+            "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs",
+            "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs/yaml")) {
       OpenMetadataException error =
           assertThrows(
               OpenMetadataException.class,
               () -> client.getHttpClient().executeForString(HttpMethod.GET, route, null));
       assertEquals(400, error.getStatusCode());
-      assertTrue(error.getMessage().contains("futureSection"), error.getMessage());
+      assertTrue(error.getMessage().contains("Cannot export ODCS"), error.getMessage());
+      assertTrue(error.getMessage().contains("metric"), error.getMessage());
     }
-    DataContract stored =
-        client.dataContracts().get(imported.getId().toString(), "odcsPreservedFields");
-    assertEquals(imported.getOdcsPreservedFields(), stored.getOdcsPreservedFields());
+    DataContract stored = client.dataContracts().get(contract.getId().toString());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
+        stored.getOdcsQualityRules().getFirst().getMetric());
   }
 
   @Test
