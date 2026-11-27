@@ -48,12 +48,16 @@ def _visit_column_with_struct_quoting(self, column, *args, **kwargs):
     result = SQLCompiler.visit_column(self, column, *args, **kwargs)
     col_name = str(getattr(column, "name", ""))
     if "." in col_name:
-        col_idx = result.find(col_name)
-        if col_idx >= 0:
-            prefix = result[:col_idx]
+        default_quoted = self.preparer.quote_identifier(col_name)
+        quote_idx = result.find(default_quoted)
+        if quote_idx >= 0:
             segments = col_name.split(".")
             quoted = ".".join(self.preparer.quote_identifier(seg) for seg in segments)
-            result = prefix + quoted
+            result = (
+                result[:quote_idx]
+                + quoted
+                + result[quote_idx + len(default_quoted) :]
+            )
     return result
 
 
