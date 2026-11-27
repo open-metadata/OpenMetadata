@@ -26,7 +26,7 @@ logger = profiler_logger()
 
 class UUIDString(TypeDecorator):
     """
-    Convert Python bytestring to string with hexadecimal digits and back for storage.
+    Store a UUID as a string, validating that the value is a well-formed UUID.
     """
 
     impl = String
@@ -55,7 +55,7 @@ class UUIDString(TypeDecorator):
             value: database record
             dialect: database dialect
         Returns:
-            hex string representation of the byte value
+            UUID string value
         """
         return value
 
