@@ -20,6 +20,7 @@ import {
   ProfileSampleType as RunProfileSampleType,
   TestCase,
   TestCaseStatus,
+  ThresholdUnit,
 } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
@@ -65,15 +66,15 @@ describe('getThresholdTestSemantic', () => {
     ['columnValuesMissingCount', ThresholdTestSemantic.Statistical],
     ['tableRowCountToEqual', ThresholdTestSemantic.Statistical],
     ['tableRowInsertedCountToBeBetween', ThresholdTestSemantic.Statistical],
-    // The 6 validators that call `_apply_row_threshold`.
+    // The validators that call `_apply_row_threshold`.
     ['columnValuesToMatchRegex', ThresholdTestSemantic.RowCountable],
     ['columnValuesToBeNotNull', ThresholdTestSemantic.RowCountable],
     ['columnValuesToBeUnique', ThresholdTestSemantic.RowCountable],
     ['tableCustomSQLQuery', ThresholdTestSemantic.CustomSql],
-    // Declares the threshold params, but no validator reads them yet.
+    // Declares the threshold params and reads them as a row tolerance.
     ['columnValuesToBeBetween', ThresholdTestSemantic.RowCountable],
     ['columnValueLengthsToBeBetween', ThresholdTestSemantic.RowCountable],
-    ['columnValuesToBeAtExpectedLocation', ThresholdTestSemantic.NotEnforced],
+    ['columnValuesToBeAtExpectedLocation', ThresholdTestSemantic.RowCountable],
   ])('classifies %s as %s', (name, expected) => {
     expect(getThresholdTestSemantic(name)).toBe(expected);
   });
@@ -89,6 +90,7 @@ describe('getThresholdNoun', () => {
     ['columnValuesToNotMatchRegex', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToBeNotInSet', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToBeInSet', 'PERCENTAGE', ThresholdNoun.Rows],
+    ['columnValuesToBeAtExpectedLocation', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToMatchRegex', 'ABSOLUTE', ThresholdNoun.Rows],
     ['columnValueMeanToBeBetween', 'ABSOLUTE', ThresholdNoun.Units],
     ['columnValueMeanToBeBetween', 'PERCENTAGE', ThresholdNoun.Bound],
@@ -724,6 +726,22 @@ describe('getThresholdPreviewData', () => {
     });
     expect(data?.effectiveRange).toBeUndefined();
   });
+
+  it('reads an at-expected-location threshold as a row tolerance', () => {
+    // The validator counts invalid locations against the evaluated rows, the
+    // same shape as its row-counting siblings, so the preview promises the
+    // tolerance it actually applies rather than warning it is ignored.
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValuesToBeAtExpectedLocation'),
+      params: { threshold: 5 },
+    });
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      isThresholdIgnored: false,
+      noun: ThresholdNoun.Rows,
+    });
+  });
 });
 
 const testCaseOf = (
@@ -737,6 +755,11 @@ const testCaseOf = (
     parameterValues,
     useDynamicAssertion,
   } as TestCase);
+
+/** The threshold snapshot an agent records on every run it judges. */
+const appliedThreshold = (value: number, unit = ThresholdUnit.Absolute) => ({
+  appliedThreshold: { value, unit },
+});
 
 describe('getRunThresholdData', () => {
   const NOT_NULL_ONE_PERCENT = testCaseOf('columnValuesToBeNotNull', [
@@ -752,6 +775,7 @@ describe('getRunThresholdData', () => {
         passedRows: 9861,
         failedRows: 120,
         failedRowsPercentage: 1.2,
+        ...appliedThreshold(1, ThresholdUnit.Percentage),
       });
 
       expect(data).toMatchObject({
@@ -767,11 +791,12 @@ describe('getRunThresholdData', () => {
     }
   );
 
-  it('reads a test case with no threshold set as tolerating nothing', () => {
+  it('reads a run that recorded no tolerance as tolerating nothing', () => {
     const data = getRunThresholdData(testCaseOf('columnValuesToBeUnique', []), {
       testCaseStatus: TestCaseStatus.Failed,
       passedRows: 90,
       failedRows: 10,
+      ...appliedThreshold(0),
     });
 
     expect(data).toMatchObject({
@@ -797,6 +822,7 @@ describe('getRunThresholdData', () => {
         passedRows: 45,
         failedRows: 5,
         failedRowsPercentage: 5,
+        ...appliedThreshold(7, ThresholdUnit.Percentage),
       }
     );
 
@@ -811,38 +837,41 @@ describe('getRunThresholdData', () => {
     const data = getRunThresholdData(NOT_NULL_ONE_PERCENT, {
       testCaseStatus: TestCaseStatus.Failed,
       failedRows: 3,
+      ...appliedThreshold(1, ThresholdUnit.Percentage),
     });
 
     expect(data?.evaluatedRows).toBeUndefined();
     expect(data?.failedPercentage).toBeUndefined();
   });
 
-  it.each(['columnValuesToBeBetween', 'columnValueLengthsToBeBetween'])(
-    'shows the recorded row result for %s',
-    (definitionName) => {
-      const data = getRunThresholdData(
-        testCaseOf(definitionName, [
-          { name: 'threshold', value: '5' },
-          { name: 'thresholdUnit', value: 'PERCENTAGE' },
-        ]),
-        {
-          testCaseStatus: TestCaseStatus.Failed,
-          passedRows: 90,
-          failedRows: 10,
-        }
-      );
-
-      expect(data).toMatchObject({
-        semantic: ThresholdTestSemantic.RowCountable,
-        threshold: 5,
-        isPercentage: true,
+  it.each([
+    'columnValuesToBeBetween',
+    'columnValueLengthsToBeBetween',
+    'columnValuesToBeAtExpectedLocation',
+  ])('shows the recorded row result for %s', (definitionName) => {
+    const data = getRunThresholdData(
+      testCaseOf(definitionName, [
+        { name: 'threshold', value: '5' },
+        { name: 'thresholdUnit', value: 'PERCENTAGE' },
+      ]),
+      {
+        testCaseStatus: TestCaseStatus.Failed,
+        passedRows: 90,
         failedRows: 10,
-        failedPercentage: 10,
-        evaluatedRows: 100,
-        populationNoun: ThresholdNoun.Rows,
-      });
-    }
-  );
+        ...appliedThreshold(5, ThresholdUnit.Percentage),
+      }
+    );
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      threshold: 5,
+      isPercentage: true,
+      failedRows: 10,
+      failedPercentage: 10,
+      evaluatedRows: 100,
+      populationNoun: ThresholdNoun.Rows,
+    });
+  });
 
   it('sets the configured range beside the range the run reports', () => {
     const data = getRunThresholdData(
@@ -856,6 +885,9 @@ describe('getRunThresholdData', () => {
         testCaseStatus: TestCaseStatus.Success,
         minBound: 85.5,
         maxBound: 115.50000000000001,
+        configuredMinBound: 90,
+        configuredMaxBound: 110,
+        ...appliedThreshold(5, ThresholdUnit.Percentage),
       }
     );
 
@@ -872,11 +904,95 @@ describe('getRunThresholdData', () => {
   it('has no configured range for a dynamic assertion, whose bound is learned', () => {
     const data = getRunThresholdData(
       testCaseOf('tableRowCountToBeBetween', [], true),
-      { testCaseStatus: TestCaseStatus.Failed, minBound: 10, maxBound: 20 }
+      {
+        testCaseStatus: TestCaseStatus.Failed,
+        minBound: 10,
+        maxBound: 20,
+        ...appliedThreshold(0),
+      }
     );
 
     expect(data?.configuredRange).toBeUndefined();
     expect(data?.effectiveRange).toBe('10 – 20');
+  });
+
+  it('keeps the tolerance a run applied after the test case is edited to a stricter one', () => {
+    // The run tolerated 5% and 3% of its rows failed, so it succeeded. The test
+    // case now tolerates 1%, which was never applied to this run.
+    const data = getRunThresholdData(NOT_NULL_ONE_PERCENT, {
+      testCaseStatus: TestCaseStatus.Success,
+      passedRows: 970,
+      failedRows: 30,
+      failedRowsPercentage: 3,
+      ...appliedThreshold(5, ThresholdUnit.Percentage),
+    });
+
+    expect(data).toMatchObject({
+      threshold: 5,
+      isPercentage: true,
+      failedRows: 30,
+      evaluatedRows: 1000,
+    });
+    expect(data?.failedPercentage).toBeCloseTo(3, 4);
+  });
+
+  it('keeps the tolerance a run applied after the test case is edited to a looser one', () => {
+    const data = getRunThresholdData(
+      testCaseOf('columnValuesToBeNotNull', [
+        { name: 'threshold', value: '5' },
+        { name: 'thresholdUnit', value: 'PERCENTAGE' },
+      ]),
+      {
+        testCaseStatus: TestCaseStatus.Failed,
+        passedRows: 970,
+        failedRows: 30,
+        failedRowsPercentage: 3,
+        ...appliedThreshold(1, ThresholdUnit.Percentage),
+      }
+    );
+
+    expect(data).toMatchObject({
+      threshold: 1,
+      isPercentage: true,
+      failedRows: 30,
+      evaluatedRows: 1000,
+    });
+  });
+
+  it('leaves the tolerance of a run that recorded none unknown', () => {
+    // A run from an agent that predates the snapshot: the test case's current
+    // 1% says nothing about what that run was judged by.
+    const data = getRunThresholdData(NOT_NULL_ONE_PERCENT, {
+      testCaseStatus: TestCaseStatus.Success,
+      passedRows: 970,
+      failedRows: 30,
+      failedRowsPercentage: 3,
+    });
+
+    expect(data?.threshold).toBeUndefined();
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      failedRows: 30,
+      evaluatedRows: 1000,
+    });
+  });
+
+  it('leaves the configured range of a statistical run that recorded none unknown', () => {
+    const data = getRunThresholdData(
+      testCaseOf('columnValueMeanToBeBetween', [
+        { name: 'minValueForMeanInCol', value: '90' },
+        { name: 'maxValueForMeanInCol', value: '110' },
+      ]),
+      {
+        testCaseStatus: TestCaseStatus.Success,
+        minBound: 85.5,
+        maxBound: 115.5,
+      }
+    );
+
+    expect(data?.threshold).toBeUndefined();
+    expect(data?.configuredRange).toBeUndefined();
+    expect(data?.effectiveRange).toBe('85.5 – 115.5');
   });
 
   it.each([TestCaseStatus.Aborted, TestCaseStatus.Queued])(
@@ -891,8 +1007,6 @@ describe('getRunThresholdData', () => {
   it.each([
     ['tableCustomSQLQuery', []],
     ['tableDiff', []],
-    // In-set only applies the threshold once Match enum is on.
-    ['columnValuesToBeInSet', [{ name: 'threshold', value: '5' }]],
   ])(
     'says nothing for %s, which reads no failure tolerance',
     (name, params) => {
@@ -901,6 +1015,61 @@ describe('getRunThresholdData', () => {
           testCaseStatus: TestCaseStatus.Failed,
         })
       ).toBeUndefined();
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'uses the recorded in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      const data = getRunThresholdData(
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ]),
+        {
+          testCaseStatus: TestCaseStatus.Success,
+          passedRows: 970,
+          failedRows: 30,
+          appliedThreshold: {
+            applied: true,
+            value: 5,
+            unit: ThresholdUnit.Percentage,
+          },
+        }
+      );
+
+      expect(data).toMatchObject({ threshold: 5, failedPercentage: 3 });
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'does not invent an in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      expect(
+        getRunThresholdData(
+          testCaseOf('columnValuesToBeInSet', [
+            { name: 'matchEnum', value: matchEnum },
+          ]),
+          {
+            testCaseStatus: TestCaseStatus.Success,
+            appliedThreshold: { applied: false },
+          }
+        )
+      ).toBeUndefined();
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'keeps an unrecorded in-set tolerance unknown when current matchEnum is %s',
+    (matchEnum) => {
+      const data = getRunThresholdData(
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ]),
+        { testCaseStatus: TestCaseStatus.Success }
+      );
+
+      expect(data).toBeDefined();
+      expect(data?.threshold).toBeUndefined();
     }
   );
 });

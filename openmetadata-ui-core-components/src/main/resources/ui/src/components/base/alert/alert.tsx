@@ -16,7 +16,7 @@ import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-ic
 import { cx } from '@/utils/cx';
 import {
   AlertCircle,
-  AlertTriangle,
+  Alert as AlertIcon,
   CheckCircle,
   InfoCircle,
 } from '../../../icons';
@@ -44,7 +44,7 @@ const variantStyles: Record<
   warning: {
     root: 'tw:border-warning-subtle tw:bg-warning-primary',
     iconColor: 'warning',
-    defaultIcon: AlertTriangle,
+    defaultIcon: AlertIcon,
   },
   error: {
     root: 'tw:border-error-subtle tw:bg-error-primary',

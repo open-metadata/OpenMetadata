@@ -41,8 +41,10 @@
  */
 
 import {
+  ButtonUtility,
   MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
+  Popover,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
 import {
@@ -52,7 +54,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -65,15 +67,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Button as AriaButton,
-  ColumnResizer,
-  Dialog,
-  Popover,
-  ResizableTableContainer,
-} from 'react-aria-components';
+import { ColumnResizer, ResizableTableContainer } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { twMerge } from 'tailwind-merge';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -93,6 +90,7 @@ import type {
   ColumnType,
   FilterValue,
   SorterResult,
+  SortOrder,
   TableCurrentDataSource,
   TablePaginationConfig,
 } from './Table.interface';
@@ -151,7 +149,7 @@ type CustomPaginationProps = NonNullable<
 type PaginationContract<T> =
   | {
       customPaginationProps?: never;
-      pagination?: TableComponentProps<T>['pagination'];
+      pagination?: NonNullable<TableComponentProps<T>['pagination']>;
     }
   | { customPaginationProps?: CustomPaginationProps; pagination: false };
 
@@ -162,7 +160,7 @@ type TableV2Props<T extends object> = Omit<
   PaginationContract<T> &
   TableV2ExtensionProps<T>;
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = PAGE_SIZE_BASE;
 const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 
@@ -382,44 +380,49 @@ const HeaderFilterTrigger = ({
       onKeyDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}>
-      <AriaButton
+      <ButtonUtility
         aria-label="filter"
-        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        className="tw:ml-1"
         data-testid="filter-trigger"
+        icon={icon}
         ref={triggerRef}
-        onPress={() => onOpenChange(!isOpen)}>
-        {icon}
-      </AriaButton>
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
+      {/* offset 8 is react-aria's default, which the filter opened at before core. */}
       <Popover
+        aria-label="filter"
         isOpen={isOpen}
+        offset={8}
         placement="bottom right"
         triggerRef={triggerRef}
         onOpenChange={onOpenChange}>
-        <Dialog aria-label="filter" className="tw:outline-none">
-          {children}
-        </Dialog>
+        {children}
       </Popover>
     </span>
   );
 };
 
 /**
- * React Aria always opens a fresh sort on 'ascending'. AntD lets a column say
- * which way the first click should go via `sortDirections`, so honour the head
- * of that list when the sort moves to a different column.
+ * React Aria only flips a column between ascending and descending, so the
+ * table could never return to its original order. AntD walks the column's
+ * `sortDirections` (ascend → descend by default) and clears the sort once past
+ * the last entry; a column moving to a new sort starts at the head of the list.
  */
-const resolveSortDirection = <T,>(
+const getNextSortDirection = <T,>(
   column: ColumnType<T> | undefined,
-  isFirstClickOnColumn: boolean,
-  fallback: 'ascending' | 'descending' | null
+  current: 'ascending' | 'descending' | null
 ) => {
-  const preferred = column?.sortDirections?.[0];
+  const directions: SortOrder[] = column?.sortDirections ?? [
+    'ascend',
+    'descend',
+  ];
+  const currentOrder = current === 'descending' ? 'descend' : 'ascend';
+  const next = current
+    ? directions[directions.indexOf(currentOrder) + 1]
+    : directions[0];
 
-  if (!isFirstClickOnColumn || !preferred) {
-    return fallback;
-  }
-
-  return toAriaDirection(preferred);
+  return next ? toAriaDirection(next) : null;
 };
 
 /**
@@ -766,21 +769,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -796,7 +796,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {
@@ -885,6 +885,7 @@ const TableV2 = <T extends object>(
     scroll,
     renderToolbar,
     fullWidthRowRender,
+    paddedEmptyState = true,
     'aria-label': ariaLabel = 'data-table',
     ...rest
   }: TableV2Props<T>,
@@ -1590,10 +1591,9 @@ const TableV2 = <T extends object>(
         | undefined;
       const reportedKey = columnKeys[clickedIndex] ?? '';
 
-      const newDirection = resolveSortDirection(
+      const newDirection = getNextSortDirection(
         clickedColumn,
-        sortState.columnKey !== newKey,
-        descriptor.direction ?? null
+        effectiveSort.columnKey === newKey ? effectiveSort.direction : null
       );
       setSortState({ columnKey: newKey, direction: newDirection });
 
@@ -1631,7 +1631,7 @@ const TableV2 = <T extends object>(
       filteredDataSource.length,
       internalCurrentPage,
       clientPagination,
-      sortState.columnKey,
+      effectiveSort,
       columnIds,
       columnKeys,
     ]
@@ -1762,7 +1762,7 @@ const TableV2 = <T extends object>(
         'table-container tw:rounded-xl',
         rest.variant === 'muted'
           ? MUTED_CONTAINER_CLASSES
-          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
@@ -1970,10 +1970,7 @@ const TableV2 = <T extends object>(
                             <div
                               // Caps at ~264px and scrolls, like the filter
                               // dropdown it replaced.
-                              className={classNames(
-                                'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
-                              )}
+                              className="tw:max-h-[264px] tw:max-w-80 tw:overflow-auto"
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'
@@ -2038,7 +2035,11 @@ const TableV2 = <T extends object>(
                     // absolute/inset-0 and fills its nearest positioned
                     // ancestor); the padding is the placeholder's breathing
                     // room and belongs to whatever fills the slot.
-                    <div className="tw:relative tw:min-h-40 tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                    <div
+                      className={classNames(
+                        'tw:relative tw:min-h-40 tw:text-center tw:text-sm tw:text-fg-tertiary',
+                        { 'tw:py-8': paddedEmptyState }
+                      )}>
                       {
                         // AntD fell back to its own <Empty> illustration, not
                         // bare text, so a table with no rows read as an empty

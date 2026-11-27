@@ -154,6 +154,11 @@
       "type": "integer",
       "default": 0
     },
+    "neverExtracted": {
+      "description": "Whether this file was processed but its memories were never extracted, so it shows as Not processed. Computed on read and never stored.",
+      "type": "boolean",
+      "readOnly": true
+    },
     "sourceType": {
       "description": "How this file was added.",
       "$ref": "#/definitions/sourceType"

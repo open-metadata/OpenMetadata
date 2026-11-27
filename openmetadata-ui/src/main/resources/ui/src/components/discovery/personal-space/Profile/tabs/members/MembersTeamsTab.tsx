@@ -22,7 +22,7 @@ import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo, useRef } from 'react';
 import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE } from '../../../../../../constants/constants';
+
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -68,16 +68,14 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
     const rowKey =
       movedTeam?.to?.fullyQualifiedName ?? movedTeam?.from.fullyQualifiedName;
     const row = Array.from(
-      tableRef.current?.querySelectorAll('[data-row-key]') ?? []
-    ).find((el) => el.getAttribute('data-row-key') === rowKey);
+      tableRef.current?.querySelectorAll<HTMLElement>('[data-row-key]') ?? []
+    ).find((el) => el.dataset.rowKey === rowKey);
 
     return { current: row ?? tableRef.current };
   }, [movedTeam]);
 
   const teamsTotalPages = Math.max(1, Math.ceil(teamsTotal / teamsPageSize));
-  // A changed page size keeps the pager, so the size can be set back.
-  const showTeamsPagination =
-    teamsTotalPages > 1 || teamsPageSize !== PAGE_SIZE;
+  const showTeamsPagination = teamsTotal > 0;
 
   return (
     <>

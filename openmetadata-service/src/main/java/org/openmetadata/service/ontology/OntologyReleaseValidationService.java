@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
@@ -54,10 +55,15 @@ public final class OntologyReleaseValidationService {
   private final Cache<String, FrozenFindings> cache =
       Caffeine.newBuilder().maximumSize(256).build();
 
+  private final BooleanSupplier materializedInference;
+
   public OntologyReleaseValidationService(
-      final OntologyReleaseRepository releases, final OntologyConceptBindingService bindings) {
+      final OntologyReleaseRepository releases,
+      final OntologyConceptBindingService bindings,
+      final BooleanSupplier materializedInference) {
     reader = new OntologyReleaseReader(releases.getDaoCollection());
     this.bindings = bindings;
+    this.materializedInference = materializedInference;
   }
 
   public OntologyReleaseValidation report(
@@ -86,7 +92,10 @@ public final class OntologyReleaseValidationService {
         .withContentDigest(release.getContentDigest())
         .withBaseReleaseId(base == null ? null : base.getId())
         .withValid(Boolean.TRUE.equals(structure.getValid()) && shacl.getViolationCount() == 0)
-        .withLogicalCheck(OntologyReleaseLogicalCheck.NOT_RUN)
+        .withLogicalCheck(
+            materializedInference.getAsBoolean()
+                ? OntologyReleaseLogicalCheck.NOT_RUN
+                : OntologyReleaseLogicalCheck.NOT_APPLICABLE)
         .withStructure(structure)
         .withShacl(shacl)
         .withDeprecationImpacts(impacts);

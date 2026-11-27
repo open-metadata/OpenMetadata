@@ -55,6 +55,14 @@ class MessageParserTest {
   }
 
   @Test
+  void aLinkThatNeverClosesIsNotALink() {
+    assertEquals(
+        List.of(new EntityLink("table", "closedFQN", null, null, null)),
+        MessageParser.getEntityLinks(
+            "<#E::table::openFQN::columns::c1 text <#E::table::closedFQN> <#E::table::tail"));
+  }
+
+  @Test
   void parseMessageWithFallbackText() {
     String message =
         "Hello <#E::user::user1|[@User One](http://localhost:8585/user/user1)> <#E::user::user2|[@User Two](http://localhost:8585/user/user2)>";

@@ -687,6 +687,21 @@ class JsonUtilsTest {
         "error should mention the field or expected format: " + cause.getMessage());
   }
 
+  /**
+   * An object or array where a date belongs is refused; returning without reading it would leave
+   * its members to be bound as fields of the label.
+   */
+  @Test
+  void testTagLabelAppliedAtObjectOrArrayIsRefused() {
+    for (String value : List.of("{\"tagFQN\":\"other.tag\"}", "[\"other.tag\"]")) {
+      String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":" + value + "}";
+      assertThrows(
+          org.openmetadata.schema.exception.JsonParsingException.class,
+          () -> JsonUtils.readValue(json, TagLabel.class),
+          json);
+    }
+  }
+
   @Test
   void describeBindingFailureNamesTheFieldAndUriConstraintWithoutTheValue() {
     Map<String, Object> config = athenaConfigWith("s3StagingDir", "s3://bucket/athena results/");
@@ -747,5 +762,68 @@ class JsonUtilsTest {
             IllegalArgumentException.class,
             () -> JsonUtils.convertValue(config, AthenaConnection.class));
     return JsonUtils.describeBindingFailure(failure);
+  }
+
+  @Test
+  void applyPatch_refusesAPatchThatDoublesTheDocumentPastTheBudget() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    // Each copy appends the whole "items" array to itself, doubling it every operation.
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    ops.add(
+        Json.createObjectBuilder()
+            .add("op", "add")
+            .add("path", "/items/-")
+            .add("value", "x".repeat(1024)));
+    for (int i = 0; i < 40; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "copy")
+              .add("from", "/items")
+              .add("path", "/items/-"));
+    }
+    JsonPatch patch = Json.createPatch(ops.build());
+
+    IllegalArgumentException refused =
+        assertThrows(IllegalArgumentException.class, () -> JsonUtils.applyPatch(document, patch));
+    assertTrue(refused.getMessage().contains("size"), refused.getMessage());
+  }
+
+  @Test
+  void applyPatch_allowsAnOrdinaryGrowingPatch() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < 1000; i++) {
+      ops.add(Json.createObjectBuilder().add("op", "add").add("path", "/items/-").add("value", i));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
+    assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
+  }
+
+  /** The values a patch adds are in its body, which the reader bounds; only copy is charged. */
+  @Test
+  void applyPatch_acceptsAnAddHeavyPatchOnALargeDocument() {
+    int columnCount = 256;
+    String text = "d".repeat(JsonUtils.MAX_PATCH_GROWTH_BYTES / columnCount + 1);
+    JsonArrayBuilder columns = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(Json.createObjectBuilder().add("name", "column" + i).add("description", text));
+    }
+    JsonObject table = Json.createObjectBuilder().add("columns", columns).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "add")
+              .add("path", "/columns/" + i + "/displayName")
+              .add("value", text));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(table, Json.createPatch(ops.build()));
+
+    JsonArray patchedColumns = patched.asJsonObject().getJsonArray("columns");
+    assertEquals(text, patchedColumns.getJsonObject(columnCount - 1).getString("displayName"));
   }
 }

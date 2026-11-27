@@ -26,6 +26,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { TASK_GROUPING_LABEL_KEY } from '../../inbox.constants';
 import { getTaskTypeKey } from '../taskDetail.utils';
 import {
   TaskStatusBucket,
@@ -35,6 +36,30 @@ import ActivityToolbarMenu from './ActivityToolbarMenu';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
+
+/**
+ * The Type filter's options: one per label, not per type, since a test case
+ * incident and an incident both read "Incident" and listing them apart showed
+ * "Incident" twice. Taken from the tasks on screen rather than the full enum,
+ * so it never offers a type the queue does not hold; a chosen type stays
+ * offered (at 0) when none of its tasks are loaded, so it can be unticked.
+ */
+export const useTaskTypeOptions = (tasks: Task[], typeFilter: string[]) => {
+  const { t } = useTranslation();
+
+  return useMemo(() => {
+    const counts = countBy(tasks, getTaskTypeKey);
+    typeFilter.forEach((key) => {
+      counts[key] ??= 0;
+    });
+
+    return Object.entries(counts).map(([key, count]) => ({
+      value: key,
+      label: t(key),
+      count,
+    }));
+  }, [tasks, typeFilter, t]);
+};
 
 export interface InboxTaskListToolbarProps {
   /** The All / Open / Closed control, sharing the first row with grouping. */
@@ -55,6 +80,8 @@ export interface InboxTaskListToolbarProps {
   onSortOrderChange: (value: SORT_ORDER) => void;
   /** The loaded tasks, whose types are the only ones worth offering. */
   tasks: Task[];
+  /** Pages are still unread, so counting `tasks` would undercount. */
+  isPartial?: boolean;
   /** One row for a full-width list; the Inbox's narrow column stacks two. */
   inline?: boolean;
 }
@@ -80,16 +107,17 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   sortOrder,
   onSortOrderChange,
   tasks,
+  isPartial,
   inline,
 }) => {
   const { t } = useTranslation();
 
   // The trigger reads "Group: Type"; the menu rows show the bare option.
   const groupingOptions = useMemo(
-    () => [
-      { value: 'type', label: t('label.type') },
-      { value: 'none', label: t('label.none') },
-    ],
+    () =>
+      (Object.keys(TASK_GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map(
+        (value) => ({ value, label: t(TASK_GROUPING_LABEL_KEY[value]) })
+      ),
     [t]
   );
 
@@ -110,22 +138,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     [statusOptions, t]
   );
 
-  // One option per label, not per type: a test case incident and an incident
-  // both read "Incident", and listing them apart showed "Incident" twice. A
-  // chosen type stays offered (at 0) when none of its tasks are loaded, e.g.
-  // after switching tab, so it can still be unticked.
-  const typeOptions = useMemo(() => {
-    const counts = countBy(tasks, getTaskTypeKey);
-    typeFilter.forEach((key) => {
-      counts[key] ??= 0;
-    });
-
-    return Object.entries(counts).map(([key, count]) => ({
-      value: key,
-      label: t(key),
-      count,
-    }));
-  }, [tasks, typeFilter, t]);
+  const typeOptions = useTaskTypeOptions(tasks, typeFilter);
 
   // A grouping always has a value, so it is a menu, not a filter whose
   // "active" tint would never go away.
@@ -149,6 +162,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   const filters = (
     <>
       <Input
+        autoComplete="off"
         // Wrapping, a basis of 0 would let the search shrink away first.
         className={inline ? 'tw:min-w-48 tw:flex-1' : 'tw:min-w-40 tw:flex-1'}
         icon={SearchInputIcon}
@@ -177,6 +191,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       <FilterSelect
         bordered
         data-testid="inbox-tasks-type-filter"
+        hideCounts={isPartial}
         label={t('label.type')}
         options={typeOptions}
         selectedValues={typeFilter}

@@ -30,6 +30,11 @@ export const setInlineErrorValue = (
   });
 };
 
+const DEFAULT_ERROR_KEYS = {
+  create: 'server.entity-creation-error',
+  update: 'server.entity-updating-error',
+} as const;
+
 export const handleEntityCreationError = ({
   error,
   setInlineAlertDetails,
@@ -45,7 +50,7 @@ export const handleEntityCreationError = ({
   entityLowercase?: string;
   entityLowercasePlural?: string;
   name: string;
-  defaultErrorType?: 'create';
+  defaultErrorType?: 'create' | 'update';
 }) => {
   if (error.response?.status === HTTP_STATUS_CODE.CONFLICT) {
     setInlineErrorValue(
@@ -74,8 +79,8 @@ export const handleEntityCreationError = ({
   }
 
   setInlineErrorValue(
-    defaultErrorType === 'create'
-      ? t(`server.entity-creation-error`, {
+    defaultErrorType
+      ? t(DEFAULT_ERROR_KEYS[defaultErrorType], {
           entity: entityLowercase ?? entity,
         })
       : getErrorText(error, t('server.unexpected-error')),

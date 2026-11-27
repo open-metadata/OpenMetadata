@@ -66,6 +66,7 @@ public class FindContextTool implements McpTool {
                   subjectContext,
                   AIContextFinderAccess.knowledgeViewer(authorizer, securityContext))
               .find(query, size);
+      AIContextFinder.attachMetricHierarchy(found.items());
       result =
           render(
               AIContextFinderAccess.filterCandidates(found, authorizer, securityContext), format);

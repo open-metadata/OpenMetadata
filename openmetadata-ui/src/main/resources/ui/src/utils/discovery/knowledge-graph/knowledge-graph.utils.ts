@@ -894,7 +894,15 @@ const enlargeFocusNode = (
               ...node,
               style: {
                 ...node.style,
-                size: [MAX_NODE_WIDTH, NODE_HEIGHT] as [number, number],
+                // Keep a taller presentation height: the subject card can carry
+                // the "Mapped to business ontology" row under its title.
+                size: [
+                  MAX_NODE_WIDTH,
+                  Math.max(
+                    NODE_HEIGHT,
+                    (node.style?.size as [number, number] | undefined)?.[1] ?? 0
+                  ),
+                ] as [number, number],
               },
             }
           : node

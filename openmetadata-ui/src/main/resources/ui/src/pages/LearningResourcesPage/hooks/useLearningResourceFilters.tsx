@@ -277,8 +277,8 @@ export const useLearningResourceFilters = (
               </Box>
               <ButtonUtility
                 aria-label={t('label.remove')}
-                color="tertiary"
-                icon={<XClose size={14} />}
+                icon={XClose}
+                size="xs"
                 onClick={() => handleRemoveFilter(filter.key)}
               />
             </Badge>

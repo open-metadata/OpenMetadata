@@ -13,6 +13,7 @@
 
 import {
   Button,
+  FeaturedIcon,
   Owner,
   PaginationCardWithControls,
   Table,
@@ -29,6 +30,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { SERVICE_EMPTY_STATE_ICON_CLASS } from '../../../constants/ServiceEmptyState.constant';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -53,9 +58,7 @@ import {
   DELETED_PARAM,
   ENTITY_TYPE_TO_CATEGORY,
   getConnectionsEmptyState,
-  GRID_PAGE_SIZE_OPTIONS,
   HEALTH_PARAM,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICE_TYPE_PARAM,
 } from './ConnectionsPage.constants';
 import ConnectionsPageSkeleton from './ConnectionsPageSkeleton';
@@ -387,17 +390,22 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         onAction={() => openService(service)}>
         <Table.Cell>
           <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-            {/* Neutral rather than brand: the connector logos carry their own colours, and a
-                brand-tinted tile behind them reads as a selected state. */}
-            <div className="tw:flex tw:size-9 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-tertiary">
-              {serviceLogo && (
-                <img
-                  alt={service.serviceType as string}
-                  className="tw:size-[22px] tw:object-contain"
-                  src={serviceLogo}
-                />
-              )}
-            </div>
+            <FeaturedIcon
+              color="gray"
+              icon={
+                serviceLogo ? (
+                  <img
+                    alt={service.serviceType as string}
+                    className="tw:size-[22px] tw:object-contain"
+                    src={serviceLogo}
+                  />
+                ) : undefined
+              }
+              radius="lg"
+              shape="square"
+              size="md"
+              theme="modern"
+            />
             {/* The name truncates hard, so the full value has to be reachable. The
                 Tooltip trigger is a react-aria button that consumes the press, so it
                 navigates the row itself via onTriggerPress to stay clickable. */}
@@ -438,6 +446,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
             <Owner
               isCompactView
               showDashPlaceholder
+              labelVariant="cell"
               maxVisibleOwners={1}
               owners={service.owners ?? []}
             />

@@ -62,6 +62,44 @@ class ContextMemoryEvidenceAccessTest {
     assertEquals(visibleQuery, related.getLast());
   }
 
+  /**
+   * A domain or tag condition cannot be evaluated on a Query that is gone and fails open, so a
+   * reader the Query was hidden from would see it in full once it is deleted.
+   */
+  @Test
+  void aDeletedQueryReadsInFullOnlyToAnAdmin() {
+    ContextMemoryEvidenceAccess.QueryAccess failsOpen = query -> true;
+    ContextMemory memory = memory(List.of(hiddenQuery));
+    memory.setChangeDescription(
+        new ChangeDescription()
+            .withFieldsDeleted(
+                List.of(
+                    new FieldChange()
+                        .withName("relatedEntities")
+                        .withOldValue(JsonUtils.pojoToJson(List.of(hiddenQuery))))));
+
+    ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        List.of(memory),
+        ContextMemoryEvidenceAccess.evidenceAccess(false, query -> false, failsOpen));
+
+    assertNull(memory.getRelatedEntities().getFirst().getFullyQualifiedName());
+    String change = JsonUtils.pojoToJson(memory.getChangeDescription());
+    assertFalse(change.contains(hiddenQuery.getFullyQualifiedName()), change);
+    assertTrue(change.contains(hiddenQuery.getId().toString()), change);
+    assertTrue(
+        ContextMemoryEvidenceAccess.evidenceAccess(true, query -> false, failsOpen)
+            .canView(hiddenQuery));
+  }
+
+  @Test
+  void anExistingQueryReadsAsTheCallersPolicySays() {
+    ContextMemoryEvidenceAccess.QueryAccess existing =
+        ContextMemoryEvidenceAccess.evidenceAccess(false, query -> true, access);
+
+    assertTrue(existing.canView(visibleQuery));
+    assertFalse(existing.canView(hiddenQuery));
+  }
+
   @Test
   void aMemoryWithoutRelatedEntitiesIsUntouched() {
     ContextMemory memory = memory(null);

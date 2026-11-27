@@ -321,6 +321,9 @@ describe('MetricHierarchyCard', () => {
     );
 
     expect(screen.getByTestId('metric-tree-current')).toBeInTheDocument();
+    expect(screen.getByTestId('metric-tree-current-status')).toHaveTextContent(
+      'label.deleted'
+    );
     expect(screen.queryByText('label.try-again')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'label.add-child-metric' })

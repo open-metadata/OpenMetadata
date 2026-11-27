@@ -24,16 +24,21 @@ export const DataContract: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M10.002 18h-4.89a2.22 2.22 0 0 1-2.221-2.222V4.222A2.22 2.22 0 0 1 5.113 2H8.89a2 2 0 0 1 2 2v.474a2 2 0 0 0 2 2h3.458m-3.68 7.792 1.511 1.511 2.933-2.933"
+      d="M16 8.4c0-3.017 0-4.525-.937-5.463S12.617 2 9.6 2h-.8c-3.017 0-4.525 0-5.462.937C2.4 3.874 2.4 5.383 2.4 8.4v3.2c0 3.017 0 4.525.938 5.463S5.783 18 8.8 18H10M6 6h6.4M6 10h5.2m1.889 8.002h3.422c.708 0 1.307-.482 1.012-.998-.472-.828-1.514-1.402-2.723-1.402-1.21 0-2.25.574-2.723 1.402-.295.516.304.998 1.012.998"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M14.797 13.6a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8"
       stroke="currentColor"
       strokeWidth={1.3}
     />

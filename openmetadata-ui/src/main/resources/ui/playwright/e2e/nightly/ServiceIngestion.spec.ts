@@ -23,7 +23,6 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
 import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
-import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
@@ -49,7 +48,9 @@ const services: Record<string, typeof ApiIngestionClass> = {
   'Metabase Service': MetabaseIngestionClass,
   'Mysql Service': MysqlIngestionClass,
   'BigQuery Service': BigQueryIngestionClass,
-  'Kafka Service': KafkaIngestionClass,
+  // Skipping Kafka while its test broker moves off EC2 to the connectors cluster
+  // Remove the comment when the migration is done: https://github.com/open-metadata/k8s-manifests/pull/429
+  // 'Kafka Service': KafkaIngestionClass,
   'MlFlow Service': MlFlowIngestionClass,
   //Skipping Snowflake since instance in temperary down
   // @mohittilala unskip once we have a stable snowflake instance

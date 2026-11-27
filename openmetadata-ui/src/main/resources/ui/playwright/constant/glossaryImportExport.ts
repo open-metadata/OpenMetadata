@@ -13,7 +13,7 @@
 export const CUSTOM_PROPERTIES_TYPES = {
   STRING: 'String',
   MARKDOWN: 'Markdown',
-  SQL_QUERY: 'Sql Query',
+  SQL_QUERY: 'SQL Query',
   TABLE: 'Table',
 };
 

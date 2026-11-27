@@ -19,9 +19,13 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.entity.services.connections.dashboard.qlikSense.certificatePath import (
+    QlikCertificatesByFilePath as QlikCertificatePath,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.qlikSense.certificateValues import (
+    QlikCertificatesByValues as QlikCertificateValues,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
-    QlikCertificatePath,
-    QlikCertificateValues,
     QlikSenseConnection,
 )
 from metadata.ingestion.source.dashboard.qliksense.constants import (

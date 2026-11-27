@@ -21,7 +21,11 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FilterLines } from '@openmetadata/ui-core-components/icons';
+import {
+  AssetRegistry,
+  FilterLines,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -33,11 +37,10 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -71,7 +74,7 @@ import {
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { removeMetricTabAssets } from '../../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
@@ -290,11 +293,9 @@ const AssetsFilterBar = ({
       <Grid.Item className="layout-column d-flex gap-3" span={24}>
         <Dropdown.Root>
           <ButtonUtility
-            className="tw:size-9"
-            color="secondary"
             data-testid="asset-filter-button"
             icon={FilterLines}
-            size="sm"
+            size="lg"
             tooltip={t('label.filter-plural')}
           />
           <Dropdown.Popover className="tw:w-auto" placement="bottom start">
@@ -414,6 +415,7 @@ const AssetsTabs = forwardRef(
       assetCount,
       preloadedData,
       skipSearch = false,
+      useQueryPost = false,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -514,6 +516,24 @@ const AssetsTabs = forwardRef(
         : getTagAssetsQueryFilter(encodedFqn);
     }, [type, entityFqn, queryFilter]);
 
+    // Each filter change starts a new search; a slower earlier one must not overwrite it.
+    const latestFetchId = useRef(0);
+
+    const applySearchResults = useCallback(
+      (res: Awaited<ReturnType<typeof searchQuery>>) => {
+        const hits = res.hits.hits as SearchedDataProps['data'];
+        const total = res.hits.total.value ?? 0;
+        handlePagingChange({ total });
+        setData(hits);
+        setAggregations(getAggregations(res?.aggregations));
+        if (assetCount === undefined) {
+          setTotalAssetCount(total);
+        }
+        setSelectedCard(hits[0]?._source);
+      },
+      [assetCount, handlePagingChange]
+    );
+
     const fetchAssets = useCallback(
       async ({
         index = [SearchIndex.ALL],
@@ -537,6 +557,7 @@ const AssetsTabs = forwardRef(
           return;
         }
 
+        const fetchId = ++latestFetchId.current;
         try {
           setIsLoading(true);
 
@@ -549,29 +570,23 @@ const AssetsTabs = forwardRef(
               )
             : queryParam;
 
-          const res = await searchQuery({
+          const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+          const res = await searchFn({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
             queryFilter: finalQueryFilter as Record<string, unknown>,
           });
-          const hits = res.hits.hits as SearchedDataProps['data'];
-          handlePagingChange({ total: res.hits.total.value ?? 0 });
-          setData(hits);
-          setAggregations(getAggregations(res?.aggregations));
-          if (assetCount === undefined) {
-            setTotalAssetCount(res.hits.total.value ?? 0);
-          }
-          if (hits[0]) {
-            setSelectedCard(hits[0]._source);
-          } else {
-            setSelectedCard(undefined);
+          if (fetchId === latestFetchId.current) {
+            applySearchResults(res);
           }
         } catch {
           // Nothing here
         } finally {
-          setIsLoading(false);
+          if (fetchId === latestFetchId.current) {
+            setIsLoading(false);
+          }
         }
       },
       [
@@ -582,6 +597,8 @@ const AssetsTabs = forwardRef(
         assetCount,
         skipSearch,
         preloadedData,
+        applySearchResults,
+        useQueryPost,
       ]
     );
 
@@ -727,7 +744,7 @@ const AssetsTabs = forwardRef(
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
-            icon={DeleteIcon}
+            icon={Trash01}
             id="delete-button"
             name={t('label.delete')}
           />
@@ -936,7 +953,7 @@ const AssetsTabs = forwardRef(
                 entity: getEntityTypeString(type),
               })
             }
-            icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
+            icon={<AssetRegistry className="tw:text-utility-brand-600" />}
             title={t('label.no-assets-linked-yet')}
           />
         );

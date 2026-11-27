@@ -55,7 +55,7 @@ const isUnchanged = (
 
 /**
  * A status the workflow has no edge for from the incident's stage, such as
- * acknowledging an assigned incident, is a change it cannot take. The edges
+ * acknowledging a resolved incident, is a change it cannot take. The edges
  * are the ones the inline status menu offers; the create and record enums
  * match member for member.
  */

@@ -20,17 +20,27 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { TableType } from '../../../../generated/entity/data/table';
 import {
   TestCase,
   TestCaseErrorDetails,
   TestCaseEvaluationScope,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  tableQueryFn,
+  tableQueryKey,
+} from '../../../../rest/queries/tableQuery';
+import {
+  formatDateTime,
+  formatDuration,
+} from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
   getRunThresholdData,
@@ -43,6 +53,7 @@ import {
 import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import { ExecutionSource } from '../../../observability/profiler/ExecutionSource/ExecutionSource';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -52,7 +63,6 @@ import {
 } from './RunDetailsCard.constants';
 import {
   ComparisonBar,
-  formatRunDuration,
   getRunDetails,
   getSelectedRun,
   isTimeoutError,
@@ -73,7 +83,7 @@ const RunDuration = ({
 }) => {
   const { t } = useTranslation();
   // The slot stays for a run with no duration yet, a queued one, as in the mock.
-  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
+  const text = isUndefined(duration) ? NO_VALUE : formatDuration(duration);
 
   return (
     <Box
@@ -234,12 +244,13 @@ const knownOrQuiet = (
   labelKey: string,
   testId: string,
   value: string | undefined,
-  className = PRIMARY_VALUE
+  className = PRIMARY_VALUE,
+  unknownValue = NO_VALUE
 ): DetailCell => ({
   className: quietWhenUnknown(value ?? NO_VALUE, className),
   labelKey,
   testId,
-  value: value ?? NO_VALUE,
+  value: value ?? unknownValue,
 });
 
 /** "1.20% (120 row(s))", led by the threshold's own unit so the two read alike. */
@@ -284,20 +295,23 @@ const getRowCountableCells = (
   ];
 };
 
-const getStatisticalCells = ({
-  threshold,
-  configuredRange,
-  effectiveRange,
-}: RunThresholdData): DetailCell[] => {
+const getStatisticalCells = (
+  { threshold, configuredRange, effectiveRange }: RunThresholdData,
+  t: TFunction
+): DetailCell[] => {
   const cells = [
     knownOrQuiet(
       'label.configured-range',
       'run-details-configured-range',
-      configuredRange
+      configuredRange,
+      PRIMARY_VALUE,
+      t('label.unavailable')
     ),
   ];
-  // Without a tolerance the effective range is the configured one.
-  if (threshold > 0) {
+  // Without a tolerance the effective range is the configured one. A run that
+  // recorded no tolerance may have widened its range, so the range it was
+  // judged against is shown rather than guessed at.
+  if (isUndefined(threshold) || threshold > 0) {
     cells.push(
       knownOrQuiet(
         'label.effective-range',
@@ -308,6 +322,25 @@ const getStatisticalCells = ({
   }
 
   return cells;
+};
+
+/**
+ * The tolerance the run applied, as the run itself recorded it. A run from an
+ * agent that predates the snapshot recorded none, and the test case's current
+ * setting is not the one that run was judged by, so the cell says so rather
+ * than naming a number.
+ */
+const formatRunThreshold = (
+  { threshold, isPercentage, noun }: RunThresholdData,
+  t: TFunction
+): string | undefined => {
+  if (isUndefined(threshold)) {
+    return undefined;
+  }
+
+  return threshold > 0
+    ? formatThresholdAmount(threshold, isPercentage, noun, t)
+    : t('label.no-tolerance');
 };
 
 /**
@@ -332,20 +365,20 @@ const RunThreshold = ({
     return null;
   }
 
-  const { semantic, threshold, isPercentage, noun } = data;
+  const { semantic } = data;
+  const appliedThreshold = formatRunThreshold(data, t);
   const cells: DetailCell[] = [
     {
-      className: PRIMARY_VALUE,
+      className: isUndefined(appliedThreshold)
+        ? 'tw:text-quaternary'
+        : PRIMARY_VALUE,
       labelKey: 'label.threshold',
       testId: 'run-details-threshold',
-      value:
-        threshold > 0
-          ? formatThresholdAmount(threshold, isPercentage, noun, t)
-          : t('label.no-tolerance'),
+      value: appliedThreshold ?? t('label.unavailable'),
     },
     ...(semantic === ThresholdTestSemantic.RowCountable
       ? getRowCountableCells(data, valueClassName, t)
-      : getStatisticalCells(data)),
+      : getStatisticalCells(data, t)),
   ];
 
   return (
@@ -398,6 +431,29 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
         </Typography>
       </Box>
     </Card>
+  );
+};
+
+const RunExecutionSource = ({
+  testCase,
+  result,
+}: {
+  testCase: TestCase;
+  result: RunResult;
+}) => {
+  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
+  const { data: table } = useQuery({
+    queryKey: tableQueryKey(tableFqn, ''),
+    queryFn: tableQueryFn(tableFqn, ''),
+    enabled: Boolean(tableFqn && !result.evaluationScope?.executionSource),
+  });
+
+  return (
+    <ExecutionSource
+      isSharded={table?.tableType === TableType.Sharded}
+      source={result.evaluationScope?.executionSource}
+      testId="run-execution-source"
+    />
   );
 };
 
@@ -526,6 +582,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
           <DetailCells cells={details} />
         </div>
+        <RunExecutionSource result={result} testCase={testCase} />
         <RunThreshold
           result={result}
           testCase={testCase}

@@ -13,6 +13,7 @@
 import { ChevronDown, Edit01, Plus, Trash01, UploadCloud02 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
 
 const meta = {
   title: 'Components/BaseButton',
@@ -120,10 +121,15 @@ export const IconOnly: StoryObj = {
   parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button color="primary" iconLeading={Plus} size="xs" />
-      <Button color="primary" iconLeading={Plus} size="sm" />
-      <Button color="secondary" iconLeading={Edit01} size="md" />
-      <Button color="tertiary" iconLeading={Trash01} size="lg" />
+      <ButtonUtility icon={Plus} size="xs" tooltip="Add" />
+      <ButtonUtility icon={Plus} size="sm" tooltip="Add" />
+      <ButtonUtility icon={Edit01} size="md" tooltip="Edit" />
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Trash01}
+        size="lg"
+        tooltip="Delete"
+      />
     </div>
   ),
 };
@@ -196,6 +202,19 @@ export const BoxedLink: StoryObj = {
   ),
 };
 
+export const Pill: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3 tw:rounded-full tw:border tw:border-utility-warning-300 tw:bg-utility-warning-50 tw:py-2 tw:pr-2 tw:pl-4">
+      <span className="tw:text-sm tw:font-semibold">
+        Priya Raman asked you to review v1.1.0
+      </span>
+      <Button pill color="secondary-warning-outline" size="sm">
+        Review
+      </Button>
+    </div>
+  ),
+};
+
 export const AsLink: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -227,11 +246,11 @@ export const AsLink: StoryObj = {
           target="_blank">
           With Icon
         </Button>
-        <Button
-          color="primary"
+        <ButtonUtility
           href="https://open-metadata.org"
-          iconLeading={Plus}
+          icon={Plus}
           target="_blank"
+          tooltip="Open link"
         />
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

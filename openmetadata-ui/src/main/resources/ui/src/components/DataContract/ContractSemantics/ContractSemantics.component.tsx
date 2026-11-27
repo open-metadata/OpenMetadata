@@ -13,12 +13,12 @@
 import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
+  Inherit,
   MinusCircle,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { SemanticsRule } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
@@ -58,9 +58,9 @@ const ContractSemantics: React.FC<{
                 entity: t('label.semantic-plural'),
               })}
               triggerClassName="tw:inline-flex">
-              <InheritIcon
-                className="inherit-icon tw:cursor-pointer"
-                width={14}
+              <Inherit
+                className="inherit-icon tw:cursor-pointer tw:text-utility-blue-700"
+                size={14}
               />
             </Tooltip>
           ) : null;

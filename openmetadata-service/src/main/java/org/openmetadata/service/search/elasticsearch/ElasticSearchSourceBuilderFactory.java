@@ -10,6 +10,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -70,9 +71,17 @@ public class ElasticSearchSourceBuilderFactory
   private static final String RANKING_QUERY_PREFIX = "ranking:";
 
   private final SearchSettings searchSettings;
+  private final boolean matchesPrivateFields;
 
   public ElasticSearchSourceBuilderFactory(SearchSettings searchSettings) {
+    this(searchSettings, true);
+  }
+
+  /** {@code matchesPrivateFields} false keeps a free-text user search off the email fields. */
+  public ElasticSearchSourceBuilderFactory(
+      SearchSettings searchSettings, boolean matchesPrivateFields) {
     this.searchSettings = searchSettings;
+    this.matchesPrivateFields = matchesPrivateFields;
   }
 
   private AssetTypeConfiguration getAssetConfiguration(String indexName) {
@@ -280,7 +289,8 @@ public class ElasticSearchSourceBuilderFactory
 
   public ElasticSearchRequestBuilder buildUserOrTeamSearchBuilderV2(
       String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields(matchesPrivateFields));
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -370,7 +380,7 @@ public class ElasticSearchSourceBuilderFactory
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -915,7 +925,7 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
-      String fuzziness = getFuzziness(query);
+      String fuzziness = getFuzziness(query, fields.keySet());
       int maxExpansions = getMaxExpansions(query);
 
       Query fuzzyQuery =

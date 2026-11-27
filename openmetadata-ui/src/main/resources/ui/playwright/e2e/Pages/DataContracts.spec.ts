@@ -81,6 +81,7 @@ import {
   validateSecurityAndSLADetails,
   waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
+import { selectTestType } from '../../utils/dataQuality';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -420,16 +421,7 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.name
           );
 
-          await page.locator('[id="root\\/testType"]').click();
-
-          const testTypeOption = page
-            .getByRole('option')
-            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
-            .first();
-
-          await expect(testTypeOption).toBeVisible();
-
-          await testTypeOption.click();
+          await selectTestType(page, NEW_TABLE_TEST_CASE.label);
 
           await page.fill(
             '#testCaseFormV1_params_columnCount',
@@ -1829,7 +1821,7 @@ test.describe('Data Contracts', () => {
     // Edit semantic
     await page
       .getByTestId('contract-semantics-card-0')
-      .locator('.edit-expand-button')
+      .getByTestId('edit-semantic-0')
       .click();
     await page.fill('#semantics_0_name', 'Edited Semantic Name');
     await page.getByTestId('save-semantic-button').click();

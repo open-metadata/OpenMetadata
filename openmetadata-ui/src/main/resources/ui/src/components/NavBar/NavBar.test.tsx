@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
 } from '../../constants/constants';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
+import DomainSelect from '../common/DomainSelect/DomainSelect';
 import NavBarComponent from './NavBar';
 
 // Place these at the very top of your test file, before any imports!
@@ -228,6 +230,22 @@ describe('Test NavBar Component', () => {
     expect(getHelpDropdownItems).toHaveBeenCalled();
   });
 
+  it('runs a help item from the keyboard, not only from a click', async () => {
+    const onAction = jest.fn();
+    (getHelpDropdownItems as jest.Mock).mockReturnValueOnce([
+      { key: 'tour', label: <span>Tour</span>, onAction },
+    ]);
+    render(<NavBarComponent />);
+
+    fireEvent.click(screen.getByTestId('help-icon'));
+    const item = await screen.findByRole('menuitem', { name: 'Tour' });
+    act(() => item.focus());
+    fireEvent.keyDown(item, { key: 'Enter' });
+    fireEvent.keyUp(item, { key: 'Enter' });
+
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
   // The landing page carries neither a search bar nor a domain control of its
   // own any more, so the navbar is the only place either one can live there.
   it('should show global search bar and domain dropdown on my-data route', async () => {
@@ -258,6 +276,36 @@ describe('Test NavBar Component', () => {
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
+  });
+
+  it('offers All Domains to a domain-restricted user with several domains', () => {
+    const userDomains = [
+      { id: 'd1', type: 'domain', fullyQualifiedName: 'Alpha' },
+      { id: 'd2', type: 'domain', fullyQualifiedName: 'Gamma' },
+    ];
+    const domainStore = useDomainStore as unknown as jest.Mock;
+    const defaultStore = domainStore.getMockImplementation();
+    domainStore.mockImplementation(() => ({
+      activeDomain: 'All Domains',
+      isDomainRestricted: true,
+      userDomains,
+      updateActiveDomain: jest.fn(),
+    }));
+
+    render(<NavBarComponent />);
+
+    expect(DomainSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showAllDomains: true,
+        restrictedDomains: userDomains,
+      }),
+      expect.anything()
+    );
+    expect(
+      (DomainSelect as unknown as jest.Mock).mock.calls.at(-1)[0]
+    ).not.toHaveProperty('isClearable', false);
+
+    domainStore.mockImplementation(defaultStore);
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {

@@ -26,20 +26,25 @@ import { IChangeEvent } from '@rjsf/core';
 import {
   FieldProps,
   FieldTemplateProps,
+  getDefaultFormState,
   RJSFSchema,
   UiSchema,
 } from '@rjsf/utils';
-import { FC, useMemo } from 'react';
+import validator from '@rjsf/validator-ajv8';
+import { isEqual } from 'lodash';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
@@ -179,6 +184,33 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
     [appData.appConfiguration]
   );
 
+  // The form fills schema defaults in, so compare edits against the data with
+  // those defaults applied, or an untouched form would read as changed.
+  const savedFormData = useMemo(
+    () => getDefaultFormState(validator, jsonSchema, formData),
+    [jsonSchema, formData]
+  );
+  // Derived, not a flag: when a save updates the app, the baseline moves and
+  // the form reads as clean again.
+  const [currentFormData, setCurrentFormData] = useState<unknown>();
+  // RJSF prunes schema-unknown keys on submit (`omitExtraData`) but not on
+  // `onChange` (no `liveOmit`), so a save that drops a legacy key moves the
+  // baseline without re-firing `onChange`. Reset the stale live-form snapshot
+  // when the stored config changes (a save), so the form reads clean after it.
+  // Keyed on the stored config, not the schema: a schema that loads late (MCP
+  // tool names) must not drop an in-progress edit.
+  useEffect(() => {
+    setCurrentFormData(undefined);
+  }, [formData]);
+  const isDirty = useMemo(
+    () =>
+      currentFormData !== undefined && !isEqual(currentFormData, savedFormData),
+    [currentFormData, savedFormData]
+  );
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    !isReadOnly && isDirty
+  );
+
   const handleSubmit = (event: IChangeEvent) =>
     onSave({ formData: formatFormDataForSubmit(event.formData) });
 
@@ -194,6 +226,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
         uiSchema={uiSchema}
+        onChange={(event) => setCurrentFormData(event.formData)}
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (
@@ -203,10 +236,11 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
               color="tertiary"
               data-testid="cancel-button"
               isDisabled={isSaving}
-              onPress={onCancel}>
+              onPress={() => runGuarded(onCancel)}>
               {cancelLabel ?? t('label.cancel')}
             </Button>
           )}
+          <UnsavedChangesPrompt {...promptProps} />
           <Button
             color="primary"
             data-testid="save-button"

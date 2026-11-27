@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.OntologyDefinition;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyHydratedAssetBinding;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.OntologyReleaseLogicalCheck;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -239,6 +241,26 @@ class OntologyReleaseValidationTest {
     assertEquals("table102", assets.getLast().getName());
   }
 
+  @Test
+  void logicalConsistencyIsNotApplicableUntilInferenceIsMaterialized() {
+    final Ontology ontology = ontology("logical");
+    final Bundle bundle = bundle(ontology);
+    final var access = new OntologyConceptBindingService.Access(null, null);
+    final Map<UUID, List<OntologyReleaseMember>> stored =
+        Map.of(bundle.release().getId(), bundle.members());
+
+    assertEquals(
+        OntologyReleaseLogicalCheck.NOT_APPLICABLE,
+        validation(stored, null, () -> false)
+            .report(bundle.release(), null, ignored -> {}, access)
+            .getLogicalCheck());
+    assertEquals(
+        OntologyReleaseLogicalCheck.NOT_RUN,
+        validation(stored, null, () -> true)
+            .report(bundle.release(), null, ignored -> {}, access)
+            .getLogicalCheck());
+  }
+
   private static OntologyConceptBindingsResponse page(final String after, final int... tables) {
     return new OntologyConceptBindingsResponse()
         .withRevision(1L)
@@ -267,8 +289,15 @@ class OntologyReleaseValidationTest {
   private static OntologyReleaseValidationService validation(
       final Map<UUID, List<OntologyReleaseMember>> stored,
       final OntologyConceptBindingService bindings) {
+    return validation(stored, bindings, () -> true);
+  }
+
+  private static OntologyReleaseValidationService validation(
+      final Map<UUID, List<OntologyReleaseMember>> stored,
+      final OntologyConceptBindingService bindings,
+      final BooleanSupplier materializedInference) {
     final OntologyReleaseDAO dao = mock(OntologyReleaseDAO.class);
-    when(dao.listMembers(any(UUID.class), anyString(), anyString(), eq(100)))
+    when(dao.listMembers(any(UUID.class), anyString(), anyString(), eq(1_000)))
         .thenAnswer(
             invocation -> {
               final String kind = invocation.getArgument(1);
@@ -279,14 +308,14 @@ class OntologyReleaseValidationTest {
                       member ->
                           after.isEmpty() || member.getMemberId().toString().compareTo(after) > 0)
                   .sorted(Comparator.comparing(member -> member.getMemberId().toString()))
-                  .limit(100)
+                  .limit(invocation.<Integer>getArgument(3))
                   .toList();
             });
     final CollectionDAO collection = mock(CollectionDAO.class);
     when(collection.ontologyReleaseDAO()).thenReturn(dao);
     final OntologyReleaseRepository releases = mock(OntologyReleaseRepository.class);
     when(releases.getDaoCollection()).thenReturn(collection);
-    return new OntologyReleaseValidationService(releases, bindings);
+    return new OntologyReleaseValidationService(releases, bindings, materializedInference);
   }
 
   private static Cache<?, ?> cache(final OntologyReleaseValidationService validation)

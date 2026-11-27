@@ -20,12 +20,21 @@ import {
   getChildTeamColumns,
   getTabLabel,
   getUserColumns,
+  TEAM_FIELDS,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
 
 const team = (fqn: string, childrenCount = 0): Team =>
   ({ name: fqn, fullyQualifiedName: fqn, childrenCount } as Team);
+
+describe('TEAM_FIELDS', () => {
+  // Without the profile the subscription widget reads no webhook, and a save
+  // would replace the stored one with nothing.
+  it('requests the profile the subscription widget edits', () => {
+    expect(TEAM_FIELDS.split(',')).toContain('profile');
+  });
+});
 
 describe('withTeamChildrenPlaceholder', () => {
   it('adds an empty children array to teams that have sub-teams', () => {

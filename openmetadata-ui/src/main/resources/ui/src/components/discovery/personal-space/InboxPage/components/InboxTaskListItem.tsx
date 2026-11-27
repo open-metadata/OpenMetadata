@@ -16,7 +16,6 @@ import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -43,17 +42,14 @@ const TaskRequester: React.FC<{ task: Task }> = ({ task }) => {
   const { t } = useTranslation();
   const agent = getProposingAgent(task, t);
   const requester = task.createdBy;
-  const requesterName = requester?.displayName ?? requester?.name;
-
-  if (agent) {
-    return <AgentBadge name={agent} />;
-  }
+  const requesterName = agent ?? requester?.displayName ?? requester?.name;
 
   return requesterName ? (
     <Box align="center" className="tw:gap-1.5">
       <ProfilePicture
         matchRingToFill
         displayName={requesterName}
+        isAgent={Boolean(agent)}
         name={requester?.name ?? ''}
         width="16"
       />

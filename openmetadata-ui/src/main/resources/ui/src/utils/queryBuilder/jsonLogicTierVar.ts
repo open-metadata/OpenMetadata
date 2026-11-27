@@ -39,7 +39,7 @@ const TAGS_VAR = 'tags';
 const isObject = (node: unknown): node is Record<string, unknown> =>
   typeof node === 'object' && node !== null && !Array.isArray(node);
 
-const isVar = (node: unknown, name: string): boolean =>
+export const isVar = (node: unknown, name: string): boolean =>
   isObject(node) && Object.keys(node).length === 1 && node.var === name;
 
 const isVarNamespaceContains = (node: unknown): boolean =>

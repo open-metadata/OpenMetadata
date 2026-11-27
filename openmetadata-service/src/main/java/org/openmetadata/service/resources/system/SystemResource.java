@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,6 +33,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -48,6 +50,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -63,6 +66,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -80,6 +84,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.AdoptDeploymentConfigRequest;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.SettingSource;
 import org.openmetadata.schema.system.SettingsSourceResponse;
@@ -99,6 +104,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
@@ -106,6 +112,7 @@ import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsSourceService;
+import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -117,6 +124,7 @@ import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeMapper;
 import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -148,6 +156,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final String ENTITY_RULES_LIST_POINTER = "/entitySemantics";
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -542,6 +551,56 @@ public class SystemResource {
         .toList();
   }
 
+  @PATCH
+  @Path("/settings/entityRulesSettings/rules/{ruleName}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchEntityRule",
+      summary = "Patch one Data Asset Rule",
+      description =
+          "Update one Data Asset Rule, found by name, using JsonPatch. Paths are relative to the "
+              + "rule (for example /enabled), so rules the caller never read are preserved. The "
+              + "patch may not rename, add or remove rules. The write uses compare-and-set: if the "
+              + "stored rules changed while the server applied the patch, the request fails with "
+              + "412 Precondition Failed instead of overwriting the newer value.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid patch, or a patch that renames, adds or removes rules"),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored rules changed while the patch was applied")
+      })
+  public Response patchEntityRule(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to patch", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @RequestBody(
+              description = "JsonPatch with operations relative to the rule",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:replace, path:/enabled, value:false}]")}))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+    return forResponse(
+        systemRepository.patchSettingItem(
+            SettingsType.ENTITY_RULES_SETTINGS, ENTITY_RULES_LIST_POINTER, ruleName, patch));
+  }
+
   @GET
   @Path("/search/nlq")
   @Operation(
@@ -642,17 +701,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -779,27 +833,6 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
-
-      if (mergedSettings.getGlobalSettings() != null
-          && mergedSettings.getGlobalSettings().getKeywordWeight() != null
-          && mergedSettings.getGlobalSettings().getSemanticWeight() != null) {
-        try {
-          Entity.getSearchRepository()
-              .updateHybridSearchPipeline(
-                  mergedSettings.getGlobalSettings().getKeywordWeight(),
-                  mergedSettings.getGlobalSettings().getSemanticWeight());
-        } catch (Exception e) {
-          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
-          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
-          // the whole settings save on that made search settings unsaveable there. The weights
-          // being saved here are the ones hybrid search reads per query, so they take effect
-          // regardless of whether the stored pipeline could be refreshed.
-          LOG.warn(
-              "Saved search settings but could not refresh the named hybrid search pipeline; "
-                  + "the new weights still apply to hybrid queries",
-              e);
-        }
-      }
     }
 
     LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
@@ -1132,19 +1165,19 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration originalConfig =
-        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    // Masked for every caller, bots included: no client needs the stored secrets back.
+    return maskedCopy(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
 
-    // Create a deep copy to avoid mutating the original shared objects
-    String configJson = JsonUtils.pojoToJson(originalConfig);
-    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
-    // Apply password masking if needed - only to the copy
-    if (authorizer.shouldMaskPasswords(securityContext)) {
+  /** A copy with the secrets masked, as an admin reads the configuration. */
+  static SecurityConfiguration maskedCopy(SecurityConfiguration config) {
+    SecurityConfiguration copy =
+        JsonUtils.readValue(JsonUtils.pojoToJson(config), SecurityConfiguration.class);
+    if (copy.getAuthenticationConfiguration() != null) {
       SettingsSecrets.maskInPlace(
-          AUTHENTICATION_CONFIGURATION, config.getAuthenticationConfiguration());
+          AUTHENTICATION_CONFIGURATION, copy.getAuthenticationConfiguration());
     }
-    return config;
+    return copy;
   }
 
   @PUT
@@ -1170,41 +1203,29 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      preserveMaskedSecuritySecrets(securityConfig, currentSecurityConfiguration());
+      StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
+      SecurityConfiguration previous = configurationOf(stored);
+      preserveMaskedSecuritySecrets(securityConfig, previous);
       systemRepository.assertSecurityConfigurationWritable(securityConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
       validateConfigurationOfActiveProvider(securityConfig);
+      requireApplicable(securityConfig);
 
       // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
       systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
 
-      // Update both configurations in a transaction
-      Settings authSettings =
-          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
-      Settings authzSettings =
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(securityConfig.getAuthorizerConfiguration());
-
-      // Save both to database
-      systemRepository.createOrUpdate(authSettings);
-      systemRepository.createOrUpdate(authzSettings);
-
-      // Invalidate both caches
-      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
-      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
-      // Reload entire security system
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      storeAndApply(securityConfig, stored, previous);
 
       return Response.ok(getSecurityConfig(securityContext)).build();
-    } catch (BadRequestException | SettingsManagedByEnvironmentException e) {
-      // Raised before anything is written: by validateConfigurationOfActiveProvider, or because the
-      // deployment configuration owns the setting. Rethrow so the mapper answers 400/409 rather
-      // than letting the catch below report a server failure. Keep the types narrow, so a failure
-      // from the writes below still surfaces as a 5xx instead of blaming the payload after the
-      // configuration was already persisted.
+    } catch (PreconditionFailedException e) {
+      // Another save changed the configuration since it was read or while this one was applied.
+      catchUpWithStoredSecurityConfiguration();
+      throw e;
+    } catch (WebApplicationException | SettingsManagedByEnvironmentException e) {
+      // Raised before anything is written (validation, or a setting the deployment configuration
+      // owns), or with what a save the server could not apply left behind. Rethrow so the mapper
+      // answers with that status; a failure of the writes themselves is neither, and still
+      // surfaces as a 5xx below.
       throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
@@ -1215,6 +1236,113 @@ public class SystemResource {
   private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
     ActiveProviderValidator.validate(
         securityConfig, securityConfig.getAuthenticationConfiguration());
+  }
+
+  /** The checks a save without the full validation still makes: no network is involved. */
+  private void requireApplicable(SecurityConfiguration securityConfig) {
+    FieldError error = systemRepository.applicabilityError(securityConfig);
+    if (error != null) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid security configuration: %s: %s", error.getField(), error.getError()));
+    }
+  }
+
+  /**
+   * Stores {@code updated} over {@code stored}, the rows this request read, compared and set, and
+   * switches the security system to it. One this server cannot apply, such as a directory that
+   * refuses the bind or a keystore it cannot read, is put back to {@code previous} and refused
+   * with the reason, so no server runs it, now or at its next start
+   * (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused).
+   */
+  private void storeAndApply(
+      SecurityConfiguration updated,
+      StoredSecurityConfiguration stored,
+      SecurityConfiguration previous) {
+    StoredSecurityConfiguration written =
+        stored == null
+            ? systemRepository.storeSecurityConfiguration(updated)
+            : systemRepository.updateSecurityConfigurationIfCurrent(updated, stored);
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    try {
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+    } catch (AuthenticationException notApplied) {
+      throw refusalOf(written, stored, previous, ExceptionUtils.getRootCauseMessage(notApplied));
+    }
+  }
+
+  /**
+   * Undoes {@code written}, a save this server could not apply, but only while the rows still hold
+   * it, and answers for what is left: 400 when it was undone, 412 when another save replaced it
+   * meanwhile and was kept, 500 when undoing it failed and the refused configuration may still be
+   * stored.
+   */
+  private WebApplicationException refusalOf(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous,
+      final String reason) {
+    try {
+      putBack(written, stored, previous);
+    } catch (PreconditionFailedException savedMeanwhile) {
+      LOG.warn(
+          "Kept a security configuration saved while one that could not be applied ({}) was in"
+              + " progress",
+          reason);
+      return new PreconditionFailedException(
+          String.format(
+              "The security configuration could not be applied (%s), and another save changed"
+                  + " it meanwhile; that save was kept. Read the configuration again.",
+              reason),
+          savedMeanwhile);
+    } catch (RuntimeException putBackFailed) {
+      LOG.error(
+          "A security configuration that could not be applied ({}) may still be stored: putting"
+              + " the previous one back failed",
+          reason,
+          putBackFailed);
+      return new InternalServerErrorException(
+          String.format(
+              "The security configuration could not be applied (%s), and putting the previous one"
+                  + " back failed, so the refused configuration may still be stored. Save a"
+                  + " working configuration again.",
+              reason),
+          putBackFailed);
+    }
+    return new BadRequestException(
+        "The security configuration could not be applied, so it was not saved: " + reason);
+  }
+
+  /**
+   * Puts the rows {@code written} replaced back as they were read. When a row was missing there
+   * were none to put back, so the configuration this server runs, {@code previous}, is stored as
+   * any other write is.
+   */
+  private void putBack(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous) {
+    if (stored == null) {
+      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+    } else {
+      systemRepository.restoreSecurityConfigurationIfCurrent(stored, written);
+    }
+  }
+
+  /**
+   * Applies what another save stored while this one was in progress, so the admin's next read
+   * shows it. The conflict is what the caller has to learn about, so a failure to apply that save
+   * here is logged rather than answered.
+   */
+  private static void catchUpWithStoredSecurityConfiguration() {
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    try {
+      SecurityConfigurationManager.getInstance().reloadIfStoredChanged();
+    } catch (RuntimeException notApplied) {
+      LOG.warn("Could not apply the security configuration another save stored", notApplied);
+    }
   }
 
   @PATCH
@@ -1245,12 +1373,14 @@ public class SystemResource {
 
     try {
       StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
-      SecurityConfiguration currentConfig =
-          stored == null ? currentSecurityConfiguration() : stored.configuration();
+      SecurityConfiguration currentConfig = configurationOf(stored);
 
-      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+      // The patch works on the configuration as the admin reads it, so a copy or move from a secret
+      // moves the mask; the secrets come back below where that is safe.
+      SecurityConfiguration maskedConfig = maskedCopy(currentConfig);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, maskedConfig);
 
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      JsonValue patched = JsonUtils.applyPatch(maskedConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
@@ -1283,17 +1413,12 @@ public class SystemResource {
 
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
-      storeSecurityConfiguration(updatedConfig, stored);
-
-      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
-      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      storeAndApply(updatedConfig, stored, currentConfig);
       return Response.noContent().build();
     } catch (PreconditionFailedException e) {
       // Another server, the CLI or an administration job changed the configuration since it was
-      // read. Catch up so the admin's next read shows it.
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      // read, or while this save was being applied.
+      catchUpWithStoredSecurityConfiguration();
       throw e;
     } catch (WebApplicationException | SettingsManagedByEnvironmentException e) {
       throw e;
@@ -1304,8 +1429,7 @@ public class SystemResource {
   }
 
   /** What is stored, falling back to this server's copy when the rows are missing. */
-  private SecurityConfiguration currentSecurityConfiguration() {
-    StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
+  private static SecurityConfiguration configurationOf(StoredSecurityConfiguration stored) {
     return stored == null
         ? JsonUtils.deepCopy(
             SecurityConfigurationManager.getInstance().getCurrentSecurityConfig(),
@@ -1313,22 +1437,12 @@ public class SystemResource {
         : stored.configuration();
   }
 
-  private void storeSecurityConfiguration(
-      SecurityConfiguration updated, StoredSecurityConfiguration stored) {
-    if (stored == null) {
-      systemRepository.createOrUpdate(
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(updated.getAuthenticationConfiguration()));
-      systemRepository.createOrUpdate(
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(updated.getAuthorizerConfiguration()));
-    } else {
-      systemRepository.updateSecurityConfigurationIfCurrent(updated, stored);
-    }
-  }
-
+  /**
+   * Gives back the stored secrets a client sent masked or left out, but only while the setting each
+   * one is used with is unchanged, so a write never sends a stored secret somewhere new. A secret
+   * still masked after that has to be entered again
+   * (ADR:2026-11-03-security-config-writes-never-move-a-stored-secret).
+   */
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
     if (updated == null || updated.getAuthenticationConfiguration() == null) {
@@ -1341,10 +1455,15 @@ public class SystemResource {
         updated.getAuthenticationConfiguration(),
         originalAuthentication);
     if (originalAuthentication != null) {
-      SettingsSecrets.restoreMaskedInPlace(
-          AUTHENTICATION_CONFIGURATION,
-          updated.getAuthenticationConfiguration(),
-          originalAuthentication);
+      TestLoginCandidates.restoreLiveSecretsInPlace(updated, original);
+    }
+    Set<String> withheld =
+        SettingsSecrets.maskedSecrets(
+            AUTHENTICATION_CONFIGURATION, updated.getAuthenticationConfiguration());
+    if (!withheld.isEmpty()) {
+      throw new BadRequestException(
+          String.format(
+              "Enter %s again: the setting it is used with changed.", String.join(", ", withheld)));
     }
   }
 
@@ -1534,6 +1653,30 @@ public class SystemResource {
       return Response.ok(mcpSettings.getConfigValue()).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @GET
+  @Path("/mcp/tools")
+  @Operation(
+      operationId = "listMCPTools",
+      summary = "List the MCP server's tools",
+      description =
+          "Names of the tools this MCP server registered at startup, including tools a "
+              + "distribution adds and before read-only mode or disabled tools are applied. "
+              + "The settings form offers these as the tools an admin can disable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tool names",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public List<String> listMCPTools(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return McpToolRegistry.getToolNames();
   }
 
   @PUT
@@ -1873,6 +2016,13 @@ public class SystemResource {
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+    // The setting is saved before its types are deleted, so a delete the guard would refuse has to
+    // be refused here, while nothing is written yet.
+    ((RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE))
+        .requireRemovableTogether(
+            removedRelationTypes,
+            new LegacyRelationshipTypeMapper(Clock.systemUTC())
+                .map(newConfig, Entity.ADMIN_USER_NAME));
   }
 
   private static int relationTypeUsage(

@@ -69,7 +69,8 @@ export const verifyWebhookIcon = async (
 ) => {
   const icon = page.getByTestId(iconTestId);
   await expect(icon).toBeVisible();
-  await expect(icon.locator('..')).toHaveAttribute('href', endpoint);
+  // The endpoint is a secret the server masks, so the page does not link it.
+  await expect(page.locator(`a[href="${endpoint}"]`)).toHaveCount(0);
 };
 
 export const configureWebhook = async (

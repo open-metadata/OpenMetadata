@@ -17,11 +17,16 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -29,10 +34,22 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.fernet.Fernet;
 
 class DestinationValidationTest {
   private static final String USABLE = "https://hooks.example.com/ok";
   private static final String NOT_A_WEBHOOK = "ftp://saved-long-ago.example.com";
+  private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
+
+  @BeforeEach
+  void setUp() {
+    Fernet.getInstance().setFernetKey(TEST_FERNET_KEY);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Fernet.getInstance().setFernetKey((String) null);
+  }
 
   @Test
   void everyDestinationOfANewAlertIsChecked() {
@@ -42,6 +59,38 @@ class DestinationValidationTest {
         assertThrows(BadRequestException.class, () -> DestinationValidation.ofANewAlert(alert));
 
     assertTrue(refused.getMessage().contains("Invalid webhook endpoint URL"));
+  }
+
+  @Test
+  void aStoredValueThatDoesNotOpenStopsNoEdit() {
+    EventSubscription stored = alertWith(signedWith(encryptedWithAnotherKey("old key")));
+    EventSubscription renamed = copyOf(stored).withDisplayName("Renamed");
+
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, renamed));
+  }
+
+  @Test
+  void aStoredValueThatDoesNotOpenCanBeEnteredAgain() {
+    SubscriptionDestination holdingIt = signedWith(encryptedWithAnotherKey("old key"));
+    EventSubscription stored = alertWith(holdingIt);
+    SubscriptionDestination entered = signedWith("new key").withId(holdingIt.getId());
+    EventSubscription updated =
+        copyOf(stored).withDestinations(DestinationSecrets.encrypt(List.of(entered)));
+
+    assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, updated));
+  }
+
+  @Test
+  void aChangedDestinationStillHoldingAValueThatDoesNotOpenIsRefused() {
+    EventSubscription stored = alertWith(signedWith(encryptedWithAnotherKey("old key")));
+    EventSubscription changed = copyOf(stored);
+    changed.getDestinations().getFirst().withTimeout(99);
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class, () -> DestinationValidation.ofWhatChanged(stored, changed));
+
+    assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
   }
 
   @Test
@@ -187,6 +236,12 @@ class DestinationValidationTest {
     assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, renamed));
   }
 
+  // Ciphertext written with a key the server does not have: it does not decrypt.
+  private static String encryptedWithAnotherKey(String secret) {
+    return Fernet.FERNET_PREFIX
+        + Token.generate(new SecureRandom(), Key.generateKey(), secret).serialise();
+  }
+
   private static EventSubscription alertWith(SubscriptionDestination... destinations) {
     return new EventSubscription()
         .withId(UUID.randomUUID())
@@ -200,6 +255,13 @@ class DestinationValidationTest {
 
   private static SubscriptionDestination webhookConfigured(Map<String, Object> config) {
     return webhook(NOT_A_WEBHOOK).withConfig(config);
+  }
+
+  private static SubscriptionDestination signedWith(String signingKey) {
+    return webhook(USABLE)
+        .withConfig(
+            Map.of(
+                "endpoint", USABLE, "authType", Map.of("type", "bearer", "secretKey", signingKey)));
   }
 
   private static SubscriptionDestination webhook(String endpoint) {

@@ -60,6 +60,12 @@ export interface AssetSelectionModalProps {
   onSave?: () => void;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  /**
+   * Route the asset picker's search through `POST /v1/search/query`. Set for callers
+   * whose `queryFilter` can grow large enough to overflow the server's request-line
+   * size limit — e.g. the metric Add-Assets modal.
+   */
+  useQueryPost?: boolean;
 }
 
 export type AssetsUnion =

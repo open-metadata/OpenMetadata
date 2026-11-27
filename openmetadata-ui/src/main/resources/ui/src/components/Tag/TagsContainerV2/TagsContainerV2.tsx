@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { isEmpty, isEqual } from 'lodash';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Edit01,
+  MessageChatSquare,
+  MessagePlusSquare,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { difference, isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  WidgetCommentButton,
-  WidgetEditButton,
-  WidgetPlusButton,
-  WidgetRequestButton,
-} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
@@ -132,6 +133,14 @@ const TagsContainerV2 = ({
     [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
+  // Callers replace the whole tag list with what we emit, so every tag this picker does not edit
+  // must go back out: the other source's tags and the Tier/Certification tags getFilterTags hides.
+  // Removed by reference, not FQN: a classification tag and a glossary term may share an FQN.
+  const untouchedTags = useMemo(
+    () => difference(selectedTags, tags[tagType] ?? []),
+    [selectedTags, tags, tagType]
+  );
+
   const showNoDataPlaceholder = useMemo(
     () => !showAddTagButton && isEmpty(tags?.[tagType]),
     [showAddTagButton, tags?.[tagType]]
@@ -157,10 +166,7 @@ const TagsContainerV2 = ({
           updatedTags.map(({ tagFQN }) => tagFQN)
         )
       ) {
-        await onSelectionChange([
-          ...updatedTags,
-          ...(tags?.[TagSource.Classification] ?? []),
-        ]);
+        await onSelectionChange([...updatedTags, ...untouchedTags]);
       }
 
       handleExternalControl(false);
@@ -168,7 +174,7 @@ const TagsContainerV2 = ({
     [
       onSelectionChange,
       selectedTagsInternal,
-      tags,
+      untouchedTags,
       defaultLabelType,
       defaultState,
       handleExternalControl,
@@ -191,10 +197,7 @@ const TagsContainerV2 = ({
           updatedTags.map(({ tagFQN }) => tagFQN)
         )
       ) {
-        await onSelectionChange([
-          ...updatedTags,
-          ...(tags?.[TagSource.Glossary] ?? []),
-        ]);
+        await onSelectionChange([...updatedTags, ...untouchedTags]);
       }
 
       handleExternalControl(false);
@@ -202,7 +205,7 @@ const TagsContainerV2 = ({
     [
       onSelectionChange,
       selectedTagsInternal,
-      tags,
+      untouchedTags,
       defaultLabelType,
       defaultState,
       handleExternalControl,
@@ -262,10 +265,11 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <WidgetPlusButton
-          compact={showBottomEditButton}
+        <ButtonUtility
           data-testid="add-tag"
-          title={t('label.add-entity', {
+          icon={Plus}
+          size={showBottomEditButton ? 'xs' : 'sm'}
+          tooltip={t('label.add-entity', {
             entity: isGlossaryType
               ? t('label.glossary-term')
               : t('label.tag-plural'),
@@ -311,9 +315,10 @@ const TagsContainerV2 = ({
     const hasTags = !isEmpty(tags?.[tagType]);
 
     return (
-      <WidgetRequestButton
+      <ButtonUtility
         data-testid="request-entity-tags"
-        title={
+        icon={MessagePlusSquare}
+        tooltip={
           hasTags
             ? t('label.update-request-tag-plural')
             : t('label.request-tag-plural')
@@ -325,9 +330,10 @@ const TagsContainerV2 = ({
 
   const conversationThreadElement = useMemo(
     () => (
-      <WidgetCommentButton
+      <ButtonUtility
         data-testid="tag-thread"
-        title={t('label.list-entity', {
+        icon={MessageChatSquare}
+        tooltip={t('label.list-entity', {
           entity: t('label.conversation'),
         })}
         onClick={() =>
@@ -347,9 +353,10 @@ const TagsContainerV2 = ({
       <Box align="center" gap={2}>
         {withSelectorPopover(
           addTagButton ?? (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-button"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity:
                   tagType === TagSource.Classification
                     ? t('label.tag-plural')
@@ -383,11 +390,12 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <WidgetEditButton
+        <ButtonUtility
           className="hover-cell-icon"
-          compact={showBottomEditButton}
           data-testid="edit-button"
-          title={t('label.edit-entity', {
+          icon={Edit01}
+          size={showBottomEditButton ? 'xs' : 'sm'}
+          tooltip={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
                 ? t('label.tag-plural')
@@ -428,13 +436,18 @@ const TagsContainerV2 = ({
     entityFqn,
   ]);
 
+  // The table cell keeps its add/edit button in the same row as the task icons.
+  const showActionRow = showBottomEditButton && !showInlineEditButton;
+
   const tagBody = useMemo(() => {
     if (isHoriZontalLayout) {
       return horizontalLayout;
     }
 
     const shouldShowVerticalLayout =
-      showInlineEditButton || !isEmpty(renderTags) || !newLook;
+      showInlineEditButton ||
+      !isEmpty(renderTags) ||
+      (!newLook && !showActionRow);
 
     if (!shouldShowVerticalLayout) {
       return null;
@@ -442,7 +455,7 @@ const TagsContainerV2 = ({
 
     return (
       <Box align="center" data-testid="entity-tags" gap={2} wrap="wrap">
-        {addTagButton && (
+        {addTagButton && !showActionRow && (
           <div className="m-t-xss">
             {withSelectorPopover(addTagButton, 'body')}
           </div>
@@ -461,6 +474,7 @@ const TagsContainerV2 = ({
     editTagButton,
     withSelectorPopover,
     showInlineEditButton,
+    showActionRow,
   ]);
 
   const suggestionDataRender = useMemo(() => {
@@ -526,10 +540,13 @@ const TagsContainerV2 = ({
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <div className="m-t-xs w-full d-flex items-center">
-              {showBottomEditButton && !showInlineEditButton && (
+            <div
+              className={classNames('w-full d-flex items-center', {
+                'm-t-xs': tagBody,
+              })}>
+              {showActionRow && (
                 <div className="d-flex m-r-xs">
-                  {withSelectorPopover(editTagButton, 'body')}
+                  {withSelectorPopover(addTagButton ?? editTagButton, 'body')}
                 </div>
               )}
               {children}

@@ -76,7 +76,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
 
-  const MockEmptyPlaceholder = () => <div />;
+  const MockEmptyPlaceholder = ({
+    actions,
+  }: {
+    actions?: Array<{ key: string; label: string }>;
+  }) => (
+    <div>
+      {actions?.map((action) => (
+        <button
+          data-testid={`placeholder-action-${action.key}`}
+          key={action.key}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
 
   const MockTable = ({
     children,
@@ -277,9 +291,45 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="pipeline-actions">PipelineActions</div>
-      ))
+      .mockImplementation(
+        ({
+          pipeline,
+          handleEditClick,
+        }: {
+          pipeline: { fullyQualifiedName: string };
+          handleEditClick: (fqn: string) => void;
+        }) => (
+          <button
+            data-testid="pipeline-actions"
+            onClick={() => handleEditClick(pipeline.fullyQualifiedName)}>
+            PipelineActions
+          </button>
+        )
+      )
+);
+
+jest.mock(
+  '../../AddDataQualityTest/components/TestSuitePipelineFormDrawer',
+  () =>
+    jest.fn(
+      ({
+        open,
+        ingestionPipeline,
+        onClose,
+      }: {
+        open: boolean;
+        ingestionPipeline?: { fullyQualifiedName: string };
+        onClose: () => void;
+      }) => (
+        <button
+          data-open={String(open)}
+          data-pipeline={ingestionPipeline?.fullyQualifiedName ?? ''}
+          data-testid="pipeline-form-drawer"
+          onClick={onClose}>
+          close-drawer
+        </button>
+      )
+    )
 );
 
 jest.mock(
@@ -480,15 +530,157 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
-  it('should navigate to the add pipeline page on add pipeline button press', async () => {
+  it('should open the pipeline drawer to add a pipeline without navigating', async () => {
     await act(async () => {
       render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
     });
 
+    const drawer = await screen.findByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+
     fireEvent.click(screen.getByTestId('add-pipeline-button'));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({ search: undefined })
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should not offer Add Pipeline when the host marks the entity deleted', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab deleted testSuite={mockTestSuite} />);
+    });
+
+    expect(await screen.findByText('pipeline1')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-pipeline-button')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'with no pipelines and deleted=%s, the empty state offers Add Pipeline: %s',
+    async (deleted, offered) => {
+      const { usePermissionProvider } = jest.requireMock(
+        '../../../../context/PermissionProvider/PermissionProvider'
+      );
+      const defaultPermissions = usePermissionProvider();
+      usePermissionProvider.mockReturnValue({
+        ...defaultPermissions,
+        permissions: { all: { All: true } },
+      });
+      (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      try {
+        await act(async () => {
+          render(
+            <TestSuitePipelineTab deleted={deleted} testSuite={mockTestSuite} />
+          );
+        });
+
+        expect(
+          screen.queryByTestId('placeholder-action-add-pipeline') !== null
+        ).toBe(offered);
+      } finally {
+        usePermissionProvider.mockReturnValue(defaultPermissions);
+      }
+    }
+  );
+
+  it('should let the host take over Add through onAddPipeline', async () => {
+    const onAddPipeline = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onAddPipeline={onAddPipeline}
+        />
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(onAddPipeline).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('pipeline-form-drawer')).toHaveAttribute(
+      'data-open',
+      'false'
     );
+  });
+
+  it('should open the pipeline drawer in edit mode for the edited row', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer.getAttribute('data-pipeline')).toMatch(/^svc\.pipeline\d$/);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should report the pipeline total to the host once the list has loaded', async () => {
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    await waitFor(() => expect(onPipelinesChange).toHaveBeenCalledWith(10));
+
+    // The initial pre-load state is never reported.
+    expect(onPipelinesChange).not.toHaveBeenCalledWith(0);
+  });
+
+  it('should not report a total when the list fails to load', async () => {
+    const { getIngestionPipelines } = jest.requireMock(
+      '../../../../rest/ingestionPipelineAPI'
+    );
+    getIngestionPipelines.mockImplementationOnce(() =>
+      Promise.reject(new Error('fetch failed'))
+    );
+    const onPipelinesChange = jest.fn();
+    await act(async () => {
+      render(
+        <TestSuitePipelineTab
+          testSuite={mockTestSuite}
+          onPipelinesChange={onPipelinesChange}
+        />
+      );
+    });
+
+    expect(getIngestionPipelines).toHaveBeenCalled();
+    expect(onPipelinesChange).not.toHaveBeenCalled();
+  });
+
+  it('should keep the edited pipeline while the drawer closes, and clear it for Add', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+    const editedPipeline = drawer.getAttribute('data-pipeline');
+
+    fireEvent.click(drawer);
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+    expect(drawer).toHaveAttribute('data-pipeline', editedPipeline as string);
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
   });
 });

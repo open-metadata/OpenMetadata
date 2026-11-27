@@ -63,7 +63,8 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 | `tw:bg-page` | `--color-bg-page` | Existing page color | `#141414` | Application page background |
 | `tw:bg-canvas` | `--color-bg-canvas` | Existing canvas color | `#191919` | Main workspace or content canvas |
 | `tw:bg-surface` | `--color-bg-surface` | Existing card surface | `#222222` | Cards, panels, and sidebars |
-| `tw:bg-raised` | `--color-bg-raised` | Existing raised surface | `#2e2e2e` | Dropdowns, menus, and popovers |
+| `tw:bg-raised` | `--color-bg-raised` | Existing raised surface | `#2e2e2e` | Raised fills, dark hover steps |
+| `tw:bg-floating` | `--color-bg-floating` | `#ffffff` | `#2b2f37` | Dropdowns, menus, popovers, selects, date pickers (ADR:2026-11-06-floating-overlays-sit-on-bg-floating) |
 | `tw:bg-overlay-surface` | `--color-bg-overlay-surface` | Existing modal surface | `#222222` | Modal and drawer content |
 | `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#141414` | Existing generic primary surface |
 | `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#191919` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |

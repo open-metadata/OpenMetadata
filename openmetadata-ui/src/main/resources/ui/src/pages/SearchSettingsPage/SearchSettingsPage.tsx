@@ -22,11 +22,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as Plus } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -135,7 +135,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="primary"
                   data-testid="term-boost-add-btn"
-                  iconLeading={<Plus className="tw:size-3.5 tw:shrink-0" />}
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
@@ -180,9 +180,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  iconLeading={
-                    <Plus className="text-sm tw:size-3.5 tw:shrink-0" />
-                  }
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}

@@ -1,0 +1,62 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: reusable-build-backend
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git commit SHA to build; must match the consuming test workflows
+        type: string
+        required: true
+      maven-args:
+        description: Maven arguments that produce the backend distribution
+        type: string
+        default: -Dmaven.test.skip=true -DonlyBackend package -pl openmetadata-dist -am
+permissions:
+  contents: read
+  packages: read
+jobs:
+  build:
+    name: Build backend image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Setup JDK 21
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+        with:
+          java-version: '21'
+          distribution: temurin
+      - name: Restore Maven dependencies
+        uses: ./.github/actions/hydrate-maven-cache
+      - name: Build
+        env:
+          BACKEND_MAVEN_ARGS: ${{ inputs.maven-args }}
+        run: |
+          read -r -a args <<< "$BACKEND_MAVEN_ARGS"
+          mvn "${args[@]}"
+        shell: bash
+      - name: Build and pack backend image
+        run: bash .github/scripts/ci_backend_image.sh build "$RUNNER_TEMP/ci-backend.tar.zst"
+        shell: bash
+      - name: Upload backend image
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ci-backend-image
+          path: ${{ runner.temp }}/ci-backend.tar.zst
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1

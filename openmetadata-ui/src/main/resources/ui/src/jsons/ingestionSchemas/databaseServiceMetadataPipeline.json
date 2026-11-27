@@ -43,6 +43,21 @@
     }
   },
   "properties": {
+    "shardedTables": {
+      "title": "Sharded Tables",
+      "description": "BigQuery daily shard grouping. Omitted configuration remains disabled.",
+      "javaType": "org.openmetadata.schema.metadataIngestion.BigQueryShardedTables",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Group Sharded Tables",
+          "description": "Group BigQuery daily shards into a stable logical table using the newest shard for columns and execution.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
     "type": {
       "description": "Pipeline type",
       "$ref": "#/definitions/databaseMetadataConfigType",

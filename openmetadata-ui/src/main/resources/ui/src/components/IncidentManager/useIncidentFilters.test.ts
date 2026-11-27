@@ -14,6 +14,7 @@ import { renderHook } from '@testing-library/react';
 import { isString, omit, parseInt } from 'lodash';
 import QueryString, { ParsedQs } from 'qs';
 import { act } from 'react';
+import { PAGING_URL_PARAMS } from '../../constants/constants';
 import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
 import {
   useIncidentFilters,
@@ -37,14 +38,18 @@ const renderFiltersHook = (overrides: Partial<UseIncidentFiltersProps> = {}) =>
   );
 
 // Models the production wiring in `useIncidentManagerListPage`: `filters` is
-// derived from `omit(allParams, ['key', 'title'])`, so it carries `currentPage`
-// /`pageSize`/cursor params verbatim (with `startTs`/`endTs` coerced to numbers).
-// Tests that inject `filters` and `allParams` independently mask the stale-page
-// bug; this helper keeps them in sync to exercise the real relationship.
+// `allParams` without `key`/`title` and usePaging's params (with
+// `startTs`/`endTs` coerced to numbers), while `allParams` keeps the paging
+// params. Tests that inject the two independently mask the stale-page bug;
+// this helper keeps them in sync to exercise the real relationship.
 const deriveProductionFilters = (
   allParams: ParsedQs
 ): TestCaseIncidentStatusParams => {
-  const base = omit(allParams, ['key', 'title']) as Record<string, unknown>;
+  const base = omit(allParams, [
+    'key',
+    'title',
+    ...PAGING_URL_PARAMS,
+  ]) as Record<string, unknown>;
 
   if (isString(base.startTs)) {
     base.startTs = parseInt(base.startTs, 10);
@@ -140,6 +145,25 @@ describe('useIncidentFilters', () => {
     expect(firstCallArg.search).toContain('startTs=1');
     expect(firstCallArg.search).toContain('key=k');
     expect(firstCallArg.search).not.toContain('existing=y');
+  });
+
+  it('should keep the page size and reset to page 1 when the date range changes', () => {
+    const { result } = renderFiltersHook({
+      allParams: { currentPage: '3', pageSize: '25' },
+    });
+
+    act(() => {
+      result.current.updateFilters(
+        { startTs: 1, endTs: 2 },
+        { key: 'k', title: 't' }
+      );
+    });
+
+    const [firstCallArg] = mockNavigate.mock.calls[0];
+
+    expect(firstCallArg.search).toContain('pageSize=25');
+    expect(firstCallArg.search).toContain('currentPage=1');
+    expect(firstCallArg.search).not.toContain('currentPage=3');
   });
 
   it('should navigate on a changed date range via handleDateRangeChange', () => {
@@ -397,5 +421,44 @@ describe('useIncidentFilters', () => {
     expect(parsed.cursorValue).toBeUndefined();
     expect(parsed.startTs).toBeUndefined();
     expect(parsed.dateField).toBeUndefined();
+  });
+
+  it('should drop the page and cursor params via clearFilters', () => {
+    const { result } = renderWithUrl({
+      testCaseFQN: 'svc.tbl.tc',
+      assignee: 'bob',
+      testCaseResolutionStatusType: 'Assigned',
+      startTs: '1',
+      endTs: '2',
+      key: 'k',
+      title: 't',
+      dateField: 'updatedAt',
+      currentPage: '5',
+      cursorType: 'after',
+      cursorValue: 'foo',
+      other: 'z',
+      pageSize: '15',
+    });
+
+    act(() => {
+      result.current.clearFilters();
+    });
+
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.testCaseFQN).toBeUndefined();
+    expect(parsed.assignee).toBeUndefined();
+    expect(parsed.testCaseResolutionStatusType).toBeUndefined();
+    expect(parsed.startTs).toBeUndefined();
+    expect(parsed.endTs).toBeUndefined();
+    expect(parsed.dateField).toBeUndefined();
+    expect(parsed.key).toBeUndefined();
+    expect(parsed.title).toBeUndefined();
+    expect(parsed.currentPage).toBeUndefined();
+    expect(parsed.cursorType).toBeUndefined();
+    expect(parsed.cursorValue).toBeUndefined();
+    expect(parsed.other).toBe('z');
+    expect(parsed.pageSize).toBe('15');
   });
 });

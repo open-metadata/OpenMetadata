@@ -15,7 +15,7 @@ Entity Fetcher Strategy
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -47,10 +47,9 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
+    _filter_server_compatible,
     filter_by_classifications,
     filter_by_container,
-    filter_by_schema,
-    filter_by_table,
     filter_by_topic,
     validate_regex,
 )
@@ -241,8 +240,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
-        """Apply exclude filters that were deferred to client-side
-        because schema and table filters use conflicting modes."""
+        """Apply conflicting-mode excludes with the listing API's substring semantics."""
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
 
@@ -253,7 +251,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 if self.source_config.useFqnForFiltering
                 else table.databaseSchema.name
             )
-            if schema_name and filter_by_schema(exclude_only, schema_name):
+            if schema_name and _filter_server_compatible(exclude_only, schema_name):
                 self.status.filter(
                     schema_name,
                     f"Schema pattern not allowed for schema {schema_name}",
@@ -265,7 +263,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
                 table_name = table.fullyQualifiedName.root
-            if filter_by_table(exclude_only, table_name):
+            if _filter_server_compatible(exclude_only, table_name):
                 self.status.filter(
                     table_name,
                     f"Table pattern not allowed for table {table_name}",
@@ -281,6 +279,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             entity=Table,
             fields=FIELDS,
             params=params,
+            skip_on_failure=True,
+            on_skip=self._record_unparseable_table,
         )
 
         has_deferred = self._has_conflicting_filter_modes()
@@ -293,6 +293,16 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             if self._filter_views(table):
                 continue
             yield table
+
+    def _record_unparseable_table(self, raw_table: dict[str, Any], exc: Exception) -> None:
+        """One table the client cannot parse must not cost the rest of the database."""
+        self.status.failed(
+            StackTraceError(
+                name=raw_table.get("fullyQualifiedName", "<unknown table>"),
+                error=f"Skipping table the client could not parse: {exc}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
 
     def _seed_table_total(self, database: Database, db_fqn: str) -> None:
         """Seed this database's server-side-filtered table count so % and ETA

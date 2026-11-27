@@ -717,7 +717,6 @@ export const createCommonObservabilityAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
-  destinationEndpoint,
   tableName,
 }: {
   page: Page;

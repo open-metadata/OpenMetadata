@@ -18,7 +18,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -110,6 +110,30 @@ describe('CustomizablePageHeader', () => {
     expect(screen.getByTestId('reset-button')).toBeInTheDocument();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
   });
+
+  it.each([
+    [true, '/'],
+    [false, '/settings/persona/test-persona'],
+  ])(
+    'closes the standalone customize route (AI mode: %s) to %s',
+    (isAiMode, expectedPath) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+      const LocationProbe = () => (
+        <span data-testid="location">{useLocation().pathname}</span>
+      );
+      render(
+        <MemoryRouter
+          initialEntries={['/customize-page/test-persona/LandingPage']}>
+          <CustomizablePageHeader {...mockProps} />
+          <LocationProbe />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      expect(screen.getByTestId('location')).toHaveTextContent(expectedPath);
+    }
+  );
 
   it('should handle save button click', async () => {
     render(

@@ -216,7 +216,8 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
-    // GlossaryTermApprovalWorkflow owns term stages; exclude this glossary while seeding them.
+    // GlossaryTermApprovalWorkflow owns term stages, so this glossary stays excluded until
+    // afterAll: a run its seeding events start late would otherwise approve the seeded terms.
     await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create 2 terms per status (10 terms total)
@@ -235,7 +236,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     }
 
-    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await afterAction();
   });
 

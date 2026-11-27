@@ -21,7 +21,9 @@ import {
 import {
   ChevronDown,
   Download01,
+  Expand05,
   FilterLines,
+  Minimize02,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -39,8 +41,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
@@ -51,6 +51,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import type { LineageTimeRange } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -184,6 +185,14 @@ const CustomControls: FC<{
       });
     },
     [setSelectedQuickFilters, onPageReset]
+  );
+
+  const handleTimeFilterChange = useCallback(
+    (range: LineageTimeRange) => {
+      onPageReset?.();
+      setTimeFilter(range);
+    },
+    [setTimeFilter, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -414,6 +423,7 @@ const CustomControls: FC<{
       <ButtonUtility
         data-testid="lineage-config"
         icon={Settings01}
+        size="lg"
         onClick={handleSettingsClick}
       />
     );
@@ -434,7 +444,7 @@ const CustomControls: FC<{
   );
 
   const fullScreenIcon = useMemo(
-    () => (isFullScreen ? ExitFullScreenIcon : FullscreenIcon),
+    () => (isFullScreen ? Minimize02 : Expand05),
     [isFullScreen]
   );
 
@@ -463,7 +473,10 @@ const CustomControls: FC<{
           <div className="tw:flex tw:items-baseline">
             {activeTab === 'impact_analysis' && (
               <Dropdown.Root>
-                <Button className="tw:px-3.5 tw:py-2.5" color="tertiary">
+                <Button
+                  className="tw:px-3.5 tw:py-2.5"
+                  color="tertiary"
+                  iconTrailing={ChevronDown}>
                   <div className="tw:flex tw:items-center tw:gap-1">
                     <Typography as="span" className="tw:font-normal">
                       {`${t('label.node-depth')}:`}{' '}
@@ -473,7 +486,6 @@ const CustomControls: FC<{
                       className="tw:text-utility-brand-600 tw:font-normal">
                       {nodeDepth}
                     </Typography>
-                    <ChevronDown height={12} width={12} />
                   </div>
                 </Button>
                 <Dropdown.Popover className="tw:max-w-32">
@@ -533,15 +545,14 @@ const CustomControls: FC<{
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
         <div className="tw:flex tw:items-center tw:gap-4">
-          <Button
-            aria-label={t('label.filter-plural')}
-            color={filterSelectionActive ? 'primary' : 'secondary'}
+          <ButtonUtility
+            color={filterSelectionActive ? 'primary' : 'tertiary'}
             data-testid="filters-button"
-            iconLeading={FilterLines}
+            icon={FilterLines}
+            size="lg"
             tooltip={t('label.filter-plural')}
             onClick={toggleFilterSelection}
           />
-
           {searchBarComponent}
         </div>
         <div className="tw:flex tw:gap-4 tw:items-center">
@@ -550,13 +561,14 @@ const CustomControls: FC<{
           <LineageTimeFilter
             endTime={timeFilter?.endTime}
             startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
+            onChange={handleTimeFilterChange}
           />
 
           <ButtonUtility
             aria-label={exportButtonLabel}
             data-testid="export-button"
             icon={Download01}
+            size="lg"
             tooltip={exportButtonLabel}
             onClick={handleExportClick}
           />
@@ -566,6 +578,7 @@ const CustomControls: FC<{
           <ButtonUtility
             aria-label={fullScreenLabel}
             icon={fullScreenIcon}
+            size="lg"
             tooltip={fullScreenLabel}
             onClick={() =>
               updateURLParams({

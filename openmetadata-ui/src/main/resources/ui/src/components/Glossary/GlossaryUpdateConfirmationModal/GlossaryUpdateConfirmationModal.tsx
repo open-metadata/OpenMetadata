@@ -27,6 +27,10 @@ import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -101,7 +105,8 @@ const renderFailedContent = (
             columns={columns}
             dataSource={failedStatus?.failedRequest ?? []}
             pagination={{
-              pageSize: 5,
+              pageSize: PAGE_SIZE_BASE,
+              pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
               showSizeChanger: true,
             }}
             rowKey={(record) => record.request?.id}

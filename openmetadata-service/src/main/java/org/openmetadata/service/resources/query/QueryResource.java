@@ -52,12 +52,14 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -176,12 +178,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext queryOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
     ResourceContext<?> queryResourceContext = filter.getResourceContext(entityType);
-    authRequests.add(new AuthRequest(queryOperationContext, queryResourceContext));
+    AuthRequest queryAuthRequest = new AuthRequest(queryOperationContext, queryResourceContext);
+    authRequests.add(queryAuthRequest);
 
     // Fix for GitHub Issue #22551: When filtering by entityId and entityType, also check if user
     // has VIEW_QUERIES permission on the parent entity (e.g., table). This allows users with
     // tag-based policies on tables to view queries associated with those tables.
-    ResourceContext<?> parentResourceContext = filter.getParentResourceContext();
+    ResourceContext<?> parentResourceContext =
+        resolveQueryParent(securityContext, filter, queryAuthRequest);
     if (parentResourceContext != null) {
       OperationContext parentOperationContext =
           new OperationContext(parentResourceContext.getResource(), MetadataOperation.VIEW_QUERIES);
@@ -192,6 +196,18 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         super.listInternal(
             uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
+  }
+
+  private ResourceContext<?> resolveQueryParent(
+      SecurityContext securityContext, ListFilter filter, AuthRequest queryAuthRequest) {
+    try {
+      return filter.getParentResourceContext();
+    } catch (EntityNotFoundException notFound) {
+      // Without a parent, only catalog permission can authorize disclosing the lookup failure.
+      authorizer.authorizeRequests(
+          securityContext, List.of(queryAuthRequest), AuthorizationLogic.ANY);
+      throw notFound;
+    }
   }
 
   @GET

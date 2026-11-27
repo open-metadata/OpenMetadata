@@ -77,6 +77,24 @@ public class ContextMemoryCreateGrantIT {
     assertEquals(List.of(author.getId()), ownerIds(posted));
     assertEquals(List.of(author.getId()), ownerIds(put));
     assertEquals("orders.amount_eur, in euros.", edited.getAnswer());
+    assertEquals(ContextMemoryStatus.APPROVED, posted.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, put.getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, memories.get(posted.getId().toString()).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, memories.get(put.getId().toString()).getEntityStatus());
+
+    ContextMemory putAgain =
+        memories.put(
+            anchoredMemory(ns, "put", anchor).withAnswer("Updated and immediately usable."));
+    assertEquals(ContextMemoryStatus.APPROVED, putAgain.getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, memories.get(put.getId().toString()).getEntityStatus());
+    memories.patch(posted.getId(), replace("/entityStatus", "Unprocessed"));
+    ContextMemory approved = memories.patch(posted.getId(), replace("/entityStatus", "Approved"));
+    assertEquals(ContextMemoryStatus.APPROVED, approved.getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, memories.get(posted.getId().toString()).getEntityStatus());
   }
 
   @Test

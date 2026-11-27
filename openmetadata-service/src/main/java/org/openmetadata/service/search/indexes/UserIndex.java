@@ -8,7 +8,8 @@ import org.openmetadata.service.Entity;
 
 public class UserIndex implements SearchIndex {
   final User user;
-  final Set<String> excludeFields = Set.of("owns", "follows", "authenticationMechanism");
+  final Set<String> excludeFields =
+      Set.of("owns", "follows", "authenticationMechanism", "profile.subscription");
 
   public UserIndex(User user) {
     this.user = user;
@@ -50,5 +51,13 @@ public class UserIndex implements SearchIndex {
     fields.put("email", 5.0f);
     fields.put("email.keyword", 10.0f);
     return fields;
+  }
+
+  /**
+   * The free-text fields, without the email ones for a caller who may not match on them
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  public static Map<String, Float> getFields(boolean matchesEmail) {
+    return matchesEmail ? getFields() : SearchIndex.getDefaultFields();
   }
 }

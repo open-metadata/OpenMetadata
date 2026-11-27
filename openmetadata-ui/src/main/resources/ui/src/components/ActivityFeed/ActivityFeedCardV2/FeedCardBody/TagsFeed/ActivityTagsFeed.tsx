@@ -12,10 +12,10 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
+import { Minus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
-import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
@@ -74,7 +74,7 @@ function ActivityTagsFeed({ activity }: Readonly<ActivityTagsFeedProps>) {
       {!isEmpty(previousTags) && (
         <Box align="center" gap={3}>
           <div className="h-4">
-            <DeletedIcon height={14} width={14} />
+            <Minus className="tw:text-utility-orange-dark-600" size={14} />
           </div>
           <div>
             <TagsViewer tags={previousTags} />

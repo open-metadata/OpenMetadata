@@ -192,8 +192,12 @@ const AppLayoutEditor = ({
       showSuccessToast(
         t('server.update-entity-success', { entity: t('label.app-layout') })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -341,9 +345,9 @@ const AppLayoutEditor = ({
                     </Tabs.List>
                   </Tabs>
                   <ButtonUtility
-                    color="tertiary"
                     data-testid={`remove-view-mode-${page}`}
                     icon={Trash01}
+                    size="lg"
                     tooltip={t('label.remove-entity', { entity: t(labelKey) })}
                     onClick={() => removePageViewMode(page)}
                   />

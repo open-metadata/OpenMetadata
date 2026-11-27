@@ -597,14 +597,17 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,dataModel");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Container container = (Container) entity;
     EntityUtil.mergeTags(allTags, container.getTags());
     if (container.getDataModel() != null) {
-      for (Column column : listOrEmpty(container.getDataModel().getColumns())) {
-        EntityUtil.mergeTags(allTags, column.getTags());
-      }
+      EntityUtil.mergeColumnTags(allTags, container.getDataModel().getColumns());
     }
     return allTags;
   }
@@ -1302,7 +1305,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
       daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
 
-      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+      // The container's pending labels move with it; its shown labels are written again below.
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(oldFqn);
+      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       List<TagLabel> updatedTags = listOrEmpty(updated.getTags());
       if (!updatedTags.isEmpty()) {
         updatedTags = new ArrayList<>(updatedTags);

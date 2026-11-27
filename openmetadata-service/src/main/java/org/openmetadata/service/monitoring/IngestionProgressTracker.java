@@ -54,9 +54,9 @@ public class IngestionProgressTracker {
   private final Counter metricsBatchesReceived;
   private final AtomicInteger activeProgressStreams;
 
-  private final Map<String, Map<String, ServiceProgressEvent>> serviceActiveRuns =
+  private final Map<String, Map<String, ServiceProgressSnapshot>> serviceActiveRuns =
       new ConcurrentHashMap<>();
-  private final Map<String, List<Consumer<ServiceProgressEvent>>> serviceListeners =
+  private final Map<String, List<Consumer<ServiceProgressSnapshot>>> serviceListeners =
       new ConcurrentHashMap<>();
 
   @Inject
@@ -185,22 +185,35 @@ public class IngestionProgressTracker {
               .withPipelineFqn(pipelineFqn)
               .withRunId(runId.toString())
               .withEvent(update)
-              .withIngestionPipeline(ingestionPipeline);
-      recordActiveRun(serviceFqn, runKey, event);
-      notifyServiceListeners(serviceFqn, event);
+              .withIngestionPipeline(
+                  update.getUpdateType() == ProgressUpdateType.DISCOVERY
+                      ? ingestionPipeline
+                      : null);
+      ServiceProgressSnapshot snapshot =
+          new ServiceProgressSnapshot(
+              ingestionPipeline == null ? null : ingestionPipeline.getId(), event);
+      snapshot = recordActiveRun(serviceFqn, runKey, snapshot);
+      notifyServiceListeners(serviceFqn, snapshot);
       dropRunIfTerminal(serviceFqn, runKey, update);
     }
   }
 
-  private void recordActiveRun(String serviceFqn, String runKey, ServiceProgressEvent event) {
-    serviceActiveRuns
+  private ServiceProgressSnapshot recordActiveRun(
+      String serviceFqn, String runKey, ServiceProgressSnapshot event) {
+    // A reporting worker can outlive its pipeline; never rebind its run to a replacement.
+    return serviceActiveRuns
         .computeIfAbsent(serviceFqn, k -> new ConcurrentHashMap<>())
-        .put(runKey, event);
+        .compute(
+            runKey,
+            (key, previous) ->
+                previous == null
+                    ? event
+                    : new ServiceProgressSnapshot(previous.pipelineId(), event.event()));
   }
 
   private void dropRunIfTerminal(String serviceFqn, String runKey, ProgressUpdate update) {
     if (isTerminal(update)) {
-      Map<String, ServiceProgressEvent> runs = serviceActiveRuns.get(serviceFqn);
+      Map<String, ServiceProgressSnapshot> runs = serviceActiveRuns.get(serviceFqn);
       if (runs != null) {
         runs.remove(runKey);
         if (runs.isEmpty()) {
@@ -215,10 +228,10 @@ public class IngestionProgressTracker {
         || update.getUpdateType() == ProgressUpdateType.ERROR;
   }
 
-  private void notifyServiceListeners(String serviceFqn, ServiceProgressEvent event) {
-    List<Consumer<ServiceProgressEvent>> listeners = serviceListeners.get(serviceFqn);
+  private void notifyServiceListeners(String serviceFqn, ServiceProgressSnapshot event) {
+    List<Consumer<ServiceProgressSnapshot>> listeners = serviceListeners.get(serviceFqn);
     if (listeners != null) {
-      for (Consumer<ServiceProgressEvent> listener : listeners) {
+      for (Consumer<ServiceProgressSnapshot> listener : listeners) {
         try {
           listener.accept(event);
         } catch (Exception e) {
@@ -228,11 +241,12 @@ public class IngestionProgressTracker {
     }
   }
 
-  public void registerServiceListener(String serviceFqn, Consumer<ServiceProgressEvent> listener) {
+  public void registerServiceListener(
+      String serviceFqn, Consumer<ServiceProgressSnapshot> listener) {
     serviceListeners.compute(
         serviceFqn,
         (key, listeners) -> {
-          List<Consumer<ServiceProgressEvent>> current =
+          List<Consumer<ServiceProgressSnapshot>> current =
               listeners == null ? new CopyOnWriteArrayList<>() : listeners;
           current.add(listener);
           return current;
@@ -241,11 +255,11 @@ public class IngestionProgressTracker {
   }
 
   public void unregisterServiceListener(
-      String serviceFqn, Consumer<ServiceProgressEvent> listener) {
+      String serviceFqn, Consumer<ServiceProgressSnapshot> listener) {
     serviceListeners.compute(
         serviceFqn,
         (key, listeners) -> {
-          List<Consumer<ServiceProgressEvent>> remaining = listeners;
+          List<Consumer<ServiceProgressSnapshot>> remaining = listeners;
           if (listeners != null && listeners.remove(listener)) {
             activeProgressStreams.decrementAndGet();
             remaining = listeners.isEmpty() ? null : listeners;
@@ -254,13 +268,15 @@ public class IngestionProgressTracker {
         });
   }
 
-  public List<ServiceProgressEvent> getActiveRunSnapshots(String serviceFqn) {
-    Map<String, ServiceProgressEvent> runs = serviceActiveRuns.get(serviceFqn);
+  public List<ServiceProgressSnapshot> getActiveRunSnapshots(String serviceFqn) {
+    Map<String, ServiceProgressSnapshot> runs = serviceActiveRuns.get(serviceFqn);
     if (runs == null) {
       return List.of();
     }
     return List.copyOf(runs.values());
   }
+
+  public record ServiceProgressSnapshot(UUID pipelineId, ServiceProgressEvent event) {}
 
   public static class ProgressState {
     private volatile ProgressUpdate latestUpdate;

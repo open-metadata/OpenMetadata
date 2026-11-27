@@ -20,6 +20,13 @@ from datetime import datetime, timezone
 
 from sqlglot import exp
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import (
+    TableLookup,
+    UnsupportedTableReferenceError,
+    load_table_binding_resolution,
+)
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createCustomProperty import (
     CreateCustomPropertyRequest,
@@ -93,7 +100,6 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -355,71 +361,56 @@ class HexSource(DashboardServiceSource):
         db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Lineage from the tables the project's SQL cells read, falling back to the
-        Hex queries found in the warehouse query history.
+        Table -> data model edges from the tables the project's SQL cells read, with column
+        lineage, and from the ones only the warehouse query history names, without it.
+        Table -> dashboard edges only when data models are off for the project.
         """
-        cell_lineage = self._get_cell_lineage(dashboard_details) or []
-        yield from self._yield_cell_lineage(dashboard_details, cell_lineage, db_service_prefix)
-        # The query history can still name tables no cell resolved, e.g. one a cell reads
-        # by a bare name that matches several tables in OpenMetadata
-        resolved_by_cells = {table_id for cell in cell_lineage for table_id in cell.tables}
+        cells = self._get_cell_lineage(dashboard_details) or []
+        history_tables = self._history_only_tables(dashboard_details, cells)
+        if not history_tables and not any(cell.tables for cell in cells):
+            logger.debug(f"No lineage found for Hex project: {dashboard_details.id}")
+            return
+        try:
+            target = self._lineage_target(dashboard_details)
+            if not target:
+                logger.warning("Lineage target for Hex project %s not found in OpenMetadata", dashboard_details.id)
+                return
+            yield from self._yield_cell_lineage(target, cells, db_service_prefix)
+            for table in history_tables:
+                lineage = self._get_add_lineage_request(to_entity=target, from_entity=table)
+                if lineage:
+                    yield lineage
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name="Dashboard Lineage",
+                    error=f"Error building lineage for Hex project {dashboard_details.id}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
-        project_lineage = self.hex_project_lineage.get(dashboard_details.id)
-        upstream_tables = [
+    def _history_only_tables(self, project: Project, cells: list[HexCellLineage]) -> list[Table]:
+        """
+        The tables the warehouse query history names that no cell resolved, e.g. one a cell
+        reads by a bare name that matches several tables in OpenMetadata
+        """
+        resolved_by_cells = {table_id for cell in cells for table_id in cell.tables}
+        project_lineage = self.hex_project_lineage.get(project.id)
+        return [
             table
             for table in (project_lineage.upstream_tables if project_lineage else [])
             if table and table.id and model_str(table.id) not in resolved_by_cells
         ]
-        if not upstream_tables:
-            logger.debug(f"No lineage found for Hex project: {dashboard_details.id}")
-            return
 
-        try:
-            dashboard_fqn = self._build_fqn(Dashboard, dashboard_details)
-            dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
-            if not dashboard:
-                logger.warning(f"Dashboard not found in OpenMetadata: {dashboard_fqn}")
-                return
-
-            logger.info(
-                "Creating lineage for Hex project %s with %d upstream tables",
-                dashboard_details.title,
-                len(upstream_tables),
+    def _lineage_target(self, project: Project) -> Dashboard | DashboardDataModel | None:
+        # A filtered-out data model left from an earlier run is deleted by this one
+        if self.source_config.includeDataModels and not filter_by_datamodel(
+            self.source_config.dataModelFilterPattern, project.title
+        ):
+            return self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project)
             )
-
-            # Create lineage for each upstream table
-            for table_entity in upstream_tables:
-                try:
-                    # We already have the table entity from query_fetcher
-                    if not table_entity or not table_entity.id:
-                        logger.debug("Table entity is None or has no ID")
-                        continue
-
-                    lineage = self._get_add_lineage_request(to_entity=dashboard, from_entity=table_entity)
-                    if lineage is not None:
-                        yield lineage
-                    logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
-
-                except Exception as e:
-                    table_fqn = table_entity.fullyQualifiedName.root if table_entity else "Unknown"
-                    logger.error(f"Error creating lineage for table {table_fqn}: {e}")
-                    yield Either(
-                        left=StackTraceError(
-                            name="Lineage",
-                            error=f"Error creating lineage for table {table_fqn}: {e}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
-
-        except Exception as exc:
-            logger.error(f"Error building lineage for dashboard {dashboard_details.id}: {exc}")
-            yield Either(
-                left=StackTraceError(
-                    name="Dashboard Lineage",
-                    error=f"Error building lineage for dashboard {dashboard_details.id}: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
+        return self.metadata.get_by_name(entity=Dashboard, fqn=self._build_fqn(Dashboard, project))
 
     def yield_dashboard_chart(self, dashboard_details: Project) -> Iterable[Either[CreateChartRequest]]:
         """
@@ -662,8 +653,12 @@ class HexSource(DashboardServiceSource):
         if cell_lineage is None:
             # Unread is not gone: marking the existing data model as seen keeps this run
             # from deleting it and its lineage. Marking one that doesn't exist is harmless.
-            self._keep_data_model(dashboard_details)
-            return
+            # A project without one still gets one, without columns, for the tables the
+            # query history names, as lineage only links tables to the data model.
+            if not self._history_only_tables(dashboard_details, []) or self._data_model_exists(dashboard_details):
+                self._keep_data_model(dashboard_details)
+                return
+            cell_lineage = []
         try:
             columns = self._data_model_columns(dashboard_details, cell_lineage)
         except Exception as exc:
@@ -672,9 +667,20 @@ class HexSource(DashboardServiceSource):
             logger.warning("Could not read the data model of Hex project %s: %s", dashboard_details.id, exc)
             self._keep_data_model(dashboard_details)
             return
-        if not columns:
+        # Tables read by cells that output no columns, or only named by the query history,
+        # still need a data model to link to
+        if not columns and not (
+            any(cell.tables for cell in cell_lineage) or self._history_only_tables(dashboard_details, cell_lineage)
+        ):
+            self._keep_columnless_data_model(dashboard_details)
             return
-        cells = [cell for cell in cell_lineage if not cell.failed]
+        # A data model only the query history fills gets no SQL, even from cells that read
+        # nothing resolvable: SQL marks one built from cells, see _keep_columnless_data_model
+        cells = (
+            [cell for cell in cell_lineage if not cell.failed]
+            if columns or any(cell.tables for cell in cell_lineage)
+            else []
+        )
         try:
             source_url = self.client.get_project_url(dashboard_details)
             data_model_request = CreateDashboardDataModelRequest(
@@ -684,7 +690,7 @@ class HexSource(DashboardServiceSource):
                 dataModelType=DataModelType.HexDataModel,
                 serviceType=self.service_connection.type.value,
                 sourceUrl=SourceUrl(source_url) if source_url else None,
-                sql=SqlQuery("\n\n".join(f"-- {cell.label}\n{cell.sql}" for cell in cells)),
+                sql=SqlQuery("\n\n".join(f"-- {cell.label}\n{cell.sql}" for cell in cells)) if cells else None,
                 columns=columns,
             )
             yield Either(right=data_model_request)  # pyright: ignore[reportCallIssue]
@@ -697,6 +703,25 @@ class HexSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _keep_columnless_data_model(self, project: Project) -> None:
+        """
+        A data model without columns and SQL only links tables the query history named: one
+        whose tables fell out of the history's lookback window is kept, with its lineage. One
+        with SQL came from cells, which are read each run, so it goes when they do.
+        """
+        try:
+            data_model = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project), fields=["columns"]
+            )
+        except Exception as exc:
+            # A lookup that fails is not a data model that isn't there
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the data model of Hex project %s: %s", project.id, exc)
+            self._keep_data_model(project)
+            return
+        if data_model and not data_model.columns and not data_model.sql:
+            self._keep_data_model(project)
 
     def _keep_data_model(self, project: Project) -> None:
         self._kept_data_model = project.id
@@ -744,76 +769,48 @@ class HexSource(DashboardServiceSource):
 
     def _yield_cell_lineage(
         self,
-        dashboard_details: Project,
+        target: Dashboard | DashboardDataModel,
         cells: list[HexCellLineage],
         db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Table -> data model edges carrying column lineage, or table -> dashboard
-        edges when data models are off. Only the tables found under this prefix,
-        as this runs once per db service prefix.
+        Only the tables found under this prefix, as this runs once per db service prefix.
+        Column lineage only reaches a data model's columns.
         """
-        if not any(cell.tables for cell in cells):
-            return
-        try:
-            data_model = (
-                self.metadata.get_by_name(
-                    entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, dashboard_details)
+        to_columns = {
+            (model_str(column.name), model_str(child.name)): model_str(child.fullyQualifiedName)
+            for column in (target.columns or [] if isinstance(target, DashboardDataModel) else [])
+            for child in column.children or []
+            if child.fullyQualifiedName
+        }
+        tables = {
+            table_id: table
+            for cell in cells
+            for table_id, (table, prefix) in cell.tables.items()
+            if prefix == db_service_prefix
+        }
+        for table_id, table in tables.items():
+            column_lineage = [
+                ColumnLineage(
+                    fromColumns=[
+                        FullyQualifiedEntityName(column_fqn)
+                        for source_id, column_fqn in column.source_columns
+                        if source_id == table_id
+                    ],
+                    toColumn=FullyQualifiedEntityName(to_columns[(cell.name, column.name)]),
                 )
-                # A filtered-out data model left from an earlier run is deleted by this one
-                if self.source_config.includeDataModels
-                and not filter_by_datamodel(self.source_config.dataModelFilterPattern, dashboard_details.title)
-                else None
-            )
-            target = data_model or self.metadata.get_by_name(
-                entity=Dashboard, fqn=self._build_fqn(Dashboard, dashboard_details)
-            )
-            if not target:
-                logger.warning("Lineage target for Hex project %s not found in OpenMetadata", dashboard_details.id)
-                return
-
-            to_columns = {
-                (model_str(column.name), model_str(child.name)): model_str(child.fullyQualifiedName)
-                for column in (data_model.columns or [] if data_model else [])
-                for child in column.children or []
-                if child.fullyQualifiedName
-            }
-            tables = {
-                table_id: table
                 for cell in cells
-                for table_id, (table, prefix) in cell.tables.items()
-                if prefix == db_service_prefix
-            }
-            for table_id, table in tables.items():
-                column_lineage = [
-                    ColumnLineage(
-                        fromColumns=[
-                            FullyQualifiedEntityName(column_fqn)
-                            for source_id, column_fqn in column.source_columns
-                            if source_id == table_id
-                        ],
-                        toColumn=FullyQualifiedEntityName(to_columns[(cell.name, column.name)]),
-                    )
-                    for cell in cells
-                    for column in cell.columns
-                    if (cell.name, column.name) in to_columns
-                    and any(source_id == table_id for source_id, _ in column.source_columns)
-                ]
-                lineage = self._get_add_lineage_request(
-                    to_entity=target,
-                    from_entity=table,
-                    column_lineage=column_lineage or None,  # pyright: ignore[reportArgumentType]
-                )
-                if lineage:
-                    yield lineage
-        except Exception as exc:
-            yield Either(  # pyright: ignore[reportCallIssue]
-                left=StackTraceError(
-                    name="Dashboard Lineage",
-                    error=f"Error building cell lineage for Hex project {dashboard_details.id}: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
+                for column in cell.columns
+                if (cell.name, column.name) in to_columns
+                and any(source_id == table_id for source_id, _ in column.source_columns)
+            ]
+            lineage = self._get_add_lineage_request(
+                to_entity=target,
+                from_entity=table,
+                column_lineage=column_lineage or None,  # pyright: ignore[reportArgumentType]
             )
+            if lineage:
+                yield lineage
 
     def _get_cell_lineage(self, project: Project) -> list[HexCellLineage] | None:
         """
@@ -922,8 +919,19 @@ class HexSource(DashboardServiceSource):
             key = repr((cell.dataConnectionId, *table_key(reference)))
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
+            if "*" in reference.name:
+                self._add_wildcard_tables(
+                    lineage, searched_database, searched_schema, reference.name, connection.type if connection else None
+                )
+                reference.meta[UNRESOLVED] = True
+                continue
             if key not in resolved_tables:
-                resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
+                resolved_tables.put(
+                    key,
+                    self._resolve_table(
+                        searched_database, searched_schema, reference.name, connection.type if connection else None
+                    ),
+                )
             resolved = resolved_tables.get(key)
             if not resolved:
                 # A later cell inlining this one lacks this connection's defaults and
@@ -975,7 +983,58 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
+    def _resolve_reference(
+        self,
+        database: str | None,
+        schema: str | None,
+        table: str,
+        service: str | None,
+        connection_type: str | None,
+    ) -> tuple[Table, ...]:
+        try:
+            resolution = (
+                get_table_binding_resolution(self.metadata, service)
+                if service
+                else load_table_binding_resolution(connection_type, self.metadata)
+            )
+            return resolution.resolve(
+                TableReference(database, schema, table), service_name=service, lookup=TableLookup.SEARCH
+            )
+        except UnsupportedTableReferenceError as exc:
+            logger.debug("Skipping unsupported Hex table reference %s: %s", table, exc)
+            return ()
+        except Exception as exc:
+            raise TableSearchError(f"searching table reference {table}: {exc}") from exc
+
+    def _add_wildcard_tables(
+        self,
+        lineage: HexCellLineage,
+        searched_database: str | None,
+        searched_schema: str | None,
+        table_name: str,
+        connection_type: str | None = None,
+    ) -> None:
+        for prefix in self.get_db_service_prefixes() or [None]:
+            service, database, schema, table = self.parse_db_service_prefix(prefix)
+            if not (searched_schema or schema):
+                continue
+            if any(
+                expected and actual and expected.lower() != actual.lower()
+                for expected, actual in ((database, searched_database), (schema, searched_schema), (table, table_name))
+            ):
+                continue
+            matches = self._resolve_reference(
+                searched_database or database, searched_schema or schema, table_name, service, connection_type
+            )
+            scopes = {tuple(fqn.split(model_str(match.fullyQualifiedName))[:-1]) for match in matches}
+            if not service and len(scopes) > 1:
+                continue
+            for match in matches:
+                lineage.tables[model_str(match.id)] = (match, prefix)
+
+    def _resolve_table(
+        self, database: str | None, schema: str | None, table: str, connection_type: str | None = None
+    ) -> tuple[Table, str | None] | None:
         """
         The one table the reference names across the db service prefixes (any service
         when none is set), with the prefix it was found under. Lineage must not guess,
@@ -992,28 +1051,14 @@ class HexSource(DashboardServiceSource):
                 continue
             if not (schema or prefix_schema):
                 continue
-            search = build_es_fqn_search_string(
-                database_name=database or prefix_database,
-                schema_name=schema or prefix_schema,
-                service_name=service or "*",
-                table_name=table,
+            found_tables = self._resolve_reference(
+                database or prefix_database, schema or prefix_schema, table, service, connection_type
             )
-            for found in self._search_tables(search):
+            for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) > 1:
             logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))
         return next(iter(matches.values())) if len(matches) == 1 else None
-
-    def _search_tables(self, fqn_search_string: str) -> list[Table]:
-        try:
-            tables = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn.prefix_entity_for_wildcard_search(entity_type=Table, fqn=fqn_search_string),
-                raise_on_error=True,
-            )
-        except Exception as exc:
-            raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
-        return [table for table in tables or [] if table is not None]
 
     @staticmethod
     def _unique_column_name(name: str, taken: set[str]) -> str:

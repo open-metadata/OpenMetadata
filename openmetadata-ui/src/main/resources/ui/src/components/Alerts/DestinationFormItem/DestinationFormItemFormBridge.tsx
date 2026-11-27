@@ -16,7 +16,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../../../utils/AlertsClassBase.interface';
 import DestinationFormItem from './DestinationFormItem.component';
 import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';

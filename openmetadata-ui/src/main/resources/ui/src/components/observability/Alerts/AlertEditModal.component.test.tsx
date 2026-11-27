@@ -28,12 +28,12 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 
@@ -77,6 +77,7 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
+      <span data-testid="form-enabled">{String(value.enabled)}</span>
       <button
         data-testid="change-form"
         onClick={() => onChange({ ...value, name: 'updated-alert' })}>
@@ -258,6 +259,19 @@ describe('AlertEditModal', () => {
     );
   });
 
+  it('starts a new alert enabled', () => {
+    render(
+      <AlertEditModal
+        isOpen
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('form-enabled')).toHaveTextContent('true');
+  });
+
   it('renders add form with empty alert values', () => {
     render(
       <AlertEditModal
@@ -273,6 +287,23 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-display-name')).toHaveTextContent('');
     expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
       expect.objectContaining({ sources: [] })
+    );
+  });
+
+  it('renders the shared drawer header with the title and the alerts description', () => {
+    render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const header = screen.getByRole('banner');
+
+    expect(header).toContainElement(screen.getByTestId('form-heading'));
+    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+      'label.edit-entity'
+    );
+    expect(header).toContainElement(
+      screen.getByText('message.alerts-description')
+    );
+    expect(header).toContainElement(
+      screen.getByRole('switch', { name: 'label.show-hint' })
     );
   });
 

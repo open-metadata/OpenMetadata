@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import BlockEditor from './BlockEditor';
 import { BlockEditorRef } from './BlockEditor.interface';
@@ -18,6 +18,14 @@ import { BlockEditorRef } from './BlockEditor.interface';
 jest.mock('./EditorSlots', () => () => null);
 
 describe('BlockEditor', () => {
+  it('labels the editable comment field for assistive technology', () => {
+    render(<BlockEditor ariaLabel="Resolution comment" />);
+
+    expect(
+      screen.getByRole('textbox', { name: 'Resolution comment' })
+    ).toBeInTheDocument();
+  });
+
   // An editor that starts editable and is made read-only a tick later lets a
   // trailing "@name" in its content open the mention popup, which then stays
   // pinned to the page's top-left.
@@ -56,5 +64,18 @@ describe('BlockEditor', () => {
     });
 
     expect(ref.current?.editor?.isEditable).toBe(true);
+  });
+
+  it('exposes the textbox role only while editable', async () => {
+    const { rerender } = render(<BlockEditor editable={false} />);
+    const editorElement = () => document.querySelector('.om-block-editor');
+
+    expect(editorElement()).toHaveAttribute('role', 'presentation');
+
+    rerender(<BlockEditor editable />);
+
+    await waitFor(() =>
+      expect(editorElement()).toHaveAttribute('role', 'textbox')
+    );
   });
 });

@@ -24,26 +24,21 @@ export const PipelineService: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083"
+      d="M4.443 2.406h11.555c1.228 0 2.223.933 2.223 2.084v10.833c0 1.15-.995 2.083-2.222 2.083H4.443c-1.227 0-2.222-.932-2.222-2.083V4.49c0-1.151.995-2.084 2.222-2.084"
       stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
-      d="M6.5 14.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3m7-6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path
-      d="M8.035 13.001h2.466a3 3 0 0 0 3-3V8.578"
+      d="M12.22 12.906a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0m-7-6a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0m6.966 6.001H9.72a3 3 0 0 1-3-3V8.484"
       stroke="currentColor"
       strokeWidth={1.3}
     />

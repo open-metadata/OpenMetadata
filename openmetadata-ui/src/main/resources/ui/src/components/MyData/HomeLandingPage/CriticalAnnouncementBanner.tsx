@@ -112,10 +112,9 @@ const CriticalAnnouncementBanner = ({
 
         <ButtonUtility
           className="tw:absolute tw:top-3 tw:right-3"
-          color="tertiary"
           data-testid="critical-announcement-dismiss"
           icon={XClose}
-          size="sm"
+          size="lg"
           tooltip={t('label.dismiss')}
           onClick={onDismiss}
         />

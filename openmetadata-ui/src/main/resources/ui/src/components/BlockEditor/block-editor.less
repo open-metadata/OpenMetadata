@@ -25,10 +25,6 @@
 @callout-border: var(--tw-color-border-subtle);
 
 .block-editor-wrapper {
-  .om-block-editor > p:last-child {
-    // this is to have enough space after last node, referred from the reference editor
-    padding-bottom: 30vh;
-  }
   .om-block-editor > .tableWrapper {
     width: 100%;
     overflow-x: auto;
@@ -278,12 +274,7 @@
     }
   }
 
-  // if contenteditable is false, remove padding-bottom from last p tag
-  .om-block-editor[contenteditable='false'] {
-    > p:last-child {
-      padding-bottom: 0;
-    }
-  }
+
 }
 
 .menu-wrapper {
@@ -294,13 +285,15 @@
   justify-content: center;
   border: @global-border;
   border-radius: @border-rad-base;
-  width: 100%;
+  // v3 positions this element itself; there is no tippy box to size or stack it.
+  width: max-content;
+  max-width: 400px;
 }
 
 .slash-menu-wrapper {
   max-height: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-overlay-surface);
+  background-color: var(--tw-background-color-floating);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -325,7 +318,7 @@
   max-height: 300px;
   max-width: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-overlay-surface);
+  background-color: var(--tw-background-color-floating);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;

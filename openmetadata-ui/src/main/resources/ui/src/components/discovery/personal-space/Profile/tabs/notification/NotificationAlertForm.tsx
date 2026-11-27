@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { isUndefined } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
@@ -33,8 +33,10 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   createNotificationAlert,
   getAlertsFromName,
@@ -56,6 +58,7 @@ import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
   ALERT_AI_FORM_MODAL_ID,
 } from '../../../../../observability/Alerts/AlertAiFormFields.constants';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -81,6 +84,7 @@ const getEmptyFormValues = (): ModifiedCreateEventSubscription => ({
   readTimeout: DEFAULT_READ_TIMEOUT,
   resources: [],
   timeout: ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+  enabled: true,
 });
 
 const alertToFormValues = (
@@ -115,6 +119,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [formData, setFormData] =
     useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
+  // What the form opened with, so leaving after an edit can ask first.
+  const [loadedFormData, setLoadedFormData] =
+    useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
 
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [templateResourcePermission, setTemplateResourcePermission] =
@@ -126,6 +133,15 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   );
 
   const isEditMode = Boolean(fqn);
+  // Only someone who can edit the alert can switch it off or on.
+  const { canEditAll } = useEntityPermissions(
+    ResourceEntity.EVENT_SUBSCRIPTION,
+    fqn ?? '',
+    { enabled: isEditMode }
+  );
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    !isEqual(formData, loadedFormData)
+  );
 
   const sources = formData.resources ?? NO_SOURCES;
   const capabilitiesInput = useMemo(
@@ -159,7 +175,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
         setInitialData(rawAlert);
         setAlert(modifiedAlert);
-        setFormData(alertToFormValues(modifiedAlert));
+        const loaded = alertToFormValues(modifiedAlert);
+        setFormData(loaded);
+        setLoadedFormData(loaded);
       } else if (fqn && alertResponse.status === 'rejected') {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert') })
@@ -262,19 +280,11 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <AlertAiForm
             alert={alert}
+            canEditEnabled={!isEditMode || canEditAll}
             fieldDocDisplay="popover"
             fieldDocVariant="muted"
             formId={ALERT_AI_FORM_MODAL_ID}
-            inlineAlert={
-              inlineAlertDetails
-                ? {
-                    heading: inlineAlertDetails.heading,
-                    description: inlineAlertDetails.description,
-                    type: inlineAlertDetails.type,
-                    onClose: inlineAlertDetails.onClose,
-                  }
-                : undefined
-            }
+            inlineAlert={inlineAlertDetails}
             mode={isEditMode ? 'edit' : 'add'}
             selection={selection}
             shouldShowActionsSection={false}
@@ -298,14 +308,17 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           color="tertiary"
           data-testid="cancel-btn"
           onPress={() =>
-            onNavigate(
-              fqn
-                ? { type: 'detail', fqn, name: getEntityName(alert) }
-                : { type: 'list' }
+            runGuarded(() =>
+              onNavigate(
+                fqn
+                  ? { type: 'detail', fqn, name: getEntityName(alert) }
+                  : { type: 'list' }
+              )
             )
           }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="save-btn"

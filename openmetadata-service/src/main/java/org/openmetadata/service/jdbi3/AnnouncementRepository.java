@@ -21,7 +21,9 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -367,6 +369,36 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     }
 
     return null;
+  }
+
+  /** One batch of the announcements {@code filter} matches, without their fields. */
+  public List<Announcement> listBatch(ListFilter filter, int limit, int offset) {
+    return JsonUtils.readObjects(dao.listAfter(filter, limit, offset), Announcement.class);
+  }
+
+  /**
+   * The entity each announcement with an entityLink is about, keyed by announcement id, read from
+   * the edge stored at creation: it follows the entity by id, so it survives a rename that leaves the
+   * stored link behind.
+   */
+  public Map<UUID, EntityReference> getLinkedEntities(List<Announcement> announcements) {
+    List<String> ids =
+        announcements.stream()
+            .filter(announcement -> !nullOrEmpty(announcement.getEntityLink()))
+            .map(announcement -> announcement.getId().toString())
+            .toList();
+    Map<UUID, EntityReference> linked = new HashMap<>();
+    if (!ids.isEmpty()) {
+      for (CollectionDAO.EntityRelationshipObject edge :
+          daoCollection.relationshipDAO().findFromBatch(ids, Relationship.MENTIONED_IN.ordinal())) {
+        linked.put(
+            UUID.fromString(edge.getToId()),
+            new EntityReference()
+                .withId(UUID.fromString(edge.getFromId()))
+                .withType(edge.getFromEntity()));
+      }
+    }
+    return linked;
   }
 
   private EntityReference getAboutEntity(Announcement announcement) {

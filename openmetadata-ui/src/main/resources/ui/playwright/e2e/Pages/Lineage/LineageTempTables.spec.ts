@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
+import { migratedTo } from '../../../constant/migration';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getDefaultAdminAPIContext, uuid } from '../../../utils/common';
 import {
@@ -70,44 +71,49 @@ test.afterAll(async ({ browser }) => {
 });
 
 test.describe('Lineage temporary tables', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test('shows temp tables by default, hides them and remembers the choice', async ({
-    page,
-  }) => {
-    const tempNode = page.getByTestId(`lineage-node-${tempTable}`);
-    const targetNode = page.getByTestId(
-      `lineage-node-${target.entityResponseData.fullyQualifiedName}`
-    );
-    const directEdge = page.getByTestId(
-      `edge-${source.entityResponseData.fullyQualifiedName}-${target.entityResponseData.fullyQualifiedName}`
-    );
+  test(
+    'shows temp tables by default, hides them and remembers the choice',
+    migratedTo.split(
+      'src/components/Lineage/EntityLineageCanvas/EntityLineageCanvas.browser.test.tsx',
+      'LineageResourceIT#tempLineageTables_roundTrip'
+    ),
+    async ({ page }) => {
+      const tempNode = page.getByTestId(`lineage-node-${tempTable}`);
+      const targetNode = page.getByTestId(
+        `lineage-node-${target.entityResponseData.fullyQualifiedName}`
+      );
+      const directEdge = page.getByTestId(
+        `edge-${source.entityResponseData.fullyQualifiedName}-${target.entityResponseData.fullyQualifiedName}`
+      );
 
-    await source.visitEntityPage(page);
-    await visitLineageTab(page);
-
-    await expect(tempNode).toBeVisible();
-
-    await test.step('hide them from the lineage config dialog', async () => {
-      await setShowTempTables(page, false);
-
-      await expect(tempNode).toBeHidden();
-      await expect(targetNode).toBeVisible();
-      await expect(directEdge).toBeVisible();
-    });
-
-    await test.step('stay hidden on the next visit', async () => {
       await source.visitEntityPage(page);
       await visitLineageTab(page);
 
-      await expect(targetNode).toBeVisible();
-      await expect(directEdge).toBeVisible();
-      await expect(tempNode).toBeHidden();
-    });
-
-    await test.step('show them again', async () => {
-      await setShowTempTables(page, true);
-
       await expect(tempNode).toBeVisible();
-      await expect(directEdge).toBeHidden();
-    });
-  });
+
+      await test.step('hide them from the lineage config dialog', async () => {
+        await setShowTempTables(page, false);
+
+        await expect(tempNode).toBeHidden();
+        await expect(targetNode).toBeVisible();
+        await expect(directEdge).toBeVisible();
+      });
+
+      await test.step('stay hidden on the next visit', async () => {
+        await source.visitEntityPage(page);
+        await visitLineageTab(page);
+
+        await expect(targetNode).toBeVisible();
+        await expect(directEdge).toBeVisible();
+        await expect(tempNode).toBeHidden();
+      });
+
+      await test.step('show them again', async () => {
+        await setShowTempTables(page, true);
+
+        await expect(tempNode).toBeVisible();
+        await expect(directEdge).toBeHidden();
+      });
+    }
+  );
 });

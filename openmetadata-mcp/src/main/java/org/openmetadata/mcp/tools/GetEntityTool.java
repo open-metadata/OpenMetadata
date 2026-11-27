@@ -19,7 +19,10 @@ import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -29,10 +32,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -275,6 +279,8 @@ public class GetEntityTool implements McpTool {
       // The email is hidden from callers without PII access, as UserResource does. The user is
       // the copy maskSecrets made, so this does not touch the repository's entity.
       PIIMasker.maskUser(authorizer, securityContext, user);
+    } else if (entity instanceof TestCase testCase) {
+      PIIMasker.getTestCase(testCase, authorizer, securityContext);
     }
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
@@ -383,6 +389,9 @@ public class GetEntityTool implements McpTool {
             ctx.securityContext(),
             new OperationContext(ctx.entityType(), VIEW_ALL),
             new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     AIContext context =
         new AIContextBuilder(ctx.entityType(), ctx.fqn())
             .withQuery(ctx.options().query())
@@ -414,6 +423,9 @@ public class GetEntityTool implements McpTool {
   }
 
   private static Object knowledgeContent(IncludeContext ctx) {
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
@@ -421,8 +433,7 @@ public class GetEntityTool implements McpTool {
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
-      String body = AIContextBuilder.fullContentOf(ctx.entity());
-      rendered = renderText(ctx, body == null ? "" : body);
+      rendered = renderText(ctx, fullKnowledgeText(ctx.entity()));
     } else {
       rendered =
           ctx.options().asJson()
@@ -432,18 +443,47 @@ public class GetEntityTool implements McpTool {
     return rendered;
   }
 
+  private static String fullKnowledgeText(EntityInterface<?> entity) {
+    String body =
+        entity instanceof Page page && isArticle(page)
+            ? PromptText.forArticleRead(page.getDescription())
+            : AIContextBuilder.fullContentOf(entity);
+    return body == null ? "" : body;
+  }
+
+  private static boolean masksTestCaseContent(IncludeContext ctx) {
+    return ctx.entity() instanceof TestCase testCase
+        && PIIMasker.shouldMaskTestCase(testCase, ctx.authorizer(), ctx.securityContext());
+  }
+
   /**
    * The entity read is already authorized, so its chunks are searched as the caller. Search can
    * still withhold every chunk (an anchored or retired memory, or a body not chunked yet); the
    * caller then gets the full body rather than nothing.
    */
   private static List<String> passages(IncludeContext ctx, String query) {
-    return OpenSearchVectorService.getInstance()
-        .searchChunksByParent(
-            ctx.entity().getId().toString(),
-            query,
-            ctx.options().passages(),
-            getSubjectContext(ctx.securityContext()));
+    List<String> found =
+        Entity.getSearchRepository()
+            .getVectorIndexService()
+            .searchChunksByParent(
+                ctx.entity().getId().toString(),
+                query,
+                ctx.options().passages(),
+                getSubjectContext(ctx.securityContext()));
+    return ctx.entity() instanceof Page page ? readablePassages(page, found) : found;
+  }
+
+  private static List<String> readablePassages(Page page, List<String> passages) {
+    return isArticle(page)
+        ? PageBodyTextContributor.readableArticlePassages(page, passages)
+        : passages.stream()
+            .map(PromptText::forContentRead)
+            .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+            .toList();
+  }
+
+  private static boolean isArticle(Page page) {
+    return page.getPageType() != PageType.QUICK_LINK;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {
@@ -454,7 +494,7 @@ public class GetEntityTool implements McpTool {
 
   private static boolean vectorSearchEnabled() {
     return Entity.getSearchRepository().isVectorEmbeddingEnabled()
-        && OpenSearchVectorService.getInstance() != null;
+        && Entity.getSearchRepository().getVectorIndexService() != null;
   }
 
   /** Runs one include section, converting a failure into a note instead of losing the whole read. */

@@ -29,7 +29,6 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
-import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -119,7 +118,7 @@ public class IndependentOntologyRetentionIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void archivedOntologiesRemainReadableButCannotStartOrCompleteReviews(TestNamespace ns) {
+  void archivedOntologiesStayReadableWithdrawTheirReviewAndCannotStartAnother(TestNamespace ns) {
     var client = SdkClients.adminClient();
     Ontology ontology = createOntology(ns);
     var release = capture(ontology);
@@ -150,17 +149,17 @@ public class IndependentOntologyRetentionIT extends BaseOntologyApprovalIT {
             client
                 .tasks()
                 .create(reviewRequest(ns, Entity.ONTOLOGY_RELEASE, draft.getFullyQualifiedName())));
-    new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
+    // Archiving withdrew the review, so restoring returns a Draft that needs a fresh review.
     assertEquals(
-        EntityStatus.IN_REVIEW, client.ontologyReleases().get(release.getId()).getEntityStatus());
-    assertEquals(TaskEntityStatus.Open, client.tasks().get(task.getId().toString()).getStatus());
+        EntityStatus.DRAFT, client.ontologyReleases().get(release.getId()).getEntityStatus());
+    assertEquals(
+        TaskEntityStatus.Cancelled, client.tasks().get(task.getId().toString()).getStatus());
     client.ontologies().restore(ontology.getId());
     assertEquals(
-        TaskEntityStatus.Approved,
-        SdkClients.user1Client()
-            .tasks()
-            .resolve(task.getId().toString(), decision(TaskResolutionType.Approved))
-            .getStatus());
+        EntityStatus.DRAFT, client.ontologyReleases().get(release.getId()).getEntityStatus());
+    assertEquals(
+        TaskEntityStatus.Open,
+        submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName()).getStatus());
   }
 
   private static OntologyConcept concept(Ontology ontology) {

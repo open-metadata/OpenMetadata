@@ -1,9 +1,12 @@
 # A memory cites its supporting Queries, and retiring one holds the memory for review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the held-Draft queue is the owner's and
+  admins') · v3 2026-11-03 (a deleted Query reads in full only to admins; the UI names it at view
+  time)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`
+- **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`,
+  `useMemoryStatusReason.test.ts`
 - **Related:** open-metadata/ai-platform#1582; ADR:ai-platform/2026-10-15-a-captured-memory-links-the-saved-queries-that-support-it; ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review; ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory
 
 ## Context
@@ -82,3 +85,33 @@ read the Query.
 - One race remains. A memory write that resolves a Query after the delete's lookup, but before the
   row removal, loses its link without a hold. Closing it needs Memory Reconciliation to re-verify
   evidence, which is a Collate change.
+
+## Amendment — 2026-11-03: the held-Draft queue is the owner's and admins'
+
+Item 8 still holds for who looks: the Memories list shows Draft by default, so an evidence hold,
+which opens no task, is visible where people look. But a Draft memory is now listed only to its
+owners and to admins (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+So the held-Draft queue is the owner's and the admins'. A reader of the memory still opens it by
+id under the share rules.
+
+## Amendment — 2026-11-03: a deleted Query reads in full only to admins, who see it named
+
+Release testing found the reason in item 6 unreadable: a reviewer sees a UUID, not the Query it
+stood for. The stored `statusReason` stays id-only, because every reader of the memory reads it.
+Where the Context Center shows the reason, in the memory list and the memory view, it names the
+Query instead when the memory's version history gives this viewer its name. The UI recognises the
+reason by its fixed text (`RETIRED_QUERY_REASON`, which must match `EVIDENCE_RETIRED`).
+
+The name comes from the history because a Query delete is always a hard delete: the Query's own
+endpoint answers 404 even with `include=deleted`. The versions that cited the Query still hold its
+reference, which item 7 reduces to `{id, type}` for a caller who may not view the Query.
+
+Item 7 cannot decide that for a Query that is gone. A policy condition that needs the Query, such
+as `hasDomain()` or `matchAnyTag()`, evaluates without it and fails open, so a reader the Query was
+hidden from would see it in full once it is deleted: in the hold's change, in every version, and so
+in the named reason. A reference to a Query that no longer exists therefore reads in full only to
+an admin; every other caller gets `{id, type}`, in every memory response and version
+(`ContextMemoryEvidenceAccess`). So the reason is named for admins, and every other reader keeps
+the id. When the history cannot be read, or no version names the Query (a late link under item 5
+never stored one), the id stays too.
+

@@ -8,6 +8,7 @@ import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -28,6 +29,8 @@ public final class OntologyService extends EntityServiceBase<Ontology> {
       final JsonNode original, final JsonNode updated, final Ontology entity) {
     removeField(original, "publicationStatus");
     removeField(updated, "publicationStatus");
+    removeField(original, "installedPacks");
+    removeField(updated, "installedPacks");
   }
 
   public Ontology create(final CreateOntology request) {
@@ -54,6 +57,14 @@ public final class OntologyService extends EntityServiceBase<Ontology> {
         null,
         OntologyWorkingDiff.class,
         options.build());
+  }
+
+  public OntologyProfileReport validateWorking(final UUID id) {
+    return httpClient.execute(
+        HttpMethod.GET,
+        basePath + "/" + id + "/working/validation",
+        null,
+        OntologyProfileReport.class);
   }
 
   public NativeOntologyImportPreview previewImport(

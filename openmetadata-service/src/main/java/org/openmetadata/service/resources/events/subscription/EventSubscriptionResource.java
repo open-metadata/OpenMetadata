@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.events.subscription;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.events.AlertType.NOTIFICATION;
 
@@ -103,7 +104,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -673,7 +677,8 @@ public class EventSubscriptionResource
       operationId = "checkIfThePublisherProcessedALlEvents",
       summary = "Check If the Publisher Processed All Events",
       description =
-          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+          "Return true when no events are left that the alert will still process. A disabled alert"
+              + " is not running and returns true: enabling it starts from the latest event.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -743,6 +748,20 @@ public class EventSubscriptionResource
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     try {
       ResultList<TypedEvent> result = fetchEventRecords(id, statusParam, limit, paginationOffset);
+      SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+      if (!subject.isAdmin() && !subject.isBot()) {
+        // Events about users carry their email, which only admins and bots read.
+        result.getData().stream()
+            .flatMap(event -> listOrEmpty(event.getData()).stream())
+            .forEach(
+                event -> {
+                  if (event instanceof ChangeEvent changeEvent) {
+                    PIIMasker.maskUserChangeEvent(changeEvent);
+                  } else if (event instanceof FailedEventResponse failed) {
+                    PIIMasker.maskUserChangeEvent(failed.getChangeEvent());
+                  }
+                });
+      }
       return Response.ok().entity(result).build();
     } catch (EntityNotFoundException e) {
       LOG.error("Entity not found for ID: {}", id, e);

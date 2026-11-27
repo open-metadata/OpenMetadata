@@ -69,12 +69,16 @@ class Data360Connection(BaseConnection[Data360ConnectionConfig, Salesforce]):
         """Validates connectivity and that the connected app can list what the
         ingestion walks: data spaces, then the objects inside the first one.
         Authenticating is not enough on its own, since Data 360 grants its scopes
-        per API."""
-        client = self.client
+        per API.
+
+        The client logs in to Salesforce when it is first built, so it is only
+        reached inside the steps: a wrong secret or domain then fails
+        `CheckAccess` with the Salesforce error instead of raising before any
+        step result exists."""
         service_connection = self.service_connection
 
         def list_dataspaces() -> list[dict]:
-            return get_dataspaces(client, limit=PROBE_LIMIT, log_warning=logger.warning)
+            return get_dataspaces(self.client, limit=PROBE_LIMIT, log_warning=logger.warning)
 
         def list_objects_of_type(entity_type: str) -> list[dict]:
             dataspaces = list_dataspaces()
@@ -84,14 +88,19 @@ class Data360Connection(BaseConnection[Data360ConnectionConfig, Salesforce]):
             if not dataspace_name:
                 return []
             return get_metadata_by_type(
-                client=client,
+                client=self.client,
                 entity_type=entity_type,
                 dataspace_name=dataspace_name,
                 log_warning=logger.warning,
             )
 
+        def check_access() -> None:
+            # Reading `self.client` here, not when the dict is built, is what
+            # keeps the Salesforce login inside this step.
+            self.client.describe()
+
         test_fn = {
-            "CheckAccess": client.describe,
+            "CheckAccess": check_access,
             "GetDatabases": list_dataspaces,
             "GetTables": lambda: list_objects_of_type(MetadataTypesConstant.DATA_LAKE_OBJECT),
             "GetCalculatedInsights": lambda: list_objects_of_type(MetadataTypesConstant.CALCULATED_INSIGHT),

@@ -48,6 +48,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ManualProgress
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.metrics.system.system import (
@@ -649,6 +650,189 @@ class TestGetTableEntities:
         assert "databaseSchemaRegex" not in call_params
         assert EMPLOYEES_TABLE not in result
         assert result == [ORDERS_TABLE]
+
+    def test_conflicting_modes_substring_table_exclude_drops_table_client_side(self):
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+
+        assert call_params["databaseSchemaRegex"] == "finance"
+        assert call_params["regexMode"] == "include"
+        assert "tableRegex" not in call_params
+
+        assert REVENUE_VIEW not in result
+        assert result == [ORDERS_TABLE]
+
+    def test_conflicting_modes_substring_schema_exclude_drops_table_client_side(self):
+
+        schema_ref = EntityReference(
+            id=uuid.uuid4(),
+            name="f_inanc_e_schema",
+            type="databaseSchema",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema",
+        )
+        ledger_table = Table(
+            id=uuid.uuid4(),
+            name="ledger",
+            fullyQualifiedName="my_service.prod.f_inanc_e_schema.ledger",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=schema_ref,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"excludes": ["inanc"]},
+                "tableFilterPattern": {"includes": ["ledger"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ledger_table])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+
+        assert call_params["tableRegex"] == "ledger"
+        assert call_params["regexMode"] == "include"
+        assert "databaseSchemaRegex" not in call_params
+
+        assert ledger_table not in result
+        assert result == []
+
+    def test_non_conflicting_substring_exclude_forwards_to_server(self):
+        fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+
+        list(fetcher._get_table_entities(PROD_DB))
+
+        call_params = fetcher.metadata.list_all_entities.call_args[1]["params"]
+        assert call_params["tableRegex"] == "summary"
+        assert call_params["regexMode"] == "exclude"
+
+    def test_substring_table_exclude_drops_consistently_across_paths(self):
+        server_path_fetcher = _make_fetcher(
+            {
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        server_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE])
+        server_path_result = list(server_path_fetcher._get_table_entities(PROD_DB))
+
+        assert server_path_result == [ORDERS_TABLE]
+
+        client_path_fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["summary"]},
+                "includeViews": True,
+            }
+        )
+
+        client_path_fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
+        client_path_result = list(client_path_fetcher._get_table_entities(PROD_DB))
+
+        assert client_path_result == [ORDERS_TABLE]
+        assert server_path_result == client_path_result
+
+    def test_deferred_table_exclude_is_case_insensitive(self):
+        """Case variants are excluded regardless of where the filter executes."""
+        summary_daily = Table(
+            id=uuid.uuid4(),
+            name="summary_daily",
+            fullyQualifiedName="my_service.prod.finance.summary_daily",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database=DB_REF,
+            databaseSchema=FINANCE_SCHEMA_REF,
+            tableType=TableType.Regular,
+        )
+        fetcher = _make_fetcher(
+            {
+                "schemaFilterPattern": {"includes": ["finance"]},
+                "tableFilterPattern": {"excludes": ["Summary"]},
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW, summary_daily])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [ORDERS_TABLE]
+
+    @pytest.mark.parametrize("use_fqn", [False, True])
+    @pytest.mark.parametrize(
+        ("axis", "pattern", "filtered"),
+        [
+            ("schemaFilterPattern", "inanc", True),
+            ("schemaFilterPattern", "Inanc", True),
+            ("tableFilterPattern", "summary", True),
+            ("tableFilterPattern", "Summary", True),
+            ("tableFilterPattern", "^summary$", False),
+        ],
+    )
+    def test_deferred_excludes_match_substrings_without_case_sensitivity(self, use_fqn, axis, pattern, filtered):
+        other_axis = "tableFilterPattern" if axis == "schemaFilterPattern" else "schemaFilterPattern"
+        fetcher = _make_fetcher(
+            {
+                axis: {"excludes": [pattern]},
+                other_axis: {"includes": [".*"]},
+                "useFqnForFiltering": use_fqn,
+                "includeViews": True,
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([REVENUE_VIEW])
+
+        assert list(fetcher._get_table_entities(PROD_DB)) == ([] if filtered else [REVENUE_VIEW])
+
+    def test_unparseable_table_is_skipped_and_recorded_as_failed(self):
+        """A table the client cannot parse (here, a certification served without the
+        expiryDate the model requires) is reported, and the rest are profiled."""
+        broken = ORDERS_TABLE.model_dump(mode="json", exclude_none=True)
+        broken.update(
+            id=str(uuid.uuid4()),
+            name="broken",
+            fullyQualifiedName="my_service.prod.finance.broken",
+            certification={
+                "tagLabel": {
+                    "tagFQN": "Certification.Gold",
+                    "source": "Classification",
+                    "labelType": "Manual",
+                    "state": "Confirmed",
+                },
+                "appliedDate": 1700000000000,
+            },
+        )
+        ometa = object.__new__(OpenMetadata)
+        ometa._use_raw_data = False
+        ometa.client = MagicMock()
+        ometa.client.get.return_value = {
+            "data": [ORDERS_TABLE.model_dump(mode="json", exclude_none=True), broken],
+            "paging": {"total": 2},
+        }
+        fetcher = _make_fetcher()
+        fetcher.metadata = ometa
+
+        profiled = [table.fullyQualifiedName.root for table in fetcher._get_table_entities(PROD_DB)]
+
+        assert profiled == ["my_service.prod.finance.orders"]
+        assert [failure.name for failure in fetcher.status.failures] == ["my_service.prod.finance.broken"]
 
 
 class TestFetch:

@@ -31,6 +31,8 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.api.mcp.OAuthClient;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.util.jdbi.BindJson;
@@ -69,6 +71,58 @@ public interface OAuthDAOs {
   SsoTestLoginSessionDAO ssoTestLoginSessionDAO();
 
   interface OAuthClientDAO {
+    @SqlQuery("SELECT client_id FROM oauth_clients WHERE client_id = :clientId FOR UPDATE")
+    String lockClient(@Bind("clientId") String clientId);
+
+    @SqlQuery(
+        "SELECT c.client_id, c.client_name, c.redirect_uris, c.created_at, "
+            + "(SELECT COUNT(*) FROM oauth_access_tokens a WHERE a.client_id = c.client_id AND a.expires_at > :now) AS active_access_tokens, "
+            + "(SELECT COUNT(*) FROM oauth_refresh_tokens r WHERE r.client_id = c.client_id AND r.expires_at > :now AND r.revoked = FALSE) AS active_refresh_tokens "
+            + "FROM oauth_clients c WHERE c.client_id > :after ORDER BY c.client_id LIMIT :limit")
+    @RegisterRowMapper(OAuthClientInventoryMapper.class)
+    List<OAuthClient> listClients(
+        @Bind("after") String after, @Bind("limit") int limit, @Bind("now") long now);
+
+    default List<OAuthClient> listClients(String after, int limit) {
+      return listClients(after, limit, System.currentTimeMillis());
+    }
+
+    @SqlUpdate("DELETE FROM oauth_refresh_tokens WHERE client_id = :clientId")
+    void deleteRefreshTokens(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE client_id = :clientId")
+    void deleteAccessTokens(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE client_id = :clientId")
+    void deleteAuthorizationCodes(@Bind("clientId") String clientId);
+
+    /** Revoke existing grants and pending sign-ins while retaining the registered client. */
+    @Transaction
+    default boolean revokeGrants(String clientId) {
+      final boolean exists = lockClient(clientId) != null;
+      if (exists) {
+        deletePendingRequests(clientId);
+        deleteAuthorizationCodes(clientId);
+        deleteRefreshTokens(clientId);
+        deleteAccessTokens(clientId);
+      }
+      return exists;
+    }
+
+    @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
+    int deleteClient(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE client_id = :clientId")
+    void deletePendingRequests(@Bind("clientId") String clientId);
+
+    /** Foreign keys revoke codes and tokens; pending sign-ins have no foreign key. */
+    @Transaction
+    default int deleteWithGrants(String clientId) {
+      final int deleted = deleteClient(clientId);
+      deletePendingRequests(clientId);
+      return deleted;
+    }
+
     @SqlQuery(
         "SELECT id, client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes FROM oauth_clients WHERE client_id = :clientId")
     @RegisterRowMapper(SystemTokenDAOs.OAuthClientRowMapper.class)
@@ -93,6 +147,19 @@ public interface OAuthDAOs {
 
     @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
     void delete(@Bind("clientId") String clientId);
+  }
+
+  class OAuthClientInventoryMapper implements RowMapper<OAuthClient> {
+    @Override
+    public OAuthClient map(ResultSet result, StatementContext context) throws SQLException {
+      return new OAuthClient()
+          .withClientId(result.getString("client_id"))
+          .withClientName(result.getString("client_name"))
+          .withRedirectUris(JsonUtils.readObjects(result.getString("redirect_uris"), String.class))
+          .withIssuedAt(result.getTimestamp("created_at").getTime())
+          .withActiveAccessTokens(result.getInt("active_access_tokens"))
+          .withActiveRefreshTokens(result.getInt("active_refresh_tokens"));
+    }
   }
 
   interface OAuthAuthorizationCodeDAO {
@@ -219,14 +286,30 @@ public interface OAuthDAOs {
         "DELETE FROM mcp_pending_auth_requests WHERE LOWER(consent_user_name) = LOWER(:userName)")
     void deletePendingConsentsOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
     void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate(
-        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE",
+        connectionType = POSTGRES)
     void revokeRefreshTokensOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
     void deleteAccessTokensOfUser(@Bind("userName") String userName);
 
     /**
@@ -235,6 +318,11 @@ public interface OAuthDAOs {
      * take them over. Names compare ignoring case: rows written before grants were stored under the
      * account's own name may hold the provider's spelling of it. Waiting consents and codes go first,
      * so neither can start a new grant.
+     *
+     * <p>On MySQL the grant tables' utf8mb4_unicode_ci collation already ignores case, so the MySQL
+     * queries on them compare names plainly and use the user-name indexes added in 2.0.8. Wrapped in
+     * LOWER() they scanned and locked every user's rows, and a token refresh by any other user
+     * deadlocked against the delete.
      */
     @Transaction
     default void revokeAllGrantsOfUser(String userName) {

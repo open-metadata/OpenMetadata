@@ -31,6 +31,7 @@ public class CsvAsyncJobArgs {
   private Boolean recursive;
   private String csv;
   private String versioningEntityType;
+  private String impersonatedBy;
   // Present when the job exports search results instead of a single entity
   // tree; the handler streams matching documents straight into the buffer.
   private SearchExportArgs searchExport;
@@ -103,6 +104,9 @@ public class CsvAsyncJobArgs {
     private Long endTs;
     private String searchTerm;
     private Integer limit;
+    // Decided when the export is requested, as the job runs without the requester; an export
+    // queued without it masks user emails.
+    private Boolean readsUserEmails;
   }
 
   /**

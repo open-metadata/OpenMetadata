@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -61,10 +62,16 @@ public class BasicAuthLoginServlet extends HttpServlet {
   record LoginForm(String csrfToken, String authRequestId) implements Serializable {}
 
   private final UserSSOOAuthProvider authProvider;
+  private final McpGrantTransaction grantTransaction;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final OAuthClientRepository clientRepository;
 
   public BasicAuthLoginServlet(UserSSOOAuthProvider authProvider) {
+    this(authProvider, new McpGrantTransaction());
+  }
+
+  BasicAuthLoginServlet(UserSSOOAuthProvider authProvider, McpGrantTransaction grantTransaction) {
+    this.grantTransaction = grantTransaction;
     this.authProvider = authProvider;
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
     this.clientRepository = new OAuthClientRepository();
@@ -197,54 +204,16 @@ public class BasicAuthLoginServlet extends HttpServlet {
         // Regenerate session to prevent fixation
         request.changeSessionId();
 
-        // Generate authorization code
-        List<String> scopes = pending.scopes();
-        if (scopes == null || scopes.isEmpty()) {
-          scopes = List.of("openid", "profile", "email");
-        }
-
-        String authCode =
-            authProvider.createAuthorizationCode(
-                user.getName(),
-                pending.clientId(),
-                pending.codeChallenge(),
-                URI.create(pending.redirectUri()),
-                scopes);
-
-        // Redirect to client callback with code + state
-        // Redirect BEFORE deleting pending request — if delete throws, the user still
-        // gets their auth code. The pending request will be cleaned up by the cleanup job.
-        Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("code", authCode);
-        if (pending.mcpState() != null) {
-          queryParams.put("state", pending.mcpState());
-        }
-        String redirectUrl =
-            UriUtils.constructAuthorizationResponseUri(
-                pending.redirectUri(), queryParams, authProvider.getIssuer());
-
-        LOG.info("Basic Auth login successful, redirecting to client callback");
+        final String redirectUrl =
+            grantTransaction.execute(
+                pending.clientId(), () -> completeLogin(authRequestId, user.getName()));
         response.sendRedirect(redirectUrl);
-
-        // Best-effort cleanup — failure here doesn't affect the user
-        try {
-          pendingAuthRepository.delete(authRequestId);
-        } catch (Exception deleteEx) {
-          LOG.warn(
-              "Failed to clean up pending auth request {}, will be removed by cleanup job: {}",
-              authRequestId,
-              deleteEx.getMessage());
-        }
 
       } catch (AuthenticationException e) {
         // Wrong password for an existing account. A rejected credential is an expected outcome of
         // this endpoint, so it is logged as an event and never as a stack trace.
+        // validatePassword already counted the failed attempt, as for the REST login.
         LOG.warn("Basic Auth login failed: invalid credentials");
-        try {
-          authenticator.recordFailedLoginAttempt(email, email);
-        } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt for security tracking", recordEx);
-        }
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       } catch (CustomExceptionMessage e) {
         // Both authenticators report an unknown account as CustomExceptionMessage, and LDAP uses
@@ -257,12 +226,42 @@ public class BasicAuthLoginServlet extends HttpServlet {
         renderLoginFormWithError(request, response, pending, "Invalid username or password");
       }
 
+    } catch (IllegalStateException e) {
+      response.sendError(
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application or authorization request is no longer valid. Please restart the flow.");
     } catch (Exception e) {
       LOG.error("Basic Auth login processing failed", e);
       response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Login processing failed");
     } finally {
       password = null;
     }
+  }
+
+  private String completeLogin(String authRequestId, String userName) {
+    final McpPendingAuthRequest pending = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    if (pending == null) {
+      throw new IllegalStateException("Authorization request expired");
+    }
+    final List<String> scopes =
+        pending.scopes() == null || pending.scopes().isEmpty()
+            ? List.of("openid", "profile", "email")
+            : pending.scopes();
+    final String code =
+        authProvider.createAuthorizationCode(
+            userName,
+            pending.clientId(),
+            pending.codeChallenge(),
+            URI.create(pending.redirectUri()),
+            scopes);
+    final Map<String, String> params = new HashMap<>();
+    params.put("code", code);
+    if (pending.mcpState() != null) {
+      params.put("state", pending.mcpState());
+    }
+    pendingAuthRepository.delete(authRequestId);
+    return UriUtils.constructAuthorizationResponseUri(
+        pending.redirectUri(), params, authProvider.getIssuer());
   }
 
   private void renderLoginFormWithError(
@@ -283,9 +282,13 @@ public class BasicAuthLoginServlet extends HttpServlet {
       clientName = client.getClientName();
     }
 
-    String html = HtmlTemplates.generateLoginForm(clientName, errorMessage, csrfToken);
+    // The host comes from the pending request, the same redirect URI the code is sent to.
+    String redirectTarget = UriUtils.describeRedirectTarget(URI.create(pending.redirectUri()));
+    String html =
+        HtmlTemplates.generateLoginForm(clientName, redirectTarget, errorMessage, csrfToken);
     response.setContentType("text/html; charset=UTF-8");
     response.setStatus(HttpServletResponse.SC_OK);
+    HtmlTemplates.setSignInPageHeaders(response);
     response.getWriter().write(html);
   }
 

@@ -21,6 +21,11 @@
     border: 1px solid @border-color-7;
     box-shadow: @button-box-shadow-default;
 
+    // @border-color-7 is a fixed near-white that glares on dark surfaces.
+    .dark-mode & {
+      border-color: var(--tw-border-color-secondary);
+    }
+
     .sla-form-card-title {
       display: block;
       font-size: var(--om-font-size-sm);

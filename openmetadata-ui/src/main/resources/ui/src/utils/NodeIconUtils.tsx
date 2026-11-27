@@ -12,13 +12,13 @@
  */
 
 import {
+  Flag01,
+  Policy,
+  SuccessfulTests,
   WorkflowCheckConditions,
   WorkflowDataCompleteness,
   WorkflowDetectFieldChange,
-  WorkflowEnd,
   WorkflowGitSync,
-  WorkflowPolicyEnforcement,
-  WorkflowRequestApproval,
   WorkflowRevertChanges,
   WorkflowSetAction,
   WorkflowStart,
@@ -33,30 +33,30 @@ type SvgIcon = React.FunctionComponent<React.SVGProps<SVGSVGElement>>;
 
 const CANVAS_NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
   [NodeSubType.StartEvent]: WorkflowStart,
-  [NodeSubType.EndEvent]: WorkflowEnd,
+  [NodeSubType.EndEvent]: Flag01,
   [NodeSubType.SetEntityAttributeTask]: WorkflowSetAction,
   [NodeSubType.CheckEntityAttributesTask]: WorkflowCheckConditions,
   [NodeSubType.CheckChangeDescriptionTask]: WorkflowDetectFieldChange,
-  [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
+  [NodeSubType.UserApprovalTask]: SuccessfulTests,
   [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
   [NodeSubType.CollectMetadataTask]: WorkflowDataCompleteness,
   [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
-  [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
+  [NodeSubType.PolicyAgentTask]: Policy,
   [NodeSubType.SinkTask]: WorkflowGitSync,
 };
 
 const NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
   [NodeSubType.StartEvent]: WorkflowStart,
-  [NodeSubType.EndEvent]: WorkflowEnd,
+  [NodeSubType.EndEvent]: Flag01,
   [NodeSubType.SetEntityAttributeTask]: WorkflowSetAction,
   [NodeSubType.SetEntityCertificationTask]: WorkflowSetAction,
   [NodeSubType.CheckEntityAttributesTask]: WorkflowCheckConditions,
   [NodeSubType.CheckChangeDescriptionTask]: WorkflowDetectFieldChange,
-  [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
+  [NodeSubType.UserApprovalTask]: SuccessfulTests,
   [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
   [NodeSubType.CollectMetadataTask]: WorkflowDataCompleteness,
   [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
-  [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
+  [NodeSubType.PolicyAgentTask]: Policy,
   [NodeSubType.SinkTask]: WorkflowGitSync,
 };
 

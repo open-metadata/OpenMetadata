@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.workflows.AutomaticApprovalReason;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
@@ -72,6 +73,12 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
 
     varHandler.setNodeVariable("result", resolvePositiveResult(execution));
     varHandler.setNodeVariable("autoApprovalReason", autoApprovalReason);
+    ApprovalOutcomeRecorder.recordAutomatic(
+        execution.getProcessInstanceBusinessKey(),
+        varHandler.getNodeNamespace(),
+        Boolean.TRUE.equals(submitterIsReviewer)
+            ? AutomaticApprovalReason.SUBMITTER_IS_REVIEWER
+            : AutomaticApprovalReason.NO_ASSIGNEES);
   }
 
   /**

@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
+import { guardBreadcrumbAction } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
@@ -94,7 +101,7 @@ jest.mock('./PersonaDetail', () => {
   return { __esModule: true, default: MockPersonaDetail };
 });
 
-const mockEditorSave = jest.fn();
+const mockEditorSave = jest.fn().mockResolvedValue(true);
 
 jest.mock('./customize/PersonaCustomizeView', () => ({
   __esModule: true,
@@ -104,7 +111,7 @@ jest.mock('./customize/PersonaCustomizeView', () => ({
     onBack: () => void;
     onEditorActionsChange?: (actions: {
       canSave: boolean;
-      onSave: () => void;
+      onSave: () => Promise<boolean>;
       onReset: () => void;
     }) => void;
   }) => (
@@ -151,7 +158,10 @@ const Host = () => {
         <button
           data-testid={`crumb-${crumb.id}`}
           key={crumb.id}
-          onClick={() => header.onBreadcrumbAction?.(crumb.id)}>
+          onClick={() =>
+            // ProfilePage guards every panel's crumbs the same way.
+            guardBreadcrumbAction(header.onBreadcrumbAction)?.(crumb.id)
+          }>
           {crumb.label}
         </button>
       ))}
@@ -166,9 +176,9 @@ const renderAt = (hash: string) => {
   window.history.replaceState(null, '', `/${hash}`);
 
   return render(
-    <MemoryRouter initialEntries={[`/${hash}`]}>
+    <BrowserRouter>
       <Host />
-    </MemoryRouter>
+    </BrowserRouter>
   );
 };
 
@@ -227,6 +237,19 @@ describe('PersonasPanel', () => {
       'p1'
     );
     expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas|p1|');
+  });
+
+  it('returns to the landing on browser Back from a persona detail', async () => {
+    renderAt('#personas');
+
+    fireEvent.click(screen.getByTestId('personas-landing'));
+
+    expect(screen.getByTestId('persona-detail')).toBeInTheDocument();
+
+    act(() => window.history.back());
+
+    expect(await screen.findByTestId('personas-landing')).toBeInTheDocument();
+    expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas||');
   });
 
   it('renders the detail view with the default tab and the resolved name', () => {
@@ -414,24 +437,32 @@ describe('PersonasPanel', () => {
       fireEvent.click(screen.getByTestId('crumb-detail'));
 
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
       expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-confirm'));
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).not.toHaveBeenCalled();
     });
 
-    it('saves the editor before leaving when the user picks save', async () => {
+    it('stays in the editor when the prompt is dismissed with Escape', async () => {
       await openDirtyEditor();
 
-      fireEvent.click(screen.getByTestId('persona-customize-view'));
-      fireEvent.click(await screen.findByTestId('unsaved-changes-modal-save'));
+      fireEvent.click(screen.getByTestId('crumb-detail'));
+      fireEvent.keyDown(await screen.findByTestId('unsaved-changes-popover'), {
+        key: 'Escape',
+      });
 
-      expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
-      expect(mockEditorSave).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('unsaved-changes-popover')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
+      expect(mockEditorSave).not.toHaveBeenCalled();
     });
 
     it('intercepts closing the modal through the exit guard', async () => {
@@ -446,10 +477,10 @@ describe('PersonasPanel', () => {
 
       expect(intercepted).toBe(true);
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-confirm'));
 
       expect(close).toHaveBeenCalledTimes(1);
     });

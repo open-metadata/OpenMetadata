@@ -58,8 +58,6 @@ const ENTITY_TYPE_NAMES = [
   'metric',
 ];
 
-type ChartRow = { day: number; group?: string; count: number };
-type ChartsBody = Record<string, { results?: ChartRow[] } | undefined>;
 type AggregateBody = {
   aggregations?: Record<
     string,
@@ -67,10 +65,9 @@ type AggregateBody = {
   >;
 };
 
-/** The estate figures the card is expected to print, from the two answers it read. */
+/** The estate figures the card is expected to print, from the connector aggregate it read. */
 interface ExpectedEstate {
   total: number;
-  hasInsights: boolean;
   /** Per-connector counts, largest first, before folding. */
   connectorCounts: number[];
 }
@@ -126,20 +123,9 @@ const waitForConnectorAggregate = (page: Page) =>
     200
   );
 
-/** The chart reports one row per (day, group); the estate is the newest day's sum. */
-const newestDayTotal = (rows: ChartRow[]) => {
-  const newest = rows.reduce((day, row) => Math.max(day, row.day), 0);
-
-  return rows
-    .filter((row) => row.day === newest)
-    .reduce((total, row) => total + row.count, 0);
-};
-
 const readExpectedEstate = async (
-  chartsResponse: Response,
   aggregateResponse: Response
 ): Promise<ExpectedEstate> => {
-  const charts = await okJson<ChartsBody>(chartsResponse, 'Estate charts');
   const aggregate = await okJson<AggregateBody>(
     aggregateResponse,
     'Connector aggregate'
@@ -151,16 +137,12 @@ const readExpectedEstate = async (
   const connectorCounts = (serviceTypes ?? [])
     .map((bucket) => bucket.doc_count)
     .sort((a, b) => b - a);
-  const totals = charts[TOTALS_CHART]?.results ?? [];
-  const hasInsights = totals.length > 0;
-  // Without Data Insights rows (its pipeline has not run — the Basic lane
-  // never runs it) the card falls back to the live sum of the connectors.
-  const liveTotal = connectorCounts.reduce((sum, count) => sum + count, 0);
 
+  // The header is "Data Assets by Connector": the sum of the split beneath it,
+  // whether or not Data Insights has rows.
   return {
     connectorCounts,
-    hasInsights,
-    total: hasInsights ? newestDayTotal(totals) : liveTotal,
+    total: connectorCounts.reduce((sum, count) => sum + count, 0),
   };
 };
 
@@ -188,30 +170,25 @@ const openEstate = async (page: Page) => {
 
   await redirectToHomePage(page);
   const widget = await waitForLandingPageWidget(page, DATA_ESTATE_KEY);
-  const expected = await readExpectedEstate(
-    await chartsResponse,
-    await aggregateResponse
-  );
+  await chartsResponse;
+  const expected = await readExpectedEstate(await aggregateResponse);
 
   return { expected, widget };
 };
 
 test.describe('Landing page data estate', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test('reports the estate size from Data Insights, or the live connector sum without it', async ({
+  test('reports the estate size as the sum of its connectors', async ({
     page,
   }) => {
     const { expected, widget } = await openEstate(page);
 
-    // Every lane seeds data assets before this runs, so either source has
-    // something to count: a 0 here is the header disagreeing with a populated
-    // breakdown, which is the bug the fallback exists to prevent.
+    // Every lane seeds data assets before this runs. The header used to print
+    // the Data Insights total above a split that summed to something else.
     expect(expected.total).toBeGreaterThan(0);
 
     await expect
       .poll(() => readTotal(widget), {
-        message: expected.hasInsights
-          ? 'total is the newest Data Insights day'
-          : 'total falls back to the live connector sum',
+        message: 'total is the sum of the per-connector counts',
       })
       .toBe(expected.total);
   });
@@ -278,8 +255,9 @@ test.describe('Landing page data estate', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   // The range drives the fetch, not just the label: the totals delta and the
-  // coverage trend are both measured over it. The connector split deliberately
-  // is not — it is a live count — so it has to survive the switch unchanged,
+  // coverage trend are both measured over it. The connector split and the
+  // header that sums it deliberately are not — they are a live count — so they
+  // have to survive the switch unchanged,
   // and the card must dim rather than drop back to its skeleton while the new
   // window loads.
   test('widening the range refetches the window and keeps the estate on screen', async ({
@@ -357,20 +335,10 @@ test.describe('Landing page data estate', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }
 
     await test.step('the new window lands and the connectors stay put', async () => {
-      const charts = await okJson<ChartsBody>(
-        await ninetyDayResponse,
-        '90-day estate charts'
-      );
-      const totals = charts[TOTALS_CHART]?.results ?? [];
+      await okJson(await ninetyDayResponse, '90-day estate charts');
 
       await expect(body).toHaveAttribute('aria-busy', 'false');
-      // With Data Insights rows the total is the window's newest day; without
-      // them it stays the live connector sum, which the window does not move.
-      await expect
-        .poll(() => readTotal(widget))
-        .toBe(
-          totals.length > 0 ? newestDayTotal(totals) : toDigits(totalBefore)
-        );
+      await expect(total).toHaveText(totalBefore);
       await expect(trigger).toContainText('Last 90 days');
       await expect(breakdown.getByTestId('connector-name')).toHaveText(
         connectorsBefore

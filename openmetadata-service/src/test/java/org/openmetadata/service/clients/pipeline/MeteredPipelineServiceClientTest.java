@@ -14,6 +14,7 @@
 package org.openmetadata.service.clients.pipeline;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,5 +52,14 @@ class MeteredPipelineServiceClientTest {
     MeteredPipelineServiceClient meteredClient = new MeteredPipelineServiceClient(wrappedClient);
 
     assertSame(accepted, meteredClient.runPipelineWithOptions(pipeline, null, options));
+  }
+
+  /** The namesake guard keys off this flag; the interface default would silently switch it off. */
+  @Test
+  void addressingPipelinesByNameIsTheWrappedClients() {
+    PipelineServiceClientInterface wrappedClient = mock(PipelineServiceClientInterface.class);
+    when(wrappedClient.addressesPipelinesByName()).thenReturn(true);
+
+    assertTrue(new MeteredPipelineServiceClient(wrappedClient).addressesPipelinesByName());
   }
 }

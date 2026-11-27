@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,
@@ -49,7 +48,13 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
           </Button>
         ) : null}
         {hideCloseIcon ? null : (
-          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
+          <ButtonUtility
+            data-testid="closeDrawer"
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onCancel}
+          />
         )}
       </div>
     </header>

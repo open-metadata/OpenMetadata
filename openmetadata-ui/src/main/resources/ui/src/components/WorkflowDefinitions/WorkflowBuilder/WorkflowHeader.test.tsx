@@ -46,12 +46,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </button>
   ),
   ButtonUtility: ({
+    onClick,
     tooltip,
     'data-testid': dataTestId,
   }: {
+    onClick?: () => void;
     tooltip?: string;
     'data-testid'?: string;
-  }) => <button aria-label={tooltip} data-testid={dataTestId} />,
+  }) => (
+    <button aria-label={tooltip} data-testid={dataTestId} onClick={onClick} />
+  ),
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
@@ -157,10 +161,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   DotsVertical: () => null,
-}));
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => null,
+  Edit01: () => null,
 }));
 
 jest.mock('../../../assets/svg/workflow.svg', () => ({
@@ -223,6 +224,28 @@ const buildContextMock = (
 describe('WorkflowHeader — System badge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('allows editing incident settings while explaining the system workflow restriction', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ isNoOp: true })
+    );
+    render(
+      <WorkflowHeader {...defaultProps} handleToggleSuspend={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('edit-workflow-button')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('suspend-workflow-button')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-workflow-button')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('system-workflow-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-title',
+      'message.system-workflow-edit-restriction'
+    );
   });
 
   it('renders the workflow title and name', () => {
@@ -324,9 +347,10 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
-    expect(
+    // Sits in the title row, right after the title.
+    expect(screen.getByTestId('workflow-title-section')).toContainElement(
       screen.getByTestId('edit-workflow-title-button')
-    ).toBeInTheDocument();
+    );
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {
@@ -510,7 +534,7 @@ describe('WorkflowHeader — manage menu', () => {
 });
 
 describe('WorkflowHeader — suspended badge', () => {
-  it('shows a warning badge after the title for a suspended workflow', () => {
+  it('shows a warning badge in the actions row for a suspended workflow', () => {
     mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
 
     render(<WorkflowHeader {...defaultProps} isSuspended />);
@@ -519,8 +543,11 @@ describe('WorkflowHeader — suspended badge', () => {
 
     expect(badge).toHaveTextContent('label.suspended');
     expect(badge).toHaveAttribute('color', 'warning');
+    expect(screen.getByTestId('workflow-title-section')).not.toContainElement(
+      badge
+    );
     expect(
-      screen.getByTestId('workflow-title').compareDocumentPosition(badge)
+      badge.compareDocumentPosition(screen.getByTestId('edit-workflow-button'))
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 

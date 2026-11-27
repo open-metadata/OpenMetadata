@@ -24,11 +24,12 @@ const TaskTitleEntityBadge: React.FC<{ entityType?: string }> = ({
 }) =>
   entityType ? (
     <Badge
+      className="tw:max-w-full"
       color="gray"
       data-testid="task-title-entity-type"
       size="sm"
       type="modern">
-      {formatEntityType(entityType)}
+      <span className="tw:truncate">{formatEntityType(entityType)}</span>
     </Badge>
   ) : null;
 

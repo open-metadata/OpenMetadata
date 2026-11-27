@@ -117,7 +117,7 @@ describe('CustomPropertiesSection', () => {
       within(screen.getByTestId('custom-property-cost_center-row')).getByTestId(
         'property-value'
       )
-    ).toHaveTextContent('label.not-set');
+    ).toHaveTextContent('label.no-value-yet');
   });
 
   it('filters rows by name, display name and type, ignoring case', async () => {

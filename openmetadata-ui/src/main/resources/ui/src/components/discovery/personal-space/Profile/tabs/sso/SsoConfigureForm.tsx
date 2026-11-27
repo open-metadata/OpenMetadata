@@ -15,15 +15,11 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
   FieldDocPopover,
   FieldDocProvider,
   FileUpload,
-  Modal,
-  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft, Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import {
   RegistryFieldsType,
   RegistryWidgetsType,
@@ -34,17 +30,21 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { useSsoFormDirty } from '../../../../../../hooks/discovery/personal-space/useSsoFormDirty';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
+import { FormHintDoc } from '../../../../../common/atoms/drawer/formHint/FormHintDoc';
+import { FormHintHeader } from '../../../../../common/atoms/drawer/formHint/FormHintHeader';
 import LdapRoleMappingWidget from '../../../../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
-import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { SecurityManagedPaths } from '../../../../../SettingsSso/SSOConfigurationForm/SSOConfigurationForm.interface';
 import SsoRolesSelectField from '../../../../../SettingsSso/SSOConfigurationForm/SsoRolesSelectField';
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 import { SsoTestLoginContent } from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
 import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
 
 const FORM_BODY_TEST_ID = 'sso-configure-form-body';
@@ -98,67 +98,6 @@ export interface SsoConfigureFormProps {
   /** Test Login opens as a page of its own; the panel shows it in the breadcrumb. */
   onSubPageChange?: (subPage?: SsoSubPage) => void;
 }
-
-interface UnsavedChangesDialogProps {
-  isOpen: boolean;
-  isSaving: boolean;
-  onCancel: () => void;
-  onDiscard: () => void;
-  onSave: () => void;
-}
-
-const UnsavedChangesDialog = ({
-  isOpen,
-  isSaving,
-  onCancel,
-  onDiscard,
-  onSave,
-}: UnsavedChangesDialogProps) => {
-  const { t } = useTranslation();
-
-  return (
-    <ModalOverlay
-      isDismissable={!isSaving}
-      isOpen={isOpen}
-      onOpenChange={(open) => !open && !isSaving && onCancel()}>
-      <Modal>
-        <Dialog
-          data-testid="sso-unsaved-changes-dialog"
-          dividers="scroll"
-          showCloseButton={!isSaving}
-          title={t('message.unsaved-changes')}
-          width={480}
-          onClose={onCancel}>
-          <Dialog.Content>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {t('message.unsaved-changes-description')}
-            </Typography>
-          </Dialog.Content>
-          <Dialog.Footer>
-            <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
-              <Button
-                color="secondary"
-                data-testid="sso-unsaved-changes-discard"
-                isDisabled={isSaving}
-                size="sm"
-                onPress={onDiscard}>
-                {t('label.discard')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="sso-unsaved-changes-save"
-                isLoading={isSaving}
-                size="sm"
-                onPress={onSave}>
-                {t('label.save-changes')}
-              </Button>
-            </div>
-          </Dialog.Footer>
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
-  );
-};
 
 interface SsoSaveAlertsProps {
   isNewConfig: boolean;
@@ -280,12 +219,7 @@ const SsoConfigureFooter = ({
 };
 
 const renderFieldDoc = (markdown: string) => (
-  <div className="form-hint-doc">
-    <RichTextEditorPreviewerV1
-      enableSeeMoreVariant={false}
-      markdown={markdown}
-    />
-  </div>
+  <FormHintDoc markdown={markdown} />
 );
 
 /**
@@ -307,10 +241,10 @@ const SsoConfigureForm = ({
     isLoading,
     isInitializing,
     internalData,
+    savedData,
+    comparableFormData,
     currentProvider,
     hasExistingConfig,
-    showCancelModal,
-    modalSaveLoading,
     errorClearTrigger,
     metadataUploadStatus,
     setMetadataUploadStatus,
@@ -337,9 +271,6 @@ const SsoConfigureForm = ({
     handleTestLoginModalClose,
     handleSave,
     handleCancelConfirm,
-    handleCancelModalClose,
-    handleCancelClick,
-    handleSaveAndExit,
   } = useSsoConfiguration({
     forceEditMode: true,
     isReadOnly,
@@ -351,6 +282,16 @@ const SsoConfigureForm = ({
     scrollContainer: '[data-testid="sso-panel"]',
     errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
   });
+
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    useSsoFormDirty({
+      hasExistingConfig,
+      internalData,
+      savedData,
+      currentProvider,
+      comparable: comparableFormData,
+    })
+  );
 
   const closeTestLoginRef = useRef(handleTestLoginModalClose);
   closeTestLoginRef.current = handleTestLoginModalClose;
@@ -452,15 +393,6 @@ const SsoConfigureForm = ({
           data-testid="sso-test-login-page"
           direction="col"
           gap={4}>
-          <Button
-            className="tw:self-start"
-            color="link-gray"
-            data-testid="sso-test-login-back"
-            iconLeading={ArrowLeft}
-            size="sm"
-            onPress={handleTestLoginModalClose}>
-            {t('label.back')}
-          </Button>
           <SsoTestLoginContent
             configurationCheck={testLoginConfigurationCheck}
             error={testLoginError}
@@ -505,17 +437,7 @@ const SsoConfigureForm = ({
             />
             {showHint && (
               <FieldDocPopover
-                header={
-                  <Box align="center" direction="row" gap={2}>
-                    <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-                    <Typography
-                      className="tw:text-secondary"
-                      size="text-sm"
-                      weight="medium">
-                      {t('label.form-hint')}
-                    </Typography>
-                  </Box>
-                }
+                header={<FormHintHeader />}
                 renderDoc={renderFieldDoc}
                 variant="muted"
               />
@@ -539,18 +461,12 @@ const SsoConfigureForm = ({
         isSaveGated={isSaveGatedOnTestLogin}
         isSaving={isLoading}
         isTestingLogin={isTestingLogin}
-        onCancel={handleCancelClick}
+        onCancel={() => runGuarded(handleCancelConfirm)}
         onSave={handleSave}
         onTestLogin={handleTestLogin}
       />
 
-      <UnsavedChangesDialog
-        isOpen={showCancelModal}
-        isSaving={modalSaveLoading}
-        onCancel={handleCancelModalClose}
-        onDiscard={handleCancelConfirm}
-        onSave={handleSaveAndExit}
-      />
+      <UnsavedChangesPrompt {...promptProps} />
     </Box>
   );
 };

@@ -17,7 +17,7 @@ import type {
 } from '@openmetadata/ui-core-components';
 import {
   Box,
-  Button,
+  ButtonUtility,
   Checkbox,
   Popover,
   PopoverTrigger,
@@ -29,7 +29,7 @@ import {
 import {
   BookClosed,
   Dataflow02,
-  Expand01,
+  Maximize01,
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
@@ -422,12 +422,12 @@ const KnowledgeGraphToolbar = ({
           <PopoverTrigger
             isOpen={openControl === 'view'}
             onOpenChange={(open) => changeOpenControl('view', open)}>
-            <Button
+            <ButtonUtility
               aria-label={t('label.view')}
               color="secondary"
               data-testid="graph-view-menu"
-              iconLeading={Settings01}
-              size="sm"
+              icon={Settings01}
+              size="lg"
             />
 
             <Popover
@@ -519,19 +519,20 @@ const KnowledgeGraphToolbar = ({
             </Popover>
           </PopoverTrigger>
 
-          <Button
+          {/* Named, not tooltipped: fullscreen focuses this button, and an open
+              tooltip would take the Escape that leaves fullscreen. */}
+          <ButtonUtility
             aria-label={t(
               viewport.isFullscreen
                 ? 'label.exit-full-screen'
                 : 'label.full-screen-view'
             )}
-            color="tertiary"
             data-testid={
               viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
             }
-            iconLeading={viewport.isFullscreen ? Minimize01 : Expand01}
-            size="sm"
-            onPress={viewport.onFullscreen}
+            icon={viewport.isFullscreen ? Minimize01 : Maximize01}
+            size="lg"
+            onClick={viewport.onFullscreen}
           />
         </Box>
       </Box>

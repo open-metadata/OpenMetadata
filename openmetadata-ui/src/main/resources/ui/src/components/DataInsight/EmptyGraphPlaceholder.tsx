@@ -33,7 +33,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
           }
         )}
         footer={
-          <Typography as="p">
+          <Typography as="p" color="secondary" size="text-xs">
             <Tooltip title={t('label.documentation')}>
               <span>
                 <Transi18next

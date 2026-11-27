@@ -170,3 +170,21 @@ export const AnchoredToRef: StoryObj = {
     return <ControlledExample />;
   },
 };
+
+export const SaveBeforeLeaving: StoryObj = {
+  render: () => (
+    <ConfirmPopover
+      actions={[
+        { key: 'discard', label: 'Discard & go', onPress: () => undefined },
+      ]}
+      confirmText="Save & go"
+      showCancel={false}
+      title="Save your changes first?"
+      variant="primary"
+      onConfirm={wait}>
+      <Button color="secondary" size="sm">
+        Cancel
+      </Button>
+    </ConfirmPopover>
+  ),
+};

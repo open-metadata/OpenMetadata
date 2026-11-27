@@ -144,6 +144,7 @@ DISTRIBUTION_PREFIXES = (
     "openmetadata-ui-core-components/src/main/",
     "openmetadata-dist/pom.xml",
     "openmetadata-dist/src/",
+    "openmetadata-spec/scripts/prepare_model_schemas.py",
     ".github/scripts/playwright_cache_fingerprint.py",
     ".github/scripts/playwright_distribution_cache.sh",
 )

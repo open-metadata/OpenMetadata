@@ -410,8 +410,8 @@ database:
     mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-300000}  # Socket timeout in milliseconds
 
 objectStorage:
-  enabled: false
-  provider: NOOP
+  enabled: ${ASSET_UPLOADER_ENABLE:-false}
+  provider: ${ASSET_UPLOADER_PROVIDER:-NOOP}
   maxFileSize: 5242880
 
 migrationConfiguration:
@@ -650,7 +650,6 @@ pipelineServiceClientConfiguration:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
   logStorageConfiguration:
     type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
-    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
     # if type is s3, provide the following configuration
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs
@@ -705,6 +704,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    podLabels: ${K8S_POD_LABELS:-""}
     tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 

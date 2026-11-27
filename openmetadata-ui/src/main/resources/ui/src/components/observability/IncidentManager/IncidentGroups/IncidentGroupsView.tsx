@@ -33,6 +33,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
@@ -51,7 +52,6 @@ import IncidentGroupDetail from './IncidentGroupDetail';
 import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
-  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_TABLE_CARD_CLASS,
   INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
@@ -63,7 +63,7 @@ import {
   PendingBulkChange,
 } from './IncidentGroups.types';
 import {
-  countRecurringIncidentGroups,
+  countRisingIncidentGroups,
   getIncidentGroupKey,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
@@ -117,11 +117,11 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
 
   /**
    * Only the loaded page can be counted: the endpoint reports the group total
-   * but no recurring total, and a group is recurring by a field that only
+   * but no rising total, and a group is rising by a field that only
    * arrives with the group itself.
    */
-  const recurringCount = useMemo(
-    () => countRecurringIncidentGroups(incidentGroups),
+  const risingCount = useMemo(
+    () => countRisingIncidentGroups(incidentGroups),
     [incidentGroups]
   );
 
@@ -345,7 +345,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             className={INCIDENT_TABLE_PAGER_CLASS}
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={Math.max(
               1,
               computeTotalPages(
@@ -436,21 +436,19 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
               />
             </Typography>
             <Divider className="tw:h-4" orientation="vertical" />
-            <Tooltip
-              placement="top"
-              title={t('message.recurring-groups-loaded')}>
+            <Tooltip placement="top" title={t('message.rising-groups-loaded')}>
               <TooltipTrigger>
                 <Box align="center" gap={1}>
                   <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
                   <Typography
                     as="span"
                     className="tw:text-secondary"
-                    data-testid="incident-groups-recurring-count"
+                    data-testid="incident-groups-rising-count"
                     size="text-sm">
                     <Transi18next
-                      i18nKey="label.recurring-count"
+                      i18nKey="label.rising-groups-count"
                       renderElement={STAT_COUNT_ELEMENT}
-                      values={{ count: recurringCount }}
+                      values={{ count: risingCount }}
                     />
                   </Typography>
                 </Box>

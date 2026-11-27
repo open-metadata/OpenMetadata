@@ -29,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.AuditLogger;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -310,6 +311,8 @@ public class AuditLogRepository {
    * Export audit logs in batches to avoid long-running queries that could cause resource
    * contention with concurrent writes. Uses cursor-based pagination for efficient batching.
    *
+   * @param readsUserEmails whether the requester reads user emails; otherwise events about users
+   *     carry them masked, as in the listing
    * @param progressCallback Optional callback for progress notifications (can be null)
    */
   public int streamExportAsJson(
@@ -323,6 +326,7 @@ public class AuditLogRepository {
       Long endTs,
       String searchTerm,
       int totalLimit,
+      boolean readsUserEmails,
       ExportProgressCallback progressCallback)
       throws IOException {
 
@@ -391,7 +395,8 @@ public class AuditLogRepository {
               batchSize,
               null, // before
               afterCursor,
-              false); // skip the count — it would re-run once per batch
+              false, // skip the count — it would re-run once per batch
+              readsUserEmails);
 
       if (batch.getData().isEmpty()) {
         break;
@@ -450,10 +455,45 @@ public class AuditLogRepository {
         startTs,
         endTs,
         searchTerm,
-        sanitizeLimit(limitParam),
+        limitParam,
         before,
         after,
         true);
+  }
+
+  /**
+   * A page of entries; for a caller who does not read user emails, events about users carry them
+   * masked, in the event, its raw JSON and its summary.
+   */
+  public ResultList<AuditLogEntry> list(
+      String userName,
+      String actorType,
+      String serviceName,
+      String entityType,
+      String entityFqn,
+      String eventType,
+      Long startTs,
+      Long endTs,
+      String searchTerm,
+      int limitParam,
+      String before,
+      String after,
+      boolean readsUserEmails) {
+    return list(
+        userName,
+        actorType,
+        serviceName,
+        entityType,
+        entityFqn,
+        eventType,
+        startTs,
+        endTs,
+        searchTerm,
+        sanitizeLimit(limitParam),
+        before,
+        after,
+        true,
+        readsUserEmails);
   }
 
   private ResultList<AuditLogEntry> list(
@@ -469,7 +509,8 @@ public class AuditLogRepository {
       int limitParam,
       String before,
       String after,
-      boolean countTotal) {
+      boolean countTotal,
+      boolean readsUserEmails) {
     RestUtil.validateCursors(before, after);
 
     int limit = Math.max(1, limitParam);
@@ -571,7 +612,8 @@ public class AuditLogRepository {
                 searchTerm)
             : records.size();
 
-    List<AuditLogEntry> resultEntries = records.stream().map(this::toAuditLogEntry).toList();
+    List<AuditLogEntry> resultEntries =
+        records.stream().map(record -> toAuditLogEntry(record, readsUserEmails)).toList();
 
     // Compute cursors for navigation
     String beforeCursorOut = null;
@@ -595,8 +637,16 @@ public class AuditLogRepository {
     return new ResultList<>(resultEntries, beforeCursorOut, afterCursorOut, total);
   }
 
-  private AuditLogEntry toAuditLogEntry(AuditLogRecord record) {
+  private AuditLogEntry toAuditLogEntry(AuditLogRecord record, boolean readsUserEmails) {
     ChangeEvent changeEvent = deserializeChangeEvent(record);
+    // Only admins and bots read user emails; the summary is computed from the masked event.
+    boolean masked = Entity.APPLICATION.equals(record.getEntityType());
+    if (masked) {
+      changeEvent = AppAuditProjection.apply(changeEvent);
+    } else if (!readsUserEmails && Entity.USER.equals(record.getEntityType())) {
+      changeEvent = PIIMasker.maskUserChangeEvent(changeEvent);
+      masked = true;
+    }
 
     if (record.getEntityFQN() == null) {
       resolveMissingFqn(record, changeEvent);
@@ -617,8 +667,13 @@ public class AuditLogRepository {
         .createdAt(record.getCreatedAt())
         .changeEvent(changeEvent)
         .summary(computeSummary(changeEvent, record))
-        .rawEventJson(record.getEventJson())
+        .rawEventJson(masked ? maskedEventJson(changeEvent) : record.getEventJson())
         .build();
+  }
+
+  // A raw event that did not parse is withheld rather than returned unmasked.
+  private static String maskedEventJson(ChangeEvent maskedEvent) {
+    return maskedEvent == null ? null : JsonUtils.pojoToJson(maskedEvent);
   }
 
   /**

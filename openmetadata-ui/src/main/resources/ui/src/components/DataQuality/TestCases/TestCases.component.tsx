@@ -179,10 +179,9 @@ export const TestCases = () => {
           wrap="wrap">
           <Dropdown.Root>
             <Button
-              className="tw:text-brand-secondary tw:after:outline-brand"
               color="secondary"
               data-testid="advanced-filter"
-              iconTrailing={<ChevronRight size={14} />}
+              iconTrailing={ChevronRight}
               size="sm">
               {t('label.advanced')}
             </Button>

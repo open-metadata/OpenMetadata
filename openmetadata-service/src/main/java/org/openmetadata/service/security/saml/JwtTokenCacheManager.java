@@ -13,22 +13,31 @@
 
 package org.openmetadata.service.security.saml;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.expiringmap.ExpiringMap;
 import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.credentials.TokenDigest;
 
+/**
+ * Tokens logged out before they expire. An entry holds the token's digest, the user and the logout
+ * time, and lives until the token would have expired
+ * (ADR:2026-11-03-logout-retires-the-token-that-signed-the-request).
+ */
 @Slf4j
 public class JwtTokenCacheManager {
-  private static final JwtTokenCacheManager INSTANCE = new JwtTokenCacheManager();
-  private static final ExpiringMap<String, LogoutRequest> tokenEventMap =
-      ExpiringMap.builder().variableExpiration().maxSize(1000).build();
+  static final int MAX_ENTRIES = 100_000;
+  private static final JwtTokenCacheManager INSTANCE = new JwtTokenCacheManager(MAX_ENTRIES);
 
-  private JwtTokenCacheManager() {
-    /* Private constructor for singleton */
+  // A full map drops the entry that expires first.
+  private final ExpiringMap<TokenDigest, LogoutRequest> tokenEventMap;
+
+  JwtTokenCacheManager(int maxEntries) {
+    tokenEventMap = ExpiringMap.builder().variableExpiration().maxSize(maxEntries).build();
   }
 
   public static JwtTokenCacheManager getInstance() {
@@ -37,21 +46,32 @@ public class JwtTokenCacheManager {
 
   public void markLogoutEventForToken(LogoutRequest logoutRequest) {
     String token = logoutRequest.getToken();
-    String key = denylistKey(token);
+    Date tokenExpiryDate = expiryOf(token);
+    if (tokenExpiryDate == null) {
+      LOG.debug(
+          "Logout token for user [{}] has no expiry and is not cached",
+          logoutRequest.getUsername());
+      return;
+    }
+    TokenDigest key = denylistKey(token);
     if (tokenEventMap.containsKey(key)) {
       LOG.info(
           "Log out token for user [{}] is already present in the cache",
           logoutRequest.getUsername());
-
     } else {
-      Date tokenExpiryDate = JWTTokenGenerator.getInstance().getTokenExpiryFromJWT(token);
       long ttlForToken = getTTLForToken(tokenExpiryDate);
       LOG.info(
           "Logout token cache set for [{}] with a TTL of [{}] seconds. Token is due expiry at [{}]",
           logoutRequest.getUsername(),
           ttlForToken,
           tokenExpiryDate);
-      tokenEventMap.put(key, logoutRequest, ttlForToken, TimeUnit.SECONDS);
+      tokenEventMap.put(
+          key,
+          new LogoutRequest()
+              .withUsername(logoutRequest.getUsername())
+              .withLogoutTime(logoutRequest.getLogoutTime()),
+          ttlForToken,
+          TimeUnit.SECONDS);
     }
   }
 
@@ -63,9 +83,17 @@ public class JwtTokenCacheManager {
    * The signed part of a JWT (header.payload), which identifies a token by what was signed. The
    * signature's base64url text is not a canonical encoding, so it is left out of the key.
    */
-  static String denylistKey(String token) {
+  static TokenDigest denylistKey(String token) {
     int signatureStart = token.lastIndexOf('.');
-    return signatureStart > 0 ? token.substring(0, signatureStart) : token;
+    return TokenDigest.of(signatureStart > 0 ? token.substring(0, signatureStart) : token);
+  }
+
+  private static Date expiryOf(String token) {
+    try {
+      return JWT.decode(token).getExpiresAt();
+    } catch (JWTDecodeException e) {
+      return null;
+    }
   }
 
   private long getTTLForToken(Date date) {

@@ -63,6 +63,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
@@ -83,6 +84,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -294,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -328,6 +331,20 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
+    }
+  }
+
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
@@ -352,6 +369,12 @@ public class UserRepository extends EntityRepository<User> {
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of(
         "roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona", "defaultDomain");
+  }
+
+  @Override
+  protected User createNewEntity(User user) {
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    return super.createNewEntity(user);
   }
 
   @Override
@@ -386,15 +409,36 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    storeMany(entities);
+    // A batch insert can be retried after a rollback, so the users keep what was submitted and
+    // copies carry the encrypted profile: a retry would read server ciphertext as submitted.
+    storeMany(entities.stream().map(UserRepository::withNewProfileEncrypted).toList());
   }
 
+  private static User withNewProfileEncrypted(User user) {
+    User stored = JsonUtils.deepCopy(user, User.class);
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+  }
+
+  @Override
+  protected User forChangeEvent(User entity) {
+    return ProfileWebhookSecrets.masked(entity);
+  }
+
+  /**
+   * Records a login with a single-row JSON update rather than an entity patch. A patch inside the
+   * EntityUpdater session window consolidates changes by reloading the user with every field,
+   * including {@code owns}, which costs one lookup per asset the user's teams own. The direct write
+   * emits no change event and does not reindex the user; see
+   * ADR:2026-10-30-user-writes-keep-login-and-activity-times.
+   */
+  @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    String fqn = quoteName(canonicalUserName(orginalUser.getName()));
+    LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
+    // @BindFQN hashes the fqn, so it is passed unhashed
+    daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
+    // The row changed under the entity cache: drop the cached copy so reads see the new value
+    invalidateCacheForEntity(USER, orginalUser.getId(), orginalUser.getFullyQualifiedName());
 
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login
@@ -498,7 +542,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(User original, User updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
@@ -583,10 +634,35 @@ public class UserRepository extends EntityRepository<User> {
     return false;
   }
 
-  public boolean isTeamJoinable(String teamId) {
-    Team team =
-        daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
-    return team.getIsJoinable();
+  /**
+   * Members of a team hold the team's defaultRoles as inherited roles and are governed by its
+   * policies, so joining a team that is not open to everyone grants privileges the same way naming
+   * a role does, and leaving one sheds them, deny rules included, the way dropping a role does.
+   * Only the teams that change are looked up. Every user belongs to the organization, which is
+   * never left. A null {@code currentUser} is a user being created.
+   * ADR:2026-10-30-only-admins-add-roles-or-policies-to-a-team
+   */
+  public boolean changesClosedTeamMembership(User currentUser, List<UUID> requestedTeamIds) {
+    Set<UUID> currentTeamIds =
+        currentUser == null ? Set.of() : teamIds(listOrEmpty(currentUser.getTeams()));
+    Set<UUID> requested = new HashSet<>(listOrEmpty(requestedTeamIds));
+    Stream<UUID> joined = requested.stream().filter(teamId -> !currentTeamIds.contains(teamId));
+    Stream<UUID> left =
+        currentTeamIds.stream()
+            .filter(teamId -> !requested.contains(teamId) && !isOrganization(teamId));
+    return Stream.concat(joined, left).anyMatch(this::isClosedTeam);
+  }
+
+  private boolean isClosedTeam(UUID teamId) {
+    return !daoCollection.teamDAO().findEntityById(teamId, Include.NON_DELETED).getIsJoinable();
+  }
+
+  private boolean isOrganization(UUID teamId) {
+    return teamId.equals(getOrganization().getId());
+  }
+
+  private static Set<UUID> teamIds(List<EntityReference> teams) {
+    return teams.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   public void validateTeams(User user) {
@@ -623,17 +699,25 @@ public class UserRepository extends EntityRepository<User> {
         .deleteAllForUser(entityInterface.getId());
   }
 
-  /* Validate if the user is already part of the given team */
-  public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = find(userId, NON_DELETED);
-    List<EntityReference> teams = getTeams(user);
-    Optional<EntityReference> team =
-        teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
-    if (team.isPresent()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyPartOfTeam(
-              user.getName(), team.get().getDisplayName()));
+  /** Refuses a team list that names a team twice, as adding a team the user is in does. */
+  public void validateTeamsListedOnce(User user, List<UUID> teamIds) {
+    Set<UUID> seen = new HashSet<>();
+    for (UUID teamId : teamIds) {
+      if (!seen.add(teamId)) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.userAlreadyPartOfTeam(
+                user.getName(), teamDisplayName(user, teamId)));
+      }
     }
+  }
+
+  private static String teamDisplayName(User user, UUID teamId) {
+    EntityReference team =
+        listOrEmpty(user.getTeams()).stream()
+            .filter(stored -> stored.getId().equals(teamId))
+            .findFirst()
+            .orElseGet(() -> Entity.getEntityReferenceById(Entity.TEAM, teamId, ALL));
+    return nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName();
   }
 
   public boolean checkEmailAlreadyExists(String emailId) {
@@ -702,7 +786,7 @@ public class UserRepository extends EntityRepository<User> {
         getLoggedInUserByNameAndEmail(
             uriInfo, context.getUserPrincipal().getName(), email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
-    return getGroupTeams(teams);
+    return getGroupTeams(teams, new HashSet<>());
   }
 
   public User getLoggedInUserByNameAndEmail(
@@ -742,15 +826,18 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
+  private List<EntityReference> getGroupTeams(List<EntityReference> teams, Set<UUID> visited) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
+      if (!visited.add(t.getId())) {
+        continue;
+      }
       Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
         List<EntityReference> children = getTeamChildren(team.getId());
-        result.addAll(getGroupTeams(children));
+        result.addAll(getGroupTeams(children, visited));
       }
     }
     return new ArrayList<>(result);
@@ -1527,6 +1614,7 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
+      rejectClosedTeamChangeFromNonAdmin(printer, csvRecord, user);
       rejectEmailOutsideSignInDomains(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
@@ -1577,6 +1665,11 @@ public class UserRepository extends EntityRepository<User> {
         processRecord = false;
         return;
       }
+      if (Boolean.TRUE.equals(user.getIsBot()) || isStoredBot(user)) {
+        importFailure(printer, privilegedFieldRequiresAdmin(6, "isBot"), csvRecord);
+        processRecord = false;
+        return;
+      }
       if (!nullOrEmpty(user.getRoles())) {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
@@ -1588,8 +1681,48 @@ public class UserRepository extends EntityRepository<User> {
       return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
     }
 
+    private static boolean isStoredBot(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsBot());
+    }
+
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
       String error = String.format("Only an admin can set %s during user import", fieldName);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
+    }
+
+    /**
+     * A row writes the user's whole team list, so it is judged on the teams it leaves the user in,
+     * with the same check the REST paths use. Runs before the write, so a dry run reports the row
+     * as well.
+     */
+    private void rejectClosedTeamChangeFromNonAdmin(
+        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
+      if (processRecord
+          && !SubjectContext.getSubjectContext(importedBy).isAdmin()
+          && changesClosedTeamMembership(user)) {
+        importFailure(printer, closedTeamRequiresAdmin(6), csvRecord);
+        processRecord = false;
+      }
+    }
+
+    private static boolean changesClosedTeamMembership(User user) {
+      UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
+      User stored = repository.findMatchForImport(user);
+      User current =
+          stored == null
+              ? null
+              : repository.get(null, stored.getId(), repository.getFields(TEAMS_FIELD), ALL, false);
+      List<UUID> requestedTeamIds =
+          listOrEmpty(user.getTeams()).stream().map(EntityReference::getId).toList();
+      return repository.changesClosedTeamMembership(current, requestedTeamIds);
+    }
+
+    private static String closedTeamRequiresAdmin(int field) {
+      String error =
+          "Only an admin can add a user to, or remove a user from, a team that is not open to"
+              + " everyone";
       return String.format(
           "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
@@ -1614,8 +1747,9 @@ public class UserRepository extends EntityRepository<User> {
         UserRepository userRepository,
         String parentTeam,
         List<User> users,
+        Set<UUID> visitedTeams,
         Fields fields) {
-      // Export the users by listing users for the entire team hierarchy
+      // Export the users by listing users for the entire team hierarchy, visiting each team once
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
 
       // Add users for the given team
@@ -1627,7 +1761,10 @@ public class UserRepository extends EntityRepository<User> {
       filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
       List<Team> teamList = teamRepository.listAll(Fields.EMPTY_FIELDS, filter);
       for (Team teamEntry : teamList) {
-        listUsers(teamRepository, userRepository, teamEntry.getName(), users, fields);
+        if (visitedTeams.add(teamEntry.getId())) {
+          listUsers(
+              teamRepository, userRepository, teamEntry.getName(), users, visitedTeams, fields);
+        }
       }
       return users;
     }
@@ -1636,8 +1773,15 @@ public class UserRepository extends EntityRepository<User> {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = userRepository.getFields("roles,teams");
-      return exportCsv(
-          listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+      List<User> users =
+          listUsers(
+              teamRepository,
+              userRepository,
+              team.getName(),
+              new ArrayList<>(),
+              new HashSet<>(),
+              fields);
+      return exportCsv(retainViewableForExport(users, importedBy));
     }
 
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)
@@ -1726,23 +1870,44 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * Ends the sign-ins made with a user's previous password: refresh tokens, live sessions and MCP
+   * grants. Personal access tokens and bot tokens are credentials of their own and stay
+   * (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
+   */
+  public void endSignIns(User user) {
+    endSignIns(user, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  /** For callers outside the server, such as the ops CLI, which build their own session service. */
+  public void endSignIns(User user, SessionService sessionService) {
+    Entity.getTokenRepository()
+        .deleteTokenByUserAndType(user.getId(), TokenType.REFRESH_TOKEN.toString());
+    daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(user.getName());
+    Credentials.changed(user.getName());
+    revokeLiveSessions(user, sessionService);
+  }
+
+  /**
    * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
    * user's existing session-bound tokens keep working until natural expiry (7 days by default)
    * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
    * sockets as well.
    */
   private void revokeLiveSessions(User entity) {
-    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    revokeLiveSessions(entity, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  private void revokeLiveSessions(User entity, SessionService sessionService) {
     if (sessionService == null || entity.getId() == null) {
       return;
     }
     try {
       int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
       if (revoked > 0) {
-        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+        LOG.info("Revoked {} session(s) for user {}", revoked, entity.getName());
       }
     } catch (Exception e) {
-      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+      LOG.error("Failed to revoke sessions for user {}", entity.getName(), e);
     }
   }
 

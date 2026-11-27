@@ -14,7 +14,7 @@
 import {
   AvatarGroup,
   Box,
-  Button,
+  ButtonUtility,
   Checkbox,
   Table,
   toOwnerRefs,
@@ -197,7 +197,10 @@ const IncidentGroupsTable = ({
       { id: 'status', label: t('label.status') },
       { id: 'assignees', label: t('label.assignee-plural') },
       { id: 'lastSeen', label: t('label.last-seen') },
-      { id: 'trend', label: t('label.trend') },
+      {
+        id: 'trend',
+        label: t('label.open-incident-history'),
+      },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
     [dimension.labelKey, groupBy, isSelectable, t]
@@ -294,16 +297,17 @@ const IncidentGroupsTable = ({
             severity={group.severity}
             trend={group.trend}
             trendDirection={group.trendDirection}
+            trendEnd={group.trendEnd}
+            trendStart={group.trendStart}
           />
         </Table.Cell>
         <Table.Cell>
-          <Button
-            aria-label={t('label.view-entity', { entity: groupName })}
-            color="tertiary"
+          <ButtonUtility
             data-testid={`group-open-${rowId}`}
-            iconLeading={ChevronRight}
-            size="sm"
-            onPress={() => onGroupOpen(group)}
+            icon={ChevronRight}
+            size="xs"
+            tooltip={t('label.view-entity', { entity: groupName })}
+            onClick={() => onGroupOpen(group)}
           />
         </Table.Cell>
       </Table.Row>

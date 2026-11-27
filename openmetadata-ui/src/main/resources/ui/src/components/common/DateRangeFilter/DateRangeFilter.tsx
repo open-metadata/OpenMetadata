@@ -138,9 +138,9 @@ export const DateRangeFilter = ({
       {startTs !== undefined && endTs !== undefined && (
         <ButtonUtility
           aria-label={t('label.clear')}
-          color="tertiary"
           data-testid="clear-date-filter"
-          icon={<XClose size={14} />}
+          icon={XClose}
+          size="xs"
           onClick={onClear}
         />
       )}

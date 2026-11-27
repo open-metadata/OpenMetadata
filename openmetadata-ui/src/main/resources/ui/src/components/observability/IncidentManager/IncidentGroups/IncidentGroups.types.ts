@@ -236,6 +236,8 @@ export interface IncidentStatusBreakdownProps {
 
 export interface IncidentTrendSparklineProps {
   trend?: number[];
+  trendStart?: number;
+  trendEnd?: number;
   trendDirection?: IncidentTrendDirection;
   /** Grades a rising trend; a falling or steady one colours the same either way. */
   severity?: Severities;

@@ -24,6 +24,7 @@ import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
 import LineageConfigModal from './LineageConfigModal';
+import LineageTimeFilter from './LineageTimeFilter.component';
 
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
@@ -50,6 +51,7 @@ const defaultProps = {
 // Default `useLineageStore` state, merged for both the single-object call
 // (`useLineageStore()`) and the `useShallow` multi-field selector call the
 // component makes. Individual tests override via `mockStoreImplementation`.
+const mockSetTimeFilter = jest.fn();
 const mockDefaultStoreState = {
   isDQEnabled: false,
   setLineageConfig: mockOnLineageConfigUpdate,
@@ -60,7 +62,7 @@ const mockDefaultStoreState = {
   selectedQuickFilters: [] as { key: string; value?: unknown[] }[],
   setSelectedQuickFilters: mockSetSelectedQuickFilters,
   timeFilter: undefined as { startTime?: number; endTime?: number } | undefined,
-  setTimeFilter: jest.fn(),
+  setTimeFilter: mockSetTimeFilter,
 };
 
 const mockStoreImplementation =
@@ -106,25 +108,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        disabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={disabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children, onSelectionChange }) => (
       <div
@@ -175,6 +160,10 @@ jest.mock('../../Explore/ExploreQuickFilters', () =>
     .mockReturnValue(
       <div data-testid="explore-quick-filters">ExploreQuickFilters</div>
     )
+);
+
+jest.mock('./LineageTimeFilter.component', () =>
+  jest.fn(() => <div data-testid="lineage-time-filter" />)
 );
 
 jest.mock('./LineageConfigModal', () =>
@@ -786,6 +775,24 @@ describe('CustomControls', () => {
       // set is fetched from page 1.
       expect(mockOnPageReset).toHaveBeenCalledTimes(1);
       expect(mockSetSelectedQuickFilters).toHaveBeenCalled();
+    });
+
+    it('calls onPageReset and stores the range when the time filter changes', () => {
+      render(
+        <CustomControlsComponent
+          {...defaultProps}
+          impactLevel={EImpactLevel.TableLevel}
+          onPageReset={mockOnPageReset}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      const timeFilterCalls = (LineageTimeFilter as jest.Mock).mock.calls;
+      const range = { startTime: 100, endTime: 200 };
+      timeFilterCalls[timeFilterCalls.length - 1][0].onChange(range);
+
+      expect(mockOnPageReset).toHaveBeenCalledTimes(1);
+      expect(mockSetTimeFilter).toHaveBeenCalledWith(range);
     });
 
     it('does not call onPageReset on tab change', () => {

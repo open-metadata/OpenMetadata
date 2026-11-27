@@ -135,6 +135,74 @@ describe('ProfilerDetailsCard', () => {
     expect(screen.queryByText('Other')).not.toBeInTheDocument();
   });
 
+  it.each([false, true])(
+    'shows the recorded source for each historical point (sharded: %s)',
+    (isSharded) => {
+      const profiles = [
+        {
+          timestamp: 1,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260101',
+          },
+        },
+        {
+          timestamp: 2,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260102',
+          },
+        },
+        { timestamp: 3 },
+      ];
+      render(
+        <ProfilerDetailsCard
+          {...mockProps}
+          isSharded={isSharded}
+          profiles={profiles}
+        />
+      );
+      const tooltip = (timestamp: number) => (
+        <>{lineProps().tooltip?.render?.([], { timestamp })}</>
+      );
+      const { rerender } = render(tooltip(1));
+
+      expect(
+        screen.getByText('demo_db.demo_schema.events_20260101')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('demo_db.demo_schema.events_20260102')
+      ).not.toBeInTheDocument();
+
+      rerender(tooltip(2));
+
+      expect(
+        screen.getByText('demo_db.demo_schema.events_20260102')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('demo_db.demo_schema.events_20260101')
+      ).not.toBeInTheDocument();
+
+      rerender(tooltip(3));
+
+      expect(
+        screen.queryByText('demo_db.demo_schema.events_20260102')
+      ).not.toBeInTheDocument();
+
+      if (isSharded) {
+        expect(
+          screen.getByText('message.execution-source-unavailable')
+        ).toBeInTheDocument();
+      } else {
+        expect(
+          screen.queryByText('message.execution-source-unavailable')
+        ).not.toBeInTheDocument();
+      }
+    }
+  );
+
   it('shows the placeholder when there is no data', () => {
     render(
       <ProfilerDetailsCard

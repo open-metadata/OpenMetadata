@@ -20,6 +20,7 @@ import {
   hasBlankRule,
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
+import { expandColumnTagsVar } from './jsonLogicColumnTags';
 import { toEngineJsonLogic } from './jsonLogicNegation';
 import { rewriteTierVarToTags } from './jsonLogicTierVar';
 
@@ -59,7 +60,9 @@ export const toJsonLogicQuery = (
     return {
       value: JSON.stringify(
         jsonLogic.logic
-          ? rewriteTierVarToTags(toEngineJsonLogic(jsonLogic.logic))
+          ? expandColumnTagsVar(
+              rewriteTierVarToTags(toEngineJsonLogic(jsonLogic.logic))
+            )
           : ''
       ),
     };

@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { getBots } from '../../../../rest/botsAPI';
@@ -88,11 +89,19 @@ jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+const mockUseAuth = jest.fn();
+
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 const mockGetBots = getBots as jest.MockedFunction<typeof getBots>;
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+
+  mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
 
   mockGetBots.mockResolvedValue({
     data: MOCK_BOTS,
@@ -133,7 +142,32 @@ describe('BotListV1', () => {
     );
   });
 
+  it('leaves email out of the bot search for non-admins', async () => {
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(mockGetBots).toHaveBeenCalled();
+    });
+
+    const searchInput = await screen.findByTestId('searchbar');
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbot' } });
+    });
+
+    await waitFor(() => {
+      const botSearch = mockSearchQuery.mock.calls
+        .map((call) =>
+          JSON.stringify((call[0] as { queryFilter?: unknown }).queryFilter)
+        )
+        .find((filter) => filter.includes('*testbot*'));
+
+      expect(botSearch).toContain('fullyQualifiedName.keyword');
+      expect(botSearch).not.toContain('email.keyword');
+    });
+  });
+
   it('searches bot user index with wildcard across name, displayName, fqn, email', async () => {
+    mockUseAuth.mockReturnValue({ isAdminUser: true, isFirstTimeUser: false });
     mockSearchQuery.mockResolvedValueOnce({
       hits: {
         total: { value: 1 },
@@ -194,5 +228,96 @@ describe('BotListV1', () => {
     });
 
     expect(await screen.findByTestId('bot-link-testbots')).toBeInTheDocument();
+  });
+
+  it('fetches the next page exactly once when Next is clicked', async () => {
+    mockGetBots.mockResolvedValueOnce({
+      data: MOCK_BOTS,
+      paging: { total: 20, after: 'cursor-2' },
+    } as unknown as Awaited<ReturnType<typeof getBots>>);
+
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    const nextButton = await screen.findByTestId('next');
+    await waitFor(() => expect(nextButton).toBeEnabled());
+
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('page-indicator')).toHaveTextContent(
+        /label\.page 2 /
+      )
+    );
+
+    const nextPageCalls = mockGetBots.mock.calls.filter(
+      ([params]) => params?.after === 'cursor-2'
+    );
+
+    expect(nextPageCalls).toHaveLength(1);
+    expect(nextPageCalls[0][0]).toEqual(
+      expect.objectContaining({ include: 'non-deleted' })
+    );
+  });
+
+  it('keeps the newest deleted bots when the stale-cursor request resolves last', async () => {
+    let resolveStaleRequest: (value: unknown) => void = jest.fn();
+    mockGetBots.mockImplementation((params) => {
+      if (params?.include === 'deleted' && params?.before) {
+        return new Promise((resolve) => {
+          resolveStaleRequest = resolve as (value: unknown) => void;
+        }) as ReturnType<typeof getBots>;
+      }
+
+      return Promise.resolve({
+        data:
+          params?.include === 'deleted'
+            ? [{ ...MOCK_BOTS[0], displayName: 'DeletedBot', deleted: true }]
+            : MOCK_BOTS,
+        paging: { total: 1 },
+      }) as unknown as ReturnType<typeof getBots>;
+    });
+
+    const BotListWithDeletedToggle = () => {
+      const [showDeleted, setShowDeleted] = useState(false);
+
+      return (
+        <BotListV1
+          {...mockProps}
+          handleShowDeleted={setShowDeleted}
+          showDeleted={showDeleted}
+        />
+      );
+    };
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/?currentPage=1&cursorType=before&cursorValue=prev-cursor',
+        ]}>
+        <BotListWithDeletedToggle />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('bot-link-AutoClassificationBot');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('switch-deleted'));
+    });
+
+    expect(
+      await screen.findByTestId('bot-link-DeletedBot')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStaleRequest({
+        data: [{ ...MOCK_BOTS[1], displayName: 'StaleBot', deleted: true }],
+        paging: { total: 1 },
+      });
+    });
+
+    expect(screen.getByTestId('bot-link-DeletedBot')).toBeInTheDocument();
+    expect(screen.queryByTestId('bot-link-StaleBot')).not.toBeInTheDocument();
   });
 });

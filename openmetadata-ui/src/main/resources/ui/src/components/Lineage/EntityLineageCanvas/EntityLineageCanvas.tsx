@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import ReactFlow, {
+import {
   Background,
   Edge,
   MiniMap,
@@ -59,6 +59,7 @@ import {
 } from '../LineageMap/LineageMap.utils';
 import LineageNodeDeleteModal from '../LineageNodeDeleteModal/LineageNodeDeleteModal';
 import LineageSkeleton from '../LineageSkeleton.component';
+import UncontrolledDragFlow from '../UncontrolledDragFlow/UncontrolledDragFlow';
 
 interface EntityLineageCanvasProps {
   deleted?: boolean;
@@ -302,7 +303,7 @@ const EntityLineageCanvas = ({
 
   return (
     <ReactFlowProvider>
-      <ReactFlow
+      <UncontrolledDragFlow
         elevateEdgesOnSelect
         className="custom-react-flow"
         data-testid="react-flow-component"
@@ -344,7 +345,7 @@ const EntityLineageCanvas = ({
             onToggleMiniMap={() => setShowMiniMap((show) => !show)}
           />
         </Panel>
-      </ReactFlow>
+      </UncontrolledDragFlow>
       <LineageNodeDeleteModal
         isDeleting={isDeletingNode}
         isOpen={Boolean(nodePendingDelete)}

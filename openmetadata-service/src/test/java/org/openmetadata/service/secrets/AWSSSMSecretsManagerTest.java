@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -151,5 +152,22 @@ public class AWSSSMSecretsManagerTest extends AWSBasedSecretsManagerTest {
     assertFalse(
         secretsManager.isNotFoundException(new RuntimeException("throttled / access denied")),
         "Other read failures must not be mistaken for a missing parameter");
+  }
+
+  @Test
+  void aParameterReadByItsArnBelongsToTheSameOwner() {
+    UUID pipelineId = UUID.randomUUID();
+    SecretOwner owner = SecretOwner.builder("pipeline").id(pipelineId).build();
+    String name =
+        "/prefix/openmetadata/pipeline/" + SecretKeyEncoding.encodeId(pipelineId) + "/key";
+
+    assertTrue(
+        secretsManager
+            .ownedSecrets()
+            .isOwnedBy(
+                SecretsManager.SECRET_FIELD_PREFIX
+                    + "arn:aws:ssm:us-east-1:123456789012:parameter"
+                    + name,
+                owner));
   }
 }

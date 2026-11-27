@@ -67,7 +67,7 @@ class BaseTableColumnCountToEqualValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(matched),
-            self.format_expected_value_message("Column count", count, expected_count, matched),
+            self.format_expected_value_message("Column count", count, expected_count, matched, noun="columns"),
             [TestResultValue(name=COLUMN_COUNT, value=str(count))],
         )
 

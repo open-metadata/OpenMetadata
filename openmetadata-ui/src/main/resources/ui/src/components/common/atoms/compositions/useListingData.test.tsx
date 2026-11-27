@@ -89,6 +89,7 @@ describe('useListingData', () => {
       setPageSize: mockSetPageSize,
       resetFilters: jest.fn(),
       resetAll: jest.fn(),
+      resetPaging: jest.fn(),
     });
 
     mockUseDataFetching.mockReturnValue({
@@ -214,6 +215,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       act(() => {
@@ -244,6 +246,43 @@ describe('useListingData', () => {
   });
 
   describe('effectivePageSize fallback', () => {
+    it('ignores a URL size the current view does not offer', () => {
+      // `size=25` was left by the table view; the card view pages on 12/24/48.
+      mockUseUrlState.mockReturnValue({
+        urlState: {
+          searchQuery: '',
+          filters: {},
+          currentPage: 1,
+          pageSize: 25,
+        },
+        parsedFilters: [],
+        setSearchQuery: mockSetSearchQuery,
+        setFilters: mockSetFilters,
+        setCurrentPage: mockSetCurrentPage,
+        setPageSize: mockSetPageSize,
+        resetFilters: jest.fn(),
+        resetAll: jest.fn(),
+        resetPaging: jest.fn(),
+      });
+
+      renderHook(
+        () =>
+          useListingData({
+            searchIndex: SearchIndex.TABLE,
+            filterKeys: [],
+            columns: [],
+            pageSize: 12,
+            pageSizeOptions: [12, 24, 48],
+            transform,
+          }),
+        { wrapper }
+      );
+
+      expect(mockUseDataFetching).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageSize: 12 })
+      );
+    });
+
     it('should use urlState.pageSize when available', () => {
       mockUseUrlState.mockReturnValueOnce({
         urlState: {
@@ -259,6 +298,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       mockUsePaginationState.mockReturnValueOnce({
@@ -304,6 +344,7 @@ describe('useListingData', () => {
         setPageSize: mockSetPageSize,
         resetFilters: jest.fn(),
         resetAll: jest.fn(),
+        resetPaging: jest.fn(),
       });
 
       mockUsePaginationState.mockReturnValueOnce({

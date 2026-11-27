@@ -100,17 +100,25 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
         </span>
 
         <button
-          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+          className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
           type="button"
           onClick={handleSelect}>
-          <Typography>{label}</Typography>
+          <Typography
+            ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+            {label}
+          </Typography>
 
           {isItemSelected ? (
-            <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
+            <Eye
+              aria-label="eye"
+              className="tw:ml-auto tw:shrink-0"
+              size={16}
+            />
           ) : (
             <EyeOff
               aria-label="eye-invisible"
-              className="tw:ml-auto tw:size-4"
+              className="tw:ml-auto tw:shrink-0"
+              size={16}
             />
           )}
         </button>

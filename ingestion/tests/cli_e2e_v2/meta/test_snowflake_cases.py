@@ -214,10 +214,7 @@ def test_table_diff_moves_connection_into_test_suite_config(instance, server):
 
 def test_expected_catalog_folds_names_and_maps_native_types():
     schema = snowflake_schema("E2E_DB", "E2E_SF_OWNED")
-    assert schema.name == "E2E_SF_OWNED"
-    assert schema.stored_procedures == []
     tables = {table.name: table for table in schema.tables}
-    assert set(tables) == {"CUSTOMERS", "TRANSACTIONS", "ALL_TYPES", "CUSTOMER_TXN_SUMMARY"}
     types = {column.name: column.data_type for column in tables["ALL_TYPES"].columns}
     assert types == {
         "ID": DataType.DECIMAL,

@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -44,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -51,6 +53,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
@@ -71,6 +75,7 @@ import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -91,6 +96,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -108,13 +114,19 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -316,7 +328,8 @@ class SearchRepositoryBehaviorTest {
         map.put(entityType, mock(org.openmetadata.service.jdbi3.EntityTimeSeriesRepository.class));
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forTimeSeries(
-                entityType));
+                entityType,
+                Entity.TEST_CASE_RESOLUTION_STATUS.equals(entityType) ? "testCase.deleted" : null));
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to register mock time-series repositories", e);
@@ -986,7 +999,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
@@ -1108,7 +1121,8 @@ class SearchRepositoryBehaviorTest {
         table);
 
     verify(searchClient)
-        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
     ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
@@ -1177,12 +1191,16 @@ class SearchRepositoryBehaviorTest {
             List.of(),
             List.of());
 
-    invokePrivateMethod(
-        repo,
-        "syncTableColumns",
-        new Class<?>[] {Table.class, ChangeDescription.class},
-        table,
-        tagChange);
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(false);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
     repo.propagateInheritedFieldsToChildren(
         Entity.TABLE, tableId.toString(), tagChange, TABLE_MAPPING, table);
 
@@ -1197,7 +1215,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")),
             eq(new ImmutablePair<>("table.id", tableId.toString())),
             tagUpdateCaptor.capture());
@@ -1206,6 +1224,52 @@ class SearchRepositoryBehaviorTest {
         (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
     assertEquals(1, inheritedTags.size());
     assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
+  }
+
+  /**
+   * Under search access control a column entry's policyTags carry its table's tags, which the tag
+   * cascade does not maintain, so a tags-only change rebuilds the entries.
+   */
+  @Test
+  void tableTagOnlyChangeRebuildsColumnDocsUnderSearchAccessControl() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")
+                        .withDataType(ColumnDataType.INT)))
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of());
+
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(true);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docs = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docs.capture());
+    JsonNode columnDoc = JsonUtils.readTree(docs.getValue().getFirst().values().iterator().next());
+    assertEquals("PII.Sensitive", columnDoc.path("policyTags").path(0).asText());
   }
 
   /**
@@ -1305,6 +1369,8 @@ class SearchRepositoryBehaviorTest {
     repository.propagateEntityAfterRetry(table, staleDelta);
 
     verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+    verify(searchClient, never())
+        .updateChildrenInBackground(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test
@@ -1344,7 +1410,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     Map<String, Object> params = updatesCaptor.getValue().getValue();
     assertEquals(
@@ -1388,7 +1454,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
 
     assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
     String entityChildScript = updatesCaptor.getValue().getLeft();
@@ -1434,7 +1501,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       paramsByTargets.put(
@@ -1486,7 +1554,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       addedByTargets.put(
@@ -1531,7 +1600,8 @@ class SearchRepositoryBehaviorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+    verify(searchClient)
+        .updateChildrenInBackground(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
 
     assertEquals(
         List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
@@ -3228,7 +3298,38 @@ class SearchRepositoryBehaviorTest {
     when(pipelineStatus.getExecutionStatus())
         .thenReturn(org.openmetadata.schema.type.StatusType.Successful);
 
-    repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    UUID ownerId = UUID.randomUUID();
+    UUID pipelineId = pipeline.getId();
+    Pipeline withAccessFields =
+        new Pipeline()
+            .withId(pipelineId)
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline")
+            .withService(service)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow)
+            .withOwners(List.of(new EntityReference().withId(ownerId).withType(Entity.USER)))
+            .withDomains(List.of())
+            .withTags(List.of());
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(pipelineId).withType(Entity.PIPELINE));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Entity.PIPELINE,
+                      pipelineId,
+                      PipelineExecutionIndex.ACCESS_FIELDS,
+                      Include.ALL))
+          .thenReturn(withAccessFields);
+      entity
+          .when(() -> Entity.getEntityTags(Entity.PIPELINE, withAccessFields))
+          .thenReturn(List.of());
+      repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    }
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
@@ -3237,12 +3338,13 @@ class SearchRepositoryBehaviorTest {
     assertEquals(1, docsCaptor.getValue().size());
     String docId = docsCaptor.getValue().getFirst().keySet().iterator().next();
     assertEquals("service.pipeline_run-1_100", docId);
-    assertTrue(
-        docsCaptor.getValue().getFirst().values().iterator().next().contains("\"runtime\":60"));
+    String doc = docsCaptor.getValue().getFirst().values().iterator().next();
+    assertTrue(doc.contains("\"runtime\":60"));
+    assertTrue(doc.contains(ownerId.toString()), "the run carries its pipeline's owners: " + doc);
   }
 
   @Test
-  void updateEntityLoadsEntityFromRepositoryAndUpdatesIndex() {
+  void aTableReferenceRefreshPreservesVectorsEvenWhenItsFingerprintChanged() throws Exception {
     SearchRepository spyRepository = spy(repository);
     EntityReference entityReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
@@ -3250,19 +3352,187 @@ class SearchRepositoryBehaviorTest {
     org.openmetadata.service.jdbi3.EntityRepository<EntityInterface<?>> entityRepository =
         mock(org.openmetadata.service.jdbi3.EntityRepository.class);
     EntityInterface<?> entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
+    float[] embedding = new float[] {1};
+    Map<String, Object> stored = new HashMap<>(Map.of("embedding", embedding));
+    VectorIndexService vector = mock(VectorIndexService.class);
+    doAnswer(
+            call -> {
+              stored.clear();
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    setPrivateField(spyRepository, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
 
     doNothing().when(spyRepository).updateEntityIndex(entity);
 
     try (var entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(spyRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       when(entityRepository.getFields("*")).thenReturn(null);
-      Mockito.<EntityInterface<?>>when(entityRepository.get(null, entityReference.getId(), null))
+      Mockito.<EntityInterface<?>>when(
+              entityRepository.get(null, entityReference.getId(), null, Include.NON_DELETED, false))
           .thenReturn(entity);
 
       spyRepository.updateEntity(entityReference);
     }
 
-    verify(spyRepository).updateEntityIndex(entity);
+    assertSame(embedding, stored.get("embedding"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void aMemoryReferenceRefreshRemovesOldVectorSourceLabels(boolean deleted) throws Exception {
+    SearchRepository search =
+        spy(newRepository(Map.of(Entity.CONTEXT_MEMORY, TABLE_MAPPING), "cluster"));
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withQuestion("What is the refund window?")
+            .withAnswer("Thirty days")
+            .withDeleted(deleted)
+            .withSourceFile(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.CONTEXT_FILE)
+                    .withName("private-acquisition-plan"));
+    Map<String, Object> stored = new HashMap<>();
+    stored.put("textToEmbed", "source file: private-acquisition-plan");
+    stored.put("textToLLMContext", "source file: private-acquisition-plan");
+    VectorIndexService vector = mock(VectorIndexService.class);
+    EmbeddingClient embedding = mock(EmbeddingClient.class);
+    when(embedding.embed(anyString())).thenReturn(new float[] {1});
+    doAnswer(
+            call -> {
+              stored.clear();
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    doAnswer(
+            call -> {
+              stored.putAll(VectorDocBuilder.buildEmbeddingFields(call.getArgument(0), embedding));
+              return null;
+            })
+        .when(vector)
+        .updateEntityEmbeddings(any(), anyString());
+    setPrivateField(search, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
+    when(searchIndexFactory.buildIndex(Entity.CONTEXT_MEMORY, memory))
+        .thenReturn(new MapBackedSearchIndex(memory, Map.of("answer", memory.getAnswer())));
+    doReturn(TABLE_MAPPING).when(search).getIndexMapping(Entity.CONTEXT_MEMORY);
+    @SuppressWarnings("unchecked")
+    EntityRepository<ContextMemory> memories = mock(EntityRepository.class);
+    Entity.registerEntity(ContextMemory.class, Entity.CONTEXT_MEMORY, memories);
+    doReturn(memory)
+        .when(memories)
+        .get(isNull(), eq(memory.getId()), any(), eq(Include.ALL), eq(false));
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(memories);
+      entities.when(() -> Entity.isSearchIndexable(memory)).thenReturn(true);
+      entities.when(() -> Entity.isVectorEmbeddable(memory)).thenReturn(true);
+      search.updateEntity(memory.getEntityReference(), Include.ALL);
+    }
+
+    assertFalse(stored.toString().contains("private-acquisition-plan"), stored.toString());
+    if (!deleted) {
+      assertTrue(stored.get("textToLLMContext").toString().contains("Thirty days"));
+      assertTrue(stored.get("textToEmbed").toString().contains("Thirty days"));
+    }
+  }
+
+  @Test
+  void aNormalMemoryWriteRemovesReplacedVectorTextWithoutEmbedding() throws Exception {
+    SearchRepository search =
+        newRepository(Map.of(Entity.CONTEXT_MEMORY, TABLE_MAPPING), "cluster");
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withFullyQualifiedName("memory")
+            .withQuestion("What is the refund window?")
+            .withAnswer("Thirty days");
+    Map<String, Object> stored =
+        new HashMap<>(
+            Map.of(
+                "answer", "Sixty days",
+                "textToEmbed", "Sixty days",
+                "textToLLMContext", "Sixty days",
+                "embedding", new float[] {1},
+                "fingerprint", "old-fingerprint"));
+    when(searchIndexFactory.buildIndex(Entity.CONTEXT_MEMORY, memory))
+        .thenReturn(new MapBackedSearchIndex(memory, Map.of("answer", memory.getAnswer())));
+    doAnswer(
+            call -> {
+              stored.putAll(call.<Map<String, Object>>getArgument(2));
+              return null;
+            })
+        .when(searchClient)
+        .updateEntity(anyString(), anyString(), any(), anyString());
+    VectorIndexService vector = mock(VectorIndexService.class);
+    AtomicReference<String> chunkText = new AtomicReference<>("Sixty days");
+    doAnswer(call -> chunkText.getAndSet(null)).when(vector).deleteEntityChunks(anyString());
+    doAnswer(
+            call -> {
+              ContextMemoryIndex.VECTOR_FIELDS.forEach(stored::remove);
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    AtomicInteger providerCalls = new AtomicInteger();
+    doAnswer(call -> providerCalls.incrementAndGet())
+        .when(vector)
+        .updateEntityEmbeddings(any(), anyString());
+    setPrivateField(search, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
+    @SuppressWarnings("unchecked")
+    EntityRepository<ContextMemory> memories = mock(EntityRepository.class);
+    Entity.registerEntity(ContextMemory.class, Entity.CONTEXT_MEMORY, memories);
+    ContextMemoryBodyTextContributor.INSTANCE.register();
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities.when(() -> Entity.isSearchIndexable(memory)).thenReturn(true);
+      entities.when(() -> Entity.isVectorEmbeddable(memory)).thenReturn(true);
+      search.updateEntityIndex(memory);
+    }
+
+    assertEquals("Thirty days", stored.get("answer"));
+    assertFalse(stored.toString().contains("Sixty days"), stored.toString());
+    assertFalse(stored.containsKey("embedding"), stored.toString());
+    assertNull(chunkText.get(), "old chunks must disappear before embedding is attempted");
+    assertEquals(
+        0, providerCalls.get(), "ordinary indexing must leave provider calls asynchronous");
+  }
+
+  @Test
+  void updateEntityIncludingArchivedKeepsTheDeletedEntity() {
+    SearchRepository spyRepository = spy(repository);
+    EntityReference reference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY);
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> entityRepository = mock(EntityRepository.class);
+    EntityInterface<?> archived = mockEntity(Entity.CONTEXT_MEMORY, reference.getId(), "archived");
+    when(archived.getDeleted()).thenReturn(true);
+    doNothing().when(spyRepository).updateEntityIndex(archived);
+
+    try (var entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+          .thenReturn(entityRepository);
+      Mockito.<EntityInterface<?>>when(
+              entityRepository.get(null, reference.getId(), null, Include.ALL, false))
+          .thenReturn(archived);
+
+      spyRepository.updateEntity(reference, Include.ALL);
+    }
+
+    verify(spyRepository).updateEntityIndex(archived);
+    assertTrue(archived.getDeleted());
   }
 
   @Test
@@ -3472,7 +3742,8 @@ class SearchRepositoryBehaviorTest {
 
     ArgumentCaptor<List<String>> aliasCaptor = ArgumentCaptor.forClass(List.class);
     verify(searchClient)
-        .softDeleteOrRestoreChildren(aliasCaptor.capture(), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            aliasCaptor.capture(), eq(new SoftDeleteScript(true).painless()), any(List.class));
     List<String> aliases = aliasCaptor.getValue();
     assertFalse(
         aliases.contains("cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS),
@@ -3486,8 +3757,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   /**
-   * When every declared child alias is a time-series entity, propagation is a no-op — the
-   * search client must not be invoked at all rather than be invoked with an empty list.
+   * When every declared child alias is a time-series entity, the `deleted` script is not sent at
+   * all rather than sent with an empty list.
    */
   @Test
   void softDeleteOrRestoredChildrenIsNoOpWhenEveryChildIsTimeSeries() throws IOException {
@@ -3504,7 +3775,51 @@ class SearchRepositoryBehaviorTest {
     repository.softDeleteOrRestoredChildren(testCase, timeSeriesOnly, false);
 
     verify(searchClient, never())
-        .softDeleteOrRestoreChildren(any(List.class), any(String.class), any(List.class));
+        .softDeleteOrRestoreChildren(
+            any(List.class), eq(new SoftDeleteScript(false).painless()), any(List.class));
+  }
+
+  // The incident listing scopes on the embedded test case's flag, which no `deleted` script sets.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsOfASoftDeletedTestCase() throws IOException {
+    EntityReference testCase =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE);
+
+    repository.softDeleteOrRestoredChildren(testCase, TEST_CASE_MAPPING, true);
+
+    assertIncidentTestCasesFlagged("testCase.id", testCase.getId(), true);
+  }
+
+  // A cascade soft-deletes the test cases under a service without search writes of their own.
+  @Test
+  void softDeleteOrRestoredChildrenFlagsTheIncidentsUnderARestoredService() throws IOException {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    IndexMapping serviceMapping =
+        IndexMapping.builder()
+            .indexName("database_service_search_index")
+            .alias("databaseService")
+            .childAliases(List.of(Entity.DATABASE, Entity.TEST_CASE_RESOLUTION_STATUS))
+            .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
+            .build();
+
+    repository.softDeleteOrRestoredChildren(service, serviceMapping, false);
+
+    assertIncidentTestCasesFlagged("service.id", service.getId(), false);
+  }
+
+  private static final String INCIDENT_ALIAS = "cluster_" + Entity.TEST_CASE_RESOLUTION_STATUS;
+
+  private void assertIncidentTestCasesFlagged(String parentField, UUID parentId, boolean deleted)
+      throws IOException {
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .softDeleteOrRestoreChildren(
+            eq(List.of(INCIDENT_ALIAS)),
+            script.capture(),
+            eq(List.of(new ImmutablePair<>(parentField, parentId.toString()))));
+    assertTrue(
+        script.getValue().contains("ctx._source.testCase.deleted = " + deleted), script.getValue());
   }
 
   @Test
@@ -3783,7 +4098,6 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
   }
 
   @Test
@@ -3844,29 +4158,13 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void updateHybridSearchPipelineDelegatesOnlyForOpenSearchVectorService() throws Exception {
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    setPrivateField(repository, "vectorIndexService", vectorService);
-
-    repository.updateHybridSearchPipeline(0.7, 0.3);
-
-    verify(vectorService).ensureHybridSearchPipeline(0.7, 0.3);
-
-    setPrivateField(repository, "vectorIndexService", mock(VectorIndexService.class));
-    repository.updateHybridSearchPipeline(0.8, 0.2);
-  }
-
-  @Test
-  void checkHybridSearchPipelineChecksTheWeightsSearchWillSend() throws Exception {
+  void getHybridWeightsReadsTheAdminWeightsOfTheSearchSettings() throws Exception {
     SearchRepository openSearchRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),
             "cluster",
             ElasticSearchConfiguration.SearchType.OPENSEARCH,
             new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    when(vectorService.checkHybridSearchPipeline(0.7, 0.7)).thenReturn(Optional.of("rejected"));
-    setPrivateField(openSearchRepository, "vectorIndexService", vectorService);
     SearchSettings adminWeights =
         new SearchSettings()
             .withGlobalSettings(
@@ -3877,11 +4175,28 @@ class SearchRepositoryBehaviorTest {
           .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
           .thenReturn(adminWeights);
 
-      assertEquals(Optional.of("rejected"), openSearchRepository.checkHybridSearchPipeline());
+      assertEquals(
+          new SearchRepository.HybridWeights(0.7, 0.7), openSearchRepository.getHybridWeights());
     }
+  }
 
-    setPrivateField(openSearchRepository, "vectorIndexService", mock(VectorIndexService.class));
-    assertEquals(Optional.empty(), openSearchRepository.checkHybridSearchPipeline());
+  @Test
+  void getHybridWeightsFallsBackToTheDefaultsWithoutNaturalLanguageSearchConfiguration() {
+    SearchRepository unconfiguredRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            null);
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(null);
+
+      assertEquals(
+          new SearchRepository.HybridWeights(0.6, 0.4), unconfiguredRepository.getHybridWeights());
+    }
   }
 
   @Test
@@ -4069,7 +4384,8 @@ class SearchRepositoryBehaviorTest {
       propagationOrder.verify(bulkSink).close();
       propagationOrder
           .verify(searchClient)
-          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+          .updateChildrenInBackground(
+              eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
       retryQueue.verifyNoInteractions();
@@ -4213,7 +4529,8 @@ class SearchRepositoryBehaviorTest {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
       ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      verify(searchClient)
+          .updateChildrenInBackground(any(List.class), parentMatch.capture(), any(Pair.class));
       assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(

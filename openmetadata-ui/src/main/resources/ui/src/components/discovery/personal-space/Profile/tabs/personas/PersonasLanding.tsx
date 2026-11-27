@@ -21,13 +21,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
@@ -35,6 +31,7 @@ import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -50,12 +47,12 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(GRID_PAGE_SIZE_OPTIONS);
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,14 +63,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const fetchRequestIdRef = useRef(0);
   const navigationRef = useRef(0);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(personas);
 
   const cacheCursor = (targetPage: number, nextPaging: Paging) =>
     setCursorCache((prev) => {
@@ -183,6 +173,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -311,11 +302,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
             className="tw:rounded-none tw:border-0 tw:bg-transparent tw:p-0 tw:shadow-none"
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

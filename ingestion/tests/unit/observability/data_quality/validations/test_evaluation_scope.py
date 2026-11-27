@@ -418,6 +418,7 @@ class TestEvaluationScopeParamsSetter:
 
     def test_reads_the_resolved_sample_and_the_partition(self):
         sampler = MagicMock()
+        sampler.execution_source = None
         sampler._resolve_sample_config = StaticSamplingConfig(
             profileSample=10.0,
             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -439,6 +440,7 @@ class TestEvaluationScopeParamsSetter:
 
     def test_an_unsampled_table_is_the_full_table(self):
         sampler = MagicMock()
+        sampler.execution_source = None
         sampler._resolve_sample_config = None
         sampler.applies_sampling = False
         sampler.partition_details = None
@@ -451,6 +453,7 @@ class TestEvaluationScopeParamsSetter:
     def test_a_sample_the_sampler_does_not_apply_is_not_reported_as_one(self):
         """A 100% percentage that is not randomized resolves to the table itself"""
         sampler = MagicMock()
+        sampler.execution_source = None
         sampler._resolve_sample_config = StaticSamplingConfig(
             profileSample=100.0,
             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -467,6 +470,7 @@ class TestEvaluationScopeParamsSetter:
 
     def test_a_sampler_that_cannot_resolve_its_config_does_not_fail_the_test_case(self):
         sampler = MagicMock()
+        sampler.execution_source = None
         type(sampler)._resolve_sample_config = property(lambda _: (_ for _ in ()).throw(RuntimeError("boom")))
         sampler.applies_sampling = False
         sampler.partition_details = None

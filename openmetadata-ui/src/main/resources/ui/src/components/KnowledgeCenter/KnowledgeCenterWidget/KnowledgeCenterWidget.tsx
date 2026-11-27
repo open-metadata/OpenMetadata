@@ -12,16 +12,18 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Article,
+  ContextCenter,
+  QuickLink as QuickLinkIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
-import { ReactComponent as ContextCenterWidgetIcon } from '../../../assets/svg/widget/context-center.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
@@ -112,7 +114,7 @@ const KnowledgeCenterWidget = ({
           {map(data, (knowledgePage) => {
             const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
             const quickLink = knowledgePage.page as QuickLink;
-            const KnowledgeIcon = isQuickLink ? LinkIcon : IconArticle;
+            const KnowledgeIcon = isQuickLink ? QuickLinkIcon : Article;
 
             return (
               <Box
@@ -182,7 +184,7 @@ const KnowledgeCenterWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<ContextCenterWidgetIcon height={24} width={24} />}
+        icon={<ContextCenter size={24} />}
         isEditView={isEditView}
         title={t('label.context-center')}
         widgetKey={widgetKey}

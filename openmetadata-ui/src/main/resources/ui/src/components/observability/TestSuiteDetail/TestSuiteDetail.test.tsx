@@ -100,6 +100,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children}
     </button>
   );
+  const ButtonUtility = ({
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: any) => <button aria-label={tooltip} {...props} />;
   const Dialog = Object.assign(
     ({ children }: any) => <div role="dialog">{children}</div>,
     { Content: ({ children }: any) => <div>{children}</div> }
@@ -165,13 +171,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .EmptyPlaceholder,
     Box,
     Button,
+    ButtonUtility,
     CloseButton,
     Dialog,
     DialogTrigger,
+    FeaturedIcon: jest.requireActual('@openmetadata/ui-core-components')
+      .FeaturedIcon,
     Input,
     Modal,
     ModalOverlay,
     Owner,
+    PageLayout: jest.requireActual('@openmetadata/ui-core-components')
+      .PageLayout,
     Tabs,
     Tooltip,
     Typography,
@@ -201,7 +212,20 @@ jest.mock(
   'components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="pipeline-tab-body">pipeline-tab</div>,
+    default: ({
+      deleted,
+      onPipelinesChange,
+    }: {
+      deleted?: boolean;
+      onPipelinesChange?: (total: number) => void;
+    }) => (
+      <button
+        data-deleted={String(deleted)}
+        data-testid="pipeline-tab-body"
+        onClick={() => onPipelinesChange?.(3)}>
+        pipeline-tab
+      </button>
+    ),
   })
 );
 
@@ -261,6 +285,7 @@ const baseHookReturn = {
   pagingData: { paging: { total: 4 } },
   showPagination: false,
   ingestionPipelineCount: 2,
+  handlePipelinesChange: jest.fn(),
   canAddMultipleDomains: true,
   canAddMultipleUserOwners: true,
   canAddMultipleTeamOwner: false,
@@ -307,11 +332,11 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument();
   });
 
-  it('should keep the detail header card on the shell header band', () => {
+  it('should keep the detail header card on the page header band', () => {
     render(<TestSuiteDetail />);
 
-    // AI padding standard: the header band sits at the shell's 8px padding,
-    // 8px outside the 16px-inset tab content, like the other shell pages.
+    // The header band sits at the page layout's own padding, like the other
+    // observability pages.
     expect(screen.getByTestId('test-suite-header-container')).not.toHaveClass(
       'tw:mx-4'
     );
@@ -328,6 +353,36 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('pipeline-tab-body')).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-tab')).not.toBeInTheDocument();
     expect(screen.queryByTestId('description-v1')).not.toBeInTheDocument();
+  });
+
+  it('should tell the pipeline tab a deleted suite is deleted', () => {
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      activeTab: 'pipeline',
+      testSuite: { ...baseHookReturn.testSuite, deleted: true },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('pipeline-tab-body')).toHaveAttribute(
+      'data-deleted',
+      'true'
+    );
+  });
+
+  it('should keep the Pipelines badge on the total the pipeline tab reports', () => {
+    const handlePipelinesChange = jest.fn();
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      activeTab: 'pipeline',
+      handlePipelinesChange,
+    });
+
+    render(<TestSuiteDetail />);
+
+    fireEvent.click(screen.getByTestId('pipeline-tab-body'));
+
+    expect(handlePipelinesChange).toHaveBeenCalledWith(3);
   });
 
   it('should call setActiveTab when another tab is clicked', () => {

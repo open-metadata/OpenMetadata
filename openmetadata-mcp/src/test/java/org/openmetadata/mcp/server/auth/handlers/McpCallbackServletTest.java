@@ -4,17 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import jakarta.servlet.ServletOutputStream;
@@ -23,11 +22,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -36,9 +35,13 @@ import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler.McpIdTokenVerifier;
+import org.openmetadata.service.security.OidcIdentityResolver;
+import org.openmetadata.service.security.SignInFailure;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 class McpCallbackServletTest {
@@ -82,7 +85,7 @@ class McpCallbackServletTest {
     verify(response)
         .sendError(HttpServletResponse.SC_BAD_REQUEST, McpCallbackServlet.ERR_MISSING_STATE);
     verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
-    verify(holder[0], never()).handleCallback(any(), any());
+    verify(holder[0], never()).handleMcpCallback(any(), any(), any());
   }
 
   // ── doGet: IdP error callback is relayed to the MCP client ────────────────
@@ -135,30 +138,6 @@ class McpCallbackServletTest {
   }
 
   @Test
-  void getClaimsMapping_keepsClaimNamesThatContainAColon() throws Exception {
-    // Without the colon-safe split, both entries are dropped and the username falls back to the
-    // email prefix, which can name a different OpenMetadata user than the web login resolves.
-    AuthenticationConfiguration authConfig =
-        new AuthenticationConfiguration()
-            .withJwtPrincipalClaimsMapping(List.of("username:custom:login", "email:custom:mail"));
-    Map<String, Object> claims =
-        Map.of(
-            "custom:login", "employee42",
-            "custom:mail", "employee42@corp.example",
-            "email", "jdoe@example.com");
-
-    try (MockedStatic<SecurityConfigurationManager> scm =
-        mockStatic(SecurityConfigurationManager.class)) {
-      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
-      Map<String, String> mapping = invokeGetClaimsMapping(makeServlet());
-
-      assertThat(findUserNameFromClaims(mapping, List.of("email"), claims)).isEqualTo("employee42");
-      assertThat(findEmailFromClaims(mapping, List.of("email"), claims, ""))
-          .isEqualTo("employee42@corp.example");
-    }
-  }
-
-  @Test
   void doGet_idpErrorCallback_loginRequired_relaysErrorToMcpClient() throws Exception {
     // Silent-auth error (prompt=none, no IdP session) must reach the MCP client as an OAuth
     // error redirect rather than being swallowed into an opaque 500.
@@ -177,7 +156,7 @@ class McpCallbackServletTest {
     verify(provider)
         .handleSSOErrorCallback(
             any(), eq("auth-req-1"), eq("login_required"), eq("The user is not logged in."));
-    verify(holder[0], never()).handleCallback(any(), any());
+    verify(holder[0], never()).handleMcpCallback(any(), any(), any());
   }
 
   @Test
@@ -198,7 +177,7 @@ class McpCallbackServletTest {
     verify(provider)
         .handleSSOErrorCallback(
             any(), eq("auth-req-1"), eq("access_denied"), eq("The user denied the request."));
-    verify(holder[0], never()).handleCallback(any(), any());
+    verify(holder[0], never()).handleMcpCallback(any(), any(), any());
   }
 
   @Test
@@ -215,7 +194,7 @@ class McpCallbackServletTest {
     servlet.doGet(request, response);
 
     verify(provider).handleSSOErrorCallback(any(), eq("auth-req-1"), eq("server_error"), eq(null));
-    verify(holder[0], never()).handleCallback(any(), any());
+    verify(holder[0], never()).handleMcpCallback(any(), any(), any());
   }
 
   @Test
@@ -275,13 +254,12 @@ class McpCallbackServletTest {
               return null;
             })
         .when(ssoHandler)
-        .handleCallback(any(), any());
-    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
+        .handleMcpCallback(any(), any(), any());
+    McpCallbackServlet servlet = spy(makeServletWithHandler(provider, pendingRepo, ssoHandler));
     IdTokenValidator validator = mock(IdTokenValidator.class);
     when(validator.validateAndDecode("earlier.id.token"))
         .thenReturn(new JWTClaimsSet.Builder().claim("email", "alice@example.com").build());
-    setField(servlet, "idTokenValidator", validator);
-    setField(servlet, "validatorBuiltFrom", ssoHandler);
+    doReturn(validator).when(servlet).getIdTokenValidator(ssoHandler);
 
     OidcCredentials earlierLogin = mock(OidcCredentials.class);
     when(earlierLogin.getIdToken()).thenReturn("earlier.id.token");
@@ -294,49 +272,112 @@ class McpCallbackServletTest {
 
     servlet.doGet(request, response);
 
-    verify(ssoHandler).handleCallback(eq(request), any());
+    verify(ssoHandler).handleMcpCallback(eq(request), any(), any());
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_accountNotAllowed_showsAccessDeniedNotAnInternalError() throws Exception {
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler ssoHandler =
+        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    // The login step answers a refusal with a 500, as it does for every failed MCP sign-in.
+    doAnswer(
+            call -> {
+              call.<HttpServletResponse>getArgument(1)
+                  .setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+              return null;
+            })
+        .when(ssoHandler)
+        .handleMcpCallback(any(), any(), any());
+    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    when(request.getSession(true)).thenReturn(mock(HttpSession.class));
+    when(request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE))
+        .thenReturn(SignInFailure.ACCOUNT_NOT_ALLOWED);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter page = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(page));
+
+    servlet.doGet(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    assertThat(page.toString())
+        .contains("Access Denied")
+        .contains(UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
     verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
   }
 
   @Test
   void doGet_completedLogin_usesTheCredentialsThisCallbackValidated() throws Exception {
     UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
-    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
-    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
-    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
-    when(request.getSession(true)).thenReturn(mock(HttpSession.class));
-    Map<String, Object> attributes = new HashMap<>();
-    doAnswer(call -> attributes.put(call.getArgument(0), call.getArgument(1)))
-        .when(request)
-        .setAttribute(anyString(), any());
-    when(request.getAttribute(anyString()))
-        .thenAnswer(call -> attributes.get(call.<String>getArgument(0)));
-    OidcCredentials thisLogin = mock(OidcCredentials.class);
-    when(thisLogin.getIdToken()).thenReturn("this.id.token");
-    AuthenticationCodeFlowHandler ssoHandler =
-        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
-    doAnswer(
-            call -> {
-              call.<HttpServletRequest>getArgument(0)
-                  .setAttribute(AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE, thisLogin);
-              call.<HttpServletResponse>getArgument(1).sendRedirect("https://om.test/mcp/callback");
-              return null;
-            })
-        .when(ssoHandler)
-        .handleCallback(any(), any());
-    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
-    IdTokenValidator validator = mock(IdTokenValidator.class);
-    when(validator.validateAndDecode("this.id.token"))
-        .thenReturn(new JWTClaimsSet.Builder().claim("email", "alice@example.com").build());
-    setField(servlet, "idTokenValidator", validator);
-    setField(servlet, "validatorBuiltFrom", ssoHandler);
 
-    servlet.doGet(request, mock(HttpServletResponse.class));
+    HttpServletRequest request =
+        completeLogin(provider, new AuthenticationConfiguration(), "alice@example.com");
 
     verify(provider)
         .handleSSOCallbackWithDbState(
             eq(request), any(), eq("alice"), eq("alice@example.com"), eq("mcp:auth-req-1"));
+  }
+
+  @Test
+  void doGet_emailFirstLogin_usesTheAccountThatOwnsTheEmail() throws Exception {
+    // "john" belongs to john@corp.example, so john@partner.example was provisioned as john_x1y2.
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    try (MockedStatic<UserUtil> userUtil = mockStatic(UserUtil.class)) {
+      userUtil
+          .when(() -> UserUtil.resolveUserNameForEmail("john@partner.example"))
+          .thenReturn("john_x1y2");
+
+      HttpServletRequest request =
+          completeLogin(
+              provider,
+              new AuthenticationConfiguration().withEmailClaim("email"),
+              "john@partner.example");
+
+      verify(provider)
+          .handleSSOCallbackWithDbState(
+              eq(request),
+              any(),
+              eq("john_x1y2"),
+              eq("john@partner.example"),
+              eq("mcp:auth-req-1"));
+    }
+  }
+
+  private static HttpServletRequest completeLogin(
+      UserSSOOAuthProvider provider, AuthenticationConfiguration authConfig, String email)
+      throws Exception {
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    when(request.getSession(true)).thenReturn(mock(HttpSession.class));
+    AuthenticationCodeFlowHandler ssoHandler =
+        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    doAnswer(
+            call -> {
+              call.<HttpServletResponse>getArgument(1).sendRedirect("https://om.test/mcp/callback");
+              return call.<McpIdTokenVerifier>getArgument(2).verify("this.id.token");
+            })
+        .when(ssoHandler)
+        .handleMcpCallback(any(), any(), any());
+    when(ssoHandler.resolveOidcIdentity(any()))
+        .thenAnswer(
+            call ->
+                new OidcIdentityResolver(
+                        authConfig, new AuthorizerConfiguration(), Map.of(), List.of("email"), "")
+                    .resolve(call.getArgument(0)));
+    McpCallbackServlet servlet = spy(makeServletWithHandler(provider, pendingRepo, ssoHandler));
+    IdTokenValidator validator = mock(IdTokenValidator.class);
+    when(validator.validateAndDecode("this.id.token"))
+        .thenReturn(new JWTClaimsSet.Builder().claim("email", email).build());
+    doReturn(validator).when(servlet).getIdTokenValidator(ssoHandler);
+
+    servlet.doGet(request, mock(HttpServletResponse.class));
+    return request;
   }
 
   private static McpCallbackServlet makeServletWithHandler(
@@ -349,12 +390,6 @@ class McpCallbackServletTest {
         return handler;
       }
     };
-  }
-
-  private static void setField(Object target, String name, Object value) throws Exception {
-    Field field = McpCallbackServlet.class.getDeclaredField(name);
-    field.setAccessible(true);
-    field.set(target, value);
   }
 
   @Test
@@ -391,14 +426,6 @@ class McpCallbackServletTest {
   private static McpCallbackServlet makeServlet() {
     return new McpCallbackServlet(
         mock(UserSSOOAuthProvider.class), mock(McpPendingAuthRequestRepository.class));
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, String> invokeGetClaimsMapping(McpCallbackServlet servlet)
-      throws Exception {
-    Method m = McpCallbackServlet.class.getDeclaredMethod("getClaimsMapping");
-    m.setAccessible(true);
-    return (Map<String, String>) m.invoke(servlet);
   }
 
   private static HttpServletResponse newBufferedResponse(HttpServletResponse response)

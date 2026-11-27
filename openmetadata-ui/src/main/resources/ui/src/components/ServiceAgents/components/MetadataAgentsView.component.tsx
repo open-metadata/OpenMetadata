@@ -32,6 +32,7 @@ import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   getErrorPlaceHolder,
   getLogViewerStatusFromAgentStatus,
+  getLogViewerStatusFromRunStatus,
 } from '../../../utils/IngestionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -39,7 +40,7 @@ import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
-import { Agent, RenderRunAction } from '../AgentsPage.interface';
+import { Agent, AgentRun, RenderRunAction } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { useAgentLogs } from '../hooks/useAgentLogs';
 import { useAgentPermissions } from '../hooks/useAgentPermissions';
@@ -64,6 +65,18 @@ interface MetadataAgentsViewProps {
   onRefresh: () => void;
   renderRunAction?: RenderRunAction;
 }
+
+// The log modal describes the run it shows: the picked older run, else the agent's latest.
+const getLogsHeader = (agent: Agent | null, run?: AgentRun) =>
+  run
+    ? {
+        lastRun: run.startedAt,
+        status: getLogViewerStatusFromRunStatus(run.status),
+      }
+    : {
+        lastRun: agent?.finishedAt,
+        status: getLogViewerStatusFromAgentStatus(agent?.status),
+      };
 
 const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
@@ -91,6 +104,9 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     runId?: string;
   } | null>(null);
   const [logsFor, setLogsFor] = useState<Agent | null>(null);
+  // Set when the user opened an older run's log; the modal then describes that run.
+  const [logsRun, setLogsRun] = useState<AgentRun | undefined>();
+  const logsRunId = logsRun?.runId;
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -101,8 +117,10 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     () => agents.find((agent) => agent.id === logsFor?.id) ?? logsFor,
     [agents, logsFor]
   );
+  // A pinned (older, finished) run is never live, whatever the agent is doing now.
   const isLogsAgentActive =
-    liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
+    !logsRunId &&
+    (liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued');
 
   // Same reason for the run history drawer — its "Run now" guard has to see the
   // status the agent has now, not the one it had when the drawer was opened.
@@ -124,10 +142,16 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
     isLogsAgentActive,
-    liveLogsAgent?.currentRunId
+    liveLogsAgent?.currentRunId,
+    logsRunId
   );
 
-  const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
+  const logsHeader = getLogsHeader(logsFor, logsRun);
+
+  const onLogs = useCallback((agent: Agent) => {
+    setLogsRun(undefined);
+    setLogsFor(agent);
+  }, []);
   const onRun = useCallback(
     (agent: Agent) => {
       void runAgent(agent);
@@ -285,7 +309,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           permissions={agentPermissions?.[liveRunsAgent.fqn]}
           renderRunAction={renderRunAction}
           onClose={() => setRunsFor(null)}
-          onOpenLogs={(agent) => {
+          onOpenLogs={(agent, run) => {
+            setLogsRun(run);
             setLogsFor(agent);
           }}
           onRun={onRun}
@@ -294,12 +319,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       {logsFor && (
         <LogViewerModal
           open
-          lastRun={logsFor.finishedAt}
+          lastRun={logsHeader.lastRun}
           loading={isLogsLoading}
           logs={rawText}
           mode={isLogsRunLive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
-          status={getLogViewerStatusFromAgentStatus(logsFor.status)}
+          status={logsHeader.status}
           streamError={streamError}
           streamHealth={streamHealth}
           streamTruncated={streamTruncated}

@@ -917,9 +917,10 @@ public class DataProductDomainMigrationIT {
   private void verifyAssetsInDomainAssetsEndpoint(
       OpenMetadataClient client, Domain domain, List<Table> expectedTables, boolean shouldExist)
       throws Exception {
-    // Use Awaitility to poll for the expected state since search index updates are async
+    // The asset domains are rewritten in search during the request; when the cluster rejects that
+    // update under load, the search retry queue repairs the documents about half a minute later.
     Awaitility.await()
-        .atMost(30, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
         .pollInterval(2, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {

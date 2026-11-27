@@ -13,25 +13,28 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Minus, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Maximize02,
+  Minus,
+  Plus,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FitScreenIcon } from '../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as RefreshIcon } from '../../../assets/svg/reload.svg';
 import { KnowledgeGraphViewControlsProps } from './KnowledgeGraph.interface';
 
-/** The Button `iconLeading` prop accepts a component; align the SVG asset to that shape. */
+/** The ButtonUtility `icon` prop accepts a component; align the SVG asset to that shape. */
 type IconComponent = FC<{ className?: string }>;
 
 /**
  * The floating viewport controls in the corner of the canvas — zoom, fit and
  * refresh. Mirrors the Lineage canvas controls (#34551) so the two canvas
  * surfaces read as the same control: a `Card variant="elevated"` with
- * `Button color="link-gray"` kids and the current zoom level shown as a
+ * `ButtonUtility` kids and the current zoom level shown as a
  * `Typography` between the `−` / `+` pair.
  */
 const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
@@ -51,12 +54,11 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
       variant="elevated">
       <Card.Content>
         <Box align="center" gap={4}>
-          <Button
+          <ButtonUtility
             aria-label={t('label.zoom-out')}
-            color="link-gray"
             data-testid="zoom-out"
-            iconLeading={Minus as IconComponent}
-            size="sm"
+            icon={Minus as IconComponent}
+            size="lg"
             tooltip={t('label.zoom-out')}
             onPress={onZoomOut}
           />
@@ -68,30 +70,27 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
             weight="semibold">
             {Math.round(zoom * 100) + '%'}
           </Typography>
-          <Button
+          <ButtonUtility
             aria-label={t('label.zoom-in')}
-            color="link-gray"
             data-testid="zoom-in"
-            iconLeading={Plus as IconComponent}
-            size="sm"
+            icon={Plus as IconComponent}
+            size="lg"
             tooltip={t('label.zoom-in')}
             onPress={onZoomIn}
           />
-          <Button
+          <ButtonUtility
             aria-label={t('label.fit-to-screen')}
-            color="link-gray"
             data-testid="fit-screen"
-            iconLeading={FitScreenIcon as IconComponent}
-            size="sm"
+            icon={Maximize02 as IconComponent}
+            size="lg"
             tooltip={t('label.fit-to-screen')}
             onPress={onFit}
           />
-          <Button
+          <ButtonUtility
             aria-label={t('label.refresh')}
-            color="link-gray"
             data-testid="refresh"
-            iconLeading={RefreshIcon as IconComponent}
-            size="sm"
+            icon={RefreshCw01 as IconComponent}
+            size="lg"
             tooltip={t('label.refresh')}
             onPress={onRefresh}
           />

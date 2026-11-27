@@ -56,6 +56,11 @@ export interface OntologyChangeOperation {
     rationale?:    string;
     relationship?: OntologyRelationship;
     /**
+     * IRIs of concepts that an import expects to create in the same change set. Applying the
+     * operation without an UPSERT_CONCEPT operation for each of them is refused.
+     */
+    requiresConceptIris?: string[];
+    /**
      * Published context memories that support this AI suggestion.
      */
     sourceMemoryIds?: string[];
@@ -934,6 +939,12 @@ export interface OntologyProperty {
      * IRI of the property in the same ontology that replaces this one.
      */
     replacedBy?: string;
+    /**
+     * Semantic IRIs of the named properties this property specializes (rdfs:subPropertyOf).
+     * Each must be a declared property of the same kind; a property cannot name itself, and the
+     * links cannot form a cycle.
+     */
+    superProperties?: string[];
     /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.

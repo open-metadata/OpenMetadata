@@ -61,6 +61,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -69,7 +70,9 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryDsl;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -166,7 +169,8 @@ public class OpenSearchClient implements SearchClient {
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, transport);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new OpenSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -234,6 +238,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Object getLowLevelClient() {
     return MeteredOpenSearchTransport.unwrap(transport);
+  }
+
+  @Override
+  public SearchQueryDsl getQueryDsl() {
+    return new OpenSearchQueryDsl(newClient._transport().jsonpMapper());
   }
 
   @Override
@@ -350,6 +359,12 @@ public class OpenSearchClient implements SearchClient {
   public SearchResultListMapper searchForExport(
       SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
   }
 
   @Override
@@ -773,6 +788,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
+  }
+
+  @Override
   public void updateChildren(
       List<String> indexNames,
       String field,
@@ -911,6 +940,17 @@ public class OpenSearchClient implements SearchClient {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
+  }
+
   /**
    * Parses the host string for AwsSdk2Transport. Strips protocol prefix, trailing slash, handles
    * comma-separated hosts (uses first), and removes port. AwsSdk2Transport expects a bare hostname.
@@ -1039,13 +1079,9 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.useSystemProperties();
 
-            // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
-            // pipeline by default. opensearch-java's ApacheHttpClient5Transport also
-            // decompresses the response body itself, so leaving both enabled makes the second
-            // pass run on already-inflated bytes and throws
-            // "java.util.zip.ZipException: Not in GZIP format" out of LazyDecompressingInputStream.
-            // Disable at the transport layer and let opensearch-java own decompression.
-            httpClientBuilder.disableContentCompression();
+            // Leave httpclient5's automatic gzip decompression on: since opensearch-java 3.6 the
+            // ApacheHttpClient5Transport no longer inflates responses itself, so disabling it here
+            // hands gzip bytes to the JSON parser.
 
             return httpClientBuilder;
           });

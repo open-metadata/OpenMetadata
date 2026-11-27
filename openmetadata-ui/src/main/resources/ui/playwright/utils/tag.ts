@@ -362,7 +362,7 @@ export const addTagToTableColumn = async (
   }
 ) => {
   const trigger: Locator = page.locator(
-    `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
+    `[data-testid="classification-tags-${columnNumber}"] [data-testid="add-tag"]`
   );
 
   await openClassificationTagPicker(page, trigger);

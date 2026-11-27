@@ -16,6 +16,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.aicontext.AIContextMarkdown.appendHeading;
 import static org.openmetadata.service.aicontext.AIContextMarkdown.cell;
+import static org.openmetadata.service.aicontext.AIContextMarkdown.sampleCell;
 
 import java.time.Instant;
 import java.util.List;
@@ -73,6 +74,23 @@ final class ConceptContextMarkdown {
           .append(String.join(", ", concept.getSynonyms()))
           .append('\n');
     }
+    if (!nullOrEmpty(concept.getFilters())) {
+      markdown.append("\n**Filters (all apply with the definition):**\n");
+      AIContextMarkdown.appendSqlBlock(markdown, conjunction(concept.getFilters()));
+    }
+    if (!nullOrEmpty(concept.getGranularity())) {
+      markdown.append("\n**Granularity:** ").append(concept.getGranularity()).append('\n');
+    }
+    if (!nullOrEmpty(concept.getUnit())) {
+      markdown.append("\n**Unit:** ").append(PromptText.forPrompt(concept.getUnit())).append('\n');
+    }
+  }
+
+  /** One condition: every filter parenthesised and joined with AND, so none can be read as OR. */
+  private static String conjunction(List<String> filters) {
+    return filters.stream()
+        .map(condition -> "(" + condition.strip() + ")")
+        .collect(Collectors.joining("\nAND "));
   }
 
   private static void appendRelations(
@@ -131,7 +149,7 @@ final class ConceptContextMarkdown {
           .append("\nStored samples for `")
           .append(cell(binding.getColumn()))
           .append("`: ")
-          .append(cell(values))
+          .append(sampleCell(values))
           .append(" (representative rows; never count or aggregate over them).\n");
     }
   }

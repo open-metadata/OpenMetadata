@@ -72,6 +72,23 @@ describe('LeftSidebar', () => {
     expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();
   });
 
+  it('opens the interface switcher from the sidebar footer', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <BrowserRouter>
+        <LeftSidebar />
+      </BrowserRouter>
+    );
+
+    await user.click(screen.getByTestId('app-mode-switcher-trigger'));
+
+    expect(
+      await screen.findByTestId('app-mode-switcher-card')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('app-mode-option-classic')).toBeInTheDocument();
+    expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
+  });
+
   it.each([
     [
       'click',

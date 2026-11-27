@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
@@ -47,6 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -101,6 +103,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.resources.dqtests.TestCaseWriteAuthRequests;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -872,6 +875,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
+    Table table = validateForWrite(test, update);
+    // Create/resolve the basic test suite only after all validations pass.
+    // This avoids creating side entities when request validation fails early.
+    // PATCH carries the stored suite, so a null check would not re-resolve it after an entityLink
+    // move.
+    test.setTestSuite(getOrCreateTestSuite(test, table));
+  }
+
+  /**
+   * Runs the checks {@link #prepareInternal} runs for a test case, minus the basic test suite, so a
+   * CSV dry run reports the rows the real import would and creates nothing.
+   */
+  void checkForImport(TestCase test, boolean isUpdate) {
+    validateTags(test);
+    validateForWrite(test, isUpdate);
+    validateExtension(test, isUpdate);
+    if (!isUpdate) {
+      prepareCertification(test);
+    }
+  }
+
+  private Table validateForWrite(TestCase test, boolean update) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -905,23 +930,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (!update) {
       TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
     }
-
-    // Create/resolve the basic test suite only after all validations pass.
-    // This avoids creating side entities when request validation fails early.
-    var testSuite = getOrCreateTestSuite(test, table);
-    test.setTestSuite(testSuite);
+    return table;
   }
 
   /*
    * Get the test suite for a test case. We'll use the entity linked to the test case
    * to find the basic test suite. If it doesn't exist, create a new one.
    */
-  EntityReference getOrCreateTestSuite(TestCase test) {
-    var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
-    return getOrCreateTestSuite(test, tableEntity);
-  }
-
   private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
@@ -1309,39 +1324,109 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void deleteChildren(
-      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
-    if (hardDelete) {
-      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-          (TestCaseResolutionStatusRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+  protected Runnable preparePostDeleteCleanup(List<TestCase> testCases) {
+    final List<String> testCaseFQNs =
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
+    final var statusDAO = daoCollection.testCaseResolutionStatusTimeSeriesDao();
+    // Parent links retain stable ownership after a test moves; the summary's latestRecordId
+    // still links pruned incidents whose audit rows have already expired.
+    final Set<UUID> childIds = new HashSet<>(resolutionStatusChildren(testCases));
+    final Set<String> incidentIds =
+        new HashSet<>(
+            EntityDAO.queryInChunks(
+                testCases.stream().map(testCase -> testCase.getId().toString()).toList(),
+                statusDAO::listIncidentIdsForTestCaseIds));
+    // Legacy rows without parent links fall back to the FQN, unless a surviving owner claims them.
+    if (!testCaseFQNs.isEmpty()) {
+      childIds.addAll(EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listStatusIdsForTestCases));
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listIncidentIdsForTestCases));
+    }
+    // Historical links can identify older incidents that no longer have the test's current FQN.
+    if (!childIds.isEmpty()) {
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(
+              childIds.stream().map(UUID::toString).toList(),
+              statusDAO::listIncidentIdsForStatusRecords));
+    }
+    // Capture identities before deletion: asynchronous cleanup must not touch a recreated FQN.
+    return () -> {
+      scheduleResolutionStatusCleanup(List.copyOf(childIds), List.copyOf(incidentIds));
+      deleteAllTestCaseResults(testCaseFQNs);
+    };
+  }
+
+  private List<UUID> resolutionStatusChildren(List<TestCase> testCases) {
+    final List<String> ids =
+        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
+    return daoCollection
+        .relationshipDAO()
+        .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
+        .stream()
+        .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
+        .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
+        .map(child -> UUID.fromString(child.getToId()))
+        .distinct()
+        .toList();
+  }
+
+  private void scheduleResolutionStatusCleanup(List<UUID> childIds, List<String> incidentIds) {
+    if (!nullOrEmpty(childIds) || !nullOrEmpty(incidentIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + children.size(),
-              () -> {
-                for (CollectionDAO.EntityRelationshipRecord child : children) {
-                  try {
-                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
-                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
-                  } catch (Exception e) {
-                    LOG.error(
-                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
-                  }
-                }
-              });
+              "resolution-status:"
+                  + (childIds.isEmpty() ? incidentIds.getFirst() : childIds.getFirst()),
+              () -> deleteResolutionStatusChildren(childIds, incidentIds));
     }
   }
 
-  @Override
-  protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
+  private void deleteResolutionStatusChildren(List<UUID> childIds, List<String> incidentIds) {
+    deleteIncidentHistory(
+        daoCollection,
+        childIds,
+        incidentIds,
+        removedIds -> {
+          for (UUID id : removedIds) {
+            searchRepository.deleteTimeSeriesEntityById(new TestCaseResolutionStatus().withId(id));
+          }
+        });
   }
 
-  @Override
-  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
-    deleteAllTestCaseResults(
-        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
+  static void deleteIncidentHistory(
+      CollectionDAO collection,
+      List<UUID> childIds,
+      List<String> incidentIds,
+      Consumer<Set<UUID>> onBatchDeleted) {
+    for (List<String> batch : Lists.partition(incidentIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      Set<UUID> removed =
+          collection.inTransaction(
+              transaction -> {
+                var statusDAO = transaction.testCaseResolutionStatusTimeSeriesDao();
+                Set<UUID> statusIds = new HashSet<>(statusDAO.listStatusIdsForIncidents(batch));
+                transaction
+                    .relationshipDAO()
+                    .batchDeleteRelationships(
+                        List.copyOf(statusIds), Entity.TEST_CASE_RESOLUTION_STATUS);
+                statusDAO.deleteIncidentsByStateIds(batch);
+                return Set.copyOf(statusIds);
+              });
+      onBatchDeleted.accept(removed);
+    }
+    // Captured links may outlive pruned audit rows, and legacy records may have no incident ID.
+    for (List<UUID> batch : Lists.partition(childIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      collection.inTransaction(
+          transaction -> {
+            transaction
+                .relationshipDAO()
+                .batchDeleteRelationships(batch, Entity.TEST_CASE_RESOLUTION_STATUS);
+            transaction
+                .testCaseResolutionStatusTimeSeriesDao()
+                .deleteStatusRecordsWithoutIncident(batch.stream().map(UUID::toString).toList());
+            return null;
+          });
+      onBatchDeleted.accept(Set.copyOf(batch));
+    }
   }
 
   private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
@@ -1978,6 +2063,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    private void updateBasicTestSuite() {
+      EntityReference originalSuite = original.getTestSuite();
+      EntityReference updatedSuite = updated.getTestSuite();
+      if (!recordChange(
+          TEST_SUITE_FIELD, originalSuite, updatedSuite, true, entityReferenceMatch)) {
+        return;
+      }
+      // Logical suites use CONTAINS too; replace only the previous basic-suite relationship.
+      if (originalSuite != null) {
+        deleteRelationship(
+            originalSuite.getId(), TEST_SUITE, updated.getId(), TEST_CASE, Relationship.CONTAINS);
+      }
+      if (updatedSuite != null) {
+        addRelationship(
+            updatedSuite.getId(), updated.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+      }
+    }
+
     /**
      * Rewrites the dimension relationship by hand rather than through updateFromRelationship: the
      * generic helper cannot carry the inherited marker, and losing it would make a dimension the
@@ -2022,6 +2125,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return false;
     }
 
+    // An entityLink patch also changes these relationship-backed fields.
+    @Override
+    protected boolean shouldCompare(String fieldName) {
+      return super.shouldCompare(fieldName)
+          || (("entity".equals(fieldName) || TEST_SUITE_FIELD.equals(fieldName))
+              && super.shouldCompare("entityLink"));
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -2044,17 +2155,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 TEST_CASE,
                 updated.getId());
           });
-      compareAndUpdate(
-          TEST_SUITE_FIELD,
-          () ->
-              updateFromRelationship(
-                  TEST_SUITE_FIELD,
-                  TEST_SUITE,
-                  original.getTestSuite(),
-                  updated.getTestSuite(),
-                  Relationship.HAS,
-                  TEST_CASE,
-                  updated.getId()));
+      compareAndUpdate(TEST_SUITE_FIELD, this::updateBasicTestSuite);
       compareAndUpdate(
           TEST_DEFINITION,
           () ->
@@ -2587,21 +2688,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TestCaseRepository repository =
               (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
 
-          // Get test suite if provided, otherwise get or create default test suite
-          if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
-            TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
-            if (testSuite == null) {
-              continue;
-            }
-            testCase.withTestSuite(testSuite.getEntityReference());
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
-          } else {
-            // No test suite provided - get or create the default basic test suite
-            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
-            testCase.withTestSuite(testSuite);
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
-          }
-
           // Compute and set FQN manually (same logic as setFullyQualifiedName)
           EntityLink parsedLink = EntityLink.parse(entityLink);
           String testCaseFqn =
@@ -2609,21 +2695,40 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
           testCase.setFullyQualifiedName(testCaseFqn);
           testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+          boolean isUpdate = repository.findByNameOrNull(testCaseFqn, Include.ALL) != null;
 
-          // Set required fields for new entities - createOrUpdateForImport doesn't call
-          // prepareInternal which would normally set these
-          if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
-          }
-          if (testCase.getUpdatedAt() == null) {
-            testCase.setUpdatedAt(System.currentTimeMillis());
-          }
-          if (testCase.getUpdatedBy() == null) {
-            testCase.setUpdatedBy(importedBy);
+          // A row can name any table, so it is checked as the matching REST write, before anything
+          // is created for it (e.g. the table's test suite)
+          authorizeRowForAny(
+              () ->
+                  isUpdate
+                      ? TestCaseWriteAuthRequests.forUpdate(testCase)
+                      : TestCaseWriteAuthRequests.forCreate(testCase));
+
+          if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
+            TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
+            if (testSuite == null) {
+              continue;
+            }
+            validateRowTestSuite(testSuite, entityLink);
           }
 
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
+          if (importResult.getDryRun()) {
+            repository.checkForImport(testCase, isUpdate);
+            importSuccess(printer, csvRecord, isUpdate ? ENTITY_UPDATED : ENTITY_CREATED);
+          } else {
+            repository.prepareInternal(testCase, isUpdate);
+            importedTestSuiteIds.putIfAbsent(
+                testCase.getTestSuite().getFullyQualifiedName(), testCase.getTestSuite().getId());
+            if (testCase.getId() == null) {
+              testCase.setId(UUID.randomUUID());
+            }
+            if (testCase.getUpdatedAt() == null) {
+              testCase.setUpdatedAt(System.currentTimeMillis());
+            }
+            if (testCase.getUpdatedBy() == null) {
+              testCase.setUpdatedBy(importedBy);
+            }
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
             if (targetBundleSuite != null) {
@@ -2634,10 +2739,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             } else {
               importSuccess(printer, csvRecord, ENTITY_UPDATED);
             }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
           }
 
         } catch (Exception ex) {
@@ -2746,6 +2847,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
       }
       return entityLink;
+    }
+
+    private void validateRowTestSuite(TestSuite testSuite, String entityLink) {
+      Table table = Entity.getEntity(EntityLink.parse(entityLink), TEST_SUITE_FIELD, NON_DELETED);
+      if (!Boolean.TRUE.equals(testSuite.getBasic())
+          || table.getTestSuite() == null
+          || !table.getTestSuite().getId().equals(testSuite.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Test suite '%s' must be the basic test suite for table '%s'",
+                testSuite.getFullyQualifiedName(), table.getFullyQualifiedName()));
+      }
     }
 
     /**

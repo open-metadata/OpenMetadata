@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 
+import { MinusCircle } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
 import Table from '../../../components/common/Table/TableV2';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -77,22 +77,18 @@ const PoliciesDetailsList = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              arrow
-              title={
+            <ButtonUtility
+              data-testid={`remove-action-${getEntityName(record)}`}
+              icon={MinusCircle}
+              isDisabled={!hasAccess}
+              size="lg"
+              tooltip={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`remove-action-${getEntityName(record)}`}
-                icon={IconRemove}
-                isDisabled={!hasAccess}
-                size="sm"
-                onClick={() => onDelete(record)}
-              />
-            </Tooltip>
+              }
+              onClick={() => onDelete(record)}
+            />
           );
         },
       },

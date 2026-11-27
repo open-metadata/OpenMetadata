@@ -86,6 +86,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      onClick,
+      isDisabled,
+      tooltip,
+      'data-testid': testId,
+    }: {
+      onClick?: (...args: unknown[]) => void;
+      isDisabled?: boolean;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
     ConfirmPopover: ({
       children,
       onConfirm,
@@ -109,18 +127,34 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     Skeleton: () => <div data-testid="skeleton" />,
     FeaturedIcon: () => <span data-testid="featured-icon" />,
+    EmptyPlaceholder: ({
+      title,
+      description,
+      footer,
+    }: {
+      title?: ReactNode;
+      description?: ReactNode;
+      footer?: ReactNode;
+    }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+        {footer}
+      </div>
+    ),
     Select,
   };
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Copy01: () => <span />,
+  Database01: () => <span />,
   Eye: () => <span />,
   EyeOff: () => <span />,
   Key01: () => <span />,
   Plus: () => <span />,
   RefreshCcw02: () => <span />,
-  Trash02: () => <span />,
+  Trash01: () => <span />,
 }));
 
 jest.mock('utils/BotsUtils', () => ({

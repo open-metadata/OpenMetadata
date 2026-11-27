@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { getAllAlerts } from '../../../../../../rest/alertsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
 
@@ -175,6 +176,8 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useHashPagingParams: () => ({
     page: 1,
     pageSize: 10,
+    resolvedPageSize: 15,
+    savePageSize: jest.fn(),
     cursorType: undefined,
     cursor: undefined,
     setPage: jest.fn(),
@@ -187,6 +190,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../../constants/constants', () => ({
+  ...jest.requireActual('../../../../../../constants/constants'),
   PAGE_SIZE_BASE: 10,
   PAGE_SIZE_MEDIUM: 25,
   PAGE_SIZE_LARGE: 50,
@@ -219,6 +223,37 @@ describe('NotificationAlertsPanel', () => {
         1
       );
     });
+  });
+
+  it('shows a Disabled status for an alert that is switched off', async () => {
+    const defaultResponse = (getAllAlerts as jest.Mock).getMockImplementation();
+    (getAllAlerts as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'alert-2',
+          name: 'disabled-alert',
+          fullyQualifiedName: 'disabled-alert',
+          provider: 'user',
+          enabled: false,
+          filteringRules: { resources: ['table'] },
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    try {
+      await act(async () => {
+        render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
+      });
+
+      const badges = await screen.findAllByTestId('alert-status-badge');
+
+      expect(
+        badges.filter((badge) => badge.textContent === 'label.disabled')
+      ).toHaveLength(1);
+    } finally {
+      (getAllAlerts as jest.Mock).mockImplementation(defaultResponse);
+    }
   });
 
   it('should show edit and delete buttons for user alerts', async () => {

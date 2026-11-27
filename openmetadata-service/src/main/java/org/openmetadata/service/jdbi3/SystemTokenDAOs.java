@@ -596,13 +596,14 @@ public interface SystemTokenDAOs {
         connectionType = POSTGRES)
     void insert(@BindJson("json") String json);
 
+    /** The number of rows changed: 0 once the token was replaced or deleted. */
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @BindJson("json") String json);
+    int update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);

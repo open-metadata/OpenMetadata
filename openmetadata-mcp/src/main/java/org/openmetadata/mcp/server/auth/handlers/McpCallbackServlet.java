@@ -1,10 +1,5 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
-import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE;
-import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
-
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
@@ -22,7 +17,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
@@ -32,15 +26,17 @@ import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler.McpTokenVerification;
+import org.openmetadata.service.security.OidcIdentityResolver.ResolvedOidcIdentity;
+import org.openmetadata.service.security.SignInFailure;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.client.OidcClient;
-import org.pac4j.oidc.credentials.OidcCredentials;
 
 /**
  * Unified MCP callback servlet that handles SSO provider callbacks for MCP OAuth flow.
@@ -80,8 +76,10 @@ public class McpCallbackServlet extends HttpServlet {
 
   private final UserSSOOAuthProvider userSSOProvider;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
-  private volatile IdTokenValidator idTokenValidator;
-  private volatile AuthenticationCodeFlowHandler validatorBuiltFrom;
+
+  private record ValidatorBinding(McpTokenVerification settings, IdTokenValidator validator) {}
+
+  private ValidatorBinding validatorBinding;
 
   public McpCallbackServlet(UserSSOOAuthProvider userSSOProvider) {
     this.userSSOProvider = userSSOProvider;
@@ -96,19 +94,7 @@ public class McpCallbackServlet extends HttpServlet {
   }
 
   protected AuthenticationCodeFlowHandler resolveSsoHandler() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig == null
-          || authConfig.getProvider() == null
-          || authConfig.getProvider() == AuthProvider.BASIC
-          || authConfig.getProvider() == AuthProvider.LDAP) {
-        return null;
-      }
-      return AuthenticationCodeFlowHandler.getInstance();
-    } catch (Exception e) {
-      LOG.warn("SSO handler not available: {}", e.getMessage());
-      return null;
-    }
+    return userSSOProvider.getSsoHandler(getServletConfig() == null ? null : getServletContext());
   }
 
   private String resolveBaseUrl() {
@@ -143,94 +129,12 @@ public class McpCallbackServlet extends HttpServlet {
     return "http://localhost:8585";
   }
 
-  private Map<String, String> getClaimsMapping() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig != null && authConfig.getJwtPrincipalClaimsMapping() != null) {
-        return buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get claims mapping from config: {}", e.getMessage());
+  synchronized IdTokenValidator getIdTokenValidator(AuthenticationCodeFlowHandler handler) {
+    final McpTokenVerification settings = handler.getMcpTokenVerification();
+    if (validatorBinding == null || validatorBinding.settings() != settings) {
+      validatorBinding = new ValidatorBinding(settings, new IdTokenValidator(settings));
     }
-    return Map.of();
-  }
-
-  private String[] getClaimsOrder() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig != null && authConfig.getJwtPrincipalClaims() != null) {
-        return authConfig.getJwtPrincipalClaims().toArray(new String[0]);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get claims order from config: {}", e.getMessage());
-    }
-    return new String[] {"email", "preferred_username", "sub"};
-  }
-
-  private String getPrincipalDomain() {
-    try {
-      var authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-      if (authzConfig != null && authzConfig.getPrincipalDomain() != null) {
-        return authzConfig.getPrincipalDomain();
-      }
-      LOG.debug("Principal domain not configured, using empty string");
-    } catch (Exception e) {
-      LOG.warn("Failed to get principal domain from config: {}", e.getMessage());
-    }
-    return "";
-  }
-
-  private IdTokenValidator getIdTokenValidator(AuthenticationCodeFlowHandler ssoHandler) {
-    if (idTokenValidator != null && validatorBuiltFrom == ssoHandler) {
-      return idTokenValidator;
-    }
-    synchronized (this) {
-      if (idTokenValidator == null || validatorBuiltFrom != ssoHandler) {
-        idTokenValidator = createIdTokenValidator(ssoHandler);
-        validatorBuiltFrom = ssoHandler;
-      }
-      return idTokenValidator;
-    }
-  }
-
-  private IdTokenValidator createIdTokenValidator(AuthenticationCodeFlowHandler ssoHandler) {
-    var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-    if (authConfig == null) {
-      throw new IllegalStateException(
-          "Authentication configuration not initialized. Cannot validate ID tokens.");
-    }
-
-    String expectedIssuer;
-    try {
-      // pac4j 6 removed getProviderMetadata(); metadata now loads lazily via the resolver, which
-      // must be initialized first because OM builds the OidcClient without calling client.init().
-      ssoHandler.getClient().getConfiguration().ensuresMetadataResolverInitialized();
-      expectedIssuer =
-          ssoHandler
-              .getClient()
-              .getConfiguration()
-              .getOpMetadataResolver()
-              .load()
-              .getIssuer()
-              .getValue();
-    } catch (Exception e) {
-      expectedIssuer = authConfig.getAuthority();
-      LOG.warn(
-          "Could not extract issuer from OIDC provider metadata, using default: {}",
-          expectedIssuer,
-          e);
-    }
-
-    String expectedAudience = null;
-    try {
-      expectedAudience = ssoHandler.getClient().getConfiguration().getClientId();
-      LOG.debug("ID token audience validation enabled for client ID: {}", expectedAudience);
-    } catch (Exception e) {
-      LOG.warn(
-          "Could not extract SSO client ID for audience validation, skipping: {}", e.getMessage());
-    }
-
-    return new IdTokenValidator(authConfig.getPublicKeyUrls(), expectedIssuer, expectedAudience);
+    return validatorBinding.validator();
   }
 
   @Override
@@ -341,7 +245,28 @@ public class McpCallbackServlet extends HttpServlet {
 
       BufferedServletResponseWrapper callbackResponse =
           new BufferedServletResponseWrapper(response);
-      ssoHandler.handleCallback(request, callbackResponse);
+      final JWTClaimsSet claimsSet =
+          ssoHandler.handleMcpCallback(
+              request,
+              callbackResponse,
+              token -> getIdTokenValidator(ssoHandler).validateAndDecode(token));
+
+      if (request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE)
+          == SignInFailure.ACCOUNT_NOT_ALLOWED) {
+        LOG.warn("MCP sign-in refused: the account may not use this server");
+        UserSSOOAuthProvider.writeAccessDenied(response, UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
+        return;
+      }
+
+      if (ssoHandler.isPublicMcpClient()
+          && request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE)
+              == SignInFailure.TOKEN_EXCHANGE_FAILED) {
+        response.sendError(
+            HttpServletResponse.SC_BAD_GATEWAY,
+            "The identity provider could not complete the server-side code exchange. "
+                + "Ask your administrator to check the public client registration for /mcp/callback.");
+        return;
+      }
 
       if (callbackResponse.getStatusCode() >= HttpServletResponse.SC_BAD_REQUEST) {
         String errorBody = callbackResponse.getCapturedBody();
@@ -356,36 +281,19 @@ public class McpCallbackServlet extends HttpServlet {
                 + errorBody);
       }
 
-      OidcCredentials credentials = (OidcCredentials) request.getAttribute(OIDC_CREDENTIAL_PROFILE);
-      if (credentials == null || credentials.getIdToken() == null) {
-        throw new IllegalStateException("No OIDC credentials found on request after SSO callback");
-      }
-
-      // pac4j 6 stores the id token as a serialized String; use it directly for validation.
-      String idTokenString = credentials.getIdToken();
-
-      JWTClaimsSet claimsSet;
-      try {
-        claimsSet = getIdTokenValidator(ssoHandler).validateAndDecode(idTokenString);
-        LOG.debug("ID token signature validated successfully in standard SSO flow");
-      } catch (IdTokenValidator.IdTokenValidationException e) {
-        LOG.error(
-            "SECURITY ALERT: ID token validation failed in standard SSO flow. Reason: {}. IP: {}",
-            e.getMessage(),
-            request.getRemoteAddr());
-        throw new IllegalStateException(
-            "ID token validation failed: " + e.getMessage() + ". Please restart authentication.",
-            e);
+      if (claimsSet == null) {
+        throw new IllegalStateException("No verified MCP identity after SSO callback");
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(claimsSet.getClaims());
 
+      ResolvedOidcIdentity identity = ssoHandler.resolveOidcIdentity(claims);
+      String email = identity.email();
+      // As in the web login and the SAML bridge: with emailClaim set, the account that owns the
+      // email is the user, not whichever account is named like the email's local part.
       String userName =
-          findUserNameFromClaims(getClaimsMapping(), List.of(getClaimsOrder()), claims);
-      String email =
-          findEmailFromClaims(
-              getClaimsMapping(), List.of(getClaimsOrder()), claims, getPrincipalDomain());
+          identity.emailFirstFlow() ? UserUtil.resolveUserNameForEmail(email) : identity.userName();
 
       if (userName == null || userName.trim().isEmpty()) {
         LOG.error(

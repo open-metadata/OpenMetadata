@@ -7,12 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URLEncoder;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -152,20 +154,25 @@ class UserSecretsIT {
     return node.isTextual() ? JsonUtils.readTree(node.asText()) : node;
   }
 
+  // Change events are written asynchronously once the response is sent (EventFilter), so the
+  // bot's event can land after the update returns.
   private static JsonNode storedEventOf(final UUID userId, final long since) {
+    return Awaitility.await("The bot's update must be recorded as a change event")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(250))
+        .until(() -> latestEventOf(userId, since), Optional::isPresent)
+        .get();
+  }
+
+  private static Optional<JsonNode> latestEventOf(final UUID userId, final long since) {
     final List<JsonNode> events =
         allRows(
             SdkClients.adminClient().getHttpClient(),
-            "/v1/events?entityUpdated=user&limit=1000&timestamp="
-                + since
-                + "&endTs="
-                + System.currentTimeMillis());
-    final Optional<JsonNode> found =
-        events.stream()
-            .filter(event -> userId.toString().equals(event.path("entityId").asText()))
-            .reduce((first, last) -> last);
-    assertTrue(found.isPresent(), "The bot's update must be recorded as a change event");
-    return found.get();
+            "/v1/events?entityUpdated=user&limit=1000&timestamp=%d&endTs=%d"
+                .formatted(since, System.currentTimeMillis()));
+    return events.stream()
+        .filter(event -> userId.toString().equals(event.path("entityId").asText()))
+        .reduce((first, last) -> last);
   }
 
   // Every row of a bounded window, following the cursor: other tests write to the same endpoints,

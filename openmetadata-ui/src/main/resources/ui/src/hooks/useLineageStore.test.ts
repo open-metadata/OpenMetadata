@@ -69,6 +69,24 @@ describe('useLineageStore', () => {
     expect(result.current.lineageConfig).toEqual(newConfig);
   });
 
+  it('resets the lineage depths to the saved settings rather than 3/3', () => {
+    const { result } = renderHook(() => useLineageStore());
+    const saved = {
+      upstreamDepth: 2,
+      downstreamDepth: 1,
+      pipelineViewMode: PipelineViewMode.Edge,
+      nodesPerLayer: 50,
+    };
+
+    act(() => {
+      result.current.setSavedLineageConfig(saved);
+      result.current.setLineageConfig({ ...saved, upstreamDepth: 3 });
+      result.current.reset();
+    });
+
+    expect(result.current.lineageConfig).toEqual(saved);
+  });
+
   it('tracks scene mutations and resets scene state', () => {
     const { result } = renderHook(() => useLineageStore());
 

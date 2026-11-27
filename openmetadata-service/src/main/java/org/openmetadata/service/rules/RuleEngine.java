@@ -1,5 +1,6 @@
 package org.openmetadata.service.rules;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -54,6 +55,18 @@ public class RuleEngine {
    */
   public void evaluate(EntityInterface<?> facts) {
     evaluate(facts, null, true, false);
+  }
+
+  /**
+   * Whether an entity's rules can only be judged once it inherits: it has data products but no
+   * domain of its own, so the domain the data products are checked against may come from its
+   * parent. A create or PUT builds the entity before the parent is attached, so these are checked
+   * by the repository after it is ({@code EntityRepository#evaluateRulesDeferredUntilInherited}).
+   */
+  public static boolean dependsOnInheritedDomains(EntityInterface<?> entity) {
+    return !nullOrEmpty(entity.getDataProducts())
+        && listOrEmpty(entity.getDomains()).stream()
+            .allMatch(domain -> Boolean.TRUE.equals(domain.getInherited()));
   }
 
   public void evaluate(EntityInterface<?> facts, boolean enforcePlatform, boolean enforceContract) {
@@ -165,6 +178,16 @@ public class RuleEngine {
 
   public boolean isRuleEnabled(String ruleName) {
     return getEnabledEntitySemantics().stream().anyMatch(rule -> ruleName.equals(rule.getName()));
+  }
+
+  /**
+   * Whether any enabled platform rule is built on the given JSON Logic operation (e.g. {@code
+   * validateDataProductDomainMatch}). Matches on the rule's logic rather than its name, which admins
+   * can edit.
+   */
+  public boolean isOperationEnabled(String operation) {
+    return getEnabledEntitySemantics().stream()
+        .anyMatch(rule -> JsonUtils.readTree(rule.getRule()).has(operation));
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {

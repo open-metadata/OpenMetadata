@@ -546,6 +546,10 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         source on every run and replaces whatever is stored.
         """
 
+    def prepare_table_request(self, request: CreateTableRequest) -> CreateTableRequest:
+        """Finalize catalog identity after physical metadata extraction."""
+        return request
+
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -635,6 +639,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     table_request.tableType = TableType.Partitioned.value  # pyright: ignore[reportAttributeAccessIssue]
                 table_request.tablePartition = partition_details
 
+            table_request = self.prepare_table_request(table_request)
             yield Either(right=table_request)
 
             # Register the request that we'll handle during the deletion checks

@@ -41,6 +41,12 @@ const agents = [
   { name: `pw-agent-z-${token}`, displayName: firstByDisplayName },
 ];
 
+const LIST_PAGE_SIZE = 15;
+const fillerAgents = Array.from({ length: LIST_PAGE_SIZE }, (_, index) => ({
+  name: `pw-agent-filler-${index}-${token}`,
+  displayName: `pw-sort-filler-${index}-${token}`,
+}));
+
 /**
  * The `chromium` lane has no Airflow/Argo container, so the real status endpoint
  * returns non-200 and the Pipelines tab renders "Ingestion Scheduler is unable to
@@ -122,7 +128,7 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await service.create(apiContext);
 
     await Promise.all(
-      agents.map(async (agent) => {
+      [...agents, ...fillerAgents].map(async (agent) => {
         const response = await apiContext.post(
           '/api/v1/services/ingestionPipelines',
           {
@@ -191,8 +197,8 @@ test.describe('Ingestion agent list Name column sorting', () => {
    * outlive the reload too — replaying that cursor down the default `name`-ordered path matches no
    * row and renders an empty page.
    *
-   * `pageSize=1` rather than seeding a full page of agents: the tab lists every database agent, so
-   * the number of rows is not this spec's to control, but the page size is.
+   * The filler agents guarantee a second page: the list only accepts its 15/25/50 page sizes, and
+   * the tab lists every database agent, so no other spec's rows can be relied on to fill one.
    */
   test('should keep a sorted page addressable across a reload', async ({
     page,
@@ -201,9 +207,10 @@ test.describe('Ingestion agent list Name column sorting', () => {
 
     await stubIngestionSchedulerStatus(page);
 
-    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1', {
-      waitUntil: 'domcontentloaded',
-    });
+    await page.goto(
+      `/settings/services/databases?tab=pipelines&pageSize=${LIST_PAGE_SIZE}`,
+      { waitUntil: 'domcontentloaded' }
+    );
     await waitForAllLoadersToDisappear(page);
 
     const sortedFirstPage = waitForSortedListing(page);
@@ -229,6 +236,6 @@ test.describe('Ingestion agent list Name column sorting', () => {
 
     // Without the sort order in the URL the reload replayed a (displayNameSort, id) cursor against
     // the name-ordered listing, which matches no row: an empty table under a "page 2" paginator.
-    await expect(page.getByTestId('pipeline-name')).toHaveCount(1);
+    await expect(page.getByTestId('pipeline-name')).not.toHaveCount(0);
   });
 });

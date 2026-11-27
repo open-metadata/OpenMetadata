@@ -155,7 +155,6 @@ function AlertDetailsContent({
               <div>
                 <Box inline align="center" gap={1}>
                   <ButtonUtility
-                    color="tertiary"
                     data-testid="sync-button"
                     icon={RefreshCw01}
                     isDisabled={isSyncing}
@@ -168,7 +167,6 @@ function AlertDetailsContent({
                   {editPermission &&
                     alertDetails?.provider !== ProviderType.System && (
                       <ButtonUtility
-                        color="tertiary"
                         data-testid="edit-button"
                         icon={Edit01}
                         size="lg"
@@ -181,7 +179,6 @@ function AlertDetailsContent({
                   {deletePermission &&
                     alertDetails?.provider !== ProviderType.System && (
                       <ButtonUtility
-                        color="tertiary"
                         data-testid="delete-button"
                         icon={Trash01}
                         size="lg"

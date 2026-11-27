@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -23,7 +24,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Edit01 as Edit,
   Role as RoleIcon,
   Teams,
@@ -49,7 +49,6 @@ import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicyByName,
@@ -69,6 +68,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -130,10 +130,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       </Typography>
       {canEdit && !isEditing && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-description-btn"
           icon={Edit}
-          size="xs"
           tooltip={t('label.edit-entity', { entity: t('label.description') })}
           onPress={onStartEdit}
         />
@@ -278,11 +276,10 @@ const renderRoleOrTeamCell = (
         })}
         onConfirm={() => onRemove(item)}>
         <ButtonUtility
-          color="tertiary"
           data-testid={`remove-${getEntityName(item)}`}
           icon={Delete}
           isDisabled={isLoadingOnSave}
-          size="xs"
+          size="lg"
           tooltip={translate('label.remove')}
           tooltipPlacement="left"
         />
@@ -540,7 +537,10 @@ const usePolicyDetail = (fqn: string) => {
 
 interface AccessControlPolicyDetailProps {
   fqn: string;
-  onNavigate: (view: AccessControlView) => void;
+  onNavigate: (
+    view: AccessControlView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -556,7 +556,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard(window.location.href);
   const { isAdminUser } = useAuth();
   const {
     canDelete,
@@ -620,7 +619,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   }, [policy, renameValue, fetchPolicy, t, onRename]);
 
   const handleAfterDeletePolicy = useCallback(
-    () => onNavigate({ type: 'policies' }),
+    () => onNavigate({ type: 'policies' }, { replace: true }),
     [onNavigate]
   );
 
@@ -646,11 +645,10 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-policy-btn"
           icon={Edit}
           isDisabled={!canEditAll}
-          size="xs"
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -660,18 +658,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <ButtonUtility
-          color="tertiary"
-          data-testid="copy-link-btn"
-          icon={Copy01}
-          size="xs"
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          testId="copy-link-btn"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={window.location.href}
         />
       </Box>
     );
@@ -685,11 +676,10 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         entityName={getEntityName(policy)}
         entityType={EntityType.POLICY}>
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-policy-btn"
           icon={Delete}
           isDisabled={!canDelete}
-          size="xs"
+          size="lg"
           tooltip={String(
             canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -711,8 +701,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     handleSaveRename,
     handleAfterDeletePolicy,
     t,
-    hasCopied,
-    onCopyToClipBoard,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,

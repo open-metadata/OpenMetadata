@@ -17,15 +17,16 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from '../../../rest/queries/criticalAnnouncementsQuery';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncements from './CriticalAnnouncements';
-import { CRITICAL_ANNOUNCEMENTS_PAGE_SIZE } from './CriticalAnnouncements.constants';
 import {
   DismissedAnnouncementsScope,
   getDismissedAnnouncementsStorageKey,
@@ -137,6 +138,7 @@ const stubRailGeometry = ({
     writable: true,
   });
   rail.scrollBy = jest.fn();
+  rail.scrollTo = jest.fn();
   // Re-run the scroll-state sync now that the box has a size.
   fireEvent.scroll(rail);
 
@@ -247,6 +249,9 @@ describe('CriticalAnnouncements', () => {
     expect(screen.getByText('label.critical')).toBeInTheDocument();
     expect(screen.queryByTestId(NEXT_BTN)).not.toBeInTheDocument();
     expect(screen.queryByTestId(PREV_BTN)).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('critical-announcement-dots')
+    ).not.toBeInTheDocument();
   });
 
   it('leaves the description out when the announcement has none', async () => {
@@ -310,11 +315,11 @@ describe('CriticalAnnouncements', () => {
     const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
 
     expect(screen.getByTestId(PREV_BTN)).toBeDisabled();
-    expect(screen.getByTestId(NEXT_BTN)).not.toBeDisabled();
+    expect(screen.getByTestId(NEXT_BTN)).toBeEnabled();
 
     scrollRailTo(rail, 400);
 
-    expect(screen.getByTestId(PREV_BTN)).not.toBeDisabled();
+    expect(screen.getByTestId(PREV_BTN)).toBeEnabled();
     expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
   });
 
@@ -333,6 +338,63 @@ describe('CriticalAnnouncements', () => {
     scrollRailTo(rail, 400);
 
     expect(position).toHaveTextContent('2 of 2');
+  });
+
+  it('marks the showing banner with a dot per banner, and jumps to the dot picked', async () => {
+    respondWith([
+      makeCritical('first', 1),
+      makeCritical('second', 2),
+      makeCritical('third', 3),
+    ]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 1200 });
+    // Core renders each dot as a list item.
+    const dots = () =>
+      within(screen.getByTestId('critical-announcement-dots')).getAllByRole(
+        'listitem'
+      );
+
+    expect(dots()).toHaveLength(3);
+    expect(dots()[0]).toHaveAttribute('aria-current', 'page');
+
+    fireEvent.click(dots()[2]);
+
+    expect(rail.scrollTo).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 800,
+    });
+
+    scrollRailTo(rail, 800);
+
+    expect(dots()[2]).toHaveAttribute('aria-current', 'page');
+  });
+
+  // The core pager folds pages past seven into an ellipsis, which the dot
+  // variant draws as nothing: the dots would then stop matching banners.
+  it('keeps one dot per banner past seven of them', async () => {
+    respondWith(
+      Array.from({ length: 8 }, (_, index) => makeCritical(`c${index}`, index))
+    );
+
+    renderBanner();
+
+    await screen.findByText('Title c0');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 3200 });
+    const dots = within(
+      screen.getByTestId('critical-announcement-dots')
+    ).getAllByRole('listitem');
+
+    expect(dots).toHaveLength(8);
+
+    fireEvent.click(dots[7]);
+
+    expect(rail.scrollTo).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 2800,
+    });
   });
 
   it('hands focus to previous when next is disabled under it', async () => {

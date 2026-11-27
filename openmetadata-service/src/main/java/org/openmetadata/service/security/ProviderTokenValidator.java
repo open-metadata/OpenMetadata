@@ -15,9 +15,13 @@ package org.openmetadata.service.security;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.net.URI;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.IdentityProviderKeys.PublishedKey;
 
 /**
  * Checks that a token signed by the identity provider's keys was issued to this deployment. A
@@ -28,8 +32,15 @@ import java.util.function.Supplier;
  * as for a public client, an Entra ID token must still come from the tenant the deployment names:
  * a multi-tenant application registration accepts sign-ins from every tenant.
  */
-final class ProviderTokenValidator {
-  private static final String TENANT_ID_PLACEHOLDER = "{tenantid}";
+public final class ProviderTokenValidator {
+  static final String TENANT_ID_PLACEHOLDER = "{tenantid}";
+  static final String ENCODED_TENANT_ID_PLACEHOLDER = "%7Btenantid%7D";
+  private static final Pattern TENANT_GUID =
+      Pattern.compile(
+          "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  private static final Pattern SHARED_ENTRA_V2_KEY_SET =
+      Pattern.compile(
+          "(?:.*/)?(?:common|organizations)/discovery/v2\\.0/keys/?", Pattern.CASE_INSENSITIVE);
   private static final String TENANT_ID_CLAIM = "tid";
   private static final String GOOGLE_ISSUER = "https://accounts.google.com";
   private static final String GOOGLE_SCHEMELESS_ISSUER = "accounts.google.com";
@@ -93,22 +104,46 @@ final class ProviderTokenValidator {
     }
   }
 
-  private static boolean isIssuedBy(String providerIssuer, DecodedJWT token) {
-    String expectedIssuer = withTokenTenant(providerIssuer, token);
-    String issuer = token.getIssuer();
-    return expectedIssuer.equals(issuer) || isGoogleSchemelessIssuer(expectedIssuer, issuer);
+  public static boolean isIssuedBy(String providerIssuer, DecodedJWT token) {
+    final String issuer = token.getIssuer();
+    final String template =
+        providerIssuer.replace(ENCODED_TENANT_ID_PLACEHOLDER, TENANT_ID_PLACEHOLDER);
+    boolean matches;
+    if (template.contains(TENANT_ID_PLACEHOLDER)) {
+      final String tenant = token.getClaim(TENANT_ID_CLAIM).asString();
+      matches =
+          tenant != null
+              && TENANT_GUID.matcher(tenant).matches()
+              && template.replace(TENANT_ID_PLACEHOLDER, tenant).equals(issuer);
+    } else {
+      matches = providerIssuer.equals(issuer) || isGoogleSchemelessIssuer(providerIssuer, issuer);
+    }
+    return matches;
   }
 
-  /** Multi-tenant Entra ID discovery names the issuer as a template filled in by each tenant. */
-  private static String withTokenTenant(String providerIssuer, DecodedJWT token) {
-    String tenantId = token.getClaim(TENANT_ID_CLAIM).asString();
-    return tenantId == null
-        ? providerIssuer
-        : providerIssuer.replace(TENANT_ID_PLACEHOLDER, tenantId);
+  /** A shared Entra key set may contain a signing key restricted to a single tenant. */
+  public static boolean signingKeyAllowsIssuer(
+      AuthProvider provider, String providerIssuer, PublishedKey publishedKey, DecodedJWT token) {
+    final boolean templated =
+        providerIssuer.contains(TENANT_ID_PLACEHOLDER)
+            || providerIssuer.contains(ENCODED_TENANT_ID_PLACEHOLDER);
+    boolean allowed = true;
+    if (provider == AuthProvider.AZURE || templated) {
+      final var attributes = publishedKey.key().getAdditionalAttributes();
+      if (attributes.containsKey("issuer")) {
+        allowed = attributes.get("issuer") instanceof String scope && isIssuedBy(scope, token);
+      } else {
+        final String keySetPath = URI.create(publishedKey.keySetUrl()).normalize().getPath();
+        // The legacy /common/discovery/keys omits per-key issuers. A concrete authority
+        // still pins the token issuer; tenant-independent v2 keys must declare their scope.
+        allowed = !templated && !SHARED_ENTRA_V2_KEY_SET.matcher(keySetPath).matches();
+      }
+    }
+    return allowed;
   }
 
   /** Google documents both forms as the issuer of its ID tokens. */
-  private static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
+  public static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
     return GOOGLE_ISSUER.equals(expectedIssuer) && GOOGLE_SCHEMELESS_ISSUER.equals(issuer);
   }
 }

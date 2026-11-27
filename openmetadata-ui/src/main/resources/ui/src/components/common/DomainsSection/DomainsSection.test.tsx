@@ -17,6 +17,12 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({

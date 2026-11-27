@@ -15,26 +15,34 @@ OpenLineage source to extract metadata from Kafka or Kinesis events
 
 import json
 import re
+import threading
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable
-from itertools import groupby, product
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
+from itertools import product
 from typing import Any
 from urllib.parse import quote, urlparse
 
 from cachetools import LRUCache, TTLCache
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     Kafka as KafkaBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
@@ -49,6 +57,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlFunction
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -60,9 +69,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
+    KnownPipeline,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
@@ -76,6 +87,16 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
 )
 from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
     OpenLineageOwnerResolver,
+)
+from metadata.ingestion.source.pipeline.openlineage.run_status import (
+    RUN_KEY_WINDOW_MS,
+    build_run_update,
+    launched_by,
+    merge_run_status,
+    pipeline_job,
+    pipeline_start_date,
+    pipeline_tasks,
+    place_run,
 )
 from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
     build_service_name,
@@ -113,6 +134,26 @@ RESOLUTION_CACHE_MAXSIZE = 1000
 # visible.
 MISSING_ENTITY_CACHE_MAXSIZE = 1000
 MISSING_ENTITY_CACHE_TTL_SECONDS = 300
+
+PROCESSED_EVENT_TYPES = [EventType.START, EventType.RUNNING, EventType.COMPLETE, EventType.FAIL, EventType.ABORT]
+FAILED_EVENT_TYPES = [EventType.FAIL, EventType.ABORT]
+
+# Every pipeline write replaces its task list and start date, while each event names one
+# job and only some carry Airflow's dates, so what a pipeline holds is read once and kept.
+# The cache is capped by task count, 1 to 2 KB a task: one pipeline can hold any number of
+# tasks. A pipeline dropped from it is read again from the server, which holds every task.
+# ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent
+KNOWN_TASKS_CACHE_MAXSIZE = 50_000
+
+
+def known_pipeline_weight(known: KnownPipeline) -> int:
+    """A pipeline's size in the known pipelines cache: its tasks, and one for the pipeline itself."""
+    return len(known.tasks) + 1
+
+
+# Pipeline links already written by this ingestion: the pipeline of a run started from another
+# system, and the task that started it. Every event of the run would otherwise search again.
+LAUNCH_LINKS_CACHE_MAXSIZE = 1000
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -187,6 +228,20 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
     return payloads
 
 
+DEFAULT_NATS_POOL_TIMEOUT = 1.0
+DEFAULT_NATS_SESSION_TIMEOUT = 30
+DEFAULT_NATS_BATCH_SIZE = 100
+DEFAULT_NATS_ACK_WAIT = 60
+# Floor for the keep-alive heartbeat, so a short ackWait cannot turn the refresh into a
+# tight loop of control messages against the server
+MIN_NATS_KEEPALIVE_INTERVAL = 1.0
+
+
+def _nats_setting(configured: Any, default: Any) -> Any:
+    """The configured value, or the default when a code-built config left it unset."""
+    return default if configured is None else configured
+
+
 class OpenlineageSource(PipelineServiceSource):
     """
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
@@ -195,8 +250,7 @@ class OpenlineageSource(PipelineServiceSource):
     Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
     which is a source of events for this connector.
 
-    Only OpenLineage events that indicate successful data movement (COMPLETE, RUNNING, START) are taken into account
-    in this connector.
+    START, RUNNING and COMPLETE events produce lineage. FAIL and ABORT events only update the pipeline's run status.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
@@ -228,6 +282,8 @@ class OpenlineageSource(PipelineServiceSource):
         )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+        self._known_pipelines: LRUCache = LRUCache(maxsize=KNOWN_TASKS_CACHE_MAXSIZE, getsizeof=known_pipeline_weight)
+        self._launch_links: LRUCache = LRUCache(maxsize=LAUNCH_LINKS_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
@@ -556,13 +612,20 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str:
-        """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
+    def _match_column_fqn(table, table_fqn: str, field_name: str) -> str | None:
+        """
+        Resolve an OpenLineage field name to the FQN of the real stored column, case-insensitively.
+
+        The stored FQN cannot be rebuilt from the column name: a fetched name has its reserved
+        characters decoded (`a>b` is stored as `a__reserved__arrow__b`), and a dot in it is quoted
+        in the FQN (`"c.d"`). The server silently drops an entry that matches no real column.
+        A sharded table has no column to fall back to, so an unmatched field resolves to None.
+        """
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
-                return column.name.root
-        return lower
+                return model_str(column.fullyQualifiedName)
+        return None if table and table.tableType == TableType.Sharded else f"{table_fqn}.{lower}"
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -659,18 +722,26 @@ class OpenlineageSource(PipelineServiceSource):
         resolved = services is not None
         found = []
         for db_service in services or self.get_db_service_names():
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=table_details.database,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-            # When the search misses but the database and schema are known,
-            # fqn.build still returns a constructed FQN, so only a service that
-            # actually holds the table counts as a match.
-            if result and self._get_by_name_cached(Table, result):
+            key = ("TableReference", db_service, table_details.database, table_details.schema, table_details.name)
+            if hasattr(self, "_missing_entity_cache") and key in self._missing_entity_cache:
+                continue
+            if hasattr(self, "_entity_cache") and key in self._entity_cache:
+                matches = (self._entity_cache[key],)
+            else:
+                matches = get_table_binding_resolution(self.metadata, db_service).resolve(
+                    TableReference(table_details.database, table_details.schema, table_details.name),
+                    service_name=db_service,
+                    lookup=TableLookup.FQN,
+                )
+                if not matches and hasattr(self, "_missing_entity_cache"):
+                    self._missing_entity_cache[key] = True
+            if len(matches) > 1:
+                raise AmbiguousServiceException("Dataset reference resolves to multiple tables")
+            result = model_str(matches[0].fullyQualifiedName) if matches else None
+            if result and matches:
+                if hasattr(self, "_entity_cache"):
+                    self._entity_cache[f"Table:{result}:"] = matches[0]
+                    self._entity_cache[key] = matches[0]
                 if not resolved:
                     return result
                 found.append(result)
@@ -755,23 +826,15 @@ class OpenlineageSource(PipelineServiceSource):
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
-        Construct a pipeline name from an OpenLineage event. If the event's run facet
-        contains a parent job reference, the pipeline name is derived from the parent's
-        namespace and name. Otherwise, it falls back to the top-level job's namespace and name.
+        Construct a pipeline name from an OpenLineage event: the parent job's namespace
+        and name when the event is a step of the parent's run, otherwise the event's own
+        job namespace and name (see run_status.pipeline_job).
 
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
         """
-        run_facet = pipeline_details.run_facet
-
-        try:
-            namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-            name = run_facet["facets"]["parent"]["job"]["name"]
-        except (KeyError, TypeError):
-            namespace = pipeline_details.job["namespace"]
-            name = pipeline_details.job["name"]
-
-        return f"{namespace}-{name}"
+        job = pipeline_job(pipeline_details)
+        return f"{job['namespace']}-{job['name']}"
 
     @classmethod
     def _filter_event_by_types(
@@ -830,21 +893,53 @@ class OpenlineageSource(PipelineServiceSource):
 
         return result
 
-    @classmethod
+    @staticmethod
+    def _column_function(input_field: dict, field_spec: dict) -> str | None:
+        def text(value: object) -> str:
+            return value.strip() if isinstance(value, str) else ""
+
+        transformations = input_field.get("transformations")
+        functions = []
+        if isinstance(transformations, list):
+            for transformation in transformations:
+                if not isinstance(transformation, dict):
+                    continue
+                label = text(transformation.get("type"))
+                if not label:
+                    continue
+                if subtype := text(transformation.get("subtype")):
+                    label += f"/{subtype}"
+                if description := text(transformation.get("description")):
+                    label += f" ({description})"
+                if transformation.get("masking") is True:
+                    label += " [masked]"
+                functions.append(label)
+
+        if functions:
+            return ", ".join(functions)
+        for field in ("transformationDescription", "transformationType"):
+            value = field_spec.get(field)
+            if isinstance(value, str) and value.strip():
+                return value
+        return None
+
+    @staticmethod
     def _create_output_lineage_dict(
-        cls,
-        lineage_info: list[tuple[str, str, str, str]],
+        columns_by_function: dict[tuple[str, str, str, str | None], list[str]],
     ) -> dict[str, dict[str, list[ColumnLineage]]]:
         result = defaultdict(lambda: defaultdict(list))
-        for (output_table, input_table, output_column), group in groupby(lineage_info, lambda x: x[:3]):
-            input_columns = [input_col for _, _, _, input_col in group]
-
-            result[output_table][input_table] += [ColumnLineage(toColumn=output_column, fromColumns=input_columns)]
-
+        for (output_table, input_table, output_column, function), input_columns in columns_by_function.items():
+            result[output_table][input_table].append(
+                ColumnLineage(
+                    toColumn=FullyQualifiedEntityName(output_column),
+                    fromColumns=[FullyQualifiedEntityName(column) for column in input_columns],
+                    function=SqlFunction(function) if function else None,
+                )
+            )
         return result
 
     def _get_column_lineage(self, inputs: list, outputs: list) -> dict[str, dict[str, list[ColumnLineage]]]:
-        _result: list = []
+        columns_by_function: dict[tuple[str, str, str, str | None], list[str]] = defaultdict(list)
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
@@ -880,16 +975,18 @@ class OpenlineageSource(PipelineServiceSource):
                     if not input_table_fqn:
                         continue
                     input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
-                    _result.append(  # output table, input table, output column, input column
-                        (
-                            output_table_fqn,
-                            input_table_fqn,
-                            f"{output_table_fqn}.{self._match_column_name(output_table_entity, field_name)}",
-                            f"{input_table_fqn}.{self._match_column_name(input_table_entity, input_field.get('field', ''))}",
-                        )
+                    output_column = self._match_column_fqn(output_table_entity, output_table_fqn, field_name)
+                    input_column = self._match_column_fqn(
+                        input_table_entity, input_table_fqn, input_field.get("field", "")
+                    )
+                    if not output_column or not input_column:
+                        continue
+                    function = self._column_function(input_field, field_spec)
+                    columns_by_function[(output_table_fqn, input_table_fqn, output_column, function)].append(
+                        input_column
                     )
 
-        return OpenlineageSource._create_output_lineage_dict(_result)
+        return self._create_output_lineage_dict(columns_by_function)
 
     def _resolve_pipeline_service(self, pipeline_details: OpenLineageEvent) -> str:
         """
@@ -936,24 +1033,55 @@ class OpenlineageSource(PipelineServiceSource):
             )
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
+            known = self._known_pipeline(pipeline_fqn, pipeline_details) if pipeline_fqn else None
             request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=pipeline_name,
                 service=self._current_pipeline_service,
                 description=description,
-                tasks=[],
+                tasks=list(known.tasks.values()) if known else None,
+                startDate=known.start_date if known else None,
                 owners=owners,
             )
 
             yield Either(right=request)
             self.register_record(pipeline_request=request)
-        except ValueError:
+        except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=pipeline_name,
-                    message="Failed to collect metadata required for pipeline creation.",
+                    error=f"Failed to collect metadata required for pipeline creation: {exc}",
+                    stackTrace=traceback.format_exc(),
                 ),
-                stackTrace=traceback.format_exc(),
+                right=None,
             )
+
+    def _known_pipeline(self, pipeline_fqn: str, pipeline_details: OpenLineageEvent) -> KnownPipeline:
+        """The pipeline's tasks and start date with this event applied. Tasks are never dropped:
+        a job missing from one run may still run in the next."""
+        known = self._known_pipelines.get(pipeline_fqn)
+        if known is None:
+            pipeline = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
+            known = KnownPipeline(
+                tasks={task.name: task for task in (pipeline.tasks if pipeline else None) or []},
+                start_date=pipeline.startDate if pipeline else None,
+            )
+        known.start_date = pipeline_start_date(pipeline_details) or known.start_date
+        for task in pipeline_tasks(pipeline_details):
+            stored = known.tasks.get(task.name)
+            if stored is None:
+                known.tasks[task.name] = task
+            elif task.startDate or task.endDate:
+                # Only Airflow's full task facet carries dates; other events keep the stored ones.
+                known.tasks[task.name] = stored.model_copy(
+                    update={"startDate": task.startDate, "endDate": task.endDate}
+                )
+        if known_pipeline_weight(known) <= KNOWN_TASKS_CACHE_MAXSIZE:
+            # Stored after every event, so the cache weighs the tasks it added.
+            self._known_pipelines[pipeline_fqn] = known
+        else:
+            # A pipeline bigger than the whole cache is read from the server on every event.
+            self._known_pipelines.pop(pipeline_fqn, None)
+        return known
 
     def _has_annotated_pipeline_edge(
         self,
@@ -1052,7 +1180,96 @@ class OpenlineageSource(PipelineServiceSource):
                 f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
             )
 
+    def _launching_pipeline(self, parent: dict, root: dict) -> Pipeline | None:
+        """
+        The one pipeline holding the task that started a run: the root job's pipeline, written by
+        this connector (``<namespace>-<name>`` in any service) or by a native connector (the
+        service named after the namespace), when it has that task. Both name the task after the
+        part of the job name that follows the root's name (run_status.step_name); a task named
+        after the whole job matches too. None when no pipeline, or more than one, has the task.
+
+        Pipelines this ingestion wrote are read by FQN: the search index may not hold them yet,
+        and an empty search result stays cached in ``_search_es_entity``.
+        """
+        root_name = root["name"]
+        own_name = f"{root['namespace']}-{root_name}"
+        try:
+            # A pipeline FQN is "<service>.<name>" with the name quoted when it holds a dot, so a
+            # suffix check finds the pipeline in any service without parsing every cached FQN.
+            own_fqn_suffix = f".{fqn.quote_name(own_name)}"
+            candidates = [
+                self._get_by_name_cached(
+                    Pipeline, f"{root['namespace']}.{fqn.quote_name(root_name)}", fields=["tasks"]
+                ),
+                *(
+                    self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
+                    for pipeline_fqn in list(self._known_pipelines)
+                    if pipeline_fqn.endswith(own_fqn_suffix)
+                ),
+                *(
+                    self.metadata.es_search_from_fqn(
+                        entity_type=Pipeline,
+                        fqn_search_string=fqn.prefix_entity_for_wildcard_search(Pipeline, fqn.quote_name(own_name)),
+                        fields="tasks",
+                    )
+                    or []
+                ),
+            ]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the pipeline of %s that started a run: %s", root_name, exc)
+            return None
+        task_names = {parent["name"], parent["name"].removeprefix(f"{root_name}.")}
+        matches = {
+            pipeline.id.root: pipeline
+            for pipeline in candidates
+            if pipeline and any(task.name in task_names for task in pipeline.tasks or [])
+        }
+        if len(matches) > 1:
+            logger.debug(
+                "Several pipelines have the task %s that started a run: %s",
+                parent["name"],
+                sorted(model_str(pipeline.fullyQualifiedName) for pipeline in matches.values()),
+            )
+        return next(iter(matches.values())) if len(matches) == 1 else None
+
+    def _yield_launch_link(
+        self, pipeline_details: OpenLineageEvent, pipeline_entity: Pipeline
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """A lineage edge from the pipeline whose task started this run to this run's pipeline
+        (ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent)."""
+        launch = launched_by(pipeline_details)
+        if launch is None:
+            return
+        parent, root = launch
+        key = (str(pipeline_entity.id.root), parent["namespace"], parent["name"])
+        if key in self._launch_links:
+            return
+        launching = self._launching_pipeline(parent, root)
+        if launching is None:
+            # The launching pipeline may not be ingested yet; a later event of this run tries again.
+            logger.debug("No pipeline has the task %s that started %s", parent["name"], pipeline_details.job["name"])
+            return
+        self._launch_links[key] = True
+        yield Either(
+            left=None,
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=launching.id, type="pipeline"),
+                    toEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
+                    lineageDetails=LineageDetails(
+                        description=f"Run started by OpenLineage job: {parent['name']}",
+                        source=Source.OpenLineage,
+                    ),
+                )
+            ),
+        )
+
     def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+        # A failed or aborted job reports the datasets it meant to read and write, not what it wrote.
+        if pipeline_details.event_type in FAILED_EVENT_TYPES:
+            return
+
         # Start every event with a fresh resolution cache so results never
         # leak across events and the cache cannot grow without bound.
         self._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
@@ -1126,6 +1343,8 @@ class OpenlineageSource(PipelineServiceSource):
         if not pipeline_entity:
             logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
             return
+
+        yield from self._yield_launch_link(pipeline_details, pipeline_entity)
 
         event_has_no_outputs = not output_edges
         event_has_no_inputs = not input_edges
@@ -1204,6 +1423,10 @@ class OpenlineageSource(PipelineServiceSource):
             yield from self._poll_kafka(broker)
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
+        elif isinstance(broker, NatsBrokerConfig):
+            # the base class annotates this producer as a list; the Kafka and Kinesis
+            # branches above carry the same suppression through the pyright baseline
+            yield from self._poll_nats(broker)  # pyright: ignore[reportReturnType]
         else:
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
@@ -1244,10 +1467,7 @@ class OpenlineageSource(PipelineServiceSource):
                     else:
                         try:
                             _result = message_to_open_lineage_event(json.loads(message.value()))
-                            result = self._filter_event_by_types(
-                                _result,
-                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                            )
+                            result = self._filter_event_by_types(_result, PROCESSED_EVENT_TYPES)
                             if result:
                                 yield result
                         except Exception as e:
@@ -1314,14 +1534,7 @@ class OpenlineageSource(PipelineServiceSource):
                             try:
                                 data = json.loads(payload)
                                 _result = message_to_open_lineage_event(data)
-                                result = self._filter_event_by_types(
-                                    _result,
-                                    [
-                                        EventType.COMPLETE,
-                                        EventType.RUNNING,
-                                        EventType.START,
-                                    ],
-                                )
+                                result = self._filter_event_by_types(_result, PROCESSED_EVENT_TYPES)
                                 if result:
                                     yield result
                             except Exception as e:
@@ -1334,11 +1547,175 @@ class OpenlineageSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
 
+    def _poll_nats(self, broker: NatsBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from a NATS JetStream stream until the stream goes quiet."""
+        try:
+            client = self.client
+            # the schema defaults these, but a config built in code can leave them unset;
+            # `or` would also swallow a deliberate sessionTimeout of 0, which means "one
+            # empty fetch ends the run". poolTimeout and batchSize cannot be 0: the schema
+            # rejects them, because a zero wait never advances idle_time
+            pool_timeout = _nats_setting(broker.poolTimeout, DEFAULT_NATS_POOL_TIMEOUT)
+            session_timeout = _nats_setting(broker.sessionTimeout, DEFAULT_NATS_SESSION_TIMEOUT)
+            batch_size = _nats_setting(broker.batchSize, DEFAULT_NATS_BATCH_SIZE)
+            # A reused durable keeps its own ackWait and the configured one is only
+            # warned about, so pacing the keep-alive off the config would leave the
+            # heartbeat slower than the deadline the server is actually applying
+            ack_wait = getattr(client, "effective_ack_wait", None)
+            if ack_wait is None:
+                ack_wait = _nats_setting(broker.ackWait, DEFAULT_NATS_ACK_WAIT)
+
+            idle_time = 0.0
+            while idle_time <= session_timeout:
+                messages = client.fetch(batch_size, timeout=pool_timeout)
+                if not messages:
+                    logger.debug("no new messages")
+                    idle_time += pool_timeout
+                    continue
+
+                idle_time = 0.0
+                yield from self._consume_nats_batch(client, messages, ack_wait)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    def _consume_nats_batch(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[OpenLineageEvent]:
+        """Yield the ingestible events of one fetched batch, acknowledging each as it goes."""
+        # One heartbeat for the whole batch, not one per message: the timers all
+        # start together at the fetch, so refreshing the remainder on every
+        # message meant N(N-1)/2 blocking round trips -- about 4,950 for the
+        # default batch of 100 -- paid even when the pipeline kept up
+        with self._batch_keepalive(client, messages, ack_wait) as leaving_batch:
+            for message in messages:
+                parsed = self._parse_nats_event(message)
+                if parsed:
+                    yield parsed
+
+                # Dropped from the heartbeat first, so a refresh is never sent for
+                # a message that has already been acknowledged
+                leaving_batch(message)
+
+                # Acknowledged once the connector has handed the event on. The
+                # ingestion pipeline reports its own failures in the run status and
+                # does not report them back here, so redelivery covers a run that
+                # died mid-batch, not an event the pipeline rejected.
+                try:
+                    client.ack(message)
+                except Exception as e:
+                    # The event stays unacknowledged and comes back next run; that
+                    # is better than losing the rest of this batch
+                    logger.warning("Failed to acknowledge a NATS message: %s", e)
+                    logger.debug(traceback.format_exc())
+
+    def _parse_nats_event(self, message: Any) -> OpenLineageEvent | None:
+        """The event a NATS message carries, or None when it is unparseable or filtered out."""
+        try:
+            event = message_to_open_lineage_event(json.loads(message.data))
+            return self._filter_event_by_types(
+                event,
+                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+            )
+        except Exception as e:
+            logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
+            logger.debug(traceback.format_exc())
+            return None
+
+    @contextmanager
+    def _batch_keepalive(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[Callable[[Any], None]]:
+        """Refresh the batch's acknowledgement timers while it is being processed.
+
+        The timers all start together at the fetch, and this generator is suspended at its
+        `yield` for as long as the pipeline works on an event, so nothing of ours runs in
+        that window. Without a refresh, a pipeline slower than `ackWait` has its events
+        redelivered while they are still being processed -- duplicating the lineage write
+        and spending `maxDeliver` attempts on a run that never failed.
+
+        Nothing is sent until the batch has been held for half of `ackWait`, so a batch
+        that keeps up costs no control traffic at all.
+
+        The yielded callable drops a message from the heartbeat. Callers use it before
+        acknowledging, which is what keeps a refresh from racing the acknowledgement of
+        the same message.
+        """
+        pending: dict[int, Any] = {id(message): message for message in messages}
+        lock = threading.Lock()
+        stop = threading.Event()
+        # Below the deadline as well as above the floor: the schema allows an ackWait of
+        # 1, where the floor alone would schedule the first refresh at the very moment
+        # the server gives up on the message
+        interval = min(max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL), ack_wait * 0.8)
+
+        def _leaving_batch(message: Any) -> None:
+            with lock:
+                pending.pop(id(message), None)
+
+        def _heartbeat() -> None:
+            while not stop.wait(interval):
+                with lock:
+                    still_waiting = list(pending.values())
+                if still_waiting:
+                    self._keep_batch_alive(client, still_waiting)
+
+        thread = threading.Thread(target=_heartbeat, name="openmetadata-nats-keepalive", daemon=True)
+        thread.start()
+        try:
+            yield _leaving_batch
+        finally:
+            stop.set()
+            thread.join(timeout=interval)
+
+    @staticmethod
+    def _keep_batch_alive(client: Any, pending: list[Any]) -> None:
+        """Reset the acknowledgement timer of the events still waiting in the batch."""
+        for message in pending:
+            try:
+                client.in_progress(message)
+            except Exception as e:
+                logger.debug("Could not extend the NATS acknowledgement timer: %s", e)
+
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)
 
     def yield_pipeline_status(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[OMetaPipelineStatus]]:
-        pass
+        pipeline_name = self.get_pipeline_name(pipeline_details)
+        try:
+            update = build_run_update(pipeline_details)
+            if update is None:
+                return
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self._current_pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+            if not pipeline_fqn:
+                logger.warning("Could not build the FQN of pipeline '%s', skipping its run status.", pipeline_name)
+                return
+            rows = self.metadata.list_pipeline_statuses(
+                pipeline_fqn, update.run_key, update.run_key + RUN_KEY_WINDOW_MS - 1
+            )
+            placed = place_run(rows, update)
+            if placed is None:
+                logger.warning(
+                    "Every status key of pipeline %s within %d ms of run %s is taken, skipping its run status.",
+                    pipeline_fqn,
+                    RUN_KEY_WINDOW_MS,
+                    update.run_id,
+                )
+                return
+            status = merge_run_status(*placed)
+            if status:
+                yield Either(left=None, right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_name,
+                    error=f"Failed to record the run status of pipeline {pipeline_name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
 
     def mark_pipelines_as_deleted(self):
         """

@@ -674,7 +674,10 @@ describe('Test EntityPopoverCard component', () => {
       );
     });
 
-    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(mockSearchIndexFQN);
+    expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
+      mockSearchIndexFQN,
+      { fields: 'tags,owners' }
+    );
   });
 
   it('EntityPopoverCard should call market place application API if entity type is APP_MARKET_PLACE_DEFINITION', async () => {

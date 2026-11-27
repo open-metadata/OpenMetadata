@@ -17,7 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import type { MembersView } from './Members.types';
 import MembersPanel from './MembersPanel';
 
@@ -146,16 +146,23 @@ jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="online-users" />
 ));
 
-// useSettingsHash reads the hash from `window.location` (seeded on mount, then
-// driven by popstate) — BrowserRouter mirrors window in production, but
-// MemoryRouter does not, so set window.location.hash to simulate the deep link.
+let mockTeamTabs: unknown[] = [];
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({ getContributions: () => mockTeamTabs }),
+  })
+);
+
+// useSettingsHash reads the hash from `window.location`, which only BrowserRouter
+// keeps in sync with pushed views; set window.location.hash to simulate the deep link.
 const renderAt = (hash: string) => {
   globalThis.location.hash = hash;
 
   return render(
-    <MemoryRouter initialEntries={[`/settings${hash}`]}>
+    <BrowserRouter>
       <MembersPanel />
-    </MemoryRouter>
+    </BrowserRouter>
   );
 };
 
@@ -167,9 +174,9 @@ describe('MembersPanel', () => {
 
   it('renders landing view by default', () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <MembersPanel />
-      </MemoryRouter>
+      </BrowserRouter>
     );
 
     expect(screen.getByTestId('members-landing')).toBeInTheDocument();
@@ -181,9 +188,9 @@ describe('MembersPanel', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={onHeaderChange} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -207,9 +214,9 @@ describe('MembersPanel legacy user links', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={jest.fn()} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -304,9 +311,9 @@ describe('MembersPanel hash navigation', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={onHeaderChange} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -332,5 +339,64 @@ describe('MembersPanel hash navigation', () => {
       screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('create-user')).not.toBeInTheDocument();
+  });
+});
+
+describe('MembersPanel team tab sub-page header', () => {
+  // Names itself only on its configure page, and never clears what it set —
+  // the shape of a plugin the panel must not trust to clean up.
+  const SubPageTab = ({
+    subPath,
+    onHeaderChange,
+    onNavigate,
+  }: {
+    subPath?: string;
+    onHeaderChange?: (o: { title: string }) => void;
+    onNavigate: (next?: string) => void;
+  }) => {
+    const React = require('react');
+    React.useEffect(() => {
+      if (subPath === 'configure/x') {
+        onHeaderChange?.({ title: 'Configure x' });
+      }
+    }, [subPath, onHeaderChange]);
+
+    return (
+      <button data-testid="go-other" onClick={() => onNavigate('other')}>
+        other
+      </button>
+    );
+  };
+
+  beforeEach(() => {
+    mockTeamTabs = [{ key: 'sql-studio', component: SubPageTab }];
+  });
+
+  afterEach(() => {
+    mockTeamTabs = [];
+  });
+
+  it('titles the sub-page that named itself and not a later one', async () => {
+    globalThis.location.hash =
+      '#members/teams/Eng/tab/sql-studio/t1/configure/x';
+    const onHeaderChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <BrowserRouter>
+          <MembersPanel onHeaderChange={onHeaderChange} />
+        </BrowserRouter>
+      );
+    });
+
+    expect(onHeaderChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: 'Configure x' })
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('go-other'));
+    });
+
+    expect(onHeaderChange.mock.lastCall?.[0].title).not.toBe('Configure x');
   });
 });

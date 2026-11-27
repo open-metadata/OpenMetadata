@@ -323,10 +323,16 @@
       },
       "synonyms": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram",
+            "search_analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -596,15 +602,69 @@
       },
       "descriptionSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
       },
       "tagSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "tierSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "childrenCount": {
         "type": "integer"

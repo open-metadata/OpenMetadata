@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.feed.FormSchema;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.feed.TransitionForms;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Config__1;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.TransitionMetadatum;
@@ -822,5 +823,27 @@ class TaskWorkflowLifecycleResolverTest {
     Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
 
     assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void ownerAutoAssignmentIsOnWhenTheFlagIsUnset() {
+    WorkflowDefinition unsetConfig = new WorkflowDefinition();
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(unsetConfig));
+
+    WorkflowDefinition configWithoutFlag =
+        new WorkflowDefinition().withConfig(new WorkflowConfiguration());
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(configWithoutFlag));
+  }
+
+  @Test
+  void ownerAutoAssignmentIsOffOnlyWhenExplicitlyDisabled() {
+    WorkflowDefinition disabled =
+        new WorkflowDefinition()
+            .withConfig(new WorkflowConfiguration().withAutoAssignOwners(false));
+    assertFalse(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(disabled));
+
+    WorkflowDefinition enabled =
+        new WorkflowDefinition().withConfig(new WorkflowConfiguration().withAutoAssignOwners(true));
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(enabled));
   }
 }

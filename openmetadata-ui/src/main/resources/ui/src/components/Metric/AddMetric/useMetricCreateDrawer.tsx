@@ -16,11 +16,13 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { createMetric } from '../../../rest/metricsAPI';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import { toEntityReferenceOption } from '../../Glossary/AddGlossary/AddGlossary.utils';
 import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm';
 import { MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
@@ -35,6 +37,7 @@ import { useMetricIntakeForm } from './useMetricIntakeForm';
 export const useMetricCreateDrawer = (onSuccess?: () => void) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { activeDomainEntityRef } = useDomainStore();
   const [parentMetricFqn, setParentMetricFqn] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [loadIntake, setLoadIntake] = useState(false);
@@ -112,10 +115,15 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
       setLoadIntake(true);
       void intake.retry();
       setParentMetricFqn(nextParentMetricFqn);
-      form.reset(METRIC_FORM_DEFAULTS);
+      form.reset({
+        ...METRIC_FORM_DEFAULTS,
+        domains: activeDomainEntityRef
+          ? [toEntityReferenceOption(activeDomainEntityRef)]
+          : [],
+      });
       openFormDrawer();
     },
-    [form, openFormDrawer, intake.retry]
+    [activeDomainEntityRef, form, openFormDrawer, intake.retry]
   );
 
   return { formDrawer, openDrawer, closeDrawer };

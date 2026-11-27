@@ -67,6 +67,13 @@ export interface ConfirmPopoverProps {
   onCancel?: () => void;
   confirmText?: ReactNode;
   cancelText?: ReactNode;
+  /**
+   * Hide the Cancel button when every footer action moves forward (e.g.
+   * Discard / Save before leaving); Escape and an outside click still cancel,
+   * and the remaining buttons split the width.
+   * @default true
+   */
+  showCancel?: boolean;
   /** @default 'destructive' */
   variant?: 'destructive' | 'primary';
   isConfirmDisabled?: boolean;
@@ -108,6 +115,7 @@ export const ConfirmPopover = ({
   onCancel,
   confirmText,
   cancelText,
+  showCancel = true,
   variant = 'destructive',
   isConfirmDisabled,
   actions = [],
@@ -121,6 +129,7 @@ export const ConfirmPopover = ({
   const isOpen = controlledOpen ?? uncontrolledOpen;
   const isPending = pendingKey !== undefined;
   const titleId = useId();
+  const footerButtonClass = showCancel ? undefined : 'tw:flex-1';
 
   const setOpen = (open: boolean) => {
     // An action in flight can't be cancelled, so nothing may close the popover.
@@ -185,16 +194,19 @@ export const ConfirmPopover = ({
       </div>
       {content}
       <div className="tw:flex tw:flex-wrap tw:justify-end tw:gap-2">
-        <Button
-          color="secondary"
-          data-testid={`${dataTestId}-cancel`}
-          isDisabled={isPending}
-          size="sm"
-          onPress={() => setOpen(false)}>
-          {cancelText ?? t('label.cancel')}
-        </Button>
+        {showCancel && (
+          <Button
+            color="secondary"
+            data-testid={`${dataTestId}-cancel`}
+            isDisabled={isPending}
+            size="sm"
+            onPress={() => setOpen(false)}>
+            {cancelText ?? t('label.cancel')}
+          </Button>
+        )}
         {actions.map((action) => (
           <Button
+            className={footerButtonClass}
             color={action.color ?? 'secondary'}
             data-testid={action['data-testid']}
             isDisabled={action.isDisabled || isPending}
@@ -206,6 +218,7 @@ export const ConfirmPopover = ({
           </Button>
         ))}
         <Button
+          className={footerButtonClass}
           color={variant === 'destructive' ? 'primary-destructive' : 'primary'}
           data-testid={`${dataTestId}-confirm`}
           isDisabled={
@@ -237,7 +250,7 @@ export const ConfirmPopover = ({
         {/* A square turned 45°: its two bordered sides form the point, and half of it sits over the
             popover's edge so it covers the outline where the arrow joins the panel. Drawn here rather
             than through Popover's `arrow` prop, whose filled SVG other (legacy) popovers rely on. */}
-        <span className="tw:block tw:size-2.5 tw:translate-y-1/2 tw:rotate-45 tw:border-t tw:border-l tw:border-secondary_alt tw:bg-overlay-surface tw:in-placement-top:-translate-y-1/2 tw:in-placement-top:rotate-[225deg] tw:in-placement-left:translate-y-0 tw:in-placement-left:-translate-x-1/2 tw:in-placement-left:rotate-[135deg] tw:in-placement-right:translate-y-0 tw:in-placement-right:translate-x-1/2 tw:in-placement-right:-rotate-45" />
+        <span className="tw:block tw:size-2.5 tw:translate-y-1/2 tw:rotate-45 tw:border-t tw:border-l tw:border-secondary_alt tw:bg-floating tw:in-placement-top:-translate-y-1/2 tw:in-placement-top:rotate-[225deg] tw:in-placement-left:translate-y-0 tw:in-placement-left:-translate-x-1/2 tw:in-placement-left:rotate-[135deg] tw:in-placement-right:translate-y-0 tw:in-placement-right:translate-x-1/2 tw:in-placement-right:-rotate-45" />
       </AriaOverlayArrow>
       {asForm ? (
         <form

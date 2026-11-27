@@ -41,6 +41,7 @@ import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestReposito
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -85,6 +86,7 @@ class BasicAuthLoginServletTest {
   private OAuthClientRepository clientRepo;
   private StringWriter responseBody;
   private BasicAuthLoginServlet servlet;
+  private McpGrantTransaction transaction;
   private AuthenticatorHandler registeredBefore;
 
   @BeforeEach
@@ -93,7 +95,11 @@ class BasicAuthLoginServletTest {
     // their real constructors (which call Entity.getCollectionDAO()) never run.
     pendingRepoConstruction = mockConstruction(McpPendingAuthRequestRepository.class);
     clientRepoConstruction = mockConstruction(OAuthClientRepository.class);
-    servlet = new BasicAuthLoginServlet(authProvider);
+    transaction = mock(McpGrantTransaction.class);
+    when(transaction.execute(anyString(), any()))
+        .thenAnswer(
+            invocation -> ((McpGrantTransaction.Operation<?, ?>) invocation.getArgument(1)).get());
+    servlet = new BasicAuthLoginServlet(authProvider, transaction);
     registeredBefore = SecurityConfigurationManager.getInstance().getAuthenticatorHandler();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
     pendingRepo = pendingRepoConstruction.constructed().get(0);
@@ -134,6 +140,65 @@ class BasicAuthLoginServletTest {
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(registeredBefore);
     clientRepoConstruction.close();
     pendingRepoConstruction.close();
+  }
+
+  @Test
+  void clientRemovedAfterAuthenticationReturnsBadRequestWithoutRedirect() throws Exception {
+    User user = new User().withName("user").withEmail(EMAIL);
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    doAnswer(
+            invocation -> {
+              verify(authenticator).validatePassword(EMAIL, PASSWORD, user);
+              throw new IllegalStateException("MCP OAuth client no longer exists");
+            })
+        .when(transaction)
+        .execute(anyString(), any());
+    postWithLoginCache();
+    verify(response).sendError(eq(HttpServletResponse.SC_BAD_REQUEST), anyString());
+    verify(response, never()).sendRedirect(anyString());
+    verify(authProvider, never()).createAuthorizationCode(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void failedLoginCommitDoesNotSendAuthorizationCode() throws Exception {
+    User user = new User().withName("user").withEmail(EMAIL);
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    when(authProvider.createAuthorizationCode(any(), any(), any(), any(), any()))
+        .thenReturn("uncommitted-code");
+    doAnswer(
+            invocation -> {
+              ((McpGrantTransaction.Operation<?, ?>) invocation.getArgument(1)).get();
+              verify(response, never()).sendRedirect(anyString());
+              throw new IllegalStateException("Simulated commit failure");
+            })
+        .when(transaction)
+        .execute(anyString(), any());
+    postWithLoginCache();
+    verify(authProvider).createAuthorizationCode(any(), any(), any(), any(), any());
+    verify(response, never()).sendRedirect(anyString());
+    assertThat(responseBody.toString()).doesNotContain("uncommitted-code");
+  }
+
+  @Test
+  void revocationDuringPasswordCheckPreventsCodeIssuance() throws Exception {
+    User user = new User().withName("user").withEmail(EMAIL);
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD))
+        .thenAnswer(
+            invocation -> {
+              when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(null);
+              return user;
+            });
+    postWithLoginCache();
+    verify(response).sendError(eq(HttpServletResponse.SC_BAD_REQUEST), anyString());
+    verify(response, never()).sendRedirect(anyString());
+    verify(authProvider, never()).createAuthorizationCode(any(), any(), any(), any(), any());
+  }
+
+  private void postWithLoginCache() throws Exception {
+    try (MockedStatic<LoginAttemptCache> attempts = mockStatic(LoginAttemptCache.class)) {
+      attempts.when(LoginAttemptCache::getInstance).thenReturn(mock(LoginAttemptCache.class));
+      servlet.doPost(request, response);
+    }
   }
 
   // ── login-blocked (Basic and LDAP) ───────────────────────────────────────
@@ -177,8 +242,29 @@ class BasicAuthLoginServletTest {
     assertThat(responseBody.toString()).contains("Invalid username or password");
     // Relative, so the form posts back to <BASE_PATH>mcp/login under a non-root BASE_PATH
     assertThat(responseBody.toString()).contains("action=\"login\"");
-    // The catch block records the failed attempt exactly once.
-    verify(authenticator).recordFailedLoginAttempt(EMAIL, EMAIL);
+    // validatePassword counts the failed attempt; counting it again would halve the lockout limit.
+    verify(authenticator, never()).recordFailedLoginAttempt(anyString(), anyString());
+  }
+
+  @Test
+  void loginForm_namesTheHostTheCodeIsSentTo() throws Exception {
+    User user = mock(User.class);
+    when(user.getName()).thenReturn("user");
+    when(authenticator.lookUserInProvider(EMAIL, PASSWORD)).thenReturn(user);
+    doThrow(new AuthenticationException("invalid username or password"))
+        .when(authenticator)
+        .validatePassword(any(String.class), any(String.class), any(User.class));
+
+    servlet.doPost(request, response);
+
+    // The pending request's redirect URI is https://client.example.com/callback: the page names
+    // its scheme and host, and leaves out the path, which can be made to look like a host.
+    assertThat(responseBody.toString())
+        .contains("<strong>https://client.example.com</strong>")
+        .doesNotContain("client.example.com/callback");
+    // Never framed, so another page cannot cover that line.
+    verify(response).setHeader("X-Frame-Options", "DENY");
+    verify(response).addHeader("Content-Security-Policy", "frame-ancestors 'none'");
   }
 
   // ── the re-rendered form stays bound to its auth request ─────────────────

@@ -163,6 +163,43 @@ class CheckChangeDescriptionTaskImplTest {
     assertTrue(result(), "with no rules configured the node routes true");
   }
 
+  @Test
+  void updateThatLeftNoChange_evaluatesFalse() {
+    givenEventRun("entityUpdated");
+    givenRules(Map.of("tags", List.of("PII.Sensitive")));
+
+    delegate.execute(execution);
+
+    assertFalse(result(), "an update whose edit was undone has no change to match");
+  }
+
+  @Test
+  void createWithNoChange_evaluatesTrue() {
+    givenEventRun("entityCreated");
+    givenRules(Map.of("tags", List.of("PII.Sensitive")));
+
+    delegate.execute(execution);
+
+    assertTrue(result(), "a create carries no change and routes true");
+  }
+
+  @Test
+  void runWithoutRecordedEventType_keepsTreatingNoChangeAsCreate() {
+    givenEventRun(null);
+    givenRules(Map.of("tags", List.of("PII.Sensitive")));
+
+    delegate.execute(execution);
+
+    assertTrue(result(), "a run started before the event type was passed keeps the create rule");
+  }
+
+  /** An event-triggered run, not a change-request run, on an entity that shows no change. */
+  private void givenEventRun(String eventType) {
+    when(execution.getVariable("global_changeRequestId")).thenReturn(null);
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(null);
+    when(execution.getVariable("global_triggeringEventType")).thenReturn(eventType);
+  }
+
   private void givenEffective(ChangeDescription change) {
     mockedService
         .when(() -> ChangeRequestService.proposedChangeDescription(eq(CHANGE_REQUEST_ID)))

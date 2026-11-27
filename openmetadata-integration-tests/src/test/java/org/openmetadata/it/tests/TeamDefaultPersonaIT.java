@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
@@ -34,8 +35,15 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for team-level default persona support and user inherited personas.
@@ -55,6 +63,9 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 @Execution(ExecutionMode.CONCURRENT)
 @org.junit.jupiter.api.extension.ExtendWith(TestNamespaceExtension.class)
 public class TeamDefaultPersonaIT {
+
+  private static final RequestOptions JSON_PATCH_OPTIONS =
+      RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
 
   // ===================================================================
   // HELPER METHODS
@@ -156,6 +167,68 @@ public class TeamDefaultPersonaIT {
     Team updated = client.teams().get(team.getId().toString(), "defaultPersona");
     assertNotNull(updated.getDefaultPersona());
     assertEquals(persona2.getId(), updated.getDefaultPersona().getId());
+  }
+
+  /**
+   * Regression test for the CheckChangeDescription governance-rule bypass: when a PATCH sends a
+   * schema-valid but "sparse" {@code EntityReference} (only {@code id} + {@code type}, the only
+   * fields the {@code EntityReference} schema requires) for {@code defaultPersona}, the team
+   * repository must hydrate the reference via {@code validateDefaultPersona} so the recorded {@code
+   * ChangeDescription} carries a {@code fullyQualifiedName}. Without this, {@code
+   * FieldChangeValueExtractor} cannot extract a matchable value from the new value and governance
+   * rules keyed on {@code defaultPersona} are silently skipped (the rule never triggers).
+   *
+   * <p>The assertion is on the {@link ChangeDescription} returned by the PATCH itself, not on a
+   * later GET: a GET rebuilds {@code defaultPersona} from the stored persona relationship (see
+   * {@code getDefaultPersona}), so it always carries a {@code fullyQualifiedName} regardless of
+   * whether the PATCH recorded a sparse reference. Asserting on the GET would therefore leave the
+   * original bug uncovered.
+   */
+  @Test
+  void test_sparseRefPatchIsHydratedWithFullyQualifiedName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Persona persona = createPersona(ns, "sparsePersona");
+    Team team = createGroupTeam(ns, "sparseRefTeam");
+
+    // PATCH /v1/teams/{id} with the exact sparse shape a Python-SDK / curl client sends:
+    // [{"op":"add","path":"/defaultPersona","value":{"id":"<uuid>","type":"persona"}}]
+    // No fullyQualifiedName, no name — yet the schema accepts it.
+    Team patched =
+        JsonUtils.readValue(
+            patchAndReturn(client, "/v1/teams/" + team.getId(), setDefaultPersonaPatch(persona)),
+            Team.class);
+
+    // The recorded ChangeDescription (not a later GET) is what governance rules match against.
+    ChangeDescription change = patched.getChangeDescription();
+    assertNotNull(change, "PATCH response must include the recorded changeDescription");
+    FieldChange defaultPersonaChange =
+        change.getFieldsAdded().stream()
+            .filter(fc -> "defaultPersona".equals(fc.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(
+        defaultPersonaChange,
+        "defaultPersona must appear in the PATCH's recorded fieldsAdded; was: "
+            + change.getFieldsAdded());
+    String recordedNewValue = (String) defaultPersonaChange.getNewValue();
+    assertNotNull(recordedNewValue, "recorded defaultPersona newValue must not be null");
+    EntityReference recordedRef = JsonUtils.readValue(recordedNewValue, EntityReference.class);
+    assertNotNull(
+        recordedRef.getFullyQualifiedName(),
+        "the recorded ChangeDescription's defaultPersona newValue must carry a "
+            + "fullyQualifiedName after validateDefaultPersona hydrates the sparse reference; "
+            + "without hydration, governance rules keyed on defaultPersona are silently bypassed. "
+            + "Recorded newValue was: "
+            + recordedNewValue);
+    assertEquals(persona.getFullyQualifiedName(), recordedRef.getFullyQualifiedName());
+
+    // Sanity-check the stored entity too: a subsequent GET returns the hydrated reference.
+    Team updated = client.teams().get(team.getId().toString(), "defaultPersona");
+    assertNotNull(updated.getDefaultPersona(), "defaultPersona should be set after the PATCH");
+    assertEquals(persona.getId(), updated.getDefaultPersona().getId());
+    assertEquals(
+        persona.getFullyQualifiedName(), updated.getDefaultPersona().getFullyQualifiedName());
   }
 
   @Test
@@ -817,6 +890,137 @@ public class TeamDefaultPersonaIT {
     // Team's defaultPersona should be null since the persona is deleted
     Team afterDelete = client.teams().get(team.getId().toString(), "defaultPersona");
     assertNull(afterDelete.getDefaultPersona());
+  }
+
+  // ===================================================================
+  // WHO MAY SET A TEAM'S DEFAULT PERSONA
+  // Members inherit it and holding a persona opens its AI context, so only an admin sets it, even
+  // for a team the caller owns (ADR:2026-11-03-only-admins-assign-personas)
+  // ===================================================================
+
+  @Test
+  void test_groupOwnerCannotSetDefaultPersonaViaPatch(TestNamespace ns) {
+    Persona persona = createPersona(ns, "ownerPatchPersona");
+    User owner = createLoginUser(ns, "ownerpatch");
+    Team team = createOwnedGroupTeam(ns, "ownerPatchTeam", owner, null);
+
+    assertForbidden(
+        () -> patch(owner, "/v1/teams/" + team.getId(), setDefaultPersonaPatch(persona)));
+
+    assertNull(defaultPersonaOf(team));
+  }
+
+  @Test
+  void test_groupOwnerCannotSetDefaultPersonaViaPut(TestNamespace ns) {
+    Persona persona = createPersona(ns, "ownerPutPersona");
+    User owner = createLoginUser(ns, "ownerput");
+    Team team = createOwnedGroupTeam(ns, "ownerPutTeam", owner, null);
+    String body =
+        "{\"name\":\""
+            + team.getName()
+            + "\",\"teamType\":\"Group\",\"defaultPersona\":\""
+            + persona.getId()
+            + "\"}";
+
+    assertForbidden(
+        () -> clientFor(owner).getHttpClient().executeForString(HttpMethod.PUT, "/v1/teams", body));
+
+    assertNull(defaultPersonaOf(team));
+  }
+
+  @Test
+  void test_groupOwnerStillEditsTeamAndKeepsItsPersona(TestNamespace ns) {
+    Persona persona = createPersona(ns, "ownerKeepsPersona");
+    User owner = createLoginUser(ns, "ownerkeeps");
+    Team team = createOwnedGroupTeam(ns, "ownerKeepsTeam", owner, persona.getId());
+
+    patch(
+        owner,
+        "/v1/teams/" + team.getId(),
+        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Edited by owner\"}]");
+
+    Team stored = SdkClients.adminClient().teams().get(team.getId().toString(), "defaultPersona");
+    assertEquals("Edited by owner", stored.getDescription());
+    assertEquals(persona.getId(), stored.getDefaultPersona().getId());
+  }
+
+  @Test
+  void test_memberCanDefaultToPersonaInheritedFromTeam(TestNamespace ns) {
+    Persona persona = createPersona(ns, "inheritedDefault");
+    Team team = createGroupTeam(ns, "inheritedDefaultTeam", persona.getId());
+    String localPart = "inheritdefault" + ns.shortPrefix();
+    User member =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(localPart)
+                    .withEmail(localPart + "@test.openmetadata.org")
+                    .withTeams(List.of(team.getId())));
+
+    patch(member, "/v1/users/" + member.getId(), setDefaultPersonaPatch(persona));
+
+    User stored = SdkClients.adminClient().users().get(member.getId().toString(), "defaultPersona");
+    assertEquals(persona.getId(), stored.getDefaultPersona().getId());
+  }
+
+  // JwtFilter resolves the caller by the email local part, so the name must equal it.
+  private User createLoginUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return SdkClients.adminClient()
+        .users()
+        .create(
+            new CreateUser().withName(localPart).withEmail(localPart + "@test.openmetadata.org"));
+  }
+
+  private Team createOwnedGroupTeam(
+      TestNamespace ns, String suffix, User owner, UUID defaultPersonaId) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(ns.prefix(suffix))
+                .withTeamType(TeamType.GROUP)
+                .withOwners(List.of(owner.getEntityReference()))
+                .withDefaultPersona(defaultPersonaId));
+  }
+
+  private static String setDefaultPersonaPatch(Persona persona) {
+    return "[{\"op\":\"add\",\"path\":\"/defaultPersona\",\"value\":{\"id\":\""
+        + persona.getId()
+        + "\",\"type\":\"persona\"}}]";
+  }
+
+  private static void patch(User caller, String path, String jsonPatch) {
+    clientFor(caller)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, path, jsonPatch, JSON_PATCH_OPTIONS);
+  }
+
+  private static void patch(OpenMetadataClient client, String path, String jsonPatch) {
+    client.getHttpClient().executeForString(HttpMethod.PATCH, path, jsonPatch, JSON_PATCH_OPTIONS);
+  }
+
+  private static String patchAndReturn(OpenMetadataClient client, String path, String jsonPatch) {
+    return client
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, path, jsonPatch, JSON_PATCH_OPTIONS);
+  }
+
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static EntityReference defaultPersonaOf(Team team) {
+    return SdkClients.adminClient()
+        .teams()
+        .get(team.getId().toString(), "defaultPersona")
+        .getDefaultPersona();
+  }
+
+  private static void assertForbidden(Executable request) {
+    OpenMetadataException exception = assertThrows(OpenMetadataException.class, request);
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
   }
 
   private String toEmail(String name) {

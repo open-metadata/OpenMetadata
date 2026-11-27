@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SectionWithEditProps } from './SectionWithEdit.interface';
 
 const SectionWithEdit: React.FC<SectionWithEditProps> = ({
@@ -61,12 +61,10 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
           titleNode
         )}
         {showEditButton && onEdit && (
-          <EditIconButton
-            newLook
+          <ButtonUtility
             data-testid="edit-button"
-            disabled={false}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: title,
             })}
             onClick={onEdit}

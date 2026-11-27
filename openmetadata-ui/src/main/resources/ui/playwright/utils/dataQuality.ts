@@ -388,14 +388,6 @@ export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
   await pipelineTab.click();
-  const testSuiteByNameResponse = waitForResponseWithStatus(
-    page,
-    (res) =>
-      res.request().method() === 'GET' &&
-      res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.url().includes('fields=owners'),
-    200
-  );
   const emptyStateAddButton = page
     .getByTestId('empty-placeholder')
     .getByRole('button', { name: /add pipeline/i });
@@ -403,11 +395,13 @@ export const addTestSuitePipeline = async (page: Page) => {
   const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
-  await testSuiteByNameResponse;
+
+  const pipelineDrawer = page.getByTestId('test-suite-pipeline-form-drawer');
+  await expect(pipelineDrawer).toBeVisible();
 
   // The pipeline form's toggle shares this testid with the test-case list's
   // checkbox; the toggle's wrapper is the one holding a switch.
-  const selectAllTestCases = page
+  const selectAllTestCases = pipelineDrawer
     .getByTestId('select-all-test-cases')
     .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
@@ -422,23 +416,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.request().method() === 'POST',
     200
   );
-  await page.getByTestId('deploy-button').click();
+  await pipelineDrawer.getByTestId('deploy-button').click();
   await deployResponse;
 
-  await expect(page.getByTestId('view-service-button')).toBeVisible();
-  await expect(page.getByTestId('success-line')).toContainText(
-    /has been created and deployed successfully/
-  );
-
-  const testSuiteDetailsResponse = waitForResponseWithStatus(
-    page,
-    (res) =>
-      res.request().method() === 'GET' &&
-      res.url().includes('/api/v1/dataQuality/testSuites/name/'),
-    200
-  );
-  await page.getByTestId('view-service-button').click();
-  await testSuiteDetailsResponse;
+  await expect(pipelineDrawer).not.toBeVisible();
+  await expect(page.getByTestId('ingestion-list-table')).toBeVisible();
 };
 
 export const navigateToDataQualityTestCases = async (page: Page) => {

@@ -22,7 +22,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,6 +39,7 @@ import {
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import { formatDuration } from '../../utils/date-time/DateTimeUtils';
 import { downloadCsv } from '../../utils/Export/ExportUtils';
 import {
   getAvailableSparqlInferences,
@@ -275,10 +276,10 @@ const ResultStatusLine = ({
     size="text-xs"
     weight="medium">
     {tabularResult
-      ? `✓ ${tabularResult.rows.length} ${t('label.result-plural')} · ${
-          result.durationMs
-        } ms`
-      : `${result.format} · ${result.durationMs} ms`}
+      ? `✓ ${tabularResult.rows.length} ${t(
+          'label.result-plural'
+        )} · ${formatDuration(result.durationMs)}`
+      : `${result.format} · ${formatDuration(result.durationMs)}`}
   </Typography>
 );
 
@@ -465,18 +466,17 @@ const QueryTemplatesList = ({
           {isAdminUser ? (
             <>
               <ButtonUtility
-                className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-secondary"
                 data-testid={`sparql-template-edit-${queryTemplate.id}`}
-                icon={Edit03}
-                size="xs"
+                icon={Edit01}
+                size="lg"
                 tooltip={`${t('label.edit')} ${queryTemplate.name}`}
                 onClick={() => onLoadTemplate(queryTemplate)}
               />
               <ButtonUtility
-                className="tw:size-7 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-tertiary hover:tw:bg-error-50 hover:tw:text-error-600"
+                color="tertiary-destructive"
                 data-testid={`sparql-template-delete-${queryTemplate.id}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={`${t('label.delete')} ${queryTemplate.name}`}
                 onClick={() => onDeleteTemplate(queryTemplate.id)}
               />

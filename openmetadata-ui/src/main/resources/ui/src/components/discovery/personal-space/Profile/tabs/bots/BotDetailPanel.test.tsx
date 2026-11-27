@@ -33,6 +33,12 @@ import {
 } from '../../../../../../rest/userAPI';
 import BotDetailPanel from './BotDetailPanel';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 jest.mock('react-i18next', () => {
   // A stable t identity — the header-injection effect depends on t, so a fresh
   // t per render would re-run the effect and loop when the harness re-renders.
@@ -172,8 +178,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => <div className={className}>{children}</div>,
     }
   ),
-  Autocomplete: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
-    <div data-testid={testId} />
+  Autocomplete: ({
+    'data-testid': testId,
+    selectedItems,
+  }: {
+    'data-testid'?: string;
+    selectedItems?: { id: string; label: string }[];
+  }) => (
+    <div data-testid={testId}>
+      {selectedItems?.map((item) => (
+        <span data-testid={`selected-role-${item.id}`} key={item.id}>
+          {item.label}
+        </span>
+      ))}
+    </div>
   ),
   Badge: ({
     children,
@@ -334,6 +352,25 @@ describe('BotDetailPanel', () => {
     );
   });
 
+  it('labels the admin flag of an admin bot apart from a role named Admin', async () => {
+    (getUserByName as jest.Mock).mockResolvedValue({
+      ...USER,
+      isAdmin: true,
+      roles: [{ id: 'custom-admin-role-id', name: 'Admin', type: 'role' }],
+    });
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('edit-roles')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('edit-roles'));
+
+    expect(screen.getByTestId('selected-role-admin')).toHaveTextContent(
+      'label.admin-superuser'
+    );
+  });
+
   it('should rename the bot via the injected header control', async () => {
     render(<HeaderHarness />);
 
@@ -370,7 +407,10 @@ describe('BotDetailPanel', () => {
     });
 
     expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, true);
-    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('keeps the header delete popover open and stays on the bot when the delete fails', async () => {

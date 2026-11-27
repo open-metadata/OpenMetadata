@@ -1,0 +1,55 @@
+name: Prepare one classification model
+description: Restore or prepare one pinned model using the standard Actions cache transport
+inputs:
+  model:
+    description: Discovered model record
+    required: true
+  save-cache:
+    description: Save cache misses in the default-branch warmer
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Clear model staging directory
+      shell: bash
+      run: rm -rf model-cache
+    - id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: model-cache/model.tar
+        key: ${{ fromJSON(inputs.model).key }}
+    - name: Prepare cache miss
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        REQUIREMENT: ${{ fromJSON(inputs.model).requirement }}
+        UV_VERSION: ${{ fromJSON(inputs.model)['uv-version'] }}
+      run: |
+        python scripts/prepare_classification_models.py prepare \
+          --requirement "$REQUIREMENT" --uv-version "$UV_VERSION" --output model-cache/model.tar
+    - name: Save prepared model
+      if: inputs.save-cache == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: model-cache/model.tar
+        key: ${{ fromJSON(inputs.model).key }}
+    - name: Verify persistent cache entry
+      if: inputs.save-cache == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: model-cache/model.tar
+        key: ${{ fromJSON(inputs.model).key }}
+        lookup-only: true
+        fail-on-cache-miss: true
+    - name: Stage consumer archive
+      if: inputs.save-cache != 'true'
+      shell: bash
+      env:
+        MODEL_KEY: ${{ fromJSON(inputs.model).key }}
+      run: |
+        mkdir -p "$RUNNER_TEMP/classification-models/$MODEL_KEY"
+        cp model-cache/model.tar "$RUNNER_TEMP/classification-models/$MODEL_KEY/model.tar"
+    - name: Remove staging payload
+      if: always()
+      shell: bash
+      run: rm -rf model-cache

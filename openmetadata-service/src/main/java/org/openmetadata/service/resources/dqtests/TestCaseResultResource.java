@@ -55,6 +55,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -186,7 +187,8 @@ public class TestCaseResultResource
             new AuthRequest(testCaseOperationContext, testCaseResourceContext),
             new AuthRequest(entityOperationContext, entityResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.getTestCaseResults(fqn, startTs, endTs);
+    return PIIMasker.getTestCaseResults(
+        repository.getTestCaseResults(fqn, startTs, endTs), authorizer, securityContext);
   }
 
   @GET
@@ -333,31 +335,36 @@ public class TestCaseResultResource
         .ifPresent(dqd -> searchListFilter.addQueryParam("dataQualityDimension", dqd));
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
+    final ResultList<TestCaseResult> results;
     if (latest.equals("true")) {
-      return listLatestFromSearch(
-          securityContext,
-          fields,
-          searchListFilter,
-          TestCaseResultRepository.LATEST_PER_TEST_CASE,
-          searchTerm,
-          limit,
-          offset,
-          "timestamp",
-          "desc",
-          authRequests,
-          AuthorizationLogic.ANY);
+      results =
+          listLatestFromSearch(
+              securityContext,
+              fields,
+              searchListFilter,
+              TestCaseResultRepository.LATEST_PER_TEST_CASE,
+              searchTerm,
+              limit,
+              offset,
+              "timestamp",
+              "desc",
+              authRequests,
+              AuthorizationLogic.ANY);
+    } else {
+      results =
+          listInternalFromSearch(
+              securityContext,
+              fields,
+              searchListFilter,
+              limit,
+              offset,
+              new SearchSortFilter("timestamp", "desc", null, null),
+              searchTerm,
+              queryString,
+              authRequests,
+              AuthorizationLogic.ANY);
     }
-    return listInternalFromSearch(
-        securityContext,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        new SearchSortFilter("timestamp", "desc", null, null),
-        searchTerm,
-        queryString,
-        authRequests,
-        AuthorizationLogic.ANY);
+    return PIIMasker.getTestCaseResults(results, authorizer, securityContext);
   }
 
   @GET
@@ -419,8 +426,11 @@ public class TestCaseResultResource
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
 
-    return super.latestInternalFromSearch(
-        securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY);
+    return PIIMasker.getTestCaseResult(
+        super.latestInternalFromSearch(
+            securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY),
+        authorizer,
+        securityContext);
   }
 
   @PATCH

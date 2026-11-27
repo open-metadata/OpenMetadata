@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Avatar,
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   Modal,
   ModalOverlay,
@@ -43,6 +43,7 @@ import {
 } from '../../../../utils/PersonaAIContextUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 
 interface VersionHistoryDrawerProps {
   canEdit: boolean;
@@ -152,7 +153,6 @@ export const VersionHistoryDrawer = ({
     <Box direction="col">
       {entries.map((entry, index) => {
         const isLast = index === entries.length - 1;
-        const initials = (entry.updatedBy ?? '?').charAt(0).toUpperCase();
 
         return (
           <Box gap={4} key={entry.version}>
@@ -190,14 +190,12 @@ export const VersionHistoryDrawer = ({
                   )}
                 </Box>
                 {canEdit && !entry.isCurrent && (
-                  <Button
-                    aria-label={t('label.restore')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid={`restore-version-${entry.version}`}
-                    iconLeading={RefreshCcw01}
+                    icon={RefreshCcw01}
                     isLoading={restoringVersion === entry.version}
-                    size="sm"
-                    title={t('label.restore')}
+                    size="lg"
+                    tooltip={t('label.restore')}
                     onClick={() => setRestoreTarget(entry)}
                   />
                 )}
@@ -221,13 +219,12 @@ export const VersionHistoryDrawer = ({
 
               {entry.updatedBy && (
                 <Box align="center" className="tw:mt-2" gap={2}>
-                  <Avatar initials={initials} size="xs" />
-                  <Typography
-                    className="tw:text-brand-secondary"
-                    size="text-xs"
-                    weight="medium">
-                    {entry.updatedBy}
-                  </Typography>
+                  <UserPopOverCard
+                    showUserName
+                    className="tw:text-xs tw:font-medium tw:text-brand-secondary"
+                    profileWidth={16}
+                    userName={entry.updatedBy}
+                  />
                   <Typography className="tw:text-quaternary" size="text-xs">
                     ·
                   </Typography>

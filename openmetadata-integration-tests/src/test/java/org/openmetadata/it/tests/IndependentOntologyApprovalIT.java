@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -85,6 +86,62 @@ public class IndependentOntologyApprovalIT extends BaseOntologyApprovalIT {
     SdkClients.user1Client()
         .tasks()
         .resolve(first.getId().toString(), decision(TaskResolutionType.Approved));
+  }
+
+  @Test
+  void onlyOneReleaseOfAnOntologyCanBeInReview(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    OntologyRelease first = capture(ontology);
+    declareClass(ontology, "SecondDraft", URI.create("https://example.org/model/SecondDraft"));
+    OntologyRelease second = capture(ontology);
+    assertNotEquals(first.getId(), second.getId());
+    Task open = submit(ns, Entity.ONTOLOGY_RELEASE, first.getFullyQualifiedName());
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .create(
+                        reviewRequest(
+                            ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName())));
+    assertEquals(409, refused.getStatusCode());
+    assertTrue(
+        refused.getMessage().contains(first.getName() + " already has an open review"),
+        refused.getMessage());
+    assertEquals(EntityStatus.DRAFT, current(second).getEntityStatus());
+    assertNull(current(second).getReviewTask());
+
+    SdkClients.adminClient().tasks().close(open.getId().toString());
+    Task next = submit(ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName());
+    assertEquals(next.getId(), current(second).getReviewTask());
+    assertEquals(EntityStatus.IN_REVIEW, current(second).getEntityStatus());
+  }
+
+  @Test
+  void reviewsOnDifferentOntologiesDoNotBlockEachOther(TestNamespace ns) {
+    OntologyRelease one = capture(createOntology(ns, "firstOntology"));
+    OntologyRelease two = capture(createOntology(ns, "secondOntology"));
+    Task first = submit(ns, Entity.ONTOLOGY_RELEASE, one.getFullyQualifiedName());
+    Task second = submit(ns, Entity.ONTOLOGY_RELEASE, two.getFullyQualifiedName());
+    assertNotEquals(first.getId(), second.getId());
+    assertEquals(EntityStatus.IN_REVIEW, current(one).getEntityStatus());
+    assertEquals(EntityStatus.IN_REVIEW, current(two).getEntityStatus());
+  }
+
+  @Test
+  void aNewReviewCanStartAfterTheOpenOneIsDecided(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    OntologyRelease first = capture(ontology);
+    declareClass(ontology, "Later", URI.create("https://example.org/model/Later"));
+    OntologyRelease second = capture(ontology);
+    Task open = submit(ns, Entity.ONTOLOGY_RELEASE, first.getFullyQualifiedName());
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(open.getId().toString(), decision(TaskResolutionType.Approved));
+    Task next = submit(ns, Entity.ONTOLOGY_RELEASE, second.getFullyQualifiedName());
+    assertEquals(next.getId(), current(second).getReviewTask());
   }
 
   @ParameterizedTest

@@ -150,7 +150,13 @@ public class AuditLogResource {
         searchTerm,
         limit,
         before,
-        after);
+        after,
+        readsUserEmails(securityContext));
+  }
+
+  private static boolean readsUserEmails(SecurityContext securityContext) {
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
   }
 
   private static final int EXPORT_MAX_LIMIT = 100000;
@@ -256,7 +262,8 @@ public class AuditLogResource {
             .setStartTs(startTs)
             .setEndTs(endTs)
             .setSearchTerm(searchTerm)
-            .setLimit(effectiveLimit);
+            .setLimit(effectiveLimit)
+            .setReadsUserEmails(readsUserEmails(securityContext));
     CsvAsyncJob job =
         CsvAsyncJobManager.getInstance()
             .createAuditExportJob(securityContext.getUserPrincipal().getName(), args);

@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Card } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCodeMirrorEditor } from '../../../hooks/useCodeMirrorEditor';
 import { CodeMirrorOptions } from '../../../interface/codemirror.interface';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import './schema-editor.less';
 import { SchemaEditorProps } from './SchemaEditor.interface';
 
@@ -71,7 +70,6 @@ const CodeEditor = ({
     extensions,
     onChange,
   });
-  const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   return (
     <Card
@@ -93,18 +91,13 @@ const CodeEditor = ({
           </div>
           {showCopyButton && (
             <div
-              className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
+              className="tw:ml-auto tw:py-1 tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
-              <ButtonUtility
-                aria-label={t('message.copy-to-clipboard')}
-                color="tertiary"
-                data-testid="query-copy-button"
-                icon={Copy01}
+              <CopyButton
                 size="sm"
-                tooltip={
-                  hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-                }
-                onClick={() => onCopyToClipBoard(internalValue)}
+                testId="query-copy-button"
+                tooltip={t('message.copy-to-clipboard')}
+                value={internalValue}
               />
             </div>
           )}

@@ -29,12 +29,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
 const subDomains: SubDomain[] = [];
 const SUBDOMAIN_COUNT = 60;
-const PAGE_SIZE = 9;
+const PAGE_SIZE = 15;
 
 test.describe('SubDomain Pagination', () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
     subDomains.length = 0;
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -61,7 +61,7 @@ test.describe('SubDomain Pagination', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);

@@ -145,8 +145,26 @@ public class AzureAuthValidatorTest {
     assertTrue(result.getError().contains(AZURE_LOGIN + TENANT_ID + "/discovery/v2.0/keys"));
   }
 
+  /**
+   * Tenant IDs are case-insensitive: an upper-case tenant in the authority must match a public key
+   * URL that uses the lower-case tenant, and the other way round.
+   */
+  @Test
+  void matchesTheTenantWhateverItsCase() {
+    authConfig.setPublicKeyUrls(List.of(AZURE_LOGIN + TENANT_ID + "/discovery/v2.0/keys"));
+    assertNull(validatePublicClientAgainstStubbedAzure(TENANT_ID.toUpperCase()));
+
+    authConfig.setPublicKeyUrls(
+        List.of(AZURE_LOGIN + TENANT_ID.toUpperCase() + "/discovery/v2.0/keys"));
+    assertNull(validatePublicClientAgainstStubbedAzure(TENANT_ID));
+  }
+
   private FieldError validatePublicClientAgainstStubbedAzure() {
-    authConfig.setAuthority(AZURE_LOGIN + TENANT_ID);
+    return validatePublicClientAgainstStubbedAzure(TENANT_ID);
+  }
+
+  private FieldError validatePublicClientAgainstStubbedAzure(String authorityTenant) {
+    authConfig.setAuthority(AZURE_LOGIN + authorityTenant);
     authConfig.setClientId("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
     try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
       http.when(() -> ValidationHttpUtil.safeGet(anyString()))

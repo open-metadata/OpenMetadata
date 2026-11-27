@@ -82,8 +82,10 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -149,10 +151,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private Map<String, Integer> batchGetTermCounts(List<Glossary> glossaries) {
     Map<String, Integer> termCountMap = new HashMap<>();
     for (Glossary glossary : glossaries) {
-      ListFilter filter =
-          new ListFilter(Include.NON_DELETED)
-              .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
-      int count = daoCollection.glossaryTermDAO().listCount(filter);
+      int count = daoCollection.glossaryTermDAO().listCount(termCountFilter(glossary));
       termCountMap.put(glossary.getName(), count);
     }
     return termCountMap;
@@ -219,10 +218,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getTermCount(Glossary glossary) {
+    return daoCollection.glossaryTermDAO().listCount(termCountFilter(glossary));
+  }
+
+  // The count follows the navbar domain pick like the term list it labels, so they agree.
+  private static ListFilter termCountFilter(Glossary glossary) {
     ListFilter filter =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", FullyQualifiedName.build(glossary.getName()));
-    return daoCollection.glossaryTermDAO().listCount(filter);
+    EntityUtil.addNavbarDomainFilter(
+        filter,
+        Entity.GLOSSARY_TERM,
+        () -> new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+    return filter;
   }
 
   @Override
@@ -271,7 +279,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         repository.listAllForCSV(
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
-            glossary.getFullyQualifiedName());
+            glossary.getFullyQualifiedName(),
+            user);
     terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }

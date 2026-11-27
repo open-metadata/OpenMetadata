@@ -17,12 +17,12 @@ import {
   OwnerChip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Minus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
-import { ReactComponent as DeletedIcon } from '../../../../../assets/svg/deleted-icon.svg';
 import {
   MAX_VISIBLE_OWNERS_FOR_FEED_CARD,
   MAX_VISIBLE_OWNERS_FOR_FEED_TAB,
@@ -30,6 +30,7 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
@@ -116,7 +117,7 @@ function ActivityOwnersFeed({
                     width="24"
                   />
                   <Typography ellipsis className="owner-chip-text">
-                    {owner.displayName}
+                    {getEntityName(owner)}
                   </Typography>
                 </div>
               </UserPopOverCard>
@@ -177,7 +178,7 @@ function ActivityOwnersFeed({
         <Box align="center" className="tw:gap-y-2" wrap="wrap">
           <div className="tw:max-w-full">
             <Box align="center" className="tw:min-w-0" wrap="wrap">
-              <DeletedIcon className="text-error" height={14} width={14} />
+              <Minus className="text-error" size={14} />
               <Typography className="owners-label">
                 {t('label.owner-plural-with-colon')}
               </Typography>

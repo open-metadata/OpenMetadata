@@ -44,3 +44,17 @@
     z-index: var(--om-z-1);
   }
 }
+
+// Fills the space its caller gives it (the product tour's full-screen modal)
+// instead of the player's padded 16:9 box.
+.storylane-tour-wrapper--fill {
+  padding: 0;
+
+  .storylane-tour-container {
+    max-width: none;
+    max-height: none;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+}

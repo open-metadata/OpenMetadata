@@ -36,6 +36,9 @@ import org.openmetadata.schema.api.lineage.openlineage.OpenLineageResponse;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageRunEvent;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
@@ -179,7 +182,7 @@ public class OpenLineageResource {
     try {
       OpenLineageEventPlan plan = mapper.mapRunEvent(event, updatedBy);
       OpenLineageResponse response =
-          OpenLineageResponses.forEvent(plan, addLineageEdges(plan, updatedBy));
+          OpenLineageResponses.forEvent(plan, addLineageEdges(securityContext, plan, updatedBy));
       return Response.status(httpStatus(response.getStatus())).entity(response).build();
 
     } catch (Exception e) {
@@ -246,7 +249,7 @@ public class OpenLineageResource {
     for (int i = 0; i < batch.getEvents().size(); i++) {
       try {
         OpenLineageEventPlan plan = mapper.mapRunEvent(batch.getEvents().get(i), updatedBy);
-        outcome.record(i, plan, addLineageEdges(plan, updatedBy));
+        outcome.record(i, plan, addLineageEdges(securityContext, plan, updatedBy));
       } catch (Exception e) {
         outcome.recordFailure(i, e.getMessage());
         LOG.warn("Failed to process event {}: {}", i, e.getMessage());
@@ -257,10 +260,12 @@ public class OpenLineageResource {
     return Response.status(status).entity(outcome.toResponse()).build();
   }
 
-  private int addLineageEdges(OpenLineageEventPlan plan, String updatedBy) {
+  private int addLineageEdges(
+      SecurityContext securityContext, OpenLineageEventPlan plan, String updatedBy) {
     int edgesCreated = 0;
     for (AddLineage addLineage : plan.lineageRequests()) {
       try {
+        authorizeEdgePipeline(securityContext, addLineage);
         lineageRepository.addLineage(addLineage, updatedBy);
         edgesCreated++;
       } catch (Exception e) {
@@ -268,6 +273,30 @@ public class OpenLineageResource {
       }
     }
     return edgesCreated;
+  }
+
+  /**
+   * An edge copies its pipeline into the downstream entity's search document, which any user can
+   * read, so linking a pipeline the caller cannot view would leak it. The pipeline is resolved from
+   * the event and is never a non-pipeline type, so only the view check applies here. A denied
+   * pipeline fails just this edge; the batch's other edges still process.
+   */
+  private void authorizeEdgePipeline(SecurityContext securityContext, AddLineage addLineage) {
+    EntitiesEdge edge = addLineage.getEdge();
+    LineageDetails details = edge == null ? null : edge.getLineageDetails();
+    EntityReference requested = details == null ? null : details.getPipeline();
+    LineageDetails stored =
+        edge == null
+            ? null
+            : lineageRepository.getLineageDetails(
+                edge.getFromEntity().getId(), edge.getToEntity().getId());
+    EntityReference pipeline = LineageRepository.newlyLinkedEdgePipeline(requested, stored);
+    if (pipeline != null) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(pipeline.getType(), MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(pipeline.getType(), pipeline.getId(), pipeline.getName()));
+    }
   }
 
   /** An event that wrote nothing because its datasets did not resolve is the caller's to fix. */

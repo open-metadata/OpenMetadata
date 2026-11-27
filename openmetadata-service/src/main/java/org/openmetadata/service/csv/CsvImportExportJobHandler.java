@@ -88,6 +88,15 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   private void runImport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
+    ImpersonationContext.setImpersonatedBy(args.getImpersonatedBy());
+    try {
+      importCsv(job, args);
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  private void importCsv(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
     String jobId = String.valueOf(job.getId());
     sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "STARTED", null, null));
 
@@ -306,6 +315,7 @@ public class CsvImportExportJobHandler implements JobHandler {
               args.getEndTs(),
               args.getSearchTerm(),
               args.getLimit(),
+              Boolean.TRUE.equals(args.getReadsUserEmails()),
               (fetched, total, message) -> {
                 jobManager.updateProgress(jobId, fetched, total, message);
                 sendExportMessage(

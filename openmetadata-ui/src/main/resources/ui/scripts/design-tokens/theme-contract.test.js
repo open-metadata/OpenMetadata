@@ -305,8 +305,36 @@ test('aliases semantic elevation roles to the existing shadow scale', () => {
   const light = declarations(extractBlock(css, '@theme static'));
 
   assert.equal(light.get('--shadow-card'), 'theme(--shadow-xs)');
-  assert.equal(light.get('--shadow-raised'), 'theme(--shadow-lg)');
   assert.equal(light.get('--shadow-overlay'), 'theme(--shadow-xl)');
+});
+
+// ADR:2026-11-06-floating-overlays-sit-on-bg-floating
+test('gives floating overlays their own surface and shadow in both themes', () => {
+  const css = fs.readFileSync(GLOBALS_FILE, 'utf8');
+  const light = declarations(extractBlock(css, '@theme static'));
+  const dark = declarations(extractBlock(css, '.dark-mode'));
+
+  assert.equal(
+    light.get('--color-bg-floating'),
+    'var(--color-bg-floating, theme(--color-bg-primary))'
+  );
+  assert.equal(
+    light.get('--background-color-floating'),
+    'var(--background-color-floating, theme(--color-bg-floating))'
+  );
+  assert.equal(
+    dark.get('--color-bg-floating'),
+    'color-mix(in srgb, theme(--color-gray-800) 96%, white)'
+  );
+  assert.equal(
+    light.get('--shadow-raised').replace(/\s+/g, ' '),
+    '0px 12px 16px -4px rgba(10, 13, 18, 0.14), 0px 4px 6px -2px rgba(10, 13, 18, 0.08), 0px 2px 2px -1px rgba(10, 13, 18, 0.06)'
+  );
+  // Tailwind inlines shadow values, so the dark overlay shadow is a rule, not a token.
+  assert.match(
+    css,
+    /\.dark-mode \.tw\\:shadow-raised \{\s*--tw-shadow: 0px 12px 16px -4px rgb\(0 0 0 \/ 0\.5\)/
+  );
 });
 
 test('exposes the approved roles through the legacy token bridge', () => {
@@ -347,6 +375,7 @@ test('documents every approved go-forward utility', () => {
     'tw:bg-canvas',
     'tw:bg-surface',
     'tw:bg-raised',
+    'tw:bg-floating',
     'tw:bg-overlay-surface',
     'tw:border-subtle',
     'tw:border-hover',

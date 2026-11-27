@@ -48,7 +48,9 @@ import {
   getColumnCustomMetric,
 } from '../../../../utils/TableProfilerUtils';
 import { ColumnMetricsInterface } from '../../../../utils/TableProfilerUtils.interface';
+import { isShardedTable } from '../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import CardinalityDistributionChart from '../../../Visualisations/Chart/CardinalityDistributionChart.component';
 import DataDistributionHistogram from '../../../Visualisations/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -76,7 +78,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     customMetric: tableCustomMetric,
     isProfilingEnabled,
     testCaseSummary,
+    table: contextTable,
   } = useTableProfiler();
+  const isSharded = isShardedTable(tableDetails ?? contextTable);
   const { t } = useTranslation();
 
   const dateRangeObject = useMemo(() => {
@@ -309,26 +313,36 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         </Box>
       )}
 
+      <ProfileExecutionSource
+        isSharded={isSharded}
+        profiles={columnProfilerData}
+      />
       <ProfilerDetailsCard
         chartCollection={columnMetric.countMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="count"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-count-plural')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.proportionMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="proportion"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         tickFormatter="%"
         title={t('label.data-proportion-plural')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.mathMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="math"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         showYAxisCategory={isMinMaxStringData}
         // only min/max category can be string
         title={t('label.data-range')}
@@ -337,15 +351,19 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         chartCollection={columnMetric.sumMetrics}
         chartType="area"
         isLoading={isLoading}
+        isSharded={isSharded}
         name="sum"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-aggregate')}
       />
       <ProfilerDetailsCard
         chartCollection={columnMetric.quartileMetrics}
         isLoading={isLoading}
+        isSharded={isSharded}
         name="quartile"
         noDataPlaceholderText={noProfilerMessage}
+        profiles={columnProfilerData}
         title={t('label.data-quartile-plural')}
       />
       {firstDay?.histogram || currentDay?.histogram ? (
@@ -358,6 +376,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
               firstDayData: firstDay,
               currentDayData: currentDay,
             }}
+            isSharded={isSharded}
             noDataPlaceholderText={noProfilerMessage}
           />
         </ProfilerStateWrapper>
@@ -373,6 +392,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
               firstDayData: firstDay,
               currentDayData: currentDay,
             }}
+            isSharded={isSharded}
             noDataPlaceholderText={noProfilerMessage}
           />
         </ProfilerStateWrapper>
@@ -381,6 +401,8 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         customMetrics={customMetrics}
         customMetricsGraphData={columnCustomMetrics}
         isLoading={isLoading || isProfilerDataLoading}
+        isSharded={isSharded}
+        profiles={columnProfilerData}
       />
     </Box>
   );

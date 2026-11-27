@@ -70,7 +70,7 @@ const AnnouncementsNotificationSection = ({
           color="primary"
           data-testid="add-announcement"
           iconLeading={Plus}
-          size="sm"
+          size="xs"
           onPress={() => onNavigate?.(SYSTEM_ANNOUNCEMENT_SUB_PATHS.ADD)}>
           {addLabel}
         </Button>

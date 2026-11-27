@@ -20,11 +20,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
+import { Grid01, List } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined } from 'lodash';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
-import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
   SEGMENT_TOGGLE_ITEM_CLASS,
@@ -46,23 +45,30 @@ export const ListView = <T extends object = Record<string, unknown>>({
   handleDeletedSwitchChange,
   deleted = false,
   customPaginationProps,
+  currentView,
+  onViewChange,
 }: ListViewProps<T>) => {
-  const [currentView, setCurrentView] = useState<ListViewOptions>(
-    ListViewOptions.TABLE
-  );
   const { t } = useTranslation();
 
   const listViewOptions = [
     {
       label: (
-        <GridIcon className="tw:size-3.5 tw:shrink-0" data-testid="grid" />
+        <Grid01
+          className="tw:shrink-0 tw:text-utility-gray-500"
+          data-testid="grid"
+          size={14}
+        />
       ),
       value: ListViewOptions.CARD,
       ariaLabel: t('label.card'),
     },
     {
       label: (
-        <ListIcon className="tw:size-3.5 tw:shrink-0" data-testid="list" />
+        <List
+          className="tw:shrink-0 tw:text-utility-gray-500"
+          data-testid="list"
+          size={14}
+        />
       ),
       value: ListViewOptions.TABLE,
       ariaLabel: t('label.table'),
@@ -121,7 +127,7 @@ export const ListView = <T extends object = Record<string, unknown>>({
             onSelectionChange={(keys) => {
               const selected = [...keys][0];
               if (selected) {
-                setCurrentView(selected as ListViewOptions);
+                onViewChange(selected as ListViewOptions);
               }
             }}>
             {listViewOptions.map(({ label, value, ariaLabel }) => (

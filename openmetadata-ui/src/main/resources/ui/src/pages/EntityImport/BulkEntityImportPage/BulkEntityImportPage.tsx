@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Modal,
@@ -111,6 +112,7 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
   normalizeCsvLineBreaks,
+  restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -846,7 +848,7 @@ const BulkEntityImportPage = () => {
       // results.data is returning data with unknown type
       const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][],
+        (results.data as string[][]).map((row) => row.map(restoreFormula)),
         importedEntityType,
         {
           user: entityRules.canAddMultipleUserOwners,
@@ -1196,13 +1198,22 @@ const BulkEntityImportPage = () => {
       fetchCsvJobs();
 
       // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
-      // reset to upload step. If rows were processed but all failed, fall through to
-      // show the validation grid so the user can inspect and fix errors.
+      // reset to upload step — but only in the import wizard, which has a step-0 upload
+      // surface. Bulk-edit mode only renders steps 1/2, so resetting there blanks the page
+      // with no recovery UI; stay on the grid and surface abortReason from validationData
+      // instead. If rows were processed but all failed, fall through to show the
+      // validation grid so the user can inspect and fix errors.
       if (isAbortedOrEmptyFailureImport(resolvedResults)) {
         setValidationData(resolvedResults);
 
-        handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+        if (!isBulkEdit) {
+          handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+        }
 
+        // Bulk-edit keeps the grid mounted; unblock the footer buttons so the user
+        // can re-validate or cancel. (The import wizard shows its abort card at step 0,
+        // whose controls don't gate on isValidating.)
+        setIsValidating(false);
         handleResetImportJob();
 
         return;
@@ -1242,6 +1253,7 @@ const BulkEntityImportPage = () => {
       readString,
       onCSVReadComplete,
       handleImportWebsocketResponseWithActiveStep,
+      isBulkEdit,
     ]
   );
 
@@ -1649,13 +1661,13 @@ const BulkEntityImportPage = () => {
             )}`}
           </span>
         </div>
-        <button
-          aria-label={t('label.remove')}
-          className="csv-selected-file-remove"
-          type="button"
-          onClick={() => setSelectedCsvFile(undefined)}>
-          <XClose size={18} />
-        </button>
+        <ButtonUtility
+          className="tw:shrink-0"
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={() => setSelectedCsvFile(undefined)}
+        />
       </div>
     );
   };

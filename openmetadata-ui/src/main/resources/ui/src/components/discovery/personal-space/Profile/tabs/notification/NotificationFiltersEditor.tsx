@@ -241,10 +241,9 @@ function NotificationFiltersEditor({
 
                     {!isViewMode && (
                       <ButtonUtility
-                        color="tertiary"
                         data-testid={`remove-filter-${index}`}
                         icon={XClose}
-                        size="xs"
+                        size="lg"
                         tooltip={t('label.remove')}
                         onPress={() => handleControlledRemove(index)}
                       />

@@ -10,9 +10,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -25,6 +27,8 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -43,8 +47,14 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.TestSuiteConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableJoins;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
@@ -107,8 +117,12 @@ class McpResponseUtilsTest {
   @Test
   void writeResponsesMaskWorkflowSinkSecrets() {
     var workflow = GetEntityToolTest.gitSinkWorkflow("gitExport");
+    workflow.setChangeDescription(
+        new ChangeDescription().withFieldsUpdated(List.of(new FieldChange().withName("nodes"))));
 
-    Map<String, Object> doc = McpResponseUtils.compactPatch(workflow, EventType.ENTITY_UPDATED);
+    Map<String, Object> doc =
+        McpResponseUtils.compactPatch(
+            workflow, Entity.WORKFLOW_DEFINITION, EventType.ENTITY_UPDATED);
 
     var sinkConfig = JsonUtils.valueToTree(doc).at("/nodes/0/config/sinkConfig");
     assertEquals(PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/credentials/token").asText());
@@ -184,6 +198,24 @@ class McpResponseUtilsTest {
             .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/gcpConfig/privateKey")
             .asText());
     assertTrue(JsonUtils.pojoToJson(pipeline).contains(STORED_SECRET), MUST_NOT_MUTATE);
+  }
+
+  @Test
+  void dropsMetricGroupMembers() {
+    MetricGroup group =
+        new MetricGroup()
+            .withName("revenue")
+            .withMetrics(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("metric")
+                        .withName("hidden_margin")));
+
+    MetricGroup masked = (MetricGroup) McpResponseUtils.maskSecrets(group);
+
+    assertNull(masked.getMetrics());
+    assertNotNull(group.getMetrics(), MUST_NOT_MUTATE);
   }
 
   @Test
@@ -274,7 +306,7 @@ class McpResponseUtilsTest {
   @Test
   void compactPatchKeepsWhatOnlyAnUpdateCanAnswer() {
     Map<String, Object> doc =
-        McpResponseUtils.compactPatch(patchedGlossary(), EventType.ENTITY_UPDATED);
+        McpResponseUtils.compactPatch(patchedGlossary(), Entity.GLOSSARY, EventType.ENTITY_UPDATED);
 
     // compact() strips both of these because they are meaningless on a create. On a patch they are
     // the confirmation the caller wrote for, so aligning the response must not drop them.
@@ -290,7 +322,7 @@ class McpResponseUtilsTest {
   @Test
   void compactPatchStillDropsTheNoise() {
     Map<String, Object> doc =
-        McpResponseUtils.compactPatch(patchedGlossary(), EventType.ENTITY_UPDATED);
+        McpResponseUtils.compactPatch(patchedGlossary(), Entity.GLOSSARY, EventType.ENTITY_UPDATED);
 
     assertFalse(doc.containsKey("updatedBy"));
     assertFalse(
@@ -301,7 +333,7 @@ class McpResponseUtilsTest {
   @Test
   void compactPatchOmitsChangedWhenNothingIsRecorded() {
     Map<String, Object> doc =
-        McpResponseUtils.compactPatch(buildGlossary(), EventType.ENTITY_UPDATED);
+        McpResponseUtils.compactPatch(buildGlossary(), Entity.GLOSSARY, EventType.ENTITY_UPDATED);
 
     assertFalse(doc.containsKey("changed"), "an empty list would read as 'nothing changed'");
   }
@@ -337,5 +369,99 @@ class McpResponseUtilsTest {
 
     assertTrue(doc.containsKey("deleted"));
     assertEquals(Boolean.TRUE, doc.get("deleted"));
+  }
+
+  @Test
+  void compactPatchEchoesChangedFieldsButNotTheWideOnes() {
+    final Table table =
+        wideTable()
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+            .withExtension(Map.of("costCenter", "finance"))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange().withName("tags"),
+                            new FieldChange().withName("columns"),
+                            new FieldChange().withName("extension"))));
+
+    final Map<String, Object> doc =
+        McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_UPDATED);
+
+    assertEquals(table.getId().toString(), doc.get("id"));
+    assertEquals("shop.db.sales.orders", doc.get("fullyQualifiedName"));
+    assertEquals(Entity.TABLE, doc.get("entityType"));
+    assertEquals(0.2, doc.get("version"));
+    assertEquals(1_700_000_000_000L, doc.get("updatedAt"));
+    assertEquals(Set.of("tags", "columns", "extension"), Set.copyOf((List<?>) doc.get("changed")));
+    assertNotNull(doc.get("tags"));
+    // Adding one column or custom property records the whole field: named, never echoed.
+    assertFalse(doc.containsKey("columns"));
+    assertFalse(doc.containsKey("extension"));
+    assertFalse(doc.containsKey("tableConstraints"));
+    assertFalse(doc.containsKey("owners"), "a field the patch did not change is not echoed");
+  }
+
+  @Test
+  void compactPatchNamesANestedChangeWithoutEchoingItsParent() {
+    final Table table =
+        wideTable()
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(new FieldChange().withName("columns.col_0.description"))));
+
+    final Map<String, Object> doc =
+        McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_UPDATED);
+
+    assertEquals(List.of("columns.col_0.description"), doc.get("changed"));
+    assertFalse(doc.containsKey("columns"));
+  }
+
+  @Test
+  void compactPatchReportsNothingChangedOnAHeldOrNoOpWrite() {
+    // A held write returns the stored entity, whose change description is the previous version's.
+    final Table table =
+        wideTable()
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("tags"))));
+
+    final Map<String, Object> doc =
+        McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_NO_CHANGE);
+
+    assertFalse(doc.containsKey("changed"));
+    assertFalse(doc.containsKey("tags"));
+  }
+
+  private static Table wideTable() {
+    final List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < 50; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDescription("Description for column " + i));
+    }
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("shop.db.sales.orders")
+        .withVersion(0.2)
+        .withUpdatedAt(1_700_000_000_000L)
+        .withColumns(columns)
+        .withTableConstraints(
+            List.of(
+                new TableConstraint()
+                    .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+                    .withColumns(List.of("col_0"))))
+        .withJoins(new TableJoins())
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.USER)
+                    .withName("owner1")));
   }
 }

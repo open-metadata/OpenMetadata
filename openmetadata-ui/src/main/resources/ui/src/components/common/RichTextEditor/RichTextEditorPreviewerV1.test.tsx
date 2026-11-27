@@ -25,13 +25,10 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
 
 jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   formatClientContent: jest.fn((content) => content),
+  getTrimmedHtmlContent: jest.requireActual(
+    '../../../utils/BlockEditorPureUtils'
+  ).getTrimmedHtmlContent,
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
-}));
-
-jest.mock('../../../utils/StringUtils', () => ({
-  getTrimmedContent: jest.fn((content, maxLength) =>
-    content.slice(0, maxLength)
-  ),
 }));
 
 const mockShortMarkdown = 'Short description text';
@@ -179,11 +176,12 @@ describe('RichTextEditorPreviewerV1', () => {
     expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
   });
 
-  it('should render trimmed content when not expanded', () => {
-    const { getTrimmedContent } = require('../../../utils/StringUtils');
+  it('should render trimmed content when not expanded', async () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(getTrimmedContent).toHaveBeenCalledWith(mockLongMarkdown, 50);
+    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
+      /^This is a very long piece of content that exceeds\.\.\.$/
+    );
   });
 
   it('should render full content when expanded', () => {
@@ -305,14 +303,11 @@ describe('RichTextEditorPreviewerV1', () => {
     );
   });
 
-  it('should render ellipsis after trimmed content', () => {
-    const { getTrimmedContent } = require('../../../utils/StringUtils');
-    getTrimmedContent.mockReturnValue('Trimmed content');
-
+  it('should render ellipsis after trimmed content', async () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
-      'Trimmed content...'
+    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
+      /\.\.\.$/
     );
   });
 
@@ -348,7 +343,7 @@ describe('RichTextEditorPreviewerV1', () => {
     expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
   });
 
-  it('should calculate hasReadMore correctly based on markdown length', () => {
+  it('should calculate hasReadMore correctly based on content length', () => {
     const markdown = 'a'.repeat(100);
     const { rerender } = render(
       <RichTextEditorPreviewerV1

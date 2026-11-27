@@ -18,7 +18,7 @@
       "$ref": "../../type/ontologyState.json#/properties/lastReleaseRevision"
     },
     "versionBump": {
-      "description": "Allocate the next semantic version from the latest versioned candidate, including rejected candidates. The unversioned base is 0.0.0.",
+      "description": "Allocate the next semantic version from the active release. The unversioned base is 0.0.0.",
       "type": "string",
       "enum": ["major", "minor", "patch"]
     },

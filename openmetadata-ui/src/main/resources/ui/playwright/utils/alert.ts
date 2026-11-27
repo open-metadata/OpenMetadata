@@ -1149,10 +1149,11 @@ export const waitForRecentEventsToFinishExecution = async (
               )}/eventsRecord?listCountOnly=true`
             )
             .then((res) =>
-              okJson<{ pendingEventsCount: number; totalEventsCount: number }>(
-                res,
-                `Subscription ${name} events`
-              )
+              okJson<{
+                countsAreLowerBound?: boolean;
+                pendingEventsCount: number;
+                totalEventsCount: number;
+              }>(res, `Subscription ${name} events`)
             );
 
           if (
@@ -1162,7 +1163,10 @@ export const waitForRecentEventsToFinishExecution = async (
             throw new Error(`Invalid event counts for subscription ${name}`);
           }
 
+          // The server checks only the first 500 unread events, so while the alert is further
+          // behind than that the counts are a floor and the page shows them as "1+".
           return (
+            !response.countsAreLowerBound &&
             response.pendingEventsCount === 0 &&
             response.totalEventsCount === totalEventsCount
           );

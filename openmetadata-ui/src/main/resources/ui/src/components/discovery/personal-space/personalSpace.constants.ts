@@ -11,20 +11,14 @@
  *  limitations under the License.
  */
 
-import { ROUTES } from '../../../constants/constants';
-
 /**
- * Route constants for the personal-space surfaces (Inbox / My Data). The
- * Inbox is a routed full page (Activity / Tasks feed) with two deep-linkable
- * sub-tabs; My Data reuses the same shell but derives its own tab from the
- * path. `MY_DATA` aliases the core `ROUTES.MY_DATA` so both mode trees agree
- * on a single path for the owned-data surface.
+ * Route constants for the personal-space Inbox: a routed full page (Activity /
+ * Tasks feed) with two deep-linkable sub-tabs. My Data is modal-only.
  */
 export const PERSONAL_SPACE_ROUTES = {
   INBOX: '/inbox',
   INBOX_ACTIVITY: '/inbox/activity',
   INBOX_TASKS: '/inbox/tasks',
-  MY_DATA: ROUTES.MY_DATA,
 } as const;
 
 /**

@@ -48,13 +48,6 @@ public class MessagingServiceBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public MessagingServiceBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateMessagingService request without executing it.
    */
   public CreateMessagingService build() {

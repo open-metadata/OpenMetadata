@@ -18,10 +18,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Category, Type } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   addPropertyToEntity,
   getTypeListByCategory,
@@ -30,6 +31,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import {
   AddCustomPropertyFormValues,
   CustomPropertiesAddPageProps,
@@ -48,7 +50,13 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [descriptionKey, setDescriptionKey] = useState(0);
 
+  const existingNames = useMemo(
+    () => entityType.customProperties?.map(({ name }) => name),
+    [entityType.customProperties]
+  );
+
   const form = useForm<AddCustomPropertyFormValues>({
+    mode: 'onChange',
     defaultValues: {
       name: '',
       displayName: '',
@@ -57,6 +65,9 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       multiSelect: false,
     },
   });
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty
+  );
 
   const fetchPropertyTypes = useCallback(async () => {
     try {
@@ -123,6 +134,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
             onSubmit={form.handleSubmit(handleSubmit)}>
             <CustomPropertyFormFields
               descriptionKey={descriptionKey}
+              existingNames={existingNames}
               form={form}
               propertyTypes={propertyTypes}
             />
@@ -140,16 +152,18 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
           data-testid="custom-property-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="custom-property-save"
           form="add-custom-property-form"
+          isDisabled={!form.formState.isValid}
           isLoading={isSaving}
           type="submit">
-          {t('label.save-entity', { entity: t('label.change-plural') })}
+          {t('label.create')}
         </Button>
       </Box>
     </Box>

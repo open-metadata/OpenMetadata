@@ -69,8 +69,36 @@ class FileContextProcessingEngineTest {
     assertEquals(6, outcome.reconciled().kept());
     verify(extractor, never()).derive(any(), any(), any());
     ArgumentCaptor<ContextFile> updated = ArgumentCaptor.forClass(ContextFile.class);
-    verify(repository).update(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
+    verify(repository)
+        .updateIfCurrent(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals("same-hash", updated.getValue().getExtractionStats().getSourceHash());
+  }
+
+  /** Extraction bookkeeping must not make the file look last edited by admin. */
+  @Test
+  void extractionKeepsTheFilesLastEditor() {
+    UUID fileId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+    ContextFile file =
+        new ContextFile()
+            .withId(fileId)
+            .withName("policy.md")
+            .withHeadContentId(contentId.toString())
+            .withUpdatedBy("tomas");
+    ContextFileContent content =
+        new ContextFileContent().withId(contentId).withChecksum("hash").withExtractedText("facts");
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(file);
+    when(repository.getContentById(contentId.toString())).thenReturn(content);
+    when(extractor.derive(
+            "facts", file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION))
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(), 1, 1));
+    when(reconciler.reconcile(file.getEntityReference(), Entity.CONTEXT_FILE, List.of()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 0));
+
+    new FileContextProcessingEngine(repository, extractor, reconciler).runExtraction(fileId);
+
+    verify(repository).updateIfCurrent(isNull(), eq(file), any(), eq("tomas"));
   }
 
   /** Reused pills stay anchored to the restricted original, hiding them from the copy's readers. */

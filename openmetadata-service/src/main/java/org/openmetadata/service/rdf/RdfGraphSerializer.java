@@ -19,7 +19,10 @@ import java.nio.charset.StandardCharsets;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.RDFWriterI;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.shared.JenaException;
+import org.apache.jena.shared.WrappedIOException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 /**
@@ -45,7 +48,32 @@ public final class RdfGraphSerializer {
   public static void write(
       final OutputStream output, final Model model, final RdfSerializationFormat format) {
     requireExpressible(model, format);
-    RDFDataMgr.write(output, model, format.rdfFormat());
+    if (format == RdfSerializationFormat.RDF_XML) {
+      writeRdfXml(output, model);
+    } else {
+      RDFDataMgr.write(output, model, format.rdfFormat());
+    }
+  }
+
+  /**
+   * Jena's RDF/XML writer checks every {@code rdf:about} against RFC 8141 and aborts on an IRI such
+   * as a bare {@code urn:orders}, which Turtle, N-Triples and JSON-LD write without complaint and
+   * which the ontology API accepts. The IRI is still a valid RDF term, and the importer reads it
+   * back, so the check is switched off rather than letting one format refuse what the others
+   * carry. A predicate that cannot be split into an XML name has no RDF/XML form and still fails.
+   */
+  private static void writeRdfXml(final OutputStream output, final Model model) {
+    final RDFWriterI writer = model.getWriter("RDF/XML-ABBREV");
+    writer.setProperty("allowBadURIs", "true");
+    try {
+      writer.write(model, output, null);
+    } catch (WrappedIOException e) {
+      // A client that disconnects mid-write is an I/O failure, not a graph the format cannot carry.
+      throw e;
+    } catch (JenaException e) {
+      throw new UnsupportedRdfSerializationException(
+          RdfSerializationFormat.RDF_XML, e.getMessage());
+    }
   }
 
   /** True when the format can represent every term in the graph. */

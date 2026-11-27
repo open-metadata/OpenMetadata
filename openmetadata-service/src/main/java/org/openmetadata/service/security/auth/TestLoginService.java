@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -37,6 +38,7 @@ import org.openmetadata.service.security.JwtIdentityResolver;
 import org.openmetadata.service.security.OidcIdentityResolver;
 import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Performs a dry-run "Test Login" against a candidate (unsaved) security configuration.
@@ -84,6 +86,10 @@ public final class TestLoginService {
   /** Identity a credential-based login resolved from the candidate directory or user store. */
   public record ResolvedCredentialIdentity(
       String userName, String email, List<String> roles, List<String> teams) {}
+
+  /** Verified OIDC identity kept inside the server, including the resolver's actual lookup mode. */
+  public record ResolvedAccountIdentity(
+      String userName, String email, boolean emailFirstFlow, String subject) {}
 
   private TestLoginService() {}
 
@@ -145,8 +151,17 @@ public final class TestLoginService {
       SecurityConfiguration securityConfig,
       Map<String, Object> claims,
       TestLoginStageRecorder recorder) {
+    return resolveOidcCallbackIdentity(
+        securityConfig, claims, recorder, ResolvedAccountIdentity::userName);
+  }
+
+  public static TestLoginResult resolveOidcCallbackIdentity(
+      SecurityConfiguration securityConfig,
+      Map<String, Object> claims,
+      TestLoginStageRecorder recorder,
+      Function<ResolvedAccountIdentity, String> admitAccount) {
     ResolutionContext ctx = contextFor(securityConfig, TestLoginProtocol.OIDC, recorder);
-    return resolve(ctx, () -> resolveOidcClaims(ctx, claims));
+    return resolve(ctx, () -> resolveOidcClaims(ctx, claims, admitAccount));
   }
 
   /**
@@ -211,7 +226,10 @@ public final class TestLoginService {
         requestFilterDomainRule(ctx, claims, identity.emailFirstFlow()));
   }
 
-  private static Resolution resolveOidcClaims(ResolutionContext ctx, Map<String, Object> claims) {
+  private static Resolution resolveOidcClaims(
+      ResolutionContext ctx,
+      Map<String, Object> claims,
+      Function<ResolvedAccountIdentity, String> admitAccount) {
     OidcIdentityResolver.ResolvedOidcIdentity identity =
         new OidcIdentityResolver(
                 ctx.authConfig(),
@@ -220,8 +238,14 @@ public final class TestLoginService {
                 listOrEmpty(ctx.authConfig().getJwtPrincipalClaims()),
                 principalDomainOf(ctx.authzConfig()))
             .resolve(claims);
+    final ResolvedAccountIdentity accountIdentity =
+        new ResolvedAccountIdentity(
+            userNameOrLocalPart(identity.userName(), identity.email()),
+            identity.email(),
+            identity.emailFirstFlow(),
+            SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)));
     return new Resolution(
-        userNameOrLocalPart(identity.userName(), identity.email()),
+        admitAccount.apply(accountIdentity),
         identity.email(),
         rolesFromClaims(ctx.authzConfig(), claims),
         teamsFromClaims(ctx.authConfig(), claims),

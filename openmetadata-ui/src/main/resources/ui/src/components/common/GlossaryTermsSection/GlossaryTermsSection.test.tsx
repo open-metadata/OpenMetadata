@@ -66,24 +66,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 // SVG mocks
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
-}));
 jest.mock('../../../assets/svg/close-icon.svg', () => ({
   ReactComponent: () => <div data-testid="close-icon-svg">Close</div>,
 }));
 jest.mock('../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
-}));
-jest.mock('../../../assets/svg/glossary.svg', () => ({
-  ReactComponent: ({ className }: { className?: string }) => (
-    <div className={className} data-testid="glossary-icon">
-      G
-    </div>
-  ),
-}));
-jest.mock('../../../assets/svg/book.svg', () => ({
-  ReactComponent: () => <div data-testid="book-icon">Book</div>,
 }));
 
 jest.mock('../GlossaryTermPicker/GlossaryTermPicker', () => ({
@@ -191,19 +178,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-// Mock EditIconButton
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button
-      className="edit-icon"
-      data-testid="edit-icon-button"
-      onClick={onClick}
-      {...props}>
-      Edit
-    </button>
-  )),
-}));
-
 // Mock Loader
 jest.mock('../Loader/Loader', () => ({
   __esModule: true,
@@ -263,13 +237,7 @@ const nonGlossaryTags = [
 ];
 
 const clickHeaderEdit = () => {
-  const clickable = document.querySelector(
-    '.glossary-terms-header .edit-icon'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Edit clickable not found');
-  }
-  fireEvent.click(clickable);
+  fireEvent.click(screen.getByTestId('edit-glossary-terms'));
 };
 
 describe('GlossaryTermsSection', () => {
@@ -310,11 +278,7 @@ describe('GlossaryTermsSection', () => {
         )
       ).toBeInTheDocument();
 
-      const editClickable = document.querySelector(
-        '.glossary-terms-header .edit-icon'
-      );
-
-      expect(editClickable).toBeTruthy();
+      expect(screen.getByTestId('edit-glossary-terms')).toBeInTheDocument();
     });
 
     it('enters edit mode and cancels back', () => {

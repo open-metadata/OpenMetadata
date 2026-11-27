@@ -34,7 +34,7 @@ GRANT SELECT ON table_name TO {user | role};
 ```
 
 ### Profilering och datakvalitet
-Att köra profileringsarbetsflödet eller datakvalitetstester kräver att användaren har behörigheten `SELECT` på de tabeller/scheman där profileringen/testerna ska köras. Användaren bör också ha rätt att se information i `all_objects` och `all_tables` för alla objekt i databasen. Mer information om hur profileringsarbetsflödet konfigureras finns <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">här</a> och datakvalitetstester <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">här</a>.
+Att köra profileringsarbetsflödet eller datakvalitetstester kräver att användaren har behörigheten `SELECT` på de tabeller/scheman där profileringen/testerna ska köras. Användaren bör också ha rätt att se information i `all_objects` och `all_tables` för alla objekt i databasen. Mer information om hur profileringsarbetsflödet konfigureras finns <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">här</a> och datakvalitetstester <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">här</a>.
 
 ### Användning och härkomst
 För arbetsflödena för användning och härkomst behöver användaren behörigheten `SELECT`. Du hittar mer information om användningsarbetsflödet <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">här</a> och härkomstarbetsflödet <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">här</a>.

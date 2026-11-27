@@ -23,9 +23,13 @@ import {
   getField,
   HelperTextType,
   useFieldDoc,
-  useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Column,
+  Dimension,
+  Edit01,
+  Table as TableIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, isEmpty, snakeCase } from 'lodash';
@@ -40,9 +44,6 @@ import {
 } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   MAX_NAME_LENGTH,
@@ -65,6 +66,8 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
+import { useFormFieldDocs } from '../../../../hooks/useFormFieldDocs';
+import { useSeedFirstFieldDoc } from '../../../../hooks/useSeedFirstFieldDoc';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -79,7 +82,6 @@ import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
-import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
@@ -528,22 +530,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [currentColumnType, setCurrentColumnType] = useState<string>();
   const [isCustomQuery, setIsCustomQuery] = useState(false);
 
-  // Per-field "Form Hint" text is sourced from the same TestCaseForm.md that
-  // backs the classic documentation panel, so the popover and the doc panel
-  // stay in sync and we don't duplicate the copy as translation strings.
-  const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let cancelled = false;
-    loadFormFieldDocs(TEST_CASE_FORM).then((docs) => {
-      if (!cancelled) {
-        setFieldDocs(docs);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const fieldDocs = useFormFieldDocs(TEST_CASE_FORM);
 
   const [existingTestCases, setExistingTestCases] = useState<string[]>([]);
   const [canCreatePipeline, setCanCreatePipeline] = useState(false);
@@ -671,13 +658,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         description: t('label.test-applied-on-entity', {
           entity: t('label.column-lowercase'),
         }),
-        icon: <ColumnIcon />,
+        icon: <Column size={24} />,
       },
       {
         value: TestLevel.COLUMN_DIMENSION,
         label: t('label.dimension-level'),
         description: t('label.column-with-dimension'),
-        icon: <DimensionIcon />,
+        icon: <Dimension />,
         isBeta: true,
       },
     ],
@@ -1472,29 +1459,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     doc: getFieldDoc(fieldDocs.description, t('message.doc-field-description')),
   });
 
-  // Seed the hint panel with the first field actually on screen so it isn't
-  // empty on open and never points at a field the current mode hides (edit
-  // hides the test-level card; params-only edit hides the table/column
-  // selectors). A field's doc registers even when the field is not rendered
-  // (the useFieldDoc hooks are called unconditionally), so query the DOM for
-  // the first rendered `data-field-doc` anchor rather than the registry.
-  // Focusing any field replaces it as usual.
-  const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
-    useFieldDocRegistry();
+  // Seeds from the DOM, so edit mode (no test-level card) and params-only
+  // edit (no table/column selectors) open on a field that is actually shown.
   const formBodyRef = useRef<HTMLDivElement>(null);
-  const hasSeededFieldDocRef = useRef(false);
-  useEffect(() => {
-    if (hasSeededFieldDocRef.current) {
-      return;
-    }
-    const firstFieldName = formBodyRef.current
-      ?.querySelector('[data-field-doc]')
-      ?.getAttribute('data-field-doc');
-    if (firstFieldName) {
-      setActiveFieldDoc(firstFieldName);
-      hasSeededFieldDocRef.current = true;
-    }
-  }, [fieldDocEntries, setActiveFieldDoc]);
+  useSeedFirstFieldDoc(formBodyRef);
 
   const tableProfilerConfig = useThresholdProfilerConfig(
     selectedTestDefinition,

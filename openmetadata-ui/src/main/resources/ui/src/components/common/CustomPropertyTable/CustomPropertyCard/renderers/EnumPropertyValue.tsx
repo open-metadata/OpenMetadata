@@ -13,9 +13,10 @@
 import {
   Autocomplete,
   Box,
+  Select,
   SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { isArray } from 'lodash';
+import { isArray, isNil } from 'lodash';
 import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
@@ -62,7 +63,9 @@ const EnumPropertyEdit = ({
       (config?.values ?? []).map((option) => ({ id: option, label: option })),
     [config?.values]
   );
+  const label = property.displayName || property.name;
   const [selected, setSelected] = useState<string[]>(() => toValueList(value));
+  const [search, setSearch] = useState('');
   const selectedItems = useMemo(
     () =>
       selected.map(
@@ -82,46 +85,69 @@ const EnumPropertyEdit = ({
     onSave(selected);
   };
 
+  const visibleOptions = options.filter((option) =>
+    String(option.label)
+      .toLocaleLowerCase()
+      .includes(search.toLocaleLowerCase())
+  );
+
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={2}>
         <div data-testid="enum-select">
-          {/* Always multiple: core hides the single-select input once a value
-              is picked. Single-select keeps only the latest pick instead. */}
-          <Autocomplete
-            multiple
-            aria-label={property.displayName || property.name}
-            isDisabled={isSaving}
-            items={options}
-            placeholder={
-              selected.length
-                ? t('label.add-more')
-                : t('label.select-field', { field: t('label.value') })
-            }
-            selectedItems={selectedItems}
-            onItemCleared={(key) =>
-              setSelected((prev) => prev.filter((item) => item !== key))
-            }
-            onItemInserted={(key) =>
-              setSelected((prev) =>
-                isMultiSelect ? [...prev, String(key)] : [String(key)]
-              )
-            }>
-            {(item) => (
-              <Autocomplete.Item
-                id={String(item.id)}
-                key={item.id}
-                label={item.label}
-              />
-            )}
-          </Autocomplete>
+          {isMultiSelect ? (
+            <Autocomplete
+              multiple
+              aria-label={label}
+              isDisabled={isSaving}
+              items={options}
+              placeholder={
+                selected.length
+                  ? t('label.add-more')
+                  : t('label.select-field', { field: t('label.value') })
+              }
+              selectedItems={selectedItems}
+              onItemCleared={(key) =>
+                setSelected((prev) => prev.filter((item) => item !== key))
+              }
+              onItemInserted={(key) =>
+                setSelected((prev) => [...prev, String(key)])
+              }>
+              {(item) => (
+                <Autocomplete.Item
+                  id={String(item.id)}
+                  key={item.id}
+                  label={item.label}
+                />
+              )}
+            </Autocomplete>
+          ) : (
+            // Controlled `items` skip react-aria's own filtering, so filter here.
+            <Select.ComboBox
+              allowClear
+              allowsEmptyCollection
+              aria-label={label}
+              isDisabled={isSaving}
+              items={visibleOptions}
+              placeholder={t('label.select-field', { field: t('label.value') })}
+              shortcut={false}
+              showSearchIcon={false}
+              value={selected[0] ?? null}
+              onChange={(key) => setSelected(isNil(key) ? [] : [String(key)])}
+              onInputChange={setSearch}
+              onOpenChange={(isOpen) => isOpen && setSearch('')}>
+              {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+            </Select.ComboBox>
+          )}
         </div>
-        <span className="tw:text-xs tw:text-tertiary">
-          {t('message.count-of-total-selected', {
-            count: selected.length,
-            total: options.length,
-          })}
-        </span>
+        {isMultiSelect && (
+          <span className="tw:text-xs tw:text-tertiary">
+            {t('message.count-of-total-selected', {
+              count: selected.length,
+              total: options.length,
+            })}
+          </span>
+        )}
       </Box>
     </form>
   );

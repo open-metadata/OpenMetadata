@@ -19,11 +19,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import type { MembersView } from './Members.types';
@@ -43,6 +45,8 @@ export const TEAM_FIELDS = [
   TabSpecificField.USER_COUNT,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // The subscription widget reads and saves the team's webhook from it.
+  TabSpecificField.PROFILE,
   // Resolved recursively on read (excludes the team itself); needed to scope the
   // users search to the whole subtree, mirroring the legacy UserTab search.
   TabSpecificField.DESCENDANT_TEAMS,
@@ -216,22 +220,22 @@ export const getUserColumns = (
   onRemoveUser: (record: User) => Promise<boolean>
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
+    title: t('label.name'),
     dataIndex: 'name',
-    key: 'username',
+    key: 'name',
     ellipsis: true,
     render: (_: unknown, record: User) => (
       <UserNameCell goTo={goTo} record={record} />
     ),
   },
   {
-    title: t('label.name'),
-    dataIndex: 'displayName',
-    key: 'name',
+    title: t('label.email'),
+    dataIndex: 'email',
+    key: 'email',
     ellipsis: true,
     render: (_: unknown, record: User) => (
       <Typography className="tw:truncate tw:block tw:max-w-full">
-        {getEntityName(record)}
+        {getUserIdentifier(record)}
       </Typography>
     ),
   },
@@ -268,10 +272,9 @@ export const getUserColumns = (
               })}
               onConfirm={() => onRemoveUser(record)}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`remove-user-${record.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.remove')}
                 tooltipPlacement="left"
               />
@@ -313,7 +316,8 @@ export const getEntityRefColumns = (
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
-    render: (_: unknown, record: EntityReference) => record.description || '--',
+    render: (_: unknown, record: EntityReference) =>
+      record.description || NO_DATA_PLACEHOLDER,
   },
   ...(canEditAll
     ? [
@@ -335,11 +339,10 @@ export const getEntityRefColumns = (
               })}
               onConfirm={() => onRemove(record)}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`remove-${getEntityName(record)}`}
                 icon={Trash01}
                 isDisabled={isSavingInline}
-                size="xs"
+                size="lg"
                 tooltip={t('label.remove')}
                 tooltipPlacement="left"
               />

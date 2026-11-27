@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { navigatesThisTab } from '../../../../utils/LinkClickUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { getDerivedTerms } from './MemoryDerivedTerm.utils';
 
@@ -49,7 +50,11 @@ const MemoryDerivedTerm: FC<MemoryDerivedTermProps> = ({
             className="tw:text-link tw:hover:underline"
             key={term.id}
             to={getGlossaryPath(term.fullyQualifiedName)}
-            onClick={onNavigate}>
+            onClick={(event) => {
+              if (navigatesThisTab(event)) {
+                onNavigate();
+              }
+            }}>
             {getEntityName(term)}
           </Link>
         ) : (

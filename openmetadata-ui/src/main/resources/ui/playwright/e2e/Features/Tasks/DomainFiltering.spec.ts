@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Page, Response } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
@@ -28,8 +28,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // The navbar pick is saved on the user (defaultDomain) and applied on load, so tests switch
 // domains as a throwaway admin to keep the pick out of parallel tests. Returns the task count
-// the reloaded page requests for the new selection; the waiter is armed only after the save and
-// matches the expected `domain` param, so a count request left over from before can't satisfy it.
+// the reloaded page requests; the waiter is armed only after the save.
 const switchDomain = async (
   apiContext: APIRequestContext,
   page: Page,
@@ -38,19 +37,20 @@ const switchDomain = async (
   await (domain
     ? setPersistedDomain(apiContext, domain.id ?? '')
     : clearPersistedDomain(apiContext));
-  const expectedDomain = domain?.fullyQualifiedName ?? null;
-  const taskCount = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-
-    return (
+  const taskCount = page.waitForResponse(
+    (response) =>
       response.request().method() === 'GET' &&
-      url.pathname.endsWith('/api/v1/tasks/count') &&
-      url.searchParams.get('domain') === expectedDomain
-    );
-  });
+      new URL(response.url()).pathname.endsWith('/api/v1/tasks/count')
+  );
   await page.reload();
 
   return taskCount;
+};
+
+// Tasks are a work queue the navbar pick never narrows, so the count carries no domain.
+const expectUnscopedTaskCount = (response: Response) => {
+  expect(response.status()).toBe(200);
+  expect(new URL(response.url()).searchParams.get('domain')).toBeNull();
 };
 
 test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
@@ -160,7 +160,7 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
         domainA.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -190,7 +190,7 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
         domainB.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -214,10 +214,9 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
       await switchDomain(apiContext, page, domainA.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      // Resolves only on a count request without a `domain` param.
       const response = await switchDomain(apiContext, page);
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -372,7 +371,7 @@ test.describe('Domain Filtering - Entity Page Activity Feed', () => {
         domain.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }

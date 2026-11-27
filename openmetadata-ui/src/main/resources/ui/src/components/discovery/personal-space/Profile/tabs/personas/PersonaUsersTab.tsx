@@ -33,10 +33,12 @@ import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 
-type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
+type UserColumnId = 'name' | 'email' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };
 
 interface PersonaUsersTabProps {
@@ -84,6 +86,7 @@ const PersonaUsersTab = ({
   const columns = useMemo<UserColumn[]>(
     () => [
       { id: 'name', label: t('label.name'), className: 'tw:w-72' },
+      { id: 'email', label: t('label.email') },
       { id: 'teams', label: t('label.team-plural') },
       { id: 'roles', label: t('label.role-plural') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
@@ -113,9 +116,9 @@ const PersonaUsersTab = ({
           : undefined;
 
         if (active) {
-          setUserDetails(
-            response?.hits.hits.map((hit) => hit._source as User) ?? []
-          );
+          const fetched =
+            response?.hits.hits.map((hit) => hit._source as User) ?? [];
+          setUserDetails(fetched);
         }
       } catch (error) {
         if (active) {
@@ -140,13 +143,20 @@ const PersonaUsersTab = ({
     switch (colId) {
       case 'name':
         return (
-          <Typography
-            className="tw:truncate tw:block"
-            data-testid="persona-user-name"
-            size="text-sm"
-            tooltip={getEntityName(user)}
-            weight="medium">
-            {getEntityName(user)}
+          <span className="tw:block tw:min-w-0" data-testid="persona-user-name">
+            <UserPopOverCard
+              showUserName
+              className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-medium"
+              displayName={getEntityName(user)}
+              profileWidth={16}
+              userName={user.name}
+            />
+          </span>
+        );
+      case 'email':
+        return (
+          <Typography className="tw:truncate tw:block" size="text-sm">
+            {getUserIdentifier(user)}
           </Typography>
         );
       case 'teams':
@@ -165,10 +175,9 @@ const PersonaUsersTab = ({
             title={t('label.remove-entity', { entity: getEntityName(user) })}
             onConfirm={() => handleRemove(user.id)}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`remove-user-${getEntityName(user)}`}
               icon={Trash01}
-              size="xs"
+              size="lg"
               tooltip={t('label.remove-entity', { entity: t('label.user') })}
               tooltipPlacement="left"
             />
@@ -176,10 +185,9 @@ const PersonaUsersTab = ({
         ) : (
           <ButtonUtility
             isDisabled
-            color="tertiary"
             data-testid={`remove-user-${getEntityName(user)}`}
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={t(NO_PERMISSION_FOR_ACTION)}
             tooltipPlacement="left"
           />

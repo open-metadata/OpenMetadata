@@ -49,6 +49,9 @@ from looker_sdk.sdk.api40.models import (
 )
 from pydantic import ValidationError
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -204,17 +207,18 @@ DATAMODEL_LINEAGE_SENTINEL = _EndOfExplores()
 
 
 class ExploreRef(NamedTuple):
-    """The only two fields view lineage needs off a `LookmlModelExplore`.
+    """The only fields view lineage needs off a `LookmlModelExplore`.
 
     Deferred lineage keeps one entry per (view, explore) pair until the flush. Holding the
     SDK object there would pin its whole fieldset — measured at ~250 KB per explore — for
     the length of the bulk stage, so a large instance would carry hundreds of MB it never
-    reads. Two strings cost ~200 B.
+    reads. A few strings cost ~200 B.
     """
 
-    # Optional to match the SDK, where both fields are `str | None`.
+    # Optional to match the SDK, where these fields are `str | None`.
     model_name: str | None
     name: str | None
+    project_name: str | None = None
 
 
 def clean_dashboard_name(name: str) -> str:
@@ -1122,7 +1126,7 @@ class LookerSource(DashboardServiceSource):
                 self._pending_views.append((explore.project_name or "", view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_view_lineage.append(
-                    (view, ExploreRef(explore.model_name, explore.name), datamodel_view_name)
+                    (view, ExploreRef(explore.model_name, explore.name, explore.project_name), datamodel_view_name)
                 )
             else:
                 logger.warning(
@@ -1148,6 +1152,60 @@ class LookerSource(DashboardServiceSource):
         except Exception as e:
             logger.warning(f"Something went wrong while replacing derived view references: {e}")
         return sql_query
+
+    def _resolve_view_reference(
+        self,
+        view_name: str,
+        sql_table_name: str,
+        project_name: str | None,
+        model_name: str | None,
+        explore_name: str | None = None,
+    ) -> tuple[str | None, str | None]:
+        """
+        Follow `sql_table_name: ${other_view.SQL_TABLE_NAME} ;;` to what the other view reads.
+
+        The referenced view is read from the LookML project rather than from what this run has
+        already processed, so the result doesn't depend on view order, and its `sql_table_name`
+        is rendered in this view's model and explore, since its Liquid may branch on them.
+        Returns `(table_name, derived_sql)`; both are None when the reference can't be resolved.
+        """
+        seen = {view_name}
+        while match := re.fullmatch(rf"\s*{DERIVED_REFERENCES}\s*", sql_table_name):
+            referenced_name = match.group(1)
+            project_parser = (self.parser or {}).get(project_name) if project_name else None
+            referenced = project_parser.find_view(ViewName(referenced_name)) if project_parser else None
+            if referenced is None or referenced_name in seen:
+                logger.warning(
+                    "View [%s] reads the table of view [%s], which can't be resolved. Skipping its lineage.",
+                    view_name,
+                    referenced_name,
+                )
+                return None, None
+            seen.add(referenced_name)
+            if referenced.sql_table_name:
+                sql_table_name = self._render_table_name(
+                    self._resolve_lookml_constants(referenced.sql_table_name),
+                    model_name,
+                    explore_name=explore_name,
+                    view_name=referenced_name,
+                )
+                continue
+            derived_sql = referenced.derived_table.sql if referenced.derived_table else None
+            if not derived_sql:
+                logger.warning("View [%s] has neither sql_table_name nor derived SQL.", referenced_name)
+                return None, None
+            derived_sql = self.replace_derived_references(
+                self._resolve_lookml_constants(derived_sql, strip_unresolved=False)
+            )
+            if find_derived_references(derived_sql):
+                logger.warning(
+                    "Not all references are replaced for view [%s] read by view [%s]. Skipping its lineage.",
+                    referenced_name,
+                    view_name,
+                )
+                return None, None
+            return None, derived_sql
+        return sql_table_name, None
 
     def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -1347,6 +1405,13 @@ class LookerSource(DashboardServiceSource):
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
                 sql_table_name = self._render_table_name(sql_table_name, model_name, view_name=view.name)
+                sql_table_name, derived_sql = self._resolve_view_reference(
+                    view.name, sql_table_name, project_name, model_name
+                )
+                if derived_sql is not None:
+                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                if sql_table_name is None:
+                    return
 
                 # Column lineage only depends on the view definition, so resolve it once
                 column_lineage = self._extract_column_lineage(view)
@@ -1357,14 +1422,12 @@ class LookerSource(DashboardServiceSource):
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
 
-                    lineage_request = self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=source_table_name,
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
-                    if lineage_request:
-                        yield lineage_request
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1477,6 +1540,17 @@ class LookerSource(DashboardServiceSource):
                     explore_name=explore.name,
                     view_name=view.name,
                 )
+                sql_table_name, derived_sql = self._resolve_view_reference(
+                    view.name,
+                    sql_table_name,
+                    explore.project_name,
+                    explore.model_name,
+                    explore.name,
+                )
+                if derived_sql is not None:
+                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                if sql_table_name is None:
+                    return
 
                 # Column lineage only depends on the view definition, so resolve it once
                 column_lineage = self._extract_column_lineage(view)
@@ -1488,14 +1562,12 @@ class LookerSource(DashboardServiceSource):
                     self._parsed_views[view.name] = source_table_name
 
                     # View to the source is only there if we are informing the dbServiceNames
-                    lineage_request = self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=source_table_name,
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
-                    if lineage_request:
-                        yield lineage_request
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1560,7 +1632,7 @@ class LookerSource(DashboardServiceSource):
                                     ),
                                 )
                             )
-                    yield self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=str(from_table_name),
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
@@ -1832,7 +1904,7 @@ class LookerSource(DashboardServiceSource):
 
         We build:
         - Explore (DataModel) -> Dashboard lineage
-        - Explore (DataModel) -> Chart lineage
+        - Explore (DataModel) -> Chart lineage, unless the pipeline disables direct chart lineage
 
         We look at:
         - chart.query
@@ -1864,6 +1936,9 @@ class LookerSource(DashboardServiceSource):
                             from_entity=cached_explore,
                             to_entity=dashboard_entity,
                         )
+
+            if not self.include_direct_chart_lineage:
+                return
 
             # Yield Explore -> Chart lineage
             for chart_id, explore_names in chart_explore_map.items():
@@ -1944,14 +2019,15 @@ class LookerSource(DashboardServiceSource):
         return processed_column_lineage
 
     def _resolve_source_table(self, source: str, db_service_prefix: str) -> Table | None:
-        """Resolve a source table name against one configured db service prefix.
+        matches = self._resolve_source_tables(source, db_service_prefix)
+        if len(matches) == 1:
+            return matches[0]
+        if matches:
+            logger.warning("Ambiguous reference %s; skipping singular Looker attachment", source)
+        return None
 
-        Split out of `build_lineage_request` so metric lineage can reuse the resolution
-        without also tripping that method's `_added_lineage` dedup, which is scoped to
-        view/explore edges.
-
-        We try searching with and without the `database`.
-        """
+    def _resolve_source_tables(self, source: str, db_service_prefix: str) -> list[Table]:
+        """Resolve complete source references within one configured service prefix."""
         source_elements = fqn.split_table_name(table_name=source)
 
         (
@@ -1960,6 +2036,10 @@ class LookerSource(DashboardServiceSource):
             prefix_schema_name,
             prefix_table_name,
         ) = self.parse_db_service_prefix(db_service_prefix)
+
+        table_name = prefix_table_name or source_elements["table"]
+        if not table_name:
+            return []
 
         for database_name in [source_elements["database"], None]:
             if (
@@ -1977,24 +2057,20 @@ class LookerSource(DashboardServiceSource):
             ):
                 continue
 
-            from_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
+            resolution = get_table_binding_resolution(self.metadata, db_service_name)
+            matches = resolution.resolve(
+                TableReference(
+                    prefix_database_name or database_name,
+                    prefix_schema_name or source_elements["database_schema"],
+                    table_name,
+                ),
                 service_name=db_service_name,
-                database_name=prefix_database_name or database_name,
-                schema_name=prefix_schema_name or source_elements["database_schema"],
-                table_name=prefix_table_name or source_elements["table"],
+                lookup=TableLookup.FQN,
             )
+            if matches:
+                return list(matches)
 
-            from_entity: Table = self.metadata.get_by_name(
-                entity=Table,
-                fqn=from_fqn,
-            )
-
-            if from_entity:
-                return from_entity
-
-        return None
+        return []
 
     def build_lineage_request(
         self,
@@ -2018,6 +2094,22 @@ class LookerSource(DashboardServiceSource):
         if from_entity is None:
             return None
 
+        return self._lineage_request_for_source(from_entity, to_entity, column_lineage)
+
+    def build_lineage_requests(
+        self,
+        source: str,
+        db_service_prefix: str,
+        to_entity: Dashboard | DashboardDataModel,
+        column_lineage: list[tuple[str, str]] | None = None,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        tables = self._resolve_source_tables(source, db_service_prefix)
+        for table in tables:
+            request = self._lineage_request_for_source(table, to_entity, None if "*" in source else column_lineage)
+            if request:
+                yield request
+
+    def _lineage_request_for_source(self, from_entity, to_entity, column_lineage):
         if from_entity.id.root not in self._added_lineage:
             self._added_lineage[from_entity.id.root] = []
         if to_entity.id.root not in self._added_lineage[from_entity.id.root]:

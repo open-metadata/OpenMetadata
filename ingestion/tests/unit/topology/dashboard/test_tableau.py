@@ -190,8 +190,7 @@ class TableauUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, get_connection, test_connection) -> None:
         get_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
@@ -279,7 +278,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -300,7 +299,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -1066,6 +1065,79 @@ class TableauUnitTest(TestCase):
         columns = self.tableau.get_column_info(data_source)
         assert len(columns) == 1
         assert columns[0].description is None
+
+    def test_embedded_column_inherits_published_formula(self):
+        """
+        An embedded datasource reports a field it reads from a published datasource as a bare
+        field with no formula; its column takes the formula from the published definition, and
+        a formula the embedded datasource defines itself still wins.
+        """
+        published = DataSource(
+            id="pds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0"),
+                DatasourceField(id="pub-local", name="Local Calc", formula="[a] + 1"),
+            ],
+        )
+        embedded = DataSource(
+            id="eds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="emb-calc", name="Has Activity"),
+                DatasourceField(id="emb-local", name="Local Calc", formula="[a] + 2"),
+                DatasourceField(id="emb-plain", name="Region"),
+            ],
+            upstreamDatasources=[published],
+        )
+
+        descriptions = {
+            column.displayName: column.description.root if column.description else None
+            for column in self.tableau.get_column_info(embedded)
+        }
+
+        assert descriptions == {
+            "Has Activity": "**Formula:** `LOOKUP(ZN([Net Flow $]),0)<>0`",
+            "Local Calc": "**Formula:** `[a] + 2`",
+            "Region": None,
+        }
+
+    def test_datamodel_col_lineage_carries_published_formula(self):
+        """The published -> embedded column edge of a calculated field carries its formula."""
+
+        def model(name: str, columns: list[str]) -> DashboardDataModel:
+            return DashboardDataModel(
+                id=uuid.uuid4(),
+                name=name,
+                service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+                dataModelType="TableauDataModel",
+                columns=[
+                    Column(
+                        name=column,
+                        displayName=column,
+                        dataType=DataType.RECORD,
+                        fullyQualifiedName=f"svc.model.{name}.{column}",
+                    )
+                    for column in columns
+                ],
+            )
+
+        published = DataSource(
+            id="pds-1",
+            fields=[DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0")],
+        )
+
+        lineage = self.tableau._get_datamodel_col_lineage(
+            data_model_entity=model("emb", ["Has Activity", "Region"]),
+            upstream_data_model_entity=model("pub", ["Has Activity", "Region"]),
+            upstream_formulas=self.tableau._get_field_formulas(published),
+        )
+
+        functions = {line.toColumn.root: line.function.root if line.function else None for line in lineage}
+        assert functions == {
+            "svc.model.emb.Has Activity": "LOOKUP(ZN([Net Flow $]),0)<>0",
+            "svc.model.emb.Region": None,
+        }
 
     def test_column_data_length_set_for_guid_mirrored_column(self):
         """

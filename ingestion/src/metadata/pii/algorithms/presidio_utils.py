@@ -19,8 +19,8 @@ import re
 import types
 from collections.abc import Callable, Iterable
 from copy import copy
-from datetime import date
-from functools import cache, wraps
+from datetime import date, datetime
+from functools import lru_cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
 from urllib.parse import SplitResult, urlsplit
@@ -45,10 +45,13 @@ from presidio_analyzer.predefined_recognizers import (
     DateRecognizer,
     EsNieRecognizer,
     EsNifRecognizer,
+    FiPersonalIdentityCodeRecognizer,
     IbanRecognizer,
     InAadhaarRecognizer,
+    ItFiscalCodeRecognizer,
     ItVatCodeRecognizer,
     NhsRecognizer,
+    PlPeselRecognizer,
     SgFinRecognizer,
     SgUenRecognizer,
     UsBankRecognizer,
@@ -71,6 +74,7 @@ from metadata.pii.constants import (
     SPACY_EN_MODEL,
     SUPPORTED_LANG,
 )
+from metadata.pii.model_loading import ClassificationModelLoadError
 from metadata.pii.model_registry import example_language_for_model, get_model_for_language
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
@@ -128,7 +132,7 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
     return False
 
 
-@cache
+@lru_cache(maxsize=32)
 def load_nlp_engine(
     model_name: str | None = None,
     supported_language: str | None = None,
@@ -146,7 +150,19 @@ def load_nlp_engine(
         "lang_code": supported_language,
         "model_name": model_name,
     }
-    return SpacyNlpEngine(models=[model])
+    nlp_engine = SpacyNlpEngine(models=[model])
+    try:
+        nlp_engine.load()
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(
+            model_name,
+            classification_language.value if classification_language else None,
+            supported_language,
+            "engine_load",
+        ) from exc
+    return nlp_engine
 
 
 def build_analyzer_engine(
@@ -192,25 +208,50 @@ def _load_spacy_model(
     If the model is not found locally, it will be downloaded.
     """
 
+    requested_language = classification_language.value if classification_language else None
+    language = requested_language or example_language_for_model(model_name)
     try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
     except OSError:
-        language = classification_language.value if classification_language else example_language_for_model(model_name)
-        guidance = f"metadata install-classification-models --languages {language}" if language else None
-        if guidance:
-            logger.warning(
-                "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
-                model_name,
-                guidance,
-            )
-        else:
-            logger.warning(
-                "Downloading %s language model for spaCy. Install this model manually before an offline run; "
-                "run `metadata install-classification-models --help` for supported mapped models.",
-                model_name,
-            )
-        download(model_name)
+        _download_spacy_model(model_name, requested_language, language)
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
+    else:
+        return
+
+    try:
         _ = spacy.load(model_name)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+
+
+def _download_spacy_model(model_name: str, requested_language: str | None, language: str | None) -> None:
+    guidance = f"metadata install-classification-models --languages {language}" if language else None
+    if guidance:
+        logger.warning(
+            "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
+            model_name,
+            guidance,
+        )
+    else:
+        logger.warning(
+            "Downloading %s language model for spaCy. Install this model manually before an offline run; "
+            "run `metadata install-classification-models --help` for supported mapped models.",
+            model_name,
+        )
+    try:
+        download(model_name)
+    except MemoryError:
+        raise
+    except SystemExit as exc:  # NOSONAR -- spaCy's third-party CLI downloader exits on failure; normalize only here.
+        if exc.code:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
@@ -808,7 +849,17 @@ def au_abn_factory(
 
 class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
     def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
-        if not super().validate_result(pattern_text):
+        # ACN check: weights [8,7,6,5,4,3,2,1] on first 8 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
+        # weighted sum is divisible by 10 (check digit = 0) are always rejected.
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
+        if len(text) != 9:
+            return False
+        digits = [int(c) for c in text]
+        weights = [8, 7, 6, 5, 4, 3, 2, 1]
+        total = sum(d * w for d, w in zip(digits[:8], weights, strict=False))
+        if (10 - total % 10) % 10 != digits[8]:
             return False
         # Newly accepted hyphenated codes need column context, not just a checksum.
         return None if "-" in pattern_text else True
@@ -822,11 +873,13 @@ def au_acn_factory(
     supported_language: str = SUPPORTED_LANG,
     context: list[str] | None = None,
 ) -> SeparatorTolerantAuAcnRecognizer:
-    return SeparatorTolerantAuAcnRecognizer(
+    r = SeparatorTolerantAuAcnRecognizer(
         patterns=[*AuAcnRecognizer.PATTERNS, *patterns.au_acn_hyphenated],
         supported_language=supported_language,
         context=context,
     )
+    r.name = AuAcnRecognizer.__name__
+    return r
 
 
 class PrefixedItVatRecognizer(ItVatCodeRecognizer):
@@ -949,6 +1002,138 @@ def eager_us_bank_recognizer(
         supported_language=supported_language,
         context=context,
     )
+
+
+class ValidatedPlPeselRecognizer(PlPeselRecognizer):
+    # Add digit boundaries so an 11-digit PESEL embedded inside a longer digit sequence
+    # (e.g. a 16-digit card number) cannot match.
+    PATTERNS: ClassVar[list[Pattern]] = [
+        Pattern(name=p.name, regex=rf"(?<!\d){p.regex}(?!\d)", score=p.score) for p in PlPeselRecognizer.PATTERNS
+    ]
+
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # PESEL check: weights [1,3,7,9,1,3,7,9,1,3] on first 10 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream omits the complement step, always returning False for valid PESELs
+        # whose weighted sum is non-zero.
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
+        if len(text) != 11:
+            return False
+        digits = [int(c) for c in text]
+        weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
+        total = sum(d * w for d, w in zip(digits[:10], weights, strict=False))
+        return (10 - total % 10) % 10 == digits[10]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    PlPeselRecognizer
+)
+def pl_pesel_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedPlPeselRecognizer:
+    r = ValidatedPlPeselRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = PlPeselRecognizer.__name__
+    return r
+
+
+class ValidatedItFiscalCodeRecognizer(ItFiscalCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # Presidio's upstream returns None (no decision) when the check character doesn't
+        # match, keeping the regex score and causing false positives.  Map None → False so
+        # invalid codes are filtered out.
+        result = super().validate_result(pattern_text)
+        return False if result is None else result
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    ItFiscalCodeRecognizer
+)
+def it_fiscal_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedItFiscalCodeRecognizer:
+    r = ValidatedItFiscalCodeRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = ItFiscalCodeRecognizer.__name__
+    return r
+
+
+# Finnish HETU century separator → base year.
+# Traditional: + → 1800, - → 1900.
+# Finland's 2023 HETU reform added new separators: A-F mean 2000s; U/V/W/X/Y mean 1900s.
+_FI_HETU_CENTURY: dict[str, int] = {
+    "+": 1800,
+    "-": 1900,
+    "U": 1900,
+    "V": 1900,
+    "W": 1900,
+    "X": 1900,
+    "Y": 1900,
+    "A": 2000,
+    "B": 2000,
+    "C": 2000,
+    "D": 2000,
+    "E": 2000,
+    "F": 2000,
+}
+# 31-entry check-character table (indices 0-30).
+_FI_HETU_CHECK_CHARS = "0123456789ABCDEFHJKLMNPRSTUVWXY"
+
+
+class ValidatedFiPersonalIdentityCodeRecognizer(FiPersonalIdentityCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # HETU format: DDMMYYCSSSV (11 chars).
+        # C = century separator; SSS = 3-digit individual number; V = check char.
+        # Presidio's upstream uses strptime("%d%m%y") which applies POSIX 2-digit-year
+        # rules and ignores the century separator, accepting e.g. 290200- (29 Feb 1900,
+        # which never existed) as valid because 2000 *is* a leap year.
+        # Uppercasing can turn non-ASCII checksum characters into valid ASCII letters.
+        if not pattern_text.isascii():
+            return False
+        text = pattern_text.upper()
+        if len(text) != 11:
+            return None
+        separator = text[6]
+        century = _FI_HETU_CENTURY.get(separator)
+        if century is None:
+            return False
+        date_part = text[:6]
+        try:
+            yy = int(date_part[4:6])
+            full_year = century + yy
+            datetime.strptime(f"{date_part[:4]}{full_year:04d}", "%d%m%Y")
+        except ValueError:
+            return False
+        number_part = date_part + text[7:10]
+        try:
+            remainder = int(number_part) % 31
+        except ValueError:
+            return False
+        return text[10] == _FI_HETU_CHECK_CHARS[remainder]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    FiPersonalIdentityCodeRecognizer
+)
+def fi_personal_identity_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedFiPersonalIdentityCodeRecognizer:
+    r = ValidatedFiPersonalIdentityCodeRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+    r.name = FiPersonalIdentityCodeRecognizer.__name__
+    return r
 
 
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:

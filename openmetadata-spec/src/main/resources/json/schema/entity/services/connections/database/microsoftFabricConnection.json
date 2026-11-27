@@ -88,7 +88,7 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
+        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$", "^_rsc$"]
       }
     },
     "tableFilterPattern": {
@@ -117,6 +117,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
     "supportsDatabase": {
       "title": "Supports Database",

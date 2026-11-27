@@ -450,6 +450,10 @@ configSource:
   confirmProviderChange: ${SECURITY_CONFIG_SOURCE_CONFIRM_PROVIDER_CHANGE:-false}
   watchIntervalSeconds: ${CONFIG_SOURCE_WATCH_INTERVAL_SECONDS:-10}
 
+mcpConfiguration:
+  offeredTools: ${MCP_OFFERED_TOOLS:-[]}
+  # extensions: {}
+
 appConfiguration:
   # Tenant default app mode ("ai" or "classic") for users who have not chosen one.
   # Admins change it at runtime; user and persona app mode still win over it.
@@ -757,7 +761,6 @@ pipelineServiceClientConfiguration:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
   logStorageConfiguration:
     type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
-    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
     # if type is s3, provide the following configuration
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs
@@ -810,8 +813,12 @@ pipelineServiceClientConfiguration:
     runAsGroup: ${K8S_RUN_AS_GROUP:-1000}
     fsGroup: ${K8S_FS_GROUP:-1000}
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
+    # Set K8S_SECCOMP to '{"type":"RuntimeDefault"}' for restricted PodSecurity,
+    # or '{"type":"Localhost","localhostProfile":"profiles/ingestion.json"}' for a local profile.
+    seccomp: ${K8S_SECCOMP:-null}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    podLabels: ${K8S_POD_LABELS:-""}
     tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
@@ -884,7 +891,7 @@ alerting:
   # When true, an event waits for the mail server's answer to each of its emails, up to the time
   # left in the tick's budget, and a rejection or a wait that runs out is recorded as a failure.
   # When false an email counts as delivered once it is handed to the mail library.
-  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-false}
+  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-true}
   # How many of one event's targets are sent to at the same time, 1 to 8. With 1 they are sent one
   # after another, so an event takes the sum of its targets' waits. The next event never starts
   # before every target of the previous one is done.
@@ -965,6 +972,7 @@ rdf:
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
   maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  graphReplaceChunkBytes: ${RDF_GRAPH_REPLACE_CHUNK_BYTES:-16777216}
   bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
   streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
   gzipRequests: ${RDF_GZIP_REQUESTS:-false}

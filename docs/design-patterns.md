@@ -85,9 +85,7 @@ vendor-agnostic.
 **Decorator** — wrap an object to add behavior while keeping the same interface. *Narrow here — one
 genuine case.*
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/socket/HeaderRequestWrapper.java`
-  (a servlet-request wrapper). Note: the `formatter/decorators/` package is *named* "decorator" but is
-  structurally **Strategy** (one impl per channel, nothing wraps another) — do not treat it as a
-  Decorator.
+  (a servlet-request wrapper).
 
 ### Behavioral
 
@@ -223,8 +221,8 @@ plugin/override point — 40 such modules.
 
 ## Cautions
 
-- **Naming ≠ structure.** `formatter/decorators/` is Strategy, not Decorator. Verify a candidate's
-  structure, not its class name, before matching it to a pattern.
+- **Naming ≠ structure.** A package or class name may echo a pattern name without matching its
+  structure. Verify a candidate's structure, not its class name, before matching it to a pattern.
 - **Don't force GoF onto React.** Hooks, context, and composition cover most of what Strategy/Observer
   would in an OO codebase; a `*ClassBase` singleton or a factory function is usually the only GoF shape
   worth naming on the UI.

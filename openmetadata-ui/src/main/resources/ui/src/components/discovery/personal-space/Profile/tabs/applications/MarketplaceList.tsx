@@ -15,6 +15,7 @@ import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { GridView } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { useCursorPagedList } from '../../../../../../hooks/useCursorPagedList';
 import { getMarketPlaceApplicationList } from '../../../../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -37,7 +38,7 @@ const MarketplaceList: FC<ApplicationsViewProps> = ({
     isLoading,
     showPagination,
     ...pagination
-  } = useCursorPagedList(getMarketPlaceApplicationList);
+  } = useCursorPagedList(getMarketPlaceApplicationList, GRID_PAGE_SIZE_OPTIONS);
 
   useEffect(() => {
     onHeaderChange({

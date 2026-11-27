@@ -141,7 +141,7 @@ export const HoverCard = ({
           <AriaOverlayArrow>
             <svg
               // Shifted 1px into the card so it covers the card's outline instead of sitting on it.
-              className="tw:block tw:fill-bg-overlay-surface tw:drop-shadow-sm tw:in-placement-left:-translate-x-px tw:in-placement-left:-rotate-90 tw:in-placement-right:translate-x-px tw:in-placement-right:rotate-90 tw:in-placement-top:-translate-y-px tw:in-placement-top:rotate-0 tw:in-placement-bottom:translate-y-px tw:in-placement-bottom:rotate-180"
+              className="tw:block tw:fill-bg-floating tw:drop-shadow-sm tw:in-placement-left:-translate-x-px tw:in-placement-left:-rotate-90 tw:in-placement-right:translate-x-px tw:in-placement-right:rotate-90 tw:in-placement-top:-translate-y-px tw:in-placement-top:rotate-0 tw:in-placement-bottom:translate-y-px tw:in-placement-bottom:rotate-180"
               height={20}
               viewBox="0 0 100 100"
               width={20}>
@@ -152,7 +152,7 @@ export const HoverCard = ({
         <div
           {...mergeProps(cardHoverProps, cardFocusWithinProps)}
           className={cx(
-            'tw:rounded-xl tw:bg-overlay-surface tw:p-4 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
+            'tw:rounded-xl tw:bg-floating tw:p-4 tw:shadow-raised tw:dark:text-primary tw:outline-1 tw:outline-secondary_alt',
             className
           )}>
           {content}

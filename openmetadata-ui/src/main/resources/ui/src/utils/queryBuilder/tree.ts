@@ -17,18 +17,22 @@ import type {
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   EntityFields,
   EntityReferenceFields,
 } from '../../enums/AdvancedSearch.enum';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
+import { elasticSearchFormat } from '../QueryBuilderElasticsearchFormatUtils';
 import {
+  getExploreJsonTreeFromQueryFilter,
   getJsonTreeFromQueryFilter,
   migrateJsonLogic,
+  withoutSingleClauseMust,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
+import { collapseColumnTagsVar } from './jsonLogicColumnTags';
 import { fromEngineJsonLogic } from './jsonLogicNegation';
 import { routeTagsGroupToTier } from './jsonLogicTierVar';
 import type { GroupMode } from './types';
@@ -48,6 +52,23 @@ export const PERSISTENT_EMPTY_TREE_SETTINGS = {
   removeEmptyGroupsOnLoad: false,
   removeEmptyRulesOnLoad: false,
 };
+
+/**
+ * Drop-in for the deprecated `QbUtils.checkTree`: same fix-up options (taken
+ * from the config's `*OnLoad` settings, which `sanitizeTree` would otherwise
+ * default to `true`), without `checkTree`'s console.warn of every validation
+ * error — a seeded rule with no value yet is expected, not a fault.
+ */
+export const sanitizeQueryBuilderTree = (
+  tree: ImmutableTree,
+  config: Config
+): ImmutableTree =>
+  QbUtils.sanitizeTree(tree, config, {
+    removeEmptyGroups: config.settings.removeEmptyGroupsOnLoad,
+    removeIncompleteRules: config.settings.removeIncompleteRulesOnLoad,
+    removeEmptyRules: config.settings.removeEmptyRulesOnLoad,
+    forceFix: false,
+  }).fixedTree;
 
 // `group -> group -> rule`.
 export const getEmptyJsonTree = (
@@ -201,7 +222,7 @@ export const loadQueryBuilderTree = ({
   subField,
 }: LoadTreeOptions): ImmutableTree => {
   const emptyTree = () =>
-    QbUtils.checkTree(
+    sanitizeQueryBuilderTree(
       QbUtils.loadTree(
         getEmptyQueryBuilderTree({
           outputType,
@@ -214,7 +235,7 @@ export const loadQueryBuilderTree = ({
     );
 
   if (tree) {
-    return QbUtils.checkTree(QbUtils.loadTree(tree), config);
+    return sanitizeQueryBuilderTree(QbUtils.loadTree(tree), config);
   }
 
   if (isEmpty(value)) {
@@ -246,7 +267,7 @@ export const loadQueryBuilderTree = ({
     // field is renamed or an entity type narrows its allow-list.
     const loaded = QbUtils.loadFromJsonLogic(
       routeTagsGroupToTier(
-        fromEngineJsonLogic(migrateJsonLogic(parsed))
+        fromEngineJsonLogic(collapseColumnTagsVar(migrateJsonLogic(parsed)))
       ) as JsonLogicTree,
       config
     );
@@ -257,4 +278,30 @@ export const loadQueryBuilderTree = ({
   } catch {
     return emptyTree();
   }
+};
+
+/**
+ * The Advanced Search tree for a filter read from Explore's URL, and whether it shows all of that filter. Explore
+ * searches with the URL's filter as written, never with what the tree writes back: that may differ in shape (a second,
+ * redundant search), or drop clauses the reader does not recognise (a hand-edited link, a property deleted since) and
+ * return more than the link states.
+ */
+export const loadExploreQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  config: Config
+): { tree: ImmutableTree; isComplete: boolean } => {
+  const jsonTree = getExploreJsonTreeFromQueryFilter(
+    queryFilter,
+    config.fields
+  );
+  const tree = sanitizeQueryBuilderTree(
+    QbUtils.loadTree(isEmpty(jsonTree) ? getEmptyJsonTree() : jsonTree),
+    config
+  );
+  const isComplete = isEqual(
+    withoutSingleClauseMust(elasticSearchFormat(tree, config)),
+    withoutSingleClauseMust(queryFilter.query)
+  );
+
+  return { tree, isComplete };
 };

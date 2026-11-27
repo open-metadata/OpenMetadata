@@ -40,7 +40,6 @@ describe('WidgetFooter', () => {
     renderWidgetFooter();
 
     expect(screen.getByText('View More')).toBeInTheDocument();
-    expect(screen.getByTestId('arrow-right-icon')).toBeInTheDocument();
   });
 
   it('uses default more button text when not provided', () => {

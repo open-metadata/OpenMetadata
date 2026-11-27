@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,6 +39,8 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -44,6 +48,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -52,10 +57,12 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.policies.PolicyResource;
 
 /**
@@ -70,6 +77,7 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
   private static final String ALL_RESOURCES = "All";
+  private static final String DEFAULT_POLICY = "ScimBotPolicy";
 
   public PolicyResourceIT() {
     supportsEntityStatus = false;
@@ -358,6 +366,86 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
     assertNotNull(policy1);
     assertNotNull(policy2);
+  }
+
+  @Test
+  void put_defaultPolicy_keepsSystemMarks(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    assertEquals(ProviderType.SYSTEM, policy.getProvider());
+    assertEquals(Boolean.FALSE, policy.getAllowDelete());
+
+    CreatePolicy putBody =
+        new CreatePolicy()
+            .withName(policy.getName())
+            .withDisplayName(policy.getDisplayName())
+            .withDescription(ns.prefix("replaced"))
+            .withRules(policy.getRules())
+            .withEnabled(policy.getEnabled());
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/policies", putBody, Policy.class);
+
+    Policy reloaded = client.policies().getByName(DEFAULT_POLICY);
+    assertEquals(ns.prefix("replaced"), reloaded.getDescription());
+    assertEquals(ProviderType.SYSTEM, reloaded.getProvider());
+    assertEquals(Boolean.FALSE, reloaded.getAllowDelete());
+    String policyId = reloaded.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(policyId));
+    assertEquals(400, deleteError.getStatusCode());
+  }
+
+  @Test
+  void patch_defaultPolicyProvider_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/policies/" + policy.getId(),
+                        providerToUser,
+                        Policy.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(ProviderType.SYSTEM, client.policies().getByName(DEFAULT_POLICY).getProvider());
+  }
+
+  @Test
+  void patch_defaultPolicyAllowDelete_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    JsonNode allowDeleteToTrue =
+        new ObjectMapper()
+            .readTree(
+                "[{\"op\":\"replace\",\"path\":\"/allowDelete\",\"value\":true},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + ns.prefix("lifted")
+                    + "\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/policies/" + policy.getId(),
+                        allowDeleteToTrue,
+                        Policy.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(Boolean.FALSE, client.policies().getByName(DEFAULT_POLICY).getAllowDelete());
+    String policyId = policy.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(policyId));
+    assertEquals(400, deleteError.getStatusCode());
   }
 
   @Test
@@ -1240,6 +1328,81 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertEquals("false", fetched.getRules().get(0).getCondition());
   }
 
+  @Test
+  void test_renamedDomainIsUpdatedInPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain parent = createDomain(client, ns.prefix("RenameDomain"), null);
+    Domain child =
+        createDomain(client, ns.prefix("RenameSubDomain"), parent.getFullyQualifiedName());
+    String policyId =
+        createDomainConditionPolicy(
+                ns.prefix("renameDomainPolicy"),
+                "matchAnyDomain('"
+                    + parent.getFullyQualifiedName()
+                    + "', '"
+                    + child.getFullyQualifiedName()
+                    + "')")
+            .getId()
+            .toString();
+
+    parent.setName(ns.prefix("RenamedDomain"));
+    Domain renamedParent = client.domains().update(parent.getId().toString(), parent);
+    String renamedChildFqn = client.domains().get(child.getId().toString()).getFullyQualifiedName();
+
+    // The sub-domain FQN changes with its parent's name, so both arguments must follow.
+    assertEquals(
+        "matchAnyDomain('%s', '%s')"
+            .formatted(renamedParent.getFullyQualifiedName(), renamedChildFqn),
+        getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  @Test
+  void test_deletedDomainMakesItsPolicyConditionMatchNothing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain parent = createDomain(client, ns.prefix("DeleteDomain"), null);
+    Domain child =
+        createDomain(client, ns.prefix("DeleteSubDomain"), parent.getFullyQualifiedName());
+    String policyId =
+        createDomainConditionPolicy(
+                ns.prefix("deleteDomainPolicy"),
+                "matchAnyDomain('" + child.getFullyQualifiedName() + "')")
+            .getId()
+            .toString();
+
+    client
+        .domains()
+        .delete(parent.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    // A domain created later with the same name must not fall under the old rule.
+    assertEquals("false", getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  private static Domain createDomain(OpenMetadataClient client, String name, String parentFqn) {
+    return client
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain named in a policy condition")
+                .withParent(parentFqn));
+  }
+
+  private Policy createDomainConditionPolicy(String name, String condition) {
+    Rule rule =
+        new Rule()
+            .withName("domainConditionRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.DENY)
+            .withCondition(condition);
+    return createEntity(
+        new CreatePolicy()
+            .withName(name)
+            .withRules(List.of(rule))
+            .withDescription("Policy naming a domain"));
+  }
+
   /**
    * A soft-deleted classification keeps its child tags' labels on assets, so a condition naming
    * them still matches and must be left as written. Rewriting it would switch off a Deny rule that
@@ -1271,6 +1434,59 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
     client.classifications().delete(classification.getId().toString(), Map.of("recursive", "true"));
 
+    assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  /**
+   * A soft-deleted team or role drops out of every membership, so the condition naming it matches
+   * nothing while it is deleted without being rewritten, and applies again once it is restored.
+   */
+  @Test
+  void test_softDeletedTeamAndRoleLeavePolicyConditionAsWrittenThroughRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(ns.prefix("SoftDeleteTeam"));
+    createTeam.setDescription("Team that will be soft deleted and restored");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    Team team = client.teams().create(createTeam);
+
+    Policy helperPolicy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("helperPolicyForSoftDelete"))
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("helperRule")
+                            .withResources(List.of(ALL_RESOURCES))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Effect.ALLOW)))
+                .withDescription("Helper policy for role creation"));
+    Role role =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("SoftDeleteRole"))
+                    .withPolicies(List.of(helperPolicy.getFullyQualifiedName()))
+                    .withDescription("Role that will be soft deleted and restored"));
+
+    String condition =
+        "inAnyTeam("
+            + spelLiteral(team.getName())
+            + ") || hasAnyRole("
+            + spelLiteral(role.getName())
+            + ")";
+    String policyId =
+        createEntity(conditionPolicy(ns, "softDeleteTeamAndRole", condition)).getId().toString();
+
+    client.teams().delete(team.getId().toString(), Map.of("recursive", "true"));
+    client.roles().delete(role.getId().toString());
+    assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
+
+    client.teams().restore(team.getId());
+    client.roles().restore(role.getId());
     assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
   }
 

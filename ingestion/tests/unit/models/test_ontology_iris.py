@@ -81,6 +81,7 @@ def test_structure_report_preserves_member_coordinates_and_bounds_diagnostics():
             "code": "UNDECLARED_PROPERTY",
             "path": "/propertyIri",
             "message": "Declare or import the referenced property",
+            "conceptIds": ["00000000-0000-0000-0000-000000000003"],
         },
     }
     payload = {
@@ -92,6 +93,9 @@ def test_structure_report_preserves_member_coordinates_and_bounds_diagnostics():
     }
     stored = OntologyReleaseStructureReport.model_validate(payload).model_dump(mode="json")
     assert stored == payload
+    omitted = {**issue, "violation": {k: v for k, v in issue["violation"].items() if k != "conceptIds"}}
+    defaulted = OntologyReleaseStructureReport.model_validate({**payload, "violations": [omitted]})
+    assert defaulted.model_dump(mode="json")["violations"][0]["violation"]["conceptIds"] == []
     with pytest.raises(ValueError):
         OntologyReleaseStructureReport.model_validate({**payload, "violations": [issue] * 1001})
     with pytest.raises(ValueError):

@@ -443,6 +443,32 @@ describe('ExportUtils', () => {
       );
     });
 
+    it('frames the capture with the size measured after beforeCapture', async () => {
+      const getViewport = jest.fn().mockReturnValue({ x: 4, y: 8, zoom: 0.9 });
+
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        getViewport,
+        // Mounting the off-screen nodes grows the element the capture measures.
+        beforeCapture: async () => {
+          Object.defineProperties(mockElement, {
+            scrollWidth: { value: 6000, configurable: true },
+            scrollHeight: { value: 4000, configurable: true },
+          });
+        },
+      });
+
+      expect(getViewport).toHaveBeenCalledWith(6000, 4000);
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
+          style: expect.objectContaining({
+            transform: 'translate(4px, 8px) scale(0.9)',
+          }),
+        })
+      );
+    });
+
     it('applies viewport transformation when provided', async () => {
       const exportDataWithViewport = {
         ...mockExportData,
@@ -460,6 +486,23 @@ describe('ExportUtils', () => {
         expect.objectContaining({
           style: expect.objectContaining({
             transform: 'translate(100px, 200px) scale(1.5)',
+          }),
+        })
+      );
+    });
+
+    it('prefers getViewport over a preset viewport', async () => {
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        viewport: { x: 100, y: 200, zoom: 1.5 },
+        getViewport: () => ({ x: 4, y: 8, zoom: 0.9 }),
+      });
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
+          style: expect.objectContaining({
+            transform: 'translate(4px, 8px) scale(0.9)',
           }),
         })
       );
@@ -525,7 +568,25 @@ describe('ExportUtils', () => {
           1200, // imageWidth
           900, // imageHeight
           20, // padding
-          2 // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
+          2, // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
+          undefined // no viewport, so no frame
+        );
+      });
+
+      it('draws the edges in the same frame as the nodes', async () => {
+        const viewport = { x: 4, y: 8, zoom: 0.9 };
+
+        await exportPNGImageFromElement({
+          ...exportDataWithEdges,
+          getViewport: () => viewport,
+        });
+
+        expect(exportDataWithEdges.renderEdgesOverlay).toHaveBeenLastCalledWith(
+          1200,
+          900,
+          20,
+          2,
+          viewport
         );
       });
 

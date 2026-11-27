@@ -29,16 +29,21 @@ import {
 import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
+  buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
+  getDatatypeIri,
   getDatatypeLabel,
   getModelRelations,
   getObjectProperties,
+  getPropertyLabel,
   humanizeName,
   OntologyStudioModel,
+  withSuperClasses,
 } from './OntologyStudioModel.utils';
 
 const NS = 'https://example.org/retail/';
@@ -209,6 +214,32 @@ describe('OntologyStudioModel utils', () => {
     });
   });
 
+  it('sets superclasses from named SubClassOf parents, skipping restrictions and deleted axioms', () => {
+    const concepts = withSuperClasses(model.concepts, [
+      ...model.axioms,
+      axiom('ExternalParent', AxiomType.SubclassOf, customer.iri, [
+        named('https://schema.org/Person'),
+      ]),
+      {
+        ...axiom('Gone', AxiomType.SubclassOf, shipment.iri, [
+          named(party.iri),
+        ]),
+        deleted: true,
+      },
+    ]);
+    const parentsOf = (iri: string) =>
+      concepts.find((concept) => concept.iri === iri)?.superClasses;
+
+    expect(parentsOf(customer.iri)).toEqual([
+      party.iri,
+      'https://schema.org/Person',
+    ]);
+    expect(parentsOf(premiumCustomer.iri)).toEqual([customer.iri]);
+    expect(parentsOf(order.iri)).toEqual([]);
+    expect(parentsOf(shipment.iri)).toEqual([]);
+    expect(parentsOf(physicalProduct.iri)).toEqual([product.iri]);
+  });
+
   it('ignores definitions pointing outside the model and deleted ones', () => {
     const relations = getModelRelations({
       ...model,
@@ -254,8 +285,8 @@ describe('OntologyStudioModel utils', () => {
       'concept-PremiumCustomer>isA>concept-Customer',
       'concept-PhysicalProduct>isA>concept-Product',
       'concept-PhysicalProduct>disjointWith>concept-DigitalProduct',
-      'concept-Order>placed by>concept-Customer',
-      'concept-Order>has line>concept-OrderLine',
+      'concept-Order>placedBy>concept-Customer',
+      'concept-Order>hasLine>concept-OrderLine',
       'concept-Shipment>Fulfils>concept-Order',
     ]);
   });
@@ -363,6 +394,52 @@ describe('OntologyStudioModel utils', () => {
     ]);
   });
 
+  it('lists an annotation property on its concept, labelled annotation', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+    const rows = getConceptPropertyRows(
+      { ...model, properties: [...model.properties, note] },
+      getModelRelations(model),
+      premiumCustomer
+    );
+
+    expect(
+      rows.map((row) => [
+        row.property.name,
+        row.datatype,
+        row.inheritedFrom?.name,
+      ])
+    ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
+  it('offers data properties to bind, own then inherited, and leaves out annotations', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+
+    expect(
+      getBindableConceptProperties(
+        { ...model, properties: [...model.properties, note] },
+        getModelRelations(model),
+        premiumCustomer
+      ).map(({ label, isIdentifier }) => [label, isIdentifier])
+    ).toEqual([
+      ['customerId', true],
+      ['legalName', undefined],
+    ]);
+  });
+
   it('labels data types by their XSD local name, and enumerations as enum', () => {
     expect(getDatatypeLabel(orderTotal)).toBe('decimal');
     expect(
@@ -380,6 +457,17 @@ describe('OntologyStudioModel utils', () => {
       'hasLine',
       'placedBy',
     ]);
+  });
+
+  it('labels a property by its name, so lookalike names stay distinct', () => {
+    const property = (name: string, displayName?: string) =>
+      ({ name, displayName } as OntologyProperty);
+
+    expect(getPropertyLabel(property('patientId'))).toBe('patientId');
+    expect(getPropertyLabel(property('patient id'))).toBe('patient id');
+    expect(getPropertyLabel(property('patientId', 'Patient ID'))).toBe(
+      'Patient ID'
+    );
   });
 
   it('humanizes property names the way the canvas labels relations', () => {
@@ -439,5 +527,49 @@ describe('OntologyStudioModel utils', () => {
       ontology: 'RetailCommerce',
       range: [`${XSD}string`],
     });
+  });
+
+  it('builds an annotation property with no range', () => {
+    expect(
+      buildDataPropertyRequest(model, order, {
+        datatype: 'string',
+        isIdentifier: false,
+        kind: 'annotation',
+        name: 'reviewNote',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        domain: [order.iri],
+        kind: 'ANNOTATION',
+        range: [],
+      })
+    );
+  });
+
+  it('reuses a declared property by adding the concept to its domain', () => {
+    const declared = {
+      domain: [customer.iri],
+      id: 'p',
+      iri: `${NS}code`,
+      version: 0.2,
+    } as OntologyProperty;
+
+    expect(buildReusePropertyPatch(declared, order)).toEqual([
+      { op: 'test', path: '/version', value: 0.2 },
+      { op: 'add', path: '/domain/1', value: order.iri },
+    ]);
+    expect(buildReusePropertyPatch(declared, customer)).toEqual([]);
+  });
+
+  it('ranges a Date property over om:date, since OWL 2 has no xsd:date', () => {
+    expect(getDatatypeIri('date')).toBe(
+      'https://open-metadata.org/ontology/date'
+    );
+    expect(getDatatypeIri('dateTime')).toBe(
+      'http://www.w3.org/2001/XMLSchema#dateTime'
+    );
+    expect(getDatatypeIri('enum')).toBe(
+      'http://www.w3.org/2001/XMLSchema#string'
+    );
   });
 });

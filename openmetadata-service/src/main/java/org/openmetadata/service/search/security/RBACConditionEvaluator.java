@@ -36,6 +36,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 @Slf4j
 public class RBACConditionEvaluator {
+  private static final String POLICY_TAGS_FIELD = "policyTags";
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
@@ -279,6 +280,10 @@ public class RBACConditionEvaluator {
         hasAnyRole(roles, collector);
       }
       case "hasDomain" -> hasDomain(collector);
+      case "matchAnyDomain" -> {
+        List<String> domainFqns = extractMethodArguments(methodRef);
+        matchAnyDomain(domainFqns, collector);
+      }
       case "inAnyTeam" -> {
         List<String> teams = extractMethodArguments(methodRef);
         inAnyTeam(teams, collector);
@@ -345,28 +350,26 @@ public class RBACConditionEvaluator {
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
     List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
-      OMQueryBuilder tagQuery;
-      if (tag.startsWith("Tier")) {
-        tagQuery = queryBuilderFactory.termQuery("tier.tagFQN", tag);
-      } else {
-        tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      }
-      tagQueries.add(tagQuery);
+      tagQueries.addAll(carriesTag(tag));
     }
-    OMQueryBuilder tagQueryCombined;
-    if (tagQueries.size() == 1) {
-      tagQueryCombined = tagQueries.get(0);
-    } else {
-      tagQueryCombined = queryBuilderFactory.boolQuery().should(tagQueries);
-    }
-    collector.addMust(tagQueryCombined);
+    collector.addMust(queryBuilderFactory.boolQuery().should(tagQueries));
   }
 
   public void matchAllTags(List<String> tags, ConditionCollector collector) {
     for (String tag : tags) {
-      OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      collector.addMust(tagQuery);
+      collector.addMust(queryBuilderFactory.boolQuery().should(carriesTag(tag)));
     }
+  }
+
+  /**
+   * A document carries a tag in its own labels or in {@code policyTags}, the access-only list of
+   * the tags its entity's inline children carry (the columns of a column's table), so a tag rule
+   * decides here as it does on the entity's own endpoints.
+   */
+  private List<OMQueryBuilder> carriesTag(String tag) {
+    return List.of(
+        queryBuilderFactory.termQuery(tag.startsWith("Tier") ? "tier.tagFQN" : "tags.tagFQN", tag),
+        queryBuilderFactory.termQuery(POLICY_TAGS_FIELD, tag));
   }
 
   /**
@@ -433,6 +436,33 @@ public class RBACConditionEvaluator {
     collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
   }
 
+  /**
+   * A Domain document carries no {@code domains} field, while the REST evaluator treats a domain as
+   * its own domain ({@code ResourceContext.getDomains}). The named Domain documents are matched by
+   * FQN as well, so an Allow does not hide them from search and a Deny does not leak them.
+   */
+  public void matchAnyDomain(List<String> domainFqns, ConditionCollector collector) {
+    if (domainFqns.isEmpty()) {
+      // No domains requested: the condition can never match, so make the rule deny-all instead
+      // of adding an empty bool query (Elasticsearch/OpenSearch treat an empty bool query as
+      // match_all, which would turn an ALLOW rule into a full index grant).
+      collector.setMatchNothing(true);
+    } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
+      for (String domainFqn : domainFqns) {
+        domainQueries.add(queryBuilderFactory.termQuery("domains.fullyQualifiedName", domainFqn));
+      }
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .must(
+                  List.of(
+                      queryBuilderFactory.termQuery("entityType", Entity.DOMAIN),
+                      queryBuilderFactory.termsQuery("fullyQualifiedName", domainFqns))));
+      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
+    }
+  }
+
   public void matchAnyCertification(
       List<String> certificationLabels, ConditionCollector collector) {
     List<OMQueryBuilder> certificationQueries = new ArrayList<>();
@@ -440,13 +470,14 @@ public class RBACConditionEvaluator {
       certificationQueries.add(
           queryBuilderFactory.termQuery("certification.tagLabel.tagFQN", certificationLabel));
     }
-    OMQueryBuilder certificationQueriesCombined;
-    if (certificationQueries.size() == 1) {
-      certificationQueriesCombined = certificationQueries.get(0);
-    } else {
-      certificationQueriesCombined = queryBuilderFactory.boolQuery().should(certificationQueries);
+    switch (certificationQueries.size()) {
+      case 0 ->
+      // No certifications requested: deny-all instead of emitting an empty bool query, which
+      // Elasticsearch/OpenSearch evaluate as match_all and would turn an ALLOW into a grant.
+      collector.setMatchNothing(true);
+      case 1 -> collector.addMust(certificationQueries.get(0));
+      default -> collector.addMust(queryBuilderFactory.boolQuery().should(certificationQueries));
     }
-    collector.addMust(certificationQueriesCombined);
   }
 
   public void isOwner(User user, ConditionCollector collector) {

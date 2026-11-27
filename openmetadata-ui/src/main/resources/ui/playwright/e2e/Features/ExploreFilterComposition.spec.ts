@@ -682,11 +682,20 @@ test('certification union shows assets certified with either level', async ({
       .toBe(goldFqn);
     await afterAction();
 
+    // Every TableClass has a `user_id<uuid>` column and the Columns tab sorts by
+    // name, so the search alone can push this column off page one. Pin it by FQN.
+    const quickFilter = JSON.stringify({
+      query: { bool: { must: [{ term: { fullyQualifiedName: columnFqn } }] } },
+    });
     const columnSearch = page.waitForResponse(
-      '/api/v1/search/query?*index=tableColumn*'
+      (response) =>
+        response.url().includes('index=tableColumn') &&
+        decodeURIComponent(response.url()).includes(columnFqn)
     );
     await page.goto(
-      `/explore/columns?search=${encodeURIComponent(columnName)}`,
+      `/explore/columns?search=${encodeURIComponent(
+        columnName
+      )}&quickFilter=${encodeURIComponent(quickFilter)}`,
       { waitUntil: 'domcontentloaded' }
     );
     expect((await columnSearch).status()).toBe(200);

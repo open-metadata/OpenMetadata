@@ -1518,7 +1518,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDS.shouldBeVisible();
             }
 
-            if (rightPanelDS.isTabAvailable('custom property')) {
+            if (
+              rightPanelDS.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDS = new CustomPropertiesPageObject(
                 rightPanelDS
               );
@@ -1745,7 +1747,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDC.shouldBeVisible();
             }
 
-            if (rightPanelDC.isTabAvailable('custom property')) {
+            if (
+              rightPanelDC.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDC = new CustomPropertiesPageObject(
                 rightPanelDC
               );

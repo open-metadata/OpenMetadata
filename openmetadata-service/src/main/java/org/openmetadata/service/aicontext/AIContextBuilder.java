@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -78,8 +79,11 @@ import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -136,6 +140,9 @@ public class AIContextBuilder {
   /** Max query-relevant vector lookups per bundle; items beyond it use the structural preview. */
   private static final int MAX_QUERY_EXCERPTS = 5;
 
+  /** Lets an article excerpt skip image-only hits within one bounded vector lookup. */
+  private static final int ARTICLE_EXCERPT_CANDIDATES = 3;
+
   /** Max upstream edges whose data-quality standing is checked for staleness stamping. */
   static final int MAX_UPSTREAM_DQ_CHECKS = 3;
 
@@ -159,10 +166,9 @@ public class AIContextBuilder {
   }
 
   /**
-   * Supply the user's question so a truncated knowledge item's excerpt is the passage most relevant
-   * to it (top chunk from the per-chunk embeddings, issue #4789) rather than the positional lead —
-   * giving the agent a decision-grade snippet for whether to fetch the full body. Ignored when
-   * blank or when vector search is unavailable, where the structural preview is used instead.
+   * Supply the user's question to find a relevant excerpt from the per-chunk embeddings (issue
+   * #4789). Truncated items use a structural preview when the question is absent, vector search is
+   * unavailable, or the search supplies no usable passage.
    */
   public AIContextBuilder withQuery(String query) {
     this.query = nullOrEmpty(query) ? null : query;
@@ -193,6 +199,10 @@ public class AIContextBuilder {
     EntityInterface<?> entity =
         Entity.getEntityByName(entityType, fqn, fieldsFor(entityType), Include.NON_DELETED);
     return buildForEntity(entity);
+  }
+
+  List<EntityReference> lineageNodes() {
+    return lineage == null ? List.of() : listOrEmpty(lineage.getNodes());
   }
 
   AIContext buildForEntity(EntityInterface<?> entity) {
@@ -237,7 +247,8 @@ public class AIContextBuilder {
    * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
    * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
    * reference (content omitted) once the budget is exhausted. Truncated items carry
-   * {@code contentTruncated=true} so the agent knows to fetch the full body via get_knowledge_content.
+   * {@code contentTruncated=true} so the agent knows to fetch the full body via
+   * {@code get_entity_details(include=["content"])}.
    */
   void applyKnowledgeBudget(AIContext context) {
     int remaining = knowledgeBudgetChars;
@@ -316,23 +327,18 @@ public class AIContextBuilder {
     return subject;
   }
 
-  /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
+  /** Best readable article hit or the top hit for other knowledge items, or null when absent. */
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-      if (item.getType() != null
-          && vectorService != null
-          && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-        EntityReference reference =
-            Entity.getEntityReferenceByName(
-                item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
-        List<String> passages =
-            vectorService.searchChunksByParent(
-                reference.getId().toString(), query, 1, subjectContextOrNull());
-        if (!nullOrEmpty(passages)) {
-          result = excerpt(passages.getFirst(), limit);
-        }
+      SearchRepository search = Entity.getSearchRepository();
+      VectorIndexService vectorService = search.getVectorIndexService();
+      if (item.getType() != null && vectorService != null && search.isVectorEmbeddingEnabled()) {
+        String passage =
+            item.getType() == KnowledgeItem.Type.PAGE
+                ? queryPagePassage(vectorService, item.getId())
+                : queryKnowledgePassage(vectorService, item);
+        result = excerpt(passage, limit);
       }
     } catch (Exception e) {
       LOG.debug(
@@ -341,6 +347,33 @@ public class AIContextBuilder {
           e.getMessage());
     }
     return result;
+  }
+
+  private String queryPagePassage(VectorIndexService vectorService, UUID pageId) {
+    Page page = Entity.getEntity(Entity.PAGE, pageId, "", Include.NON_DELETED);
+    boolean isArticle = page.getPageType() != PageType.QUICK_LINK;
+    List<String> passages =
+        vectorService.searchChunksByParent(
+            pageId.toString(),
+            query,
+            isArticle ? ARTICLE_EXCERPT_CANDIDATES : 1,
+            subjectContextOrNull());
+    return isArticle
+        ? PageBodyTextContributor.firstReadableArticleBody(page, passages)
+        : firstPassage(passages);
+  }
+
+  private String queryKnowledgePassage(VectorIndexService vectorService, KnowledgeItem item) {
+    EntityReference reference =
+        Entity.getEntityReferenceByName(
+            item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
+    return firstPassage(
+        vectorService.searchChunksByParent(
+            reference.getId().toString(), query, 1, subjectContextOrNull()));
+  }
+
+  private static String firstPassage(List<String> passages) {
+    return nullOrEmpty(passages) ? null : passages.getFirst();
   }
 
   /**
@@ -652,10 +685,29 @@ public class AIContextBuilder {
     return value == null ? null : String.valueOf(value);
   }
 
-  private EntityLineage fetchLineage(EntityInterface<?> entity) {
+  /**
+   * Depth-1 lineage of the asset. Being allowed to view this asset does not imply access to its
+   * neighbours, and the lineage section names each of them with the columns mapped on the edge, so
+   * with a caller the graph gets the same domain prune and per-node VIEW_BASIC filter as the lineage
+   * API and the MCP lineage section. A failure in either step leaves the section empty rather than
+   * unfiltered. Server-internal callers (persona materialization) have nobody to authorize and read
+   * the graph as is, like the other caller-relative checks in this builder.
+   */
+  EntityLineage fetchLineage(EntityInterface<?> entity) {
     EntityLineage lineage = null;
     try {
-      lineage = Entity.getLineageRepository().get(entityType, entity.getId().toString(), 1, 1);
+      String id = entity.getId().toString();
+      if (authorizer == null || securityContext == null) {
+        lineage = Entity.getLineageRepository().get(entityType, id, 1, 1);
+      } else {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        EntityLineage scoped =
+            Entity.getLineageRepository().get(entityType, id, 1, 1, subjectContext);
+        lineage =
+            new LineagePermissionFilter(authorizer)
+                .filter(securityContext, subjectContext, scoped)
+                .lineage();
+      }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch lineage for {}: {}", fqn, e.getMessage());
     }
@@ -863,7 +915,7 @@ public class AIContextBuilder {
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
-      if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
+      if (isGovernedDefinition(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         visible = term;
       }
     } catch (Exception e) {
@@ -882,9 +934,38 @@ public class AIContextBuilder {
         .withContent(unescapeRichText(term.getDescription()));
   }
 
-  private static boolean isApproved(GlossaryTerm term) {
-    EntityStatus status = term.getEntityStatus();
+  /**
+   * A glossary term or metric governs only once Approved; anything else is not a definition the
+   * AI may treat as governed. Other entities and a missing status pass
+   * (ADR:2026-11-03-only-approved-definitions-reach-ai-context-as-governed-knowledge).
+   */
+  static boolean isGovernedDefinition(EntityInterface<?> entity) {
+    EntityStatus status =
+        switch (entity) {
+          case GlossaryTerm term -> term.getEntityStatus();
+          case Metric metric -> metric.getEntityStatus();
+          default -> null;
+        };
     return status == null || status == EntityStatus.APPROVED;
+  }
+
+  /** A metric attached to or related to the anchor reaches its context only once Approved. */
+  static KnowledgeItem metricKnowledgeItem(Metric metric, boolean visible) {
+    return visible && isGovernedDefinition(metric)
+        ? new KnowledgeItem()
+            .withId(metric.getId())
+            .withType(KnowledgeItem.Type.METRIC)
+            .withName(metric.getName())
+            .withDisplayName(metric.getDisplayName())
+            .withFullyQualifiedName(metric.getFullyQualifiedName())
+            .withContent(metricContent(metric))
+        : null;
+  }
+
+  /** Concept context, and a metric's definition built from it, present a governed definition. */
+  static boolean hasConceptContext(EntityInterface<?> entity) {
+    return (entity instanceof GlossaryTerm || entity instanceof Metric)
+        && isGovernedDefinition(entity);
   }
 
   private List<KnowledgeItem> resolveArticles(EntityInterface<?> entity) {
@@ -984,7 +1065,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return unescapeRichText(content);
+    return PromptText.forContentRead(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
@@ -1016,16 +1097,9 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       Metric metric = Entity.getEntity(ref, "", Include.NON_DELETED);
-      if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
-        item =
-            new KnowledgeItem()
-                .withId(metric.getId())
-                .withType(KnowledgeItem.Type.METRIC)
-                .withName(metric.getName())
-                .withDisplayName(metric.getDisplayName())
-                .withFullyQualifiedName(metric.getFullyQualifiedName())
-                .withContent(metricContent(metric));
-      }
+      item =
+          metricKnowledgeItem(
+              metric, canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName()));
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch metric {}: {}", ref.getName(), e.getMessage());
     }
@@ -1033,9 +1107,8 @@ public class AIContextBuilder {
   }
 
   /**
-   * The full (un-budgeted) body of a knowledge entity, for the get_knowledge_content tool's
-   * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
-   * in one place so it matches what the bundle excerpts.
+   * The full (un-budgeted) body of a knowledge entity, keeping the per-type extraction (metric
+   * expression, pill answer) in one place so it matches what the bundle excerpts.
    */
   public static String fullContentOf(EntityInterface<?> entity) {
     String content;
@@ -1044,7 +1117,7 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = unescapeRichText(entity.getDescription());
+      content = PromptText.forContentRead(entity.getDescription());
     }
     return content;
   }
@@ -1060,8 +1133,9 @@ public class AIContextBuilder {
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
-    if (!nullOrEmpty(metric.getDescription())) {
-      content.append(unescapeRichText(metric.getDescription()));
+    String description = PromptText.forContentRead(metric.getDescription());
+    if (!nullOrEmpty(description) && !description.isBlank()) {
+      content.append(description);
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {
@@ -1097,7 +1171,10 @@ public class AIContextBuilder {
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(unescapeRichText(page.getDescription()));
+                .withContent(
+                    page.getPageType() == PageType.QUICK_LINK
+                        ? unescapeRichText(page.getDescription())
+                        : PromptText.forBudgetedArticleRead(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(
@@ -1114,7 +1191,7 @@ public class AIContextBuilder {
       resolveColumnGlossary(tableContext.getColumns(), this::loadVisibleGlossaryTerm);
       context.withTable(tableContext);
     }
-    if (entity instanceof GlossaryTerm || entity instanceof Metric) {
+    if (hasConceptContext(entity)) {
       ConceptContext concept =
           new ConceptContextBuilder(
                   new ConceptContextCatalog(
@@ -1197,7 +1274,8 @@ public class AIContextBuilder {
   /**
    * A metric's structural context is its expression — the query that defines it. Without this, asking
    * get_asset_context about a metric returned only its description, while the same expression was
-   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   * already reachable through {@code get_entity_details(include=["content"])} and as attached
+   * knowledge of a table.
    */
   private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();

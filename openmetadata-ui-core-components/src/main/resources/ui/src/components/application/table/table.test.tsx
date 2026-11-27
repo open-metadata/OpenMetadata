@@ -41,6 +41,40 @@ const renderTable = (props: Partial<Parameters<typeof Table>[0]> = {}) =>
 const firstCell = () =>
   screen.getAllByRole('row')[1].querySelector('td, th') as HTMLElement;
 
+const renderLabelledHead = (wrapLabel?: boolean) =>
+  render(
+    <Table aria-label="label-table">
+      <Table.Header>
+        <Table.Head isRowHeader id="name" label="Name" wrapLabel={wrapLabel} />
+      </Table.Header>
+      <Table.Body>
+        <Table.Row id="r1">
+          <Table.Cell>alpha</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+
+describe('Table.Head wrapLabel', () => {
+  it('keeps the label on one line by default', () => {
+    renderLabelledHead();
+
+    expect(screen.getByText('Name')).toHaveClass('tw:whitespace-nowrap');
+  });
+
+  // A width-capped column must wrap its header, or it spills into the next one.
+  it('wraps the label and lets its wrappers shrink when wrapLabel is set', () => {
+    renderLabelledHead(true);
+
+    const label = screen.getByText('Name');
+
+    expect(label).not.toHaveClass('tw:whitespace-nowrap');
+    expect(label).toHaveClass('tw:whitespace-normal', 'tw:wrap-anywhere');
+    expect(label.parentElement).toHaveClass('tw:min-w-0');
+    expect(label.parentElement?.parentElement).toHaveClass('tw:min-w-0');
+  });
+});
+
 describe('Table header accessibility', () => {
   it('names the columnheader from its title content', () => {
     renderTable();
@@ -129,8 +163,25 @@ describe('Table variant', () => {
     expect(container()).toHaveClass(
       'tw:bg-primary_alt',
       'tw:dark:border-primary',
-      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover'
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
     );
+  });
+
+  it('marks only an empty body with the data-empty hook the hover rules skip', () => {
+    const { container: populated } = renderTable();
+    const { container: empty } = render(
+      <Table aria-label="empty-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+        </Table.Header>
+        <Table.Body renderEmptyState={() => 'nothing here'}>{[]}</Table.Body>
+      </Table>
+    );
+
+    expect(populated.querySelector('tbody')).not.toHaveAttribute('data-empty');
+    expect(empty.querySelector('tbody')).toHaveAttribute('data-empty');
   });
 });
 
@@ -302,7 +353,7 @@ describe('TableCard theme roles', () => {
       'tw:after:outline-secondary',
       'tw:dark:after:outline-primary',
       'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
       // Clamped markdown must fade into the muted row, not the surface.
       'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
     );

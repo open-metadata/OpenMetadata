@@ -425,6 +425,67 @@ export const humanizeRelationLabel = (rawLabel: string): string => {
 };
 
 /**
+ * Predicate → i18n key, keyed by {@link normalizeRelationKey}. Covers the
+ * predicates `RdfRepository.formatRelationshipLabel` names plus the common
+ * ontology properties the graph surfaces; anything else falls back to the
+ * server's English label.
+ */
+export const RELATION_LABEL_KEYS: Record<string, string> = {
+  antonymof: 'label.antonym-of',
+  belongsto: 'label.belongs-to',
+  belongstodatabase: 'label.belongs-to-database',
+  belongstoschema: 'label.belongs-to-schema',
+  belongstoservice: 'label.belongs-to-service',
+  childof: 'label.kg-child-of',
+  classifiedas: 'label.classified-as',
+  consumedby: 'label.consumed-by',
+  contains: 'label.contains',
+  createdby: 'label.kg-created-by',
+  dependson: 'label.kg-depends-on',
+  derivedfrom: 'label.kg-derived-from',
+  downstream: 'label.downstream',
+  follows: 'label.follows',
+  hascolumn: 'label.has-column',
+  hascontainer: 'label.has-container',
+  hasdatabase: 'label.has-database',
+  hasdataproduct: 'label.has-data-product',
+  hasdomain: 'label.has-domain',
+  hasfield: 'label.has-field',
+  hasfollower: 'label.has-follower',
+  hasglossaryterm: 'label.has-glossary-term',
+  hasindex: 'label.has-index',
+  hasmodel: 'label.has-model',
+  hasowner: 'label.has-owner',
+  hasschema: 'label.has-schema',
+  hasstoredprocedure: 'label.has-stored-procedure',
+  hastable: 'label.has-table',
+  hastag: 'label.has-tag',
+  hastier: 'label.has-tier',
+  hastopic: 'label.has-topic',
+  indomain: 'label.in-domain',
+  ispartof: 'label.is-part-of',
+  memberof: 'label.member-of',
+  mentionedin: 'label.mentioned-in',
+  ownedby: 'label.kg-owned-by',
+  owns: 'label.owns',
+  parentof: 'label.kg-parent-of',
+  processedby: 'label.processed-by',
+  producedby: 'label.produced-by',
+  relatedto: 'label.kg-related-to',
+  synonymof: 'label.synonym-of',
+  taggedwith: 'label.kg-tagged-with',
+  updatedby: 'label.updated-by',
+  upstream: 'label.upstream',
+  uses: 'label.uses',
+  wasattributedto: 'label.was-attributed-to',
+  wasderivedfrom: 'label.was-derived-from',
+  wasgeneratedby: 'label.was-generated-by',
+};
+
+export const getRelationLabelKey = (predicate: string): string | undefined =>
+  RELATION_LABEL_KEYS[normalizeRelationKey(predicate)];
+
+/**
  * `Has Data Product` → `Has data product`. The server emits every predicate
  * in Title Case, while the design reads them as phrases with a single leading
  * capital. Fully upper-case words (acronyms) are left alone.

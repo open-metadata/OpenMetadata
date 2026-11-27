@@ -1,3 +1,5 @@
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
+import type { ButtonProps as ButtonUtilityProps } from '@/components/base/buttons/button-utility';
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -6,14 +8,12 @@ import { DotsVertical } from '../../../icons';
 import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
-  ButtonProps as AriaButtonProps,
   MenuItemProps as AriaMenuItemProps,
   MenuProps as AriaMenuProps,
   PopoverProps as AriaPopoverProps,
   SeparatorProps as AriaSeparatorProps,
 } from 'react-aria-components';
 import {
-  Button as AriaButton,
   Header as AriaHeader,
   Menu as AriaMenu,
   MenuItem as AriaMenuItem,
@@ -118,14 +118,14 @@ const DropdownItem = ({
               aria-hidden="true"
               className={cx(
                 'tw:shrink-0',
-                isLarge ? 'tw:size-6' : 'tw:size-4 tw:stroke-[2.25px]',
+                isLarge ? 'tw:size-6' : 'tw:size-5',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
                   ? 'tw:text-fg-brand-secondary_alt'
                   : isLarge
                   ? 'tw:text-fg-tertiary'
-                  : 'tw:text-fg-quaternary'
+                  : 'tw:text-utility-gray-500 tw:group-hover:text-utility-gray-600'
               )}
             />
           )}
@@ -198,7 +198,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       // transition-none keeps the enter/exit keyframes.
       className={(state) =>
         cx(
-          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-floating tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -227,32 +227,22 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
 
 // forwardRef so callers can anchor popovers to the button; React 18 drops a
 // plain `ref` prop on function components.
-const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
-  (props, ref) => {
-    const { t } = useCoreTranslation();
+const DropdownDotsButton = forwardRef<
+  HTMLButtonElement,
+  Omit<ButtonUtilityProps, 'icon' | 'ref'>
+>(({ size = 'lg', ...props }, ref) => {
+  const { t } = useCoreTranslation();
 
-    return (
-      <AriaButton
-        {...props}
-        aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
-        className={(state) =>
-          cx(
-            // Centres the glyph when a flex parent stretches the button.
-            'tw:inline-flex tw:items-center tw:justify-center tw:cursor-pointer tw:rounded-md tw:text-fg-tertiary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-            (state.isPressed || state.isHovered) && 'tw:text-fg-tertiary_hover',
-            (state.isPressed || state.isFocusVisible) &&
-              'tw:outline-2 tw:outline-offset-2',
-            typeof props.className === 'function'
-              ? props.className(state)
-              : props.className
-          )
-        }
-        ref={ref}>
-        <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-      </AriaButton>
-    );
-  }
-);
+  return (
+    <ButtonUtility
+      aria-label={t('label.open-menu', 'Open menu')}
+      icon={DotsVertical}
+      ref={ref}
+      size={size}
+      {...props}
+    />
+  );
+});
 
 DropdownDotsButton.displayName = 'DropdownDotsButton';
 

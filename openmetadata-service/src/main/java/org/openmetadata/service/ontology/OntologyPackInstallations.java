@@ -16,6 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -25,6 +26,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.openmetadata.schema.api.data.OntologyPackInstallPlan;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -33,6 +36,7 @@ import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackInstallationRecord;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
+import org.openmetadata.schema.type.OntologyPackSlice;
 import org.openmetadata.schema.type.OntologyPackSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
@@ -45,12 +49,33 @@ public final class OntologyPackInstallations {
 
   public static OntologyPackSource sourcePack(
       final OntologyPackContentLoader.SelectedPack selected) {
+    return sourcePack(selected.manifest(), selected.modules());
+  }
+
+  public static OntologyPackSource sourcePack(
+      final OntologyPackManifest manifest, final List<OntologyPackModule> modules) {
     return new OntologyPackSource()
-        .withPackId(selected.manifest().getId())
-        .withVersion(selected.manifest().getVersion())
+        .withPackId(manifest.getId())
+        .withVersion(manifest.getVersion())
         .withModuleIds(
-            new LinkedHashSet<>(
-                selected.modules().stream().map(OntologyPackModule::getId).toList()));
+            new LinkedHashSet<>(modules.stream().map(OntologyPackModule::getId).toList()));
+  }
+
+  /** One digest over the verified selection, so a queued job refuses to run on changed content. */
+  public static String packDigest(
+      final OntologyPackSource source, final List<OntologyPackModule> modules) {
+    final String checksums =
+        modules.stream()
+            .map(module -> module.getId() + ":" + module.getSha256())
+            .collect(Collectors.joining(","));
+    return DigestUtils.sha256Hex(
+        source.getPackId() + "\n" + source.getVersion() + "\n" + checksums);
+  }
+
+  /** The catalogue modules a source names, or an exception when the catalogue no longer serves it. */
+  static List<OntologyPackModule> verifiedModules(
+      final OntologyPackCatalog catalog, final OntologyPackSource source) {
+    return match(catalog, source).modules();
   }
 
   public static void requireCurrent(
@@ -82,6 +107,56 @@ public final class OntologyPackInstallations {
       throw new PreconditionFailedException(exception.getMessage());
     }
     requireMatchingPlan(catalog, working, changeSet);
+    return prepared(changeSet, match, user, now);
+  }
+
+  /**
+   * A slice of a library install job. Its operations must be the ones the job planned, so the
+   * check reads the job's recorded digest instead of parsing the pack again, and it costs the same
+   * for every slice. Only the last slice records the installation, so a half-applied pack never
+   * shows as installed.
+   */
+  public static PreparedPackInstall prepareSlice(
+      final OntologyPackCatalog catalog,
+      final PlanLedger ledger,
+      final OntologyChangeSet changeSet,
+      final String user,
+      final long now) {
+    final Match match;
+    try {
+      requireNative(changeSet);
+      match = match(catalog, changeSet.getSourcePack());
+    } catch (IllegalArgumentException | BadRequestException exception) {
+      throw new PreconditionFailedException(exception.getMessage());
+    }
+    final OntologyPackSlice slice = changeSet.getSourcePack().getSlice();
+    requireCompleteActivePlan(changeSet);
+    requireRecordedSlice(ledger, changeSet, slice);
+    final boolean isLast = slice.getIndex() == slice.getCount() - 1;
+    return isLast ? prepared(changeSet, match, user, now) : null;
+  }
+
+  private static void requireRecordedSlice(
+      final PlanLedger ledger, final OntologyChangeSet changeSet, final OntologyPackSlice slice) {
+    final OntologyPackInstallPlan recorded =
+        ledger.find(slice.getJobId(), changeSet.getOntology().getId());
+    final boolean isRecorded =
+        recorded != null
+            && recorded.getPlanDigest().equals(slice.getPlanDigest())
+            && recorded.getSliceDigests().size() == slice.getCount()
+            && slice.getIndex() < slice.getCount()
+            && recorded
+                .getSliceDigests()
+                .get(slice.getIndex())
+                .equals(OntologyPackSlicePlan.sliceDigest(changeSet.getOperations()));
+    if (!isRecorded) {
+      throw new PreconditionFailedException(
+          "Library slice operations differ from the install job's plan");
+    }
+  }
+
+  private static PreparedPackInstall prepared(
+      final OntologyChangeSet changeSet, final Match match, final String user, final long now) {
     final OntologyPackManifest manifest = match.manifest();
     final OntologyPackInstallation installation =
         new OntologyPackInstallation()
@@ -110,11 +185,8 @@ public final class OntologyPackInstallations {
       final OntologyPackCatalog catalog,
       final OntologyWorkingSnapshot.Snapshot working,
       final OntologyChangeSet changeSet) {
-    final List<OntologyChangeOperation> operations = listOrEmpty(changeSet.getOperations());
-    if (operations.isEmpty() || !Objects.equals(changeSet.getUndoCursor(), operations.size())) {
-      throw new PreconditionFailedException(
-          "A library installation requires its complete active plan");
-    }
+    requireCompleteActivePlan(changeSet);
+    final List<OntologyChangeOperation> operations = changeSet.getOperations();
     if (!Objects.equals(working.root().getId(), changeSet.getOntology().getId())
         || !Objects.equals(
             working.state().getWorkingRevision(), changeSet.getBaseWorkingRevision())) {
@@ -134,6 +206,14 @@ public final class OntologyPackInstallations {
     }
   }
 
+  private static void requireCompleteActivePlan(final OntologyChangeSet changeSet) {
+    final List<OntologyChangeOperation> operations = listOrEmpty(changeSet.getOperations());
+    if (operations.isEmpty() || !Objects.equals(changeSet.getUndoCursor(), operations.size())) {
+      throw new PreconditionFailedException(
+          "A library installation requires its complete active plan");
+    }
+  }
+
   static void requireMatchingOperations(
       final List<OntologyChangeOperation> expected,
       final List<OntologyChangeOperation> operations) {
@@ -150,13 +230,25 @@ public final class OntologyPackInstallations {
         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
   }
 
-  private static JsonNode normalizedOperation(final OntologyChangeOperation operation) {
+  static JsonNode normalizedOperation(final OntologyChangeOperation operation) {
     final var copy = JsonUtils.deepCopy(operation, OntologyChangeOperation.class);
     copy.setId(null);
     if (copy.getTargetId() == null && NativeOntologyChanges.definition(copy) != null) {
       NativeOntologyChanges.definition(copy).setId(null);
     }
-    return JsonUtils.getObjectMapper().valueToTree(copy);
+    final JsonNode tree = JsonUtils.getObjectMapper().valueToTree(copy);
+    dropEmptyOwners(tree);
+    return tree;
+  }
+
+  private static void dropEmptyOwners(final JsonNode node) {
+    if (node instanceof ObjectNode object) {
+      final JsonNode owners = object.get("owners");
+      if (owners != null && owners.isArray() && owners.isEmpty()) {
+        object.remove("owners");
+      }
+    }
+    node.forEach(OntologyPackInstallations::dropEmptyOwners);
   }
 
   public static List<OntologyPackInstallation> record(
@@ -244,6 +336,12 @@ public final class OntologyPackInstallations {
     if (changeSet.getOntology() == null) {
       throw new BadRequestException("Library pack source requires a native ontology");
     }
+  }
+
+  /** The plan a library install job recorded, by job id, or null when the job has none. */
+  @FunctionalInterface
+  public interface PlanLedger {
+    OntologyPackInstallPlan find(long jobId, UUID ontologyId);
   }
 
   public record PreparedPackInstall(

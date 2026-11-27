@@ -1,11 +1,15 @@
 # Data Consumers create context memories by default
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility)
+- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility);
+  v3 2026-11-03 (a non-admin's memory starts Unprocessed and only a review approves it);
+  v4 2026-11-05 (review rules apply to distributions with reconciliation)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
   `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
-  `ContextMemoryWriteAccessIT` (what a non-admin may write)
+  `ContextMemoryWriteAccessIT` (what a non-admin may write), `ContextMemoryRepositoryTest` (the
+  stage a non-admin's memory starts in, and who may approve it), `ContextMemoryLifecycleIT` (an
+  owner's restore to Approved is refused)
 - **Related:** ai-platform#1580; OpenMetadata#34253, which made `ExecuteSparqlQuery` a Data
   Consumer default the same way (ADR:2026-09-16-agent-sparql-execution, §2a);
   open-metadata/openmetadata-collate#6965 (`MemoryCaptureGate`)
@@ -82,3 +86,42 @@ Company Context and file-memory reuse trust those values as engine provenance, s
 may preserve them on an existing memory but cannot establish them. Server writes without a principal
 now fail closed. PUT updates and pin/unpin enforce the same visibility as PATCH, since each returns
 the complete memory. The accepted reach of user-authored Approved memories remains unchanged.
+
+## Amendment — 2026-11-03: a non-admin's memory starts Unprocessed and only a review approves it
+
+The revisit named above has happened: release testing found that a Data Steward could create an
+Approved or Public memory through the API, skipping review.
+
+- A memory created by anyone but an admin or a bot starts `Unprocessed`, whatever `entityStatus`
+  it requests, so reconciliation decides it before anyone else grounds on it.
+  `ContextMemoryRepository.prepare` applies this to every new memory: POST, MCP `create_entity`,
+  and a PUT that creates, which runs the POST create so that it is prepared once (memories have no
+  bulk endpoint). The rule runs before the stage stamps a review or checks stage-bound fields, so
+  the memory never claims a review it did not have. It trusts no requested hold. The server's own
+  evidence hold runs after it, so a memory citing a retired Query still starts in `Draft`.
+- An update moves a memory into `Approved` only when an admin, a bot or a conflict review decision
+  makes it (`ContextMemoryRepository.checkStageDecision`). A review's resolver writes as themselves
+  through `governance-bot`, which a caller cannot claim without that bot's token. Any other PATCH
+  into `Approved` is refused (403). A PUT re-sends its create request, stage included, so it keeps
+  the stored stage instead; re-sending the same PUT stays repeatable. Sending a memory back to
+  review or retiring it stays open to anyone who may edit it.
+- Only an admin, a bot, or a bot writing for a user adds disputes, on create or update (403
+  otherwise). Disputes open the conflict review, and that review is assigned to the owners of both
+  sides, so anyone else could open a review over their own memory and approve it there. Collate's
+  reconciliation writes disputes as its bot, or as a restricted memory's owner with the bot
+  impersonating them.
+- Who is affected:
+  - unaffected: extraction (written as the admin account), Collate's reconciliation and governance
+    bots, evidence holds, and capture or `upsertMemory`, which ask for `Unprocessed` and never
+    patch the stage or disputes;
+  - changed: an owner can no longer restore their own retired memory to `Approved`. They send it
+    back to review (`Unprocessed`), or an admin restores it.
+
+## Amendment — 2026-11-05: OSS publishes immediately and Collate requires review
+
+ADR:2026-11-05-oss-memories-are-approved-without-reconciliation limits the November 3 creation and
+approval rules to distributions that require review. OSS defaults new memories to Approved and
+allows authorized owners to approve or restore their memories. Collate opts into the pending
+creation and privileged approval rules through its repository extension, independently of app
+availability. Ownership, reference visibility, extraction provenance, and dispute restrictions
+remain common to both distributions.

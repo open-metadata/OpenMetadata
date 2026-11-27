@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.METRIC_GROUP;
+import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1311,6 +1312,43 @@ public class MetricGroupResourceIT {
     return references;
   }
 
+  @Test
+  void patch_appendsAnOwnerThroughTheMembershipCheck(TestNamespace ns) {
+    MetricGroup group = createGroup(new CreateMetricGroup().withName(ns.prefix("owned_group")));
+    EntityReference admin =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+    // An append, not a whole-list add: the membership check applies the patch to its own copy of
+    // the group first, and that copy must hold the owners list the append points into.
+    String appendOwner =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/owners/-")
+                    .set(
+                        "value",
+                        JSON.createObjectNode()
+                            .put("id", admin.getId().toString())
+                            .put("type", USER)))
+            .toString();
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            GROUPS_PATH + "/" + group.getId(),
+            appendOwner,
+            RequestOptions.builder()
+                .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                .build());
+
+    assertEquals(
+        List.of(admin.getId()),
+        getGroup(group.getName(), "owners").getOwners().stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
   private static void patchGroup(
       OpenMetadataClient client, UUID groupId, MetricGroup original, MetricGroup updated) {
     String patch = JsonUtils.getJsonPatch(original, updated).toString();
@@ -1374,25 +1412,96 @@ public class MetricGroupResourceIT {
     }
   }
 
+  /**
+   * Moving a metric out of a hidden group records that group in the metric's stored change
+   * description. The members list withholds the entry from a caller who may not view the group,
+   * whether the caller's metric access is conditional or unconditional.
+   */
+  @Test
+  void membersListWithholdsAHiddenGroupNamedInAMembersMoveChange(TestNamespace ns) {
+    Metric moved = createMetric(ns, "moved_out_of_hidden_group");
+    MetricGroup hiddenGroup =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("hidden_origin_group"))
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
+                .withMetrics(List.of(moved.getFullyQualifiedName())));
+    MetricGroup visibleGroup =
+        createGroup(new CreateMetricGroup().withName(ns.prefix("visible_destination_group")));
+    SdkClients.adminClient()
+        .metrics()
+        .patch(
+            moved.getId(),
+            JSON.createArrayNode()
+                .add(
+                    JSON.createObjectNode()
+                        .put("op", "add")
+                        .put("path", "/metricGroup")
+                        .set("value", JSON.valueToTree(visibleGroup.getEntityReference()))));
+
+    // The admin listing is the barrier: it proves the move recorded the hidden group, so its
+    // absence below is the visibility rule and not a change that was never stored.
+    assertTrue(getGroupMembers(visibleGroup, 10, 0).toString().contains(hiddenGroup.getName()));
+
+    Consumer<OpenMetadataClient> readMembers =
+        reader -> {
+          JsonNode members =
+              JSON.valueToTree(
+                  reader
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          GROUPS_PATH + "/" + visibleGroup.getId() + "/metrics?limit=10&offset=0",
+                          null,
+                          Object.class));
+          assertEquals(moved.getId().toString(), members.path("data").get(0).path("id").asText());
+          assertFalse(members.toString().contains(hiddenGroup.getName()));
+        };
+    withRestrictedReader(ns, List.of(METRIC, METRIC_GROUP), readMembers);
+    withRestrictedReader(ns, List.of(METRIC_GROUP), readMembers);
+  }
+
   private static void withRestrictedMetricEditor(
       TestNamespace ns, Consumer<OpenMetadataClient> assertions) {
+    withRestrictedUser(
+        ns,
+        List.of(MetadataOperation.CREATE, MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_ALL),
+        List.of(METRIC, METRIC_GROUP),
+        List.of(MetadataOperation.EDIT_ALL),
+        assertions);
+  }
+
+  /** A reader who views the catalog except the tagged entities of {@code hiddenResources}. */
+  private static void withRestrictedReader(
+      TestNamespace ns, List<String> hiddenResources, Consumer<OpenMetadataClient> assertions) {
+    List<MetadataOperation> viewOperations =
+        List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
+    withRestrictedUser(ns, viewOperations, hiddenResources, viewOperations, assertions);
+  }
+
+  /**
+   * Runs {@code assertions} as a user allowed {@code allowed} on every resource and denied {@code
+   * denied} on the {@code restrictedResources} entities tagged {@link #RESTRICTED_TAG_FQN}.
+   */
+  private static void withRestrictedUser(
+      TestNamespace ns,
+      List<MetadataOperation> allowed,
+      List<String> restrictedResources,
+      List<MetadataOperation> denied,
+      Consumer<OpenMetadataClient> assertions) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String suffix = ns.uniqueShortId();
     Rule allowCatalog =
         new Rule()
-            .withName("AllowMetricGroupWrites")
+            .withName("AllowCatalog")
             .withResources(List.of(ALL_RESOURCES))
-            .withOperations(
-                List.of(
-                    MetadataOperation.CREATE,
-                    MetadataOperation.VIEW_ALL,
-                    MetadataOperation.EDIT_ALL))
+            .withOperations(allowed)
             .withEffect(Rule.Effect.ALLOW);
-    Rule denyRestrictedMetricEdits =
+    Rule denyRestricted =
         new Rule()
-            .withName("DenyRestrictedMetricEdits")
-            .withResources(List.of(METRIC, METRIC_GROUP))
-            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withName("DenyRestricted")
+            .withResources(restrictedResources)
+            .withOperations(denied)
             .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
             .withEffect(Rule.Effect.DENY);
     Policy policy =
@@ -1400,18 +1509,18 @@ public class MetricGroupResourceIT {
             .policies()
             .create(
                 new CreatePolicy()
-                    .withName("metricGroupWritePolicy_" + suffix)
-                    .withRules(List.of(allowCatalog, denyRestrictedMetricEdits)));
+                    .withName("metricGroupRestrictedPolicy_" + suffix)
+                    .withRules(List.of(allowCatalog, denyRestricted)));
     try {
       Role role =
           admin
               .roles()
               .create(
                   new CreateRole()
-                      .withName("metricGroupWriteRole_" + suffix)
+                      .withName("metricGroupRestrictedRole_" + suffix)
                       .withPolicies(List.of(policy.getFullyQualifiedName())));
       try {
-        String userName = "metric-group-writer-" + suffix;
+        String userName = "metric-group-restricted-" + suffix;
         String email = userName + "@test.openmetadata.org";
         User user =
             admin

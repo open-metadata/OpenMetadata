@@ -39,6 +39,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.tableaupipeline import metadata as metadata_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
@@ -49,6 +50,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowOutputStep,
     TableauLineageDatabase,
     TableauLineageTable,
+    TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPipelineKind,
     TableauPublishedDatasource,
@@ -393,7 +395,14 @@ class TestLineage:
     def test_a_failing_reference_does_not_drop_the_rest(self, source, mock_conn):
         mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
             id="flow-abc-123",
-            upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders")],
+            upstream_tables=[
+                TableauLineageTable(
+                    id="Tabl-1",
+                    name="orders",
+                    schema="public",
+                    database=TableauLineageDatabase(name="sales", connection_type="postgres"),
+                )
+            ],
             upstream_datasources=[TableauPublishedDatasource(id="ds-in", name="Targets")],
             downstream_datasources=[TableauPublishedDatasource(id="ds-out", name="Sales")],
         )
@@ -689,13 +698,15 @@ class TestExceptionPaths:
         assert results[0].left is not None
         assert "network flap" in results[0].left.error
 
-    def test_yield_pipeline_status_skips_run_without_timestamps(self, source, mock_conn):
+    def test_yield_pipeline_status_skips_run_without_timestamps(self, source, mock_conn, caplog):
         mock_conn.get_flow_runs.return_value = [
-            TableauRunItem(id="r", status="Success", started_at=None, completed_at=None)
+            TableauRunItem(id="run-no-times", status="Success", started_at=None, completed_at=None)
         ]
-        results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
+        with caplog.at_level(logging.WARNING):
+            results = list(source.yield_pipeline_status(PIPELINE_DETAILS))
         # All runs skipped — no statuses, but no errors either
         assert results == []
+        assert "run-no-times" in caplog.text
 
 
 class TestCloseLifecycle:
@@ -719,3 +730,65 @@ class TestCloseLifecycle:
         source.close()
 
         source.metadata.compute_percentile.assert_called_once()
+
+
+class TestDroppedItemsAreReported:
+    """What Tableau returns but the connector cannot ingest is named."""
+
+    def test_an_input_or_output_with_no_id_or_name_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            upstream_tables=[TableauLineageTable(id="Tabl-1", name="orders"), TableauLineageTable()],
+            output_steps=[TableauFlowOutputStep(id="Out-1", name="Cleaned"), TableauFlowOutputStep()],
+        )
+
+        with caplog.at_level(logging.WARNING):
+            tasks = source._build_tasks(PIPELINE_DETAILS)
+
+        assert len(tasks) == 3
+        assert "Skipping input None of flow" in caplog.text
+        assert "an output step of flow" in caplog.text
+
+    def test_a_lineage_input_or_output_with_no_id_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            upstream_tables=[TableauLineageTable(id="Tabl-1", name="customers"), TableauLineageTable(name="orders")],
+            downstream_datasources=[TableauPublishedDatasource(name="Sales")],
+        )
+        source.metadata = create_autospec(OpenMetadata, instance=True)
+        source.metadata.get_by_name.return_value = None
+
+        with caplog.at_level(logging.WARNING):
+            assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
+
+        assert "Skipping input orders of flow Sales Data Prep Flow in lineage" in caplog.text
+        assert "Skipping output Sales of flow Sales Data Prep Flow in lineage" in caplog.text
+        assert "customers" not in caplog.text
+
+    def test_a_downstream_flow_with_no_luid_is_reported(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.return_value = TableauFlowLineage(
+            next_downstream_flows=[TableauLinkedFlow(name="Ops")],
+        )
+        pipeline_entity = MagicMock()
+        pipeline_entity.id = Uuid(root=uuid4())
+        source.metadata = create_autospec(OpenMetadata, instance=True)
+        source.metadata.get_by_name.return_value = pipeline_entity
+
+        with caplog.at_level(logging.WARNING):
+            assert list(source.yield_pipeline_lineage_details(PIPELINE_DETAILS)) == []
+
+        assert "Skipping lineage from flow Sales Data Prep Flow to downstream flow Ops" in caplog.text
+        assert source._pending_flow_edges == []
+
+
+class TestFlowRecordErrors:
+    def test_an_unreadable_flow_record_does_not_mute_a_metadata_api_outage(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.side_effect = [
+            TableauFlowRecordError("Unable to parse flow-a"),
+            TableauMetadataApiError("Metadata API is down"),
+        ]
+
+        with caplog.at_level(logging.WARNING):
+            source._get_flow_lineage("flow-a")
+            source._get_flow_lineage("flow-b")
+
+        assert "Unable to parse flow-a" in caplog.text
+        assert "Metadata API is down" in caplog.text

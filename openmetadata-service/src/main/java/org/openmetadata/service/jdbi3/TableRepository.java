@@ -122,11 +122,14 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
@@ -137,6 +140,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LikeEscape;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -145,10 +149,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
   public static final String PATCH_FIELDS =
-      "tableConstraints,tablePartition,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -1101,14 +1105,14 @@ public class TableRepository extends EntityRepository<Table> {
           String storedSystemProfile =
               daoCollection
                   .profilerDataTimeSeriesDao()
-                  .getExtensionAtTimestampWithOperation(
+                  .getSystemProfileAtTimestamp(
                       table.getFullyQualifiedName(),
                       SYSTEM_PROFILE_EXTENSION,
                       systemProfile.getTimestamp(),
                       systemProfile.getOperation().value());
           daoCollection
               .profilerDataTimeSeriesDao()
-              .storeTimeSeriesWithOperation(
+              .storeSystemProfile(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   "systemProfile",
@@ -1123,6 +1127,8 @@ public class TableRepository extends EntityRepository<Table> {
     try (var ignored = phase("tableProfileDataHydrate")) {
       setFieldsInternal(table, Fields.EMPTY_FIELDS);
     }
+    // Profiles are time-series rows that no entity hook sees; the graph carries the latest one.
+    RdfUpdater.updateEntity(table);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
@@ -1159,6 +1165,20 @@ public class TableRepository extends EntityRepository<Table> {
       throw new IllegalArgumentException("entityType must be table, column or system");
     }
     daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
+    if (!SYSTEM_PROFILE_EXTENSION.equals(extension)) {
+      refreshProfiledTable(
+          TABLE_COLUMN_PROFILE_EXTENSION.equals(extension)
+              ? FullyQualifiedName.getTableFQN(fqn)
+              : fqn);
+    }
+  }
+
+  /** A deleted profile may have been the latest one, which the graph then has to replace. */
+  private void refreshProfiledTable(String tableFqn) {
+    if (RdfUpdater.isEnabled()) {
+      Optional.ofNullable(findByNameOrNull(tableFqn, NON_DELETED))
+          .ifPresent(RdfUpdater::updateEntity);
+    }
   }
 
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
@@ -1394,15 +1414,86 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // Takes out of the data model each glossary term that is not Approved and that it newly applies
+  // to the table or a matching stored column, to be kept as pending.
+  private List<HeldTerm> holdUnapprovedModelTerms(Table table, DataModel dataModel) {
+    Map<String, Set<String>> held =
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+            modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
+    List<HeldTerm> heldTerms = new ArrayList<>();
+    if (!held.isEmpty()) {
+      dataModel.setTags(
+          takeHeld(heldTerms, table.getFullyQualifiedName(), dataModel.getTags(), held));
+      for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+        storedColumn(table, modelColumn)
+            .ifPresent(
+                column ->
+                    modelColumn.setTags(
+                        takeHeld(
+                            heldTerms,
+                            column.getFullyQualifiedName(),
+                            modelColumn.getTags(),
+                            held)));
+      }
+    }
+    return heldTerms;
+  }
+
+  private static List<TagLabel> takeHeld(
+      List<HeldTerm> heldTerms, String target, List<TagLabel> tags, Map<String, Set<String>> held) {
+    List<TagLabel> remaining = new ArrayList<>(listOrEmpty(tags));
+    ApprovedGlossaryTermGuard.takeTerms(remaining, held.get(target))
+        .forEach(label -> heldTerms.add(new HeldTerm(target, label)));
+    return tags == null && remaining.isEmpty() ? null : remaining;
+  }
+
+  private static Optional<Column> storedColumn(Table table, Column modelColumn) {
+    return listOrEmpty(table.getColumns()).stream()
+        .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+        .findAny();
+  }
+
+  // The labels a data model applies, keyed by the table or matching stored column they land on.
+  private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      storedColumn(table, modelColumn)
+          .ifPresent(
+              column ->
+                  tagsByTarget.put(
+                      column.getFullyQualifiedName(), listOrEmpty(modelColumn.getTags())));
+    }
+    return tagsByTarget;
+  }
+
+  /**
+   * The whole stored row, with the fields {@link #addDataModel} merges into set on it. addDataModel
+   * writes the entire row back with {@code dao.update}, so it cannot start from {@code get()}: that
+   * nulls every field not requested, and the write then deleted them, schemaDefinition among them.
+   */
+  private Table getWholeStoredTable(UUID tableId) {
+    final Fields fields =
+        getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD));
+    final Table table = setFieldsInternal(find(tableId, NON_DELETED, false), fields);
+    setInheritedFields(table, fields);
+    return table;
+  }
+
+  /**
+   * addDataModel used to drop schemaDefinition while the row kept the sourceHash of the request
+   * that carried it. Such a row takes the full update, so the next ingestion run writes it back.
+   */
+  @Override
+  protected boolean hasLostSourceFields(Table stored, Table incoming) {
+    return !nullOrEmpty(incoming.getSchemaDefinition())
+        && nullOrEmpty(stored.getSchemaDefinition());
+  }
+
   @Transaction
-  public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table =
-        get(
-            null,
-            tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
-            NON_DELETED,
-            false);
+  public Table addDataModel(UUID tableId, DataModel dataModel, String updatedBy) {
+    Table table = getWholeStoredTable(tableId);
+    List<HeldTerm> heldTerms = holdUnapprovedModelTerms(table, dataModel);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -1451,10 +1542,11 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     if (!updatedColumnFqns.isEmpty()) {
-      daoCollection.tagUsageDAO().deleteTagsByTargets(updatedColumnFqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(updatedColumnFqns);
     }
     applyColumnTags(table.getColumns());
-    dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), table.getFullyQualifiedName(), serializeForStorage(table));
+    storePendingGlossaryTerms(heldTerms, updatedBy);
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
     // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
@@ -1473,12 +1565,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -1649,7 +1751,7 @@ public class TableRepository extends EntityRepository<Table> {
       collectColumnFqns(table.getColumns(), columnFqns);
     }
     if (!columnFqns.isEmpty()) {
-      daoCollection.tagUsageDAO().deleteTagsByTargets(columnFqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(columnFqns);
     }
   }
 
@@ -1693,7 +1795,73 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE,
               Relationship.CONTAINS));
     }
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed. The
+    // single-entity store path does this via storeEntity() -> addConstraintRelationship(); the bulk
+    // path (recursive CSV import, bulk create) only restored CONTAINS, so a table's foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    relationships.addAll(buildConstraintRelationships(entities));
     bulkInsertRelationships(relationships);
+  }
+
+  /**
+   * Build the FK RELATED_TO edges for a batch of tables, folded into the caller's bulk insert (no
+   * per-foreign-key lookup or insert). A referred table that is not persisted yet (e.g. created in a
+   * later bulk chunk) is skipped rather than failing the whole request.
+   */
+  private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
+      List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = collectReferredTables(entities);
+    if (referredByTable.isEmpty()) {
+      return List.of();
+    }
+    Map<String, UUID> fqnToId = resolveTableIds(entities, referredByTable);
+    List<CollectionDAO.EntityRelationshipObject> edges = new ArrayList<>();
+    referredByTable.forEach(
+        (fromId, referredFqns) ->
+            referredFqns.stream()
+                .map(fqnToId::get)
+                .filter(Objects::nonNull)
+                .forEach(
+                    toId ->
+                        edges.add(
+                            newRelationship(fromId, toId, TABLE, TABLE, Relationship.RELATED_TO))));
+    return edges;
+  }
+
+  /** Referred parent-table FQNs per table, deduplicated (a composite FK yields one entry). */
+  private Map<UUID, Set<String>> collectReferredTables(List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = new HashMap<>();
+    for (Table table : entities) {
+      Set<String> referredFqns =
+          listOrEmpty(table.getTableConstraints()).stream()
+              .flatMap(constraint -> listOrEmpty(constraint.getReferredColumns()).stream())
+              .map(FullyQualifiedName::getParentFQN)
+              .collect(Collectors.toSet());
+      if (!referredFqns.isEmpty()) {
+        referredByTable.put(table.getId(), referredFqns);
+      }
+    }
+    return referredByTable;
+  }
+
+  /**
+   * Resolve referred table ids from the batch first and query only the rest, since a recursive
+   * import usually carries the referred table in the same batch (no need to reload its JSON).
+   */
+  private Map<String, UUID> resolveTableIds(
+      List<Table> batch, Map<UUID, Set<String>> referredByTable) {
+    Set<String> wanted =
+        referredByTable.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+    Map<String, UUID> fqnToId = new HashMap<>();
+    batch.stream()
+        .filter(table -> wanted.contains(table.getFullyQualifiedName()))
+        .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    List<String> missing = wanted.stream().filter(fqn -> !fqnToId.containsKey(fqn)).toList();
+    if (!missing.isEmpty()) {
+      findByNames(missing, ALL)
+          .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    }
+    return fqnToId;
   }
 
   @Override
@@ -1737,6 +1905,17 @@ public class TableRepository extends EntityRepository<Table> {
     deleteResidualExecutableTestSuite(table, deletedBy);
   }
 
+  @Override
+  protected void postRestore(Table table) {
+    super.postRestore(table);
+    refreshOntologyBindings(table);
+  }
+
+  private void refreshOntologyBindings(Table table) {
+    PostCommitActionQueue.runOrDefer(
+        () -> OntologyTermSearch.bindingsChanged(table.getEntityReference()));
+  }
+
   /**
    * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
    * inside the delete transaction: a table with a long profiling history can own millions of
@@ -1750,6 +1929,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   protected void postDelete(Table table, boolean hardDelete) {
     super.postDelete(table, hardDelete);
+    refreshOntologyBindings(table);
     if (hardDelete) {
       long deletedAt = System.currentTimeMillis();
       AsyncService.getInstance()
@@ -1872,16 +2052,23 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns,dataModel");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    return allTags((Table) entity);
+  }
+
+  /** The tags a tag condition on a table reads: its own, its columns' and its data model's. */
+  public static List<TagLabel> allTags(Table table) {
     List<TagLabel> allTags = new ArrayList<>();
-    Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    EntityUtil.mergeColumnTags(allTags, table.getColumns());
     if (table.getDataModel() != null) {
       EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
-      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
-        EntityUtil.mergeTags(allTags, column.getTags());
-      }
+      EntityUtil.mergeColumnTags(allTags, table.getDataModel().getColumns());
     }
     return allTags;
   }
@@ -2279,6 +2466,11 @@ public class TableRepository extends EntityRepository<Table> {
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
+      compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
@@ -2407,18 +2599,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      origConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      updatedConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -2432,7 +2616,7 @@ public class TableRepository extends EntityRepository<Table> {
 
       // manage table ER relationship based on table constraints
       addConstraintRelationship(origTable, added);
-      deleteConstraintRelationship(origTable, deleted);
+      deleteConstraintRelationship(origTable, deleted, referredTables(updatedConstraints));
     }
 
     /**
@@ -2507,12 +2691,28 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+  // Tables the constraints refer to. A constraint replaced by one that still refers to the same
+  // table, such as a foreign key whose column pairing was corrected, keeps the link to it.
+  private static Set<String> referredTables(List<TableConstraint> constraints) {
+    Set<String> tables = new HashSet<>();
+    for (TableConstraint constraint : listOrEmpty(constraints)) {
+      for (String column : listOrEmpty(constraint.getReferredColumns())) {
+        tables.add(FullyQualifiedName.getParentFQN(column));
+      }
+    }
+    return tables;
+  }
+
+  private void deleteConstraintRelationship(
+      Table table, List<TableConstraint> constraints, Set<String> stillReferredTables) {
     if (!nullOrEmpty(constraints)) {
       for (TableConstraint constraint : constraints) {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
+            if (stillReferredTables.contains(toParent)) {
+              continue;
+            }
             try {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
@@ -3186,11 +3386,16 @@ public class TableRepository extends EntityRepository<Table> {
             .relationshipDAO()
             .findToBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), TEST_SUITE);
 
+    // ALL, like getTestSuite: a recursive soft delete flips a table's basic suite before it
+    // re-indexes the table.
     for (CollectionDAO.EntityRelationshipObject relRecord : records) {
       UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference testSuiteRef =
-          getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      testSuiteMap.put(tableId, testSuiteRef);
+      try {
+        testSuiteMap.put(
+            tableId, getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), ALL));
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Skipping missing test suite {} of table {}", relRecord.getToId(), tableId);
+      }
     }
 
     return testSuiteMap;
@@ -3418,6 +3623,8 @@ public class TableRepository extends EntityRepository<Table> {
     return nameMatches || displayNameMatches;
   }
 
+  // The UI mirrors this order to find a deep-linked column's page (getColumnPageForFqn); change
+  // both together. ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
   private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {
@@ -3555,6 +3762,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     doc.put("deleted", false);
     doc.put("entityType", "pipelineStatus");
+    // The run index is searched under the pipeline's access rules, so the document carries the
+    // pipeline's access fields; one whose pipeline does not resolve is not written.
+    doc.putAll(
+        PipelineExecutionIndex.accessFields(
+            PipelineExecutionIndex.withAccessFields(observability.getPipeline())));
 
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);

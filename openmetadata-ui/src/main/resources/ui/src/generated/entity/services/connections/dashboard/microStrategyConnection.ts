@@ -27,20 +27,27 @@ export interface MicroStrategyConnection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      */
     hostPort: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
      * Password to connect to MicroStrategy.
      */
-    password: string;
+    password?: string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -49,6 +56,7 @@ export interface MicroStrategyConnection {
      * MicroStrategy Project Name
      */
     projectName?:                string;
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -58,7 +66,8 @@ export interface MicroStrategyConnection {
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
      */
-    username: string;
+    username?:  string;
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -84,10 +93,39 @@ export interface FilterPattern {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Service Type
  *
  * MicroStrategy service type
  */
 export enum MicroStrategyType {
     MicroStrategy = "MicroStrategy",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

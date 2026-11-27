@@ -27,6 +27,10 @@ import {
   getWorkflowById,
   triggerWorkflowById,
 } from '../../../rest/workflowAPI';
+import {
+  EXTENSION_POINTS,
+  TestConnectionActionProps,
+} from '../../../utils/ExtensionPointTypes';
 import { StatusType } from '../StatusBadge/StatusBadge.interface';
 import TestConnection from './TestConnection';
 import {
@@ -36,6 +40,8 @@ import {
   TEST_CONNECTION_DEFINITION,
   WORKFLOW_DETAILS,
 } from './TestConnection.mock';
+import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
+import { RenderTestConnectionFailureAction } from './TestConnectionModal/TestConnectionModal.interface';
 
 const mockonValidateFormRequiredFields = jest.fn();
 
@@ -111,6 +117,22 @@ jest.mock(
     useAirflowStatus: jest
       .fn()
       .mockImplementation(() => ({ isAirflowAvailable: true })),
+  })
+);
+
+let mockIsAiMode = false;
+const mockGetContributions = jest.fn().mockReturnValue([]);
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
+jest.mock(
+  '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: mockGetContributions },
+    }),
   })
 );
 
@@ -1221,7 +1243,7 @@ describe('Test Connection Component', () => {
   it('Should ignore a superseded run whose poll resolves after a newer run started', async () => {
     jest.useFakeTimers();
 
-    let resolveStalePoll: (value: unknown) => void = () => undefined;
+    let resolveStalePoll: (value: unknown) => void = (_value) => undefined;
     const stalePoll = new Promise((resolve) => {
       resolveStalePoll = resolve;
     });
@@ -1266,7 +1288,6 @@ describe('Test Connection Component', () => {
       .length;
 
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveStalePoll({
         ...WORKFLOW_DETAILS,
         status: 'Failed',
@@ -1291,7 +1312,7 @@ describe('Test Connection Component', () => {
   it('Should ignore a superseded run whose poll rejects after a newer run started', async () => {
     jest.useFakeTimers();
 
-    let rejectStalePoll: (reason?: unknown) => void = () => undefined;
+    let rejectStalePoll: (reason?: unknown) => void = (_value) => undefined;
     const stalePoll = new Promise((_resolve, reject) => {
       rejectStalePoll = reject;
     });
@@ -1345,7 +1366,6 @@ describe('Test Connection Component', () => {
       onTestConnectionStatusChange.mock.calls.length;
 
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       rejectStalePoll(new Error('stale run failed'));
     });
 
@@ -1399,5 +1419,74 @@ describe('Test Connection Component', () => {
     expect((getWorkflowById as jest.Mock).mock.calls).toHaveLength(
       callsAtUnmount
     );
+  });
+
+  describe('SERVICE_DETAILS_TEST_CONNECTION_ACTIONS contributions', () => {
+    const DiagnoseAction = ({
+      failure,
+      onClose,
+      serviceName,
+      serviceType,
+    }: TestConnectionActionProps) => (
+      <button data-testid="diagnose-action" onClick={onClose}>
+        {`${serviceType}/${serviceName}: ${failure}`}
+      </button>
+    );
+
+    const getRenderFailureAction = ():
+      | RenderTestConnectionFailureAction
+      | undefined =>
+      (TestConnectionModal as jest.Mock).mock.calls.at(-1)?.[0]
+        .renderFailureAction;
+
+    afterEach(() => {
+      mockIsAiMode = false;
+      mockGetContributions.mockReturnValue([]);
+    });
+
+    it('gives the dialog no failure action in classic mode, where the plugin has nothing to open', async () => {
+      mockGetContributions.mockReturnValue([
+        { key: 'diagnose', component: DiagnoseAction },
+      ]);
+
+      await act(async () => {
+        render(<TestConnection {...mockProps} />);
+      });
+
+      expect(getRenderFailureAction()).toBeUndefined();
+    });
+
+    it('gives the dialog no failure action in AI mode when no plugin contributes one', async () => {
+      mockIsAiMode = true;
+
+      await act(async () => {
+        render(<TestConnection {...mockProps} />);
+      });
+
+      expect(mockGetContributions).toHaveBeenCalledWith(
+        EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+      );
+      expect(getRenderFailureAction()).toBeUndefined();
+    });
+
+    it('renders the contributed action with the service, raw log and close callback in AI mode', async () => {
+      mockIsAiMode = true;
+      mockGetContributions.mockReturnValue([
+        { key: 'diagnose', component: DiagnoseAction },
+      ]);
+      const onClose = jest.fn();
+
+      await act(async () => {
+        render(<TestConnection {...mockProps} serviceName="new-service" />);
+      });
+
+      render(<>{getRenderFailureAction()?.('Connection refused', onClose)}</>);
+      fireEvent.click(screen.getByTestId('diagnose-action'));
+
+      expect(screen.getByTestId('diagnose-action')).toHaveTextContent(
+        'Mysql/new-service: Connection refused'
+      );
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 });

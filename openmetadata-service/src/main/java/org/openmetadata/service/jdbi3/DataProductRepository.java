@@ -103,18 +103,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
       "experts,domains"; // Domain can now be updated with asset migration
 
+  // Identifies the "Data Product Domain Validation" rule by its operation, not its editable name.
+  private static final String DATA_PRODUCT_DOMAIN_MATCH_OPERATION =
+      "validateDataProductDomainMatch";
   private static final String NOT_A_DATA_PRODUCT_ASSET =
       "An asset of type %s cannot belong to a data product";
-  private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
-      "Data Product Domain Validation";
   // A change request names a data product's ports as these list fields of the data product.
   private static final String INPUT_PORTS = "inputPorts";
   private static final String OUTPUT_PORTS = "outputPorts";
   private static final Map<String, Relationship> PORT_FIELDS_BY_NAME =
       Map.of(INPUT_PORTS, Relationship.INPUT_PORT, OUTPUT_PORTS, Relationship.OUTPUT_PORT);
 
-  // Max assets whose domains/data-products are hydrated at once while reconciling (a level of
-  // descendants, or the direct assets that inherit their domain).
+  // Max assets read in one batch while reconciling: parents whose children are discovered,
+  // descendants whose domains/data products are hydrated, or direct assets whose inherited domains
+  // are resolved.
   // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
   // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
   // otherwise load the whole level into the heap in one shot).
@@ -203,6 +205,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     Set<String> replaced = new HashSet<>(super.getRelationsReplacedByImport());
     replaced.add(Entity.FIELD_EXPERTS);
     return Set.copyOf(replaced);
+  }
+
+  /**
+   * Locking the rows before the relationship sweep makes the delete, direct or through a domain
+   * cascade, wait for a writer that has share-locked a data product to link an asset (see {@code
+   * EntityRepository#lockDataProducts}), so the sweep removes the writer's edge instead of running
+   * before it commits and leaving it behind.
+   */
+  @Override
+  protected void lockRowsForDelete(List<DataProduct> dataProducts) {
+    List<String> ids =
+        dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+    EntityDAO.queryInChunks(ids, chunk -> dao.lockIdsForUpdate(dao.getTableName(), chunk));
   }
 
   @Override
@@ -294,7 +309,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.setDomains(updatedDomains);
     updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
     updated.setUpdatedAt(System.currentTimeMillis());
-    updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
+    if (updatedBy != null) {
+      EntityUtil.recordWriter(updated, updatedBy);
+    }
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
@@ -463,15 +480,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
   }
 
-  @Transaction
   private BulkOperationResult bulkPortsOperation(
-      String dataProductNameOrId,
-      BulkAssets request,
-      Relationship relationship,
-      boolean isAdd,
-      ChangeActor actor) {
-    DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, actor);
+      final String dataProductNameOrId,
+      final BulkAssets request,
+      final Relationship relationship,
+      final boolean isAdd,
+      final ChangeActor actor) {
+    final UUID dataProductId = resolveDataProduct(dataProductNameOrId).getId();
+    return executeInTransaction(
+        () -> {
+          // Lock before the first consistent read so the snapshot includes the prior port edit.
+          if (dao.findJsonByIdForUpdate(dataProductId, NON_DELETED) == null) {
+            throw EntityNotFoundException.byId(dataProductId.toString());
+          }
+          return executeBulkPortsOperation(dataProductId, request, relationship, isAdd, actor);
+        });
   }
 
   private DataProduct resolveDataProduct(String nameOrId) {
@@ -486,22 +509,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   // Every eligible port of the request is held, as one change request, when an approval workflow
   // gates the data product's ports for this user; otherwise they are written at once.
   private BulkOperationResult executeBulkPortsOperation(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final BulkAssets request,
       final Relationship relationship,
       final boolean isAdd,
       final ChangeActor actor) {
     final List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-    final List<PortRow> rows = checkPorts(dataProduct.getId(), assets, relationship, isAdd);
+    final List<PortRow> rows = checkPorts(dataProductId, assets, relationship, isAdd);
     final List<EntityReference> eligible =
         rows.stream().filter(PortRow::eligible).map(PortRow::ref).toList();
     final String held =
-        eligible.isEmpty()
-            ? null
-            : holdPorts(dataProduct.getId(), eligible, relationship, isAdd, actor);
+        eligible.isEmpty() ? null : holdPorts(dataProductId, eligible, relationship, isAdd, actor);
     if (held == null && !eligible.isEmpty()) {
-      writePorts(dataProduct, eligible, relationship, isAdd, actor.userName());
+      writePorts(dataProductId, eligible, relationship, isAdd, actor);
     }
     return portsResult(rows, held);
   }
@@ -647,19 +668,38 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void writePorts(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final List<EntityReference> ports,
       final Relationship relationship,
       final boolean isAdd,
-      final String updatedBy) {
-    linkPorts(dataProduct, ports, relationship, isAdd);
-    final DataProduct stored = get(null, dataProduct.getId(), getFields("*"));
-    recordPortChange(
-        stored,
-        portChangeDescription(
-            stored.getVersion(), Map.of(new PortChange(relationship, isAdd), ports)),
-        updatedBy,
-        false);
+      final ChangeActor actor) {
+    final List<EntityReference> changed = changedPorts(dataProductId, ports, relationship, isAdd);
+    if (!changed.isEmpty()) {
+      final DataProduct stored = get(null, dataProductId, getPutFields(), NON_DELETED, false);
+      linkPorts(stored, changed, relationship, isAdd);
+      recordPortChange(
+          stored,
+          portChangeDescription(
+              stored.getVersion(), Map.of(new PortChange(relationship, isAdd), changed)),
+          new PortWriter(actor.userName(), actor.impersonatedBy()),
+          false);
+    }
+  }
+
+  private List<EntityReference> changedPorts(
+      final UUID productId,
+      final List<EntityReference> ports,
+      final Relationship relationship,
+      final boolean isAdd) {
+    final Set<UUID> existing = relatedIds(productId, relationship);
+    final List<EntityReference> changed = new ArrayList<>();
+    for (final EntityReference port : ports) {
+      final boolean changesSet = isAdd ? existing.add(port.getId()) : existing.remove(port.getId());
+      if (changesSet) {
+        changed.add(port);
+      }
+    }
+    return changed;
   }
 
   private void linkPorts(
@@ -697,16 +737,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return combined;
   }
 
-  // {@code joinsFieldChange}: the same approval has just published field changes at this version,
-  // so the port changes join that version's change description rather than replace it.
+  private record PortWriter(String updatedBy, String impersonatedBy) {}
+
   private void recordPortChange(
       final DataProduct dataProduct,
       final ChangeDescription change,
-      final String updatedBy,
+      final PortWriter writer,
       final boolean joinsFieldChange) {
+    final Double previousVersion = dataProduct.getVersion();
+    if (!joinsFieldChange) {
+      startPortVersion(dataProduct);
+    }
+    joinPortChange(dataProduct, change, joinsFieldChange);
+    dataProduct.setUpdatedBy(writer.updatedBy());
+    dataProduct.setImpersonatedBy(writer.impersonatedBy());
+    storeEntityWithVersion(dataProduct, true, previousVersion);
     final ChangeEvent changeEvent =
-        getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
+        getChangeEvent(dataProduct, change, DATA_PRODUCT, previousVersion);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private void startPortVersion(final DataProduct dataProduct) {
+    storeVersions(List.of(dataProduct));
+    dataProduct.setVersion(EntityUtil.nextVersion(dataProduct.getVersion()));
+    dataProduct.setUpdatedAt(System.currentTimeMillis());
+    dataProduct.setIncrementalChangeDescription(null);
+  }
+
+  // {@code joinsFieldChange}: the same approval has just published field changes at this version,
+  // so the port changes join that version's change description rather than replace it.
+  private static void joinPortChange(
+      final DataProduct dataProduct,
+      final ChangeDescription change,
+      final boolean joinsFieldChange) {
     final ChangeDescription current = dataProduct.getChangeDescription();
     if (joinsFieldChange && current != null) {
       current.getFieldsAdded().addAll(change.getFieldsAdded());
@@ -714,9 +777,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } else {
       dataProduct.setChangeDescription(change);
     }
-    dataProduct.setUpdatedBy(updatedBy);
-    storeEntity(dataProduct, true);
-    invalidate(dataProduct);
+  }
+
+  private static boolean hasPortChanges(final ChangeDescription change) {
+    return change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsAdded()).stream(),
+                listOrEmpty(change.getFieldsDeleted()).stream())
+            .anyMatch(field -> PORT_FIELDS_BY_NAME.containsKey(field.getName()));
   }
 
   private static BulkOperationResult portsResult(final List<PortRow> rows, final String held) {
@@ -824,14 +892,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final String requestedBy,
       final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
-    final DataProduct dataProduct = get(null, entityId, getFields("*"));
+    final DataProduct dataProduct = get(null, entityId, getPutFields(), NON_DELETED, false);
     final Map<PortChange, List<EntityReference>> changes = portsByChange(ops);
     changes.forEach(
         (change, ports) -> linkPorts(dataProduct, ports, change.relationship(), change.isAdd()));
     recordPortChange(
         dataProduct,
         portChangeDescription(dataProduct.getVersion(), changes),
-        requestedBy,
+        new PortWriter(requestedBy, null),
         withFieldChanges);
   }
 
@@ -1089,6 +1157,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     @Override
+    protected boolean consolidateChanges(
+        DataProduct original, DataProduct updated, Operation operation) {
+      // The field updater cannot replay port edits, which live in dedicated relationships.
+      return !hasPortChanges(original.getChangeDescription())
+          && super.consolidateChanges(original, updated, operation);
+    }
+
+    @Override
     protected void resetForRetryAttempt() {
       renameProcessed = false;
       domainChangeProcessed = false;
@@ -1197,7 +1273,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // Validation" on every later edit. Detach those, mirroring the Domain page cleanup. Only when
       // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
       if (!assetRecords.isEmpty()
-          && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
+          && RuleEngine.getInstance().isOperationEnabled(DATA_PRODUCT_DOMAIN_MATCH_OPERATION)) {
         detachConflictingDataProductsAfterDomainChange(
             findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null));
       }
@@ -1343,7 +1419,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<EntityReference> reindexQueue = new ArrayList<>();
     Map<UUID, Set<UUID>> directDomains = fetchEffectiveDomainIds(assets);
     reconcileConflicts(assets, directDomains, reindexQueue);
-    reconcileInheritingDescendants(assets, directDomains, reindexQueue);
+    // Roots are reconciled above; seeding them as visited stops a root reached again as another
+    // root's descendant from being re-reconciled against inherited domains it doesn't use.
+    reconcileInheritingDescendants(
+        assets, directDomains, new HashSet<>(directDomains.keySet()), reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
       // This runs inside the domain-change @Transaction. Defer the batched reindex until commit so
       // its re-reads see the committed (post-detach) rows rather than the in-flight transaction
@@ -1358,77 +1437,65 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   /**
-   * Walk the containment subtree of {@code roots} one level at a time, reconciling every descendant
-   * that inherits its domain (no domain of its own) against the domains it inherits. A descendant
-   * that carries its own domain is unaffected and prunes its subtree, so the walk stops there. Reads
-   * are batched per level (children, their domains, their data products, and those data products'
-   * domains), so the cost is O(tree depth), not O(node count).
+   * Reconcile every descendant of {@code parents} that inherits its domain (no domain of its own)
+   * against the domains it inherits. A descendant with its own domain is unaffected and prunes its
+   * subtree. Like bulkHardDeleteSubtree, parents are processed in bounded chunks and each chunk
+   * recurses depth-first, so no query or hydration spans a whole tree level (e.g. a database with
+   * hundreds of thousands of tables) — only one chunk's children at a time.
    */
   private void reconcileInheritingDescendants(
-      List<EntityReference> roots,
+      List<EntityReference> parents,
       Map<UUID, Set<UUID>> inheritedByParent,
+      Set<UUID> visited,
       List<EntityReference> reindexQueue) {
-    List<EntityReference> frontier = roots;
-    Map<UUID, Set<UUID>> inherited = inheritedByParent;
-    // Roots are reconciled by the caller; guard against revisiting a node reached by another parent
-    // or via a containment cycle, so the walk always terminates.
-    Set<UUID> visited = new HashSet<>(inheritedByParent.keySet());
-    while (!frontier.isEmpty()) {
-      // Discover this level's children, reduced to lightweight (id, type) refs; the heavy
-      // relationship rows are released before the per-chunk work below.
-      Map<UUID, UUID> parentOf = new HashMap<>();
-      List<EntityReference> candidates = fetchUnvisitedChildren(frontier, visited, parentOf);
-      if (candidates.isEmpty()) {
-        return;
-      }
-      List<EntityReference> nextFrontier = new ArrayList<>();
-      Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
-      // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
-      // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
-      for (int start = 0; start < candidates.size(); start += RECONCILE_CHUNK_SIZE) {
-        List<EntityReference> chunk =
-            candidates.subList(start, Math.min(start + RECONCILE_CHUNK_SIZE, candidates.size()));
-        Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
-        List<EntityReference> inheritingChunk = new ArrayList<>();
-        Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
-        for (EntityReference child : chunk) {
-          // A child with its own explicit domain (and its subtree) is unaffected by the move.
-          if (!chunkOwnDomains.getOrDefault(child.getId(), Set.of()).isEmpty()) {
-            continue;
-          }
-          Set<UUID> inheritedSet = inherited.getOrDefault(parentOf.get(child.getId()), Set.of());
-          inheritingChunk.add(child);
-          chunkEffective.put(child.getId(), inheritedSet);
-          nextInherited.put(child.getId(), inheritedSet);
-        }
-        reconcileConflicts(inheritingChunk, chunkEffective, reindexQueue);
-        nextFrontier.addAll(inheritingChunk);
-      }
-      frontier = nextFrontier;
-      inherited = nextInherited;
+    for (List<EntityReference> chunk : Lists.partition(parents, RECONCILE_CHUNK_SIZE)) {
+      Map<UUID, Set<UUID>> inheritedByChild = new HashMap<>();
+      List<EntityReference> children =
+          fetchUnvisitedChildren(chunk, inheritedByParent, visited, inheritedByChild);
+      reconcileInheritingChildren(children, inheritedByChild, visited, reindexQueue);
+    }
+  }
+
+  private void reconcileInheritingChildren(
+      List<EntityReference> children,
+      Map<UUID, Set<UUID>> inheritedByChild,
+      Set<UUID> visited,
+      List<EntityReference> reindexQueue) {
+    for (List<EntityReference> chunk : Lists.partition(children, RECONCILE_CHUNK_SIZE)) {
+      Map<UUID, Set<UUID>> ownDomains = batchFetchDomainIds(refIds(chunk));
+      List<EntityReference> inheriting =
+          chunk.stream()
+              .filter(child -> ownDomains.getOrDefault(child.getId(), Set.of()).isEmpty())
+              .toList();
+      reconcileConflicts(inheriting, inheritedByChild, reindexQueue);
+      reconcileInheritingDescendants(inheriting, inheritedByChild, visited, reindexQueue);
     }
   }
 
   /**
-   * One query for the CONTAINS children of {@code frontier}, returned as lightweight (id, type)
-   * references with each child's parent recorded in {@code parentOf} for inheritance. Children
-   * already in {@code visited} (reached via another parent or a cycle) are skipped. The heavy
-   * relationship rows are consumed inline and not retained.
+   * One query for the CONTAINS children of {@code parents}, returned as lightweight (id, type)
+   * references; each child's inherited domains (its parent's) are recorded in {@code
+   * inheritedByChild}. Children already in {@code visited} (reached via another parent or a cycle)
+   * are skipped, so the walk always terminates.
    */
   private List<EntityReference> fetchUnvisitedChildren(
-      List<EntityReference> frontier, Set<UUID> visited, Map<UUID, UUID> parentOf) {
-    List<EntityReference> candidates = new ArrayList<>();
+      List<EntityReference> parents,
+      Map<UUID, Set<UUID>> inheritedByParent,
+      Set<UUID> visited,
+      Map<UUID, Set<UUID>> inheritedByChild) {
+    List<EntityReference> children = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipObject row :
         daoCollection
             .relationshipDAO()
-            .findToBatchAllTypes(refIds(frontier), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
+            .findToBatchAllTypes(refIds(parents), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
       UUID childId = UUID.fromString(row.getToId());
       if (visited.add(childId)) {
-        candidates.add(new EntityReference().withId(childId).withType(row.getToEntity()));
-        parentOf.put(childId, UUID.fromString(row.getFromId()));
+        children.add(new EntityReference().withId(childId).withType(row.getToEntity()));
+        inheritedByChild.put(
+            childId, inheritedByParent.getOrDefault(UUID.fromString(row.getFromId()), Set.of()));
       }
     }
-    return candidates;
+    return children;
   }
 
   /**
