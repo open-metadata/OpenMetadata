@@ -166,7 +166,7 @@ export const IngestionPipelineList = ({
       setSelectedPipelines([]);
       setDeploying(false);
     }
-  }, [selectedPipelines]);
+  }, [selectedPipelines, t]);
 
   const fetchPipelines = useCallback(
     async ({
@@ -337,7 +337,7 @@ export const IngestionPipelineList = ({
           color="primary"
           data-testid="bulk-re-deploy-button"
           isDisabled={
-            selectedPipelines.length === 0 ||
+            selectedPipelines?.length === 0 ||
             isFetchingStatus ||
             !isAirflowAvailable ||
             isPlatformDisabled
