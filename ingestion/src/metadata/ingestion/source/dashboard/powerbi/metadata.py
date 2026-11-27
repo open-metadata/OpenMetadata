@@ -100,7 +100,9 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     DataflowExportResponse,
     Datamart,
+    DataModelSchema,
     Dataset,
+    DatasetExpression,
     Group,
     PowerBIDashboard,
     PowerBiMeasureModel,
@@ -164,6 +166,7 @@ class PowerbiSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.pagination_entity_per_page = min(100, self.service_connection.pagination_entity_per_page)
         self.datamodel_file_mappings = []
+        self._datamodel_file_mappings_loaded = False
         self.state = WorkspaceState()
         if self.source_config.includeMetrics and not self.source_config.includeDataModels:
             logger.warning(
@@ -1166,7 +1169,7 @@ class PowerbiSource(DashboardServiceSource):
             if not isinstance(table.source, list):
                 return None
             source_expression = table.source[0].expression
-            if not source_expression:
+            if not isinstance(source_expression, str) or not source_expression:
                 logger.debug(f"No source expression found for table: {table.name}")
                 return None
 
@@ -1189,7 +1192,31 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_expression_regex_exp(self, match: re.Match, datamodel_entity: DashboardDataModel) -> str | None:
+    def _get_dataset_expressions(
+        self,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
+    ) -> list[DatasetExpression]:
+        """Return dataset expressions from workspace state supplemented by file-sourced expressions."""
+        dataset = self.state.find_dataset(model_str(datamodel_entity.name))
+        base_expressions = list(dataset.expressions) if dataset and dataset.expressions else []
+        if not extra_expressions:
+            return base_expressions
+        seen_names = {expr.name for expr in base_expressions if expr.name}
+        merged = list(base_expressions)
+        for expr in extra_expressions:
+            if expr.name not in seen_names:
+                merged.append(expr)
+                if expr.name:
+                    seen_names.add(expr.name)
+        return merged
+
+    def _parse_expression_regex_exp(
+        self,
+        match: re.Match,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
+    ) -> str | None:
         """parse snowflake regex expression"""
         try:
             if not match:
@@ -1197,21 +1224,21 @@ class PowerbiSource(DashboardServiceSource):
             elif match.group(1):  # noqa: RET505
                 return match.group(1)
             elif match.group(2):
-                dataset = self.state.find_dataset(datamodel_entity.name.root)
-                if dataset and dataset.expressions:
-                    # find keyword from dataset expressions
-                    for dexpression in dataset.expressions:
-                        if not dexpression.expression:
-                            logger.debug(
-                                f"No expression value found inside dataset"
-                                f"({dataset.name}) expressions' name={dexpression.name}"
-                            )
-                            continue
-                        if dexpression.name == match.group(2):
-                            pattern = r'^"([^"]+)"\s+meta'
-                            kw_match = re.search(pattern, dexpression.expression)
-                            if kw_match:
-                                return kw_match.group(1)
+                param_name = match.group(2).strip()
+                expressions = self._get_dataset_expressions(datamodel_entity, extra_expressions)
+                for dexpression in expressions:
+                    if not dexpression.expression:
+                        logger.debug(
+                            "No expression value found inside datamodel (%s) expressions' name=%s",
+                            model_str(datamodel_entity.name),
+                            dexpression.name,
+                        )
+                        continue
+                    if dexpression.name == param_name and isinstance(dexpression.expression, str):
+                        pattern = r'^"([^"]+)"\s+meta'
+                        kw_match = re.search(pattern, dexpression.expression)
+                        if kw_match:
+                            return kw_match.group(1)
         except Exception as exc:
             logger.debug(f"Error to parse snowflake regex expression: {exc}")
             logger.debug(traceback.format_exc())
@@ -1333,6 +1360,8 @@ class PowerbiSource(DashboardServiceSource):
         source_expression: str,
         datamodel_entity: DashboardDataModel,
         table: PowerBiTable,
+        extra_expressions: list[DatasetExpression] | None = None,
+        visited_expressions: set[str] | None = None,
     ) -> list[dict] | None:
         """
         Parse BigQuery source from Power Query M expressions.
@@ -1355,16 +1384,25 @@ class PowerbiSource(DashboardServiceSource):
 
             if source_ref_match:
                 ref_name = source_ref_match.group(1).strip().strip('"').strip("#").strip('"')
-                logger.debug(f"Table source references expression: {ref_name}, resolving...")
-
-                # Fetch the dataset to get its expressions
-                dataset = self.state.find_dataset(datamodel_entity.name.root)
-                if dataset and dataset.expressions:
-                    for dexpression in dataset.expressions:
-                        if dexpression.name == ref_name and dexpression.expression:
+                seen = visited_expressions if visited_expressions is not None else set()
+                if ref_name not in seen:
+                    logger.debug(f"Table source references expression: {ref_name}, resolving...")
+                    expressions = self._get_dataset_expressions(datamodel_entity, extra_expressions)
+                    for dexpression in expressions:
+                        if (
+                            dexpression.name == ref_name
+                            and isinstance(dexpression.expression, str)
+                            and dexpression.expression
+                        ):
                             logger.debug(f"Found referenced expression '{ref_name}', checking for BigQuery")
                             # Recursively parse the referenced expression
-                            return self._parse_bigquery_source(dexpression.expression, datamodel_entity, table)
+                            return self._parse_bigquery_source(
+                                dexpression.expression,
+                                datamodel_entity,
+                                table,
+                                extra_expressions=extra_expressions,
+                                visited_expressions=seen | {ref_name},
+                            )
 
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
@@ -1558,7 +1596,10 @@ class PowerbiSource(DashboardServiceSource):
         return None
 
     def _parse_catalog_table_definition(
-        self, source_expression: str, datamodel_entity: DashboardDataModel
+        self,
+        source_expression: str,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
     ) -> list[dict] | None:
         """parse catalog table definition"""
         db_match = re.search(r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression)
@@ -1566,10 +1607,10 @@ class PowerbiSource(DashboardServiceSource):
         table_match = re.search(r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression)
         view_match = re.search(r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression)
         try:
-            database = self._parse_expression_regex_exp(db_match, datamodel_entity)
-            schema = self._parse_expression_regex_exp(schema_match, datamodel_entity)
-            table = self._parse_expression_regex_exp(table_match, datamodel_entity)
-            view = self._parse_expression_regex_exp(view_match, datamodel_entity)
+            database = self._parse_expression_regex_exp(db_match, datamodel_entity, extra_expressions)
+            schema = self._parse_expression_regex_exp(schema_match, datamodel_entity, extra_expressions)
+            table = self._parse_expression_regex_exp(table_match, datamodel_entity, extra_expressions)
+            view = self._parse_expression_regex_exp(view_match, datamodel_entity, extra_expressions)
             if table or view:  # at least table or view should be present
                 return [
                     {
@@ -1584,30 +1625,46 @@ class PowerbiSource(DashboardServiceSource):
         return None
 
     def _parse_databricks_source(
-        self, source_expression: str, datamodel_entity: DashboardDataModel
+        self,
+        source_expression: str,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
     ) -> list[dict] | None:
         if not any(
             source_type in source_expression for source_type in ("Databricks.Catalogs", "DatabricksMultiCloud.Catalogs")
         ):
             return None
-        dataset = self.state.find_dataset(datamodel_entity.name.root)
-        if dataset and dataset.expressions:
+        expressions = self._get_dataset_expressions(datamodel_entity, extra_expressions)
+        if expressions:
+            dataset = self.state.find_dataset(model_str(datamodel_entity.name))
+            effective_dataset = (
+                dataset.model_copy(update={"expressions": expressions})
+                if dataset
+                else Dataset(
+                    id=model_str(datamodel_entity.name),
+                    name=model_str(datamodel_entity.displayName) or model_str(datamodel_entity.name),
+                    expressions=expressions,
+                )
+            )
             try:
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
                     return parse_databricks_native_query_source(
                         source_expression,
-                        dataset,
+                        effective_dataset,
                         parser_type=self.get_query_parser_type(),
                     )
                 else:  # noqa: RET505
-                    return self._parse_catalog_table_definition(source_expression, datamodel_entity)
+                    return self._parse_catalog_table_definition(source_expression, datamodel_entity, extra_expressions)
             except Exception as exc:
                 logger.debug(f"Error to parse databricks table source: {exc}")
                 logger.debug(traceback.format_exc())
         return None
 
     def _parse_snowflake_source(
-        self, source_expression: str, datamodel_entity: DashboardDataModel
+        self,
+        source_expression: str,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
     ) -> list[dict] | None:
         try:
             if "Snowflake.Databases" not in source_expression:
@@ -1616,25 +1673,28 @@ class PowerbiSource(DashboardServiceSource):
             if SNOWFLAKE_QUERY_EXPRESSION_KW in source_expression:
                 # snowflake query source identified
                 return self._parse_snowflake_query_source(source_expression)
-            return self._parse_catalog_table_definition(source_expression, datamodel_entity)
+            return self._parse_catalog_table_definition(source_expression, datamodel_entity, extra_expressions)
         except Exception as exc:
             logger.debug(f"Error to parse snowflake table source: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
     def _parse_table_info_from_source_exp(
-        self, table: PowerBiTable, datamodel_entity: DashboardDataModel
+        self,
+        table: PowerBiTable,
+        datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
     ) -> list[dict] | None:
         try:
             if not isinstance(table.source, list):
                 return None
             source_expression = table.source[0].expression
-            if not source_expression:
+            if not isinstance(source_expression, str) or not source_expression:
                 logger.debug(f"No source expression found for table: {table.name}")
                 return None
 
             # parse snowflake source
-            table_info_list = self._parse_snowflake_source(source_expression, datamodel_entity)
+            table_info_list = self._parse_snowflake_source(source_expression, datamodel_entity, extra_expressions)
             if isinstance(table_info_list, list):
                 return table_info_list
 
@@ -1644,12 +1704,14 @@ class PowerbiSource(DashboardServiceSource):
                 return table_info_list
 
             # parse bigquery source
-            table_info_list = self._parse_bigquery_source(source_expression, datamodel_entity, table)
+            table_info_list = self._parse_bigquery_source(
+                source_expression, datamodel_entity, table, extra_expressions=extra_expressions
+            )
             if isinstance(table_info_list, list):
                 return table_info_list
 
             # parse databricks source
-            table_info_list = self._parse_databricks_source(source_expression, datamodel_entity)
+            table_info_list = self._parse_databricks_source(source_expression, datamodel_entity, extra_expressions)
             if isinstance(table_info_list, list):
                 return table_info_list
 
@@ -1670,6 +1732,7 @@ class PowerbiSource(DashboardServiceSource):
         db_service_prefix: str | None,
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
+        extra_expressions: list[DatasetExpression] | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
@@ -1682,7 +1745,9 @@ class PowerbiSource(DashboardServiceSource):
         ) = self.parse_db_service_prefix(db_service_prefix)
 
         try:
-            table_info_list = self._parse_table_info_from_source_exp(table, datamodel_entity)
+            table_info_list = self._parse_table_info_from_source_exp(
+                table, datamodel_entity, extra_expressions=extra_expressions
+            )
             if not table_info_list:
                 # if tables are not found from source expression
                 # try establishing lineage using powerbi's table name.
@@ -1755,28 +1820,74 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
+    def _match_datamodel_schemas(self, datamodel_entity: DashboardDataModel) -> list[DataModelSchema]:
+        """Match file-sourced schemas to a Power BI datamodel in priority order:
+
+        1. `RemoteArtifacts[].DatasetId` == `datamodel_entity.name` (`.pbit` / `.pbir` `byConnection`)
+        2. `logicalId` == `datamodel_entity.name` (`.platform` `config.logicalId`)
+        3. Case-insensitive `modelName` == `datamodel_entity.displayName` or `name`
+        """
+        entity_name = model_str(datamodel_entity.name)
+        entity_name_lower = entity_name.lower() if entity_name else ""
+        entity_display_name = model_str(datamodel_entity.displayName)
+        entity_display_lower = entity_display_name.lower() if entity_display_name else ""
+
+        dataset_id_matches: list[DataModelSchema] = []
+        logical_id_matches: list[DataModelSchema] = []
+        model_name_matches: list[DataModelSchema] = []
+
+        for datamodel_schema in self.datamodel_file_mappings or []:
+            remote_artifacts = (
+                datamodel_schema.connectionFile.RemoteArtifacts if datamodel_schema.connectionFile else None
+            )
+            if remote_artifacts:
+                if entity_name_lower and any(
+                    conn.DatasetId and conn.DatasetId.lower() == entity_name_lower for conn in remote_artifacts
+                ):
+                    dataset_id_matches.append(datamodel_schema)
+                continue
+
+            if (
+                datamodel_schema.logicalId
+                and entity_name_lower
+                and datamodel_schema.logicalId.lower() == entity_name_lower
+            ):
+                logical_id_matches.append(datamodel_schema)
+                continue
+
+            if datamodel_schema.modelName:
+                schema_model_lower = datamodel_schema.modelName.lower()
+                if (entity_display_lower and schema_model_lower == entity_display_lower) or (
+                    entity_name_lower and schema_model_lower == entity_name_lower
+                ):
+                    model_name_matches.append(datamodel_schema)
+
+        if dataset_id_matches:
+            return dataset_id_matches
+        if logical_id_matches:
+            return logical_id_matches
+        return model_name_matches
+
     def create_table_datamodel_lineage_from_files(
         self,
         db_service_prefix: str | None,
         datamodel_entity: DashboardDataModel | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Method to create lineage between table and datamodels using pbit files
+        Method to create lineage between table and datamodels using pbit and TMDL files
         """
+        if not datamodel_entity:
+            return
         (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
 
         try:
             # check if the datamodel_file_mappings is populated or not
             # if not, then populate the datamodel_file_mappings and process the lineage
-            if not self.datamodel_file_mappings:
-                self.datamodel_file_mappings = self.client.file_client.get_data_model_schema_mappings()
+            if not self.datamodel_file_mappings and not self._datamodel_file_mappings_loaded:
+                self.datamodel_file_mappings = self.client.file_client.get_data_model_schema_mappings() or []
+                self._datamodel_file_mappings_loaded = True
 
-            # search which file contains the datamodel and for the given datamodel_entity
-            datamodel_file_list = []
-            for datamodel_schema in self.datamodel_file_mappings or []:
-                for connections in datamodel_schema.connectionFile.RemoteArtifacts or []:
-                    if connections.DatasetId == model_str(datamodel_entity.name):
-                        datamodel_file_list.append(datamodel_schema)  # noqa: PERF401
+            datamodel_file_list = self._match_datamodel_schemas(datamodel_entity)
 
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
@@ -1784,6 +1895,7 @@ class PowerbiSource(DashboardServiceSource):
                         db_service_prefix=db_service_prefix,
                         table=table,
                         datamodel_entity=datamodel_entity,
+                        extra_expressions=datamodel_schema_file.expressions,
                     )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
