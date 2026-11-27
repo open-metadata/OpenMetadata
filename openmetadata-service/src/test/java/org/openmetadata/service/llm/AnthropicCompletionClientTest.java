@@ -37,6 +37,20 @@ class AnthropicCompletionClientTest {
   }
 
   @Test
+  void readsAllTextBlocksAfterThinking() {
+    final String response =
+        """
+        {"content":[{"type":"thinking","thinking":"","signature":"signature"},
+                    {"type":"text","text":"first "},{"type":"text","text":"second"}],
+         "usage":{"input_tokens":21,"output_tokens":9}}
+        """;
+    final CompletionResult result = AnthropicCompletionClient.parseResult(response);
+    assertEquals("first second", result.text());
+    assertEquals(21, result.inputTokens());
+    assertEquals(9, result.outputTokens());
+  }
+
+  @Test
   void requestBodyHonorsOverrides() {
     String body = AnthropicCompletionClient.buildRequestBody("sys", "user", "claude-x", 256, 0.0);
     assertTrue(body.contains("\"model\":\"claude-x\""));
