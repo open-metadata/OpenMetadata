@@ -686,6 +686,27 @@ describe('TagsContainerV2 glossary picker', () => {
     ]);
   });
 
+  it('keeps a classification tag that shares its FQN with a removed glossary term', async () => {
+    const sameFqnTerm: EntityTags = {
+      ...piiSensitiveTag,
+      source: TagSource.Glossary,
+    };
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [sameFqnTerm, piiSensitiveTag],
+      onSelectionChange,
+    });
+
+    await act(async () => {
+      await emitGlossaryChange([arrTerm]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({ tagFQN: GLOSSARY_ARR_FQN }),
+      piiSensitiveTag,
+    ]);
+  });
+
   it('preserves server-managed fields on a term that survives the save', async () => {
     const onSelectionChange = jest.fn().mockResolvedValue(undefined);
     renderGlossaryContainer({

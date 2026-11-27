@@ -19,7 +19,7 @@ import {
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isEmpty, isEqual } from 'lodash';
+import { difference, isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -135,12 +135,10 @@ const TagsContainerV2 = ({
 
   // Callers replace the whole tag list with what we emit, so every tag this picker does not edit
   // must go back out: the other source's tags and the Tier/Certification tags getFilterTags hides.
+  // Removed by reference, not FQN: a classification tag and a glossary term may share an FQN.
   const untouchedTags = useMemo(
-    () =>
-      selectedTags.filter(
-        ({ tagFQN }) => !selectedTagsInternal?.includes(tagFQN)
-      ),
-    [selectedTags, selectedTagsInternal]
+    () => difference(selectedTags, tags[tagType] ?? []),
+    [selectedTags, tags, tagType]
   );
 
   const showNoDataPlaceholder = useMemo(
