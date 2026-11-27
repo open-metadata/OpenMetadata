@@ -6712,6 +6712,7 @@
     "retention-period-description": "تشير فترة الاستبقاء إلى المدة التي يتم خلالها الاحتفاظ بالبيانات قبل اعتبارها مؤهلة للحذف أو الأرشفة. مثال: 30 يومًا، 6 أشهر، سنة واحدة أو أي تنسيق ISO 8601 بتوقيت UTC مثل P23DT23H سيكون صالحًا.",
     "retention-sla-description": "<0>{{label}}</0>: يجب الاحتفاظ بالبيانات لمدة <0>{{data}}</0>",
     "review-submitted-task-count": "تم إرسال المراجعة · تم تحديث {{count}} مهمة/مهام",
+    "reviewer-multiple-users-or-single-team": "حدد إما عدة مستخدمين أو فريقاً واحداً كمراجعين.",
     "revise-and-resubmit-message": "مراجعة وإعادة الإرسال",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "الأدوار التي تمنح أذونات {{name}}.",

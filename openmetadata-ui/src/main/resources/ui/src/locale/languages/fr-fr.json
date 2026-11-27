@@ -6712,6 +6712,7 @@
     "retention-period-description": "La période de rétention est la durée pendant laquelle les données sont conservées avant d'être éligible à la suppression ou à l'archivage. Exemples: 30 jours, 6 mois, 1 an ou n'importe quel format ISO 8601 en UTC comme P23DT23H sont valides.",
     "retention-sla-description": "<0>{{label}}</0> : les données doivent être conservées pendant <0>{{data}}</0>.",
     "review-submitted-task-count": "Examen soumis · {{count}} tâche(s) mise(s) à jour",
+    "reviewer-multiple-users-or-single-team": "Sélectionnez soit plusieurs utilisateurs, soit une seule équipe en tant que réviseurs.",
     "revise-and-resubmit-message": "Réviser et soumettre à nouveau",
     "role-granting-description": "Rôles octroyant vos permissions",
     "role-granting-description-of-user": "Rôles accordant les autorisations de {{name}}.",

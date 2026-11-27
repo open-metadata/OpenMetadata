@@ -26,6 +26,7 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.contract-title': 'Contract Title',
         'label.owner-plural': 'Owners',
+        'label.reviewer-plural': 'Reviewers',
         'label.status': 'Status',
         'label.draft': 'Draft label',
         'label.in-review': 'In Review label',
@@ -33,6 +34,8 @@ jest.mock('react-i18next', () => ({
         'label.description': 'Description',
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
+        'message.reviewer-multiple-users-or-single-team':
+          'Select either multiple users or a single team as reviewers.',
         'label.next': 'Next',
       };
 
@@ -92,6 +95,9 @@ const mockInitialValues: Partial<DataContract> = {
   owners: [
     { id: 'user-1', name: 'Test User', type: 'user' },
   ] as EntityReference[],
+  reviewers: [
+    { id: 'user-2', name: 'Test Reviewer', type: 'user' },
+  ] as EntityReference[],
 };
 
 const renderForm = (
@@ -119,6 +125,7 @@ describe('ContractDetailFormTab', () => {
     expect(screen.getByText('Contract Title')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Owners')).toBeInTheDocument();
+    expect(screen.getByText('Reviewers')).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
   });
 
@@ -130,6 +137,7 @@ describe('ContractDetailFormTab', () => {
     );
     expect(screen.getAllByText('In Review label').length).toBeGreaterThan(0);
     expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByText('Test Reviewer')).toBeInTheDocument();
     expect(screen.getByTestId('description-editor')).toHaveValue(
       'Test Description'
     );

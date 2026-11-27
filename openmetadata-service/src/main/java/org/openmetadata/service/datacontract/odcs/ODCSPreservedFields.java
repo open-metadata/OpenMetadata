@@ -170,6 +170,7 @@ public final class ODCSPreservedFields {
     // mapped.
     return !ODCSFieldCoverage.isMapped(section, key)
         || key.equals(IDENTITIES.get(section))
+        || (section == Section.TEAM_MEMBER && "role".equals(key))
         || !applied.hasNonNull(key);
   }
 
@@ -303,9 +304,7 @@ public final class ODCSPreservedFields {
   private static int find(JsonNode candidates, JsonNode item, Section section) {
     String identity = IDENTITIES.get(section);
     for (int index = 0; candidates.isArray() && index < candidates.size(); index++) {
-      if (identity != null
-          && item.hasNonNull(identity)
-          && item.path(identity).equals(candidates.get(index).path(identity))) {
+      if (matchesIdentity(candidates.get(index), item, section, identity)) {
         return index;
       }
     }
@@ -313,6 +312,17 @@ public final class ODCSPreservedFields {
     return section == Section.SCHEMA_OBJECT && candidates.isArray() && candidates.size() == 1
         ? 0
         : -1;
+  }
+
+  private static boolean matchesIdentity(
+      JsonNode candidate, JsonNode item, Section section, String identity) {
+    boolean sameKey =
+        identity != null
+            && item.hasNonNull(identity)
+            && item.path(identity).equals(candidate.path(identity));
+    return sameKey
+        && (section != Section.TEAM_MEMBER
+            || item.path("role").asText("").equalsIgnoreCase(candidate.path("role").asText("")));
   }
 
   public static JsonNode merge(JsonNode existing, JsonNode imported) {

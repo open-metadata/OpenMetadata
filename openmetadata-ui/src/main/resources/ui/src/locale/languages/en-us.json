@@ -6712,6 +6712,7 @@
     "retention-period-description": "Retention period refers to the duration for which data is retained before it is considered eligible for deletion or archival. Example: 30 days, 6 months, 1 year or any ISO 8601 format in UTC like P23DT23H will be valid.",
     "retention-sla-description": "<0>{{label}}</0>: Data should be retained for <0>{{data}}</0>",
     "review-submitted-task-count": "Review submitted · {{count}} task(s) updated",
+    "reviewer-multiple-users-or-single-team": "Select either multiple users or a single team as reviewers.",
     "revise-and-resubmit-message": "Revise and resubmit",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "Roles granting {{name}}'s permissions.",

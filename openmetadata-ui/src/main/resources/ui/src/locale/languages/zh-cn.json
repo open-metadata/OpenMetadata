@@ -6712,6 +6712,7 @@
     "retention-period-description": "保留期是指数据在被视为符合删除或归档资格之前保留的持续时间。示例：30 天、6 个月、1 年或任何采用 UTC 的 ISO 8601 格式（如 P23DT23H）均有效。",
     "retention-sla-description": "<0>{{label}}</0>：数据应保留 <0>{{data}}</0>。",
     "review-submitted-task-count": "审核已提交 · 已更新 {{count}} 个任务",
+    "reviewer-multiple-users-or-single-team": "选择多个用户或单个团队作为审核者。",
     "revise-and-resubmit-message": "修改后重新提交",
     "role-granting-description": "授予您权限的角色",
     "role-granting-description-of-user": "授予 {{name}} 权限的角色。",

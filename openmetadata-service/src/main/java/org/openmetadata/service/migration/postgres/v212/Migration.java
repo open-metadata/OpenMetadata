@@ -20,6 +20,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v212.DataProductLineageRebuild;
 import org.openmetadata.service.migration.utils.v212.DataProductLineageSelfLoopRepair;
+import org.openmetadata.service.migration.utils.v212.LogicalTestSuitePipelineMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -29,6 +30,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LogicalTestSuitePipelineMigration.STEP_NAME,
+        () -> LogicalTestSuitePipelineMigration.migrate(handle, POSTGRES));
     // Released versions wrote data product lineage edges from a product to itself.
     runOnce(
         migrationDAO,

@@ -6712,6 +6712,7 @@
     "retention-period-description": "De bewaartermijn verwijst naar de duur van het bewaren van data voordat data in aanmerking komt voor verwijdering of archivering. Voorbeelden van geldige periodes: 30 dagen, 6 maanden, 1 jaar, of een ISO 8601-indeling in UTC zoals P23DT23H.",
     "retention-sla-description": "<0>{{label}}</0>: Gegevens moeten bewaard worden voor <0>{{data}}</0>.",
     "review-submitted-task-count": "Beoordeling ingediend · {{count}} taak/taken bijgewerkt",
+    "reviewer-multiple-users-or-single-team": "Selecteer meerdere gebruikers of één team als beoordelaars.",
     "revise-and-resubmit-message": "Herzien en opnieuw indienen",
     "role-granting-description": "Rollen die je rechten verlenen",
     "role-granting-description-of-user": "Rollen die de rechten van {{name}} verlenen.",

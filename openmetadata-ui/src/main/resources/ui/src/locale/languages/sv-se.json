@@ -6712,6 +6712,7 @@
     "retention-period-description": "Lagringsperiod avser den tid som data behålls innan det anses berättigat till borttagning eller arkivering. Exempel: 30 dagar, 6 månader, 1 år eller valfritt ISO 8601-format i UTC som P23DT23H är giltigt.",
     "retention-sla-description": "<0>{{label}}</0>: Data ska behållas i <0>{{data}}</0>",
     "review-submitted-task-count": "Granskning skickad · {{count}} uppgift(er) uppdaterade",
+    "reviewer-multiple-users-or-single-team": "Välj antingen flera användare eller ett enskilt team som granskare.",
     "revise-and-resubmit-message": "Revidera och skicka in igen",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "Roller som ger {{name}}s behörigheter.",

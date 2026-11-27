@@ -12,18 +12,47 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 class TestSuiteRepositoryTest {
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void updaterPreservesSuiteAssociation(boolean basic) {
+    final EntityReference table =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withFullyQualifiedName("svc.db.schema.orders");
+    final TestSuite original =
+        new TestSuite().withBasic(basic).withBasicEntityReference(basic ? table : null);
+    final TestSuite updated =
+        new TestSuite()
+            .withUpdatedBy("admin")
+            .withBasic(!basic)
+            .withBasicEntityReference(basic ? null : table);
+    final TestSuiteRepository repository = mock(TestSuiteRepository.class);
+    final var updater =
+        repository.new TestSuiteUpdater(original, updated, EntityRepository.Operation.PUT);
+
+    updater.entitySpecificUpdate(false);
+
+    assertEquals(original.getBasic(), updated.getBasic());
+    assertEquals(original.getBasicEntityReference(), updated.getBasicEntityReference());
+  }
 
   @Test
   void summaryTotalIncludesTestsWithoutResults() {

@@ -6712,6 +6712,7 @@
     "retention-period-description": "Saklama süresi, verilerin silinmeye veya arşivlenmeye uygun görülmeden önce saklandığı süreyi ifade eder. Örnek: 30 gün, 6 ay, 1 yıl veya P23DT23H gibi UTC cinsinden herhangi bir ISO 8601 formatı geçerli olacaktır.",
     "retention-sla-description": "<0>{{label}}</0>: Veriler <0>{{data}}</0> süreyle saklanmalıdır.",
     "review-submitted-task-count": "İnceleme gönderildi · {{count}} görev güncellendi",
+    "reviewer-multiple-users-or-single-team": "İnceleyen olarak birden fazla kullanıcı veya tek bir ekip seçin.",
     "revise-and-resubmit-message": "Düzelt ve yeniden gönder",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "{{name}} kullanıcısına izin veren roller.",

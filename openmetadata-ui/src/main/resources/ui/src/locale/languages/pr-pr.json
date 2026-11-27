@@ -6712,6 +6712,7 @@
     "retention-period-description": "دوره نگهداری به مدت زمانی اطلاق می‌شود که داده‌ها قبل از اینکه برای حذف یا بایگانی شدن واجد شرایط شوند، نگهداری می‌شوند. مثال: 30 روز، 6 ماه، 1 سال یا هر فرمتی از ISO 8601 در UTC مانند P23DT23H معتبر خواهد بود.",
     "retention-sla-description": "<0>{{label}}</0>: داده‌ها باید به مدت <0>{{data}}</0> نگه داشته شوند.",
     "review-submitted-task-count": "بررسی ارسال شد · {{count}} وظیفه به‌روزرسانی شد",
+    "reviewer-multiple-users-or-single-team": "انتخاب کنید: چند کاربر یا یک تیم به عنوان بازبین.",
     "revise-and-resubmit-message": "بازبینی و ارسال مجدد",
     "role-granting-description": "نقش‌هایی که مجوزهای شما را اعطا می‌کنند",
     "role-granting-description-of-user": "نقش‌هایی که مجوزهای {{name}} را اعطا می‌کنند.",
