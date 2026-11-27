@@ -173,6 +173,19 @@ export interface LlmConfigurationGoogle {
     modelId?:        string;
     temperature?:    number;
     timeoutSeconds?: number;
+    /**
+     * Use Vertex AI with Application Default Credentials for Google embeddings. Chat continues
+     * to use the Gemini API.
+     */
+    useVertexAI?: boolean;
+    /**
+     * Google Cloud location for Vertex AI embedding requests.
+     */
+    vertexLocation?: string;
+    /**
+     * Google Cloud project for Vertex AI embedding requests.
+     */
+    vertexProject?: string;
 }
 
 export interface LlmConfigurationOpenai {

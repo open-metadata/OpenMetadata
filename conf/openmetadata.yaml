@@ -699,6 +699,10 @@ llmConfiguration:
   google:
     apiKey: ${LLM_GOOGLE_API_KEY:-""}
     modelId: ${LLM_GOOGLE_MODEL_ID:-"gemini-2.5-flash"}
+    # Google embeddings can use the workload's Application Default Credentials on Vertex AI.
+    useVertexAI: ${LLM_GOOGLE_USE_VERTEX_AI:-false}
+    vertexProject: ${LLM_GOOGLE_VERTEX_PROJECT:-""}
+    vertexLocation: ${LLM_GOOGLE_VERTEX_LOCATION:-"us-central1"}
     maxTokens: ${LLM_GOOGLE_MAX_TOKENS:-4096}
   anthropic:
     apiKey: ${LLM_ANTHROPIC_API_KEY:-""}
@@ -706,7 +710,7 @@ llmConfiguration:
     baseUrl: ${LLM_ANTHROPIC_BASE_URL:-"https://api.anthropic.com"}
     maxTokens: ${LLM_ANTHROPIC_MAX_TOKENS:-4096}
   # Vector embeddings for semantic search. Credentials reuse the provider blocks above
-  # (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey); this section only selects the
+  # (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey or Vertex AI settings); this selects the
   # embedding provider + model. The embedding provider may differ from the chat provider above.
   embeddings:
     provider: ${EMBEDDING_PROVIDER:-bedrock}  # bedrock | openai | google | djl

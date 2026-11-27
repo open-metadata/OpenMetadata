@@ -10,11 +10,19 @@
  */
 package org.openmetadata.service.search.vector.client;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
@@ -25,8 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
@@ -539,6 +550,157 @@ class GoogleEmbeddingClientTest {
     HttpRequest request = httpClient.getCapturedRequests().get(0);
     String url = request.uri().toString();
     assertEquals("https://proxy.example.com/embed?alt=json&key=my-key", url);
+  }
+
+  @Test
+  void vertexSendsTheRightTaskAndFreshCredentialsForEachRequest() throws Exception {
+    LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 2);
+    config.getGoogle().withVertexProject("test-project").withEndpoint(EMBED_ENDPOINT);
+    StubHttpClient http =
+        new StubHttpClient(
+            """
+        {"predictions":[{"embeddings":{"values":[0.2,0.4],"statistics":{"token_count":7.0}}}]}
+        """,
+            200);
+    GoogleCredentials adc = mock(GoogleCredentials.class);
+    GoogleCredentials scoped = mock(GoogleCredentials.class);
+    when(adc.createScoped(List.of("https://www.googleapis.com/auth/cloud-platform")))
+        .thenReturn(scoped);
+    URI endpoint =
+        URI.create(
+            "https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/publishers/google/models/gemini-embedding-001:predict");
+    when(scoped.getRequestMetadata(endpoint))
+        .thenReturn(
+            Map.of(
+                "Authorization",
+                List.of("Bearer fixture-one"),
+                "x-goog-user-project",
+                List.of("billing-project")))
+        .thenReturn(Map.of("Authorization", List.of("Bearer fixture-two")));
+    VertexAIEmbeddingClient client = new VertexAIEmbeddingClient(config, http, () -> adc);
+    List<Long> tokenCounts = new ArrayList<>();
+    client.setUsageListener((model, input, usage, query) -> tokenCounts.add(usage.inputTokens()));
+
+    assertArrayEquals(new float[] {0.2f, 0.4f}, client.embed("source text"));
+    assertArrayEquals(new float[] {0.2f, 0.4f}, client.embedQuery("search text"));
+    assertEquals(List.of(7L, 7L), tokenCounts);
+    assertEquals("gemini-embedding-001", client.getModelId());
+    assertEquals(2, client.getDimension());
+    HttpRequest document = http.getCapturedRequests().getFirst();
+    HttpRequest query = http.getCapturedRequests().getLast();
+    assertEquals(endpoint, document.uri());
+    assertEquals(endpoint, query.uri());
+    assertEquals("POST", document.method());
+    assertEquals("application/json", document.headers().firstValue("Content-Type").orElseThrow());
+    assertEquals(
+        "Bearer fixture-one", document.headers().firstValue("Authorization").orElseThrow());
+    assertEquals(
+        "billing-project", document.headers().firstValue("x-goog-user-project").orElseThrow());
+    assertEquals("Bearer fixture-two", query.headers().firstValue("Authorization").orElseThrow());
+    ObjectMapper mapper = new ObjectMapper();
+    assertEquals(
+        mapper.readTree(
+            """
+        {"instances":[{"content":"source text","task_type":"RETRIEVAL_DOCUMENT"}],"parameters":{"outputDimensionality":2}}
+        """),
+        mapper.readTree(extractBody(document)));
+    JsonNode queryBody = mapper.readTree(extractBody(query));
+    assertEquals("RETRIEVAL_QUERY", queryBody.at("/instances/0/task_type").asText());
+    assertEquals("search text", queryBody.at("/instances/0/content").asText());
+  }
+
+  @Test
+  void vertexGlobalUsesTheGlobalHostAndAllowsMissingTokenStatistics() throws Exception {
+    LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 1);
+    config.getGoogle().withVertexProject("test-project").withVertexLocation("global");
+    StubHttpClient http =
+        new StubHttpClient("{\"predictions\":[{\"embeddings\":{\"values\":[1]}}]}", 200);
+    VertexAIEmbeddingClient client =
+        new VertexAIEmbeddingClient(config, http, GoogleEmbeddingClientTest::fixtureCredentials);
+    EmbeddingClient.EmbeddingResult result = client.doEmbedWithUsage("catalog", false);
+    assertArrayEquals(new float[] {1}, result.vector());
+    assertNull(result.usage());
+    assertEquals(
+        "https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/publishers/google/models/gemini-embedding-001:predict",
+        http.getCapturedRequests().getFirst().uri().toString());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{}",
+        "{\"predictions\":[]}",
+        "{\"predictions\":[{\"embeddings\":{\"values\":[1]}}]}",
+        "{\"predictions\":[{\"embeddings\":{\"values\":[1,\"nan\"]}}]}"
+      })
+  void vertexRejectsMissingOrMalformedVectors(String body) {
+    LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 2);
+    config.getGoogle().withVertexProject("test-project");
+    VertexAIEmbeddingClient client =
+        new VertexAIEmbeddingClient(
+            config, new StubHttpClient(body, 200), GoogleEmbeddingClientTest::fixtureCredentials);
+    assertThrows(IllegalStateException.class, () -> client.embed("source"));
+  }
+
+  @Test
+  void vertexValidatesConfigurationBeforeLoadingCredentials() {
+    LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 2);
+    StubHttpClient http = new StubHttpClient("", 200);
+    Supplier<GoogleCredentials> unexpectedLookup =
+        () -> {
+          throw new AssertionError("ADC lookup");
+        };
+    assertTrue(
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new VertexAIEmbeddingClient(config, http, unexpectedLookup))
+            .getMessage()
+            .contains("LLM_GOOGLE_VERTEX_PROJECT"));
+    config.getGoogle().withVertexProject("test-project").withVertexLocation("bad/location");
+    assertTrue(
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new VertexAIEmbeddingClient(config, http, unexpectedLookup))
+            .getMessage()
+            .contains("LLM_GOOGLE_VERTEX_LOCATION"));
+    config.getGoogle().withVertexLocation("us-central1");
+    config.getEmbeddings().getGoogle().withEmbeddingModelId("../model");
+    assertTrue(
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new VertexAIEmbeddingClient(config, http, unexpectedLookup))
+            .getMessage()
+            .contains("GOOGLE_EMBEDDING_MODEL_ID"));
+    config
+        .getEmbeddings()
+        .getGoogle()
+        .withEmbeddingModelId("gemini-embedding-001")
+        .withEmbeddingDimension(0);
+    assertTrue(
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new VertexAIEmbeddingClient(config, http, unexpectedLookup))
+            .getMessage()
+            .contains("dimension"));
+  }
+
+  @Test
+  void vertexReportsProviderFailure() {
+    LLMConfiguration config = buildConfig(null, "gemini-embedding-001", 2);
+    config.getGoogle().withVertexProject("test-project");
+    VertexAIEmbeddingClient client =
+        new VertexAIEmbeddingClient(
+            config,
+            new StubHttpClient("unavailable", 503),
+            GoogleEmbeddingClientTest::fixtureCredentials);
+    assertTrue(
+        assertThrows(IllegalStateException.class, () -> client.embed("source"))
+            .getMessage()
+            .contains("503"));
+  }
+
+  private static GoogleCredentials fixtureCredentials() {
+    return GoogleCredentials.create(new AccessToken("fixture", null));
   }
 
   private static String extractBody(HttpRequest request) {
