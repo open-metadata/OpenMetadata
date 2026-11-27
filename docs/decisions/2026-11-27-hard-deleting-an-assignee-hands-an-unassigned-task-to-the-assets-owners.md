@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-27 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `TaskAssigneeCleanupTest`, `EntityDeleteTaskCleanupIT`, `UserHardDeleteWithSoftDeletedTaskIT`
+- **Guard:** `TaskAssigneeCleanupTest`, `EntityDeleteTaskCleanupIT`
 - **Related:** #37315, PR #37332, PR #37942, ADR:2026-11-20-suggestion-tasks-fall-back-through-every-owner-to-the-admins, ADR:2026-11-25-an-approval-never-goes-to-its-requester, ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
 
 ## Context
