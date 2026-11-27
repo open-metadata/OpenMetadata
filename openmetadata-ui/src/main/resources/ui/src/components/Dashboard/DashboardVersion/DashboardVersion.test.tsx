@@ -12,7 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import {
   dashboardVersionProps,
   mockNoChartData,
@@ -89,6 +90,10 @@ jest.mock(
 );
 
 JSON.parse = jest.fn().mockReturnValue([]);
+
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'dashboard' });
+});
 
 describe('DashboardVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -211,7 +216,35 @@ describe('DashboardVersion tests', () => {
     );
   });
 
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(
+      <DashboardVersion {...dashboardVersionProps} />
+    );
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'dashboard' });
+    rerender(<DashboardVersion {...dashboardVersionProps} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.detail-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
+
   describe('ViewCustomFields Permission Tests', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockReturnValue({
+        tab: EntityTabs.CUSTOM_PROPERTIES,
+      });
+    });
+
     const mockCustomPropertyTable = jest.requireMock(
       '../../common/CustomPropertyTable/CustomPropertyTable'
     ).CustomPropertyTable;
@@ -236,12 +269,6 @@ describe('DashboardVersion tests', () => {
         );
       });
 
-      const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
-      );
-
-      fireEvent.click(customPropertyTabLabel);
-
       expect(mockCustomPropertyTable).toHaveBeenCalledWith(
         expect.objectContaining({
           hasPermission: true,
@@ -265,12 +292,6 @@ describe('DashboardVersion tests', () => {
           }
         );
       });
-
-      const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
-      );
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(mockCustomPropertyTable).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -381,7 +381,9 @@
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/EntityDataConsumer.spec.ts",
         "playwright/e2e/Pages/EntityDataSteward.spec.ts",
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts"
       ]
     },
@@ -11816,6 +11818,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/ServiceAutoPilotButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts"
       ]
     },
     {

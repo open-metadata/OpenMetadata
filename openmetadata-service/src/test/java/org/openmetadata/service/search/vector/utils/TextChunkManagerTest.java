@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector.utils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import java.util.BitSet;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -84,6 +85,18 @@ class TextChunkManagerTest {
     List<String> chunks = TextChunkManager.chunk(s);
     assertEquals(1, chunks.size());
     assertEquals("", chunks.get(0));
+  }
+
+  @Test
+  void omissionsKeepAnEmptyChunkAtTheOriginalOrdinal() {
+    String first = "text ".repeat(379);
+    String omitted = "x ".repeat(381);
+    String source = "\t" + first + omitted + "tail";
+    BitSet omissions = new BitSet();
+    omissions.set(1 + first.length(), source.length() - "tail".length());
+
+    assertEquals(
+        List.of(first.stripTrailing(), "", "tail"), TextChunkManager.chunk(source, omissions));
   }
 
   @Test

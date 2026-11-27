@@ -98,6 +98,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   private static final long AGGREGATE_WINDOW_END_TS = 4_102_444_800_000L;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;
