@@ -101,6 +101,12 @@ class PublicOidcConfigurationTest {
     metadata.set(discovery(issuer.resolve("/different-issuer"), "/third-token"));
     assertThatThrownBy(resolver::load).hasMessageContaining("changed the provider issuer");
     assertThatThrownBy(resolver::load).hasMessageContaining("changed the provider issuer");
+    assertThatThrownBy(resolver::getTokenValidator)
+        .hasMessageContaining("changed the provider issuer");
+    assertThatThrownBy(resolver::getClientAuthenticationTokenEndpoint)
+        .hasMessageContaining("changed the provider issuer");
+    assertThatThrownBy(resolver::getClientAuthenticationPAREndpoint)
+        .hasMessageContaining("changed the provider issuer");
     assertThat(methods).containsExactly("GET", "GET", "GET");
 
     elapsedNanos.addAndGet(Duration.ofMinutes(1).toNanos());
