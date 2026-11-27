@@ -1,7 +1,7 @@
 # ClickHouse Distributed lineage follows the engine arguments on a local cluster
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial)
+- **Revisions:** v1 2026-11-19 (initial); v2 2026-11-27 (sink-owned deletion)
 - **Deciders:** FreakingMind
 - **Guard:** `TestDistributedTableLineage` in `ingestion/tests/unit/topology/database/test_clickhouse_lineage_utils.py`
 - **Related:** #37174, #37827, ADR:2026-11-05-connectors-adapt-view-lineage-parsing
@@ -39,6 +39,9 @@ ClickHouse names are case-sensitive.
   engine, an empty database, a macro this server does not define, or a cluster `system.clusters`
   does not list. A local table that is named but not found, or found more than once, removes only
   edges from other names.
+- The source selects obsolete edges and emits `OMetaDeleteLineageRequest` records with an explicit
+  `operation: delete`. Only the metadata REST sink executes their deletion. A file sink serializes
+  those records alongside additions, leaving the catalog unchanged during an export.
 
 ## Consequences
 A Distributed table over a cluster this server is not part of gets no edge, even with a matching

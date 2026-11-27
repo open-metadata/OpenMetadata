@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the Clickhouse materialized view `TO` clause lineage."""
 
+import json
 import pickle
 import uuid
 from unittest import TestCase
@@ -43,6 +44,9 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageRequest
+from metadata.ingestion.sink.file import FileSink, FileSinkConfig
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.clickhouse.lineage import ClickhouseLineageSource
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
     expand_macros,
@@ -687,7 +691,11 @@ class TestDistributedTableLineage:
             )
         )
         assert all(result.left is None for result in results)
-        return [result.right for result in results]
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+        for result in results:
+            if isinstance(result.right, OMetaDeleteLineageRequest):
+                assert sink.run(result.right) is not None
+        return [result.right for result in results if isinstance(result.right, AddLineageRequest)]
 
     def test_local_table_is_linked_to_the_distributed_table(self, metadata, tables, system_tables, caplog):
         local = self._add_table(tables, "default", "events_local")
@@ -1012,6 +1020,66 @@ class TestDistributedTableLineage:
             str(entities[name].id.root) for name in ("local", "mv", "manual")
         }
 
+    def test_file_sink_keeps_stored_lineage(self, metadata, tables, lineage, system_tables, tmp_path):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+        stored = list(lineage)
+        output = tmp_path / "lineage.json"
+        sink = FileSink(FileSinkConfig(filename=str(output)))
+
+        try:
+            for result in get_distributed_table_lineage(
+                metadata=metadata,
+                engine=system_tables,
+                service_name=self.SERVICE_NAME,
+                source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
+            ):
+                assert result.left is None
+                sink.run(result.right)
+        finally:
+            sink.close()
+
+        assert lineage == stored
+        exported = json.loads(output.read_text())
+        assert any(record["edge"]["fromEntity"]["id"] == str(entities["local"].id.root) for record in exported)
+        assert [record["edge"]["fromEntity"]["id"] for record in exported if record.get("operation") == "delete"] == [
+            str(entities["old_local"].id.root)
+        ]
+
+    def test_metadata_rest_sink_replaces_stored_lineage(self, metadata, tables, lineage, system_tables):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+
+        def add_lineage(request, **_):
+            lineage.append(
+                {
+                    "fromEntity": str(request.edge.fromEntity.id.root),
+                    "toEntity": str(request.edge.toEntity.id.root),
+                    "lineageDetails": {"source": request.edge.lineageDetails.source.value},
+                }
+            )
+            return {"entity": {"fullyQualifiedName": request.edge.fromEntity.fullyQualifiedName}}
+
+        metadata.add_lineage.side_effect = add_lineage
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+        records = list(
+            get_distributed_table_lineage(
+                metadata=metadata,
+                engine=system_tables,
+                service_name=self.SERVICE_NAME,
+                source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
+            )
+        )
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("old_local", "mv", "manual")
+        }
+
+        for result in records:
+            assert result.left is None
+            assert sink.run(result.right) is not None
+
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("local", "mv", "manual")
+        }
+
     def test_replaced_edge_is_kept_without_override(self, metadata, tables, lineage, system_tables):
         entities = self._replaced_lineage(tables, lineage, system_tables)
 
@@ -1097,7 +1165,7 @@ class TestDistributedTableLineage:
         assert request.edge.fromEntity.id == local.id
         metadata.delete_lineage_edge.assert_not_called()
 
-    def test_failed_edge_removal_is_reported_and_the_edge_still_added(self, metadata, tables, system_tables):
+    def test_failed_edge_selection_is_reported_and_the_edge_still_added(self, metadata, tables, system_tables):
         local = self._add_table(tables, "default", "events_local")
         self._add_table(tables, "default", "events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
@@ -1110,7 +1178,7 @@ class TestDistributedTableLineage:
             source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
         )
 
-        assert "Failed to remove the replaced lineage of Distributed table [default.events]" in error.left.error
+        assert "Failed to find the replaced lineage of Distributed table [default.events]" in error.left.error
         assert edge.right.edge.fromEntity.id == local.id
 
     def test_override_keeps_the_edge_of_a_local_table_the_lookup_misses(self, metadata, tables, lineage, system_tables):

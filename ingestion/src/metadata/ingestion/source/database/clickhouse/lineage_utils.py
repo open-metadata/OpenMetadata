@@ -58,7 +58,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     _build_table_lineage,
     get_table_entities_from_query,
 )
-from metadata.ingestion.models.ometa_lineage import LineageRequest
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaDeleteLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.clickhouse.queries import (
@@ -448,15 +448,15 @@ def _writes_into(upstream: Table, distributed_name: tuple[str, str]) -> bool:
     return (target.schema_name or _schema_and_name(upstream)[0], target.table_name) == distributed_name
 
 
-def _remove_replaced_edges(
+def _get_replaced_edges(
     metadata: OpenMetadata,
     service_name: str,
     distributed_name: tuple[str, str],
     distributed_entity: Table,
     local_table: LocalTableLookup,
-) -> None:
+) -> Iterable[OMetaDeleteLineageRequest]:
     """
-    Delete the view lineage edges into a Distributed table from tables its definition no longer names.
+    Select the view lineage edges into a Distributed table from tables its definition no longer names.
 
     Only the edges this module builds are deleted: view lineage edges from another table of the
     service. The edge from the table the definition names stays whether or not that table is found,
@@ -479,16 +479,15 @@ def _remove_replaced_edges(
             continue
         if _schema_and_name(upstream) == local_table.name:
             continue
-        logger.info(
-            "Removing lineage edge [%s] -> [%s]: the Distributed table no longer reads from it",
-            upstream_fqn,
-            model_str(distributed_entity.fullyQualifiedName),
-        )
-        metadata.delete_lineage_edge(
-            EntitiesEdge(
-                fromEntity=EntityReference(id=upstream.id, type="table"),
-                toEntity=EntityReference(id=distributed_entity.id, type="table"),
-            )
+        yield OMetaDeleteLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=upstream.id, type="table", fullyQualifiedName=upstream_fqn),
+                toEntity=EntityReference(
+                    id=distributed_entity.id,
+                    type="table",
+                    fullyQualifiedName=model_str(distributed_entity.fullyQualifiedName),
+                ),
+            ),
         )
 
 
@@ -497,7 +496,7 @@ def get_distributed_table_lineage(
     engine: Engine,
     service_name: str,
     source_config: DatabaseServiceQueryLineagePipeline,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[AddLineageRequest] | Either[OMetaDeleteLineageRequest]]:
     """
     Build the local table -> Distributed table edge of every Distributed table of the service.
 
@@ -506,8 +505,8 @@ def get_distributed_table_lineage(
     to the Distributed table, as they apply to the view in the view lineage.
 
     With `overrideViewLineage`, the edges from tables that the current definition of the Distributed
-    table no longer names are removed, once that definition could be read: its local table is
-    compared by name, so an edge is never removed because a lookup failed.
+    table no longer names are emitted for removal by the sink, once that definition could be read:
+    its local table is compared by name, so an edge is never removed because a lookup failed.
     """
     try:
         with engine.connect() as conn:
@@ -561,14 +560,15 @@ def get_distributed_table_lineage(
         # Distributed table, the one of a materialized view writing `TO` it included
         if source_config.overrideViewLineage and local_table.conclusive:
             try:
-                _remove_replaced_edges(
+                for deletion in _get_replaced_edges(
                     metadata, service_name, (schema_name, table_name), distributed_entity, local_table
-                )
+                ):
+                    yield Either(left=None, right=deletion)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
                         name="Distributed table lineage",
-                        error=f"Failed to remove the replaced lineage of Distributed table "
+                        error=f"Failed to find the replaced lineage of Distributed table "
                         f"[{schema_name}.{table_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     ),

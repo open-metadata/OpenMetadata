@@ -43,7 +43,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     container_lookup_paths,
 )
-from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource, LineageSourceRecord
 from metadata.ingestion.source.database.snowflake.connection import (
     probe_access_history_available,
 )
@@ -341,7 +341,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             return
         yield from super().yield_query_lineage()
 
-    def _iter(self, *args, **kwargs) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
+    def _iter(self, *args, **kwargs) -> Iterable[LineageSourceRecord]:
         """Run the base lineage producers, then append semantic view lineage.
 
         Semantic view lineage stays opt-in behind the same `includeSemanticViews`

@@ -32,7 +32,7 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import test_connection_common
-from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
+from metadata.ingestion.source.database.lineage_source import LineageSource, LineageSourceRecord, TableView
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ParsedLineage,
     parse_registry,
@@ -122,7 +122,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if self.engine is not None:
             self.engine.dispose()
 
-    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
+    def _iter(self, *_, **__) -> Iterable[LineageSourceRecord]:
         """Run the SQL passes, then the repository pass.
 
         Each pass reports its own edge count, because a run that succeeds and produces

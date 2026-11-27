@@ -12,13 +12,13 @@
 Custom wrapper for Lineage Request
 """
 
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.basic import Uuid
-from metadata.generated.schema.type.entityLineage import LineageDetails
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -36,6 +36,11 @@ class OMetaFQNLineageRequest(BaseModel):
 
 
 LineageRequest = AddLineageRequest | OMetaFQNLineageRequest
+
+
+class OMetaDeleteLineageRequest(BaseModel):
+    operation: Literal["delete"] = "delete"
+    edge: EntitiesEdge
 
 
 class OMetaLineageRequest(BaseModel):

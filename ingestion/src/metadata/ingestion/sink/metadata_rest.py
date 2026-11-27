@@ -99,6 +99,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import (
+    OMetaDeleteLineageRequest,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
@@ -594,6 +595,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         return Either(left=None, right=created_lineage["entity"]["fullyQualifiedName"])
+
+    @_run_dispatch.register
+    def delete_lineage(self, record: OMetaDeleteLineageRequest) -> Either[str]:
+        from_entity, to_entity = record.edge.fromEntity, record.edge.toEntity
+        from_name = model_str(from_entity.fullyQualifiedName) or f"{from_entity.type}:{model_str(from_entity.id)}"
+        to_name = model_str(to_entity.fullyQualifiedName) or f"{to_entity.type}:{model_str(to_entity.id)}"
+        logger.info("Removing lineage edge [%s] -> [%s]", from_name, to_name)
+        self.metadata.delete_lineage_edge(record.edge)
+        return Either(left=None, right=f"{from_name} -> {to_name}")
 
     def _delete_lineage_by_source_reference(self, entity_reference: EntityReference, source: str) -> None:
         if entity_reference.id:
