@@ -6676,6 +6676,53 @@ wheels = [
 ]
 
 [[package]]
+name = "jpype1"
+version = "1.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/48/a2/5d27e81d24eef64668bf702bfe0e091cc48388b4666f36e025243eb9d827/jpype1-1.7.1.tar.gz", hash = "sha256:3cd88838dc3d2d546f7eaeadaaff864e590010c15f2b6a44b6f37e60796a14b2", size = 783791, upload-time = "2026-05-06T23:55:10.664Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/c0/2c41dedfb65060fa05d152b3f57e7c3658c86257d92de365a3c1fcb80779/jpype1-1.7.1-1-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:6590cbdb6208e4522fd99ae5f5f4bed5de707122385bc48446a1e7d7b56357ef", size = 571509, upload-time = "2026-05-19T20:19:30.416Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/5e/5611d50222d146a060dbf22e69c4017545341ea6b289a591d5a9bdaad718/jpype1-1.7.1-1-cp311-cp311-macosx_11_0_universal2.whl", hash = "sha256:4c81ee11aee5ed938d7415877cd9c7a0cc9cbf1dac87f7eab928e641323a385b", size = 571633, upload-time = "2026-05-19T20:19:33.536Z" },
+    { url = "https://files.pythonhosted.org/packages/79/32/8b2279b12364f260111c7843bf9ede7dc442d5521d6d2ca728b3d522d445/jpype1-1.7.1-1-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:b3ddd9f9099202212a34679dfb95dda590bcfbd23289559d104e24abec9120d1", size = 569654, upload-time = "2026-05-19T20:19:36.41Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/67/5caa0de30bcb1c8786cc988144a68908e0624de20cfed470a67b1dd1f60c/jpype1-1.7.1-1-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:6d491a81281407f8a68552eb3c0e635e576e066c069268dc29a1ea27bb4778ae", size = 569800, upload-time = "2026-05-19T20:19:38.877Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/1d/9ee10b1aad9f01ea6ac6159981120eb5ace01962f9cfaa7de6b911de3eb8/jpype1-1.7.1-1-cp314-cp314-macosx_11_0_universal2.whl", hash = "sha256:ace0ba1a67561358fa5b57b8e93ed8bcf16f0a8d5cba79c875089c56827adf8e", size = 569753, upload-time = "2026-05-19T20:19:41.514Z" },
+    { url = "https://files.pythonhosted.org/packages/04/ff/44a6f285d4c07014cb64379b8863caaefad1cc976d36923073d097b1d461/jpype1-1.7.1-cp310-cp310-macosx_14_0_x86_64.whl", hash = "sha256:472b2f53002f5fdf118d2e6b8c6b5441d6e3ca3cf1b1bdb163442be76c8b2859", size = 375560, upload-time = "2026-05-06T23:53:48.669Z" },
+    { url = "https://files.pythonhosted.org/packages/42/c5/98c5ba221de29b341298341c07ad2221beae565886d18c2e6b821928db15/jpype1-1.7.1-cp310-cp310-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:80c4c8cbab99040b8b56f28ff834e0b089aefccaabe3b472b8b43bb1e4658b86", size = 408119, upload-time = "2026-05-06T23:53:51.382Z" },
+    { url = "https://files.pythonhosted.org/packages/37/3f/d3b7fd287d5bae63af0ae935b2f2c01291d18ea2e6cd706db8e4dda15354/jpype1-1.7.1-cp310-cp310-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:9c9a08d06016afbe5391daaf843b9e76c79022181685bbb23b64cd3f9aaec30d", size = 454716, upload-time = "2026-05-06T23:53:53.937Z" },
+    { url = "https://files.pythonhosted.org/packages/56/ea/c4dabef3979ff5febc7abce045de8ff61e440b949e73e4ff8124dc739aba/jpype1-1.7.1-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6812c95155572f25cd194a9b878e407ee2844c57e8704ba47b426ece3e925cfb", size = 439324, upload-time = "2026-05-06T23:53:56.808Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/7e/42cefb3d37ed46f3688af37d7dcf25e93319b40aa87df537a6f5c96213ee/jpype1-1.7.1-cp310-cp310-win_amd64.whl", hash = "sha256:50a8998620445886c8f7fbbc68c50bdc40e0bd0ad38bed2d4dab63b5813f1369", size = 357835, upload-time = "2026-05-06T23:53:58.995Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/c8/f0f306866dfa2bae97f83db48aa084ed049583f61dfba713124211b08fdf/jpype1-1.7.1-cp311-cp311-macosx_14_0_x86_64.whl", hash = "sha256:2e1459738e9baf560548965b364206890acf34e42673efcfe5048c2c1203e4cf", size = 375606, upload-time = "2026-05-06T23:54:01.62Z" },
+    { url = "https://files.pythonhosted.org/packages/28/a9/08eb2c8556598043981692251180479babc56086c5464bb2631929b94acf/jpype1-1.7.1-cp311-cp311-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:fc68b8e94ba5981e6142b4bcbbfa262ebe41438a679e0ebc2daf0759cc8d3e19", size = 408134, upload-time = "2026-05-06T23:54:04.251Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/61/36001f0979fa0fffa28dac49f44cbb642cfcbd9f67e090d7fb9a8ace9e80/jpype1-1.7.1-cp311-cp311-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:47bc10f263fc8ea3f97e46a753e355a565c317a61109f298169fcc4365ff415f", size = 454588, upload-time = "2026-05-06T23:54:06.804Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/e7/140c78ee6c0804b1ff5eb8313eb76a29e49e973da810539cabf6d454e6bc/jpype1-1.7.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4cabb1d0c23bd8455ab0ef027a6a4b62d6e49c95b96ef8ff652ea83cbba6de6c", size = 439352, upload-time = "2026-05-06T23:54:09.416Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/38/8efa98a77f028895bb2cd6eb134b670334e376011f24e6c0f502f515987e/jpype1-1.7.1-cp311-cp311-win_amd64.whl", hash = "sha256:3af59fdbf1798158b01f1a68b7b19ff805a2d18175542434d6aa89e45d5e53b5", size = 357971, upload-time = "2026-05-06T23:54:11.74Z" },
+    { url = "https://files.pythonhosted.org/packages/87/76/6a3aef14a4f21e0254a20f3ae446566274cf84e6079bad00ec784dab4dfa/jpype1-1.7.1-cp312-cp312-macosx_14_0_x86_64.whl", hash = "sha256:7328a61ae4945bd2963c15b7d7ead1d8dfc71ea784dec43dedbea4437d645843", size = 374560, upload-time = "2026-05-06T23:54:14.007Z" },
+    { url = "https://files.pythonhosted.org/packages/72/ad/e2db5dae7cd821385096f607deb79bcdd25331c07a58608318d4dade2e48/jpype1-1.7.1-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:158aee356b2c0bf489939d85f6fb31e54a800bd2d95a89b83e5bd7c07fdb048e", size = 407331, upload-time = "2026-05-06T23:54:15.87Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/97/f54c66ed8a9ce33fdc87991712260169c1f9ec514110e266b3a56b73ef13/jpype1-1.7.1-cp312-cp312-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:1cde7f185ef36c2840daf9293423d609eace5b79c632e2267023d6c75ef52988", size = 453957, upload-time = "2026-05-06T23:54:18.684Z" },
+    { url = "https://files.pythonhosted.org/packages/03/ed/bc55cc34dd54864a5a717c3f76ff2771961154325aef683d8e4b85b7c51a/jpype1-1.7.1-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4de86ec7f9f381c7aea8cbbecaa189c020e5fb700620bd96f4762f954757656b", size = 438525, upload-time = "2026-05-06T23:54:21.395Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/80/c0098bedd014bc9a1a8a349e40a1fc1408c79af28f6c32bdbb1a2b839c7b/jpype1-1.7.1-cp312-cp312-win_amd64.whl", hash = "sha256:d7dad528c73d02987358485dc37fab36edb9ad8bce53533e65f54cff1b68a4bc", size = 356985, upload-time = "2026-05-06T23:54:23.663Z" },
+    { url = "https://files.pythonhosted.org/packages/22/1c/d3e60c3fefb0ed22afc27e7ed6032565f9c5cbf1452ff03129b8f7354195/jpype1-1.7.1-cp313-cp313-macosx_14_0_x86_64.whl", hash = "sha256:2c54e9c7b7df819631db2cc8e64eaded7884d7dfaa67c035c70de512a8987b34", size = 374581, upload-time = "2026-05-06T23:54:25.801Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/10/47d8327d96f6aa9049ea84189508ed446e81b233d8978d49b737b4a0df51/jpype1-1.7.1-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:988d2db564b61ffcc4fa9533fb65e98037d869b866e02c145e49125554cad6cc", size = 407509, upload-time = "2026-05-06T23:54:27.94Z" },
+    { url = "https://files.pythonhosted.org/packages/47/bd/995f4ac18eb3016c3819af5ce0c1a89e94f1cbefc560db688118b32eab3d/jpype1-1.7.1-cp313-cp313-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:1c387dc58f28aefce50955eb7f24403f05b8a2942ef22c7f08d731d1fc753a50", size = 454093, upload-time = "2026-05-06T23:54:30.702Z" },
+    { url = "https://files.pythonhosted.org/packages/86/34/1a45d77fc164daef989b650254144c323462ba00895cedfcb794a7a5dbab/jpype1-1.7.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:907a4dcc89cca1655fe3fad389e9f60d5c681ddf070927a9013a6d0f64ccf118", size = 438527, upload-time = "2026-05-06T23:54:33.033Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/10/1f47deb971c20519233577474d397255bbdc4717aa7f0192b0b505d7b47b/jpype1-1.7.1-cp313-cp313-win_amd64.whl", hash = "sha256:969e160c15ab83b21c657837797ddae3701482d3db54f57ae81c75b558942533", size = 357069, upload-time = "2026-05-06T23:54:42.379Z" },
+    { url = "https://files.pythonhosted.org/packages/83/79/760198389ce7e3a6048fd54e1ab5e31139298e2d253cbb9181b1a2cbe48f/jpype1-1.7.1-cp313-cp313t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0486725034916270f1c28e27bd74ef793f96d41b822956e3edf5666f99058665", size = 409596, upload-time = "2026-05-06T23:54:35.07Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/4e/175b0d0c8e29f7ba6e00f0588e2df06773796bd3c58fa5910cee3aefe40b/jpype1-1.7.1-cp313-cp313t-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:39b57767ed33bba453e4c81f2dfcb39be8b3ad25eaeedd96391e171bde3c765f", size = 455365, upload-time = "2026-05-06T23:54:37.672Z" },
+    { url = "https://files.pythonhosted.org/packages/29/a9/0576c3d54bfa0bd6b9392f4624bd39bc9cc924a5362ba95d16e3ad77778a/jpype1-1.7.1-cp313-cp313t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7605e33971f8f16634e4786ce0a4b2d1691aebd09ca21fdc7a700e9a0f3dd6a7", size = 439563, upload-time = "2026-05-06T23:54:40.188Z" },
+    { url = "https://files.pythonhosted.org/packages/91/4e/3bc23e8f50e7bbec2e0f7479346ca17fbc4811df2c710ae6be573ad9317d/jpype1-1.7.1-cp314-cp314-macosx_14_0_x86_64.whl", hash = "sha256:b5e87d88523354d3e46769e4d3244318571d6d35a170febf4f82e3ce408d54b1", size = 374428, upload-time = "2026-05-06T23:54:44.457Z" },
+    { url = "https://files.pythonhosted.org/packages/59/1f/0cf0b34e73dd8622ae6fd0e2393edbc5ba5365d76349486ba02292c3cc98/jpype1-1.7.1-cp314-cp314-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6d32ace75bfc63ccac22258e1d2de33210cfb20d2520db0b413f2b9b1318dd96", size = 407388, upload-time = "2026-05-06T23:54:46.634Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/70/6c800d4e3a00200c5c8f52f32db4400623e0d9c1c5136834acb9230478ce/jpype1-1.7.1-cp314-cp314-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:295934261cede86a6d47b3ad6fd4c259aefe07d4f292a23ea6b33a75f40b3153", size = 454007, upload-time = "2026-05-06T23:54:49.442Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/7f/858a229a9525bc717594dc394cc1d0677c786513285da54d0c0ba90d9342/jpype1-1.7.1-cp314-cp314-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:29977b16a6f88a617fb274994108d816b59680fdab10edb03fd57b1da4ff3e61", size = 438408, upload-time = "2026-05-06T23:54:52.404Z" },
+    { url = "https://files.pythonhosted.org/packages/09/d0/adba12d654a84c8e2af8c401acf3fe6b85d98f2ee1f6c29afecae826e871/jpype1-1.7.1-cp314-cp314-win_amd64.whl", hash = "sha256:bff1d3561afb5fdd38f8a69d03669450662c242ec245804240c1ce82c2fc5398", size = 364457, upload-time = "2026-05-06T23:55:01.661Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/06/e9b4c867381b0c2573e5080464586b4956de9e3b0c1f40c551f17d1052c9/jpype1-1.7.1-cp314-cp314t-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:906381e076b2dbbbbef830a7d1be7bdde4f35e59c3c058e40f1e4a36024bcde5", size = 409453, upload-time = "2026-05-06T23:54:54.866Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/43/c3cb7b6c82d9f901c1316d25016d18bfad0381eb55cfc960b7f999a42ef3/jpype1-1.7.1-cp314-cp314t-manylinux_2_24_i686.manylinux_2_28_i686.whl", hash = "sha256:7bef4ac17e0b0dbb96ee6afbd8878a5fa85353e3eb3eba4fe86e1df3dd62eb1b", size = 455217, upload-time = "2026-05-06T23:54:57.552Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/87/f5b46e288dc3a0c7c6fb02e00f68a621035fa03cac3b6b489effd4170b13/jpype1-1.7.1-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b230c9475525b29114e6396b864c154f02f7cb041f2ac6bde006ed569e579aea", size = 439454, upload-time = "2026-05-06T23:54:59.609Z" },
+]
+
+[[package]]
 name = "jsonpatch"
 version = "1.36"
 source = { registry = "https://pypi.org/simple" }
@@ -8985,6 +9032,7 @@ all = [
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sqlalchemy-jdbcapi" },
     { name = "sqlalchemy-pgspider" },
     { name = "sqlalchemy-pytds" },
     { name = "sqlalchemy-redshift" },
@@ -9151,6 +9199,7 @@ all-dev-env = [
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sqlalchemy-jdbcapi" },
     { name = "sqlalchemy-pgspider" },
     { name = "sqlalchemy-pytds" },
     { name = "sqlalchemy-redshift" },
@@ -9423,6 +9472,9 @@ impala = [
     { name = "pure-sasl" },
     { name = "thrift" },
     { name = "thrift-sasl" },
+]
+informix = [
+    { name = "sqlalchemy-jdbcapi" },
 ]
 iomete = [
     { name = "adbc-driver-flightsql", version = "1.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -9831,6 +9883,7 @@ slim = [
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sqlalchemy-jdbcapi" },
     { name = "sqlalchemy-pgspider" },
     { name = "sqlalchemy-pytds" },
     { name = "sqlalchemy-redshift" },
@@ -11005,6 +11058,10 @@ requires-dist = [
     { name = "sqlalchemy-hana", marker = "extra == 'all-dev-env'" },
     { name = "sqlalchemy-hana", marker = "extra == 'sap-hana'" },
     { name = "sqlalchemy-hana", marker = "extra == 'slim'" },
+    { name = "sqlalchemy-jdbcapi", marker = "extra == 'all'", specifier = ">=2.2.1,<3" },
+    { name = "sqlalchemy-jdbcapi", marker = "extra == 'all-dev-env'", specifier = ">=2.2.1,<3" },
+    { name = "sqlalchemy-jdbcapi", marker = "extra == 'informix'", specifier = ">=2.2.1,<3" },
+    { name = "sqlalchemy-jdbcapi", marker = "extra == 'slim'", specifier = ">=2.2.1,<3" },
     { name = "sqlalchemy-pgspider", marker = "extra == 'all'" },
     { name = "sqlalchemy-pgspider", marker = "extra == 'all-dev-env'" },
     { name = "sqlalchemy-pgspider", marker = "extra == 'pgspider'" },
@@ -11100,7 +11157,7 @@ requires-dist = [
     { name = "werkzeug", marker = "extra == 'airflow'", specifier = ">=3.0.6" },
     { name = "werkzeug", marker = "extra == 'playwright'", specifier = ">=3.0.6" },
 ]
-provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
+provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "informix", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
 
 [package.metadata.requires-dev]
 bootstrap = [
@@ -15800,6 +15857,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/52/37/7d351881dfc0e063f9fcf90a17e947b41801c5f0e42e09f6cbc1df2fd559/sqlalchemy_ibmi-0.9.3.tar.gz", hash = "sha256:c9bdd33e2a4901cd840d691996ea048ca62750847ebd2d6aa7a6dc802576180a", size = 30640, upload-time = "2023-12-14T19:15:39.382Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a3/ba/7729256041185552c25e8ef4f93a2cef9c81e6dc4050d04f8e5df01e3063/sqlalchemy_ibmi-0.9.3-py3-none-any.whl", hash = "sha256:28ef283d391133b8164fca86ecff95d40ee3b060357dc193c66f9481c990b48c", size = 24657, upload-time = "2023-12-14T19:15:37.37Z" },
+]
+
+[[package]]
+name = "sqlalchemy-jdbcapi"
+version = "2.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jpype1" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/9a/415897121cf8618c7f4c95a6845b8fdf97066aa9ebee4ab64bb1f3d86dea/sqlalchemy_jdbcapi-2.2.1.tar.gz", hash = "sha256:6cf836aa3645a8784e6ff1bb66e1d15fa17c06b476b1594327a1759ba74a84cf", size = 68892, upload-time = "2025-11-19T13:24:00.274Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/63/8f52fd457056698caba102a70ef471c6f669aead8b97f8ea99bb05445e34/sqlalchemy_jdbcapi-2.2.1-py3-none-any.whl", hash = "sha256:634e17f8b0bd0920553a06fcea6a49e2f9d2f97980af0974fecf3e23ca4322f8", size = 81829, upload-time = "2025-11-19T13:23:58.796Z" },
 ]
 
 [[package]]
