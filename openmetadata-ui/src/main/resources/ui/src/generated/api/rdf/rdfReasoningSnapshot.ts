@@ -46,9 +46,9 @@ export interface RDFReasoningSnapshot {
  * write outside the queue that could not be recorded: the graph may be missing writes, and
  * a refresh cannot repair it. Otherwise CURRENT when the dataset generation still serves,
  * the source revision covers every enqueued live write (writes outside the queue take a
- * queue ID too), and the ontology and rule digests match; STALE when any of these no longer
- * holds. Independent of job state: a SUCCEEDED refresh can publish a snapshot that is
- * already STALE.
+ * queue ID too), the same ontology releases are active, and the rule digest matches; STALE
+ * when any of these no longer holds. Independent of job state: a SUCCEEDED refresh can
+ * publish a snapshot that is already STALE.
  */
 export enum Freshness {
     Current = "CURRENT",
@@ -65,16 +65,15 @@ export interface Input {
      */
     engines?: Engine[];
     /**
-     * OpenMetadata's digest of the selected ontology input. Opaque to the store, which only
-     * records it.
+     * The releases the job reasoned over: every active release for a refresh, the one checked
+     * or explained otherwise.
      */
-    ontologyDigest?: string;
+    ontologyReleases: OntologyRelease[];
     /**
-     * Root ontology of the import closure a check or explanation reasoned over. Absent for a
-     * refresh, which covers every selected closure.
+     * The uploaded release a check or explanation read. Absent for a refresh, which reads the
+     * active releases from the serving graph.
      */
-    ontologyIri?:      string;
-    ontologySelection: OntologySelection;
+    releaseRdf?: UploadedInput;
     /**
      * OpenMetadata's digest of the governance rule bundle. Opaque to the store, which only
      * records it.
@@ -102,12 +101,48 @@ export interface Engine {
 }
 
 /**
- * Which ontology axioms take part. APPROVED is the production set and the only one a
- * refresh accepts. CANDIDATE adds draft axioms, to check a change before it is approved.
+ * The releases the job reasoned over: every active release for a refresh, the one checked
+ * or explained otherwise.
+ *
+ * Ontology releases, at most one per ontology. A refresh lists every active release; a
+ * check or explanation lists the one release it reasons over.
+ *
+ * One sealed ontology release, as OpenMetadata identifies it. In the serving graph an
+ * active release is the graph https://open-metadata.org/graph/ontology/{ontologyId}, whose
+ * ontology header states owl:versionIRI <urn:openmetadata:ontology-release:{releaseId}>.
  */
-export enum OntologySelection {
-    Approved = "APPROVED",
-    Candidate = "CANDIDATE",
+export interface OntologyRelease {
+    /**
+     * The release's contentDigest: SHA-256 of its sealed manifest. Opaque to the store, which
+     * only records it.
+     */
+    contentDigest: string;
+    ontologyId:    string;
+    releaseId:     string;
+}
+
+/**
+ * The uploaded release a check or explanation read. Absent for a refresh, which reads the
+ * active releases from the serving graph.
+ *
+ * RDF that OpenMetadata uploaded to the store before submitting the job, addressed by the
+ * SHA-256 of its bytes. The store reads it only if the bytes it holds under that digest
+ * hash to it and are exactly byteSize long.
+ */
+export interface UploadedInput {
+    byteSize: number;
+    digest:   string;
+    /**
+     * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+     */
+    mediaType: MediaType;
+}
+
+/**
+ * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+ */
+export enum MediaType {
+    ApplicationRDFThrift = "application/rdf+thrift",
 }
 
 /**

@@ -36,6 +36,7 @@
     "maxDerivedTriples": 50000000,
     "maxRulePasses": 64,
     "maxDiskBytes": 107374182400,
-    "maxResultRows": 10000
+    "maxResultRows": 10000,
+    "maxUploadBytes": 67108864
   }
 }

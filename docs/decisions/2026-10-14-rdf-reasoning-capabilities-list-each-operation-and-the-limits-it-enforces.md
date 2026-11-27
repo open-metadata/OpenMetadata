@@ -1,7 +1,8 @@
 # RDF reasoning capabilities list each operation and the limits the store enforces, and an unimplemented operation fails NOT_IMPLEMENTED
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-11-10 (`CHECK` and `EXPLAIN` also need
+  `maxUploadBytes`)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `RdfReasoningContractTest#theContractRejects` (the capabilities cases),
   `RdfReasoningContractTest#aStoreListsOnlyTheLimitsItEnforces` and
@@ -74,3 +75,13 @@ value, its row in the table above and its schema rule in the same change, and th
 the schemas (`openmetadata/fuseki/extension/src/test/resources/openmetadata-contract/` in
 open-metadata/jena) must be refreshed. Revisit if an operation can run with a limit unenforced
 safely, or if a store needs per-engine rather than per-operation availability.
+
+## Amendment
+
+v2 2026-11-10: CHECK and EXPLAIN read a release OpenMetadata uploads first
+(ADR:2026-11-10-reasoning-jobs-name-ontology-releases-and-carry-their-rules), so the table gains a
+row:
+
+| Operation `AVAILABLE` | Required limits |
+|---|---|
+| `CHECK` or `EXPLAIN` | also `maxUploadBytes` |
