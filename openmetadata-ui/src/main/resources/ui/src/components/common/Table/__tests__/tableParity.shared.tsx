@@ -26,7 +26,7 @@
  */
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { ComponentType, ReactNode } from 'react';
+import { ComponentType, ReactNode, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { usePersistentStorage } from '../../../../hooks/currentUserStore/useCurrentUserStore';
@@ -42,7 +42,7 @@ type ParityColumn = {
   key?: string;
   render?: (value: never, record: never, index: number) => unknown;
   sorter?: boolean | ((a: ParityRow, b: ParityRow) => number);
-  sortOrder?: 'ascend' | 'descend';
+  sortOrder?: 'ascend' | 'descend' | null;
   sortDirections?: ('ascend' | 'descend')[];
   align?: 'left' | 'center' | 'right';
   fixed?: 'left' | 'right';
@@ -268,6 +268,85 @@ export const runTableParitySuite = (
       fireEvent.click(screen.getByText('Name'));
 
       expect(renderedNames()).toEqual(['charlie', 'bravo', 'alpha']);
+    });
+
+    it('restores the original order on the third header click', () => {
+      renderTable({ columns: sortedColumns });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['charlie', 'alpha', 'bravo']);
+    });
+
+    it('reports the cleared sort to onChange on the third header click', () => {
+      const onChange = jest.fn();
+      renderTable({ columns: sortedColumns, onChange });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(onChange.mock.calls.map((call) => call[2].order ?? null)).toEqual([
+        'ascend',
+        'descend',
+        null,
+      ]);
+    });
+
+    it('clears a controlled descending sort on the next header click', () => {
+      const onChange = jest.fn();
+      renderTable({
+        columns: [
+          { ...nameColumn, sorter: true, sortOrder: 'descend' },
+          countColumn,
+        ],
+        onChange,
+      });
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(onChange.mock.calls[0][2].order ?? null).toBeNull();
+    });
+
+    // The server-sorted shape IngestionListTable and TopicSchema use: the
+    // parent stores the reported order and hands it back as `sortOrder`,
+    // `null` once cleared.
+    it('cycles a parent-controlled sort through the clear and back', () => {
+      const reported: unknown[] = [];
+      const ServerSortedTable = () => {
+        const [order, setOrder] = useState<'ascend' | 'descend' | null>(null);
+
+        return (
+          <TableComponent
+            columns={[
+              { ...nameColumn, sorter: true, sortOrder: order },
+              countColumn,
+            ]}
+            dataSource={PARITY_ROWS}
+            pagination={false}
+            rowKey="name"
+            onChange={(
+              _pagination: unknown,
+              _filters: unknown,
+              sorter: { order?: 'ascend' | 'descend' | null }
+            ) => {
+              reported.push(sorter.order ?? null);
+              setOrder(sorter.order ?? null);
+            }}
+          />
+        );
+      };
+      render(<ServerSortedTable />, { wrapper });
+      for (let click = 0; click < 5; click++) {
+        fireEvent.click(screen.getByText('Name'));
+      }
+
+      expect(reported).toEqual([
+        'ascend',
+        'descend',
+        null,
+        'ascend',
+        'descend',
+      ]);
     });
 
     it('honours a controlled sortOrder without any interaction', () => {
@@ -982,6 +1061,28 @@ export const runTableParitySuite = (
       fireEvent.click(screen.getByText('Name'));
 
       expect(renderedNames()).toEqual(['charlie', 'bravo', 'alpha']);
+    });
+
+    it('clears the sort after the last direction sortDirections lists', () => {
+      renderTable({
+        columns: [
+          {
+            ...nameColumn,
+            sortDirections: ['descend', 'ascend'],
+            sorter: (a: ParityRow, b: ParityRow) =>
+              a.name.localeCompare(b.name),
+          },
+          countColumn,
+        ],
+      });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['alpha', 'bravo', 'charlie']);
+
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['charlie', 'alpha', 'bravo']);
     });
   });
 
