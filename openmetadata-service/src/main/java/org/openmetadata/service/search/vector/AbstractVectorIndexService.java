@@ -2058,10 +2058,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   // A shard that cannot answer for a document reports it on the document, inside a 200. Documents
-  // come back in the order they were asked for, so an answer that leaves one out is not read.
+  // come back in the order they were asked for, so an answer with fewer of them is not read.
   private static JsonNode readHeaderDocs(String indexName, int requested, JsonNode response) {
     JsonNode docs = response.path("docs");
-    if (docs.size() != requested) {
+    if (docs.size() < requested) {
       throw new TransientChunkRequestException(
           "Read " + docs.size() + " of " + requested + " chunk headers in " + indexName, null);
     }
