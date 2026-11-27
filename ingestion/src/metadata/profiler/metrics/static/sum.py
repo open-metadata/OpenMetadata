@@ -95,10 +95,10 @@ class Sum(StaticMetric):
 
     @staticmethod
     def update_accumulator(current_sum: float | None, df: "pd.DataFrame", column) -> float | None:
-        """Computes one DataFrame chunk and updates the running maximum
+        """Computes one DataFrame chunk and updates the running sum
 
-        Maintains a single maximum value (not a list). Compares chunk's max
-        with current maximum and returns the larger value.
+        Maintains a single sum value (not a list). Adds the chunk's sum
+        to the current sum and returns the total.
         """
         import pandas as pd
 
