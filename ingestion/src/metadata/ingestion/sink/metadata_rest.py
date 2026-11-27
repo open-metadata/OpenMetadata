@@ -610,7 +610,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     def _read_dashboard_for_chart_lineage(self, dashboard_fqn: str) -> Dashboard | None:
         try:
-            return self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["charts"], nullable=False)
+            return self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["charts"])
         except Exception as exc:
             self.status.failed(
                 StackTraceError(

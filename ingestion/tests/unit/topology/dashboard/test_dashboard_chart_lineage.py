@@ -245,6 +245,7 @@ class RecordingCatalog:
         self.charts = {}
         self.dashboards = {}
         self.denied_dashboards = set()
+        self.rejected_dashboards = set()
         self.rejected_charts = set()
         self.failed_chart_edges = set()
         self.batch_status = HTTPStatus.OK
@@ -304,6 +305,7 @@ class RecordingCatalog:
 
     def commit(self, path, requests):
         accepted = []
+        rejected = []
         for request in requests:
             name = request["name"]
             entity_fqn = f"{SERVICE}.{name}"
@@ -313,6 +315,11 @@ class RecordingCatalog:
                     continue
                 self.charts[entity_fqn] = {"id": entity_id, "type": "chart", "fullyQualifiedName": entity_fqn}
             else:
+                if name in self.rejected_dashboards:
+                    rejected.append(
+                        {"request": entity_fqn, "status": HTTPStatus.BAD_REQUEST, "message": "dashboard rejected"}
+                    )
+                    continue
                 self.dashboards[entity_fqn] = {
                     "id": entity_id,
                     "name": name,
@@ -323,8 +330,9 @@ class RecordingCatalog:
             accepted.append({"request": entity_fqn, "status": HTTPStatus.OK})
         return HTTPStatus.OK, {
             "numberOfRowsProcessed": len(accepted),
+            "numberOfRowsFailed": len(rejected),
             "successRequest": accepted,
-            "failedRequest": [],
+            "failedRequest": rejected,
         }
 
     def create_edges(self, pairs):
@@ -485,6 +493,24 @@ def test_old_servers_and_override_keep_the_ordered_per_edge_flow(override, capab
     )
     assert catalog.edges[manual_edge] == {"source": "Manual"}
     assert sum(path.endswith("/capability") for _, path, *_ in catalog.requests) == int(not override)
+
+
+def test_dashboard_rejected_by_bulk_write_has_no_lineage_read_failure():
+    catalog = RecordingCatalog()
+    catalog.rejected_dashboards.add("rejected")
+    rejected_fqn = f"{SERVICE}.rejected"
+
+    status, errors, _ = run_dashboard_topology(catalog, {"rejected": ("chart",), "sales": ("chart",)})
+
+    assert not errors
+    assert rejected_fqn not in catalog.dashboards
+    assert any(
+        method == "GET" and path == f"/dashboards/name/{rejected_fqn}" and code == HTTPStatus.NOT_FOUND
+        for method, path, _, _, code in catalog.requests
+    )
+    assert any("dashboard rejected" in failure.error for failure in status.failures)
+    assert all(failure.name != rejected_fqn for failure in status.failures)
+    assert len(catalog.edges) == 1
 
 
 def test_a_failed_batch_item_and_dashboard_read_do_not_hide_successful_edges():
