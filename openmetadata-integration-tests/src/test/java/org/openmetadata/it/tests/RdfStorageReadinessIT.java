@@ -30,11 +30,12 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
 /**
- * Pins the RDF readiness contract against real servers. The OpenMetadata Graph Store extension is
- * optional: indexing must proceed on Apache Jena Fuseki without it and on datasets that lack its
- * recommended timeouts. Readiness fails, naming the real cause and leaving the dataset as it found
- * it, only when the dataset cannot be used: it is missing, refuses the credentials or writes, or
- * its default graph hides the named graphs indexing writes into.
+ * Pins the RDF readiness contract against real servers. OpenMetadata requires the OpenMetadata
+ * Graph Store extension, loaded by the published image or put on an operator's own classpath; a
+ * dataset without its recommended timeouts is still ready. Readiness fails, naming the real cause
+ * and leaving the dataset as it found it, when the dataset cannot be used: it is missing, refuses
+ * the credentials or writes, does not run the extension, or its default graph hides the named
+ * graphs indexing writes into.
  */
 class RdfStorageReadinessIT {
   private static final String BASE = "https://open-metadata.org/";
@@ -156,6 +157,30 @@ class RdfStorageReadinessIT {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(failure.contains("does not run the OpenMetadata Graph Store extension"), failure);
       assertTrue(failure.contains("OPENMETADATA_EXTENSION_ENABLED=true"), failure);
+    }
+  }
+
+  @Test
+  void ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing() {
+    final Model release = ModelFactory.createDefaultModel();
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, SCOPED_DATASET, "admin", ADMIN_PASSWORD)) {
+      release
+          .createResource(BASE + "concept/" + UUID.randomUUID())
+          .addProperty(release.createProperty(NAME), "activation");
+      final long before = storage.getTripleCount();
+      final IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  storage.replaceGraph(
+                      BASE + "graph/ontology/" + UUID.randomUUID(), UUID.randomUUID(), release));
+      assertTrue(
+          failure.getMessage().contains("does not run the OpenMetadata Graph Store extension"),
+          failure.getMessage());
+      assertEquals(before, storage.getTripleCount(), "a refused activation must write nothing");
+    } finally {
+      release.close();
     }
   }
 

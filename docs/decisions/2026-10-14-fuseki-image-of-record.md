@@ -5,8 +5,10 @@
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** the RDF integration-test lane (`-DintegrationTests.lane=rdf`), which starts
   `FusekiTestImage.DEFAULT_IMAGE`; `RdfFusekiAuthorizationIT` and `RdfStorageReadinessIT` pin its
-  access and readiness contract, and `RdfStorageReadinessIT#fusekiWithoutTheExtensionFailsNamingIt`
-  and `FusekiWriteCapabilitiesTest` pin that readiness refuses a dataset without the extension
+  access and readiness contract, and `RdfStorageReadinessIT#fusekiWithoutTheExtensionFailsNamingIt`,
+  `RdfStorageReadinessIT#ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing` and
+  `FusekiWriteCapabilitiesTest` pin that readiness and activation refuse a dataset without the
+  extension
 - **Related:** [Fuseki-native reasoning plan](../plans/2026-10-07-fuseki-native-reasoning.md)
   (phase 1, task 4; open decision 6), [rdf-fuseki-image-release.md](../rdf-fuseki-image-release.md)
 
@@ -76,11 +78,14 @@ The extension reads Thrift uploads with its upload bound as the row cap (open-me
   and read-only checks run first, so their messages are unchanged.
 - A guarantee the extension leaves unmet, such as an unset `arq:queryTimeout`, is still logged and
   does not fail readiness.
-- The image loads the extension unless `OPENMETADATA_EXTENSION_ENABLED=false`. Images published
-  before that default changed load it only when the variable is `true`, which every Compose file
-  and the Kubernetes example set.
-- An operator's own Fuseki must put the extension jar on its classpath. Apache's Fuseki
-  distribution alone is no longer a supported store.
+- Ontology activation (`replaceGraph`) checks the same capabilities before it uploads, so a
+  release fails with the same message instead of Fuseki's HTTP 500.
+- The pinned image loads the extension only when `OPENMETADATA_EXTENSION_ENABLED=true`, which
+  every Compose file and the Kubernetes example set. A deployment that supplies its own
+  environment must set it too.
+- An operator's own Fuseki must put the extension jar on its classpath and start through a main
+  class that loads Fuseki modules, such as `FusekiServerPlainCmd`. `FusekiMainCmd` loads none, so
+  the jar does nothing there. Apache's Fuseki distribution alone is no longer a supported store.
 - The free-space record's consequence for a store without the extension
   (ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume)
   no longer arises, because such a store does not pass readiness.

@@ -35,7 +35,8 @@ change to all of them in one pull request, after the RDF lane passes against the
 
 ## Settings OpenMetadata needs
 
-With only `ADMIN_PASSWORD` set, the image behaves like stock Fuseki. OpenMetadata needs:
+With only `ADMIN_PASSWORD` set, the pinned image behaves like stock Fuseki, and OpenMetadata's
+readiness check refuses it. OpenMetadata needs:
 
 ```bash
 ADMIN_PASSWORD=<secret>                                # the admin account OpenMetadata connects as
@@ -259,6 +260,10 @@ command, or set `fsGroup: 1000` with `fsGroupChangePolicy: OnRootMismatch` on Ku
 - **`java -jar fuseki-server.jar` ignores `-cp`.** An extension jar present on disk does nothing
   unless the launcher puts it on the classpath. The image's launcher handles this; a hand-rolled
   deployment must not use `-jar`.
+- **Only some main classes load the extension.** Start Fuseki with
+  `java -cp fuseki-server.jar:openmetadata-fuseki-extensions.jar org.apache.jena.fuseki.main.cmds.FusekiServerPlainCmd --config=<assembler>`
+  (or `FusekiServerUICmd`). `FusekiMainCmd` loads no Fuseki modules, so the extension never starts
+  and readiness refuses the dataset.
 - **Jena 6.2.0 and 6.3.0 mishandle a second WHERE-bearing operation in one timed update** when
   `arq:updateTimeout` is set. OpenMetadata's generated mutations use `VALUES`/`UNION` to stay at one,
   and the admin SPARQL API rejects anything else. Direct Fuseki clients must follow the same rule.

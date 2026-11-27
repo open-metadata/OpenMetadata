@@ -1724,6 +1724,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void replaceGraph(final String graphUri, final UUID releaseId, final Model model) {
     throwIfCircuitOpen("replaceGraph");
     final String graph = requireAbsoluteGraphUri(graphUri).toString();
+    // A release can hold a literal over stock Fuseki's 100 KB Thrift row cap; refuse before the
+    // upload so activation names the missing extension instead of failing on Fuseki's 500.
+    writeCapabilities();
     try {
       new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();
