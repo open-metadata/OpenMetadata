@@ -8,18 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.transaction.TransactionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,6 +86,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.McpServiceRepository;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
+import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -1202,25 +1208,7 @@ public class SecretsManagerNullSecretIT {
     McpService owner = createMcpWithFreshReference(ns);
     Map<String, String> refs = mcpBotReferences(owner.getId().toString());
     String shared = refs.get("alpha");
-    DatabaseConnection connection =
-        new DatabaseConnection()
-            .withConfig(
-                new MysqlConnection()
-                    .withHostPort("localhost:3306")
-                    .withUsername("test")
-                    .withAuthType(new basicAuth().withPassword(shared)));
-    Workflow workflow =
-        SdkClients.adminClient()
-            .workflows()
-            .create(
-                new CreateWorkflow()
-                    .withName(ns.shortPrefix() + "sharedWorkflow")
-                    .withWorkflowType(WorkflowType.TEST_CONNECTION)
-                    .withRequest(
-                        new TestServiceConnectionRequest()
-                            .withServiceType(ServiceType.DATABASE)
-                            .withConnectionType("Mysql")
-                            .withConnection(connection)));
+    Workflow workflow = createWorkflow(ns.shortPrefix() + "sharedWorkflow", shared);
     owner.setConnection(
         mcpDirectConnection(mcpServer("beta", refs.get("beta")), mcpServer("alpha", "rotated")));
     ((McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE))
@@ -1251,6 +1239,315 @@ public class SecretsManagerNullSecretIT {
         vault
             .getSecretsMap()
             .containsKey(shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void committedWorkflowReleasesSurviveLostOrFailedCleanup(boolean bulk, TestNamespace ns) {
+    Set<String> failOnce = ConcurrentHashMap.newKeySet();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          protected void deleteSecretInternal(String name) {
+            if (failOnce.remove(name)) {
+              throw new IllegalStateException("Injected vault delete failure");
+            }
+            super.deleteSecretInternal(name);
+          }
+        };
+    SecretsManagerFactory.setSecretsManager(provider);
+    try {
+      McpService owner = createMcpWithFreshReference(ns);
+      String shared = mcpBotReferences(owner.getId().toString()).get("alpha");
+      String key = shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+      Workflow first = createWorkflow(ns.shortPrefix() + "firstHolder", shared);
+      Workflow last = createWorkflow(ns.shortPrefix() + "lastHolder", shared);
+      SdkClients.adminClient()
+          .mcpServices()
+          .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      WorkflowRepository workflows =
+          (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      workflows.delete("admin", first.getId(), false, true);
+      assertEquals("second-key", provider.getSecretValue(shared));
+
+      Workflow own = createWorkflow(ns.shortPrefix() + "ownCredential", "workflow-owned-example");
+      ns.trackRoot(Entity.WORKFLOW, own);
+      String ownRef =
+          JsonUtils.valueToTree(
+                  SdkClients.ingestionBotClient()
+                      .workflows()
+                      .get(own.getId().toString())
+                      .getRequest())
+              .at("/connection/config/authType/password")
+              .asText();
+      Runnable deleteLast =
+          bulk
+              ? () -> workflows.bulkHardDeleteSubtree(List.of(last.getId(), own.getId()), "admin")
+              : () -> workflows.delete("admin", last.getId(), false, true);
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              workflows.executeInTransaction(
+                  () -> {
+                    deleteLast.run();
+                    throw new IllegalStateException("Roll back the workflow delete");
+                  }));
+      var dao = Entity.getCollectionDAO().workflowDAO();
+      assertTrue(dao.exists(dao.getTableName(), last.getId()));
+      assertTrue(dao.exists(dao.getTableName(), own.getId()));
+      assertEquals("workflow-owned-example", provider.getSecretValue(ownRef));
+      assertEquals("second-key", provider.getSecretValue(shared));
+
+      assertTrue(PostCommitActionQueue.begin());
+      List<Runnable> delayed;
+      try {
+        deleteLast.run();
+        delayed = PostCommitActionQueue.drain();
+      } finally {
+        PostCommitActionQueue.clear();
+      }
+      assertFalse(dao.exists(dao.getTableName(), last.getId()));
+      assertEquals("second-key", provider.getSecretValue(shared));
+      if (bulk) {
+        failOnce.add(key);
+        PostCommitActionQueue.run(delayed);
+        assertTrue(failOnce.isEmpty());
+        assertEquals("second-key", provider.getSecretValue(shared));
+      }
+      // The single-delete case drops the callback as if the process stopped after commit.
+      MessagingService unrelated =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(ns.prefix("resume_workflow_cleanup"), Map.of()));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, unrelated);
+      assertFalse(
+          provider.getSecretsMap().containsKey(key),
+          "A new request must recover the final release without either deleted entity");
+      assertEquals(
+          !bulk,
+          provider
+              .getSecretsMap()
+              .containsKey(ownRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+
+    } finally {
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void normalWorkflowDeletionKeepsItsReleasePrivateUntilRowCommit(boolean bulk, TestNamespace ns)
+      throws Exception {
+    Workflow workflow = createWorkflow(ns.shortPrefix("atomicDelete"), "workflow-value");
+    ns.trackRoot(Entity.WORKFLOW, workflow);
+    String root = vault.secretInventory(workflow).root();
+    String serviceName = ns.prefix("concurrent_secret_write");
+    MessagingService unrelated =
+        SdkClients.adminClient()
+            .messagingServices()
+            .create(kafkaRequest(serviceName, Map.of("credential", PASSWORD)));
+    ns.trackRoot(Entity.MESSAGING_SERVICE, unrelated);
+    CountDownLatch prepared = new CountDownLatch(1);
+    CountDownLatch continueDelete = new CountDownLatch(1);
+    WorkflowRepository original = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+    WorkflowRepository pausing =
+        new WorkflowRepository() {
+          @Override
+          protected Runnable preparePostDeleteCleanup(List<Workflow> deleting) {
+            Runnable cleanup = super.preparePostDeleteCleanup(deleting);
+            prepared.countDown();
+            try {
+              if (!continueDelete.await(20, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to remove the workflow row");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IllegalStateException(e);
+            }
+            return cleanup;
+          }
+        };
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      var deleting =
+          executor.submit(
+              () -> {
+                if (bulk) {
+                  pausing.bulkHardDeleteSubtree(List.of(workflow.getId()), "admin");
+                } else {
+                  pausing.delete("admin", workflow.getId(), false, true);
+                }
+              });
+      try {
+        assertTrue(prepared.await(20, TimeUnit.SECONDS));
+        var workflows = Entity.getCollectionDAO().workflowDAO();
+        assertTrue(workflows.exists(workflows.getTableName(), workflow.getId()));
+        assertNull(workflowCleanupMarker(root), "A cleanup worker must not see uncommitted work");
+        CountDownLatch writerStarted = new CountDownLatch(1);
+        var writing =
+            executor.submit(
+                () -> {
+                  writerStarted.countDown();
+                  return SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.PUT,
+                          MESSAGING_SERVICES_PATH,
+                          kafkaRequest(serviceName, Map.of()),
+                          MessagingService.class);
+                });
+        assertTrue(writerStarted.await(10, TimeUnit.SECONDS));
+        assertThrows(TimeoutException.class, () -> writing.get(300, TimeUnit.MILLISECONDS));
+        continueDelete.countDown();
+        deleting.get(20, TimeUnit.SECONDS);
+        writing.get(20, TimeUnit.SECONDS);
+        assertFalse(workflows.exists(workflows.getTableName(), workflow.getId()));
+        assertNull(workflowCleanupMarker(root));
+      } finally {
+        continueDelete.countDown();
+      }
+    } finally {
+      Entity.registerEntity(Workflow.class, Entity.WORKFLOW, original);
+    }
+  }
+
+  @Test
+  void failedWorkflowRetirementDoesNotStarveOtherPendingRoots(TestNamespace ns) {
+    final String marker = "secrets.pendingWorkflowCleanup";
+    Set<String> unavailable = ConcurrentHashMap.newKeySet();
+    AtomicInteger failedAttempts = new AtomicInteger();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          protected void deleteSecretInternal(String name) {
+            if (unavailable.contains(name)) {
+              failedAttempts.incrementAndGet();
+              throw new IllegalStateException("Injected persistent vault failure");
+            }
+            super.deleteSecretInternal(name);
+          }
+        };
+    SecretsManagerFactory.setSecretsManager(provider);
+    // Sort by the database's marker order so the healthy workflow lies beyond the 100-row page.
+    List<String> names =
+        IntStream.range(0, 102)
+            .mapToObj(i -> ns.shortPrefix("queued" + i))
+            .sorted(
+                Comparator.comparing(n -> ownershipId(entitySecretRoot("workflow", n)).toString()))
+            .toList();
+    var extensions = Entity.getCollectionDAO().entityExtensionDAO();
+    try {
+      String serviceName = ns.prefix("service_with_own_retirement");
+      String currentRoot = entitySecretRoot("messaging", serviceName);
+      String currentKey = currentRoot + "/consumerconfig/additionalproperties/credential";
+      MessagingService current =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(serviceName, Map.of("credential", PASSWORD)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, current);
+      Workflow failing = createWorkflow(names.getFirst(), "unavailable-workflow-value");
+      Workflow healthy = createWorkflow(names.getLast(), "healthy-workflow-value");
+      String failingRoot = provider.secretInventory(failing).root();
+      String healthyRoot = provider.secretInventory(healthy).root();
+      String failingKey =
+          provider.getSecretsMap().keySet().stream()
+              .filter(k -> k.startsWith(failingRoot + "/"))
+              .findFirst()
+              .orElseThrow();
+      String healthyKey =
+          provider.getSecretsMap().keySet().stream()
+              .filter(k -> k.startsWith(healthyRoot + "/"))
+              .findFirst()
+              .orElseThrow();
+      unavailable.add(failingKey);
+      WorkflowRepository workflows =
+          (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      assertTrue(PostCommitActionQueue.begin());
+      try {
+        workflows.bulkHardDeleteSubtree(List.of(failing.getId(), healthy.getId()), "admin");
+      } finally {
+        PostCommitActionQueue.clear(); // Drop the callback as if the worker stopped after commit.
+      }
+      assertEquals(JsonUtils.pojoToJson(failingRoot), workflowCleanupMarker(failingRoot));
+      assertEquals(JsonUtils.pojoToJson(healthyRoot), workflowCleanupMarker(healthyRoot));
+      // Fill the page with committed, empty namespaces. Neither cloud calls nor live rows are
+      // needed.
+      workflows.executeInTransaction(
+          () -> {
+            for (String name : names.subList(1, names.size() - 1)) {
+              String root = entitySecretRoot("workflow", name);
+              extensions.insert(ownershipId(root), marker, marker, JsonUtils.pojoToJson(root));
+            }
+            return null;
+          });
+      for (int attempt = 0; attempt < 3; attempt++) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                MESSAGING_SERVICES_PATH,
+                kafkaRequest(serviceName, Map.of()).withDescription("Recovery pass " + attempt),
+                MessagingService.class);
+        assertFalse(provider.getSecretsMap().containsKey(currentKey));
+        String currentState =
+            extensions.getExtension(ownershipId(currentRoot), "secrets.mapOwnership");
+        assertFalse(
+            currentState.contains(currentKey), "The current namespace's cleanup must commit");
+        if (attempt == 0) {
+          UUID lastMarkerOnPage = ownershipId(entitySecretRoot("workflow", names.get(99)));
+          assertEquals(
+              JsonUtils.pojoToJson(lastMarkerOnPage.toString()),
+              extensions.getExtension(ownershipId("lock"), "secrets.workflowCleanupCursor"),
+              "The retry cursor must commit even when the first marker fails");
+          assertTrue(provider.getSecretsMap().containsKey(healthyKey));
+        }
+      }
+      assertTrue(failedAttempts.get() > 0);
+      assertEquals("unavailable-workflow-value", provider.getSecretsMap().get(failingKey));
+      assertEquals(JsonUtils.pojoToJson(failingRoot), workflowCleanupMarker(failingRoot));
+      assertFalse(provider.getSecretsMap().containsKey(healthyKey));
+      assertNull(workflowCleanupMarker(healthyRoot));
+    } finally {
+      for (String name : names) {
+        String root = entitySecretRoot("workflow", name);
+        extensions.delete(ownershipId(root), marker);
+        extensions.delete(ownershipId(root), "secrets.mapOwnership");
+      }
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  private static String workflowCleanupMarker(String root) {
+    return Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .getExtension(ownershipId(root), "secrets.pendingWorkflowCleanup");
+  }
+
+  private static UUID ownershipId(String root) {
+    return UUID.nameUUIDFromBytes(
+        ("secrets.mapOwnership:" + root).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static Workflow createWorkflow(String name, String credential) {
+    DatabaseConnection connection =
+        new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword(credential)));
+    return SdkClients.adminClient()
+        .workflows()
+        .create(
+            new CreateWorkflow()
+                .withName(name)
+                .withWorkflowType(WorkflowType.TEST_CONNECTION)
+                .withRequest(
+                    new TestServiceConnectionRequest()
+                        .withServiceType(ServiceType.DATABASE)
+                        .withConnectionType("Mysql")
+                        .withConnection(connection)));
   }
 
   private static McpService createMcpWithFreshReference(TestNamespace ns) {

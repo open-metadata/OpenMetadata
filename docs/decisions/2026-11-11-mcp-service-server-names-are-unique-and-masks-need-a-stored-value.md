@@ -94,10 +94,19 @@ Passing through a reference unchanged keeps its id.
 
 A key owned by a service or ingestion pipeline may also be referenced by another service, pipeline,
 or automation workflow. When the last known local reference disappears, check their current rows,
-including soft-deleted rows, under the existing database lock. Read bounded pages and stop as soon as every candidate
-has a reference. This also covers configurations written before the ownership ledger and references
+including soft-deleted rows, under the existing database lock. Read bounded pages and stop as
+soon as every candidate has a reference. This also covers configurations written before the ownership ledger and references
 wrapped in Fernet. The check reads local references without fetching provider values. If a key
 is still in use, keep its ownership and record its namespace against the normalized key. When
 another config releases the key, revisit the recorded owner after commit. Workflow writes share
 the same lock as service and pipeline writes, including bulk writes. A soft-deleted workflow can
 be restored and continues to hold its reference.
+
+Before a workflow is hard-deleted, record its owned credentials and the service or pipeline
+namespaces whose references it releases. Commit that record and a retry marker with the row
+deletion, including bulk deletes. After commit, check remaining references before removing
+provider credentials. If the process stops or a provider fails, a subsequent service or pipeline
+write retries up to 100 pending workflow namespaces after its own cleanup commits. A persisted
+cursor advances independently of individual retries. Each retry commits separately, so a provider
+error for one key leaves its marker in place and other namespaces can finish. Rolling back the
+delete retains the workflow and discards its cleanup record.

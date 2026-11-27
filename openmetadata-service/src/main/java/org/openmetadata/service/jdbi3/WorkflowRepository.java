@@ -2,8 +2,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Supplier;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -80,6 +83,20 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
+  protected <R> R executeEntityWrite(List<Workflow> entities, Supplier<R> work) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return super.executeEntityWrite(entities, work);
+    }
+    // Take the ownership lock before workflow row locks in direct writes and bulk cascades.
+    return executeInTransaction(
+        () -> {
+          new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager).lock();
+          return work.get();
+        });
+  }
+
+  @Override
   protected void store(Workflow workflow, boolean update, Double expectedVersion) {
     writeWithSharedCredentials(
         List.of(workflow), update, () -> super.store(workflow, update, expectedVersion));
@@ -144,16 +161,31 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
+  protected Runnable preparePostDeleteCleanup(List<Workflow> workflows) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null) {
+      return super.preparePostDeleteCleanup(workflows);
+    }
+    if (manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return () -> workflows.forEach(manager::deleteSecretsFromWorkflow);
+    }
+    SecretMapOwnership ownership =
+        new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+    Set<UUID> markers = new HashSet<>();
+    for (Workflow workflow : workflows) {
+      SecretInventory stored = storedInventory(manager, workflow);
+      if (stored != null) {
+        markers.add(ownership.recordWorkflowDeletion(workflow.getId(), stored));
+      }
+    }
+    return () -> ownership.cleanDeletedWorkflows(daoCollection, markers);
+  }
+
+  @Override
   protected void postDelete(Workflow workflow, boolean hardDelete) {
     super.postDelete(workflow, hardDelete);
-    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
-    manager.deleteSecretsFromWorkflow(workflow);
-    if (hardDelete && manager.getSecretsManagerProvider() != SecretsManagerProvider.DB) {
-      SecretInventory before = manager.secretInventory(workflow);
-      SecretMapOwnership ownership =
-          new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
-      PostCommitActionQueue.runOrDefer(
-          () -> withOwnershipLock(ownership, () -> scheduleRelease(ownership, before, Set.of())));
+    if (!hardDelete) {
+      SecretsManagerFactory.getSecretsManager().deleteSecretsFromWorkflow(workflow);
     }
   }
 

@@ -10,18 +10,24 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /** Ownership survives entity deletion and aliases; callers hold the lock in their DB transaction. */
 @Slf4j
 public final class SecretMapOwnership {
   private static final String EXTENSION = "secrets.mapOwnership";
+  private static final String DELETED_WORKFLOW = "secrets.pendingWorkflowCleanup";
+  private static final String WORKFLOW_CURSOR = "secrets.workflowCleanupCursor";
+  private static final int WORKFLOW_PAGE_SIZE = 100;
   private static final UUID LOCK_ID = namespaceId("lock");
   private static final ThreadLocal<Map<Handle, WriteInputs>> WRITE_INPUTS = new ThreadLocal<>();
   private final EntityExtensionDAO dao;
@@ -254,7 +260,82 @@ public final class SecretMapOwnership {
     return references;
   }
 
+  public UUID recordWorkflowDeletion(UUID id, SecretInventory deleted) {
+    removeOwner(id, deleted);
+    UUID marker = namespaceId(deleted.root());
+    dao.insert(marker, DELETED_WORKFLOW, DELETED_WORKFLOW, JsonUtils.pojoToJson(deleted.root()));
+    return marker;
+  }
+
+  private void cleanDeletedWorkflow(UUID marker) {
+    String json = dao.getExtensionForUpdate(marker, DELETED_WORKFLOW);
+    if (json != null) {
+      cleanNamespace(JsonUtils.readValue(json, String.class));
+      dao.delete(marker, DELETED_WORKFLOW);
+    }
+  }
+
+  public void cleanDeletedWorkflows(CollectionDAO collection, Iterable<UUID> markers) {
+    for (UUID marker : markers) {
+      try {
+        inOwnershipTransaction(
+            collection,
+            ledger -> {
+              ledger.cleanDeletedWorkflow(marker);
+              return null;
+            });
+      } catch (RuntimeException e) {
+        // Each root has its own transaction. A provider failure keeps its marker for another pass.
+        LOG.warn(
+            "Workflow credential cleanup {} remains pending ({})",
+            marker,
+            e.getClass().getSimpleName());
+      }
+    }
+  }
+
+  private <R> R inOwnershipTransaction(
+      CollectionDAO collection, Function<SecretMapOwnership, R> work) {
+    return collection.inTransaction(
+        transaction -> {
+          SecretMapOwnership ledger =
+              new SecretMapOwnership(transaction.entityExtensionDAO(), manager);
+          ledger.lock();
+          return work.apply(ledger);
+        });
+  }
+
+  private List<UUID> nextWorkflowCleanupPage() {
+    String cursor = dao.getExtension(LOCK_ID, WORKFLOW_CURSOR);
+    String after = cursor == null ? "" : JsonUtils.readValue(cursor, String.class);
+    List<String> ids = dao.listExtensionIds(DELETED_WORKFLOW, after, WORKFLOW_PAGE_SIZE);
+    if (ids.isEmpty() && !after.isEmpty()) {
+      ids = dao.listExtensionIds(DELETED_WORKFLOW, "", WORKFLOW_PAGE_SIZE);
+    }
+    if (ids.size() == WORKFLOW_PAGE_SIZE) {
+      dao.insert(LOCK_ID, WORKFLOW_CURSOR, WORKFLOW_CURSOR, JsonUtils.pojoToJson(ids.getLast()));
+    } else if (cursor != null) {
+      dao.delete(LOCK_ID, WORKFLOW_CURSOR);
+    }
+    return ids.stream().map(UUID::fromString).toList();
+  }
+
   public void clean(String root) {
+    cleanNamespace(root);
+    if (!dao.listExtensionIds(DELETED_WORKFLOW, "", 1).isEmpty()) {
+      // The current root commits before recovery, and a persistent provider error cannot starve
+      // markers on later pages. The cursor and each completed marker commit independently.
+      PostCommitActionQueue.runOrDefer(
+          () -> {
+            CollectionDAO collection = Entity.getCollectionDAO();
+            List<UUID> page =
+                inOwnershipTransaction(collection, SecretMapOwnership::nextWorkflowCleanupPage);
+            cleanDeletedWorkflows(collection, page);
+          });
+    }
+  }
+
+  private void cleanNamespace(String root) {
     State state = load(root);
     for (String retiredRoot : state.cleanupRoots()) {
       cleanOwned(retiredRoot, load(retiredRoot));
