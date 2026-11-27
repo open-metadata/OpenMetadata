@@ -23,7 +23,6 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -413,6 +412,13 @@ public final class CatalogExceptionMessage {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 
+  public static String reservedRoleName(String name) {
+    return String.format(
+        "Role name [%s] is reserved: Admin is the administrator flag on a user or bot, not a role."
+            + " Choose another name.",
+        name);
+  }
+
   public static String systemEntityRenameNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
   }
@@ -435,12 +441,6 @@ public final class CatalogExceptionMessage {
   public static String disabledTag(TagLabel tag) {
     return String.format(
         "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
-  }
-
-  public static String glossaryTermNotApproved(String termFqn, EntityStatus status) {
-    return String.format(
-        "Glossary term %s is %s. Only Approved glossary terms can be applied to a data asset.",
-        termFqn, status.value());
   }
 
   public static String csvNotSupported(String entityType) {

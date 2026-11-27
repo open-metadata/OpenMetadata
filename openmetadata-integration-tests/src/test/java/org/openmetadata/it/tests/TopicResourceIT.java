@@ -59,7 +59,10 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

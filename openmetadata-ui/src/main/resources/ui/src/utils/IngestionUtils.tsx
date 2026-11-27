@@ -198,6 +198,7 @@ const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
   running: 'muted',
   failed: 'error',
   success: 'success',
+  stopped: 'warning',
   queued: 'muted',
   none: 'muted',
 };

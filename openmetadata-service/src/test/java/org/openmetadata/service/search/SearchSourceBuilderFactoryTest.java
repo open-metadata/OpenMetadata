@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.util.NamedValue;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
@@ -178,6 +179,16 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testAssetTypeConfigurationMatchesTheAssetTypeOrFallsBackToTheDefault() {
+    assertSame(
+        tableConfig,
+        SearchSourceBuilderFactory.assetTypeConfiguration("table_search_index", searchSettings));
+    assertSame(
+        defaultConfig,
+        SearchSourceBuilderFactory.assetTypeConfiguration("dataAsset", searchSettings));
+  }
+
+  @Test
   public void testConsistentSearchBuilderSelection() {
     // Test that both OpenSearch and ElasticSearch factories use the same logic
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
@@ -223,6 +234,78 @@ public class SearchSourceBuilderFactoryTest {
     String esQuery = esBuilder.query().toString();
     assertTrue(osQuery.contains("extractedText"), osQuery);
     assertTrue(esQuery.contains("extractedText"), esQuery);
+  }
+
+  /**
+   * Without ranking, n-gram fields go through the unranked fuzzy match. Fuzzy-expanding every gram
+   * of a 16-char token (~105 grams) exceeds OpenSearch's 1024-clause cap and fails the search with
+   * a 500 (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). Past the clause budget the
+   * n-gram clause is not fuzzy, and it keeps the field's own analyzer so partial names still match.
+   */
+  @Test
+  public void testUnrankedNgramMatchIsNotFuzzyAndKeepsFieldAnalyzer() {
+    String longToken = "e5c1df09f5c39786";
+    OpenSearchRequestBuilder osBuilder =
+        new OpenSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", longToken, 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        new ElasticSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", longToken, 0, 10);
+
+    for (JsonNode clause :
+        List.of(
+            ngramFuzzyClause(osBuilder.query().toJsonString()),
+            ngramFuzzyClause(esBuilder.query().toString()))) {
+      assertEquals("0", clause.path("fuzziness").asText(), clause.toString());
+      assertFalse(clause.has("analyzer"), clause.toString());
+    }
+  }
+
+  @Test
+  public void testUnrankedNgramMatchStaysFuzzyForATypo() {
+    OpenSearchRequestBuilder osBuilder =
+        new OpenSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", "custmer", 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        new ElasticSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", "custmer", 0, 10);
+
+    for (JsonNode clause :
+        List.of(
+            ngramFuzzyClause(osBuilder.query().toJsonString()),
+            ngramFuzzyClause(esBuilder.query().toString()))) {
+      assertEquals("1", clause.path("fuzziness").asText(), clause.toString());
+    }
+  }
+
+  @Test
+  public void testNgramFuzzinessIsDisabledOnlyPastTheClauseBudget() {
+    List<String> ngramFields = List.of("name.ngram", "displayName.ngram");
+
+    assertEquals(300, SearchUtils.estimatedNgramFuzzyClauses("custmer", ngramFields));
+    assertEquals(620, SearchUtils.estimatedNgramFuzzyClauses("customer_orders", ngramFields));
+    assertEquals(2100, SearchUtils.estimatedNgramFuzzyClauses("e5c1df09f5c39786", ngramFields));
+    assertEquals(0, SearchUtils.estimatedNgramFuzzyClauses("e5c1df09f5c39786", List.of("name")));
+
+    assertEquals("1", SearchUtils.getFuzziness("custmer", ngramFields));
+    assertEquals("1", SearchUtils.getFuzziness("customer_orders", ngramFields));
+    assertEquals("0", SearchUtils.getFuzziness("e5c1df09f5c39786", ngramFields));
+    assertEquals(
+        "0",
+        SearchUtils.getFuzziness("e5c1df09f5c39786", List.of("name.ngram", "columnNamesFuzzy")));
+    assertEquals(
+        "1", SearchUtils.getFuzziness("e5c1df09f5c39786", List.of("name", "columnNamesFuzzy")));
+  }
+
+  private static JsonNode ngramFuzzyClause(String queryJson) {
+    JsonNode root = JsonUtils.readTree(queryJson.substring(queryJson.indexOf('{')));
+    return root.findParents("multi_match").stream()
+        .map(parent -> parent.get("multi_match"))
+        .filter(match -> match.has("fuzziness"))
+        .filter(match -> match.path("fields").toString().contains("name.ngram"))
+        .findFirst()
+        .orElseThrow(
+            () -> new AssertionError("no fuzzy n-gram multi_match in %s".formatted(queryJson)));
   }
 
   @Test
@@ -698,6 +781,24 @@ public class SearchSourceBuilderFactoryTest {
     ElasticSearchSourceBuilderFactory factory =
         new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
     return factory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15).query().toString();
+  }
+
+  @Test
+  void ontologyPropertyLabelsAreSearchedThroughAliasAndIndex() {
+    var openSearch = new OpenSearchSourceBuilderFactory(shippedSearchSettings);
+    var elasticSearch = new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
+    for (String index :
+        List.of(
+            OntologyTermSearch.ALIAS, Entity.ONTOLOGY_PROPERTY, "ontology_property_search_index")) {
+      String os =
+          serializeOpenSearchRequest(openSearch.getSearchSourceBuilderV2(index, "purchase", 0, 10));
+      String es =
+          elasticSearch.getSearchSourceBuilderV2(index, "purchase", 0, 10).query().toString();
+      for (String field : List.of("domainLabels", "rangeLabels")) {
+        assertTrue(os.contains(field), () -> index + " OpenSearch query omitted " + field);
+        assertTrue(es.contains(field), () -> index + " Elasticsearch query omitted " + field);
+      }
+    }
   }
 
   private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {

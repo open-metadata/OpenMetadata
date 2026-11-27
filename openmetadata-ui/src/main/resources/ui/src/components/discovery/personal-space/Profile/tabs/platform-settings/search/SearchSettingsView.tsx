@@ -300,7 +300,7 @@ const SearchSettingsView = ({
               color="secondary"
               data-testid="term-boost-save-btn"
               isDisabled={!termBoostsChanged || isUpdating}
-              size="sm"
+              size="xs"
               onPress={() => updateGlobalSettings({ termBoosts })}>
               {t('label.save')}
             </Button>
@@ -309,7 +309,7 @@ const SearchSettingsView = ({
               data-testid="term-boost-add-btn"
               iconLeading={Plus}
               isDisabled={isUpdating || showNewTermBoost}
-              size="sm"
+              size="xs"
               onPress={() => setShowNewTermBoost(true)}>
               {t('label.add')}
             </Button>
@@ -345,7 +345,7 @@ const SearchSettingsView = ({
               data-testid="add-field-value-boost-btn"
               iconLeading={Plus}
               isDisabled={isUpdating}
-              size="sm"
+              size="xs"
               onPress={() => openFieldValueBoostForm()}>
               {t('label.add')}
             </Button>

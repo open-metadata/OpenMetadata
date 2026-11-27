@@ -16,16 +16,19 @@ import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyReferenceRole;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyDefinitionStatusResolver;
 import org.openmetadata.service.ontology.OntologyStructureValidator;
 import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -49,6 +52,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         Entity.getCollectionDAO().ontologyConceptDAO(),
         COLLECTION_PATH,
         "ontology,iri,conceptType,synonyms,conceptMappings,abstract,definitionSource,deprecated,replacedBy");
+    supportsSearch = true;
     fieldFetchers.put(SUPER_CLASSES, this::fetchSuperClasses);
     fieldFetchers.put(SUB_CLASSES, this::fetchSubClasses);
     fieldFetchers.put(LIFECYCLE_STATUS, this::fetchLifecycleStatus);
@@ -116,9 +120,34 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     return DERIVED_FIELDS;
   }
 
+  /**
+   * Deletes the concept's binding rows and re-projects the assets they bound, which carry the
+   * binding edges in the serving graph; the assets are read before the rows go.
+   */
   @Override
   protected void entitySpecificCleanup(final OntologyConcept concept) {
+    final List<EntityReference> bound =
+        RdfUpdater.isEnabled() ? boundAssets(concept.getId()) : List.of();
     daoCollection.ontologyConceptBindingDAO().deleteConcept(concept.getId());
+    RdfUpdater.refreshEntities(bound);
+  }
+
+  private List<EntityReference> boundAssets(final UUID conceptId) {
+    final List<EntityReference> assets = new ArrayList<>();
+    String after = "";
+    List<BindingRow> page;
+    do {
+      page =
+          daoCollection
+              .ontologyConceptBindingDAO()
+              .listAfter(conceptId, after, OntologyConceptBindingStore.SCAN_PAGE_SIZE);
+      page.forEach(
+          row ->
+              assets.add(
+                  new EntityReference().withType(row.assetType().value()).withId(row.assetId())));
+      after = page.isEmpty() ? after : page.getLast().assetId().toString();
+    } while (page.size() == OntologyConceptBindingStore.SCAN_PAGE_SIZE);
+    return assets;
   }
 
   @Override

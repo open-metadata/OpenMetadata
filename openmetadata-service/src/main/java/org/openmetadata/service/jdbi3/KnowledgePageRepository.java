@@ -348,6 +348,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     return Set.of(Entity.PAGE);
   }
 
+  /** A top-level page's FQN is its bare name, dots included. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {

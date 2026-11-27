@@ -1,12 +1,27 @@
 ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
-FROM mysql:8.3 AS mysql
+FROM mysql:8.4.13 AS mysql
+
+# Rebuilds the Go library bundled in adbc-driver-flightsql against patched modules;
+# see ingestion/scripts/rebuild_adbc_flightsql.sh. Cross-compiled on the build host,
+# and on bookworm so the library needs no newer glibc than any of these images ship.
+FROM --platform=$BUILDPLATFORM golang:1.26.11-bookworm AS adbc-flightsql
+ARG TARGETARCH
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
+    bash /rebuild.sh build /out
 
 FROM ${BASE_IMAGE}
 
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
 ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 USER root
-RUN apt-get -qq update \
+# The Airflow base adds MariaDB's apt repo from archive.mariadb.org, which now redirects to
+# mirror.mariadb.org. Some mirrors it picks redirect https to http, which apt refuses, so
+# `apt-get update` fails depending on the mirror. dlm.mariadb.com serves the same signed repo.
+# Keep the MariaDB repo rather than switching to Debian's MariaDB packages: the base pins
+# o=MariaDB at 999, so that switch would need forced purges and a downgrade.
+RUN find /etc/apt/sources.list.d -type f -exec sed -i -E \
+      's#https://archive\.mariadb\.org/mariadb-([0-9.]+)/repo/debian/?#https://dlm.mariadb.com/repo/mariadb-server/\1/repo/debian#' {} + \
+  && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY ingestion/airflow-constraints-3.3.2.txt /opt/openmetadata/python-tls/airflow-constraints.txt
@@ -178,6 +193,12 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 # spaCy strip -- after the final pip install, or a later install restores them.
 COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
 RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
+# Swap in the rebuilt FlightSQL driver. Must run after the final pip install, or a
+# later install restores the wheel's library.
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/tmp/rebuild_adbc_flightsql.sh \
+    --mount=type=bind,from=adbc-flightsql,source=/out,target=/tmp/adbc-flightsql \
+    bash /tmp/rebuild_adbc_flightsql.sh install /tmp/adbc-flightsql
 
 # Native Python extensions still need their shared libraries after header/tool cleanup.
 USER root

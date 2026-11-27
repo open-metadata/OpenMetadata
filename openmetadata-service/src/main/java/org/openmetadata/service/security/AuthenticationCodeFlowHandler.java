@@ -14,7 +14,6 @@ import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.proc.BadJOSEException;
-import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.proc.BadJWTException;
@@ -59,6 +58,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.time.Instant;
@@ -90,6 +90,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -149,7 +150,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String FORCED_LOGIN_PROMPT = "login";
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
-  private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  static final String MCP_CALLBACK_PATH = "/mcp/callback";
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
   private static final String CALLBACK_SERVLET_PATH = "/callback";
   private static final String SIGNIN_PATH = "/signin";
@@ -162,11 +163,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
 
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
+  public static final String SIGN_IN_FAILURE_ATTRIBUTE = "signInFailure";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
 
   private static volatile AuthenticationCodeFlowHandler latestInstance;
 
+  @Getter private final boolean publicMcpClient;
   private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
@@ -176,6 +179,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private String principalDomain;
   private String maxAge;
   private String promptType;
+
+  /** Verification inputs from the same configuration that performs this provider code exchange. */
+  public record McpTokenVerification(
+      List<String> keySetUrls,
+      String issuer,
+      String audience,
+      boolean publicClient,
+      AuthProvider provider) {
+    public McpTokenVerification {
+      keySetUrls = List.copyOf(listOrEmpty(keySetUrls));
+      CommonHelper.assertNotBlank("OIDC client ID", audience);
+    }
+  }
+
+  @Getter private volatile McpTokenVerification mcpTokenVerification;
   @Getter private String providerIssuer;
   @Getter private URL providerKeySetUrl;
   private AuthenticationConfiguration authenticationConfiguration;
@@ -221,6 +239,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration,
       SessionService sessionService) {
+    this(authenticationConfiguration, authorizerConfiguration, sessionService, false);
+  }
+
+  AuthenticationCodeFlowHandler(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration,
+      SessionService sessionService,
+      boolean publicMcpClient) {
     // Assert oidcConfig and Callback Url
     CommonHelper.assertNotNull(
         "OidcConfiguration", authenticationConfiguration.getOidcConfiguration());
@@ -237,8 +263,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         new OidcProviderTokenRefresher(
             grant -> createTokenRequest(client.getConfiguration(), clientAuthentication, grant),
             request -> executeTokenHttpRequest(client.getConfiguration(), request));
+    this.publicMcpClient = publicMcpClient;
     initializeFields();
-    latestInstance = this;
+    if (!publicMcpClient) {
+      latestInstance = this;
+    }
   }
 
   public static AuthenticationCodeFlowHandler getInstance() {
@@ -272,7 +301,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private void initializeFields() {
-    this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
+    this.client =
+        buildOidcClient(
+            authenticationConfiguration.getOidcConfiguration(),
+            publicMcpClient ? authenticationConfiguration.getProvider() : null);
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
     // Create the OIDC metadata resolver during single-threaded startup so concurrent logins never
     // race to lazily initialize it. pac4j 6 normally does this in client.init(), but OM does not
@@ -301,6 +333,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.providerIssuer =
         providerMetadata.getIssuer() == null ? null : providerMetadata.getIssuer().getValue();
     this.providerKeySetUrl = keySetUrlOf(providerMetadata);
+    this.mcpTokenVerification =
+        new McpTokenVerification(
+            authenticationConfiguration.getPublicKeyUrls(),
+            providerIssuer,
+            client.getConfiguration().getClientId(),
+            publicMcpClient,
+            authenticationConfiguration.getProvider());
   }
 
   private static URL keySetUrlOf(OIDCProviderMetadata providerMetadata) {
@@ -344,16 +383,23 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
+    return buildOidcClient(clientConfig, null);
+  }
+
+  private static OidcClient buildOidcClient(
+      OidcClientConfig clientConfig, AuthProvider publicProvider) {
+    final boolean publicMcpClient = publicProvider != null;
     String id = clientConfig.getId();
     String secret = clientConfig.getSecret();
-    if (CommonHelper.isNotBlank(id) && CommonHelper.isNotBlank(secret)) {
-      OidcConfiguration configuration = new OidcConfiguration();
+    if (CommonHelper.isNotBlank(id) && (publicMcpClient || CommonHelper.isNotBlank(secret))) {
+      OidcConfiguration configuration =
+          publicMcpClient ? new PublicOidcConfiguration(publicProvider) : new OidcConfiguration();
       configuration.setClientId(id);
 
       configuration.setResponseMode("query");
 
       // Add Secret
-      if (CommonHelper.isNotBlank(secret)) {
+      if (!publicMcpClient && CommonHelper.isNotBlank(secret)) {
         configuration.setSecret(secret);
       }
 
@@ -446,6 +492,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         oidcClient = new OidcClient(configuration);
       }
 
+      if (publicMcpClient) {
+        final OidcConfiguration publicConfiguration = oidcClient.getConfiguration();
+        publicConfiguration.setWithState(true);
+        publicConfiguration.setUseNonce(true);
+        publicConfiguration.setDisablePkce(false);
+        publicConfiguration.setPkceMethod(CodeChallengeMethod.S256);
+      }
       oidcClient.setName(String.format("OMOidcClient%s", oidcClient.getName()));
       return oidcClient;
     }
@@ -549,8 +602,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         && Arrays.stream(prompt.split("\\s+")).anyMatch(FORCED_LOGIN_PROMPT::equalsIgnoreCase);
   }
 
+  public String getMcpCallbackUrl() {
+    return serverUrl + MCP_CALLBACK_PATH;
+  }
+
   private boolean isMcpRedirectUri(String redirectUri) {
-    return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
+    return getMcpCallbackUrl().equals(redirectUri);
   }
 
   /**
@@ -571,8 +628,27 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  // Callback
+  @FunctionalInterface
+  public interface McpIdTokenVerifier {
+    JWTClaimsSet verify(String rawToken) throws GeneralSecurityException;
+  }
+
+  @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
+    if (publicMcpClient) {
+      throw new IllegalStateException("Public MCP sign-in requires ID token verification");
+    }
+    completeCallback(req, resp, null);
+  }
+
+  public JWTClaimsSet handleMcpCallback(
+      HttpServletRequest req, HttpServletResponse resp, McpIdTokenVerifier verifier) {
+    return completeCallback(req, resp, Objects.requireNonNull(verifier));
+  }
+
+  private JWTClaimsSet completeCallback(
+      HttpServletRequest req, HttpServletResponse resp, McpIdTokenVerifier mcpVerifier) {
+    JWTClaimsSet completedClaims = null;
     UserSession pendingSession = null;
     try {
       Optional<UserSession> maybePendingSession = sessionService.getPendingSession(req, resp);
@@ -582,7 +658,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // already cleared the stale cookie, so route the user to interactive signin instead.
         LOG.warn("No pending session found for callback, redirecting to signin");
         resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
-        return;
+        return null;
       }
       pendingSession = maybePendingSession.get();
 
@@ -602,7 +678,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         if (SILENT_AUTH_ERRORS.contains(errorCode)) {
           LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
           resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
-          return;
+          return null;
         }
         throw SignInFailure.PROVIDER_REFUSED.because(
             "Identity provider refused the sign-in: "
@@ -611,6 +687,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
+      if (mcpVerifier != null && !isMcpRedirectUri(redirectUri)) {
+        throw new IllegalArgumentException("Pending sign-in is not for MCP");
+      }
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
@@ -623,13 +702,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       requireAuthorizationCode(pendingSession, credentials);
       redeemAuthorizationCode(pendingSession, credentials, computedCallbackUrl);
 
-      // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
-      JWT idToken = credentials.toIdToken();
-      if (idToken == null) {
+      if (nullOrEmpty(credentials.getIdToken())) {
         throw SignInFailure.TOKEN_EXCHANGE_FAILED.because(
             "ID token not returned by OIDC provider", null);
       }
-      JWTClaimsSet idTokenClaims = idToken.getJWTClaimsSet();
+      // Verify MCP identity before these claims can provision a user or activate a session.
+      final JWTClaimsSet idTokenClaims =
+          mcpVerifier == null
+              ? credentials.toIdToken().getJWTClaimsSet()
+              : mcpVerifier.verify(credentials.getIdToken());
       Date expirationTime = idTokenClaims.getExpirationTime();
       if (expirationTime != null
           && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
@@ -639,14 +720,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       validateNonceIfRequired(pendingSession, idTokenClaims);
-
-      // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
-      // is only available here. Hand the validated credentials over on this request, so the MCP
-      // callback only ever reads tokens this callback validated; a session would outlive it.
-      if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
-        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-        LOG.debug("Stored OIDC credentials on the request for MCP callback handoff");
-      }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(idTokenClaims.getClaims());
@@ -679,8 +752,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // The browser presents the provider's own ID token: its claims are the ones the principal
       // configuration names, and its expiry is the provider's.
       sendRedirectWithToken(resp, redirectUri, user, credentials.getIdToken());
+      if (isMcpRedirectUri(redirectUri)) {
+        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        completedClaims = idTokenClaims;
+      }
     } catch (SignInFailedException failure) {
-      endFailedSignIn(resp, pendingSession, failure);
+      endFailedSignIn(req, resp, pendingSession, failure);
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -691,6 +768,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       getErrorMessage(resp, e);
     }
+    return completedClaims;
   }
 
   /**
@@ -700,10 +778,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * (ADR:2026-11-12-a-failed-sso-sign-in-returns-to-the-sign-in-page).
    */
   private void endFailedSignIn(
-      HttpServletResponse resp, UserSession pendingSession, SignInFailedException failure) {
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      UserSession pendingSession,
+      SignInFailedException failure) {
     boolean isMcpSignIn =
         pendingSession != null && isMcpRedirectUri(pendingSession.getRedirectUri());
     if (isMcpSignIn) {
+      // The status stays as it was; the reason lets the MCP callback tell the person why.
+      req.setAttribute(SIGN_IN_FAILURE_ATTRIBUTE, failure.failure());
       getErrorMessage(resp, failure);
     } else {
       returnToSignInPage(resp, failure);
@@ -1564,7 +1647,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * keeps {@code serverUrl}.
    */
   private String deploymentUrl(String path) {
-    String callbackBaseUrl = baseUrlOf(client.getCallbackUrl());
+    String callbackBaseUrl = publicMcpClient ? serverUrl : baseUrlOf(client.getCallbackUrl());
     return (callbackBaseUrl == null ? serverUrl : callbackBaseUrl) + path;
   }
 

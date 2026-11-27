@@ -14,6 +14,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
+import { getStatItemToneClassName } from './StatItem.utils';
 
 type StatItemLabelProps = Pick<
   StatItemProps,
@@ -62,10 +63,7 @@ export const StatItem = ({
   // header rows, so it stays; the translate only re-centres the icon and count.
   const labelClassName = classNames(
     'tw:inline-flex tw:translate-y-[2.5px] tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
-    isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
-    onClick && !isDisabled
-      ? 'tw:cursor-pointer tw:hover:text-secondary'
-      : 'tw:cursor-default'
+    getStatItemToneClassName(Boolean(isActive), Boolean(onClick) && !isDisabled)
   );
 
   const label = (

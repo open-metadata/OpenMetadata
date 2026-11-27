@@ -296,6 +296,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
+              description =
+                  "Filter by tasks last updated on or after this timestamp (epoch millis)")
+          @QueryParam("updatedSince")
+          Long updatedSince,
+      @Parameter(
+              description = "Timestamp to sort by: createdAt or updatedAt (defaults to createdAt)")
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
               description = TASK_SORT_ORDER_DESCRIPTION,
               schema =
                   @Schema(
@@ -315,6 +324,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("taskStatus", status.value());
     }
     applyTaskTimeRange(filter, startTs, endTs);
+    if (updatedSince != null) {
+      filter.addQueryParam("taskUpdatedSince", updatedSince.toString());
+    }
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -360,7 +372,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
-    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter, sortBy);
     return withoutUnreadableValues(
         securityContext,
         aboutVisibility.retainViewable(
@@ -1360,7 +1372,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // Authorize before simulating the patch: its errors quote the stored task.
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
     // The response returns the task with its proposed values.
-    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, original);
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
@@ -1873,7 +1885,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     validateTaskCanBeClosed(task);
     requireClosable(task);
 
-    Task closedTask = repository.closeTask(task, userName, comment);
+    Task closedTask = repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
     return Response.ok(closedTask).build();
   }
 
@@ -2124,7 +2136,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
         requireClosable(task);
-        repository.closeTask(task, userName, comment);
+        repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
       }
     }
   }
@@ -2322,7 +2334,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizeViewOnAboutEntity(securityContext, task.getAbout());
     // The response also returns the task's proposed values, which only those who may read its
     // change request see.
-    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     TaskComment comment =
         new TaskComment()
@@ -2365,7 +2377,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
-    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     Task updatedTask =
         repository.editComment(task, commentId, updateComment.getMessage(), userName);
@@ -2405,7 +2417,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
-    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task);
 
     Task updatedTask = repository.deleteComment(task, commentId, userName, isAdmin);
     return Response.ok(updatedTask).build();

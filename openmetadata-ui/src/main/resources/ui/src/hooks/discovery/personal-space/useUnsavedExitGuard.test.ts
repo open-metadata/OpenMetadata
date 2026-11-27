@@ -127,6 +127,23 @@ describe('guardBreadcrumbAction', () => {
 
     expect(action).toHaveBeenCalledWith('bots');
   });
+
+  it('runs an in-editor crumb at once even while an editor is dirty', () => {
+    const action = jest.fn();
+    const guard = jest.fn().mockReturnValue(true);
+    usePersonalSpaceStore.getState().setExitGuard(guard);
+    const onAction = guardBreadcrumbAction(action, ['provider']);
+
+    onAction?.('provider');
+
+    expect(action).toHaveBeenCalledWith('provider');
+    expect(guard).not.toHaveBeenCalled();
+
+    onAction?.('sso');
+
+    expect(guard).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('runUnderExitGuard', () => {

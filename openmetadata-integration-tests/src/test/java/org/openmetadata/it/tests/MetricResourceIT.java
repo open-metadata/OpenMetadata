@@ -129,7 +129,10 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   private static final ObjectMapper JSON = new ObjectMapper();
 
   {
+    supportsLineage = true;
     supportsListHistoryByTimestamp = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsBulkAPI = true;
   }
@@ -2819,6 +2822,9 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     curated.setExperts(List.of(shared.USER2_REF));
     patchEntity(curated.getId().toString(), curated);
     patchMetricReviewers(metric.getId(), List.of(shared.USER1_REF));
+    // The reviewer change starts an approval run that writes In Review asynchronously; let it land
+    // first so the baseline status is the one the bot's re-ingest must leave unchanged.
+    awaitApprovalTask(metric);
     Metric beforeRerun = getEntityWithFields(metric.getId().toString(), curatedFields);
     assertEquals(List.of(shared.USER1_REF.getId()), ids(beforeRerun.getReviewers()));
     assertEquals(List.of(shared.USER2_REF.getId()), ids(beforeRerun.getExperts()));

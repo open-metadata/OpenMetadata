@@ -31,8 +31,9 @@ test(
   async ({ page }) => {
     const { apiContext, afterAction } = await createAdminApiContext();
     const response = await apiContext.get('/api/v1/system/mcp/config');
-    expect(response.ok()).toBe(true);
-    const original = await response.json();
+    // A 404 means the setting was never written; the form starts from schema defaults too.
+    expect([200, 404]).toContain(response.status());
+    const original = response.ok() ? await response.json() : {};
     let clientId: string | undefined;
     try {
       const setup = await apiContext.put('/api/v1/system/mcp/config', {
@@ -57,13 +58,14 @@ test(
       expect(registered.ok()).toBe(true);
       const client = await registered.json();
       clientId = client.client_id;
-      await page.goto('/apps/McpApplication/configuration');
+      await page.goto('/settings/apps/McpApplication');
       const serverSwitch = page.getByRole('switch', {
         name: 'Enable MCP Server',
         exact: true,
       });
       await expect(serverSwitch).toBeChecked();
-      await serverSwitch.uncheck();
+      await serverSwitch.press('Space');
+      await expect(serverSwitch).not.toBeChecked();
       await saveConfiguration(page);
       expect((await apiContext.post('/mcp', { data: {} })).status()).toBe(404);
       await page.reload();
@@ -71,22 +73,34 @@ test(
       await page
         .getByRole('tab', { name: 'Registered MCP clients', exact: true })
         .click();
-      const table = page.getByRole('table', { name: 'Registered MCP clients' });
+      const table = page.getByRole('grid', { name: 'Registered MCP clients' });
       const row = table
         .getByRole('row')
         .filter({ hasText: client.client_name });
       await expect(table).toBeVisible();
       const nextPage = page.getByRole('button', { name: 'Next', exact: true });
-      while ((await row.count()) === 0 && (await nextPage.isEnabled())) {
-        const loaded = page.waitForResponse(
+      const clientsLoaded = () =>
+        page.waitForResponse(
           (result) =>
             result.url().includes('/api/v1/mcp/clients?') &&
             result.request().method() === 'GET'
         );
-        await nextPage.click();
-        expect((await loaded).ok()).toBe(true);
-        await expect(table).toBeVisible();
-      }
+      const refresh = page.getByRole('button', {
+        name: 'Refresh',
+        exact: true,
+      });
+      const pageToClientRow = async () => {
+        // Next and Refresh are disabled while the list is fetching, so read Next once settled.
+        await expect(refresh).toBeEnabled();
+        while ((await row.count()) === 0 && (await nextPage.isEnabled())) {
+          const loaded = clientsLoaded();
+          await nextPage.click();
+          expect((await loaded).ok()).toBe(true);
+          await expect(table).toBeVisible();
+          await expect(refresh).toBeEnabled();
+        }
+      };
+      await pageToClientRow();
       await expect(row).toContainText(client.client_id);
       await row
         .getByRole('button', { name: 'Revoke tokens', exact: true })
@@ -96,12 +110,16 @@ test(
           response.url().endsWith(`/mcp/clients/${client.client_id}/tokens`) &&
           response.request().method() === 'DELETE'
       );
+      // Revoking reloads the list from its first page.
+      const reloaded = clientsLoaded();
       await page
         .getByRole('dialog')
         .getByRole('button', { name: 'Revoke', exact: true })
         .click();
       expect((await tokensRevoked).status()).toBe(204);
       await expect(page.getByRole('dialog')).toHaveCount(0);
+      expect((await reloaded).ok()).toBe(true);
+      await pageToClientRow();
       await expect(row).toBeVisible();
       await row
         .getByRole('button', { name: 'Remove client', exact: true })
@@ -124,13 +142,14 @@ test(
       await page
         .getByRole('tab', { name: 'Configuration', exact: true })
         .click();
-      await serverSwitch.check();
-      await page
-        .getByRole('switch', {
-          name: 'Allow Dynamic Client Registration',
-          exact: true,
-        })
-        .uncheck();
+      await serverSwitch.press('Space');
+      await expect(serverSwitch).toBeChecked();
+      const registrationSwitch = page.getByRole('switch', {
+        name: 'Allow Dynamic Client Registration',
+        exact: true,
+      });
+      await registrationSwitch.press('Space');
+      await expect(registrationSwitch).not.toBeChecked();
       await saveConfiguration(page);
       expect(
         (await apiContext.post('/mcp/register', { data: {} })).status()
@@ -144,6 +163,7 @@ test(
         })
       ).not.toBeChecked();
     } finally {
+      // No endpoint removes the stored MCP setting, so a 404 start leaves the schema defaults stored.
       const restored = await apiContext.put('/api/v1/system/mcp/config', {
         data: original,
       });

@@ -67,8 +67,9 @@ configSource:                  # optional; a missing block means these defaults
 | **DB** | A present stored value is never overwritten. Fields the stored value lacks are filled from deliberate deployment values. Later deployment changes are logged as ignored. | Allowed |
 
 - ENV on a group without a deployment block fails the start (`validateConfiguration`). The shipped
-  `conf/openmetadata.yaml` defines every group except MCP, so `mcpConfiguration` is stored only in
-  the database unless the file adds a block.
+  `conf/openmetadata.yaml` defines `mcpConfiguration.offeredTools` through `MCP_OFFERED_TOOLS`, so
+  ENV mode locks the allowlist. The other MCP settings take their values from the database unless
+  the deployment file defines them.
 - Every ENV-mode setting is merged and validated before any is written. A start that stops
   therefore changes no setting, including the authorizer when the identity provider of the same
   security group is refused.

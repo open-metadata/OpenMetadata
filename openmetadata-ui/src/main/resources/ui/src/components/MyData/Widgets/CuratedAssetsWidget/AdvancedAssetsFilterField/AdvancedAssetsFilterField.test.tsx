@@ -45,7 +45,7 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
   ...jest.requireActual('@react-awesome-query-builder/ui'),
   Utils: {
     ...jest.requireActual('@react-awesome-query-builder/ui').Utils,
-    checkTree: jest.fn(),
+    sanitizeTree: jest.fn().mockReturnValue({ fixedTree: undefined }),
     loadTree: jest.fn(),
     getTree: jest.fn().mockReturnValue({ id: 'root', type: 'group' }),
   },

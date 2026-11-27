@@ -37,6 +37,7 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SearchDocs;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
@@ -116,6 +117,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // Disable tests that don't apply to GlossaryTerm
   {
     supportsFollowers = false; // GlossaryTerm doesn't support followers directly
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     // GlossaryTerm export is done through Glossary endpoint, not GlossaryTerm endpoint
     // The Glossary export (/v1/glossaries/name/{name}/export) exports all terms in that glossary
     supportsImportExport = false;
@@ -3748,16 +3751,15 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         filteredCounts.has(term3.getFullyQualifiedName()),
         "Should not contain terms from glossary2 when filtering by glossary1");
 
-    // Get counts without parent — should include all terms
-    String countsWithoutParent = getAssetCounts(client, null);
-    assertNotNull(countsWithoutParent);
-    JsonNode unfilteredCounts = mapper.readTree(countsWithoutParent);
+    // The unfiltered count spans every term on the shared server (get_assetsCountsWithNoParent);
+    // the other parent shows the filter keeps each glossary's terms apart.
+    JsonNode glossary2Counts =
+        mapper.readTree(getAssetCounts(client, glossary2.getFullyQualifiedName()));
     assertTrue(
-        unfilteredCounts.has(term1.getFullyQualifiedName()), "Unfiltered should contain term1");
-    assertTrue(
-        unfilteredCounts.has(term2.getFullyQualifiedName()), "Unfiltered should contain term2");
-    assertTrue(
-        unfilteredCounts.has(term3.getFullyQualifiedName()), "Unfiltered should contain term3");
+        glossary2Counts.has(term3.getFullyQualifiedName()), "Should contain term3 from glossary2");
+    assertFalse(
+        glossary2Counts.has(term1.getFullyQualifiedName()),
+        "Should not contain terms from glossary1 when filtering by glossary2");
   }
 
   @Test
@@ -4525,6 +4527,474 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     }
   }
 
+  // ===================================================================
+  // REGRESSION: adding assets to a term must not wipe the term's own tags
+  //
+  // PUT /v1/glossaryTerms/{id}/assets/add calls applyGlossaryTagsToTerm,
+  // which historically did: deleteTagsByTarget(termFQN) then applyTags(glossary.tags).
+  // That wiped every tag the term had been given directly (classification
+  // labels such as PII.Sensitive, or other glossary-term labels) and re-applied
+  // only the parent glossary's tags -- an empty list when the glossary was
+  // untagged, so the term ended up with no tags at all. The fix merges the
+  // term's own tags back and uses the certification-preserving delete, plus a
+  // guard that is a no-op when the glossary has no tags.
+  // ===================================================================
+
+  private static void assertTermHasTag(OpenMetadataClient client, UUID termId, String tagFqn) {
+    GlossaryTerm fetched = client.glossaryTerms().get(termId.toString(), "tags");
+    boolean present =
+        fetched.getTags() != null
+            && fetched.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+    assertTrue(present, "term should still carry tag " + tagFqn);
+  }
+
+  private static void assertTermLacksTag(OpenMetadataClient client, UUID termId, String tagFqn) {
+    GlossaryTerm fetched = client.glossaryTerms().get(termId.toString(), "tags");
+    boolean present =
+        fetched.getTags() != null
+            && fetched.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+    assertFalse(present, "term should NOT carry tag " + tagFqn);
+  }
+
+  private TagLabel applyClassificationTagToTerm(
+      OpenMetadataClient client, GlossaryTerm term, TestNamespace ns, String suffix) {
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("td_cls_" + suffix))
+                    .withDescription("Classification applied directly to a term"));
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("td_tag_" + suffix))
+                    .withClassification(classification.getName())
+                    .withDescription("Direct tag on the term"));
+    TagLabel label = classificationTagLabel(tag);
+    term.setTags(List.of(label));
+    patchEntity(term.getId().toString(), term);
+    assertTermHasTag(client, term.getId(), label.getTagFQN());
+    return label;
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_nonDryRun_preservesExistingTermTags_whenGlossaryHasNoTags(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Glossary created without any tags (the common case).
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "term_protect_notag");
+    TagLabel directLabel = applyClassificationTagToTerm(client, term, ns, "term_protect_notag");
+    Table table = createBareTable(ns, "term_protect_notag");
+
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertFalse(result.getDryRun(), "non-dryRun must propagate dryRun=false");
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "asset must still receive the term tag");
+    // Regression: the term's directly-applied classification tag must survive.
+    assertTermHasTag(client, term.getId(), directLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_nonDryRun_mergesGlossaryTagsWithExistingTermTags(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Create a non-mutually-exclusive classification so the term can legally keep its own
+    // tag while the glossary's tag is applied on top.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("tm_cls"))
+                    .withDescription("Non-mutually-exclusive classification for merge test"));
+    Tag glossaryTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("g_tag_term_merge"))
+                    .withClassification(classification.getName())
+                    .withDescription("tag carried by the glossary"));
+    Tag termTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("t_tag_term_merge"))
+                    .withClassification(classification.getName())
+                    .withDescription("tag applied directly to the term"));
+    TagLabel glossaryLabel = classificationTagLabel(glossaryTag);
+    TagLabel termDirectLabel = classificationTagLabel(termTag);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("g_term_merge"))
+                    .withDescription("Glossary carrying a tag")
+                    .withTags(List.of(glossaryLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("term_term_merge"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying a direct tag"));
+    term.setTags(List.of(termDirectLabel));
+    patchEntity(term.getId().toString(), term);
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+
+    Table table = createBareTable(ns, "term_merge");
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertTrue(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "asset must receive the term tag");
+    // Regression: the term must end up with BOTH tags, not just the glossary's.
+    assertTermHasTag(client, term.getId(), glossaryLabel.getTagFQN());
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+    // And the merged set must be visible in the search index.
+    awaitDoc(
+        "glossary_term_search_index",
+        term.getId(),
+        doc ->
+            SearchDocs.tagFqns(doc).contains(glossaryLabel.getTagFQN())
+                && SearchDocs.tagFqns(doc).contains(termDirectLabel.getTagFQN()));
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRunTrue_doesNotTouchTermTags(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = createGlossaryTermForBulk(ns, "term_dr_protect");
+    TagLabel directLabel = applyClassificationTagToTerm(client, term, ns, "term_dr_protect");
+    Table table = createBareTable(ns, "term_dr_protect");
+
+    AddGlossaryToAssetsRequest dryRunAdd =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertTrue(result.getDryRun(), "dryRun must propagate");
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "dryRun must not apply the term tag to the asset");
+    assertTermHasTag(client, term.getId(), directLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_partialFailure_doesNotTouchTermTags(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "term_pf_protect");
+    // Apply a direct classification tag to the term before the add -- in a partial-failure
+    // outcome the guard short-circuits on the non-empty failedRequest, so the term's tags,
+    // cache, search index and RDF must not be rewritten at all.
+    TagLabel directLabel =
+        applyClassificationTagToTerm(client, setup.term, ns, "term_pf_protect_direct");
+    List<EntityReference> assets = new ArrayList<>();
+    assets.add(setup.passTable.getEntityReference());
+    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
+
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertTrue(
+        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
+        "the lone passing asset must still be tagged");
+    // Regression: the term's direct tag is preserved because the block is skipped entirely.
+    assertTermHasTag(client, setup.term.getId(), directLabel.getTagFQN());
+    // And the glossary's mutually-exclusive tag was NOT propagated to the term, since the block
+    // short-circuited on the partial failure.
+    assertTermLacksTag(client, setup.term.getId(), setup.glossaryTagLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_rejectsWhenTermOwnTagConflictsWithGlossaryTag(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Mutually-exclusive classification with two sibling tags: the glossary carries
+    // one sibling, the term carries the other directly. Merging the two on the term
+    // would leave mutually exclusive tags together, so the add must be rejected before
+    // any asset is saved or any term tag is touched.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("tc_cls"))
+                    .withMutuallyExclusive(true)
+                    .withDescription("Mutually-exclusive classification for term-conflict test"));
+    Tag glossaryTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tc_g_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("tag carried by the glossary"));
+    Tag termTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tc_t_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling tag applied directly to the term"));
+    TagLabel glossaryLabel = classificationTagLabel(glossaryTag);
+    TagLabel termDirectLabel = classificationTagLabel(termTag);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("tc_g"))
+                    .withDescription("Glossary carrying a mutually-exclusive tag")
+                    .withTags(List.of(glossaryLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("tc_t"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying a conflicting direct tag"));
+    term.setTags(List.of(termDirectLabel));
+    patchEntity(term.getId().toString(), term);
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+
+    Table table = createBareTable(ns, "tc_conflict");
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    InvalidRequestException conflict =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, path, add, BulkOperationResult.class),
+            "Adding assets to a term whose own tag conflicts with its glossary's tag must be rejected");
+    assertTrue(
+        conflict.getMessage().contains("mutually exclusive"),
+        "error should mention mutually exclusive, got: " + conflict.getMessage());
+
+    // The asset must not have been tagged, and the term must keep its direct tag and
+    // not have gained the glossary's conflicting tag.
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "rejected add must not tag the asset");
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+    assertTermLacksTag(client, term.getId(), glossaryLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRun_rejectsWhenTermOwnTagConflictsWithGlossaryTag(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Same conflict as the non-dry-run reject test, but run as a preview so a
+    // successful dryRun can be trusted to succeed for the real add.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("tdr_cls"))
+                    .withMutuallyExclusive(true)
+                    .withDescription(
+                        "Mutually-exclusive classification for dry-run term-conflict test"));
+    Tag glossaryTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tdr_g_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("tag carried by the glossary"));
+    Tag termTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tdr_t_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling tag applied directly to the term"));
+    TagLabel glossaryLabel = classificationTagLabel(glossaryTag);
+    TagLabel termDirectLabel = classificationTagLabel(termTag);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("tdr_g"))
+                    .withDescription("Glossary carrying a mutually-exclusive tag")
+                    .withTags(List.of(glossaryLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("tdr_t"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying a conflicting direct tag"));
+    term.setTags(List.of(termDirectLabel));
+    patchEntity(term.getId().toString(), term);
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+
+    Table table = createBareTable(ns, "tdr_conflict");
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    InvalidRequestException conflict =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, path, add, BulkOperationResult.class),
+            "A dry-run add must reject a term whose own tag conflicts with its glossary's tag");
+    assertTrue(
+        conflict.getMessage().contains("mutually exclusive"),
+        "error should mention mutually exclusive, got: " + conflict.getMessage());
+
+    // The preview must not have tagged the asset or touched the term's tags.
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "rejected dry-run must not tag the asset");
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+    assertTermLacksTag(client, term.getId(), glossaryLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_preservesTermManualTag_whenGlossaryCarriesSameTagAsDerived(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("td_der_cls"))
+                    .withDescription("Classification for derived-shadow regression test"));
+    Tag directTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("td_der_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription(
+                        "Classification tag applied directly to term and helper term"));
+    TagLabel directLabel = classificationTagLabel(directTag);
+
+    Glossary helperGlossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("td_der_hg"))
+                    .withDescription("Helper glossary whose term implies directTag"));
+    GlossaryTerm helperTerm =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("td_der_ht"))
+                    .withGlossary(helperGlossary.getFullyQualifiedName())
+                    .withDescription("Helper term carrying directTag")
+                    .withTags(List.of(directLabel)));
+    TagLabel helperTermLabel =
+        new TagLabel()
+            .withTagFQN(helperTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    // Parent glossary carries helperTerm directly, so reading glossary.getTags() includes
+    // directLabel as DERIVED. The child term carries directLabel directly as MANUAL.
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("td_der_g"))
+                    .withDescription("Glossary carrying helperTerm")
+                    .withTags(List.of(helperTermLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("td_der_t"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying directLabel directly"));
+    term.setTags(List.of(directLabel));
+    patchEntity(term.getId().toString(), term);
+
+    Table table = createBareTable(ns, "td_der_tbl");
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+
+    assertEquals(1, result.getNumberOfRowsPassed());
+    GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString(), "tags");
+    TagLabel keptDirect =
+        listOrEmpty(fetched.getTags()).stream()
+            .filter(t -> directLabel.getTagFQN().equals(t.getTagFQN()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(keptDirect, "term must still carry its direct tag");
+    assertEquals(
+        TagLabel.LabelType.MANUAL,
+        keptDirect.getLabelType(),
+        "glossary's DERIVED copy must not shadow and drop the term's own MANUAL tag");
+    assertTermHasTag(client, term.getId(), helperTermLabel.getTagFQN());
+  }
+
   private static final class MutualExclusiveGlossarySetup {
     final GlossaryTerm term;
     final TagLabel glossaryTagLabel;
@@ -5216,6 +5686,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 .withParent(parent.getFullyQualifiedName())
                 .withDescription("Child that follows the rename"));
     Table table = createTableTaggedWithTerm(ns, child, "quoted_asset");
+    // The rename finds the assets whose cached tags it must drop through search, so the table has
+    // to be searchable under the child's old FQN first. Reading it then caches the old label: a
+    // rename that fails to evict it leaves that label for the read below.
+    awaitTableGlossaryTag(
+        client, new ObjectMapper(), table.getId().toString(), child.getFullyQualifiedName());
+    assertTrue(tableHasTag(client, table.getId(), child.getFullyQualifiedName()));
 
     GlossaryTerm toRename = client.glossaryTerms().get(parent.getId().toString(), "tags");
     toRename.setName(ns.shortPrefix("renamed") + " it's fine");
@@ -5318,5 +5794,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                       + glossaryFqn
                       + ") must still include the linked table");
             });
+  }
+
+  /** Rename, then edit the description in the same session: the rename survives consolidation. */
+  @Test
+  void test_renameAndUpdateDescriptionConsolidation(final TestNamespace ns) {
+    final GlossaryTerm entity = createEntity(createMinimalRequest(ns));
+    final GlossaryTerm updated =
+        renameThenUpdateDescription(entity, "renamed_" + ns.uniqueShortId(), 1);
+    assertEquals(
+        updated.getFullyQualifiedName(),
+        getEntityByName(updated.getFullyQualifiedName()).getFullyQualifiedName());
   }
 }

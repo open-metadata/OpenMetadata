@@ -20,7 +20,7 @@ import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -1118,3 +1118,206 @@ class TestSsrsLineage:
         entity_classes = {call.kwargs.get("entity") for call in ssrs_source.metadata.get_by_name.call_args_list}
         assert Dashboard in entity_classes
         assert DashboardDataModel not in entity_classes
+
+
+class TestSsrsOutageProtection:
+    """Regression: a transient SSRS outage on the report-definition endpoint must not
+    cause the end-of-run mark-deleted post-process to soft-delete previously ingested
+    data models.
+
+    Before the fix, ``SourceConnectionException`` from ``_get_report_definition`` was
+    raised inside ``yield_datamodel`` and silently swallowed by the topology runner's
+    ``_run_stage_processor`` catch-all. The report's data models never reached the
+    run's live-FQN set, so ``mark_datamodels_as_deleted`` told the server to soft-delete
+    them — the exact outage data-drop the docstring and ``test_source_connection_error_propagates``
+    claimed to prevent.
+    """
+
+    def _outage_report(self):
+        return SsrsReport(
+            Id="r-outage",
+            Name="Outage",
+            Path="/outage",
+            HasDataSources=True,
+        )
+
+    def _wire_outage_client(self, ssrs_source):
+        ssrs_source._current_rdl = None
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(side_effect=SourceConnectionException("SSRS is down"))
+
+    def test_yield_datamodel_outage_yields_error_and_marks_listing_failed(self, ssrs_source):
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+
+        results = list(ssrs_source.yield_datamodel(self._outage_report()))
+
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert "SSRS is down" in results[0].left.error
+        assert ssrs_source.datamodel_listing.has_failed
+
+    def test_yield_datamodel_outage_does_not_raise_via_stage_processor(self, ssrs_source):
+        """The topology runner swallows stage-processor exceptions, so the fix must
+        turn the outage into a yielded ``Either(left=...)`` that the runner forwards
+        rather than a raise it would swallow. Before the fix this returned ``[]`` and
+        the listing was never marked failed."""
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+
+        stage = MagicMock()
+        stage.processor = "yield_datamodel"
+
+        results = list(ssrs_source._run_stage_processor(stage, self._outage_report()))
+
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert ssrs_source.datamodel_listing.has_failed
+
+    def test_yield_dashboard_lineage_details_outage_yields_error_and_marks_listing_failed(self, ssrs_source):
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+
+        results = list(ssrs_source.yield_dashboard_lineage_details(self._outage_report()))
+
+        assert len(results) == 1
+        assert results[0].left is not None
+        assert "SSRS is down" in results[0].left.error
+        assert ssrs_source.datamodel_listing.has_failed
+
+    def test_failed_definition_fetched_once_per_report(self, ssrs_source):
+        """The lineage stage reuses the data-model stage's failure instead of fetching
+        the same definition again, with retries. The next report is fetched normally."""
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+
+        list(ssrs_source.yield_datamodel(self._outage_report()))
+        lineage = list(ssrs_source.yield_dashboard_lineage_details(self._outage_report()))
+
+        assert "SSRS is down" in lineage[0].left.error
+        ssrs_source.client.get_report_definition.assert_called_once_with("r-outage")
+
+        with pytest.raises(SourceConnectionException):
+            ssrs_source._get_report_definition(MOCK_REPORTS[0])
+        assert ssrs_source.client.get_report_definition.call_count == 2
+
+    def test_mark_datamodels_as_deleted_skipped_when_listing_failed(self, ssrs_source):
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        ssrs_source.datamodel_listing.mark_failed()
+        ssrs_source.metadata = MagicMock()
+
+        results = list(ssrs_source.mark_datamodels_as_deleted())
+
+        assert results == []
+        ssrs_source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_mark_datamodels_as_deleted_proceeds_when_listing_healthy(self, ssrs_source):
+        """Regression: a healthy listing must still trigger the staleness check."""
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        assert ssrs_source.datamodel_listing.has_failed is False
+        ssrs_source.metadata = MagicMock()
+
+        results = list(ssrs_source.mark_datamodels_as_deleted())
+
+        # delete_entity_from_source yields a Barrier before calling the server; the
+        # mocked delete_stale_entities returns a non-None mock so the function returns.
+        assert len(results) >= 1
+        ssrs_source.metadata.delete_stale_entities.assert_called_once()
+
+    def test_partial_outage_skips_mark_deleted_end_to_end(self, ssrs_source):
+        """Two reports: report 1's RDL is cached (succeeds), report 2's fetch fails with a
+        transient outage. Report 1's data models are registered; report 2's are not. Because
+        the datamodel listing is marked failed, ``mark_datamodels_as_deleted`` skips the
+        staleness check instead of soft-deleting report 2's previously ingested data models."""
+        ssrs_source.datamodel_source_state = set()
+        ssrs_source.source_config.includeDataModels = True
+        ssrs_source.source_config.markDeletedDataModels = True
+        # Pre-cache report 1's RDL so it yields data models without a client call.
+        ssrs_source._current_rdl = (MOCK_REPORTS[0].id, RDL_SALES)
+        # Report 2's fetch raises a transient outage.
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_report_definition = MagicMock(side_effect=SourceConnectionException("SSRS is down"))
+        outage_report = self._outage_report()
+
+        stage = MagicMock()
+        stage.processor = "yield_datamodel"
+
+        list(ssrs_source._run_stage_processor(stage, MOCK_REPORTS[0]))
+        list(ssrs_source._run_stage_processor(stage, outage_report))
+
+        # Report 1's data model was registered; the outage report's was not.
+        assert len(ssrs_source.datamodel_source_state) == 1
+        assert ssrs_source.datamodel_listing.has_failed
+
+        # The mark-deleted post-process must skip the staleness check.
+        ssrs_source.metadata = MagicMock()
+        results = list(ssrs_source.mark_datamodels_as_deleted())
+
+        assert results == []
+        ssrs_source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_value_error_still_skipped_without_marking_listing_failed(self, ssrs_source):
+        """A malformed RDL (ValueError) is a per-report problem, not a listing-wide outage:
+        it must not mark the listing failed, so other reports' staleness check still runs."""
+        ssrs_source.source_config.includeDataModels = True
+        ssrs_source._current_rdl = None
+        ssrs_source.client = MagicMock()
+        rdl_bytes = b"<Report/>"
+        ssrs_source.client.get_report_definition = MagicMock(return_value=rdl_bytes)
+
+        with patch("metadata.ingestion.source.dashboard.ssrs.metadata.parse_rdl", side_effect=ValueError("bad RDL")):
+            results = list(ssrs_source.yield_datamodel(self._outage_report()))
+
+        # ValueError is handled inside _get_report_definition, which returns None, so
+        # yield_datamodel yields nothing and the listing stays healthy.
+        assert results == []
+        assert ssrs_source.datamodel_listing.has_failed is False
+
+    @staticmethod
+    def _truncated_reports():
+        yield MOCK_REPORTS[0]
+        raise SourceConnectionException("Failed to fetch SSRS reports at skip=100")
+
+    def test_report_listing_failure_skips_every_stale_delete(self, ssrs_source):
+        """A /Reports page failing mid-listing hides every later report, its chart and its data
+        models. The producer swallows the raise, so the seen-sets are partial and a stale delete
+        would soft-delete the hidden ones."""
+        ssrs_source.source_config.markDeletedDashboards = True
+        ssrs_source.source_config.markDeletedCharts = True
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_reports = MagicMock(side_effect=self._truncated_reports)
+
+        produced = list(ssrs_source._run_node_producer(SimpleNamespace(producer="get_dashboard")))
+
+        assert produced == [MOCK_REPORTS[0]]
+        assert any("skip=100" in failure.error for failure in ssrs_source.status.failures)
+        assert ssrs_source.dashboard_listing.has_failed
+        assert ssrs_source.datamodel_listing.has_failed
+
+        ssrs_source.metadata = MagicMock()
+        assert list(ssrs_source.mark_dashboards_as_deleted()) == []
+        assert list(ssrs_source.mark_charts_as_deleted()) == []
+        assert list(ssrs_source.mark_datamodels_as_deleted()) == []
+        ssrs_source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_report_definition_failure_still_deletes_stale_dashboards_and_charts(self, ssrs_source):
+        """A failed report definition hides only data models: the report listing still confirmed
+        every dashboard and chart."""
+        ssrs_source.source_config.markDeletedDashboards = True
+        ssrs_source.source_config.markDeletedCharts = True
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+        list(ssrs_source.yield_datamodel(self._outage_report()))
+        ssrs_source.metadata = MagicMock()
+
+        list(ssrs_source.mark_dashboards_as_deleted())
+        list(ssrs_source.mark_charts_as_deleted())
+        assert list(ssrs_source.mark_datamodels_as_deleted()) == []
+
+        deleted = [call.kwargs["entity"] for call in ssrs_source.metadata.delete_stale_entities.call_args_list]
+        assert deleted == [Dashboard, Chart]

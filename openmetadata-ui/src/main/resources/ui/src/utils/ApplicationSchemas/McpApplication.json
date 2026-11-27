@@ -85,6 +85,18 @@
       "uiFieldType": "treeSelect",
       "expandAllValue": true,
       "default": []
+    },
+    "offeredTools": {
+      "title": "Offered Tools",
+      "description": "MCP tools this server offers. Leave the list empty to offer every registered tool. Disabled Tools and Read-only Mode still apply. Distributions may define additional values.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "uiFieldType": "treeSelect",
+      "expandAllValue": true,
+      "default": []
     }
   },
   "required": ["allowedOrigins"],

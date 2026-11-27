@@ -6,13 +6,13 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 To configure SAML authentication, follow these steps:
 
 1. **Get OpenMetadata Service Provider Details** (from this form):
-   - **SP Entity ID** - Auto-generated, read-only field
-   - **Assertion Consumer Service (ACS) URL** - Auto-generated, read-only field
+   - **SP Entity ID** - Defaults to your OpenMetadata URL; change it to match the identifier your IdP expects
+   - **Assertion Consumer Service (ACS) URL** - Defaults to your OpenMetadata callback URL; change it to your public callback URL if it differs
 
 2. **Configure Your Identity Provider**:
    - Create a new SAML application/service in your IdP (ADFS, Okta, Azure AD, etc.)
-   - **Copy and paste** the SP Entity ID as the Entity ID/Application ID in your IdP
-   - **Copy and paste** the ACS URL as the Reply URL/Callback URL/Consumer URL in your IdP
+   - Use the SP Entity ID as the Entity ID/Application ID in your IdP
+   - Use the ACS URL as the Reply URL/Callback URL/Consumer URL in your IdP
    - Configure user attributes and claims mapping in your IdP
 
 3. **Get Identity Provider Details** (from your IdP):
@@ -25,7 +25,7 @@ To configure SAML authentication, follow these steps:
    - Configure security settings (signing, encryption)
    - Save the configuration
 
-**Important:** The SP Entity ID and ACS URL are generated automatically based on your OpenMetadata URL and cannot be changed. You must use these exact values in your IdP configuration for SAML to work.
+**Important:** The SP Entity ID and ACS URL default to values derived from your OpenMetadata URL but can be edited to match your IdP. Whatever you set in OpenMetadata must match exactly what is registered in your IdP or SAML will fail.
 
 $$section
 ## Enable Self Signup $(id="enableSelfSignup")
@@ -86,11 +86,10 @@ $$section
 
 - **Definition:** Unique identifier for OpenMetadata as a Service Provider.
 - **Example:** https://openmetadata.company.com
-- **Auto-Generated:** This field is automatically populated based on your OpenMetadata deployment URL.
+- **Default:** Defaults to your OpenMetadata deployment URL.
 - **Why it matters:** IdP uses this to identify OpenMetadata in SAML exchanges.
 - **Note:**
-  - **This field is read-only** - it cannot be edited
-  - **Copy this value** and paste it as the Entity ID (or Application ID) in your SAML Identity Provider configuration
+  - Edit this value to match the Entity ID (or Application ID) configured in your SAML Identity Provider when the IdP expects a specific identifier.
   - Must match exactly in your IdP's trusted applications list
 $$
 
@@ -99,12 +98,11 @@ $$section
 
 - **Definition:** URL where the IdP sends SAML assertions after authentication.
 - **Example:** https://openmetadata.company.com/callback
-- **Auto-Generated:** This field is automatically populated based on your OpenMetadata deployment URL.
+- **Default:** Defaults to your OpenMetadata callback URL.
 - **Why it matters:** This is where SAML responses are posted after login.
 - **Note:**
-  - **This field is read-only** - it cannot be edited
-  - **Copy this value** and paste it as the ACS URL (also called Reply URL, Callback URL, or Consumer URL) in your SAML Identity Provider configuration
-  - Format is always: `{your-domain}/callback`
+  - Edit this value to match the ACS URL (also called Reply URL, Callback URL, or Consumer URL) registered in your SAML Identity Provider, for example to point at a public callback that differs from the OpenMetadata URL.
+  - Format defaults to: `{your-domain}/callback`. The URL must end with `/callback` or `/api/v1/saml/acs`.
   - Must be registered exactly in your IdP configuration
 $$
 
@@ -133,10 +131,10 @@ $$
 $$section
 ### Strict Mode $(id="strictMode")
 
-- **Definition:** Only accept valid signed and encrypted assertions if relevant flags are set.
+- **Definition:** Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed policies. Require Encrypted Assertions applies independently of strict mode.
 - **Default:** false
 - **Example:** true
-- **Why it matters:** Enhances security by enforcing signature and encryption validation.
+- **Why it matters:** Enforces signature validation on SAML messages and assertions.
 - **Note:** Enable for production environments
 $$
 

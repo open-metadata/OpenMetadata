@@ -16,7 +16,6 @@ import { User01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import './roles-element.styles.less';
 import { RolesElementProps } from './RolesElement.interface';
@@ -30,7 +29,7 @@ const RolesElement = ({ userData }: RolesElementProps) => {
         <div className="mb-2 d-flex items-center gap-2">
           <User01 className="tw:shrink-0" size={16} />
 
-          <span>{TERM_ADMIN}</span>
+          <span>{t('label.admin-superuser')}</span>
         </div>
       )}
       {userData?.roles?.map((role) => (

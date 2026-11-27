@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -778,10 +779,13 @@ class SearchUtilsTest {
       })
   void includePatternsDerivedCorrectlyFromContainsValue(
       String containsValue, String expectedExact, String expectedPrefix, String expectedContains) {
-    String rawValue = SearchUtils.extractRawSearchValue(containsValue);
-    assertEquals(expectedExact, rawValue, "exact include");
-    assertEquals(expectedPrefix, rawValue + ".*", "prefix include");
-    assertEquals(expectedContains, containsValue, "contains include unchanged");
+    // Terms with no regexp metacharacters: escaping is a no-op, so the literal
+    // quick-filter path rebuilds exact/prefix/contains from the raw term verbatim.
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(containsValue);
+    assertEquals(expectedExact, patterns.exact(), "exact include");
+    assertEquals(expectedPrefix, patterns.prefix(), "prefix include");
+    assertEquals(expectedContains, patterns.contains(), "contains include");
   }
 
   @Test
@@ -960,9 +964,252 @@ class SearchUtilsTest {
   void escapedRawProducesCorrectExactAndPrefixPatterns(
       String containsPattern, String expectedEscapedExact, String expectedPrefixPattern) {
     String rawValue = SearchUtils.extractRawSearchValue(containsPattern);
-    String escapedRaw = rawValue.replace(".", "\\.");
+    String escapedRaw = SearchUtils.escapeLuceneRegexp(rawValue);
     assertEquals(expectedEscapedExact, escapedRaw, "exact include pattern");
     assertEquals(expectedPrefixPattern, escapedRaw + ".*", "prefix include pattern");
+  }
+
+  // ===========================================================================
+  // escapeLuceneRegexp — full Lucene regexp metacharacter escaping for the
+  // terms-aggregation `include` regexp. The bug: only '.' was escaped, so
+  // values like "R&D Team", "C++", "(mobile)", or a trailing '\' either
+  // mis-matched (operators interpreted) or rejected the whole _search request
+  // (unbalanced/dangling regexp). These tests pin the fix: every
+  // metacharacter is escaped, the result compiles (JDK Pattern as a faithful
+  // proxy for Lucene's regexp engine — same as ColumnAggregatorTest), and the
+  // escaped regexp matches only the literal value.
+  // ===========================================================================
+
+  @Test
+  void escapeLuceneRegexpHandlesNullAndEmpty() {
+    assertNull(SearchUtils.escapeLuceneRegexp(null));
+    assertEquals("", SearchUtils.escapeLuceneRegexp(""));
+  }
+
+  @Test
+  void escapeLuceneRegexpPassesThroughNonMetacharacters() {
+    assertEquals("alnum_123", SearchUtils.escapeLuceneRegexp("alnum_123"));
+    assertEquals("café münchen", SearchUtils.escapeLuceneRegexp("café münchen"));
+    // slash and dash are NOT Lucene regexp metacharacters and stay literal
+    assertEquals("a/b-c=1!2", SearchUtils.escapeLuceneRegexp("a/b-c=1!2"));
+  }
+
+  @ParameterizedTest(name = "escapeLuceneRegexp escapes \"{0}\"")
+  @ValueSource(
+      strings = {
+        // each Lucene regexp metacharacter, alone and in combinations drawn from
+        // the bug report's reproduction cases
+        ".",
+        "+",
+        "*",
+        "?",
+        "|",
+        "(",
+        ")",
+        "[",
+        "]",
+        "{",
+        "}",
+        "^",
+        "$",
+        "\\",
+        "~",
+        "@",
+        "&",
+        "#",
+        "<",
+        ">",
+        "\"",
+        "Pii.Phone (mobile)",
+        "R&D Team",
+        "C++",
+        "A|B",
+        "john?",
+        "Revenue (net of tax) [US]",
+        "foo\\",
+        "a\\.b",
+        "Pii.Phone (mobile).C++|[US]&~@#<>\"$^"
+      })
+  void escapeLuceneRegexpEscapesEveryMetacharacter(String value) {
+    String escaped = SearchUtils.escapeLuceneRegexp(value);
+
+    // (1) The escaped regexp compiles — rules out the bug report's request-wide
+    // HTTP 500 from unbalanced groups/char-classes and dangling backslashes.
+    java.util.regex.Pattern compiled =
+        assertDoesNotThrow(() -> java.util.regex.Pattern.compile(escaped));
+
+    // (2) It matches ONLY the literal value: every metacharacter is now a
+    // literal, so the regexp matches the value as a whole (terms-aggregation
+    // `include` regexps are implicitly whole-term anchored).
+    assertTrue(
+        compiled.matcher(value).matches(),
+        "escaped regexp must match the literal value \"" + value + "\"");
+    assertFalse(
+        compiled.matcher(value + "x").matches(),
+        "escaped regexp must not match a longer string for \"" + value + "\"");
+  }
+
+  @Test
+  void escapeLuceneRegexpDoesNotOverMatch() {
+    // The bug report's silent mis-match cases: before the fix, "C++" over-matched
+    // ("+", a quantifier, matched "C", "CC", …) and "A|B" unioned. After escaping,
+    // the regexp matches only the literal.
+    assertEquals("C\\+\\+", SearchUtils.escapeLuceneRegexp("C++"));
+    assertTrue(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("C++"))
+            .matcher("C++")
+            .matches());
+    assertFalse(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("C++"))
+            .matcher("CCC")
+            .matches());
+    assertFalse(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("C++"))
+            .matcher("C")
+            .matches());
+
+    assertEquals("A\\|B", SearchUtils.escapeLuceneRegexp("A|B"));
+    assertTrue(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("A|B"))
+            .matcher("A|B")
+            .matches());
+    assertFalse(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("A|B"))
+            .matcher("A")
+            .matches());
+    assertFalse(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("A|B"))
+            .matcher("B")
+            .matches());
+
+    // "R&D Team" — '&' is Lucene's intersection operator; without escaping the
+    // automaton is effectively empty. Escaped, it matches the literal.
+    assertEquals("R\\&D Team", SearchUtils.escapeLuceneRegexp("R&D Team"));
+    assertTrue(
+        java.util.regex.Pattern.compile(SearchUtils.escapeLuceneRegexp("R&D Team"))
+            .matcher("R&D Team")
+            .matches());
+  }
+
+  @Test
+  void escapeLuceneRegexpEscapesTrailingBackslashSoRegexpCompiles() {
+    // The bug report's case 7: a trailing '\' produced
+    // "unexpected end-of-string" and rejected the whole _search request. After
+    // escaping it becomes "\\\\" (a literal backslash) which compiles.
+    String escaped = SearchUtils.escapeLuceneRegexp("foo\\");
+    assertEquals("foo\\\\", escaped);
+    assertDoesNotThrow(() -> java.util.regex.Pattern.compile(escaped));
+    assertTrue(java.util.regex.Pattern.compile(escaped).matcher("foo\\").matches());
+  }
+
+  // ===========================================================================
+  // buildBestMatchIncludePatterns — routes the caller's fieldValue into the
+  // three terms-include regexps (exact/prefix/contains), escaping literal
+  // quick-filter values while passing pre-built regexps (e.g. the tag-FQN
+  // alternation built by buildTagFqnIncludeRegex) through verbatim.
+  // ===========================================================================
+
+  @Test
+  void buildBestMatchIncludePatternsLiteralPathEscapesFullMetacharacterSet() {
+    // The bug report's canonical case: a quick-filter value wrapped in .*….*
+    // whose inner term has parentheses. Before the fix only '.' was escaped, so
+    // (…) was a group and the bucket never matched the literal term.
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(".*pii.phone (mobile).*");
+    assertEquals("pii\\.phone \\(mobile\\)", patterns.exact());
+    assertEquals("pii\\.phone \\(mobile\\).*", patterns.prefix());
+    assertEquals(".*pii\\.phone \\(mobile\\).*", patterns.contains());
+
+    // Each pattern compiles (no rejection of the _search request) and matches
+    // only the literal bucket key:
+    assertTrue(
+        java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.phone (mobile)").matches());
+    assertFalse(
+        java.util.regex.Pattern.compile(patterns.exact()).matcher("piiXphone mobile").matches());
+    assertTrue(
+        java.util.regex.Pattern.compile(patterns.contains())
+            .matcher("tag:pii.phone (mobile)")
+            .matches());
+    assertTrue(
+        java.util.regex.Pattern.compile(patterns.prefix())
+            .matcher("pii.phone (mobile).child")
+            .matches());
+  }
+
+  @ParameterizedTest(name = "literal path: \\\"{0}\\\" compiles and matches literally")
+  @ValueSource(
+      strings = {
+        ".*pii.phone (mobile).*",
+        ".*r&d team.*",
+        ".*c++.*",
+        ".*a|b.*",
+        ".*john?.*",
+        ".*revenue (net of tax) [us].*",
+        ".*foo\\.*",
+        ".*pi.\"a.b\".*"
+      })
+  void buildBestMatchIncludePatternsLiteralPathCompilesAndMatchesLiterally(String containsPattern) {
+    String inner = SearchUtils.extractRawSearchValue(containsPattern);
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(containsPattern);
+
+    // exact matches ONLY the literal inner term (metacharacters are literals)
+    java.util.regex.Pattern exact = java.util.regex.Pattern.compile(patterns.exact());
+    assertTrue(
+        exact.matcher(inner).matches(),
+        "exact must match literal inner term for " + containsPattern);
+    // contains matches anything containing the literal inner term
+    java.util.regex.Pattern contains = java.util.regex.Pattern.compile(patterns.contains());
+    assertTrue(contains.matcher("prefix " + inner + " suffix").matches());
+    // prefix matches the inner term followed by anything
+    java.util.regex.Pattern prefix = java.util.regex.Pattern.compile(patterns.prefix());
+    assertTrue(prefix.matcher(inner + "more").matches());
+    // The bug report's silent over-match cases no longer over-match:
+    if (inner.equals("c++")) {
+      assertFalse(exact.matcher("ccc").matches(), "c++ must not over-match ccc");
+    }
+    if (inner.equals("a|b")) {
+      assertFalse(exact.matcher("a").matches(), "a|b must not union-match a");
+      assertFalse(exact.matcher("b").matches(), "a|b must not union-match b");
+    }
+  }
+
+  @Test
+  void buildBestMatchIncludePatternsPassesThroughPreBuiltRegexp() {
+    // useTagUsageCounts builds a fully-anchored alternation (already '.-escaped'
+    // by buildTagFqnIncludeRegex) and posts it raw via postExactAggregateFieldOptions.
+    // It has no .*….* wrapper, so it must pass through verbatim — escaping the
+    // ( | ) operators would turn the alternation into a literal and break it.
+    // All three sub-aggregations use the pattern verbatim: appending .* for the
+    // prefix sub-agg would let child tags (pii.sensitive.child) displace a
+    // requested sibling (pii.nonsensitive) under the best-match merge limit.
+    String alternation = "(pii\\.sensitive|pii\\.nonsensitive)";
+    SearchUtils.BestMatchPatterns patterns = SearchUtils.buildBestMatchIncludePatterns(alternation);
+    assertEquals(alternation, patterns.exact());
+    assertEquals(alternation, patterns.prefix());
+    assertEquals(alternation, patterns.contains());
+
+    // The alternation still behaves as an alternation (matches either FQN):
+    assertTrue(
+        java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.sensitive").matches());
+    assertTrue(
+        java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.nonsensitive").matches());
+    assertFalse(java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.other").matches());
+  }
+
+  @Test
+  void buildBestMatchIncludePatternsPreservesDotOnlyInputBehavior() {
+    // The case the shipped UI exercised end-to-end before the fix (dot-only):
+    // ".*user.id.*" → exact "user\.id". The full-set escaping still escapes
+    // '.', so this path keeps working and is now also safe for the other
+    // metacharacters.
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(".*user.id.*");
+    assertEquals("user\\.id", patterns.exact());
+    assertEquals("user\\.id.*", patterns.prefix());
+    assertEquals(".*user\\.id.*", patterns.contains());
+    assertTrue(java.util.regex.Pattern.compile(patterns.exact()).matcher("user.id").matches());
+    assertFalse(java.util.regex.Pattern.compile(patterns.exact()).matcher("userXid").matches());
   }
 
   private static String buildThreeAggResponse(

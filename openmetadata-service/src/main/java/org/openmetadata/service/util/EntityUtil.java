@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -84,6 +85,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -161,9 +163,7 @@ public final class EntityUtil {
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
               && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null
-                      && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+              && Objects.equals(constraint1.getReferredColumns(), constraint2.getReferredColumns());
 
   /**
    * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
@@ -809,6 +809,16 @@ public final class EntityUtil {
 
   public static Double previousVersion(Double version) {
     return Math.round((version - 0.1) * 10.0) / 10.0;
+  }
+
+  /**
+   * Sets who wrote {@code entity} and the bot of the current request, null for a direct or a system
+   * write. A write that rebuilds an entity from its stored copy must set both: the copy names the
+   * bot of the previous change. See ADR:2026-11-16-every-version-names-the-bot-of-the-request-that-wrote-it.
+   */
+  public static void recordWriter(EntityInterface<?> entity, String updatedBy) {
+    entity.setUpdatedBy(updatedBy);
+    entity.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
   }
 
   public static Double nextVersion(Double version) {

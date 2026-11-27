@@ -99,6 +99,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -111,6 +112,7 @@ import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TimezoneUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
 
@@ -661,16 +663,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
       String after,
       String runId,
       int limit) {
-    boolean useStreamableLogs =
-        Boolean.TRUE.equals(ingestionPipeline.getEnableStreamableLogs())
-            || (ingestionPipeline.getIngestionRunner() != null
-                && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
-                    ingestionPipeline.getIngestionRunner()));
-    if (useStreamableLogs) {
-      PipelineStatus latestStatus =
-          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
-      String effectiveRunId =
-          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
+    PipelineStatus latestStatus =
+        IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+    String effectiveRunId =
+        !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
+    if (readsAppRunLogsFromStorage(
+        ingestionPipelineRepository, ingestionPipeline, effectiveRunId, latestStatus)) {
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
@@ -696,6 +694,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
+  }
+
+  private static boolean readsAppRunLogsFromStorage(
+      IngestionPipelineRepository ingestionPipelineRepository,
+      IngestionPipeline ingestionPipeline,
+      String runId,
+      PipelineStatus latestStatus) {
+    boolean runGoing =
+        ingestionPipelineRepository.isRunGoing(
+            ingestionPipeline.getFullyQualifiedName(), runId, latestStatus);
+    return ingestionPipelineRepository.readsRunLogsThroughLogStorage(
+        ingestionPipeline, runId, runGoing);
   }
 
   @GET
@@ -1109,6 +1119,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
             : putResourceContext;
     authorizer.authorize(
         securityContext, new OperationContext(entityType, putOperation), authorizedContext);
+    // The job is deleted and reinstalled before the store validates the request, so a zone the
+    // repository would reject has to fail here first or the stored app ends up unscheduled.
+    if (app.getAppSchedule() != null) {
+      app.getAppSchedule().setTimezone(TimezoneUtil.normalize(app.getAppSchedule().getTimezone()));
+    }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
@@ -1792,31 +1807,32 @@ public class AppResource extends EntityResource<App, AppRepository> {
         .executeDatabaseTask(
             DatabaseOperation.APP_OPERATION,
             jobId,
-            () -> {
-              try {
-                ApplicationHandler.getInstance()
-                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    ApplicationHandler.getInstance()
+                        .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
 
-                // Remove from Pipeline Service
-                deleteApp(securityContext, app);
+                    // Remove from Pipeline Service
+                    deleteApp(securityContext, app);
 
-                // Remove from repository
-                RestUtil.DeleteResponse<App> deleteResponse =
-                    repository.delete(userName, id, recursive, hardDelete);
+                    // Remove from repository
+                    RestUtil.DeleteResponse<App> deleteResponse =
+                        repository.delete(userName, id, recursive, hardDelete);
 
-                if (hardDelete) {
-                  limits.invalidateCache(entityType);
-                }
+                    if (hardDelete) {
+                      limits.invalidateCache(entityType);
+                    }
 
-                repository.storeChangeEventForAsyncOperation(
-                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId, securityContext, app, e.getMessage());
-              }
-            });
+                    repository.storeChangeEventForAsyncOperation(
+                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId, securityContext, app, e.getMessage());
+                  }
+                }));
 
     response =
         Response.accepted()

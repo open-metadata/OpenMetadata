@@ -148,7 +148,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.tests.assigned import Assigned
-from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
 from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureReasonType
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -2439,12 +2439,12 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 )
                 yield Either(right=test_case_req)
 
-    def ingest_incidents(self) -> Iterable[Either[OMetaTestCaseResolutionStatus]]:
+    def ingest_incidents(self) -> Iterable[Either[OMetaTestCaseResolutionStatus | OMetaTestCaseResultsSample]]:
         """
         Ingest incidents after the first test failures have been added.
 
-        The test failure already creates the incident with NEW, so we
-        start always from ACK in the sample flows.
+        The first failure already creates an incident. Later sequences start
+        with a new failure because resolved incidents cannot be reopened.
         """
         for test_suite in self.tests_suites["tests"]:
             for test_case in test_suite["testCases"]:
@@ -2452,6 +2452,20 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
                 for _, resolutions in test_case["resolutions"].items():  # noqa: PERF102
                     for resolution in resolutions:
+                        if resolution["testCaseResolutionStatusType"] == "New":
+                            yield Either(
+                                left=None,
+                                right=OMetaTestCaseResultsSample(
+                                    test_case_name=test_case_fqn,
+                                    incident_severity=resolution["severity"],
+                                    test_case_results=TestCaseResult(
+                                        timestamp=Timestamp(int(time.time() * 1000)),
+                                        testCaseStatus=TestCaseStatus.Failed,
+                                        result="Sample test failure starting a new incident",
+                                    ),
+                                ),
+                            )
+                            continue
                         create_test_case_resolution = CreateTestCaseResolutionStatus(
                             testCaseResolutionStatusType=resolution["testCaseResolutionStatusType"],
                             testCaseReference=test_case_fqn,

@@ -22,6 +22,7 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
+import IngestionListTable from '../IngestionListTable/IngestionListTable';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 jest.mock('../../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
@@ -72,6 +73,17 @@ jest.mock('../IngestionListTable/IngestionListTable', () => {
           onClick={() => onPageChange({ cursorType: 'after', currentPage: 2 })}>
           nextPage
         </button>
+        <button
+          onClick={() =>
+            extraTableProps.onChange(
+              {},
+              { pipelineType: ['metadata'] },
+              {},
+              { action: 'filter' }
+            )
+          }>
+          filterType
+        </button>
       </div>
     ));
 });
@@ -89,6 +101,12 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
     })
   ),
 }));
+
+const pageTwoPipeline = {
+  ...mockESIngestionData,
+  id: 'page-two-pipeline-id',
+  fullyQualifiedName: 'page.two.pipeline',
+};
 
 const mockLocationPathname = '/mock-path';
 
@@ -206,6 +224,111 @@ describe('IngestionPipelineList', () => {
     fireEvent.click(bulkDeployButton);
 
     expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['nextPage', 'sortAsc'])(
+    'should keep the selection and deploy it after %s',
+    async (control) => {
+      await renderList();
+
+      fireEvent.click(screen.getByText('rowSelection'));
+
+      (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+        data: [pageTwoPipeline],
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText(control));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-re-deploy-button'));
+      });
+
+      expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
+      expect(deployIngestionPipelineById).toHaveBeenCalledWith(
+        mockIngestionData.id
+      );
+      expect(deployIngestionPipelineById).toHaveBeenCalledWith(
+        mockESIngestionData.id
+      );
+      expect(deployIngestionPipelineById).not.toHaveBeenCalledWith(
+        pageTwoPipeline.id
+      );
+    }
+  );
+
+  it('should clear the selection when the type filter changes', async () => {
+    await renderList();
+
+    fireEvent.click(screen.getByText('rowSelection'));
+
+    expect(screen.getByTestId('bulk-re-deploy-button')).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('filterType'));
+    });
+
+    expect(screen.getByTestId('bulk-re-deploy-button')).toBeDisabled();
+  });
+
+  it('should keep off-page selections when rows on the current page are ticked', async () => {
+    await renderList();
+
+    const { rowSelection } = (IngestionListTable as jest.Mock).mock.calls.at(
+      -1
+    )[0].extraTableProps;
+
+    act(() => {
+      rowSelection.onChange(
+        [mockIngestionData.fullyQualifiedName],
+        [mockIngestionData]
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('nextPage'));
+    });
+
+    const latest = (IngestionListTable as jest.Mock).mock.calls.at(-1)[0]
+      .extraTableProps.rowSelection;
+
+    expect(latest.preserveSelectedRowKeys).toBe(true);
+
+    act(() => {
+      latest.onChange(
+        [
+          mockIngestionData.fullyQualifiedName,
+          mockESIngestionData.fullyQualifiedName,
+        ],
+        [mockESIngestionData]
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bulk-re-deploy-button'));
+    });
+
+    expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
+    expect(deployIngestionPipelineById).toHaveBeenCalledWith(
+      mockIngestionData.id
+    );
+  });
+
+  it('should disable re-deploy after a bulk deploy so it cannot repeat as a no-op', async () => {
+    await renderList();
+
+    fireEvent.click(screen.getByText('rowSelection'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bulk-re-deploy-button'));
+    });
+
+    expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('bulk-re-deploy-button')).toBeDisabled();
   });
 
   describe('sort order', () => {

@@ -76,12 +76,16 @@ class DataProductDeleteRaceIT {
 
   private static final Duration BLOCKED_WITHIN = Duration.ofSeconds(60);
   private static final String CASCADE_PAUSE_EXTENSION = "dataProduct.cascadePause";
+  // MySQL reports the table each blocked transaction waits on; its statement text in
+  // innodb_trx missed the waiters on CI, where the requests then ran into the 50s lock timeout.
   private static final String MYSQL_LOCK_WAITS =
       """
-      SELECT trx_query FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'""";
+      SELECT DISTINCT w.REQUESTING_ENGINE_TRANSACTION_ID, l.OBJECT_NAME AS waiting
+      FROM performance_schema.data_lock_waits w
+      JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID = w.REQUESTING_ENGINE_LOCK_ID""";
   private static final String POSTGRES_LOCK_WAITS =
       """
-      SELECT query FROM pg_stat_activity
+      SELECT query AS waiting FROM pg_stat_activity
       WHERE wait_event_type = 'Lock' AND datname = current_database()""";
   private static final String DATA_PRODUCT_ROWS =
       """
@@ -277,10 +281,8 @@ class DataProductDeleteRaceIT {
   }
 
   /**
-   * Waits until {@code request} has returned or {@code waiters} statements on {@code tables} are
-   * waiting on a row lock. Statements are matched on the table, not the row id: the blocked
-   * statement need not name the held row (a MySQL run once waited the full minute on a statement
-   * without the data product's id), and Postgres shows placeholders instead of bound values.
+   * Waits until {@code request} has returned or {@code waiters} transactions wait on a row lock in
+   * {@code tables}: the locked table on MySQL, the waiting statement's text on Postgres.
    */
   private static void awaitBlocked(CompletableFuture<?> request, int waiters, List<String> tables) {
     Awaitility.await("request done or %d statements waiting on a row lock".formatted(waiters))
@@ -293,7 +295,8 @@ class DataProductDeleteRaceIT {
     boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
     String waiting = mysql ? MYSQL_LOCK_WAITS : POSTGRES_LOCK_WAITS;
     List<String> statements =
-        lockProbe.withHandle(h -> h.createQuery(waiting).mapTo(String.class).list());
+        lockProbe.withHandle(
+            h -> h.createQuery(waiting).map((row, ctx) -> row.getString("waiting")).list());
     return statements.stream()
         .filter(sql -> sql != null && tables.stream().anyMatch(table -> mentionsTable(sql, table)))
         .count();

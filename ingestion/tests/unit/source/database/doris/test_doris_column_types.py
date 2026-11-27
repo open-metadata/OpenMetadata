@@ -113,7 +113,13 @@ class TestIpColumnsAreIngested:
     """IPV4/IPV6 columns reach the Table entity instead of being dropped"""
 
     def test_ip_columns_are_ingested(self, doris_source):
-        doris_source.engine.connect.return_value.execute.return_value = IP_SHOW_FULL_COLUMNS_ROWS
+        def execute(statement, *_):
+            # The primary key lookup reads information_schema.table_options, the columns SHOW FULL COLUMNS
+            if "information_schema.table_options" in str(statement):
+                return []
+            return IP_SHOW_FULL_COLUMNS_ROWS
+
+        doris_source.engine.connect.return_value.execute.side_effect = execute
 
         columns, _, _ = doris_source.get_columns_and_constraints("om_verify", "t_types", "default", inspector=None)
 

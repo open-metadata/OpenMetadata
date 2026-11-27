@@ -38,7 +38,6 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -391,34 +390,6 @@ class ColumnRepositoryImportTest {
               Entity.getEntityByNames(
                   eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)),
           times(1));
-    }
-  }
-
-  @Test
-  void searchDryRunReportsTheColumnsAnUnapprovedTermWouldBeRejectedOn() {
-    doReturn(termCatalog().subList(0, 1))
-        .when(repository)
-        .searchColumns(any(), any(), any(), any(), any(), any(), any());
-    try (MockedStatic<Entity> ignored = deprecatedTermHeldOn(HELD_COLUMN)) {
-      BulkOperationResult result =
-          repository.bulkUpdateColumns(
-              null,
-              null,
-              new BulkColumnUpdateRequest()
-                  .withColumnName("col_c")
-                  .withTags(List.of(deprecatedLabel()))
-                  .withDryRun(true));
-
-      assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
-      assertEquals(1, result.getNumberOfRowsPassed());
-      assertEquals(1, result.getNumberOfRowsFailed());
-      assertEquals(
-          "Failed to update column %s: %s"
-              .formatted(
-                  NEW_COLUMN,
-                  CatalogExceptionMessage.glossaryTermNotApproved(
-                      DEPRECATED.getFullyQualifiedName(), EntityStatus.DEPRECATED)),
-          result.getFailedRequest().getFirst().getMessage());
     }
   }
 

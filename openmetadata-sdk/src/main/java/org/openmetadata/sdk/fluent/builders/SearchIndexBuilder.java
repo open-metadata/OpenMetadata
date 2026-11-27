@@ -51,6 +51,7 @@ public class SearchIndexBuilder {
    * Set custom extension data.
    */
   public SearchIndexBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

@@ -219,9 +219,14 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           as="article"
           className={classNames('array-field-label', {
             'required-field': props.required,
-            'sso-deprecated-field-label': isDeprecated,
           })}>
-          {startCase(props.name)}
+          {/* Only the field name is faded; the badge keeps the core Badge look. */}
+          <span
+            className={classNames({
+              'sso-deprecated-field-label': isDeprecated,
+            })}>
+            {startCase(props.name)}
+          </span>
           {isDeprecated && (
             <Badge className="sso-deprecated-tag" color="warning" size="sm">
               {t('label.deprecated')}

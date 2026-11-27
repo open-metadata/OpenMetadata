@@ -11,157 +11,27 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
   ListValues,
   ValueSource,
 } from '@react-awesome-query-builder/ui';
-import { escapeRegExp, isArray, isEmpty } from 'lodash';
-import React from 'react';
-import { Focusable } from 'react-aria-components';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { isArray, isEmpty } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
-import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import searchClassBase from './SearchClassBase';
 import { toTagSelectOptions } from './SearchPureUtils';
 
-type DropdownItem = { key: string; label: JSX.Element };
-const renderSearchLabel = (label: string, searchKey: string) => {
-  if (!searchKey) {
-    return label;
-  }
-
-  const matches = label.matchAll(new RegExp(escapeRegExp(searchKey), 'gi'));
-  const parts: React.ReactNode[] = [];
-  let previousIndex = 0;
-
-  for (const match of matches) {
-    const matchIndex = match.index;
-    if (matchIndex === undefined) {
-      continue;
-    }
-
-    if (matchIndex > previousIndex) {
-      parts.push(label.slice(previousIndex, matchIndex));
-    }
-    parts.push(<mark key={`match-${matchIndex}`}>{match[0]}</mark>);
-    previousIndex = matchIndex + match[0].length;
-  }
-
-  if (previousIndex < label.length) {
-    parts.push(label.slice(previousIndex));
-  }
-
-  return parts;
-};
-
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
-};
-
-export const generateSearchDropdownLabel = (
-  option: SearchDropdownOption,
-  checked: boolean,
-  searchKey: string,
-  showProfilePicture: boolean,
-  hideCounts = false,
-  singleSelect = false
-) => {
-  return (
-    <div className="d-flex justify-between">
-      <div
-        className="d-flex m-x-sm"
-        data-testid={option.key}
-        style={{ alignItems: 'flex-start', gap: '8px' }}>
-        <input
-          readOnly
-          aria-label={option.label}
-          checked={checked}
-          data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
-          style={option.description ? { marginTop: 4 } : undefined}
-          type={singleSelect ? 'radio' : 'checkbox'}
-        />
-        {showProfilePicture && (
-          <ProfilePicture
-            displayName={option.label}
-            name={option.label || ''}
-            width="18"
-          />
-        )}
-        {option.icon && (
-          <div className="tw:flex tw:items-center tw:flex-none">
-            {option.icon}
-          </div>
-        )}
-        <div>
-          {/* These labels live inside an Ant `Menu` item whose selection is
-              wired on the item's click. Tooltip's default trigger is an
-              AriaButton whose press handling would swallow that click, so the
-              option could no longer be selected by clicking its text. Wrapping
-              the label in <Focusable> instead makes it consume the tooltip's
-              hover context (so the full label still surfaces on hover) without
-              adding any press handler, so the click bubbles to the menu item.
-              excludeFromTabOrder keeps the label out of the tab order — the
-              menu owns keyboard navigation. */}
-          <Tooltip title={option.label}>
-            <Focusable excludeFromTabOrder>
-              <span className="dropdown-option-label tw:truncate tw:block">
-                <span>{renderSearchLabel(option.label, searchKey)}</span>
-              </span>
-            </Focusable>
-          </Tooltip>
-          {option.description && (
-            <span
-              className="text-xs d-block tw:text-secondary"
-              data-testid={`${option.key}-description`}>
-              {option.description}
-            </span>
-          )}
-        </div>
-      </div>
-      {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
-    </div>
-  );
-};
-
-export const getSearchDropdownLabels = (
-  optionsArray: SearchDropdownOption[],
-  checked: boolean,
-  searchKey = '',
-  showProfilePicture = false,
-  hideCounts = false,
-  singleSelect = false
-): DropdownItem[] => {
-  if (isArray(optionsArray)) {
-    const sortedOptions = optionsArray.sort(
-      (a, b) => (b.count ?? 0) - (a.count ?? 0)
-    );
-
-    return sortedOptions.map((option) => ({
-      key: option.key,
-      label: generateSearchDropdownLabel(
-        option,
-        checked,
-        searchKey,
-        showProfilePicture,
-        hideCounts,
-        singleSelect
-      ),
-    }));
-  } else {
-    return [];
-  }
 };
 
 export const getTierOptions = async (): Promise<ListValues> => {

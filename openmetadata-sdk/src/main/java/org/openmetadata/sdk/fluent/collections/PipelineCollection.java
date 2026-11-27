@@ -119,14 +119,10 @@ public class PipelineCollection implements Iterable<Pipeline> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
-      pageParams.setFields(params.getFields());
-
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
-      } else if (params.getAfter() != null) {
-        pageParams.setAfter(params.getAfter());
+        pageParams.setBefore(null);
       }
 
       ListResponse<Pipeline> response = client.pipelines().list(pageParams);

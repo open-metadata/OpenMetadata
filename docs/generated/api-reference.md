@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**2012 endpoints** across 75 resource packages · 2002 carry a summary.
+**2014 endpoints** across 75 resource packages · 2004 carry a summary.
 
 ## (root)
 
@@ -1111,6 +1111,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/glossaryTerms/{id}/assets/add` | Bulk Add Glossary Term to Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/assets/remove` | Bulk Remove Glossary Term from Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/moveAsync` | Move a glossary term to a new parent or glossary |
+| `GET` | `/v1/glossaryTerms/{id}/pendingAssets` | List assets this glossary term is pending on |
 | `POST` | `/v1/glossaryTerms/{id}/relations` | Add a typed relation to another glossary term |
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Remove one glossary-term relationship by its stable ID |
 | `PUT` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Update one glossary-term relationship by its stable ID |
@@ -1676,6 +1677,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/search/nlq/query` | Search entities using Natural Language Query (NLQ) |
 | `POST` | `/v1/search/preview` | Preview Search Results |
 | `GET` | `/v1/search/query` | Search entities |
+| `POST` | `/v1/search/query` | Search entities using a request body |
 | `GET` | `/v1/search/reindex/failures` | Get reindex failures |
 | `POST` | `/v1/search/reindexEntities` | Only Reindex the selected entities in Elasticsearch. |
 | `GET` | `/v1/search/sourceUrl` | Search entities |

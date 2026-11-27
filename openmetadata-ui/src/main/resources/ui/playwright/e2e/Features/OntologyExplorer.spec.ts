@@ -30,64 +30,71 @@ const glossary = new Glossary();
 const source = new GlossaryTerm(glossary);
 const target = new GlossaryTerm(glossary);
 
-test.beforeAll('Seed a related pair of terms', async ({ browser }) => {
-  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+// Collate serves Ontology Studio on this route, so the read-only Explorer exists only in OSS.
+if (process.env.PLAYWRIGHT_IS_OSS) {
+  test.describe('Ontology Explorer', () => {
+    test.beforeAll('Seed a related pair of terms', async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
 
-  await glossary.create(apiContext);
-  await source.create(apiContext);
-  await target.create(apiContext);
-  await addTermRelation(apiContext, source, target, 'relatedTo');
+      await glossary.create(apiContext);
+      await source.create(apiContext);
+      await target.create(apiContext);
+      await addTermRelation(apiContext, source, target, 'relatedTo');
 
-  await afterAction();
-});
+      await afterAction();
+    });
 
-test.afterAll('Clean up the seeded terms', async ({ browser }) => {
-  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+    test.afterAll('Clean up the seeded terms', async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
 
-  await source.delete(apiContext);
-  await target.delete(apiContext);
-  await glossary.delete(apiContext);
+      await source.delete(apiContext);
+      await target.delete(apiContext);
+      await glossary.delete(apiContext);
 
-  await afterAction();
-});
+      await afterAction();
+    });
 
-test.describe('Ontology Explorer', () => {
-  test('opens from the Govern sidebar with its header, stats and graph', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
+    test('opens from the Govern sidebar with its header, stats and graph', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
 
-    await expect(page).toHaveURL(/\/governance\/ontology$/);
-    await expect(page.getByTestId('ontology-explorer-header')).toContainText(
-      'Ontology Explorer'
-    );
-    await expect(page.getByTestId('beta-badge')).toBeVisible();
-    await waitForGraphLoaded(page);
-    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      'Terms'
-    );
+      await expect(page).toHaveURL(/\/governance\/ontology$/);
+      await expect(page.getByTestId('ontology-explorer-header')).toContainText(
+        'Ontology Explorer'
+      );
+      await expect(page.getByTestId('beta-badge')).toBeVisible();
+      await waitForGraphLoaded(page);
+      await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+        'Terms'
+      );
+    });
+
+    test('switches between the model graph and the data layer', async ({
+      page,
+    }) => {
+      await page.goto('/governance/ontology');
+      await waitForGraphLoaded(page);
+
+      const layers = page.getByTestId('ontology-layer-switch');
+      const search = page.getByTestId('ontology-graph-search');
+
+      // The concept search belongs to the model layer only.
+      await expect(search).toBeVisible();
+      await layers.getByRole('tab', { name: 'Data' }).click();
+      await expect(layers.getByRole('tab', { name: 'Data' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      await expect(search).toHaveCount(0);
+
+      await layers.getByRole('tab', { name: 'Model' }).click();
+      await expect(search).toBeVisible();
+    });
   });
-
-  test('switches between the model graph and the data layer', async ({
-    page,
-  }) => {
-    await page.goto('/governance/ontology');
-    await waitForGraphLoaded(page);
-
-    const layers = page.getByTestId('ontology-layer-switch');
-    const search = page.getByTestId('ontology-graph-search');
-
-    // The concept search belongs to the model layer only.
-    await expect(search).toBeVisible();
-    await layers.getByRole('tab', { name: 'Data' }).click();
-    await expect(layers.getByRole('tab', { name: 'Data' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    );
-    await expect(search).toHaveCount(0);
-
-    await layers.getByRole('tab', { name: 'Model' }).click();
-    await expect(search).toBeVisible();
-  });
-});
+}

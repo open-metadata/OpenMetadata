@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,6 +62,12 @@ public final class SearchUtils {
 
   private static final String FUZZINESS_DISABLED = "0";
   private static final String FUZZINESS_ENABLED = "1";
+  // Below the 1024 bool-clause cap with headroom for the query's other clauses; the default
+  // name/displayName n-gram fields keep "customer_orders" (620) fuzzy and drop a 16-char id (2100).
+  static final int NGRAM_FUZZY_CLAUSE_BUDGET = 640;
+  // The om_ngram analyzer's n_gram_tokenizer in the index mappings.
+  private static final int NGRAM_MIN_GRAM = 3;
+  private static final int NGRAM_MAX_GRAM = 20;
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -132,6 +139,77 @@ public final class SearchUtils {
     String raw = includeValue.startsWith(".*") ? includeValue.substring(2) : includeValue;
     raw = raw.endsWith(".*") ? raw.substring(0, raw.length() - 2) : raw;
     return raw;
+  }
+
+  /**
+   * Every Lucene regexp metacharacter that has special meaning in the terms-aggregation {@code
+   * include} regexp (the engine Elasticsearch/OpenSearch use for {@code terms.include.regexp}).
+   * Mirrors the set escaped by {@code ColumnAggregator.toCaseInsensitiveRegex} so the two
+   * include-regex builders stay in sync. {@code $} is not a Lucene regexp anchor but is escaped
+   * for parity and because escaping it is a no-op match-wise.
+   */
+  private static final String LUCENE_REGEXP_METACHARACTERS = ".+*?|[](){}^$\\~@&#<>\"";
+
+  /**
+   * Escapes every Lucene regexp metacharacter in {@code value} so the result matches {@code value}
+   * literally as a terms-aggregation {@code include} regexp. Use this for caller-supplied terms
+   * that are data (tag FQNs, owner names, service names) rather than regexp fragments, so a value
+   * like {@code Pii.Phone (mobile)} or {@code C++} cannot be interpreted as operators and either
+   * fail to compile or over/under-match. Returns {@code null} for {@code null} and the empty
+   * string for the empty string.
+   */
+  public static String escapeLuceneRegexp(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
+    }
+    StringBuilder sb = new StringBuilder(value.length() * 2);
+    for (char c : value.toCharArray()) {
+      if (LUCENE_REGEXP_METACHARACTERS.indexOf(c) >= 0) {
+        sb.append('\\');
+      }
+      sb.append(c);
+    }
+    return sb.toString();
+  }
+
+  /** The three terms-aggregation {@code include} regexps the best-match strategy builds. */
+  public record BestMatchPatterns(String exact, String prefix, String contains) {}
+
+  /**
+   * Builds the exact, prefix, and contains {@code include} regexps for the best-match aggregation
+   * strategy from the caller's {@code fieldValue}/{@code value}.
+   *
+   * <p>Two caller shapes are supported so the public {@code /v1/search/aggregate} endpoint is safe
+   * for literal data without breaking the pre-built-regexp caller:
+   *
+   * <ul>
+   *   <li><b>Literal quick-filter</b> — the value wrapped in {@code .*….*} (e.g. {@code
+   *       .*pii.phone (mobile).*}). The inner term is run through {@link #escapeLuceneRegexp} so
+   *       Lucene regexp metacharacters the caller typed are matched literally; the {@code .*}
+   *       wildcards are re-attached to the prefix and contains patterns so the three buckets still
+   *       rank exact → starts-with → contains. Before this, only {@code .} was escaped, so values
+   *       like {@code R&D Team} or trailing {@code \} either silently mis-matched or rejected the
+   *       whole {@code _search} request.
+   *   <li><b>Pre-built regexp</b> — a caller-constructed Lucene regexp without the {@code .*….*}
+   *       wrapper (e.g. the tag-FQN alternation {@code (pii\.a|pii\.b)} built by the UI's
+   *       {@code buildTagFqnIncludeRegex}). Passed through verbatim; escaping the operators would
+   *       turn the alternation into a literal and break the include filter.
+   * </ul>
+   *
+   * <p>The two shapes are told apart by the {@code .*} wrapper the literal path always adds —
+   * {@code isBestMatchSearchPattern} already guarantees {@code containsPattern} is non-empty and
+   * not the bare {@code .*} match-all. For the pre-built regexp shape all three sub-aggregations
+   * use the caller's pattern verbatim: appending {@code .*} for the prefix sub-agg would let child
+   * tags (e.g. {@code pii.a.child}) displace requested tags (e.g. {@code pii.b}) under the
+   * best-match merge limit, producing false-zero bucket counts.
+   */
+  public static BestMatchPatterns buildBestMatchIncludePatterns(String containsPattern) {
+    boolean isLiteralWildcard = containsPattern.startsWith(".*") && containsPattern.endsWith(".*");
+    if (isLiteralWildcard) {
+      String escapedRaw = escapeLuceneRegexp(extractRawSearchValue(containsPattern));
+      return new BestMatchPatterns(escapedRaw, escapedRaw + ".*", ".*" + escapedRaw + ".*");
+    }
+    return new BestMatchPatterns(containsPattern, containsPattern, containsPattern);
   }
 
   /**
@@ -776,6 +854,11 @@ public final class SearchUtils {
     };
   }
 
+  public static boolean isOntologyIndex(String indexName) {
+    String mapped = mapEntityTypesToIndexNames(indexName);
+    return OntologyTermSearch.ALIAS.equals(mapped) || OntologyTermSearch.isTerm(mapped);
+  }
+
   public static String mapEntityTypesToIndexNames(String indexName) {
     return switch (indexName) {
       case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
@@ -797,6 +880,9 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case OntologyTermSearch.ALIAS -> OntologyTermSearch.ALIAS;
+      case "ontology_concept_search_index", Entity.ONTOLOGY_CONCEPT -> Entity.ONTOLOGY_CONCEPT;
+      case "ontology_property_search_index", Entity.ONTOLOGY_PROPERTY -> Entity.ONTOLOGY_PROPERTY;
       case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
           .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
@@ -848,6 +934,46 @@ public final class SearchUtils {
       return FUZZINESS_ENABLED;
     }
     return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
+  }
+
+  /**
+   * Fuzziness for a fuzzy multi_match over {@code fields}. Every gram the {@code om_ngram} analyzer
+   * produces is fuzzy-expanded separately, so a long token over {@code *.ngram} fields can exceed
+   * the 1024 bool-clause cap (a 16-char token is 105 grams). Fuzziness stays on, keeping typo
+   * tolerance for ordinary queries, and is turned off only when the estimated clause count passes
+   * {@link #NGRAM_FUZZY_CLAUSE_BUDGET}.
+   */
+  public static String getFuzziness(String query, Collection<String> fields) {
+    String fuzziness = getFuzziness(query);
+    if (estimatedNgramFuzzyClauses(query, fields) > NGRAM_FUZZY_CLAUSE_BUDGET) {
+      fuzziness = FUZZINESS_DISABLED;
+    }
+    return fuzziness;
+  }
+
+  /**
+   * Upper bound on the clauses a fuzzy match over the {@code *.ngram} fields rewrites into: the
+   * grams {@code om_ngram} emits for the query (3–20 chars, split on non letter/digit, as its
+   * {@code n_gram_tokenizer}), times {@code max_expansions}, times the n-gram fields.
+   */
+  static long estimatedNgramFuzzyClauses(String query, Collection<String> fields) {
+    long ngramFields =
+        nullOrEmpty(fields) ? 0 : fields.stream().filter(f -> f.endsWith(".ngram")).count();
+    long grams = 0;
+    if (ngramFields > 0 && query != null) {
+      for (String token : query.split("[^\\p{L}\\p{Nd}]+")) {
+        grams += ngramCount(token.codePointCount(0, token.length()));
+      }
+    }
+    return grams * getMaxExpansions(query) * ngramFields;
+  }
+
+  private static long ngramCount(int length) {
+    long count = 0;
+    for (int size = NGRAM_MIN_GRAM; size <= Math.min(NGRAM_MAX_GRAM, length); size++) {
+      count += length - size + 1;
+    }
+    return count;
   }
 
   /**

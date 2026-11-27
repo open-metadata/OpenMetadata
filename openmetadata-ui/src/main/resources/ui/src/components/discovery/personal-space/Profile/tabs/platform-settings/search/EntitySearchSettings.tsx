@@ -366,7 +366,7 @@ const EntitySearchSettings = ({
                 data-testid="add-field-btn"
                 iconLeading={Plus}
                 isDisabled={unselectedFields.length === 0}
-                size="sm">
+                size="xs">
                 {t('label.add')}
               </Button>
               <Dropdown.Popover className="tw:w-max tw:min-w-56">
@@ -466,7 +466,7 @@ const EntitySearchSettings = ({
               data-testid="add-term-boost-btn"
               iconLeading={Plus}
               isDisabled={showNewTermBoost}
-              size="sm"
+              size="xs"
               onPress={() => setShowNewTermBoost(true)}>
               {t('label.add')}
             </Button>
@@ -501,7 +501,7 @@ const EntitySearchSettings = ({
                 color="secondary"
                 data-testid="add-field-value-boost-btn"
                 iconLeading={Plus}
-                size="sm"
+                size="xs"
                 onPress={() => openFieldValueBoostForm()}>
                 {t('label.add')}
               </Button>

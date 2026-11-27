@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -52,25 +53,31 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * <p>The derived FQN is the one {@code ContextFileRepository.setFullyQualifiedName} builds: the
  * folder's FQN and the file's name, or the name alone at the root. tag_usage is keyed by FQN alone
  * and does not record which entity a row belongs to. When no other entity, of any type and live or
- * soft-deleted, has the stored FQN, every row under it is the file's: the rows move to the derived
- * FQN, as a rename moves them, and a tag already there from before the edit stays. When another
- * entity has it, as a root folder, metric, service, glossary, domain or data product named like the
- * file can, the rows under it may be that entity's, and nothing proves which are the file's: a
- * version of the file saved after the edit lists every tag under the stored FQN, and one row can be
- * the tag of both. The file's FQN is still repaired, its rows are left where they are, and the
+ * soft-deleted, has the stored FQN or the derived FQN, every row under the stored FQN is the
+ * file's: the rows move to the derived FQN, as a rename moves them, and a tag already there from
+ * before the edit stays. When another entity has the stored FQN, as a root folder, metric, service,
+ * glossary, domain or data product named like the file can, the rows under it may be that entity's,
+ * and nothing proves which are the file's: a version of the file saved after the edit lists every
+ * tag under the stored FQN, and one row can be the tag of both. When another entity has the derived
+ * FQN, as a subfolder, glossary term or subdomain named like the file under the same parent can,
+ * moving the file's rows there would merge them with that entity's under the one hash. In either
+ * case the file's FQN and nameHash are still repaired, its rows are left where they are, and the
  * file, both FQNs and the other entities are logged for repair by hand. A table a later migration
  * creates, as one of a server built on this one, holds no entity yet, so it does not stop the move.
  *
  * <p>A file's stored JSON carries its extracted text, up to 200,000 characters, so the scan reads
  * only each file's name, FQN and nameHash, and a rewrite loads one file at a time.
  *
- * <p>A file whose derived FQN another row holds is left as it is and logged with both ids, since
- * which of the two keeps the name is for their owners to decide. Those files are retried until a
- * pass repairs nothing, so one freed by another file's repair in the same run is repaired too. A
- * file in a folder that no longer exists is left as it is. Each file is rewritten in a transaction
- * of its own, and only while it still holds the FQN the scan read before its folder, so a file
- * edited or moved meanwhile keeps that change; a failure is logged and skipped. Idempotent: a file
- * whose FQN and nameHash match the derived FQN is left alone.
+ * <p>A file whose derived FQN another Context Center file holds is left as it is and logged with
+ * both ids, since its nameHash would collide with that file's and which of the two keeps the name
+ * is for their owners to decide. A non-file entity holding the derived FQN does not block the
+ * file's nameHash, unique only within the context_file table, so the file's FQN is repaired and
+ * only its tag rows are left where they are. Those files are retried until a pass repairs nothing,
+ * so one freed by another file's repair in the same run is repaired too. A file in a folder that
+ * no longer exists is left as it is. Each file is rewritten in a transaction of its own, and only
+ * while it still holds the FQN the scan read before its folder, so a file edited or moved meanwhile
+ * keeps that change; a failure is logged and skipped. Idempotent: a file whose FQN and nameHash
+ * match the derived FQN is left alone.
  */
 @Slf4j
 public final class ContextFileFqnRepair {
@@ -228,12 +235,18 @@ public final class ContextFileFqnRepair {
       if (otherHolder(handle, misnamed).isPresent()) {
         return Outcome.HELD_BY_ANOTHER_FILE;
       }
-      final List<Holder> sharing =
-          movesTags(misnamed) ? entitiesSharing(holders, misnamed) : List.of();
+      final List<Holder> sharingStoredFqn =
+          movesTags(misnamed)
+              ? entitiesSharing(holders, misnamed.storedFqn(), misnamed.id())
+              : List.of();
+      final List<Holder> sharingDerivedFqn =
+          movesTags(misnamed)
+              ? entitiesSharing(holders, misnamed.derivedFqn(), misnamed.id())
+              : List.of();
+      final boolean moveTags =
+          movesTags(misnamed) && sharingStoredFqn.isEmpty() && sharingDerivedFqn.isEmpty();
       Optional<ContextFile> repaired =
-          handle.inTransaction(
-              transaction ->
-                  rewrite(transaction, misnamed, movesTags(misnamed) && sharing.isEmpty()));
+          handle.inTransaction(transaction -> rewrite(transaction, misnamed, moveTags));
       if (repaired.isEmpty()) {
         LOG.info(
             "Context Center file {} changed while its FQN was derived; its next edit derives it",
@@ -242,19 +255,11 @@ public final class ContextFileFqnRepair {
       }
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.storedFqn());
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
+      // A lookup of the derived FQN before the repair left a not-found marker that the entity
+      // cache helper above does not clear.
+      CacheBundle.invalidateEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
       reindex(repaired.get());
-      if (!sharing.isEmpty()) {
-        LOG.warn(
-            "Context Center file {} now has the FQN {}. Its old FQN {} is also the FQN of {}, and"
-                + " tag_usage does not record which entity a row belongs to, so every tag under {}"
-                + " was left where it is. Move the file's own tags to {} by hand",
-            misnamed.id(),
-            misnamed.derivedFqn(),
-            misnamed.storedFqn(),
-            sharing,
-            misnamed.storedFqn(),
-            misnamed.derivedFqn());
-      }
+      logCollisions(misnamed, sharingStoredFqn, sharingDerivedFqn);
       return Outcome.REPAIRED;
     } catch (Exception e) {
       LOG.warn(
@@ -309,14 +314,48 @@ public final class ContextFileFqnRepair {
   }
 
   /**
-   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN. A type whose table
-   * exists but cannot be searched is listed too, so its rows are never taken from it.
+   * Every other entity, live or soft-deleted, whose FQN is the one given. A type whose table exists
+   * but cannot be searched is listed too, so its rows are never taken from it. The file itself, when
+   * the FQN is its stored FQN, is excluded: every row under that hash is the file's until proved
+   * otherwise.
    */
   private static List<Holder> entitiesSharing(
-      final EntityFqnHolders holders, final Misnamed misnamed) {
-    return holders.holding(misnamed.storedFqn()).stream()
-        .filter(holder -> !holder.is(CONTEXT_FILE, misnamed.id().toString()))
+      final EntityFqnHolders holders, final String fqn, final UUID id) {
+    return holders.holding(fqn).stream()
+        .filter(holder -> !holder.is(CONTEXT_FILE, id.toString()))
         .toList();
+  }
+
+  /** Logs each FQN another entity shares with the file, so its tag rows can be moved by hand. */
+  private static void logCollisions(
+      final Misnamed misnamed,
+      final List<Holder> sharingStoredFqn,
+      final List<Holder> sharingDerivedFqn) {
+    if (!sharingStoredFqn.isEmpty()) {
+      LOG.warn(
+          "Context Center file {} now has the FQN {}. Its old FQN {} is also the FQN of {}, and"
+              + " tag_usage does not record which entity a row belongs to, so every tag under {}"
+              + " was left where it is. Move the file's own tags to {} by hand",
+          misnamed.id(),
+          misnamed.derivedFqn(),
+          misnamed.storedFqn(),
+          sharingStoredFqn,
+          misnamed.storedFqn(),
+          misnamed.derivedFqn());
+    }
+    if (!sharingDerivedFqn.isEmpty()) {
+      LOG.warn(
+          "Context Center file {} now has the FQN {}. Its new FQN {} is also the FQN of {}, and"
+              + " tag_usage does not record which entity a row belongs to, so every tag under {}"
+              + " was left where it is to keep the rows from merging under the one hash. Rename"
+              + " the file or the other entity, then move the file's own tags to the file's new"
+              + " FQN by hand",
+          misnamed.id(),
+          misnamed.derivedFqn(),
+          misnamed.derivedFqn(),
+          sharingDerivedFqn,
+          misnamed.storedFqn());
+    }
   }
 
   /** A tag under both FQNs keeps its row under the derived one, so the move breaks no key. */

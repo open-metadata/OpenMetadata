@@ -47,6 +47,8 @@ export interface NodeConfig {
   cronExpression?: string;
   batchSize?: number;
   approvalMode?: ApprovalMode;
+  triggeringBots?: string[];
+  autoAssignOwners?: boolean;
 }
 
 export interface DataAssetFiltersSectionProps {

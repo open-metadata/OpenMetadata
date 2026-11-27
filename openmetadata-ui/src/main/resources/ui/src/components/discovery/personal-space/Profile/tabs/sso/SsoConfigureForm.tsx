@@ -20,7 +20,6 @@ import {
   FileUpload,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
 import {
   RegistryFieldsType,
   RegistryWidgetsType,
@@ -394,15 +393,6 @@ const SsoConfigureForm = ({
           data-testid="sso-test-login-page"
           direction="col"
           gap={4}>
-          <Button
-            className="tw:self-start"
-            color="link-gray"
-            data-testid="sso-test-login-back"
-            iconLeading={ArrowLeft}
-            size="sm"
-            onPress={handleTestLoginModalClose}>
-            {t('label.back')}
-          </Button>
           <SsoTestLoginContent
             configurationCheck={testLoginConfigurationCheck}
             error={testLoginError}

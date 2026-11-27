@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { EventsRecord } from '../../../generated/events/api/eventsRecord';
 import { formatEventCount } from '../../../utils/Alerts/AlertsUtilPure';
 import { ExtraInfoLabel } from '../../../utils/DataAssetsHeader.utils';
+import AlertPendingEvents from '../../Alerts/AlertPendingEvents/AlertPendingEvents';
 
 interface AlertAiEventCountsProps {
   counts?: EventsRecord;
@@ -44,10 +45,16 @@ const AlertAiEventCounts = ({ counts, loading }: AlertAiEventCountsProps) => {
             dataTestId={testId}
             key={testId}
             label={t(labelKey, { entity: t('label.event-plural') })}
-            value={formatEventCount(
-              counts?.[countKey],
-              mayBeCapped && counts?.countsAreLowerBound
-            )}
+            value={
+              countKey === 'pendingEventsCount' ? (
+                <AlertPendingEvents counts={counts} />
+              ) : (
+                formatEventCount(
+                  counts?.[countKey],
+                  mayBeCapped && counts?.countsAreLowerBound
+                )
+              )
+            }
           />
         )
       )}

@@ -11,9 +11,10 @@
 """MicroStrategy source module"""
 
 import traceback
-from collections import Counter, OrderedDict
-from collections.abc import Iterable
+from collections import Counter, OrderedDict, defaultdict
+from collections.abc import Iterable, Mapping
 from functools import partial
+from types import MappingProxyType
 from typing import Any, cast
 
 from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
@@ -72,11 +73,13 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
     cached,
 )
 from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    NO_ALIASES,
+    AliasReads,
     ParsedCube,
     SourceColumn,
     name_match,
     normalized,
-    read_columns,
+    read_projections,
     same_table,
     table_matches,
 )
@@ -379,7 +382,13 @@ class MicrostrategySource(DashboardServiceSource):
                     parsed.tables, service_name, database_name, schema_name, table_name
                 ):
                     columns_lineage = self._safe_column_lineage(
-                        dashboard_details.projectId, dataset, parsed.read_columns, table_entity, datamodel_entity
+                        dashboard_details.projectId,
+                        dataset,
+                        parsed.read_columns,
+                        table_entity,
+                        datamodel_entity,
+                        parsed.cube,
+                        parsed.alias_reads,
                     )
                     yield Either(
                         left=None,
@@ -431,20 +440,21 @@ class MicrostrategySource(DashboardServiceSource):
         cube and dialect: the base class asks for lineage once per dbServicePrefixes entry, and a
         cube is shared by many dossiers.
         """
-        cube_sql = self.client.get_cube_sql_details(project_id, cube_id)
-        if not cube_sql:
+        details = self.client.get_cube_sql_details(project_id, cube_id)
+        if not details:
             return ParsedCube()
+        cube_sql = details.sql
         parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
         # The third-party cached_property is not read as a descriptor by type checkers.
         tables = tuple(str(table) for table in cast("list", parser.source_tables))
         try:
-            columns = read_columns(cube_sql, dialect)
+            columns, alias_reads = read_projections(cube_sql, dialect)
         except Exception as exc:
             # The tables were read; losing the columns must not lose them.
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
-            columns = frozenset()
-        return ParsedCube(tables=tables, read_columns=columns)
+            columns, alias_reads = frozenset(), NO_ALIASES
+        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube, alias_reads=alias_reads)
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
@@ -462,12 +472,15 @@ class MicrostrategySource(DashboardServiceSource):
         cube_reads: frozenset[SourceColumn],
         table_entity: Table,
         datamodel_entity: DashboardDataModel,
+        sql_cube: str | None = None,
+        alias_reads: AliasReads = NO_ALIASES,
     ) -> list[ColumnLineage]:
         """
         Column lineage from one table to a data model. A data model column is matched on the
-        warehouse columns the cube SQL reads: through its schema attribute's form expressions, or
-        for a Data Import cube on its name, which the import derives from the column. Metrics of a
-        schema cube are left out: the API does not tell which fact column a metric aggregates.
+        warehouse columns the cube SQL reads: for a Data Import cube on its name, which the import
+        derives from the column; for a schema attribute through its form expressions; for a schema
+        metric through the alias MicroStrategy derives from its name, else through its definition.
+        ``sql_cube`` is the cube the SQL came from, whose type decides how objects are matched.
         """
         schema = getattr(table_entity.databaseSchema, "name", None)
         database = getattr(table_entity.database, "name", None)
@@ -479,18 +492,29 @@ class MicrostrategySource(DashboardServiceSource):
         if not reads:
             return []
         table_entity = self._with_columns(table_entity)
-        data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
+        data_import = self.client.get_dataset_subtype(project_id, sql_cube or dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
         targets = self._data_model_columns(dataset, datamodel_entity)
         # A dataset may list one object more than once; it is still one data model column.
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
+        # Every object claims the SQL name it is projected under, before any metric is matched: a
+        # metric's column alias can name another metric's projection. A metric that cannot be read
+        # still claims its name, so no other metric takes a projection that may be its own.
+        owners: dict[str, set[str]] = defaultdict(set)
+        for available_object in objects.values():
+            claim = available_object.name
+            if available_object.type == "metric" and not data_import:
+                sql_name = self.client.get_metric_sql_name(project_id, available_object.id, claim or "")
+                claim = sql_name or claim
+            if claim and (key := normalized(claim)):
+                owners[key].add(available_object.id)
         names = Counter((available_object.name or "").casefold() for available_object in objects.values())
         repeated = {name for name, count in names.items() if count > 1}
         lineage = []
         for available_object in objects.values():
             for target, columns in self._object_columns(
-                project_id, available_object, data_import, reads, targets, ambiguous, repeated
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated, alias_reads, owners
             ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
@@ -511,6 +535,8 @@ class MicrostrategySource(DashboardServiceSource):
         targets: dict[str, str],
         ambiguous: set[str],
         repeated: set[str],
+        alias_reads: AliasReads = NO_ALIASES,
+        owners: Mapping[str, set[str]] = MappingProxyType({}),
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -533,10 +559,58 @@ class MicrostrategySource(DashboardServiceSource):
                 for form_table, form_column in expression
                 if form_column == column and same_table(table, form_table)
             }
+        elif available_object.type == "metric":
+            columns = self._metric_columns(project_id, available_object, reads, alias_reads, owners)
         else:
             columns = set()
         if columns:
             yield target, columns
+
+    def _metric_columns(
+        self,
+        project_id: str,
+        metric: MstrAvailableObject,
+        reads: set[SourceColumn],
+        alias_reads: AliasReads,
+        owners: Mapping[str, set[str]],
+    ) -> set[str]:
+        """
+        The warehouse columns of this table a schema metric reads. The SQL names a metric's
+        projection after its column alias when one is set, else after its name (``Revenue Rank`` is
+        ``REVENUERANK``), unless the alias is a generated one (``WJXBFS1``); a metric the SQL does
+        not name is followed through its definition: to the projections of the metrics it is built
+        from, and to the columns of the facts it aggregates. A projection is a metric's only when no
+        other object of the dataset claims that name: ``% Revenue`` is not given ``Revenue``'s
+        ``REVENUE``, whether or not it is in the dataset itself.
+        """
+
+        def owns(object_id: str, sql_name: str) -> bool:
+            key = normalized(sql_name)
+            return bool(key) and key in alias_reads and owners.get(key, {object_id}) == {object_id}
+
+        # Unread, a metric's column alias is unknown, so its projection cannot be told apart from
+        # another's: without modeling privileges metrics get no column edge.
+        sql_name = self.client.get_metric_sql_name(project_id, metric.id, metric.name or "")
+        if sql_name and owns(metric.id, sql_name):
+            return {column for table, column in alias_reads[normalized(sql_name)] & reads}
+        parts = self.client.get_metric_parts(project_id, metric.id, known=owns)
+        if not parts:
+            return set()
+        columns = {
+            column
+            for object_id, name in parts.metrics
+            if owns(object_id, name)
+            for table, column in alias_reads[normalized(name)] & reads
+        }
+        for fact in parts.facts:
+            fact_columns = self.client.get_fact_columns(project_id, fact) or frozenset()
+            columns.update(
+                column
+                for table, column in reads
+                for fact_table, fact_column in fact_columns
+                if fact_column == column and same_table(table, fact_table)
+            )
+        return columns
 
     def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
         """

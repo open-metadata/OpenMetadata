@@ -28,8 +28,8 @@ Where each Java suite runs:
 | Integration tests (`openmetadata-integration-tests`, every lane, MySQL+ES / PostgreSQL+OS / +Redis) | reports skipped | full | — | impacted classes |
 | search-it (`tests/search/*IT`) | — | — | openmetadata-nightly | impacted classes |
 | JavaUIIT (`*UIIT`) and scale-it (`tests/search/scale/**`) | — | — | openmetadata-nightly | not run; reported |
-| Collate build + unit tests against the OSS change (`maven-collate-ci`) | yes | — | — | — |
-| Collate integration tests against the OSS change (`maven-collate-ci`) | — | yes | — | — |
+| Collate build + unit tests against the OSS change (`Collate CI`) | yes | — | — | — |
+| Collate integration tests against the OSS change (`Collate CI`) | — | yes | — | — |
 
 The integration tests are gone from PR checks, so the merge queue is the first place CI sees an
 IT failure, and an ejection there costs every PR queued behind it. Full local or CI coverage is

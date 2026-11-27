@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(({ children, ...props }) => (
-    // eslint-disable-next-line jsx-a11y/anchor-is-valid -- test mock for react-router Link
     <a href="#" {...props}>
       {children}
     </a>
@@ -31,9 +32,14 @@ jest.mock('../../../constants/constants', () => ({
   ICON_DIMENSION: { width: 16, height: 16 },
 }));
 
-jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () =>
-  jest.fn().mockImplementation(() => <p>Mocked Modal</p>)
-);
+// Keep `EntityNameModal` mocked at the unit level so the existing tests are
+// unaffected, but capture props on a real `jest.fn()` so we can assert on
+// what `DisplayName` seeds into the modal — exactly the contract the
+// highlighted-name bug broke.
+jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <p>Mocked Modal</p>),
+}));
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
@@ -207,5 +213,101 @@ describe('Test DisplayName Component', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalledWith(expect.stringContaining('1'));
+  });
+
+  // Regression tests for the highlighted-name edit bug
+  // (https://github.com/open-metadata/OpenMetadata/issues — "UI: Editing display
+  // name fails when entity name is highlighted by search"). The bug: when
+  // `name` is a search-highlight ReactNode (the output of
+  // `renderHighlightedText(highlightSearchText(record.name, searchValue))`),
+  // `DisplayName` previously seeded `EntityNameModal` with `name: ''`, which
+  // blocked Save ("Name is required") on a required, disabled field. The fix
+  // adds an `entityName?: string` raw string that callers pass alongside the
+  // highlighted `name` node, and `DisplayName` prefers it for seeding.
+  describe('Edit modal seeding under search highlighting', () => {
+    const openEditModal = () => {
+      render(
+        <MemoryRouter>
+          <DisplayName {...mockProps} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('edit-displayName-button'));
+    };
+
+    const lastModalCall = () => {
+      const calls = (EntityNameModal as unknown as jest.Mock).mock.calls;
+
+      return calls[calls.length - 1][0] as {
+        entity: { name: string; displayName?: string };
+      };
+    };
+
+    it('seeds the modal name with a plain-string `name` (no regression)', () => {
+      openEditModal();
+
+      expect(lastModalCall().entity.name).toBe('Sample Entity');
+    });
+
+    it('seeds the modal name from `entityName` when `name` is a highlighted ReactNode', () => {
+      // Mimic what `renderHighlightedText(highlightSearchText('UserDatabase', 'data'))`
+      // produces — a `<span className="text-highlighter">…</span>` ReactNode,
+      // NOT a plain string. `isString(name)` is `false` here.
+      const highlightedName: ReactNode = (
+        <span>
+          <span className="text-highlighter">data</span>
+          base
+        </span>
+      );
+
+      render(
+        <MemoryRouter>
+          <DisplayName
+            {...mockProps}
+            entityName="UserDatabase"
+            name={highlightedName}
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('edit-displayName-button'));
+
+      // The raw `entityName` must be preferred over the highlighted node —
+      // the bug seeded `''` and blocked Save ("Name is required").
+      expect(lastModalCall().entity.name).toBe('UserDatabase');
+    });
+
+    it('falls back to empty string when `name` is a ReactNode and `entityName` is not supplied (legacy callers)', () => {
+      const highlightedName: ReactNode = (
+        <span>
+          <span className="text-highlighter">data</span>
+          base
+        </span>
+      );
+
+      render(
+        <MemoryRouter>
+          <DisplayName {...mockProps} name={highlightedName} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('edit-displayName-button'));
+
+      // No crash; graceful fallback to '' — keeps existing un-migrated
+      // callers behaving exactly as before this fix landed.
+      expect(lastModalCall().entity.name).toBe('');
+    });
+
+    it('prefers `entityName` over a plain-string `name` when both are supplied', () => {
+      render(
+        <MemoryRouter>
+          <DisplayName {...mockProps} entityName="RawRecordName" name="Other" />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('edit-displayName-button'));
+
+      expect(lastModalCall().entity.name).toBe('RawRecordName');
+    });
   });
 });

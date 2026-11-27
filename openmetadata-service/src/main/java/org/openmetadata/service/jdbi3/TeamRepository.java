@@ -79,7 +79,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -891,6 +890,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected void entitySpecificCleanup(Team team) {
+    TaskAssigneeCleanup.removeAssignee(team.getId(), TEAM);
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -940,10 +940,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getInheritedRoles(Team team) {
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
-  }
-
-  protected void entitySpecificCleanup(User entityInterface) {
-    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), TEAM);
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
@@ -1319,7 +1315,13 @@ public class TeamRepository extends EntityRepository<Team> {
       throw new IllegalArgumentException(
           "Default persona can only be set for teams of type Group.");
     }
-    Entity.getEntityReferenceById(Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED);
+    // Hydrate the reference so the change recorded downstream (and any governance rule matching
+    // on its value) carries a fullyQualifiedName. The request body only requires id + type, so
+    // without this the recorded ChangeDescription holds a sparse reference that governance rules
+    // cannot match. Mirrors validateDefaultDomain in UserRepository.
+    team.setDefaultPersona(
+        Entity.getEntityReferenceById(
+            Entity.PERSONA, team.getDefaultPersona().getId(), NON_DELETED));
   }
 
   private void validateDirectUserAddition(Team team, List<EntityReference> users) {

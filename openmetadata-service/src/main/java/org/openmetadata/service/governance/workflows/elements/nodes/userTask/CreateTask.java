@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -93,6 +94,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
@@ -574,7 +576,7 @@ public class CreateTask implements TaskListener {
                 effectiveWorkflowDefinitionId, workflowStageId);
       }
       List<EntityReference> resolvedAssignees =
-          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
+          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees, workflowStageId);
       boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
       if (!preserveTerminalWorkflowState) {
         updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
@@ -1016,7 +1018,14 @@ public class CreateTask implements TaskListener {
   static List<EntityReference> resolveExistingTaskAssignees(
       Task existingTask,
       List<EntityReference> workflowAssignees,
-      List<EntityReference> requestedAssignees) {
+      List<EntityReference> requestedAssignees,
+      String targetStageId) {
+    if (existingTask.getType() == TaskEntityType.TestCaseResolution
+        && requestedAssignees != null
+        && requestedAssignees.isEmpty()
+        && isIncidentReturnToTriage(existingTask.getWorkflowStageId(), targetStageId)) {
+      return List.of();
+    }
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
     boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();
@@ -1034,6 +1043,13 @@ public class CreateTask implements TaskListener {
       return requestedAssignees;
     }
     return existingAssignees;
+  }
+
+  private static boolean isIncidentReturnToTriage(String currentStageId, String targetStageId) {
+    return (IncidentWorkflowStages.NEW_STAGE_ID.equals(targetStageId)
+            && !Objects.equals(currentStageId, targetStageId))
+        || (IncidentWorkflowStages.ACK_STAGE_ID.equals(targetStageId)
+            && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(currentStageId));
   }
 
   // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new

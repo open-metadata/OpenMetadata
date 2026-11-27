@@ -20,10 +20,12 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -68,6 +70,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -107,6 +110,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 @Repository(name = "IngestionPipelineRepository")
@@ -124,6 +128,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  public static final Set<PipelineStatusType> FINISHED_RUN_STATES =
+      Set.of(
+          PipelineStatusType.SUCCESS,
+          PipelineStatusType.FAILED,
+          PipelineStatusType.PARTIAL_SUCCESS,
+          PipelineStatusType.STOPPED);
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]+");
@@ -546,6 +556,42 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    if (ingestionPipeline.getAirflowConfig() != null
+        && ingestionPipeline.getAirflowConfig().getPipelineTimezone() != null) {
+      String timezone =
+          TimezoneUtil.normalize(ingestionPipeline.getAirflowConfig().getPipelineTimezone());
+      ingestionPipeline
+          .getAirflowConfig()
+          .setPipelineTimezone(timezone == null ? TimezoneUtil.UTC : timezone);
+    }
+  }
+
+  static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface<?> parent) {
+    if (!PipelineType.TEST_SUITE.equals(pipeline.getPipelineType())) {
+      return;
+    }
+    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
+    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
+    if (!(parent instanceof TestSuite suite)
+        || !PipelineType.TEST_SUITE.value().equals(configType)) {
+      throw new BadRequestException(
+          "TestSuite pipeline requires a test suite and TestSuite config");
+    }
+    validateTestSuiteTable(suite, config.get("entityFullyQualifiedName"));
+  }
+
+  private static void validateTestSuiteTable(TestSuite suite, Object tableFqn) {
+    if (Boolean.TRUE.equals(suite.getBasic())) {
+      final EntityReference table = suite.getBasicEntityReference();
+      final String expected = table == null ? null : table.getFullyQualifiedName();
+      if (nullOrEmpty(expected) || (tableFqn != null && !expected.equals(tableFqn))) {
+        throw new BadRequestException("TestSuite pipeline table must match its test suite");
+      }
+    } else if (tableFqn != null) {
+      throw new BadRequestException(
+          "Logical test suite pipelines must omit entityFullyQualifiedName");
+    }
   }
 
   static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
@@ -579,9 +625,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void restorePatchAttributes(
-      final IngestionPipeline original, final IngestionPipeline updated) {
-    super.restorePatchAttributes(original, updated);
+  protected void validatePatch(
+      IngestionPipeline original, IngestionPipeline updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
     updated.setService(original.getService());
   }
 
@@ -633,7 +679,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         updated.getAirflowConfig() != null
             ? updated.getAirflowConfig().getScheduleInterval()
             : null;
-    return !Objects.equals(originalSchedule, updatedSchedule);
+    String originalTimezone =
+        original.getAirflowConfig() != null
+            ? original.getAirflowConfig().getPipelineTimezone()
+            : null;
+    String updatedTimezone =
+        updated.getAirflowConfig() != null
+            ? updated.getAirflowConfig().getPipelineTimezone()
+            : null;
+    return !Objects.equals(originalSchedule, updatedSchedule)
+        || !Objects.equals(originalTimezone, updatedTimezone);
   }
 
   boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
@@ -686,6 +741,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       throw new PipelineServiceClientException(
           String.format("Deployment failed: %s. Changes not saved.", errorContext));
     }
+
+    // The deploy hook ran on the decrypted copy. Carry its result back so the stored pipeline reads
+    // its logs from where the deployed one writes them.
+    ingestionPipeline.setEnableStreamableLogs(decrypted.getEnableStreamableLogs());
 
     LOG.info(
         "Pipeline '{}' deployed successfully to {} with response: {}",
@@ -1490,13 +1549,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       compareAndUpdate(
           "raiseOnError",
           () -> updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError()));
+
+      // Before the flag is compared, because a deploy can change it
+      // (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+      deployIfRequired(original, updated);
+
       compareAndUpdate(
           "enableStreamableLogs",
           () ->
               updateEnableStreamableLogs(
                   original.getEnableStreamableLogs(), updated.getEnableStreamableLogs()));
-
-      deployIfRequired(original, updated);
     }
 
     private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
@@ -1673,6 +1735,85 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         && logStorageConfiguration.getType() == LogStorageConfiguration.Type.S_3
         && logStorageConfiguration.getBucketName() != null
         && !logStorageConfiguration.getBucketName().isEmpty();
+  }
+
+  /**
+   * Whether a run's logs are read from S3 log storage rather than from the runner. What the run did
+   * decides, not the pipeline's flag, which can differ from the configuration the run was deployed
+   * with: a run whose logs are stored is read from storage, and a run still going is read from
+   * where its pipeline ships them (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+   */
+  public boolean readsRunLogsFromStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        && isStorageRunKey(runId)
+        && ((runGoing && shipsLogsToStorage(pipeline))
+            || runLogsStored(pipeline.getFullyQualifiedName(), UUID.fromString(runId)));
+  }
+
+  /**
+   * Whether a run's logs are read through the log storage rather than straight from the runner.
+   * Without S3, the default log storage asks the runner by run id, and a pipeline that ships its
+   * logs keeps reading through it.
+   */
+  public boolean readsRunLogsThroughLogStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        ? readsRunLogsFromStorage(pipeline, runId, runGoing)
+        : shipsLogsToStorage(pipeline);
+  }
+
+  public boolean shipsLogsToStorage(IngestionPipeline pipeline) {
+    return Boolean.TRUE.equals(pipeline.getEnableStreamableLogs())
+        || (pipeline.getIngestionRunner() != null
+            && isIngestionRunnerStreamableLogsEnabled(pipeline.getIngestionRunner()));
+  }
+
+  public static boolean isRunGoing(PipelineStatus run) {
+    return run != null && !FINISHED_RUN_STATES.contains(run.getPipelineState());
+  }
+
+  /**
+   * Whether a run is still going. Runs of one pipeline can overlap, so the latest status row speaks
+   * only for the latest run, and any other run is judged by its own row. A run with no row yet has
+   * just been triggered, so it counts as going.
+   */
+  public boolean isRunGoing(String pipelineFQN, String runId, PipelineStatus latestStatus) {
+    boolean latestRun = latestStatus != null && Objects.equals(runId, latestStatus.getRunId());
+    PipelineStatus run = latestRun ? latestStatus : ownRunStatus(pipelineFQN, runId);
+    return run == null || isRunGoing(run);
+  }
+
+  private PipelineStatus ownRunStatus(String pipelineFQN, String runId) {
+    return runId == null ? null : getPipelineStatus(pipelineFQN, runId);
+  }
+
+  /** Storage keys a run's logs by the run's UUID, so a run named any other way is not there. */
+  private static boolean isStorageRunKey(String runId) {
+    boolean keyed = false;
+    if (runId != null) {
+      try {
+        UUID.fromString(runId);
+        keyed = true;
+      } catch (IllegalArgumentException notAUuid) {
+        LOG.debug("Run '{}' is not keyed for log storage", runId);
+      }
+    }
+    return keyed;
+  }
+
+  private boolean runLogsStored(String pipelineFQN, UUID runId) {
+    boolean stored = false;
+    try {
+      stored = logStorage.logsExist(pipelineFQN, runId);
+    } catch (IOException e) {
+      LOG.warn(
+          "Could not check the stored logs of {}/{}, reading them from the runner: {}",
+          pipelineFQN,
+          runId,
+          e.getMessage());
+    }
+    return stored;
   }
 
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
@@ -1900,9 +2041,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
     assertOwnsRunnerName(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse toggleIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    assertOwnsRunnerName(ingestionPipeline);
+    return pipelineServiceClient.toggleIngestion(ingestionPipeline);
   }
 
   /**
@@ -1983,6 +2133,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       RunOptions options) {
+    validateTestSuiteConfig(ingestionPipeline, service);
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
@@ -1997,9 +2148,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
-  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
-  // runner (service / test-suite / application) and derive the flag from it.
-  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
+  // Default turns the flag on when the server stores logs in S3, and otherwise keeps the pipeline's
+  // own value; overrides resolve the pipeline's owning ingestion runner (service / test-suite /
+  // application) and derive the flag from it.
+  // ADR:2026-11-10-s3-log-storage-drives-streamable-logs
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {
+    if (isS3LogStorageEnabled()) {
+      ingestionPipeline.setEnableStreamableLogs(true);
+    }
+  }
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation

@@ -134,7 +134,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     () => [
       { id: 'name', label: t('label.name'), className: 'tw:w-70' },
       { id: 'description', label: t('label.description') },
-      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-28' },
     ],
     [t]
   );

@@ -1,7 +1,7 @@
 # Only an admin adds roles or policies to a team
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-13 (MCP `create_entity` applies the same check)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-13 (MCP `create_entity` applies the same check) · v3 2026-11-26 (user CSV import applies the closed-team rule)
 - **Deciders:** Sonika Shah
 - **Guard:** `TeamResourceIT` (`test_ownerCannotAddRolesOrPoliciesToOwnTeam`,
   `test_ownerCannotAddRolesToOwnTeamThroughPut`, `test_ownerCanOnlyMoveOwnTeamUnderTeamTheyCanEdit`,
@@ -10,7 +10,8 @@
   `BotImpersonationIT.test_impersonatedAdmin_cannotAddTeamRolesOrImportTeams`,
   `UserResourceIT`
   (`test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin`),
-  `CreateEntityToolTest#aNonAdminCannotCreateATeamWithDefaultRoles`
+  `CreateEntityToolTest#aNonAdminCannotCreateATeamWithDefaultRoles`,
+  `UserImportPrivilegeEscalationIT` (closed-team cases)
 
 ## Context
 Members hold a team's `defaultRoles` as inherited roles and are governed by its `policies`, and by
@@ -41,3 +42,11 @@ team's members an Admin default role. The check now lives in `TeamGrantAuthorize
 `TeamResource` and `create_entity` both call, so the two cannot drift. An impersonated request is
 detected from the request's impersonated user on MCP, which passes its own security context, and
 from `ImpersonationContext` on REST, where Jersey wraps the context.
+
+## Amendment: user CSV import applies the closed-team rule (v3)
+
+User CSV import, direct and `importAsync`, applies the same closed-team check as `POST`, `PUT` and
+`PATCH`. A row writes the user's whole team list, so it is judged on the teams it leaves the user
+in, as a `PATCH` is. The check lives in `UserRepository.changesClosedTeamMembership`, which
+`UserResource` and the user importer both call, so the two cannot drift. A dry run reports the
+same rejection as a real run.

@@ -58,6 +58,7 @@ export const MetricAssetsTab = ({
         className: 'glossary-term-resizable-panel-container',
         children: (
           <AssetsTabs
+            useQueryPost
             assetCount={assetIds?.length ?? 0}
             entityFqn={metric.fullyQualifiedName ?? ''}
             isEntityDeleted={metric.deleted}

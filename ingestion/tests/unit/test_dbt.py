@@ -24,7 +24,6 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
@@ -34,9 +33,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -44,10 +43,12 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource, OMetaLineageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
     build_upstream_node,
@@ -72,10 +73,11 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_table_structure,
     validate_time_interval,
 )
-from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.metadata import RESOLVED_TABLES_CACHE_SIZE, DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.utils.tag_utils import get_tag_label, get_tag_labels
+from metadata.utils.lru_cache import LRUCache
+from metadata.utils.tag_utils import get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -793,6 +795,51 @@ class DbtUnitTest(TestCase):
             "results": "",
         }
         self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
+
+    def test_dbt_relationships_test_skipped_when_tested_table_not_in_openmetadata(self):
+        """A tested model whose table is not in OpenMetadata is dropped from the upstreams,
+        leaving only the `to:` table; attaching the test there sends a column it does not
+        have and the server rejects it with "Invalid column name"."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_tested_table_is_ambiguous(self):
+        """An unresolved tested model with several non-`to:` candidates (e.g. an ephemeral
+        model expanded into its parents) must not be attached to an arbitrary one, nor to
+        the `to:` table dbt lists first in depends_on."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.STG_A", "svc.db.sch.STG_B"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_referenced_table_is_unidentifiable(self):
+        """When the `to:` table cannot be identified (its name matches two upstreams), it
+        cannot be excluded, so falling back to depends_on[0] could land on it again."""
+        manifest_node = self._get_relationships_test_node()
+        upstream_nodes = [
+            UpstreamNode(name="customers", qualified_name="jaffle_shop.customers", fqn="svc.db.sch.CUSTOMERS"),
+            UpstreamNode(name="customers", qualified_name="raw.customers", fqn="svc.db.raw.CUSTOMERS"),
+        ]
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [node.fqn for node in upstream_nodes],
+            "upstream_by_name": build_upstream_name_map(upstream_nodes),
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
 
     def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
         """A model and a source table can share a dbt name; the bare name must not
@@ -1560,56 +1607,6 @@ class DbtUnitTest(TestCase):
         columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
         assert len(columns) == 1
         assert columns[0].tags == []
-
-    def _glossary_terms_by_status(self):
-        """FQN -> GlossaryTerm for every status and for no status, plus one FQN the server does not know"""
-        terms = {
-            f"Gloss.{name}": GlossaryTerm(
-                id=uuid.uuid4(),
-                name=name,
-                fullyQualifiedName=f"Gloss.{name}",
-                description="term",
-                glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
-                entityStatus=status,
-            )
-            for name, status in [*((status.name, status) for status in EntityStatus), ("NoStatus", None)]
-        }
-        return terms, [*terms, "Gloss.Missing"]
-
-    def _glossary_labels(self, tags):
-        return [tag.tagFQN.root for tag in tags if tag.source == TagSource.Glossary]
-
-    def test_dbt_table_meta_glossary_applies_only_approved_terms(self):
-        terms, fqns = self._glossary_terms_by_status()
-        get_tag_label.cache_clear()
-        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
-            result = self.dbt_source_obj.process_dbt_meta(
-                manifest_meta={"openmetadata": {"glossary": fqns}},
-                table_fqn="svc.db.schema.table",
-            )
-        get_tag_label.cache_clear()
-
-        assert self._glossary_labels(result) == ["Gloss.Approved"]
-
-    def test_dbt_column_meta_glossary_applies_only_approved_terms(self):
-        terms, fqns = self._glossary_terms_by_status()
-        manifest_column = SimpleNamespace(
-            name="col",
-            tags=[],
-            meta={"openmetadata": {"glossary": fqns}},
-            description="kept",
-            data_type="varchar",
-        )
-        get_tag_label.cache_clear()
-        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
-            columns = self.dbt_source_obj.parse_data_model_columns(
-                manifest_node=SimpleNamespace(columns={"col": manifest_column}), catalog_node=None
-            )
-        get_tag_label.cache_clear()
-
-        assert len(columns) == 1
-        assert columns[0].description.root == "kept"
-        assert self._glossary_labels(columns[0].tags) == ["Gloss.Approved"]
 
     @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
     def test_parse_data_model_columns_skips_split_when_include_tags_false(self, mock_fqn):
@@ -4417,6 +4414,7 @@ class TestDbtLineageReusesParsedUpstream:
         source.status = MagicMock()
         source.tag_classification_name = "dbtTags"
         source.reported_unresolved_upstreams = set()
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context = SimpleNamespace(get=lambda: self._ctx)
         return source
 
@@ -4446,6 +4444,141 @@ class TestDbtLineageReusesParsedUpstream:
         assert len(results) == 1
         assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
         source.status.warning.assert_not_called()
+
+    def test_a_table_used_as_model_and_upstream_is_searched_for_once(self):
+        """Issue #38288.
+
+        raw_orders is a model and the parent of orders, so parsing meets it twice.
+        It must cost no more searches than orders, which parsing meets once.
+        """
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        catalog = self._catalog()
+        searches = []
+        self._ctx = SimpleNamespace()
+        source = self._source(catalog, searches)
+
+        with self.MANIFEST.open(encoding="utf-8") as manifest_file:
+            manifest = parse_manifest(json.load(manifest_file))
+
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=manifest))]
+
+        orders = next(link for link in links if str(link.table_entity.fullyQualifiedName.root) == self.ORDERS_FQN)
+        assert orders.upstream_table_ids == {self.RAW_FQN: catalog[self.RAW_FQN].id.root}
+
+        def searched(table_name):
+            return sum(1 for search in searches if search.rsplit(".", 1)[-1] == table_name)
+
+        assert searched("orders") > 0
+        assert searched("raw_orders") == searched("orders"), searches
+
+
+class TestDbtOverrideLineageWithoutUpstream:
+    """Issue #37092.
+
+    overrideLineage only cleared a model's old DbtLineage edges while writing a new one, so a
+    model whose manifest no longer lists any parent kept them all. raw_orders declares no parent
+    and orders depends on raw_orders, run through the real yield and lineage path.
+    """
+
+    parsed = TestDbtLineageReusesParsedUpstream
+
+    def _lineage(self, override_lineage, catalog=None, edit_manifest=None, project_name=None):
+        catalog = self.parsed._catalog() if catalog is None else catalog
+        manifest = json.loads(self.parsed.MANIFEST.read_text(encoding="utf-8"))
+        if edit_manifest:
+            edit_manifest(manifest)
+        dbt_manifest = parse_manifest(manifest)
+        if project_name:
+            # The v8 fixture predates metadata.project_name, which dbt 1.6 added with cross-project refs.
+            dbt_manifest.metadata = dbt_manifest.metadata.model_copy(update={"project_name": project_name})
+        harness = self.parsed()
+        harness._ctx = SimpleNamespace()
+        source = harness._source(catalog, [])
+        source.source_config.overrideLineage = override_lineage
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=dbt_manifest))]
+        return {
+            model_str(link.table_entity.fullyQualifiedName): [
+                result.right for result in source.create_dbt_lineage(link)
+            ]
+            for link in links
+        }
+
+    def test_a_model_declaring_no_parent_clears_its_dbt_lineage(self):
+        catalog = self.parsed._catalog()
+
+        lineage = self._lineage(override_lineage=True, catalog=catalog)
+
+        assert lineage[self.parsed.RAW_FQN] == [
+            OMetaDeleteLineageBySource(
+                entity=EntityReference(id=catalog[self.parsed.RAW_FQN].id, type="table"),
+                source=LineageSource.DbtLineage,
+            )
+        ]
+
+    def test_a_model_with_a_parent_gets_its_edge_and_no_delete(self):
+        records = self._lineage(override_lineage=True)[self.parsed.ORDERS_FQN]
+
+        assert [type(record) for record in records] == [OMetaLineageRequest]
+
+    def test_nothing_is_deleted_without_override(self):
+        lineage = self._lineage(override_lineage=False)
+
+        assert lineage[self.parsed.RAW_FQN] == []
+        assert not any(isinstance(r, OMetaDeleteLineageBySource) for records in lineage.values() for r in records)
+
+    def test_a_parent_missing_from_openmetadata_keeps_the_prior_lineage(self):
+        """The model still declares the parent, so an empty upstream here is not a change in dbt."""
+        catalog = self.parsed._catalog()
+        del catalog[self.parsed.RAW_FQN]
+
+        assert self._lineage(override_lineage=True, catalog=catalog)[self.parsed.ORDERS_FQN] == []
+
+    def test_another_projects_injected_model_is_left_alone(self):
+        """dbt Mesh injects an upstream project's public model with no parents; deleting for it
+        would wipe the lineage that project's own ingestion drew."""
+
+        def from_platform(manifest):
+            manifest["nodes"]["model.jaffle_shop.raw_orders"]["package_name"] = "platform"
+
+        lineage = self._lineage(override_lineage=True, edit_manifest=from_platform, project_name="jaffle_shop")
+
+        assert lineage[self.parsed.RAW_FQN] == []
+
+    def test_a_model_of_the_manifests_own_project_still_clears_its_lineage(self):
+        lineage = self._lineage(override_lineage=True, project_name="jaffle_shop")
+
+        assert [type(record) for record in lineage[self.parsed.RAW_FQN]] == [OMetaDeleteLineageBySource]
+
+    def test_a_seed_is_left_alone(self):
+        """A seed never lists parents, and the table may be another project's model."""
+
+        def as_seed(manifest):
+            node = manifest["nodes"].pop("model.jaffle_shop.raw_orders")
+            for model_only in (
+                "compiled",
+                "language",
+                "refs",
+                "sources",
+                "metrics",
+                "compiled_path",
+                "compiled_code",
+                "extra_ctes_injected",
+                "extra_ctes",
+            ):
+                node.pop(model_only, None)
+            node.update(resource_type="seed", unique_id="seed.jaffle_shop.raw_orders", depends_on={"macros": []})
+            manifest["nodes"]["seed.jaffle_shop.raw_orders"] = node
+            manifest["nodes"]["model.jaffle_shop.orders"]["depends_on"]["nodes"] = ["seed.jaffle_shop.raw_orders"]
+
+        assert self._lineage(override_lineage=True, edit_manifest=as_seed)[self.parsed.RAW_FQN] == []
+
+    def test_the_delete_runs_before_query_lineage(self):
+        """Query lineage writes DbtLineage edges from the compiled SQL into the same table; the
+        delete has to come first or it would wipe them."""
+        stages = [stage.processor for stage in DbtServiceTopology().process_dbt_entities.stages]
+
+        assert stages.index("create_dbt_lineage") < stages.index("create_dbt_query_lineage")
 
 
 class TestAddDbtTestResultFailureReporting:
@@ -4506,6 +4639,97 @@ class TestAddDbtTestResultFailureReporting:
         assert "unknown" in recorded.name
 
 
+class TestDbtTestOnMissingColumn:
+    """A schema.yml test on a column the table does not have is a warning, not a failed record (#38812)."""
+
+    TABLE_FQN = "svc.db.sch.orders"
+
+    def _source(self, table):
+        from metadata.ingestion.api.status import Status
+
+        source = DbtSource.__new__(DbtSource)
+        source.status = Status()
+        source.metadata = MagicMock()
+        # The test case does not exist yet; only the table is found
+        source.metadata.get_by_name.side_effect = lambda entity, fqn, **_: table if entity is Table else None
+        source.context = MagicMock()
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 1, 1, 0, 0, 0)
+        return source
+
+    def _table(self):
+        return Table(
+            id=uuid.uuid4(),
+            name="orders",
+            fullyQualifiedName=self.TABLE_FQN,
+            columns=[
+                Column(name="ORDER_TOTAL", dataType=DataType.INT),
+                Column(
+                    name="ADDRESS",
+                    dataType=DataType.STRUCT,
+                    children=[Column(name="CITY", dataType=DataType.STRING)],
+                ),
+            ],
+        )
+
+    def _dbt_test(self, column_name):
+        manifest_node = MagicMock()
+        manifest_node.name = f"not_null_orders_{column_name}"
+        manifest_node.description = None
+        manifest_node.meta = None
+        manifest_node.column_name = column_name
+        manifest_node.test_metadata.name = "not_null"
+        manifest_node.test_metadata.kwargs = {
+            "column_name": column_name,
+            "model": "{{ get_where_subquery(ref('orders')) }}",
+        }
+        result = MagicMock()
+        result.message = "Got 3 results, configured to fail if != 0"
+        result.status.value = "fail"
+        result.unique_id = f"test.demo.{manifest_node.name}"
+        result.timing = []
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: result,
+            DbtCommonEnum.UPSTREAM.value: [self.TABLE_FQN],
+        }
+
+    def test_missing_column_is_skipped_with_an_actionable_warning(self):
+        source = self._source(self._table())
+        dbt_test = self._dbt_test("ORDER_AMOUNT")
+
+        assert list(source.create_dbt_test_case(dbt_test)) == []
+        source.add_dbt_test_result(dbt_test)
+
+        assert source.status.failures == []
+        assert len(source.status.warnings) == 1
+        reason = next(iter(source.status.warnings[0].values()))
+        assert "ORDER_AMOUNT" in reason
+        assert self.TABLE_FQN in reason
+        assert "schema.yml" in reason
+        source.metadata.add_test_case_results.assert_not_called()
+
+    @pytest.mark.parametrize("column_name", ["order_total", "ORDER_TOTAL", "address.city"])
+    def test_existing_column_is_created(self, column_name):
+        source = self._source(self._table())
+
+        results = list(source.create_dbt_test_case(self._dbt_test(column_name)))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
+
+    @pytest.mark.parametrize("columns_known", [False, True], ids=["unknown_table", "table_without_columns"])
+    def test_unverifiable_column_is_left_to_the_server(self, columns_known):
+        table = Table(id=uuid.uuid4(), name="orders", fullyQualifiedName=self.TABLE_FQN, columns=[])
+        source = self._source(table if columns_known else None)
+
+        results = list(source.create_dbt_test_case(self._dbt_test("ORDER_AMOUNT")))
+
+        assert len(results) == 1
+        assert results[0].right is not None, results[0].left
+        assert source.status.warnings == []
+
+
 class TestAddDbtSourceFreshnessResults:
     """
     `dbt source freshness` writes sources.json, whose result objects are a different
@@ -4540,6 +4764,7 @@ class TestAddDbtSourceFreshnessResults:
         source.config.serviceName = "snowflake_svc"
         source.source_config = MagicMock()
         source.source_config.searchAcrossDatabases = search_across_databases
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context.get.return_value.dbt_tests = {}
         source.context.get.return_value.sources_generate_time = sources_generate_time
         source.context.get.return_value.run_results_generate_time = run_results_generate_time
@@ -5613,6 +5838,7 @@ class TestCatalogMapping:
         )
         data_model_link = SimpleNamespace(
             table_entity=tables[1],
+            parse_query_lineage=True,
             datamodel=SimpleNamespace(
                 sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
             ),
@@ -5912,6 +6138,18 @@ class TestDbtSourceIdentifiers:
         assert freshness[DbtCommonEnum.MANIFEST_NODE.value].name == "orders_freshness"
         assert generate_entity_link(freshness) == [f"<#E::table::{self.PHYSICAL_FQN}>"]
 
+    def test_freshness_reuses_the_source_table_lookup(self):
+        """Issue #38288: a freshness result costs no extra search for its source table."""
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        def searches(**files):
+            source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+            self._links(source, self._objects(source, **files))
+            return source.metadata.es_search_from_fqn.call_count
+
+        assert searches(dbt_sources=sources) == searches()
+
     def test_repeated_ingestion_preserves_logical_manifest_identity(self):
         source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
         objects = self._objects(source)
@@ -6041,6 +6279,34 @@ class TestDbtSourceIdentifiers:
             assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
         else:
             assert freshness is None
+        lineage = list(source.create_dbt_lineage(links[self.MODEL_FQN]))
+        assert [edge.right.lineage_request.edge.fromEntity.id.root for edge in lineage] == (
+            [links[physical_fqn].table_entity.id.root] if literal_exists else []
+        )
+
+    def test_wildcard_source_is_kept_for_lineage_where_the_engine_has_wildcard_tables(self, monkeypatch):
+        # Engines without wildcard tables keep the identifier literal (the parametrized test above)
+        from metadata.ingestion.source.database.dbt import metadata as dbt_metadata
+
+        resolve = dbt_metadata.get_table_binding_resolution
+
+        def with_wildcard_tables(metadata, service_name):
+            resolution = resolve(metadata, service_name)
+            resolution.supports_wildcard_tables = True
+            return resolution
+
+        monkeypatch.setattr(dbt_metadata, "get_table_binding_resolution", with_wildcard_tables)
+        source = self._source(self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = "raw_orders_*"
+        # A previous run's expansion must not answer for tables ingested since
+        source.wildcard_expansions.put("trino_svc.RAW_DB.RAW.raw_orders_*", None)
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert links[self.MODEL_FQN].datamodel.upstream == ["trino_svc.RAW_DB.RAW.raw_orders_*"]
+        assert "trino_svc.RAW_DB.RAW.raw_orders_*" not in source.wildcard_expansions
+        assert source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness") is None
 
     @pytest.mark.parametrize("missing_location", ["database", "schema"])
     def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):

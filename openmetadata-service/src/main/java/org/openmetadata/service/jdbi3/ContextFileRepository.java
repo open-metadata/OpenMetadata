@@ -350,6 +350,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return user == null || user.getId() == null ? "" : user.getId().toString();
   }
 
+  /** A context file outside a folder has its bare name, dots included, as its FQN. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextFile file) {
     if (file.getFolder() == null) {
@@ -492,7 +498,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     updated.setFolder(resolvedFolder);
     validateNoDuplicateFileName(original.getName(), resolvedFolder, updated.getId());
     setFullyQualifiedName(updated);
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
     ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);

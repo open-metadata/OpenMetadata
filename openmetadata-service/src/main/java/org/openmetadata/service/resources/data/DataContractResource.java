@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.RefreshFrequencyDeserializer;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
@@ -122,6 +123,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   private static final ObjectMapper YAML_MAPPER =
       new ObjectMapper(new YAMLFactory())
           .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+          .registerModule(RefreshFrequencyDeserializer.module())
           .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   private final ODCSQualityRuleImporter qualityRuleImporter;
@@ -1889,6 +1891,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityRef != null && entityRef.getId() != null) {
       try {
         existing = repository.loadEntityDataContract(entityRef);
+        if (existing != null) {
+          repository.setFieldsInternal(existing, repository.getPutFields());
+        }
       } catch (JsonParsingException e) {
         LOG.debug(
             "Could not read the stored contract for entity {}: {}",

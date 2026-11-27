@@ -73,9 +73,38 @@ class TaskRepositoryAssigneesTest {
     assertEquals(List.of(assignee), task.getAssignees());
   }
 
+  @Test
+  void neverFallsBackToTheTaskCreator() {
+    final Task task =
+        new Task()
+            .withAbout(about)
+            .withAssignees(List.of())
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withCreatedBy(owner);
+
+    resolveAssignees(task);
+
+    assertTrue(task.getAssignees().isEmpty());
+  }
+
+  @Test
+  void fallsBackToTheOtherOwnersWhenTheCreatorIsOneOfThem() {
+    final EntityReference otherOwner =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("other");
+    final Task task = new Task().withAbout(about).withAssignees(List.of()).withCreatedBy(owner);
+
+    resolveAssignees(task, List.of(owner, otherOwner));
+
+    assertEquals(List.of(otherOwner), task.getAssignees());
+  }
+
   private void resolveAssignees(final Task task) {
+    resolveAssignees(task, List.of(owner));
+  }
+
+  private void resolveAssignees(final Task task, final List<EntityReference> owners) {
     try (final var entities = mockStatic(Entity.class)) {
-      entities.when(() -> Entity.getOwners(about)).thenReturn(List.of(owner));
+      entities.when(() -> Entity.getOwners(about)).thenReturn(owners);
       repository.setDefaultAssigneesFromEntityOwners(task);
     }
   }

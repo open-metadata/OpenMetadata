@@ -16,14 +16,17 @@ package org.openmetadata.service.governance.approval;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isWorkflowAutomation;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -56,7 +60,8 @@ import org.openmetadata.service.util.RestUtil;
 /**
  * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
  * into a change request and nothing is published; a request touching only ungated fields, or made by
- * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
+ * a bot on its own behalf that no gating workflow lists in {@code triggeringBots}, proceeds as a
+ * normal write. Impersonated requests are gated as the human.
  */
 @Slf4j
 public final class ApprovalGate {
@@ -154,9 +159,13 @@ public final class ApprovalGate {
       final JsonNode proposed,
       final ChangeActor actor) {
     final String entityType = Entity.getEntityTypeFromObject(entity);
-    final List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    final List<GatingRule> rules =
+        rulesForActor(
+            GovernanceApprovalRegistry.gatingRules(entityType),
+            actor.userName(),
+            actor.impersonatedBy());
     Optional<StagedChange> staged = Optional.empty();
-    if (!rules.isEmpty() && !isBotChange(actor.userName(), actor.impersonatedBy())) {
+    if (!rules.isEmpty()) {
       final Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged =
           stage(
@@ -173,14 +182,70 @@ public final class ApprovalGate {
   /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
   public static boolean mayHold(String entityType, String user) {
     return !RELEASE_GOVERNED_TYPES.contains(entityType)
-        && !GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()
-        && !isBotChange(user, null);
+        && !rulesForActor(GovernanceApprovalRegistry.gatingRules(entityType), user, null).isEmpty();
+  }
+
+  /**
+   * The rules that gate an edit by this actor. A bot's edit is gated only by the workflows that list
+   * it in {@code triggeringBots}, and workflow automation's own writes by none. The bot check reads
+   * the acting user, so it runs only once a workflow gates the edit.
+   */
+  private static List<GatingRule> rulesForActor(
+      List<GatingRule> rules, String user, String impersonatedBy) {
+    List<GatingRule> actorRules = rules;
+    if (!rules.isEmpty() && isBotChange(user, impersonatedBy)) {
+      actorRules =
+          isWorkflowAutomation(user, impersonatedBy)
+              ? List.of()
+              : rules.stream().filter(rule -> rule.triggeringBotUsers().contains(user)).toList();
+    }
+    return actorRules;
   }
 
   /** What {@link #admit} would decide for this edit, without recording metrics. */
   public static Optional<StagedChange> preview(
       EntityInterface original, EntityInterface updated, String user, Edit edit) {
     return evaluate(original, updated, user, null, edit, false);
+  }
+
+  /** The ops an edit would make, whether or not a workflow gates it; nothing is stored. */
+  public static List<MutationOp> previewOps(
+      EntityInterface original, EntityInterface updated, Edit edit) {
+    Edited edited = edited(Entity.getEntityTypeFromObject(updated), original, updated, edit);
+    return MutationPlanner.plan(
+        withoutDerivedTags(edited.base()),
+        withoutDerivedTags(edited.proposed()),
+        edited.changed(),
+        Set.of());
+  }
+
+  /**
+   * The entity without its DERIVED tag labels, the ones it inherits or a glossary term implies. A
+   * save ignores them, and preparing a patch drops them, so planning with them would report a removal
+   * the save never makes.
+   */
+  private static JsonNode withoutDerivedTags(JsonNode entity) {
+    JsonNode copy = entity.deepCopy();
+    dropDerivedTags(copy);
+    return copy;
+  }
+
+  private static void dropDerivedTags(JsonNode node) {
+    if (node == null || !node.isObject()) {
+      return;
+    }
+    if (node.get("tags") instanceof ArrayNode tags) {
+      for (Iterator<JsonNode> it = tags.elements(); it.hasNext(); ) {
+        if (TagLabel.LabelType.DERIVED.value().equals(it.next().path("labelType").asText())) {
+          it.remove();
+        }
+      }
+    }
+    for (String nested : List.of("columns", "children")) {
+      if (node.get(nested) instanceof ArrayNode items) {
+        items.forEach(ApprovalGate::dropDerivedTags);
+      }
+    }
   }
 
   private static Optional<StagedChange> evaluate(
@@ -268,14 +333,16 @@ public final class ApprovalGate {
     byType.forEach(
         (type, refs) -> {
           List<GatingRule> rules =
-              GovernanceApprovalRegistry.gatingRules(type).stream()
-                  .filter(
-                      rule ->
-                          WorkflowTriggerFilters.fieldTriggers(
-                              type, field, rule.includedFields(), rule.excludedFields()))
-                  .toList();
-          // The bot check reads the acting user, so it runs only once a workflow gates the field.
-          if (!rules.isEmpty() && !isBotChange(user, null)) {
+              rulesForActor(
+                  GovernanceApprovalRegistry.gatingRules(type).stream()
+                      .filter(
+                          rule ->
+                              WorkflowTriggerFilters.fieldTriggers(
+                                  type, field, rule.includedFields(), rule.excludedFields()))
+                      .toList(),
+                  user,
+                  null);
+          if (!rules.isEmpty()) {
             List<EntityInterface> entities = Entity.getEntities(refs, field, Include.ALL);
             for (EntityInterface entity : entities) {
               if (rules.stream()
@@ -303,10 +370,10 @@ public final class ApprovalGate {
       Edit edit,
       boolean record) {
     String entityType = Entity.getEntityTypeFromObject(updated);
-    List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    List<GatingRule> rules =
+        rulesForActor(GovernanceApprovalRegistry.gatingRules(entityType), user, impersonatedBy);
     Optional<StagedChange> staged = Optional.empty();
-    // The bot check reads the acting user, so it runs only for an entity type a workflow gates.
-    if (!rules.isEmpty() && !isBotChange(user, impersonatedBy)) {
+    if (!rules.isEmpty()) {
       Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged = planStage(rules, entityType, original, updated, user, impersonatedBy, edit);
       if (record) {
@@ -335,18 +402,24 @@ public final class ApprovalGate {
       String user,
       String impersonatedBy,
       Edit edit) {
+    return stage(
+        rules, entityType, edited(entityType, original, updated, edit), user, impersonatedBy);
+  }
+
+  /** The edit as both a gated and an ungated preview plan it. */
+  private static Edited edited(
+      String entityType, EntityInterface original, EntityInterface updated, Edit edit) {
     keepStoredStatusWhenOmitted(original, updated);
     EntityInterface published =
         edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(published);
-    Set<String> changed = changedFields(entityType, original, base, proposed, edit);
-    return stage(
-        rules,
-        entityType,
-        new Edited(original, published, base, proposed, changed),
-        user,
-        impersonatedBy);
+    return new Edited(
+        original,
+        published,
+        base,
+        proposed,
+        changedFields(entityType, original, base, proposed, edit));
   }
 
   private static Optional<StagedChange> stage(
@@ -365,7 +438,6 @@ public final class ApprovalGate {
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
       rejectMutuallyExclusiveTags(edited.published(), edited.changed());
-      rejectUnapprovedGlossaryTerms(entityType, edited);
       rejectStageMoveOutsideLifecycle(
           entityType, edited.original(), edited.published(), edited.changed());
       final GatedBy review = gating.get(0);
@@ -594,13 +666,6 @@ public final class ApprovalGate {
       EntityStatusAdapter<?> statuses = repository.getEntityLifecycle().adapter();
       repository.validateEntityStatusMove(statuses.read(original), statuses.read(updated));
     }
-  }
-
-  // Not narrowed to changed `tags`: a field's labels change under its container (`columns`, ...),
-  // so a workflow gating that container would otherwise hold a term the write would refuse.
-  private static void rejectUnapprovedGlossaryTerms(String entityType, Edited edited) {
-    Entity.getEntityRepository(entityType)
-        .checkNewlyAppliedGlossaryTermsApproved(edited.original(), edited.published());
   }
 
   private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {
