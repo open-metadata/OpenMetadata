@@ -81,7 +81,6 @@ export const IngestionPipelineList = ({
   const [selectedPipelines, setSelectedPipelines] = useState<
     Array<IngestionPipeline>
   >([]);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<Array<React.Key>>([]);
   const [deploying, setDeploying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
@@ -133,14 +132,14 @@ export const IngestionPipelineList = ({
     [pipelineTypeFilter]
   );
 
-  const handleBulkRedeploy = useCallback(async () => {
-    const selectedPipelines =
-      pipelines?.filter(
-        (p) =>
-          p.fullyQualifiedName && selectedRowKeys.includes(p.fullyQualifiedName)
-      ) ?? [];
+  const selectedRowKeys = useMemo(
+    () =>
+      selectedPipelines.map((pipeline) => pipeline.fullyQualifiedName ?? ''),
+    [selectedPipelines]
+  );
 
-    const promises = (selectedPipelines ?? [])?.map((pipeline) =>
+  const handleBulkRedeploy = useCallback(async () => {
+    const promises = selectedPipelines.map((pipeline) =>
       deployIngestionPipelineById(pipeline.id ?? '')
     );
 
@@ -164,10 +163,10 @@ export const IngestionPipelineList = ({
       );
     } finally {
       setPipelineTypeFilter(undefined);
-      setSelectedRowKeys([]);
+      setSelectedPipelines([]);
       setDeploying(false);
     }
-  }, [pipelines, selectedRowKeys]);
+  }, [selectedPipelines]);
 
   const fetchPipelines = useCallback(
     async ({
@@ -273,6 +272,7 @@ export const IngestionPipelineList = ({
       }
 
       setPipelineTypeFilter(filters.pipelineType as PipelineType[]);
+      setSelectedPipelines([]);
       resetToFirstPage();
     },
     [resetToFirstPage]
@@ -290,8 +290,15 @@ export const IngestionPipelineList = ({
 
   const handleRowChange = useCallback(
     (selectedRowKeys: React.Key[], selectedRows: IngestionPipeline[]) => {
-      setSelectedPipelines(selectedRows);
-      setSelectedRowKeys(selectedRowKeys);
+      setSelectedPipelines((previous) =>
+        selectedRowKeys.flatMap((key) => {
+          const pipeline = [...selectedRows, ...previous].find(
+            ({ fullyQualifiedName }) => fullyQualifiedName === key
+          );
+
+          return pipeline ? [pipeline] : [];
+        })
+      );
     },
     []
   );
@@ -304,6 +311,7 @@ export const IngestionPipelineList = ({
         name: record.fullyQualifiedName,
       }),
       selectedRowKeys,
+      preserveSelectedRowKeys: true,
     }),
     [handleRowChange, selectedRowKeys]
   );
@@ -329,7 +337,7 @@ export const IngestionPipelineList = ({
           color="primary"
           data-testid="bulk-re-deploy-button"
           isDisabled={
-            selectedPipelines?.length === 0 ||
+            selectedPipelines.length === 0 ||
             isFetchingStatus ||
             !isAirflowAvailable ||
             isPlatformDisabled

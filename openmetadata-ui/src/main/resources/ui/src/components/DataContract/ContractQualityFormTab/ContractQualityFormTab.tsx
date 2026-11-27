@@ -248,6 +248,11 @@ export const ContractQualityFormTab: React.FC<{
     });
   };
 
+  const clearSelection = () => {
+    setSelectedKeys([]);
+    handleSelection([]);
+  };
+
   useEffect(() => {
     fetchAllTests();
   }, [testType]);
@@ -289,7 +294,12 @@ export const ContractQualityFormTab: React.FC<{
                 <Dropdown.Menu
                   aria-label={t('label.filter-plural')}
                   selectedKeys={[testType]}
-                  onAction={(key) => setTestType(key as TestCaseType)}>
+                  onAction={(key) => {
+                    if (key !== testType) {
+                      clearSelection();
+                      setTestType(key as TestCaseType);
+                    }
+                  }}>
                   {Object.entries(ContractTestTypeLabelMap).map(
                     ([key, label]) => (
                       <Dropdown.Item id={key} key={key} label={label} />
@@ -331,6 +341,9 @@ export const ContractQualityFormTab: React.FC<{
               type: t('label.name'),
             }),
             onSearch: (value) => {
+              if (value !== searchValue) {
+                clearSelection();
+              }
               setSearchValue(value);
               fetchAllTests({
                 offset: 0,

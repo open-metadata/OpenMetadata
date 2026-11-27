@@ -57,7 +57,7 @@ import {
 } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, omit, uniq } from 'lodash';
 import type { ChangeEvent, Key, KeyboardEvent, SyntheticEvent } from 'react';
 import {
   ReactNode,
@@ -288,7 +288,7 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
+  const [selectedMetrics, setSelectedMetrics] = useState<MetricTreeNode[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
   } = useCurrentUserPreferences();
@@ -417,34 +417,33 @@ const MetricListPage = () => {
     () => realMetrics.map(({ id }) => id),
     [realMetrics]
   );
-  const selectedMetrics = useMemo(
-    () => realMetrics.filter(({ id }) => selectedMetricIds.includes(id)),
-    [realMetrics, selectedMetricIds]
+  const selectedMetricIds = useMemo(
+    () => selectedMetrics.map(({ id }) => id),
+    [selectedMetrics]
+  );
+
+  const setSelectedMetricIds = useCallback(
+    (ids: string[]) =>
+      setSelectedMetrics((current) =>
+        ids.flatMap((id) => {
+          const metric =
+            metricsById.get(id) ?? current.find((item) => item.id === id);
+
+          return metric ? [metric] : [];
+        })
+      ),
+    [metricsById]
   );
 
   const toggleMetricSelection = useCallback(
     (metricId: string, isSelected: boolean) =>
-      setSelectedMetricIds((current) => {
-        if (!isSelected) {
-          return current.filter((selectedId) => selectedId !== metricId);
-        }
-
-        return current.includes(metricId) ? current : [...current, metricId];
-      }),
-    []
+      setSelectedMetricIds(
+        isSelected
+          ? uniq([...selectedMetricIds, metricId])
+          : selectedMetricIds.filter((id) => id !== metricId)
+      ),
+    [selectedMetricIds, setSelectedMetricIds]
   );
-
-  useEffect(() => {
-    setSelectedMetricIds((current) => {
-      const visibleSelection = current.filter((id) =>
-        selectableMetricIds.includes(id)
-      );
-
-      return visibleSelection.length === current.length
-        ? current
-        : visibleSelection;
-    });
-  }, [selectableMetricIds]);
 
   const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
@@ -536,36 +535,31 @@ const MetricListPage = () => {
     []
   );
 
-  const setCurrentPage = useCallback((nextPage: number) => {
-    setSelectedMetricIds([]);
-    setPage(nextPage);
-  }, []);
-
   const handleSearchTextChange = useCallback(
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const nextSearchText = getInputChangeValue(value);
       setSearchText(nextSearchText);
-      setCurrentPage(1);
+      setPage(1);
       debounceSetSearch(nextSearchText.trim());
     },
-    [debounceSetSearch, setCurrentPage]
+    [debounceSetSearch, setPage]
   );
 
   const handleStatusFilterChange = useCallback(
     (status?: EntityStatus) => {
       setStatusFilter(status);
-      setCurrentPage(1);
+      setPage(1);
     },
-    [setCurrentPage]
+    [setPage]
   );
 
   const handleViewModeChange = useCallback(
     (nextMode: MetricViewMode) => {
       setViewMode(nextMode);
-      setCurrentPage(1);
+      setPage(1);
       localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
     },
-    [setCurrentPage]
+    [setPage]
   );
 
   const handleImport = useCallback(() => {
@@ -614,17 +608,22 @@ const MetricListPage = () => {
       // Recursive so a parent's variants are deleted with it; a non-recursive job fails with
       // "metric is not empty" once the parent has variants. Never a hard delete, so the hierarchy
       // stays restorable (ADR:2026-10-28-metric-bulk-delete-is-a-recursive-soft-delete).
-      const unloadedAncestorIds = getUnloadedMetricAncestorIds(
-        rows,
-        selectedMetricIds
-      );
+      const offPageMetrics = selectedMetrics
+        .filter(({ id }) => !metricsById.has(id))
+        .map((metric) => omit(metric, 'children'));
+      const unloadedAncestorIds = [
+        ...getUnloadedMetricAncestorIds(rows, selectedMetricIds),
+        ...offPageMetrics.map(({ id }) => id),
+      ];
       const extraParentIds = unloadedAncestorIds.length
         ? await getMetricParentIds(unloadedAncestorIds).catch(() => undefined)
         : undefined;
       const deleteJobs = await Promise.all(
-        getTopmostSelectedMetrics(rows, selectedMetricIds, extraParentIds).map(
-          ({ id }) => deleteMetricAsync(id, true)
-        )
+        getTopmostSelectedMetrics(
+          [...rows, ...offPageMetrics],
+          selectedMetricIds,
+          extraParentIds
+        ).map(({ id }) => deleteMetricAsync(id, true))
       );
       setPendingDeleteJobIds((ids) => [
         ...ids,
@@ -635,7 +634,7 @@ const MetricListPage = () => {
           count: selectedMetrics.length,
         })
       );
-      setSelectedMetricIds([]);
+      setSelectedMetrics([]);
       setIsDeleteDialogOpen(false);
       setPage(1);
       void queryClient.invalidateQueries({
@@ -648,6 +647,7 @@ const MetricListPage = () => {
       setIsDeletingMetrics(false);
     }
   }, [
+    metricsById,
     queryClient,
     resetHierarchy,
     rows,
@@ -1252,7 +1252,7 @@ const MetricListPage = () => {
           color="secondary"
           data-testid="metric-page-previous"
           isDisabled={page <= 1 || isMetricsBusy}
-          onPress={() => setCurrentPage(page - 1)}>
+          onPress={() => setPage(page - 1)}>
           {t('label.previous')}
         </Button>
         <span
@@ -1264,7 +1264,7 @@ const MetricListPage = () => {
           color="secondary"
           data-testid="metric-page-next"
           isDisabled={page >= totalPages || isMetricsBusy}
-          onPress={() => setCurrentPage(page + 1)}>
+          onPress={() => setPage(page + 1)}>
           {t('label.next')}
         </Button>
       </Box>
@@ -1447,7 +1447,7 @@ const MetricListPage = () => {
           color="link-gray"
           data-testid="clear-metric-selection"
           iconLeading={XClose}
-          onPress={() => setSelectedMetricIds([])}>
+          onPress={() => setSelectedMetrics([])}>
           {t('label.clear')}
         </Button>
         {permissionFlags.canEditAll && (
@@ -1658,10 +1658,8 @@ const MetricListPage = () => {
         rowSelection={{
           selectedRowKeys: selectedMetricIds,
           getCheckboxProps: ({ row }) => ({ disabled: isSyntheticRow(row) }),
-          onChange: (keys) =>
-            setSelectedMetricIds(
-              keys.map(String).filter((id) => selectableMetricIds.includes(id))
-            ),
+          onChange: (keys) => setSelectedMetricIds(keys.map(String)),
+          preserveSelectedRowKeys: true,
         }}
         // Fixed layout so each page's content cannot resize the columns (they jumped between
         // pages); `min-content` keeps the table at least as wide as its visible columns, so it

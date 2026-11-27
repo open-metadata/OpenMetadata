@@ -1191,13 +1191,23 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses normal top-level pagination and clears selection between pages', async () => {
+  it('uses normal top-level pagination and keeps selection between pages', async () => {
+    const pageTwoMetric = {
+      id: 'metric-2',
+      name: 'gross_margin',
+      fullyQualifiedName: 'gross_margin',
+    };
     setHierarchy({ total: 41 });
     renderPage();
     fireEvent.click(await screen.findByTestId('select-metric-1'));
 
     expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
 
+    setHierarchy({
+      rows: [pageTwoMetric],
+      topLevelNodes: [{ row: pageTwoMetric }],
+      total: 41,
+    });
     fireEvent.click(screen.getByTestId('metric-page-next'));
 
     await waitFor(() =>
@@ -1210,12 +1220,26 @@ describe('MetricListPage', () => {
       )
     );
 
-    expect(
-      screen.queryByText(/1 label.selected-lowercase/)
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('select-metric-2')).toBeInTheDocument();
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('select-metric-2'));
+
+    expect(screen.getByText(/2 label.selected-lowercase/)).toBeInTheDocument();
+
+    (getMetricParentIds as jest.Mock).mockResolvedValueOnce(new Map());
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(getMetricParentIds).toHaveBeenCalledWith(['metric-1']);
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(2);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-2', true);
   });
 
-  it('prunes hidden child selections when their group is collapsed', async () => {
+  it('keeps hidden child selections when their group is collapsed', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1252,12 +1276,13 @@ describe('MetricListPage', () => {
     fireEvent.click(screen.getByTestId('metric-card-view-button'));
 
     await waitFor(() =>
-      expect(
-        screen.queryByText(/1 label.selected-lowercase/)
-      ).not.toBeInTheDocument()
+      expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1 })
+      )
     );
 
-    expect(screen.queryByTestId('bulk-delete-metric')).not.toBeInTheDocument();
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-delete-metric')).toBeInTheDocument();
   });
 
   it('passes filtered and selected scopes to bulk edit', async () => {

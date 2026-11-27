@@ -69,6 +69,7 @@ jest.mock('../../common/Table/TableV2', () => {
     locale,
     rowSelection,
     rowKey,
+    searchProps,
   }: {
     columns?: unknown[];
     extraTableFilters?: ReactNode;
@@ -81,6 +82,7 @@ jest.mock('../../common/Table/TableV2', () => {
       preserveSelectedRowKeys?: boolean;
     };
     rowKey: string;
+    searchProps?: { onSearch?: (value: string) => void };
   }) {
     const handleSelect = (id: string) => {
       if (!rowSelection?.onChange) {
@@ -121,6 +123,12 @@ jest.mock('../../common/Table/TableV2', () => {
           Preserve: {rowSelection?.preserveSelectedRowKeys ? 'true' : 'false'}
         </div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
+        <div>Selected: {rowSelection?.selectedRowKeys?.join(',')}</div>
+        <button
+          data-testid="mock-search"
+          onClick={() => searchProps?.onSearch?.('Test Case 2')}>
+          Search
+        </button>
         <div>Columns: {columns?.length || 0}</div>
         {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={String(item[rowKey])}>
@@ -517,6 +525,70 @@ describe('ContractQualityFormTab', () => {
 
       // Test type dropdown functionality would be tested here
       // This requires more detailed implementation of the dropdown mock
+    });
+  });
+
+  describe('Selection on filter and search', () => {
+    const renderSelected = async () => {
+      render(
+        <ContractQualityFormTab
+          initialValues={mockInitialValues}
+          selectedQuality={['test-1', 'off-page-test']}
+          {...commonProps}
+        />
+      );
+
+      expect(
+        await screen.findByText('Selected: test-1,off-page-test')
+      ).toBeInTheDocument();
+    };
+
+    it('should clear the selection when the search changes', async () => {
+      await renderSelected();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mock-search'));
+      });
+
+      expect(screen.getByText('Selected:')).toBeInTheDocument();
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        qualityExpectations: [],
+      });
+    });
+
+    it('should clear the selection when the test type filter changes', async () => {
+      await renderSelected();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('quality-filter-button'));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText('label.column'));
+      });
+
+      expect(screen.getByText('Selected:')).toBeInTheDocument();
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        qualityExpectations: [],
+      });
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseType: TestCaseType.column })
+      );
+    });
+
+    it('should keep the selection when the same test type is picked again', async () => {
+      await renderSelected();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('quality-filter-button'));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText('label.all'));
+      });
+
+      expect(
+        screen.getByText('Selected: test-1,off-page-test')
+      ).toBeInTheDocument();
+      expect(mockOnChange).not.toHaveBeenCalled();
     });
   });
 
