@@ -7149,12 +7149,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * A parent reference kept in a child's stored JSON carries the parent's name, displayName and
    * description from when the child was last written. Re-read it so a parent renamed since then
-   * shows its current labels.
+   * shows its current labels; a parent that is gone keeps its stored copy
+   * (ADR:2026-11-27-stored-parent-references-are-resolved-on-read).
    */
   protected static EntityReference currentReference(EntityReference storedReference) {
-    return storedReference == null || storedReference.getId() == null
-        ? storedReference
-        : Entity.getEntityReferenceById(storedReference.getType(), storedReference.getId(), ALL);
+    EntityReference current = storedReference;
+    if (storedReference != null && storedReference.getId() != null) {
+      try {
+        current =
+            Entity.getEntityReferenceById(storedReference.getType(), storedReference.getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Stored parent reference not found, keeping stored copy: {}", e.getMessage());
+      }
+    }
+    return current;
   }
 
   /** Bulk form of {@link #currentReference}: one query for the parents of a page of entities. */
