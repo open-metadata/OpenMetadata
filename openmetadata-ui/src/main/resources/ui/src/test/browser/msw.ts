@@ -39,6 +39,11 @@ export const defaultHandlers = [
   http.get('/api/v1/dataQuality/testSuites/executionSummary', () =>
     HttpResponse.json({ columnTestSummary: [] })
   ),
+  // Test cases from search, such as a table summary panel's status counts:
+  // none, as for an asset with no tests.
+  http.get('/api/v1/dataQuality/testCases/search/list', () =>
+    HttpResponse.json(EMPTY_LIST)
+  ),
   http.get('/api/v1/permissions', () =>
     HttpResponse.json({ data: Object.values(ResourceEntity).map(allowAll) })
   ),
