@@ -126,7 +126,8 @@ export interface KnowledgeItem {
     content?: string;
     /**
      * True when content is a lead excerpt or has been omitted to fit the context budget; fetch
-     * the full body via the get_knowledge_content tool using this item's fullyQualifiedName.
+     * the full body with get_entity_details using this item's fullyQualifiedName and
+     * include=["content"].
      */
     contentTruncated?:   boolean;
     displayName?:        string;

@@ -18,21 +18,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.governance.workflows.Workflow;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.api.MigrationProcessImpl;
 
 /**
  * Gives the stored SuggestionTaskWorkflow, which seeding never updates once it exists, the 2.1.1
  * owner fallback: a suggestion on an asset nobody owns goes to its service's owners, then its
  * domains' owners, then the admins
  * (ADR:2026-11-20-suggestion-tasks-fall-back-through-every-owner-to-the-admins). The row is
- * changed as a tree; the workflow is then deployed again, because the deployed process keeps the
- * assignee settings it was deployed with. That deploy is why this step is a named exception in
- * MigrationArchitectureTest.
+ * changed as a tree; the server deploys the changed workflow when it starts
+ * (ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts).
  */
 @Slf4j
 public final class SuggestionTaskOwnerFallbackMigration {
@@ -58,27 +53,18 @@ public final class SuggestionTaskOwnerFallbackMigration {
 
   /** A database without the workflow gets it, settings included, from the seed on startup. */
   public static void routeUnownedSuggestionsToOwnersThenAdmins(
-      final Handle handle,
-      final ConnectionType connectionType,
-      final MigrationProcessImpl process) {
+      final Handle handle, final ConnectionType connectionType) {
     handle
         .createQuery(SELECT_WORKFLOW)
         .bind(NAME, WORKFLOW_NAME)
         .mapTo(String.class)
         .findOne()
         .map(JsonUtils::readTree)
-        .ifPresent(stored -> storeAndDeploy(handle, connectionType, process, stored));
+        .ifPresent(stored -> store(handle, connectionType, stored));
   }
 
-  /**
-   * Deploys even when the row needs no change: a run interrupted after the write, before the
-   * deploy, left Flowable on the old process, and its step was not recorded.
-   */
-  private static void storeAndDeploy(
-      final Handle handle,
-      final ConnectionType connectionType,
-      final MigrationProcessImpl process,
-      final JsonNode stored) {
+  private static void store(
+      final Handle handle, final ConnectionType connectionType, final JsonNode stored) {
     final ObjectNode updated = withOwnerFallback(stored);
     if (!updated.equals(stored)) {
       handle
@@ -88,9 +74,6 @@ public final class SuggestionTaskOwnerFallbackMigration {
           .execute();
       LOG.info("[v211] {} now falls back through every owner to the admins", WORKFLOW_NAME);
     }
-    process.initializeWorkflowHandler();
-    WorkflowHandler.getInstance()
-        .deploy(new Workflow(JsonUtils.treeToValue(updated, WorkflowDefinition.class)));
   }
 
   /** {@code stored} with the owner cascade on, and the admin fallback unless an admin chose one. */

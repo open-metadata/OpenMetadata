@@ -1,4 +1,18 @@
 {
+  "ontologyConcept": {
+    "indexName": "ontology_concept_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyConcept",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
+  "ontologyProperty": {
+    "indexName": "ontology_property_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyProperty",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
   "table": {
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",

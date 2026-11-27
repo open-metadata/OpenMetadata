@@ -16,15 +16,21 @@ package org.openmetadata.service.alerting.content.template;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.helpers.BuildEntityUrlHelper;
@@ -128,6 +134,48 @@ class TaskEntityCreatedTemplateTest {
     assertTrue(out.contains("removed ifbi_sensitivity.Confidential Critical"), out);
     assertTrue(out.contains("@Data Steward"), out);
     assertFalse(out.contains("/task/TASK-00761"), () -> "the broken singular route: " + out);
+  }
+
+  @Test
+  void dataContractApprovalTask_linksTheContractTabOfItsTable() throws Exception {
+    String tableFqn = "svc.db.sch.customers";
+    String contractFqn = tableFqn + ".dataContract_Customers Contract";
+    Map<String, Object> task =
+        Map.of(
+            "taskId", "TASK-00433",
+            "fullyQualifiedName", "TASK-00433",
+            "type", "RequestApproval",
+            "about",
+                Map.of(
+                    "type",
+                    Entity.DATA_CONTRACT,
+                    "name",
+                    "Customers Contract",
+                    "fullyQualifiedName",
+                    contractFqn));
+    EntityReference storedRef = new EntityReference().withId(UUID.randomUUID()).withType("table");
+    DataContract contract =
+        new DataContract().withFullyQualifiedName(contractFqn).withEntity(storedRef);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.DATA_CONTRACT, contractFqn, "", Include.ALL))
+          .thenReturn(contract);
+      entity
+          .when(() -> Entity.getEntityReference(storedRef, Include.ALL))
+          .thenReturn(
+              new EntityReference()
+                  .withId(storedRef.getId())
+                  .withType("table")
+                  .withFullyQualifiedName(tableFqn));
+      String out = render(templateBody, task);
+
+      assertTrue(out.contains("href=\"" + BASE_URL + "/tasks/TASK-00433\">TASK-00433</a>"), out);
+      assertTrue(
+          out.contains("href=\"" + BASE_URL + "/table/" + tableFqn + "/contract\""),
+          () -> "the contract link must open its table's Contract tab: " + out);
+      assertFalse(out.contains("href=\"\""), () -> "no empty links: " + out);
+    }
   }
 
   @Test

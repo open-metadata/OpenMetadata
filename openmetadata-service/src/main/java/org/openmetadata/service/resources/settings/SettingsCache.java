@@ -78,6 +78,7 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.DeploymentConfig;
 import org.openmetadata.service.config.source.DeploymentConfigReconciler;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
@@ -232,7 +233,7 @@ public class SettingsCache {
           if (!JsonUtils.pojoToJson(mergedSettings)
               .equals(JsonUtils.pojoToJson(existingSearchSettings))) {
             storedSearchSettings.setConfigValue(mergedSettings);
-            Entity.getSystemRepository().createOrUpdate(storedSearchSettings);
+            storeMergedSearchSettings(storedSearchSettings);
           }
         }
       }
@@ -824,6 +825,20 @@ public class SettingsCache {
         }
       }
       return fetchedSettings;
+    }
+  }
+
+  /**
+   * Stores the search settings merged with the defaults. A failed write keeps the stored settings,
+   * which the server starts with, rather than stopping the start.
+   */
+  private static void storeMergedSearchSettings(final Settings merged) {
+    try {
+      Entity.getSystemRepository().createOrUpdate(merged);
+    } catch (CustomExceptionMessage notStored) {
+      LOG.error(
+          "Could not store the search settings merged with the defaults; keeping the stored ones",
+          notStored);
     }
   }
 }

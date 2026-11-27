@@ -46,7 +46,10 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;

@@ -28,6 +28,7 @@ import alertsClassBase, {
   AlertAiTemplateSectionProps,
 } from '../../../utils/AlertsClassBase';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
+import AlertEnabledSwitch from '../../Alerts/AlertEnabledSwitch/AlertEnabledSwitch';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import {
   ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS,
@@ -38,6 +39,7 @@ import {
   getAlertAiResources,
   getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
+  getAlertFieldAccess,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
@@ -91,6 +93,8 @@ const ReadOnlyRulesNotice = ({
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
   alert,
+  canEditEnabled = true,
+  isEditMode = false,
   isViewOnly,
   inlineAlert,
   onChange,
@@ -157,7 +161,8 @@ function AlertAiFormFields({
     shouldShowFiltersSection: shouldDisplayFiltersSection,
   });
 
-  const areRulesReadOnly = isViewOnly || alert?.hasRulesWithoutSelections;
+  const { isAlertEnabled, isFieldDisabled, areRulesReadOnly } =
+    getAlertFieldAccess({ alert, isEditMode, isViewOnly, value });
 
   // `rendered` gates registration on the section actually being on screen.
   // useFieldDoc registers on the doc alone, so without it a source with no
@@ -218,12 +223,17 @@ function AlertAiFormFields({
     <Box className={ALERT_AI_FORM_CLASS_NAMES.formStack} direction="col">
       {showBasicFields && (
         <>
+          <AlertEnabledSwitch
+            canEdit={canEditEnabled}
+            isEnabled={isAlertEnabled}
+            onChange={(enabled) => onChange?.((prev) => ({ ...prev, enabled }))}
+          />
           <div {...nameDoc}>
             <Input
               isRequired
               data-testid="alert-name-input"
               hint={validationErrors?.displayName}
-              isDisabled={isViewOnly}
+              isDisabled={isFieldDisabled}
               isInvalid={Boolean(validationErrors?.displayName)}
               label={t('label.name')}
               placeholder={t('label.name')}
@@ -239,7 +249,7 @@ function AlertAiFormFields({
             <AlertAiSection title={t('label.description')}>
               <TextArea
                 data-testid="description"
-                isDisabled={isViewOnly}
+                isDisabled={isFieldDisabled}
                 placeholder={t('label.description')}
                 rows={ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS}
                 size="sm"
@@ -270,7 +280,7 @@ function AlertAiFormFields({
               isRequired
               capabilities={capabilities}
               hint={validationErrors?.resources}
-              isDisabled={isViewOnly}
+              isDisabled={isFieldDisabled}
               isInvalid={Boolean(validationErrors?.resources)}
               value={selectedSources}
               onChange={handleSourceChange}
@@ -321,7 +331,7 @@ function AlertAiFormFields({
 
       <div {...destinationsDoc}>
         <AlertAiDestinationSection
-          isViewOnly={isViewOnly}
+          isViewOnly={isFieldDisabled}
           recipientCategories={support.recipientCategories}
           selectedSources={selectedSources}
           validationErrors={validationErrors}
@@ -333,7 +343,7 @@ function AlertAiFormFields({
       <AlertAiTemplateField
         TemplateSection={TemplateSection}
         docProps={notificationTemplateDoc}
-        isViewOnly={isViewOnly}
+        isViewOnly={isFieldDisabled}
         loading={templatesLoading}
         templateResourcePermission={templateResourcePermission}
         templates={templates}

@@ -14,12 +14,14 @@ import json
 
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
+
 from .database_test_container import DataBaseTestContainer  # noqa: TID252
 
 
 class MySQLTestContainer(DataBaseTestContainer):
     def __init__(self):
-        self.mysql_container = MySqlContainer("mysql:8.4.13")
+        self.mysql_container = MySqlContainer(mysql_source_image())
         self.mysql_container.with_env("TC_POOLING_INTERVAL", "3")
         self.start()
         self.connection_url = self.mysql_container.get_connection_url()

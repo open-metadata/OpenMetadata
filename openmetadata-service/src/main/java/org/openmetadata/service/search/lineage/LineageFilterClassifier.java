@@ -37,7 +37,13 @@ public final class LineageFilterClassifier {
           "service.name",
           "domain.displayName",
           "serviceType",
-          "serviceType.keyword");
+          "serviceType.keyword",
+          "database",
+          "databaseSchema",
+          "columns",
+          "ownerDisplayName",
+          "dataProducts",
+          "glossaryTags");
 
   private LineageFilterClassifier() {}
 

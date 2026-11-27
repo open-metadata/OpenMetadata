@@ -37,7 +37,6 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
-import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -48,21 +47,21 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskResolutionType;
-import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * An edit an approval workflow holds is checked for glossary terms that are not Approved when it is
- * staged, as a write would be, so no change request is opened for a term the write would refuse.
+ * An approval workflow holds an edit that applies a glossary term that is not Approved for review
+ * like any other. When the review approves it, the edit is published, but the term is held back as
+ * a pending label, as any write holds it, until the term itself is approved.
  */
 // Each test deploys its own Enforce workflow, which receives the signals of every event on its
 // entity type, so the class runs alone instead of beside the shared-lane tests.
@@ -70,78 +69,33 @@ import org.openmetadata.service.Entity;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestUnapprovedTermIT {
-  private static final String NOT_APPROVED = "Only Approved glossary terms can be applied";
   private static final String GATE_TAGS = "\"tags\"";
-  private static final String GATE_COLUMNS = "\"columns\"";
   private static final String JSON_PATCH = "application/json-patch+json";
 
   @Test
-  void heldPatchApplyingUnapprovedTermIsRejected(TestNamespace ns) throws Exception {
+  void heldEditWithUnapprovedTermWaitsForReview(TestNamespace ns) throws Exception {
     GlossaryTerm draft = draftTerm(ns);
     Table table = gatedTable(ns, "crdpatch", GATE_TAGS);
 
     HttpResponse<String> response = patchTable(table, addTableTag(draft));
 
-    assertRejectedWithoutRequest(response, table, draft);
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    assertEquals(1, requestsFor(table.getId()).size());
     assertTrue(tagFqns(table).isEmpty());
+    assertTrue(pendingTargets(draft).isEmpty());
   }
 
   @Test
-  void heldPutApplyingUnapprovedTermIsRejected(TestNamespace ns) throws Exception {
+  void approvingTheHeldEditHoldsTheUnapprovedTermBack(TestNamespace ns) throws Exception {
     GlossaryTerm draft = draftTerm(ns);
-    CreateTable create = tableRequest(ns, DatabaseSchemaTestFactory.createSimple(ns), "crdput");
-    Table table = gate(ns, createTable(create), GATE_TAGS);
+    Table table = gatedTable(ns, "crdapprove", GATE_TAGS);
+    HttpResponse<String> held = patchTable(table, addTableTag(draft));
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), held.statusCode(), held.body());
 
-    HttpResponse<String> response =
-        sendAsAdmin(
-            "PUT",
-            "/v1/tables",
-            "application/json",
-            JsonUtils.pojoToJson(create.withTags(List.of(label(draft)))));
+    approveAndAwaitApplied(table);
 
-    assertRejectedWithoutRequest(response, table, draft);
     assertTrue(tagFqns(table).isEmpty());
-  }
-
-  // A column's labels change under `columns`, not `tags`, so a workflow gating only columns must
-  // still see the term.
-  @Test
-  void heldColumnEditApplyingUnapprovedTermIsRejected(TestNamespace ns) throws Exception {
-    GlossaryTerm draft = draftTerm(ns);
-    Table table = gatedTable(ns, "crdcol", GATE_COLUMNS);
-    String addColumnTag =
-        "[{\"op\":\"add\",\"path\":\"/columns/0/tags\",\"value\":[%s]}]"
-            .formatted(JsonUtils.pojoToJson(label(draft)));
-
-    HttpResponse<String> response = patchTable(table, addColumnTag);
-
-    assertRejectedWithoutRequest(response, table, draft);
-    assertTrue(columnTagFqns(table).isEmpty());
-  }
-
-  @Test
-  void heldBulkPutApplyingUnapprovedTermFailsOnlyThatItem(TestNamespace ns) throws Exception {
-    GlossaryTerm draft = draftTerm(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
-    CreateTable governed = tableRequest(ns, schema, "crdbulk");
-    CreateTable ungoverned = tableRequest(ns, schema, "crdfree");
-    Table table = gate(ns, createTable(governed), GATE_TAGS);
-    createTable(ungoverned);
-
-    BulkOperationResult result =
-        BulkApi.upsert(
-            "tables",
-            List.of(
-                governed.withTags(List.of(label(draft))),
-                ungoverned.withTags(List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL))),
-            true,
-            SdkClients.getAdminToken());
-
-    assertEquals(1, result.getNumberOfRowsFailed(), JsonUtils.pojoToJson(result));
-    assertEquals(0, result.getNumberOfRowsPendingApproval(), JsonUtils.pojoToJson(result));
-    assertTrue(result.getFailedRequest().getFirst().getMessage().contains(NOT_APPROVED));
-    assertTrue(requestsFor(table.getId()).isEmpty());
-    assertTrue(tagFqns(table).isEmpty());
+    assertEquals(1, pendingTargets(draft).size());
   }
 
   @Test
@@ -176,45 +130,43 @@ class ChangeRequestUnapprovedTermIT {
     assertEquals(List.of(term.getFullyQualifiedName()), tagFqns(table));
   }
 
-  // A term demoted after its edit was held is caught when the approved edit is applied: the request
-  // stays open with the reason, and nothing is published.
+  // A term demoted after its edit was held is held back when the approved edit is published.
   @Test
-  void approvedEditWhoseTermWasDemotedStaysOpenWithTheReason(TestNamespace ns) throws Exception {
+  void approvedEditWhoseTermWasDemotedHoldsTheTermBack(TestNamespace ns) throws Exception {
     GlossaryTerm term = approvedTerm(ns);
     Table table = gatedTable(ns, "crdemote", GATE_TAGS);
     HttpResponse<String> held = patchTable(table, addTableTag(term));
     assertEquals(Response.Status.ACCEPTED.getStatusCode(), held.statusCode(), held.body());
     deprecate(term);
 
+    approveAndAwaitApplied(table);
+
+    assertTrue(tagFqns(table).isEmpty());
+    assertEquals(1, pendingTargets(term).size());
+  }
+
+  private static void approveAndAwaitApplied(Table table) {
     resolveAs(
         SdkClients.user1Client(),
         awaitOpenApprovalTask(table.getFullyQualifiedName()),
         "approve",
         TaskResolutionType.Approved,
         null);
-
-    Awaitility.await("apply refused with the not-approved reason")
+    Awaitility.await("held edit applied")
         .atMost(Duration.ofSeconds(120))
         .pollInterval(Duration.ofSeconds(2))
         .until(
-            () ->
-                String.valueOf(requestsFor(table.getId()).getFirst().getStatusReason())
-                    .contains(NOT_APPROVED));
-    ChangeRequest request = requestsFor(table.getId()).getFirst();
-    assertEquals(ChangeRequestStatus.PENDING, request.getStatus());
-    assertTrue(request.getStatusReason().contains(term.getFullyQualifiedName()));
-    assertTrue(tagFqns(table).isEmpty());
+            () -> requestsFor(table.getId()).getFirst().getStatus() == ChangeRequestStatus.APPLIED);
   }
 
-  private static void assertRejectedWithoutRequest(
-      HttpResponse<String> response, Table table, GlossaryTerm term) {
-    assertEquals(
-        Response.Status.BAD_REQUEST.getStatusCode(), response.statusCode(), response.body());
-    assertTrue(
-        response.body().contains(NOT_APPROVED)
-            && response.body().contains(term.getFullyQualifiedName()),
-        response.body());
-    assertTrue(requestsFor(table.getId()).isEmpty(), "no change request is opened");
+  private static List<String> pendingTargets(GlossaryTerm term) {
+    return Entity.getCollectionDAO()
+        .tagUsageDAO()
+        .listPendingTargetHashes(
+            TagLabel.TagSource.GLOSSARY.ordinal(),
+            FullyQualifiedName.buildHash(term.getFullyQualifiedName()),
+            "",
+            100);
   }
 
   private static Table gatedTable(TestNamespace ns, String name, String gatedField) {
@@ -261,17 +213,6 @@ class ChangeRequestUnapprovedTermIT {
     return listOrEmpty(
             SdkClients.adminClient().tables().get(table.getId().toString(), "tags").getTags())
         .stream()
-        .map(TagLabel::getTagFQN)
-        .toList();
-  }
-
-  private static List<String> columnTagFqns(Table table) {
-    return SdkClients.adminClient()
-        .tables()
-        .get(table.getId().toString(), "columns,tags")
-        .getColumns()
-        .stream()
-        .flatMap(column -> listOrEmpty(column.getTags()).stream())
         .map(TagLabel::getTagFQN)
         .toList();
   }

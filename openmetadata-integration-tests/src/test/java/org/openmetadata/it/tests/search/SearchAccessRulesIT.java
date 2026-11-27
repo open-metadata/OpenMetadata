@@ -604,7 +604,7 @@ public class SearchAccessRulesIT {
         cleanup);
   }
 
-  private static OpenMetadataClient deniedUser(
+  static OpenMetadataClient deniedUser(
       OpenMetadataClient admin,
       String prefix,
       String resource,
@@ -688,7 +688,7 @@ public class SearchAccessRulesIT {
         });
   }
 
-  private static void assumeTheServerTrustsHarnessSignedTokens() {
+  static void assumeTheServerTrustsHarnessSignedTokens() {
     Assumptions.assumeTrue(
         !OssTestServer.isExternalMode(),
         "Signs the callers' tokens with the harness key, which a deployed cluster rejects");

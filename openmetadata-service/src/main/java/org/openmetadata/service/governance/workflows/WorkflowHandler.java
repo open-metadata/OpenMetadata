@@ -13,8 +13,12 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import com.zaxxer.hikari.HikariDataSource;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -509,7 +513,79 @@ public class WorkflowHandler {
   }
 
   public void deploy(Workflow workflow) {
-    deploy(workflow, toBpmn(workflow));
+    deploy(workflow, toBpmn(workflow), !isMigrationContext);
+  }
+
+  /**
+   * Deploys each workflow whose BPMN, built by this server from its stored definition, differs from
+   * its latest deployment. A migration changes only rows, so changes to a stored workflow or to how
+   * a workflow is built reach Flowable here, on the first start after an upgrade
+   * (ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts).
+   *
+   * @return the names of the workflows deployed
+   */
+  public List<String> deployChanged(List<WorkflowDefinition> workflowDefinitions) {
+    final List<String> deployed = new ArrayList<>();
+    for (final WorkflowDefinition workflowDefinition : workflowDefinitions) {
+      if (deployIfChanged(workflowDefinition)) {
+        deployed.add(workflowDefinition.getName());
+      }
+    }
+    return List.copyOf(deployed);
+  }
+
+  /** A workflow that cannot be built or deployed keeps its deployment, so the others still start. */
+  private boolean deployIfChanged(WorkflowDefinition workflowDefinition) {
+    boolean deployed = false;
+    try {
+      final Workflow workflow = new Workflow(workflowDefinition);
+      final WorkflowBpmn bpmn = toBpmn(workflow);
+      if (!isDeployedAs(workflow, bpmn)) {
+        deploy(workflow, bpmn, false);
+        deployed = true;
+      }
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Workflow '{}' could not be deployed and keeps its current deployment",
+          workflowDefinition.getName(),
+          e);
+    }
+    return deployed;
+  }
+
+  private boolean isDeployedAs(Workflow workflow, WorkflowBpmn bpmn) {
+    return latestDeploymentHolds(workflow.getMainWorkflow().getWorkflowName(), bpmn.main())
+        && latestDeploymentHolds(workflow.getTriggerWorkflow().getWorkflowName(), bpmn.trigger());
+  }
+
+  private boolean latestDeploymentHolds(String workflowName, byte[] bpmn) {
+    final RepositoryService repositoryService = processEngine.getRepositoryService();
+    return repositoryService
+        .createDeploymentQuery()
+        .deploymentName(workflowName)
+        .orderByDeploymentTime()
+        .desc()
+        .listPage(0, 1)
+        .stream()
+        .anyMatch(
+            deployment ->
+                Arrays.equals(
+                    bpmn, deployedBpmn(repositoryService, deployment.getId(), workflowName)));
+  }
+
+  private static byte[] deployedBpmn(
+      RepositoryService repositoryService, String deploymentId, String workflowName) {
+    try (InputStream bpmn =
+        repositoryService.getResourceAsStream(deploymentId, bpmnResourceName(workflowName))) {
+      return bpmn.readAllBytes();
+    } catch (IOException e) {
+      throw new UncheckedIOException(
+          "Cannot read the deployed BPMN of workflow '%s'".formatted(workflowName), e);
+    }
+  }
+
+  private static String bpmnResourceName(String workflowName) {
+    return "%s-workflow.bpmn20.xml".formatted(workflowName);
   }
 
   /**
@@ -520,10 +596,10 @@ public class WorkflowHandler {
     Workflow workflow = new Workflow(workflowDefinition);
     WorkflowBpmn bpmn = toBpmn(workflow);
     deleteWorkflowDefinition(workflowDefinition);
-    deploy(workflow, bpmn);
+    deploy(workflow, bpmn, !isMigrationContext);
   }
 
-  private void deploy(Workflow workflow, WorkflowBpmn bpmn) {
+  private void deploy(Workflow workflow, WorkflowBpmn bpmn, boolean drainOldVersions) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
     ManagementService managementService = processEngine.getManagementService();
 
@@ -583,8 +659,7 @@ public class WorkflowHandler {
         repositoryService
             .createDeployment()
             .addBytes(
-                String.format(
-                    "%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
+                bpmnResourceName(workflow.getMainWorkflow().getWorkflowName()),
                 bpmnMainWorkflowBytes)
             .name(workflow.getMainWorkflow().getWorkflowName())
             .deploy();
@@ -599,9 +674,7 @@ public class WorkflowHandler {
                       repositoryService
                           .createDeployment()
                           .addBytes(
-                              String.format(
-                                  "%s-workflow.bpmn20.xml",
-                                  workflow.getTriggerWorkflow().getWorkflowName()),
+                              bpmnResourceName(workflow.getTriggerWorkflow().getWorkflowName()),
                               bpmnTriggerWorkflowBytes)
                           .name(workflow.getTriggerWorkflow().getWorkflowName())
                           .deploy();
@@ -609,13 +682,14 @@ public class WorkflowHandler {
               return deployed;
             });
 
-    // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
-    // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
-    // backlog (customers with long-running approval instances accumulate tens of thousands of
-    // versions), running the drain per iteration turns migrate into a multi-hour job. Runtime
-    // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
-    // just deferred out of the migration critical path.
-    if (!isMigrationContext) {
+    // Cleanup path is skipped in migration context and in the deploy on start (deployChanged).
+    // `redeployGovernanceWorkflows` in v1131 calls deploy() for every workflow_definition in a
+    // tight loop, as the deploy on start does after a release that changes how workflows are built;
+    // combined with a large ACT_RE_PROCDEF backlog (customers with long-running approval instances
+    // accumulate tens of thousands of versions), running the drain per iteration turns migrate, or
+    // a start, into a multi-hour job. Runtime user-CRUD deploys still trigger the drain below, so
+    // the backlog is not orphaned — it is just deferred out of the critical path.
+    if (drainOldVersions) {
       // Spared by version, not by deployment: a deploy of the same workflow that overlaps this one
       // may already have deployed a newer version, which this drain must not delete
       // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).

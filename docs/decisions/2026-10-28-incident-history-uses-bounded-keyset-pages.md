@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `IncidentHistorySqlTest`, `TestCaseResolutionStatusRepositoryTest`,
+- **Guard:** `IncidentHistorySqlIT`, `TestCaseResolutionStatusRepositoryTest`,
   `StaleIncidentStatusIT.historyLimitAndCursorKeepOlderEventsReachable`, and
   `ActivityFeedProvider.test.tsx`
 - **Related:** PR #36442

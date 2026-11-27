@@ -17,6 +17,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { DEFAULT_DOMAIN_VALUE } from '../../constants/constants';
@@ -75,8 +76,13 @@ export const useIncidentList = ({
     handlePageSizeChange,
   } = usePaging();
 
+  // Only the latest request may write rows and paging: a slower response for a
+  // page the user already left must not overwrite the page they are on.
+  const latestRequestId = useRef(0);
+
   const fetchTestCaseIncidents = useCallback(
     async (params: TestCaseIncidentStatusParams) => {
+      const requestId = ++latestRequestId.current;
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
         const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
@@ -89,6 +95,9 @@ export const useIncidentList = ({
             activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain,
           ...params,
         });
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
         const assigneeOptions = data.reduce((acc, curr) => {
           const assignee = curr.testCaseResolutionStatusDetails?.assignee;
           const isExist = acc.some((item) => item.value === assignee?.name);
@@ -112,9 +121,13 @@ export const useIncidentList = ({
         setTestCaseListData((prev) => ({ ...prev, data: data }));
         handlePagingChange(paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
+        if (requestId === latestRequestId.current) {
+          setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
+        }
       }
     },
     [
@@ -126,15 +139,10 @@ export const useIncidentList = ({
     ]
   );
 
+  // A page change reaches the fetch effect through `currentPage`.
   const handlePagingClick = useCallback(
-    ({ currentPage }: PagingHandlerParams) => {
-      fetchTestCaseIncidents({
-        ...filters,
-        offset: (currentPage - 1) * pageSize,
-      });
-      handlePageChange(currentPage);
-    },
-    [fetchTestCaseIncidents, filters, pageSize, handlePageChange]
+    ({ currentPage: page }: PagingHandlerParams) => handlePageChange(page),
+    [handlePageChange]
   );
 
   const pagingData = useMemo(
@@ -159,12 +167,16 @@ export const useIncidentList = ({
 
   useEffect(() => {
     if (hasViewAccess) {
-      fetchTestCaseIncidents(filters);
+      fetchTestCaseIncidents({
+        ...filters,
+        offset: (currentPage - 1) * pageSize,
+      });
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
   }, [
     hasViewAccess,
+    currentPage,
     pageSize,
     filters,
     activeDomain,

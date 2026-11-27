@@ -17,7 +17,7 @@ import { redirectToHomePage } from '../../utils/common';
 import {
   disableAiAppMode,
   enableAiAppMode,
-  switchToAiModeViaProfileToggle,
+  switchToAiModeViaSidebarSwitcher,
 } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -92,7 +92,7 @@ test.describe(
       );
       await page.keyboard.press('Escape');
 
-      await switchToAiModeViaProfileToggle(page);
+      await switchToAiModeViaSidebarSwitcher(page);
       await expect(root(page)).toHaveClass(/dark-mode/);
       expect(await page.evaluate(() => localStorage.getItem('ui-theme'))).toBe(
         'dark'

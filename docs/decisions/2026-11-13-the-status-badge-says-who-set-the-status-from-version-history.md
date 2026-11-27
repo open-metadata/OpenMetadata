@@ -1,7 +1,7 @@
 # The status badge says who set the status, from the entity's version history
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-16 (in-session folding also needs the same bot)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `EntityStatusDecision.utils.test.ts` (the lookup and every wording case);
   `EntityStatusBadge.test.tsx`; `WorkflowRunApprovalOutcome.spec.ts` (a reviewer approves a
@@ -51,3 +51,12 @@ recorded has no run record to read at all.
   `changeSummary` would fix it, at the cost of a change to every entity update.
 - A user who cannot read workflow runs (`VIEW_ALL` on workflow definitions) still sees who set the
   status and when, without the workflow.
+
+## Amendment — 2026-11-16: in-session folding also needs the same bot
+
+ADR:2026-11-16-every-version-names-the-bot-of-the-request-that-wrote-it folds an in-session edit
+into the previous version only when its `updatedBy` and its `impersonatedBy` both match. The later
+edit the consequence above describes is folded only when the user makes it the same way as the
+status change, directly or through the same bot. A user's own edit after a bot changed the status
+for them, or a bot's edit after the user did, writes a version of its own and leaves the
+status-setting version and its time as they were.

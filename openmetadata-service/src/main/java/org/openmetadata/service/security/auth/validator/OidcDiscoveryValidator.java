@@ -2,6 +2,7 @@ package org.openmetadata.service.security.auth.validator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -127,8 +128,28 @@ public class OidcDiscoveryValidator {
       LOG.error("Error during discovery validation", e);
       return ValidationErrorBuilder.createFieldError(
           ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-          "Failed to validate against discovery document: " + e.getMessage());
+          "Failed to validate against discovery document: " + reason(discoveryUri, e));
     }
+  }
+
+  /** Why the discovery check failed, readable even when the exception carries no message. */
+  static String reason(String discoveryUri, Exception e) {
+    String reason;
+    // Jackson's parse errors are IOExceptions too, so they are told apart first: the URL was
+    // reached but did not answer with JSON (an HTML login or proxy error page, for example).
+    // Any other error keeps its own message when it has one: a TLS failure such as "PKIX path
+    // building failed" points the admin at the truststore. Only a message-less I/O error (a
+    // refused or timed-out connection) is reported as unreachable.
+    if (e instanceof JsonProcessingException) {
+      reason = "the discovery URL did not return a valid JSON document (" + discoveryUri + ")";
+    } else if (e.getMessage() != null) {
+      reason = e.getMessage();
+    } else if (e instanceof IOException) {
+      reason = "the discovery URL could not be reached (" + discoveryUri + ")";
+    } else {
+      reason = e.getClass().getSimpleName();
+    }
+    return reason;
   }
 
   private void validateScopes(

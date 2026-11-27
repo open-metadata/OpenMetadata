@@ -15,7 +15,11 @@ import {
   SearchIndexField,
 } from '../generated/entity/data/searchIndex';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
-import { getUpdatedTags, searchInFields } from './TablePureUtils';
+import {
+  getColumnPageForFqn,
+  getUpdatedTags,
+  searchInFields,
+} from './TablePureUtils';
 
 describe('getUpdatedTags', () => {
   it('keeps a derived label derived, so it is not saved as the field own', () => {
@@ -85,5 +89,75 @@ describe('searchInFields', () => {
 
   it('returns no fields when nothing matches', () => {
     expect(searchInFields(fields, 'Missing')).toEqual([]);
+  });
+});
+
+describe('getColumnPageForFqn', () => {
+  type FieldStub = {
+    name: string;
+    ordinalPosition?: number;
+    fullyQualifiedName: string;
+    children?: FieldStub[];
+  };
+  const column = (name: string, ordinalPosition?: number): FieldStub => ({
+    name,
+    ordinalPosition,
+    fullyQualifiedName: `t.${name}`,
+  });
+
+  it('sorts names case-insensitively like the backend', () => {
+    const columns = [column('b'), column('C'), column('a')];
+
+    expect(getColumnPageForFqn(columns, 't.a', 'name', 'asc', 1)).toBe(1);
+    expect(getColumnPageForFqn(columns, 't.b', 'name', 'asc', 1)).toBe(2);
+    expect(getColumnPageForFqn(columns, 't.C', 'name', 'asc', 1)).toBe(3);
+  });
+
+  it('reverses the order for desc', () => {
+    const columns = [column('a'), column('b'), column('c')];
+
+    expect(getColumnPageForFqn(columns, 't.a', 'name', 'desc', 1)).toBe(3);
+  });
+
+  it('sorts by ordinal position with nulls last', () => {
+    const columns = [column('a'), column('b', 2), column('c', 1)];
+
+    expect(
+      getColumnPageForFqn(columns, 't.c', 'ordinalPosition', 'asc', 1)
+    ).toBe(1);
+    expect(
+      getColumnPageForFqn(columns, 't.a', 'ordinalPosition', 'asc', 1)
+    ).toBe(3);
+  });
+
+  it('crosses the page boundary at pageSize', () => {
+    const columns = Array.from({ length: 51 }, (_, i) =>
+      column(`col_${String(i).padStart(3, '0')}`)
+    );
+
+    expect(getColumnPageForFqn(columns, 't.col_049', 'name', 'asc', 50)).toBe(
+      1
+    );
+    expect(getColumnPageForFqn(columns, 't.col_050', 'name', 'asc', 50)).toBe(
+      2
+    );
+  });
+
+  it("returns a nested column's top-level parent page", () => {
+    const columns = [
+      column('a'),
+      {
+        ...column('b'),
+        children: [{ name: 'x', fullyQualifiedName: 't.b.x' }],
+      },
+    ];
+
+    expect(getColumnPageForFqn(columns, 't.b.x', 'name', 'asc', 1)).toBe(2);
+  });
+
+  it('returns undefined when the column is not found', () => {
+    expect(
+      getColumnPageForFqn([column('a')], 't.missing', 'name', 'asc', 1)
+    ).toBeUndefined();
   });
 });

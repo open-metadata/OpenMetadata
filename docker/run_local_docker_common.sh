@@ -418,7 +418,7 @@ run_local_docker_main() {
   if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
       echo "Maven Build - Skipping Tests and UI"
-      mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+      mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
     else
       echo "Maven Build - Skipping Tests"
       mvn -DskipTests clean package
@@ -482,14 +482,18 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    # CI builds the ingestion image on its own runner and loads it here, so
-    # building it again would only repeat that work; `up` runs the loaded image.
     build_services=()
-    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" || "${OM_BACKEND_IMAGE_PRELOADED:-false}" == "true" ]]; then
       while IFS= read -r service; do
-        [[ "$service" == "ingestion" ]] || build_services+=("$service")
+        if [[ "$service" == "ingestion" && "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+          continue
+        fi
+        if [[ ( "$service" == "execute-migrate-all" || "$service" == "openmetadata-server" ) && "${OM_BACKEND_IMAGE_PRELOADED:-false}" == "true" ]]; then
+          continue
+        fi
+        build_services+=("$service")
       done < <(docker compose "${COMPOSE_ARGS[@]}" config --services)
-      echo "Building all services except the preloaded ingestion image"
+      echo "Building services without rebuilding preloaded images"
     else
       echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
     fi
@@ -497,7 +501,11 @@ run_local_docker_main() {
       docker compose "${COMPOSE_ARGS[@]}" up -d
   else
     echo "Building services without ingestion"
-    docker compose "${COMPOSE_ARGS[@]}" build $SEARCH_SERVICE $DB_SERVICE execute-migrate-all openmetadata-server || exit 1
+    build_services=("$SEARCH_SERVICE" "$DB_SERVICE")
+    if [[ "${OM_BACKEND_IMAGE_PRELOADED:-false}" != "true" ]]; then
+      build_services+=(execute-migrate-all openmetadata-server)
+    fi
+    docker compose "${COMPOSE_ARGS[@]}" build "${build_services[@]}" || exit 1
     if [[ -n "${OM_ADDITIONAL_UP_SERVICES:-}" ]]; then
       for extra_compose_file in $OM_ADDITIONAL_UP_SERVICES; do
         additional_up_services+=("$extra_compose_file")

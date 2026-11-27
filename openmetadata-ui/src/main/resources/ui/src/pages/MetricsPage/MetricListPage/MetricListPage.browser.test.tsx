@@ -26,6 +26,7 @@ import {
 import { many, named } from '../../../test/browser/fixtures/entities';
 import { worker } from '../../../test/browser/msw';
 import { renderApp } from '../../../test/browser/renderWithApp';
+import { scaled } from '../../../test/browser/timeouts';
 
 const items: MetricHierarchyItem[] = many(45, (i) => ({
   kind: Kind.Metric,
@@ -54,35 +55,39 @@ const serveHierarchy = () => {
 };
 
 describe('Metrics pagination', () => {
-  test(`pages the hierarchy by offset, ${PAGE_SIZE_BASE} at a time`, async () => {
-    const calls = serveHierarchy();
-    await renderApp('/metrics');
+  test(
+    `pages the hierarchy by offset, ${PAGE_SIZE_BASE} at a time`,
+    async () => {
+      const calls = serveHierarchy();
+      await renderApp('/metrics');
 
-    await expect
-      .element(page.getByText('PW metric 01'), { timeout: 60_000 })
-      .toBeVisible();
-    expect(calls[0].searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
-    expect(calls[0].searchParams.get('offset')).toBe('0');
-    await expect
-      .element(page.getByTestId('metric-page-previous'))
-      .toBeDisabled();
-    await expect.element(page.getByTestId('metric-page-next')).toBeEnabled();
+      await expect
+        .element(page.getByText('PW metric 01'), { timeout: scaled(60_000) })
+        .toBeVisible();
+      expect(calls[0].searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
+      expect(calls[0].searchParams.get('offset')).toBe('0');
+      await expect
+        .element(page.getByTestId('metric-page-previous'))
+        .toBeDisabled();
+      await expect.element(page.getByTestId('metric-page-next')).toBeEnabled();
 
-    await userEvent.click(page.getByTestId('metric-page-next'));
+      await userEvent.click(page.getByTestId('metric-page-next'));
 
-    await expect
-      .element(page.getByText(`PW metric ${PAGE_SIZE_BASE + 1}`))
-      .toBeVisible();
+      await expect
+        .element(page.getByText(`PW metric ${PAGE_SIZE_BASE + 1}`))
+        .toBeVisible();
 
-    const last = calls[calls.length - 1];
+      const last = calls[calls.length - 1];
 
-    expect(last.searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
-    expect(last.searchParams.get('offset')).toBe(`${PAGE_SIZE_BASE}`);
-    await expect
-      .element(page.getByTestId('metric-page-previous'))
-      .toBeEnabled();
-    await expect
-      .element(page.getByTestId('metric-page-indicator'))
-      .toHaveTextContent(/2\s*of\s*3/);
-  }, 90_000);
+      expect(last.searchParams.get('limit')).toBe(`${PAGE_SIZE_BASE}`);
+      expect(last.searchParams.get('offset')).toBe(`${PAGE_SIZE_BASE}`);
+      await expect
+        .element(page.getByTestId('metric-page-previous'))
+        .toBeEnabled();
+      await expect
+        .element(page.getByTestId('metric-page-indicator'))
+        .toHaveTextContent(/2\s*of\s*3/);
+    },
+    scaled(90_000)
+  );
 });

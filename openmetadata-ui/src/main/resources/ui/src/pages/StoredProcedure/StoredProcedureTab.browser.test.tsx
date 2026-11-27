@@ -34,7 +34,7 @@ describePaginatedList({
   items,
   itemLabel: (item) => item.displayName,
   search: { index: 'storedProcedure', urlParam: 'schema', term: 'pw' },
-  deletedToggleTestId: 'show-deleted',
+  deletedToggleTestId: 'show-deleted-stored-procedure',
   setup: () => {
     serveEntities([
       ['/api/v1/databaseSchemas', SCHEMA],
@@ -42,13 +42,5 @@ describePaginatedList({
       ['/api/v1/services/databaseServices', DB_SERVICE],
     ]);
     serveEmptyLists(['/api/v1/tables']);
-  },
-  knownIssues: {
-    failing: {
-      navigation:
-        'StoredProcedureTab URL-sync effect resets currentPage to 1 under router transitions',
-      search:
-        'StoredProcedureTab URL-sync effect keeps the old page, so search starts at page 2',
-    },
   },
 });

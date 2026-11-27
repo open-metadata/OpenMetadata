@@ -38,12 +38,4 @@ describePaginatedList({
     // Sibling tabs only need their counts here.
     serveEmptyLists(['/api/v1/dashboards']);
   },
-  knownIssues: {
-    failing: {
-      navigation:
-        'DataModelsTable URL-sync effect resets currentPage to 1 under router transitions',
-      search:
-        'DataModelsTable URL-sync effect keeps the old page, so search starts at page 2',
-    },
-  },
 });

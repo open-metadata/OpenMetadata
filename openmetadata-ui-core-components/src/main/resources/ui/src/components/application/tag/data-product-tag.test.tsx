@@ -79,9 +79,14 @@ describe('DataProductTag', () => {
   });
 
   it('should render a tooltip trigger when tooltip is passed', () => {
-    render(<DataProductTag label="Reporting Suite" tooltip="Data product" />);
+    const { container } = render(
+      <DataProductTag label="Reporting Suite" tooltip="Data product" />
+    );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    // A badge's tooltip trigger is a plain span, kept out of the tab order
+    // so it never nests a button inside a clickable parent.
+    expect(container.firstChild).toHaveClass('tw:inline-flex', 'tw:min-w-0');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('should apply the disabled styling classes when disabled is true', () => {
