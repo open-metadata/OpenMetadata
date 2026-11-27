@@ -1,5 +1,6 @@
 """Exercise nightly workload selection and failure reports."""
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -10,6 +11,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
+SCRIPT = ROOT / ".github/scripts/nightly_summary.py"
 WORKFLOW = ROOT / ".github/workflows/ci-nightly.yml"
 CONNECTORS = {
     "plan",
@@ -27,12 +29,34 @@ PYTHON = CONNECTORS | {
     "sonar-cloud-coverage-upload",
 }
 JAVA = {"integration-test-build", "it-mysql-elasticsearch", "maven-sonarcloud-ci"}
+INGESTION_ON_DUTY = "<!subteam^S0AH093PEQL>"
+PLATFORM_ON_DUTY = "<!subteam^S0AH9J9UQ2V>"
+
+
+def load_summary():
+    spec = importlib.util.spec_from_file_location("nightly_summary", SCRIPT)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["nightly_summary"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def workflow_jobs():
+    return yaml.safe_load(WORKFLOW.read_text())["jobs"]
+
+
+def sections(payload):
+    return {
+        block["text"]["text"].splitlines()[0]: block["text"]["text"].splitlines()[1:]
+        for block in payload["blocks"]
+        if block["type"] == "section" and block["text"]["text"].startswith("*")
+    }
 
 
 @pytest.fixture
 def report(tmp_path):
-    jobs = yaml.safe_load(WORKFLOW.read_text())["jobs"]
-    needs = jobs["nightly-status"]["needs"]
+    needs = workflow_jobs()["nightly-status"]["needs"]
     assert set(needs) == PYTHON | JAVA
 
     def invoke(workload, selected, outcomes=None, ref="refs/heads/main"):
@@ -42,9 +66,8 @@ def report(tmp_path):
         statuses.update(outcomes or {})
         output = tmp_path / "output"
         summary = tmp_path / "summary"
-        payload = tmp_path / "nightly-slack.json"
         result = subprocess.run(
-            [sys.executable, str(ROOT / ".github/scripts/nightly_summary.py")],
+            [sys.executable, str(SCRIPT)],
             env={
                 **os.environ,
                 "NEEDS_JSON": json.dumps(
@@ -59,8 +82,6 @@ def report(tmp_path):
                 "GITHUB_REPOSITORY": "example/project",
                 "GITHUB_RUN_ID": "123",
                 "RUNNER_TEMP": str(tmp_path),
-                "SLACK_CHANNEL": "test-channel",
-                "PYTHON_ON_CALL": "test-on-call",
             },
             capture_output=True,
             text=True,
@@ -68,13 +89,34 @@ def report(tmp_path):
             timeout=10,
         )
         assert result.returncode == 0, result.stderr
-        return (
-            output.read_text().strip(),
-            summary.read_text(),
-            json.loads(payload.read_text()) if payload.exists() else None,
+        outputs = dict(
+            line.split("=", 1) for line in output.read_text().splitlines() if line
         )
+        payloads = {
+            name.removeprefix("slack_"): json.loads(Path(path).read_text())
+            for name, path in outputs.items()
+            if name.startswith("slack_")
+        }
+        return outputs["failed"], summary.read_text(), payloads
 
     return invoke
+
+
+def test_every_nightly_job_has_an_owner_and_its_workflow_needs():
+    summary = load_summary()
+    jobs = workflow_jobs()
+    assert set(summary.JOBS) == set(jobs["nightly-status"]["needs"])
+    for name, job in summary.JOBS.items():
+        needs = jobs[name].get("needs", [])
+        assert job.after == set([needs] if isinstance(needs, str) else needs), name
+        assert job.team in summary.TEAMS, name
+
+
+def test_every_team_has_a_slack_step():
+    steps = workflow_jobs()["nightly-status"]["steps"]
+    paths = {step.get("with", {}).get("payload-file-path") for step in steps}
+    for team in load_summary().TEAMS:
+        assert f"${{{{ steps.summary.outputs.slack_{team} }}}}" in paths, team
 
 
 @pytest.mark.parametrize(
@@ -88,54 +130,101 @@ def report(tmp_path):
     ],
 )
 def test_nightly_selected_workload_can_pass(report, workload, selected, ref):
-    status, summary, payload = report(workload, selected, ref=ref)
-    assert status == "failed=false"
+    status, summary, payloads = report(workload, selected, ref=ref)
+    assert status == "false"
     assert summary.count("| success |") == len(selected)
-    assert payload is None
+    assert payloads == {}
 
 
-def test_nightly_slack_lists_failures_before_skipped_jobs(report):
-    status, summary, payload = report(
-        "all",
-        PYTHON | JAVA,
-        {
-            "python-unit": "failure",
-            "integration-test-build": "failure",
-            "it-mysql-elasticsearch": "skipped",
-        },
+def test_python_failure_alerts_ingestion_only(report):
+    status, summary, payloads = report("all", PYTHON | JAVA, {"python-unit": "failure"})
+    assert status == "true"
+    assert "| Python unit tests | failure |" in summary
+    assert set(payloads) == {"ingestion"}
+    payload = payloads["ingestion"]
+    assert payload["channel"] == "C03EYBDDX17"
+    assert sections(payload) == {"*Failed*": ["• Python unit tests"]}
+    assert "https://github.com/example/project/actions/runs/123" in payload["text"]
+    assert INGESTION_ON_DUTY in json.dumps(payload)
+
+
+def test_java_failure_alerts_platform_and_lists_skipped_jobs(report):
+    status, summary, payloads = report(
+        "java",
+        JAVA,
+        {"integration-test-build": "failure", "it-mysql-elasticsearch": "skipped"},
     )
-    assert status == "failed=true"
+    assert status == "true"
     assert "| Java integration runtime build | failure |" in summary
-    text = [
-        block["text"]["text"]
-        for block in payload["blocks"]
-        if block["type"] == "section"
-    ]
-    assert text[0].splitlines() == [
-        "*Failed*",
-        "• Python unit tests",
-        "• Java integration runtime build",
-    ]
-    assert text[1].splitlines() == [
-        "*Did not complete*",
-        "• Java integration tests (MySQL + Elasticsearch) — skipped",
-    ]
-    assert "https://github.com/example/project/actions/runs/123" in text[2]
-    assert "test-on-call" in text[2]
+    assert set(payloads) == {"platform"}
+    payload = payloads["platform"]
+    assert payload["channel"] == "C0AC5T013V1"
+    assert sections(payload) == {
+        "*Failed*": ["• Java integration runtime build"],
+        "*Did not run*": [
+            (
+                "• Java integration tests (MySQL + Elasticsearch)"
+                " (after Java integration runtime build)"
+            )
+        ],
+    }
+    assert PLATFORM_ON_DUTY in json.dumps(payload)
+    assert INGESTION_ON_DUTY not in json.dumps(payload)
 
 
-def test_java_only_failure_does_not_page_python_on_call(report):
-    status, summary, payload = report("java", JAVA, {"maven-sonarcloud-ci": "failure"})
-    assert status == "failed=true"
-    assert "Java Sonar analysis" in payload["text"]
-    assert "test-on-call" not in json.dumps(payload)
+def test_backend_failure_alerts_platform_for_the_python_jobs_it_skipped(report):
+    skipped = [
+        "python-integration",
+        "python-cli-e2e",
+        "python-operator",
+        "airflow-apis",
+    ]
+    status, _, payloads = report(
+        "python",
+        PYTHON,
+        {"backend": "failure", **dict.fromkeys(skipped, "skipped")},
+    )
+    assert status == "true"
+    assert set(payloads) == {"platform"}
+    listed = sections(payloads["platform"])
+    assert listed["*Failed*"] == ["• Backend image build"]
+    assert len(listed["*Did not run*"]) == len(skipped)
+    assert all("(after Backend image build)" in job for job in listed["*Did not run*"])
+    assert PLATFORM_ON_DUTY in json.dumps(payloads["platform"])
+
+
+def test_java_sonar_failure_is_reported_without_a_mention(report):
+    status, summary, payloads = report("java", JAVA, {"maven-sonarcloud-ci": "failure"})
+    assert status == "true"
+    assert set(payloads) == {"platform"}
+    assert "Java Sonar analysis" in payloads["platform"]["text"]
+    assert "subteam" not in json.dumps(payloads["platform"])
     assert "Python workload selection" not in summary
 
 
-def test_unexpected_skip_fails_even_when_no_job_reports_failure(report):
-    status, summary, payload = report(
+def test_failures_in_both_teams_alert_each_team(report):
+    status, _, payloads = report(
+        "all",
+        PYTHON | JAVA,
+        {"python-unit": "failure", "it-mysql-elasticsearch": "failure"},
+    )
+    assert status == "true"
+    assert sections(payloads["ingestion"]) == {"*Failed*": ["• Python unit tests"]}
+    assert INGESTION_ON_DUTY in json.dumps(payloads["ingestion"])
+    assert sections(payloads["platform"]) == {
+        "*Failed*": ["• Java integration tests (MySQL + Elasticsearch)"]
+    }
+    assert PLATFORM_ON_DUTY in json.dumps(payloads["platform"])
+
+
+def test_unexpected_skip_alerts_the_owner_of_the_skipped_job(report):
+    status, summary, payloads = report(
         "connectors", CONNECTORS, {"python-cli-e2e": "skipped"}
     )
-    assert status == "failed=true"
+    assert status == "true"
     assert "| Connector CLI E2E tests | skipped |" in summary
-    assert "Connector CLI E2E tests — skipped" in payload["text"]
+    assert set(payloads) == {"ingestion"}
+    assert sections(payloads["ingestion"]) == {
+        "*Did not complete*": ["• Connector CLI E2E tests (skipped)"]
+    }
+    assert INGESTION_ON_DUTY in json.dumps(payloads["ingestion"])

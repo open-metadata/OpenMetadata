@@ -304,18 +304,26 @@ jobs:
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           WORKLOAD: ${{ inputs.workload || 'all' }}
-          SLACK_CHANNEL: C03EYBDDX17
-          PYTHON_ON_CALL: '<!subteam^S0AH093PEQL>'
         run: python3 .github/scripts/nightly_summary.py
-      - name: Notify Slack of nightly failures
-        if: ${{ steps.summary.outputs.failed == 'true' }}
+      # nightly_summary.py routes each failure to the team that owns the failed job.
+      - name: Notify ingestion on-duty of nightly failures
+        if: ${{ steps.summary.outputs.slack_ingestion != '' }}
         continue-on-error: true
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
         with:
           method: chat.postMessage
           token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
           errors: true
-          payload-file-path: ${{ runner.temp }}/nightly-slack.json
+          payload-file-path: ${{ steps.summary.outputs.slack_ingestion }}
+      - name: Notify Platform on-duty of nightly failures
+        if: ${{ steps.summary.outputs.slack_platform != '' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ steps.summary.outputs.slack_platform }}
       - name: Fail if a selected workload did not succeed
         if: ${{ steps.summary.outputs.failed == 'true' }}
         run: exit 1
