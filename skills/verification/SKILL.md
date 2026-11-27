@@ -85,7 +85,10 @@ npx tsc --noEmit
 # 3. Run unit tests
 yarn test <path/to/changed/component>
 
-# 4. For significant UI changes: run Playwright tests
+# 4. For page behaviour: run the browser tests that cover it
+yarn test:ui:run <path/to/X.browser.test.tsx>
+
+# 5. For cross-feature journeys: run Playwright tests
 yarn playwright:run --grep "<relevant test>"
 ```
 

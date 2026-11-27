@@ -175,7 +175,7 @@ If an API endpoint lacks integration test coverage:
    ```
    PR CI does not run integration tests; see the `java-affected-tests` skill.
 
-### Step 4: Check Playwright E2E Tests
+### Step 4: Check Browser Tests, Then Playwright for Journeys
 
 For any changes under `openmetadata-ui/src/main/resources/ui/src/`:
 
@@ -191,59 +191,52 @@ git diff main...HEAD --name-only | grep -E '\.(tsx?|component\.tsx)$'
 # Check the component's imports and route usage
 ```
 
-#### 4b. Check existing Playwright coverage
+#### 4b. Check existing coverage
 
 ```bash
-# Find specs that test the affected feature
-find openmetadata-ui/src/main/resources/ui/playwright/e2e -name "*.spec.ts" | xargs grep -l "<feature-keyword>"
+cd openmetadata-ui/src/main/resources/ui
 
-# List all spec files by category
-ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/
-ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/
-ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/
+# Browser tests that cover the affected page or feature
+find src -name "*.browser.test.tsx" | xargs grep -l "<feature-keyword>"
+
+# Playwright journeys that touch it
+find playwright/e2e -name "*.spec.ts" | xargs grep -l "<feature-keyword>"
 ```
 
-#### 4c. Determine if new Playwright tests are needed
+#### 4c. Pick the layer for each missing check
 
-**First decide the layer** (`.claude/rules/frontend-browser-tests.md`): a page's own behaviour (paging,
-forms, pickers, permission-driven controls, empty/error states) gets a Vitest browser test
-(`*.browser.test.tsx`), not a Playwright test. The rest of this step is for real journeys.
+Decide per check (`.claude/rules/frontend-browser-tests.md`):
 
-**New Playwright tests ARE needed when:**
+**A browser test (`*.browser.test.tsx`) is needed when** a page or feature's own behaviour changed:
 - A new page or major UI section was added
-- User-facing workflow was changed (e.g., entity creation flow)
-- New permissions or role-based behavior was added
+- Paging, search, sort, URL state, forms and validation, pickers, empty/error states changed
+- New permissions or role-based controls were added
 - A UI bug was fixed (regression test)
 
-**New Playwright tests are NOT needed when:**
+**A Playwright spec is needed only when** a journey across features against a real server changed:
+the real search index, cross-page state, auth/SSO, async jobs, or the production build. If the
+assertion would still mean something with the backend mocked, it belongs in a browser test.
+
+**Neither is needed when:**
 - Only internal refactoring with no visible behavior change
 - Style-only changes (colors, spacing)
-- Changes already covered by existing specs (verify by running them)
+- Changes already covered by existing tests (verify by running them)
 
-#### 4d. Generate missing Playwright tests
+#### 4d. Write the missing tests
 
-Use the `/playwright` skill to generate tests. At minimum, verify:
-
-1. **Read the Playwright Developer Handbook first:**
+1. **Browser tests:** follow `.claude/rules/frontend-browser-tests.md` and
+   `src/test/browser/README.md` (`renderApp`, MSW fixtures; assert what the user sees and the request
+   the page sent). Run:
+   ```bash
+   cd openmetadata-ui/src/main/resources/ui
+   yarn test:ui:run <path/to/X.browser.test.tsx>
    ```
-   openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md
-   ```
 
-2. **Required test coverage for new features:**
-   - Happy path — feature works as expected
-   - Permission boundaries — admin vs. data consumer vs. data steward
-   - Data persistence — changes survive page reload
-   - Error states — invalid input, network errors
-   - Navigation — feature accessible from expected entry points
-
-3. **Run and verify:**
+2. **Playwright journeys:** use the `/playwright` skill, after reading
+   `openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md`. Run and lint:
    ```bash
    cd openmetadata-ui/src/main/resources/ui
    yarn playwright:run --grep "<test name>"
-   ```
-
-4. **Run the linter:**
-   ```bash
    yarn lint:playwright
    ```
 
@@ -298,10 +291,15 @@ Produce a summary for the PR:
 |----------|--------|-----|------|--------|--------|--------|
 | /api/v1/myEntity | PASS | PASS | PASS | PASS | PASS | PASS |
 
-### Playwright E2E
-| Feature | Happy Path | Permissions | Persistence | Status |
-|---------|------------|-------------|-------------|--------|
+### Browser Tests (page behaviour)
+| Page | Happy Path | Permissions | Empty/Error | Status |
+|------|------------|-------------|-------------|--------|
 | New Feature Page | PASS | PASS | PASS | PASS |
+
+### Playwright E2E (cross-feature journeys)
+| Journey | Status |
+|---------|--------|
+| Create entity, then find it in search | PASS |
 
 ### Python Ingestion
 | Module | Lines | Status |

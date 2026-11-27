@@ -157,7 +157,7 @@ then regenerate — never hand-edit generated output.** Details in `.claude/rule
 | `planning` | starting any non-trivial, multi-file feature or refactor |
 | `tdd` | implementing a feature or bug fix (RED→GREEN→REFACTOR) |
 | `systematic-debugging` | a failing test/build/runtime issue whose cause isn't obvious |
-| `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, Playwright for UI |
+| `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, browser tests for UI page behaviour, Playwright for cross-feature journeys |
 | `java-affected-tests` | before a PR touching Java/schemas/migrations — runs the impacted unit tests + ITs (PR CI runs no ITs) |
 | `verification` | before claiming "done" — run real commands, show evidence |
 | `code-review` | reviewing a local diff before it is a PR — `REVIEW.md` as the bar, spec compliance then code quality |

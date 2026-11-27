@@ -8,6 +8,13 @@ user-invocable: true
 
 Generate production-ready, zero-flakiness Playwright tests following OpenMetadata conventions.
 
+## Pick the layer first
+
+Page behaviour (paging, search, sort, URL state, forms, pickers, permission-driven controls,
+empty/error states, visuals) goes in a Vitest browser test (`*.browser.test.tsx`), not here; see
+`.claude/rules/frontend-browser-tests.md`. Write Playwright only for a journey across features against a
+real server: the real search index, cross-page state, auth/SSO, async jobs, the production build.
+
 ## Usage
 
 ```

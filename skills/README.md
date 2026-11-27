@@ -42,7 +42,7 @@ The plugin enforces a structured development workflow:
 ```
 1. /planning          — Design before code (brainstorm, propose, get approval)
 2. /tdd               — Write failing test, implement, refactor
-3. /test-enforcement   — Verify 90% coverage, integration tests, Playwright E2E
+3. /test-enforcement   — Verify 90% coverage, integration tests, browser tests, Playwright E2E
 4. /verification       — Show evidence of passing tests before claiming done
 5. /code-review        — Two-stage review (spec compliance + code quality)
 ```
@@ -58,7 +58,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [OpenMetadata Workflow](openmetadata-workflow/SKILL.md) | *(auto-loaded)* | Meta-skill: routes tasks to the right workflow |
 | [Planning](planning/SKILL.md) | `/planning` | Brainstorm approaches, get approval, create step-by-step plan |
 | [TDD](tdd/SKILL.md) | `/tdd` | RED-GREEN-REFACTOR for Java, Python, and TypeScript |
-| [Test Enforcement](test-enforcement/SKILL.md) | `/test-enforcement` | Enforce 90% line coverage, integration tests, Playwright E2E |
+| [Test Enforcement](test-enforcement/SKILL.md) | `/test-enforcement` | Enforce 90% line coverage, integration tests, browser tests for page behaviour, Playwright for journeys |
 | [Systematic Debugging](systematic-debugging/SKILL.md) | `/systematic-debugging` | 4-phase root cause analysis |
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |

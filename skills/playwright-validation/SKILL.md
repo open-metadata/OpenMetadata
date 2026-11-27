@@ -7,6 +7,13 @@ description: Use when validating UI changes in a branch require Playwright E2E t
 
 This skill guides you through validating UI changes and ensuring comprehensive Playwright E2E test coverage.
 
+## Pick the layer first
+
+Page behaviour (paging, search, sort, URL state, forms, pickers, permission-driven controls,
+empty/error states, visuals) goes in a Vitest browser test (`*.browser.test.tsx`), not here; see
+`.claude/rules/frontend-browser-tests.md`. Write Playwright only for a journey across features against a
+real server: the real search index, cross-page state, auth/SSO, async jobs, the production build.
+
 ## When to Use
 
 - After completing UI feature development
@@ -80,7 +87,8 @@ This skill guides you through validating UI changes and ensuring comprehensive P
 
 ### Phase 4: Add Missing Test Cases
 
-1. **Create a TodoWrite checklist** of missing test scenarios
+1. **Create a TodoWrite checklist** of missing test scenarios. A page-behaviour scenario goes in a
+   browser test (see "Pick the layer first"); the steps below are for journeys.
 
 2. **For each missing test case:**
 
