@@ -19,8 +19,10 @@ import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowTriggeringBots;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -50,6 +53,7 @@ public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
   private static final String APPROVAL_MODE = "approvalMode";
   private static final String ENFORCE_MODE = "Enforce";
+  private static final String TRIGGERING_BOTS = "triggeringBots";
 
   // Each server re-reads the stored workflow definitions at most this often, so an ordinary write
   // does not query them. A workflow change made on this server applies at once (invalidate()).
@@ -59,7 +63,18 @@ public final class GovernanceApprovalRegistry {
       String epoch,
       long checkedAt,
       Map<String, List<GatingRule>> rulesByEntityType,
-      List<String> enforcedEntityTypes) {}
+      List<String> enforcedEntityTypes,
+      TriggeringBotUsers triggeringBotUsers) {}
+
+  /**
+   * The users of the bots that workflows starting from change events list in {@code triggeringBots},
+   * by workflow FQN and by target entity type. An Enforce-mode workflow's bots are on its rules.
+   */
+  private record TriggeringBotUsers(
+      Map<String, Set<String>> byWorkflow, Map<String, Set<String>> byEntityType) {}
+
+  private static final TriggeringBotUsers NO_TRIGGERING_BOTS =
+      new TriggeringBotUsers(Map.of(), Map.of());
 
   private static final AtomicReference<Snapshot> SNAPSHOT = new AtomicReference<>();
 
@@ -75,7 +90,8 @@ public final class GovernanceApprovalRegistry {
       String workflowName,
       List<String> includedFields,
       List<String> excludedFields,
-      String filterLogic) {}
+      String filterLogic,
+      Set<String> triggeringBotUsers) {}
 
   /** Hook workflows gating this entity type, ordered by workflow name. */
   public static List<GatingRule> gatingRules(String entityType) {
@@ -118,6 +134,29 @@ public final class GovernanceApprovalRegistry {
     return snapshot == null || snapshot.rulesByEntityType().containsKey(entityType);
   }
 
+  /** Whether a workflow on {@code entityType} that starts from change events lists the bot. */
+  public static boolean isTriggeringBotOf(String entityType, String botUser) {
+    return triggeringBotUsers().byEntityType().getOrDefault(entityType, Set.of()).contains(botUser);
+  }
+
+  /** Whether the workflow named by {@code workflowFqn}, which starts from change events, lists the bot. */
+  public static boolean isTriggeringBotOfWorkflow(String workflowFqn, String botUser) {
+    return triggeringBotUsers().byWorkflow().getOrDefault(workflowFqn, Set.of()).contains(botUser);
+  }
+
+  // When the workflows cannot be read, a bot's change starts none, as before workflows listed bots.
+  private static TriggeringBotUsers triggeringBotUsers() {
+    TriggeringBotUsers bots = NO_TRIGGERING_BOTS;
+    if (Entity.getCollectionDAO() != null) {
+      try {
+        bots = currentSnapshot().triggeringBotUsers();
+      } catch (RuntimeException e) {
+        LOG.error("[ApprovalGate] Could not resolve the bots that trigger workflows", e);
+      }
+    }
+    return bots;
+  }
+
   public static void invalidate() {
     SNAPSHOT.set(null);
   }
@@ -147,20 +186,78 @@ public final class GovernanceApprovalRegistry {
     Snapshot snapshot = SNAPSHOT.get();
     long now = System.currentTimeMillis();
     if (snapshot == null || now - snapshot.checkedAt() >= RECHECK_MILLIS) {
-      String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
+      String epoch = currentEpoch();
       snapshot =
           snapshot != null && snapshot.epoch().equals(epoch)
               ? new Snapshot(
-                  epoch, now, snapshot.rulesByEntityType(), snapshot.enforcedEntityTypes())
+                  epoch,
+                  now,
+                  snapshot.rulesByEntityType(),
+                  snapshot.enforcedEntityTypes(),
+                  snapshot.triggeringBotUsers())
               : compute(epoch, now);
       SNAPSHOT.set(snapshot);
     }
     return snapshot;
   }
 
+  // The listed bots are resolved to the users they write as, so the snapshot is current only while
+  // both the workflow definitions and the bots are unchanged.
+  static String currentEpoch() {
+    var dao = Entity.getCollectionDAO().changeRequestDAO();
+    return "%s|%s".formatted(dao.workflowDefinitionEpoch(), dao.botEpoch());
+  }
+
   private static Snapshot compute(String epoch, long now) {
     List<WorkflowDefinition> definitions = listWorkflowDefinitions();
-    return new Snapshot(epoch, now, rulesOf(definitions), enforcedEntityTypesOf(definitions));
+    return new Snapshot(
+        epoch,
+        now,
+        rulesOf(definitions),
+        enforcedEntityTypesOf(definitions),
+        triggeringBotUsersOf(definitions));
+  }
+
+  private static TriggeringBotUsers triggeringBotUsersOf(List<WorkflowDefinition> definitions) {
+    Map<String, Set<String>> byWorkflow = new HashMap<>();
+    Map<String, Set<String>> byEntityType = new HashMap<>();
+    definitions.stream()
+        .filter(GovernanceApprovalRegistry::startsFromChangeEvents)
+        .forEach(definition -> addTriggeringBotUsers(definition, byWorkflow, byEntityType));
+    Map<String, Set<String>> frozenByEntityType = new HashMap<>();
+    byEntityType.forEach(
+        (entityType, users) -> frozenByEntityType.put(entityType, Set.copyOf(users)));
+    return new TriggeringBotUsers(Map.copyOf(byWorkflow), Map.copyOf(frozenByEntityType));
+  }
+
+  private static void addTriggeringBotUsers(
+      WorkflowDefinition definition,
+      Map<String, Set<String>> byWorkflow,
+      Map<String, Set<String>> byEntityType) {
+    JsonNode config = JsonUtils.valueToTree(definition.getTrigger()).path("config");
+    Set<String> botUsers = triggeringBotUsersOf(config);
+    if (!botUsers.isEmpty()) {
+      byWorkflow.put(definition.getFullyQualifiedName(), botUsers);
+      targetEntityTypes(config)
+          .forEach(
+              entityType ->
+                  byEntityType
+                      .computeIfAbsent(entityType, ignored -> new HashSet<>())
+                      .addAll(botUsers));
+    }
+  }
+
+  private static Set<String> triggeringBotUsersOf(JsonNode config) {
+    return WorkflowTriggeringBots.botUserNames(stringList(config.path(TRIGGERING_BOTS)));
+  }
+
+  // An active eventBasedEntity workflow that holds no edit starts from persisted change events.
+  private static boolean startsFromChangeEvents(WorkflowDefinition definition) {
+    JsonNode trigger = JsonUtils.valueToTree(definition.getTrigger());
+    return !Boolean.TRUE.equals(definition.getSuspended())
+        && trigger != null
+        && EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null))
+        && !holdsChanges(definition);
   }
 
   private static Map<String, List<GatingRule>> rulesOf(List<WorkflowDefinition> definitions) {
@@ -207,7 +304,8 @@ public final class GovernanceApprovalRegistry {
                     definition.getName(),
                     stringList(config.path("include")),
                     stringList(config.path("exclude")),
-                    resolveFilter(config, entityType)));
+                    resolveFilter(config, entityType),
+                    triggeringBotUsersOf(config)));
       }
     }
   }
