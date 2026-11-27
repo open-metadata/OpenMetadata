@@ -1,7 +1,7 @@
 # Browser tests are selected before main and run in full on main
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-25 (initial)
+- **Revisions:** v1 2026-11-25 (initial); v2 2026-11-26 (pull requests and queue entries call this workflow through `ui-ci.yml`; queue maps come from `ci-merge-queue.yml` runs)
 - **Deciders:** Chirag Madlani
 - **Guard:** `scripts/select-browser-tests.test.mjs` (selection rules); `ui-browser-tests.yml` (pull requests
   and merge-queue entries select; the scheduled run on main runs every test file and reports a failure to
@@ -60,3 +60,12 @@ missing from the map always runs):
 
 Revisit if full-run failures from selection misses become common, or if the import cycle is broken (then
 the static graph could select on its own).
+
+## Amendment v2 (2026-11-26)
+Pull requests and merge-queue entries no longer trigger `ui-browser-tests.yml` directly. They call it
+through `ui-ci.yml`, the `ui` job of `ci-pr.yml` and `ci-merge-queue.yml`
+(ADR:2026-11-26-ui-ci-runs-from-the-event-entrypoints-behind-one-required-check), and it starts only
+after UI checkstyle passes. A queue entry's map is therefore an artifact of a `ci-merge-queue.yml`
+run, and the map lookup queries those runs alongside this workflow's scheduled and manual runs. A
+queue run counts only when the whole run passed, Python and the other UI jobs included. The
+scheduled and manual full runs on main are unchanged.
