@@ -15,6 +15,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -96,7 +98,7 @@ public class CreateResourceContext<T extends EntityInterface<?>>
 
   @Override
   public List<EntityReference> getDomains() {
-    List<EntityReference> domains = new ArrayList<>();
+    List<EntityReference> domains = new ArrayList<>(governedEntityDomains());
 
     // Add assigned domains at the time of entity creation
     if (entity != null && !nullOrEmpty(entity.getDomains())) {
@@ -116,10 +118,11 @@ public class CreateResourceContext<T extends EntityInterface<?>>
 
   /**
    * The domains of the persisted parents the entity is created in. A parent that is itself a
-   * domain counts as its own domain, as {@link ResourceContext#getDomains()} has it.
+   * domain counts as its own domain, as {@link ResourceContext#getDomains()} has it, and a data
+   * contract is created in the entity it governs.
    */
   public List<EntityReference> getContainerDomains() {
-    List<EntityReference> domains = new ArrayList<>();
+    List<EntityReference> domains = new ArrayList<>(governedEntityDomains());
     for (EntityInterface<?> parent : listOrEmpty(parentEntities)) {
       EntityReference parentReference = parent.getEntityReference();
       if (parentReference != null && Entity.DOMAIN.equals(parentReference.getType())) {
@@ -129,6 +132,12 @@ public class CreateResourceContext<T extends EntityInterface<?>>
       }
     }
     return domains;
+  }
+
+  private List<EntityReference> governedEntityDomains() {
+    return Entity.DATA_CONTRACT.equals(resource) && entity != null
+        ? listOrEmpty(DataContractRepository.getGovernedEntityDomains((DataContract) entity))
+        : List.of();
   }
 
   /** The domains the create request names for the entity itself. */

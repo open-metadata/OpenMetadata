@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -118,6 +119,30 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   // deleteLogicalTestSuite walks the suite's tests and pipelines, so both have to be hydrated
   // before it runs.
   private static final String TEST_SUITE_LIFECYCLE_FIELDS = "tests,pipelines";
+  private static final Set<String> SUPPORTED_ENTITY_TYPES =
+      Set.of(
+          Entity.TABLE,
+          Entity.STORED_PROCEDURE,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA,
+          Entity.DASHBOARD,
+          Entity.CHART,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.PIPELINE,
+          Entity.TOPIC,
+          Entity.SEARCH_INDEX,
+          Entity.API_COLLECTION,
+          Entity.API_ENDPOINT,
+          Entity.API,
+          Entity.API_SERVICE,
+          Entity.METRIC,
+          Entity.MLMODEL,
+          Entity.CONTAINER,
+          Entity.DIRECTORY,
+          Entity.FILE,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET,
+          Entity.DATA_PRODUCT);
 
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
@@ -823,30 +848,28 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * Checks if the given entity type is supported for data contracts.
    */
   public boolean isEntityTypeSupported(String entityType) {
-    return Set.of(
-            Entity.TABLE,
-            Entity.STORED_PROCEDURE,
-            Entity.DATABASE,
-            Entity.DATABASE_SCHEMA,
-            Entity.DASHBOARD,
-            Entity.CHART,
-            Entity.DASHBOARD_DATA_MODEL,
-            Entity.PIPELINE,
-            Entity.TOPIC,
-            Entity.SEARCH_INDEX,
-            Entity.API_COLLECTION,
-            Entity.API_ENDPOINT,
-            Entity.API,
-            Entity.API_SERVICE,
-            Entity.METRIC,
-            Entity.MLMODEL,
-            Entity.CONTAINER,
-            Entity.DIRECTORY,
-            Entity.FILE,
-            Entity.SPREADSHEET,
-            Entity.WORKSHEET,
-            Entity.DATA_PRODUCT)
-        .contains(entityType);
+    return SUPPORTED_ENTITY_TYPES.contains(entityType);
+  }
+
+  /** Whether {@code target} names, by type and id, an entity of a type a contract can govern. */
+  public static boolean isSupportedTarget(EntityReference target) {
+    return target != null
+        && target.getId() != null
+        && target.getType() != null
+        && SUPPORTED_ENTITY_TYPES.contains(target.getType());
+  }
+
+  /**
+   * A contract has no domain of its own, so policies decide it in the current domains of the entity
+   * it governs (ADR:2026-11-27-a-data-contract-is-in-the-domains-of-the-entity-it-governs).
+   */
+  public static List<EntityReference> getGovernedEntityDomains(DataContract dataContract) {
+    EntityReference target = dataContract.getEntity();
+    EntityInterface<?> governed =
+        isSupportedTarget(target)
+            ? Entity.getEntityOrNull(target, Entity.FIELD_DOMAINS, Include.ALL)
+            : null;
+    return governed == null ? null : governed.getDomains();
   }
 
   /**
@@ -1951,6 +1974,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     storeOwners(dataContract, dataContract.getOwners());
     storeReviewers(dataContract, dataContract.getReviewers());
+  }
+
+  /**
+   * A PATCH keeps the entity the contract governs. That entity's domains decide who may write the
+   * contract, and a contract for another entity is a create, authorized against that entity's.
+   */
+  @Override
+  protected void validatePatch(DataContract original, DataContract updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    updated.setEntity(original.getEntity());
   }
 
   @Override
