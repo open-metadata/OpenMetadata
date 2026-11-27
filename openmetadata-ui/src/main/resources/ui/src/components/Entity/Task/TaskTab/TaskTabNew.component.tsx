@@ -205,14 +205,17 @@ const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   domains: (fqn) => getDomainDetailsPath(fqn),
 };
 
+// Field names can be nested (`columns.customer_id.description`), so match on the last segment.
+const fieldLeaf = (field: string) => field.split('.').pop() ?? field;
+
 // Free-text fields: a replaced value arrives whole on both sides, so it is shown as a word diff.
 // Every other field (owners, reviewers, synonyms) is a set of identifiers and stays as chips.
 const TEXT_DIFF_FIELDS = new Set(['description', 'displayName']);
 
-// Only the description is rich text (Markdown from imports, HTML from the editor). Plain values
+// Only descriptions are rich text (Markdown from imports, HTML from the editor). Plain values
 // such as "# of Orders" must not go through the Markdown parser.
 const toProposedChangeText = (field: string, value: string) =>
-  field === 'description' ? getReadableText(value) : value;
+  fieldLeaf(field) === 'description' ? getReadableText(value) : value;
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1880,7 +1883,7 @@ export const TaskTabNew = ({
               ([field, { added, removed }]) => {
                 const getUrl = FIELD_ROUTE_MAP[field];
                 const isTextEdit =
-                  TEXT_DIFF_FIELDS.has(field) &&
+                  TEXT_DIFF_FIELDS.has(fieldLeaf(field)) &&
                   removed.length === 1 &&
                   added.length === 1;
 

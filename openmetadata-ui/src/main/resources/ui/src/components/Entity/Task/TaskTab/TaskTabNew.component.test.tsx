@@ -1174,6 +1174,43 @@ describe('TaskTabNew Component', () => {
     ).toHaveTextContent('# of Orders');
   });
 
+  it('reads a nested column description as rich text', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                'columns.customer_id.description': {
+                  removed: ['Customer **id**'],
+                  added: [
+                    '<p>Customer <strong>id</strong> of the buyer&#39;s account</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const diff = screen.getByTestId(
+      'proposed-changes-columns.customer_id.description-diff'
+    );
+
+    expect(diff).toHaveTextContent("Customer id of the buyer's account");
+    expect(diff).not.toHaveTextContent('<strong>');
+    expect(screen.queryByTestId('diff-removed')).not.toBeInTheDocument();
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,
