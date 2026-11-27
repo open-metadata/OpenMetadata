@@ -1,7 +1,8 @@
 # The AI-mode service page owns its Insights tab, Agents tab and AutoPilot trigger
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-27 (initial); v2 2026-11-27 (data assets lead the tabs)
+- **Revisions:** v1 2026-11-27 (initial); v2 2026-11-27 (data assets lead the tabs; AutoPilot
+  status re-read budget recorded)
 - **Deciders:** karanh37
 - **Guard:** `ConnectionServiceDetailsPage.test.tsx` (`insights, agents and AutoPilot` describe
   block), `ServiceAgentsTab.test.tsx`
@@ -23,6 +24,10 @@ trigger. Classic mode has all three in OSS.
   `ServiceInsightsTab`.
 - The page renders the AutoPilot trigger in its header, gated as classic `DataAssetsHeader` gates
   it, and hides it on a soft-deleted service.
+- After a trigger, the page re-reads the AutoPilot workflow state up to 3 times, 1.5 s apart,
+  stopping at the first `Running` status, and then releases the trigger. The bound keeps a run that
+  never registers from leaving the button disabled; a governance engine slower than about 3 s to
+  register the instance re-enables the button early, and a second click then starts a duplicate run.
 - One page-level hook, `useServiceAgents`, owns the agent lists, the AutoPilot workflow state and
   the trigger, so the Agents tab, its badge, Insights and the header button read one fetch.
 - A plugin contribution under `insights` or `agents` in `SERVICE_DETAILS_TABS`, or under
