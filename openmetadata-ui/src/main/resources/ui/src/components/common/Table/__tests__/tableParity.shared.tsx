@@ -270,6 +270,43 @@ export const runTableParitySuite = (
       expect(renderedNames()).toEqual(['charlie', 'bravo', 'alpha']);
     });
 
+    it('restores the original order on the third header click', () => {
+      renderTable({ columns: sortedColumns });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['charlie', 'alpha', 'bravo']);
+    });
+
+    it('reports the cleared sort to onChange on the third header click', () => {
+      const onChange = jest.fn();
+      renderTable({ columns: sortedColumns, onChange });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(onChange.mock.calls.map((call) => call[2].order ?? null)).toEqual([
+        'ascend',
+        'descend',
+        null,
+      ]);
+    });
+
+    it('clears a controlled descending sort on the next header click', () => {
+      const onChange = jest.fn();
+      renderTable({
+        columns: [
+          { ...nameColumn, sorter: true, sortOrder: 'descend' },
+          countColumn,
+        ],
+        onChange,
+      });
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(onChange.mock.calls[0][2].order ?? null).toBeNull();
+    });
+
     it('honours a controlled sortOrder without any interaction', () => {
       renderTable({
         columns: [{ ...sortedColumns[0], sortOrder: 'descend' }, countColumn],
@@ -982,6 +1019,28 @@ export const runTableParitySuite = (
       fireEvent.click(screen.getByText('Name'));
 
       expect(renderedNames()).toEqual(['charlie', 'bravo', 'alpha']);
+    });
+
+    it('clears the sort after the last direction sortDirections lists', () => {
+      renderTable({
+        columns: [
+          {
+            ...nameColumn,
+            sortDirections: ['descend', 'ascend'],
+            sorter: (a: ParityRow, b: ParityRow) =>
+              a.name.localeCompare(b.name),
+          },
+          countColumn,
+        ],
+      });
+      fireEvent.click(screen.getByText('Name'));
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['alpha', 'bravo', 'charlie']);
+
+      fireEvent.click(screen.getByText('Name'));
+
+      expect(renderedNames()).toEqual(['charlie', 'alpha', 'bravo']);
     });
   });
 
