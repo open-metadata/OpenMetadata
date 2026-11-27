@@ -84,9 +84,10 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
-import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
-import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.adjustDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.dataProductPairs;
+import static org.openmetadata.service.util.LineageUtil.recountDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
@@ -4680,6 +4681,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // Data product lineage is recounted from the HAS rows, so the pairs the rewrite can change are
+    // read before it as well as after it.
+    Set<Pair<UUID, UUID>> dataProductPairs = importDataProductPairs(originals, updatedEntities);
+
     // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
     // parents before the flush rewrites their edges.
     List<List<EntityReference>> previousParents =
@@ -4700,6 +4705,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           for (T entity : updatedEntities) {
             invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
           }
+          recountImportedDataProductLineage(dataProductPairs, originals, updatedEntities);
         });
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
@@ -4718,6 +4724,45 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return new ChangeDescription()
         .withPreviousVersion(original.getVersion())
         .withChangeSummary(changeSummary);
+  }
+
+  /**
+   * The data product pairs an import can change: each product a changed entity gains or loses,
+   * against each product its lineage neighbours hold when this runs. Read before and after the HAS
+   * rewrite, they cover the neighbours' products on both sides too.
+   */
+  private Set<Pair<UUID, UUID>> importDataProductPairs(List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    for (int i = 0; i < originals.size(); i++) {
+      Set<UUID> moved =
+          movedDataProducts(originals.get(i).getDataProducts(), updates.get(i).getDataProducts());
+      pairs.addAll(dataProductPairs(originals.get(i).getId(), entityType, moved));
+    }
+    return pairs;
+  }
+
+  private void recountImportedDataProductLineage(
+      Set<Pair<UUID, UUID>> pairsBefore, List<T> originals, List<T> updates) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>(pairsBefore);
+    pairs.addAll(importDataProductPairs(originals, updates));
+    recountDataProductsLineage(pairs);
+  }
+
+  private static Set<UUID> missingFrom(Set<UUID> ids, Set<UUID> others) {
+    Set<UUID> missing = new HashSet<>(ids);
+    missing.removeAll(others);
+    return missing;
+  }
+
+  // A product the entity keeps changes no pair of its own: a changed neighbour's entry covers it.
+  private static Set<UUID> movedDataProducts(
+      List<EntityReference> beforeRefs, List<EntityReference> afterRefs) {
+    Set<UUID> before = referenceIds(listOrEmpty(beforeRefs));
+    Set<UUID> after = referenceIds(listOrEmpty(afterRefs));
+    Set<UUID> moved = new HashSet<>(before);
+    moved.addAll(after);
+    moved.removeIf(product -> before.contains(product) && after.contains(product));
+    return moved;
   }
 
   @SuppressWarnings("unused")
@@ -10404,13 +10449,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   static List<List<EntityReference>> moveTargets(
       final List<EntityReference> ownDomains, final List<EntityReference> written) {
-    final Set<UUID> storedIds = domainIds(ownDomains);
+    final Set<UUID> storedIds = referenceIds(ownDomains);
     final List<List<EntityReference>> added =
         written.stream()
             .filter(domain -> !storedIds.contains(domain.getId()))
             .map(List::of)
             .toList();
-    final boolean removesOnly = added.isEmpty() && !storedIds.equals(domainIds(written));
+    final boolean removesOnly = added.isEmpty() && !storedIds.equals(referenceIds(written));
     return removesOnly ? List.of(written) : added;
   }
 
@@ -10440,8 +10485,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     };
   }
 
-  private static Set<UUID> domainIds(final List<EntityReference> domains) {
-    return domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  private static Set<UUID> referenceIds(final List<EntityReference> references) {
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   // A user's write is never let through unchecked: without an authorizer it is refused.
@@ -12531,21 +12576,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void updateDataProducts() {
-      if (!supportsDataProducts) {
-        return;
+      if (supportsDataProducts) {
+        validateDataProducts(listOrEmpty(updated.getDataProducts()));
+        if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+          // Revert change to non-empty DataProduct if it is being updated by a bot
+          // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+          // updated with a PATCH request
+          updated.setDataProducts(original.getDataProducts());
+        } else {
+          storeDataProductChange();
+        }
       }
+    }
+
+    private void storeDataProductChange() {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
-      validateDataProducts(updatedDataProducts);
-
-      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
-        // Revert change to non-empty DataProduct if it is being updated by a bot
-        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
-        // updated with a PATCH request
-        updated.setDataProducts(original.getDataProducts());
-        return;
-      }
-
       if (!nullOrEmpty(updatedDataProducts) && belongsToNoDomain(updated)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -12586,8 +12632,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           Relationship.HAS,
           entityType,
           original.getId());
-      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
-      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+      // The rollups follow the persisted entity; consolidation replays this diff against reverted
+      // baselines they never saw.
+      if (isIndexBaselinePass()) {
+        Set<UUID> before = referenceIds(origDataProducts);
+        Set<UUID> after = referenceIds(updatedDataProducts);
+        adjustDataProductsLineage(
+            original.getId(), entityType, missingFrom(after, before), missingFrom(before, after));
+      }
     }
 
     private void updateExperts() {
