@@ -106,7 +106,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
                 align="center"
                 className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}
                 justify="center">
-                {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
+                {isDone ? <Check size={10} /> : index + 1}
               </Box>
               {t(step.name)}
             </Badge>

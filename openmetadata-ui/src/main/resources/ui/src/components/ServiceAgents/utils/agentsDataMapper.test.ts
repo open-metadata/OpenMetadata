@@ -202,6 +202,19 @@ describe('agentsDataMapper', () => {
       expect(canRunAgent(agent, ALL_AGENT_PERMISSIONS)).toBe(true);
     });
 
+    it('should carry the pipeline timezone into the schedule timezone', () => {
+      const agent = mapPipelineToAgent({
+        ...basePipeline,
+        airflowConfig: { pipelineTimezone: 'Europe/Berlin' },
+      });
+
+      expect(agent.scheduleTimezone).toBe('Europe/Berlin');
+    });
+
+    it('should default the schedule timezone to UTC', () => {
+      expect(mapPipelineToAgent(basePipeline).scheduleTimezone).toBe('UTC');
+    });
+
     it('should leave enabled undefined when the pipeline does not define it', () => {
       const agent = mapPipelineToAgent(basePipeline);
 
