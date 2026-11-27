@@ -552,14 +552,15 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         return profile_results
 
     def get_composed_metrics(self, column: Column, metric: Metrics, column_results: dict):
-        """Given a list of metrics, compute the given results
-        and returns the values
+        """Given a composed metric, compute its value from
+        the already computed column results
 
         Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            column: the column to compute the metric against
+            metric: composed metric to compute
+            column_results: computed values for the column
         Returns:
-            dictionnary of results
+            the computed metric value, or None on failure
         """
         try:
             return metric(column).fn(column_results)
