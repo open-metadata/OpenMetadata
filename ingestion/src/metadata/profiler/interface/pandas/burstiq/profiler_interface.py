@@ -59,9 +59,9 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
 
         We use OM-declared types (e.g. DOUBLE, DATETIME) instead, looked up by column name.
         We also iterate only first_df.columns (columns the API actually returned) rather than
-        self.table.columns (all 40 OM columns), which avoids KeyErrors for the columns absent
-        from the TQL response and ensures the column names used here match exactly what
-        _type_casted_dataset uses for its name-based lookups.
+        self.table.columns (all OM-declared columns for the table), which avoids KeyErrors for
+        the columns absent from the TQL response and ensures the column names used here match
+        exactly what _type_casted_dataset uses for its name-based lookups.
         """
         if self.dataset is None:
             return []
