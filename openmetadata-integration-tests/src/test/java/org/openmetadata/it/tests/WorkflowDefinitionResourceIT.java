@@ -204,6 +204,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
@@ -221,6 +223,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14693,20 +14696,22 @@ public class WorkflowDefinitionResourceIT {
     OpenMetadataClient client = SdkClients.adminClient();
     ensureWorkflowEventConsumerIsActive(client);
     String suffix = String.valueOf(System.currentTimeMillis());
-    User directVoter = createVoter(client, "repeatvoter1_" + suffix);
-    User finalVoter = createVoter(client, "repeatvoter2_" + suffix);
+    User directVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatvoter1_" + suffix));
+    User finalVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatvoter2_" + suffix));
     // The runtime threshold is capped by the eligible voters when the task is created.
     final User spareVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatspare_" + suffix));
-    User teamApprover = createVoter(client, "repeatmember1_" + suffix);
-    User teamRejecter = createVoter(client, "repeatmember2_" + suffix);
+    User teamApprover = ns.trackRoot(Entity.USER, createVoter(client, "repeatmember1_" + suffix));
+    User teamRejecter = ns.trackRoot(Entity.USER, createVoter(client, "repeatmember2_" + suffix));
     Team team =
-        client
-            .teams()
-            .create(
-                new CreateTeam()
-                    .withName("repeat_vote_team_" + suffix)
-                    .withTeamType(CreateTeam.TeamType.GROUP)
-                    .withUsers(List.of(teamApprover.getId(), teamRejecter.getId())));
+        ns.trackRoot(
+            Entity.TEAM,
+            client
+                .teams()
+                .create(
+                    new CreateTeam()
+                        .withName("repeat_vote_team_" + suffix)
+                        .withTeamType(CreateTeam.TeamType.GROUP)
+                        .withUsers(List.of(teamApprover.getId(), teamRejecter.getId()))));
     String workflowName = "RepeatVoteWorkflow_" + suffix;
     trackWorkflowFromJson(
         MAPPER.readTree(
@@ -14730,6 +14735,7 @@ public class WorkflowDefinitionResourceIT {
     String taskId = task.getId().toString();
 
     voteAs(teamApprover, taskId, TaskResolutionType.Approved, "Team approval");
+    Task admittedTask = client.tasks().get(taskId);
     voteAs(teamRejecter, taskId, TaskResolutionType.Rejected, "First rejection");
     voteAs(directVoter, taskId, TaskResolutionType.Approved, "Direct approval");
     String processId =
@@ -14740,6 +14746,7 @@ public class WorkflowDefinitionResourceIT {
         () -> assertRepeatVoteRefused(teamApprover, taskId, TaskResolutionType.Rejected),
         () -> assertRepeatVoteRefused(teamRejecter, taskId, TaskResolutionType.Rejected),
         () -> assertRepeatVoteRefused(directVoter, taskId, TaskResolutionType.Approved),
+        () -> assertAdmittedRepeatRejectionRefused(admittedTask, teamRejecter),
         () -> assertEquals("First rejection", rejectionComment(processId)));
     Task stillOpen = client.tasks().get(taskId);
     assertEquals(TaskEntityStatus.Open, stillOpen.getStatus());
@@ -14869,6 +14876,25 @@ public class WorkflowDefinitionResourceIT {
             processInstanceId,
             WorkflowVariableHandler.getNamespacedVariableName(
                 Workflow.GLOBAL_NAMESPACE, Workflow.REJECTION_COMMENT_VARIABLE));
+  }
+
+  private static void assertAdmittedRepeatRejectionRefused(final Task task, final User voter) {
+    // The second request passed the REST vote check before the first rejection committed.
+    final TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class,
+            () ->
+                TaskWorkflowHandler.getInstance()
+                    .resolveTask(
+                        task,
+                        null,
+                        TaskResolutionType.Rejected,
+                        null,
+                        null,
+                        "Repeat vote",
+                        voter.getName()));
+    assertEquals(
+        CatalogExceptionMessage.alreadyVoted(voter.getName(), task.getId()), refused.getMessage());
   }
 
   private static List<UUID> sortedIds(User... users) {

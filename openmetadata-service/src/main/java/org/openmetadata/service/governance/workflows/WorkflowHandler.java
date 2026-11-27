@@ -6,6 +6,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VAR
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_COMMENT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.REJECT_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
@@ -1381,18 +1383,8 @@ public class WorkflowHandler {
             || (rejectionThreshold != null && rejectionThreshold > 1)) {
           // This is a multi-reviewer approval task
           boolean taskCompleted =
-              DeadlockRetry.execute(
-                  () ->
-                      processEngine
-                          .getManagementService()
-                          .executeCommand(
-                              context ->
-                                  handleMultiApproval(
-                                      customTaskId,
-                                      task,
-                                      new HashMap<>(variables),
-                                      approvalThreshold,
-                                      rejectionThreshold)));
+              resolveMultiApprovalTask(
+                  customTaskId, task, variables, approvalThreshold, rejectionThreshold);
           if (taskCompleted) {
             LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' completed with threshold met",
@@ -1429,6 +1421,8 @@ public class WorkflowHandler {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
         return TaskResolutionOutcome.RESOLUTION_FAILED;
       }
+    } catch (TaskStateConflictException conflict) {
+      throw conflict;
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error(
           "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
@@ -1661,6 +1655,43 @@ public class WorkflowHandler {
     }
   }
 
+  private boolean resolveMultiApprovalTask(
+      final UUID customTaskId,
+      final Task task,
+      final Map<String, Object> variables,
+      final Integer approvalThreshold,
+      final Integer rejectionThreshold) {
+    return DeadlockRetry.execute(
+        () ->
+            processEngine
+                .getManagementService()
+                .executeCommand(
+                    context ->
+                        handleMultiApproval(
+                            customTaskId,
+                            lockActiveApprovalTask(task.getId(), customTaskId),
+                            new HashMap<>(variables),
+                            approvalThreshold,
+                            rejectionThreshold)));
+  }
+
+  private Task lockActiveApprovalTask(final String flowableTaskId, final UUID customTaskId) {
+    // An optimistic conflict at flush would come after the next workflow step had already run.
+    // Lock the runtime row before reading votes, in the same command that records the decision.
+    final Task task =
+        processEngine
+            .getTaskService()
+            .createNativeTaskQuery()
+            .sql("SELECT * FROM ACT_RU_TASK WHERE ID_ = #{taskId} FOR UPDATE")
+            .parameter("taskId", flowableTaskId)
+            .singleResult();
+    if (task == null) {
+      throw TaskStateConflictException.of(
+          "Workflow task '%s' advanced while it was being resolved".formatted(customTaskId));
+    }
+    return task;
+  }
+
   private boolean handleMultiApproval(
       UUID customTaskId,
       Task task,
@@ -1708,14 +1739,12 @@ public class WorkflowHandler {
       return false;
     }
 
-    // TaskRepository refuses a repeat vote before anything is written; this catches the same voter
-    // racing two requests past that check, so the vote is neither counted twice nor dropped
-    // silently.
     if (approversList.contains(currentUser) || rejectersList.contains(currentUser)) {
       throw TaskStateConflictException.of(
           CatalogExceptionMessage.alreadyVoted(currentUser, customTaskId));
     }
 
+    storeRejectionDetails(taskService, task.getId(), variables);
     if (approved) {
       approversList.add(currentUser);
     } else {
@@ -1799,6 +1828,18 @@ public class WorkflowHandler {
         approvalThreshold - approvalCount,
         rejectionThreshold - rejectionCount);
     return false;
+  }
+
+  private static void storeRejectionDetails(
+      final TaskService taskService, final String taskId, final Map<String, Object> variables) {
+    final String commentKey =
+        getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE);
+    final String reviewerKey = getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE);
+    if (variables.containsKey(commentKey)) {
+      // A rejection without a comment intentionally clears the preceding reason.
+      taskService.setVariable(taskId, commentKey, variables.get(commentKey));
+      taskService.setVariable(taskId, reviewerKey, variables.get(reviewerKey));
+    }
   }
 
   private Object resolveMultiApprovalResult(

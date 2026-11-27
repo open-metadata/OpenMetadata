@@ -342,11 +342,10 @@ public class TaskWorkflowHandler {
                     .get(null, taskId, taskRepository.getFields("comments"))
                     .getComments())
             : comment;
-    if (rejection) {
-      if (ontologyReview && nullOrEmpty(resolvedComment == null ? null : resolvedComment.strip())) {
-        throw new BadRequestException("A rejection requires a reason");
-      }
-      recordRejection(workflowHandler, taskId, resolvedComment, user);
+    if (rejection
+        && ontologyReview
+        && nullOrEmpty(resolvedComment == null ? null : resolvedComment.strip())) {
+      throw new BadRequestException("A rejection requires a reason");
     }
 
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
@@ -354,6 +353,12 @@ public class TaskWorkflowHandler {
     // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
+    if (rejection && namespacedVariables != null) {
+      namespacedVariables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), resolvedComment);
+      namespacedVariables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE), user);
+    }
     if (ontologyReview && namespacedVariables != null) {
       TaskResolutionType decision =
           resolutionType != null
@@ -526,19 +531,6 @@ public class TaskWorkflowHandler {
                 TaskComment::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
         .map(TaskComment::getMessage)
         .orElse(null);
-  }
-
-  // The steps after a rejected approval read why it was rejected and by whom, e.g. to ask the
-  // asset's owners for a revision. A rejection without a reason clears an earlier one.
-  private static void recordRejection(
-      final WorkflowHandler workflowHandler,
-      final UUID taskId,
-      final String comment,
-      final String user) {
-    workflowHandler.setProcessVariable(
-        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), comment);
-    workflowHandler.setProcessVariable(
-        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE), user);
   }
 
   private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
