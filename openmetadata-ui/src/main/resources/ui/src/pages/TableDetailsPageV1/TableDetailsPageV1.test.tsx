@@ -965,8 +965,9 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     it('should render the skeleton instead of a count while the request is in flight', async () => {
-      let resolveCount: (value: { paging: { total: number } }) => void = () =>
-        undefined;
+      let resolveCount: (value: { paging: { total: number } }) => void = (
+        _value
+      ) => undefined;
       (getQueriesList as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -986,7 +987,6 @@ describe('TestDetailsPageV1 component', () => {
       ).toBeTruthy();
 
       await act(async () => {
-        // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
         resolveCount({ paging: { total: 7 } });
       });
 

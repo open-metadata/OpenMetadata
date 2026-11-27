@@ -3373,7 +3373,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
     placeUnder(updated, moveRequest.getParent());
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
@@ -3388,6 +3388,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 .withEntityId(updated.getId())
                 .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
                 .withUserName(updated.getUpdatedBy())
+                .withImpersonatedBy(updated.getImpersonatedBy())
                 .withPreviousVersion(original.getVersion())
                 .withCurrentVersion(updated.getVersion())
                 .withTimestamp(System.currentTimeMillis())

@@ -102,6 +102,7 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -2305,6 +2306,7 @@ public class LineageRepository {
             .withEntityFullyQualifiedName(edgeFqn)
             .withEntity(edge)
             .withUserName(userName)
+            .withImpersonatedBy(ImpersonationContext.getImpersonatedBy())
             .withTimestamp(System.currentTimeMillis());
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }

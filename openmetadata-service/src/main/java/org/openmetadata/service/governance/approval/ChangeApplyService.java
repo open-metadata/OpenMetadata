@@ -448,6 +448,7 @@ public final class ChangeApplyService {
       ChangeSelection selection) {
     final List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
     final List<MutationOp> relationOps = relationOps(repository, split.applicable());
+    boolean wroteFieldVersion = false;
     if (!fieldOps.isEmpty()) {
       JsonPatch patch =
           JsonUtils.getJsonPatch(
@@ -455,11 +456,13 @@ public final class ChangeApplyService {
       final ApprovedApplication approval =
           new ApprovedApplication(
               request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
-      repository.applyApprovedChange(approval, patch);
+      wroteFieldVersion =
+          repository.applyApprovedChange(approval, patch).entity().getVersion()
+              > currentTree.path("version").asDouble();
     }
     if (!relationOps.isEmpty()) {
       repository.applyStagedRelations(
-          request.getEntityId(), relationOps, request.getRequestedBy(), !fieldOps.isEmpty());
+          request.getEntityId(), relationOps, request.getRequestedBy(), wroteFieldVersion);
     }
     final EntityInterface published =
         readCurrent(repository, request.getEntityId(), split.applicable());

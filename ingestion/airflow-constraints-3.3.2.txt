@@ -1,6 +1,6 @@
 
 #
-# Security overrides: certifi, dnspython, filelock, oauthlib, snowflake-connector-python, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector, sqlparse, pyarrow.
+# Security overrides: certifi, dnspython, filelock, oauthlib, snowflake-connector-python, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector, sqlparse, pyarrow, pydantic.
 # Re-apply these overrides after regenerating from upstream: ADR:2026-10-23-ingestion-images-pin-python-security-packages-in-tree
 # This constraints file was automatically generated on 2026-09-17T09:17:15.849003
 # via `uv pip install --resolution highest` for the "v3-3-test" branch of Airflow.
@@ -576,8 +576,8 @@ pydantic-ai-slim==2.43.0
 pydantic-extra-types==2.11.1
 pydantic-graph==2.43.0
 pydantic-settings==2.15.0
-pydantic==2.13.5
-pydantic_core==2.46.5
+pydantic==2.14.4
+pydantic_core==2.50.5
 pydata-google-auth==1.9.1
 pydruid==0.6.9
 pyexasol==2.4.1
