@@ -34,15 +34,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       throw e;
     }
     context.setStagedChunkIndex(stagedChunkIndex);
-    awaitStagedGenerationDiscovery(stagedChunkIndex);
     return context;
-  }
-
-  private static void awaitStagedGenerationDiscovery(String stagedChunkIndex) {
-    VectorIndexService vectorService = vectorService();
-    if (stagedChunkIndex != null && vectorService != null) {
-      vectorService.awaitStagedGenerationDiscovery(stagedChunkIndex);
-    }
   }
 
   private static VectorIndexService vectorService() {
@@ -182,9 +174,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
    */
   private void markChunkTypeOutcomeAndRethrow(
       EntityReindexContext context, RuntimeException superFailure) {
-    boolean entityIndexPromoted =
-        promotedEntityTypes.remove(context.getEntityType())
-            && !context.isStagedChunkDeleteUnrecorded();
+    boolean entityIndexPromoted = promotedEntityTypes.remove(context.getEntityType());
     try {
       VectorIndexService vectorService = vectorService();
       if (vectorService != null) {

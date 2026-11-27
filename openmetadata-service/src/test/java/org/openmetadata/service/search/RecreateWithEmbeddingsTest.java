@@ -4,11 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,7 +17,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,23 +44,7 @@ class RecreateWithEmbeddingsTest {
     }
 
     assertEquals(Optional.of(STAGED_CHUNKS), context.getStagedChunkIndex());
-    InOrder order = inOrder(vectorService);
-    order.verify(vectorService).beginStagedChunkRecreate();
-    order.verify(vectorService).awaitStagedGenerationDiscovery(STAGED_CHUNKS);
-  }
-
-  @Test
-  void aRecreateThatStagesNoGenerationDoesNotWait() {
-    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
-    DefaultRecreateHandler handler =
-        new RecreateWithEmbeddings().withJobData(new EventPublisherJob());
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      handler.reCreateIndexes(Set.of("table"));
-    }
-
-    verify(vectorService, never()).awaitStagedGenerationDiscovery(any());
+    verify(vectorService).beginStagedChunkRecreate();
   }
 
   @Test

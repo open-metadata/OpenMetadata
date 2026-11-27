@@ -177,7 +177,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aHeaderThatCannotBeReadFailsTheStagedDeleteAndKeepsTheGenerationFromGoingLive() {
+  void aHeaderThatCannotBeReadFailsTheStagedDeleteAndDeletesNothingFromIt() {
     service.latchParticipantStagedTarget(STAGED);
     assertTrue(write(STAGED, chunks(3)));
     cluster.failReadsOf(STAGED, 503);
@@ -188,7 +188,6 @@ class ChunkSetBoundTest {
         Set.of(parentId + "_0", parentId + "_1", parentId + "_2"),
         cluster.chunkIds(STAGED, parentId),
         "nothing is deleted from a chunk set whose header could not be read");
-    assertTrue(cluster.flaggedIncomplete(STAGED), "the missed delete is recorded");
   }
 
   @Test
@@ -233,7 +232,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aStagedDeleteRetriesAHeaderReadAndLeavesTheGenerationPromotable() {
+  void aStagedDeleteRetriesAHeaderReadTheClusterRefusedOnce() {
     service.latchParticipantStagedTarget(STAGED);
     assertTrue(write(STAGED, chunks(3)));
     cluster.failNextReadsOf(STAGED, 503, 1);
@@ -241,7 +240,6 @@ class ChunkSetBoundTest {
     service.deleteEntityChunks(parentId);
 
     assertEquals(Set.of(), cluster.chunkIds(STAGED, parentId));
-    assertFalse(cluster.flaggedIncomplete(STAGED), "one 503 no longer flags the generation");
   }
 
   @Test
@@ -725,7 +723,12 @@ class ChunkSetBoundTest {
     private final FakeCluster cluster;
 
     InMemoryVectorService(EmbeddingClient embeddingClient, FakeCluster cluster, Clock clock) {
-      super(embeddingClient, parameters -> Set.of(), clock);
+      super(
+          embeddingClient,
+          parameters -> Set.of(),
+          clock,
+          new ChunkIndexCleanup(
+              EVERY_ENTITY_LIVE, () -> new LeaseTable().leaseOf("server"), pass -> {}));
       this.cluster = cluster;
     }
 
@@ -903,10 +906,6 @@ class ChunkSetBoundTest {
 
     void storeMeta(String index, Map<String, Object> meta) {
       metas.put(index, MAPPER.valueToTree(meta));
-    }
-
-    boolean flaggedIncomplete(String index) {
-      return meta(index).path("incompleteChunkWrites").asBoolean(false);
     }
 
     JsonNode meta(String index) {

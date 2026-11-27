@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.vector;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,7 +39,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.function.FailableRunnable;
 import org.apache.hc.core5.http.HttpEntity;
@@ -90,8 +92,18 @@ class ElasticSearchVectorServiceTest {
     when(mockEmbeddingClient.embedQuery(any(String.class)))
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
-    vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
+    vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient, cleanup);
   }
+
+  // Entity ids the database no longer holds live, and the cleanups a promotion started.
+  private final Set<String> deletedEntities = ConcurrentHashMap.newKeySet();
+  private final List<Runnable> startedCleanups = new ArrayList<>();
+  private final ChunkIndexCleanup cleanup =
+      new ChunkIndexCleanup(
+          (entityType, ids) ->
+              ids.stream().filter(id -> !deletedEntities.contains(id)).collect(Collectors.toSet()),
+          () -> mock(ChunkSetHealRunner.Lease.class),
+          startedCleanups::add);
 
   private final ListAppender<ILoggingEvent> serviceLog = new ListAppender<>();
 
@@ -788,7 +800,6 @@ class ElasticSearchVectorServiceTest {
     promoteEveryEntityIndex(staged);
 
     assertFalse(written, "the caller is told about the miss, to count and retry it");
-    assertEquals(0, sentCount("PUT", "/" + staged + "/_mapping"), "a missed write saves no flag");
     assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
   }
 
@@ -803,7 +814,6 @@ class ElasticSearchVectorServiceTest {
     promoteEveryEntityIndex(staged);
 
     assertFalse(written);
-    assertEquals(0, sentCount("PUT", "/" + staged + "/_mapping"));
     assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
   }
 
@@ -821,105 +831,6 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void aFailedDeleteBlocksPromotionAndSavesItsFlagOnce() throws Exception {
-    answerByEndpointContaining(
-        freshInstallRules(
-            "/_bulk", response(503, "{\"error\":\"unavailable\"}"), MGET, chunkHeader()));
-    String staged = vectorService.beginStagedChunkRecreate();
-
-    for (int i = 0; i < 3; i++) {
-      String parentId = UUID.randomUUID().toString();
-      assertThrows(
-          IllegalStateException.class,
-          () -> vectorService.deleteEntityChunks(parentId),
-          "the delete from the live index failed too, and its caller is told");
-    }
-    promoteEveryEntityIndex(staged);
-
-    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
-    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
-    assertEquals(1, sentCount("PUT", "/" + staged + "/_mapping"), "one flag per generation");
-    assertEquals(0, sentCount("POST", "/_aliases"), "no alias swap");
-    assertTrue(logged(Level.WARN, "a delete of a removed entity's chunks failed"));
-  }
-
-  @Test
-  void aParticipantThatCannotSaveTheDeleteFlagFailsItsPartitionUntilARetrySavesIt()
-      throws Exception {
-    String staged = vectorService.getChunkIndexName() + "_g1";
-    vectorService.latchParticipantStagedTarget(staged);
-    answerByEndpointContaining(
-        rules(
-            "/_bulk",
-            response(503, "{\"error\":\"unavailable\"}"),
-            "/" + staged + "/_mapping",
-            response(503, "{\"error\":\"unavailable\"}"),
-            MGET,
-            chunkHeader()));
-
-    String parentId = orders().getId().toString();
-    assertThrows(IllegalStateException.class, () -> vectorService.deleteEntityChunks(parentId));
-
-    assertThrows(IllegalStateException.class, vectorService::requireStagedChunkFailuresRecorded);
-
-    answerByEndpointContaining(rules());
-    assertDoesNotThrow(vectorService::requireStagedChunkFailuresRecorded);
-    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
-    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
-  }
-
-  /**
-   * A participant that leaves its run has no partition left to fail, so it tries once more to save
-   * the flag of a delete it missed, and logs an error when it still cannot.
-   */
-  @Test
-  void aParticipantLeavingItsRunRetriesTheFlagOfAMissedDelete() throws Exception {
-    String staged = vectorService.getChunkIndexName() + "_g1";
-    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
-    vectorService.latchParticipantStagedTarget(staged);
-    answerByEndpointContaining(
-        rules(
-            LIVE_READ,
-            missingIndex(),
-            MGET,
-            chunkHeader(),
-            "/_bulk",
-            unavailable,
-            "/" + staged + "/_mapping",
-            unavailable));
-    vectorService.deleteEntityChunks(orders().getId().toString());
-
-    clearInvocations(mockRestClient);
-    answerByEndpointContaining(rules());
-    vectorService.clearParticipantStagedTarget();
-
-    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
-    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
-  }
-
-  @Test
-  void aParticipantLeavingItsRunLogsAMissedDeleteItStillCannotRecord() throws Exception {
-    String staged = vectorService.getChunkIndexName() + "_g1";
-    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
-    vectorService.latchParticipantStagedTarget(staged);
-    answerByEndpointContaining(
-        rules(
-            LIVE_READ,
-            missingIndex(),
-            MGET,
-            chunkHeader(),
-            "/_bulk",
-            unavailable,
-            "/" + staged + "/_mapping",
-            unavailable));
-    vectorService.deleteEntityChunks(orders().getId().toString());
-
-    vectorService.clearParticipantStagedTarget();
-
-    assertTrue(logged(Level.ERROR, "could not record it"));
-  }
-
-  @Test
   void aTypeWhoseEntityIndexStayedLiveKeepsTheLiveChunks() throws Exception {
     answerByEndpointContaining(freshInstallRules());
     String staged = vectorService.beginStagedChunkRecreate();
@@ -929,6 +840,148 @@ class ElasticSearchVectorServiceTest {
 
     assertEquals(0, sentCount("POST", "/_aliases"), "no alias swap");
     assertTrue(logged(Level.WARN, "the entity indexes of [table] kept their live index"));
+    assertEquals(List.of(), startedCleanups, "an index that stays live needs no new sweep");
+  }
+
+  /**
+   * A server that has not found the generation yet deletes an entity from the live index only. The
+   * generation the run wrote still holds its chunks, so it is checked against the database before
+   * the swap, and they are removed from it first.
+   */
+  @Test
+  void aDeleteAServerSentOnlyToTheLiveIndexIsRemovedFromTheGenerationBeforeTheSwap()
+      throws Exception {
+    String deleted = UUID.randomUUID().toString();
+    answerByEndpointContaining(
+        freshInstallRules(MGET, chunkHeader(), "/_search", parentsOf(deleted)));
+    ElasticSearchVectorService otherServer =
+        new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient, cleanup);
+    otherServer.deleteEntityChunks(UUID.randomUUID().toString());
+    String staged = vectorService.beginStagedChunkRecreate();
+    clearInvocations(mockRestClient);
+
+    otherServer.deleteEntityChunks(deleted);
+    deletedEntities.add(deleted);
+    promoteEveryEntityIndex(staged);
+
+    assertChunkDeleteSentBeforeTheSwap(staged, deleted);
+  }
+
+  /** A delete that fails in the generation no longer keeps the live chunks: the check repairs it. */
+  @Test
+  void aDeleteThatFailedInTheGenerationIsRemovedBeforeTheSwap() throws Exception {
+    String deleted = UUID.randomUUID().toString();
+    AtomicBoolean stagedBulksFail = new AtomicBoolean(true);
+    answerStagedBulksWith503While(
+        stagedBulksFail, freshInstallRules(MGET, chunkHeader(), "/_search", parentsOf(deleted)));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    vectorService.deleteEntityChunks(deleted);
+    deletedEntities.add(deleted);
+    stagedBulksFail.set(false);
+    clearInvocations(mockRestClient);
+    promoteEveryEntityIndex(staged);
+
+    assertChunkDeleteSentBeforeTheSwap(staged, deleted);
+  }
+
+  @Test
+  void aGenerationThatCannotBeCheckedAgainstTheDatabaseKeepsTheLiveChunks() throws Exception {
+    answerByEndpointContaining(
+        freshInstallRules("/_search", response(503, "{\"error\":\"unavailable\"}")));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    promoteEveryEntityIndex(staged);
+
+    assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
+    assertTrue(logged(Level.WARN, "could not be checked against the database"));
+    assertEquals(List.of(), startedCleanups);
+  }
+
+  /**
+   * A delete can still miss the generation between the check and the swap, so a generation starts
+   * without the record of the sweep, and going live starts the cleanups that sweep it once more.
+   */
+  @Test
+  void aGenerationStartsUnsweptAndGoingLiveStartsTheSweep() throws Exception {
+    answerByEndpointContaining(freshInstallRules());
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    promoteEveryEntityIndex(staged);
+
+    JsonNode meta = bodyOf(sentRequest("PUT", "/" + staged)).path("mappings").path("_meta");
+    assertTrue(meta.path("chunkSetsBounded").asBoolean(), meta::toString);
+    assertTrue(meta.path("chunksOfDeletedEntitiesRemoved").isMissingNode(), meta::toString);
+    assertEquals(1, sentCount("POST", "/_aliases"));
+    assertEquals(1, startedCleanups.size(), "the promoted generation is swept once it is live");
+  }
+
+  private void assertChunkDeleteSentBeforeTheSwap(String staged, String parentId) throws Exception {
+    List<Request> sent = sentRequests();
+    int swap = indexOf(sent, "POST", "/_aliases", "");
+    int delete =
+        indexOf(
+            sent, "POST", "/_bulk", "\"_index\":\"" + staged + "\",\"_id\":\"" + parentId + "_0\"");
+    assertTrue(delete >= 0, "the generation's chunks of the deleted entity are deleted");
+    assertTrue(swap > delete, "before the swap");
+  }
+
+  private static int indexOf(List<Request> sent, String method, String endpoint, String body)
+      throws Exception {
+    int found = -1;
+    for (int i = 0; i < sent.size() && found < 0; i++) {
+      Request request = sent.get(i);
+      boolean matches =
+          method.equals(request.getMethod())
+              && endpoint.equals(request.getEndpoint())
+              && (body.isEmpty() || bodyText(request).contains(body));
+      found = matches ? i : -1;
+    }
+    return found;
+  }
+
+  private List<Request> sentRequests() throws Exception {
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    return sent.getAllValues();
+  }
+
+  /** One page of the parents a chunk index holds, all tables. */
+  private static Response parentsOf(String... parentIds) throws Exception {
+    StringBuilder buckets = new StringBuilder();
+    for (String parentId : parentIds) {
+      buckets
+          .append(buckets.isEmpty() ? "" : ",")
+          .append("{\"key\":{\"parentId\":\"")
+          .append(parentId)
+          .append("\",\"entityType\":\"table\"},\"doc_count\":1}");
+    }
+    return response(200, "{\"aggregations\":{\"parents\":{\"buckets\":[" + buckets + "]}}}");
+  }
+
+  /** As {@link #answerByEndpointContaining}, with every bulk into a generation refused while set. */
+  private void answerStagedBulksWith503While(AtomicBoolean failing, Map<String, Response> rules)
+      throws Exception {
+    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
+    Response ok = response(200, "{}");
+    Response nothingStored = nothingStored();
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              Request request = invocation.getArgument(0);
+              String endpoint = request.getEndpoint();
+              boolean refused =
+                  failing.get()
+                      && endpoint.equals("/_bulk")
+                      && bodyText(request).contains(vectorService.getChunkIndexName() + "_g");
+              return refused
+                  ? unavailable
+                  : rules.entrySet().stream()
+                      .filter(rule -> endpoint.contains(rule.getKey()))
+                      .map(Map.Entry::getValue)
+                      .findFirst()
+                      .orElse(endpoint.endsWith(MGET) ? nothingStored : ok);
+            });
   }
 
   @Test

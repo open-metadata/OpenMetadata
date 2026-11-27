@@ -12,6 +12,7 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -47,12 +48,37 @@ public class ElasticSearchVectorService extends AbstractVectorIndexService {
         VectorSearchMemoryAccess::readableAnchorIds);
   }
 
+  /** {@code cleanup} is what the chunk index is checked against, and runs its cleanups. */
+  public ElasticSearchVectorService(
+      ElasticsearchClient client, EmbeddingClient embeddingClient, ChunkIndexCleanup cleanup) {
+    this(
+        client,
+        embeddingClient,
+        VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER,
+        VectorSearchMemoryAccess::readableAnchorIds,
+        cleanup);
+  }
+
   ElasticSearchVectorService(
       ElasticsearchClient client,
       EmbeddingClient embeddingClient,
       int knnNumCandidatesMultiplier,
       Function<VectorSearchParameters, Set<String>> readableAnchors) {
-    super(embeddingClient, readableAnchors);
+    this(
+        client,
+        embeddingClient,
+        knnNumCandidatesMultiplier,
+        readableAnchors,
+        ChunkIndexCleanup.forCluster());
+  }
+
+  private ElasticSearchVectorService(
+      ElasticsearchClient client,
+      EmbeddingClient embeddingClient,
+      int knnNumCandidatesMultiplier,
+      Function<VectorSearchParameters, Set<String>> readableAnchors,
+      ChunkIndexCleanup cleanup) {
+    super(embeddingClient, readableAnchors, Clock.systemUTC(), cleanup);
     this.restClient = extractRestClient(client);
     this.knnNumCandidatesMultiplier =
         knnNumCandidatesMultiplier > 0

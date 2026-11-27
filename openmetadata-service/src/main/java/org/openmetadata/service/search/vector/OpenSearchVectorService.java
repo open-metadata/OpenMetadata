@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +29,28 @@ public class OpenSearchVectorService extends AbstractVectorIndexService {
   private final OpenSearchClient client;
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
-    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds);
+    this(client, embeddingClient, ChunkIndexCleanup.forCluster());
+  }
+
+  /** {@code cleanup} is what the chunk index is checked against, and runs its cleanups. */
+  public OpenSearchVectorService(
+      OpenSearchClient client, EmbeddingClient embeddingClient, ChunkIndexCleanup cleanup) {
+    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds, cleanup);
   }
 
   OpenSearchVectorService(
       OpenSearchClient client,
       EmbeddingClient embeddingClient,
       Function<VectorSearchParameters, Set<String>> readableAnchors) {
-    super(embeddingClient, readableAnchors);
+    this(client, embeddingClient, readableAnchors, ChunkIndexCleanup.forCluster());
+  }
+
+  private OpenSearchVectorService(
+      OpenSearchClient client,
+      EmbeddingClient embeddingClient,
+      Function<VectorSearchParameters, Set<String>> readableAnchors,
+      ChunkIndexCleanup cleanup) {
+    super(embeddingClient, readableAnchors, Clock.systemUTC(), cleanup);
     this.client = client;
   }
 
