@@ -79,8 +79,6 @@ export const useIncidentList = ({
   // Only the latest request may write rows and paging: a slower response for a
   // page the user already left must not overwrite the page they are on.
   const latestRequestId = useRef(0);
-  const currentPageRef = useRef(currentPage);
-  currentPageRef.current = currentPage;
 
   const fetchTestCaseIncidents = useCallback(
     async (params: TestCaseIncidentStatusParams) => {
@@ -141,20 +139,10 @@ export const useIncidentList = ({
     ]
   );
 
+  // A page change reaches the fetch effect through `currentPage`.
   const handlePagingClick = useCallback(
-    ({ currentPage: page }: PagingHandlerParams) => {
-      // Another page reaches the fetch effect through `currentPage`. The same
-      // page changes nothing the effect watches, so that refresh is fetched here.
-      if (page === currentPageRef.current) {
-        fetchTestCaseIncidents({
-          ...filters,
-          offset: (page - 1) * pageSize,
-        });
-      } else {
-        handlePageChange(page);
-      }
-    },
-    [fetchTestCaseIncidents, filters, pageSize, handlePageChange]
+    ({ currentPage: page }: PagingHandlerParams) => handlePageChange(page),
+    [handlePageChange]
   );
 
   const pagingData = useMemo(
