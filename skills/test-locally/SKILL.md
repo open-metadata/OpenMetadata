@@ -23,7 +23,7 @@ When a user asks to "test locally", "start docker", "deploy locally", "test in t
 - `--skip-maven` or `--fast`: Skip the Maven build (use when only ingestion Python code changed)
 - `--database mysql|postgresql`: Select the database and its matching search service. A new deployment defaults to MySQL.
 - `--rebuild`: Tear down existing containers and rebuild
-- `--teardown` or `--down`: Just stop and remove containers
+- `--teardown` or `--down`: Stop the selected stack and remove its Compose-managed volumes
 - No arguments: Auto-detect what changed and choose the optimal build strategy
 
 ## Process
@@ -37,10 +37,10 @@ Run commands from the repo root. Use the selected row for every shell call, incl
 | `mysql` | `docker/development/docker-compose.yml` | `3306` | Elasticsearch |
 | `postgresql` | `docker/development/docker-compose-postgres.yml` | `5432` | OpenSearch |
 
-For teardown or reset, use the database selected at launch. If the request omits `--database` and the stack is unknown, ask which database to stop before running Compose. For `--teardown` or `--down`, stop the selected stack and keep its volumes:
+For teardown or reset, use the database selected at launch. If the request omits `--database` and the stack is unknown, ask which database to stop before running Compose. For `--teardown` or `--down`, stop the selected stack and remove its Compose-managed volumes. Database files in the host bind mount survive this command:
 
 ```bash
-docker compose -f "$compose_file" down
+docker compose -f "$compose_file" down -v
 ```
 
 For teardown, report the result and exit. For deployment, continue below.
@@ -112,12 +112,14 @@ If a stack is already running, offer to reuse it. The launcher stops both develo
 
 ### Step 6: Build and Deploy
 
-**Full build**:
+**Full build**
+
+This resets the local database files in `docker/development/docker-volume/`, which both stacks share.
 ```bash
-./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r false
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```
 
-**Fast rebuild** (ingestion-only):
+**Fast rebuild** (ingestion-only, keeps local database data)
 ```bash
 ./docker/run_local_docker.sh -m ui -d "$database" -s true -i true -r false
 ```
@@ -173,7 +175,7 @@ If the user reports issues, check these:
 grep -l "YourConnector" openmetadata-spec/src/main/resources/json/schema/entity/services/*Service.json
 
 # Need to rebuild without skip-maven
-./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r false
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```
 
 **Test connection fails?**
@@ -194,16 +196,10 @@ docker system info | grep "Total Memory"
 lsof -i :8585 -i :8080 -i :9200 -i ":$db_port" | grep LISTEN
 ```
 
-If the user wants to remove the selected stack's Compose-managed volumes as well, run the reset below. Database files in the host bind mount survive this command.
-
-```bash
-docker compose -f "$compose_file" down -v
-```
-
 **Build fails?**
 ```bash
 # Format first, then rebuild
 make py_format
 mvn spotless:apply
-./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r false
+./docker/run_local_docker.sh -m ui -d "$database" -s false -i true -r true
 ```
