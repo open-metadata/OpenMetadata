@@ -50,11 +50,14 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
+    DependencyType,
+    IndirectColumn,
     LineageDetails,
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.indirect_lineage import IndirectColumnRef
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import (
     LINEAGE_PARSING_TIMEOUT,
@@ -515,6 +518,37 @@ def _find_column(columns: list[TableColumn] | None, name: str) -> TableColumn | 
     return next((column for column in columns or [] if column.name.root.lower() == name.lower()), None)
 
 
+def build_indirect_columns(
+    from_entity: Table,
+    indirect_column_refs: Iterable[IndirectColumnRef] | None,
+) -> list[IndirectColumn]:
+    """
+    Resolve indirect column references against `from_entity.columns` and build
+    deduplicated `IndirectColumn` entries with real column FQNs.
+    """
+    if not from_entity or not indirect_column_refs:
+        return []
+    result: list[IndirectColumn] = []
+    seen: set[tuple[str, str]] = set()
+    for ref in indirect_column_refs:
+        col = _find_column(from_entity.columns, ref.column_name)
+        if col is None or col.fullyQualifiedName is None:
+            continue
+        col_fqn = model_str(col.fullyQualifiedName)
+        key = (col_fqn, ref.subtype)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(
+            IndirectColumn(
+                fromColumn=col.fullyQualifiedName,
+                transformationType=DependencyType.INDIRECT.value,
+                transformationSubtype=ref.subtype,
+            )
+        )
+    return result
+
+
 def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn, copied: bool) -> list[ColumnLineage]:
     """
     Lineage from one column to another and, when the query copies the column unchanged, one
@@ -528,6 +562,7 @@ def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn, cop
         ColumnLineage(
             fromColumns=[from_column.fullyQualifiedName],
             toColumn=to_column.fullyQualifiedName,
+            transformationType=DependencyType.DIRECT.value,
         )
     ]
     for from_child in from_column.children or [] if copied else []:
@@ -620,12 +655,14 @@ def _build_table_lineage(
     to_entity: Table,
     from_table_raw_name: str,
     to_table_raw_name: str,
-    masked_query: str,
+    masked_query: str | None,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: EntityReference | None = None,
     temp_lineage_tables: list | None = None,
     copied_columns: CopiedColumns = NOTHING_COPIED,
+    dependency_type: DependencyType | None = None,
+    indirect_column_refs: Iterable[IndirectColumnRef] | None = None,
 ) -> Either[LineageRequest]:
     """
     Prepare the lineage request generator
@@ -672,6 +709,14 @@ def _build_table_lineage(
             lineage_details.tempLineageTables = temp_lineage_tables
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
+            # Projected column lineage always proves a DIRECT table dependency.
+            lineage_details.dependencyType = DependencyType.DIRECT
+        elif dependency_type is not None:
+            lineage_details.dependencyType = dependency_type
+        if indirect_column_refs:
+            resolved_indirect = build_indirect_columns(from_entity, indirect_column_refs)
+            if resolved_indirect:
+                lineage_details.indirectColumns = resolved_indirect
         lineage = OMetaFQNLineageRequest(
             from_entity_fqn=model_str(from_entity_fqn),
             from_entity_type="table",
@@ -700,7 +745,7 @@ def _create_lineage_by_table_name(
     service_names: str | list[str],
     database_name: str | None,
     schema_name: str | None,
-    masked_query: str,
+    masked_query: str | None,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: EntityReference | None = None,
@@ -708,6 +753,8 @@ def _create_lineage_by_table_name(
     schema_fallback: bool = False,
     to_table_entities: list[Table] | None = None,
     copied_columns: CopiedColumns = NOTHING_COPIED,
+    dependency_type: DependencyType | None = None,
+    indirect_column_refs: Iterable[IndirectColumnRef] | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -768,6 +815,8 @@ def _create_lineage_by_table_name(
                     lineage_source=lineage_source,
                     procedure=procedure,
                     copied_columns=copied_columns,
+                    dependency_type=dependency_type,
+                    indirect_column_refs=indirect_column_refs,
                 )
 
     except Exception as exc:
@@ -827,6 +876,45 @@ def _view_target(view_entity: Table | None, target_table: object) -> list[Table]
     return None
 
 
+def _yield_indirect_only_lineage(
+    metadata: OpenMetadata,
+    lineage_parser: LineageParser,
+    to_table: str,
+    service_names: list[str],
+    database_name: str | None,
+    schema_name: str | None,
+    masked_query: str | None,
+    column_lineage_map: dict,
+    copied_columns: CopiedColumns,
+    lineage_source: LineageSource,
+    graph: DiGraph | None,
+    schema_fallback: bool,
+    to_table_entities: list[Table] | None = None,
+    target_table_scope: str | None = None,
+) -> Iterable[Either[LineageRequest]]:
+    """Emit INDIRECT edges for tables discovered by sqlglot that sqllineage missed (e.g., WHERE EXISTS)."""
+    for indirect_table in lineage_parser.get_indirect_only_tables(target_table=target_table_scope):
+        yield from _create_lineage_by_table_name(
+            metadata,
+            from_table=indirect_table,
+            to_table=to_table,
+            service_names=service_names,
+            database_name=database_name,
+            schema_name=schema_name,
+            masked_query=masked_query,
+            column_lineage_map=column_lineage_map,
+            copied_columns=copied_columns,
+            lineage_source=lineage_source,
+            graph=graph,
+            schema_fallback=schema_fallback,
+            to_table_entities=to_table_entities,
+            dependency_type=DependencyType.INDIRECT,
+            indirect_column_refs=lineage_parser.get_indirect_column_refs(
+                indirect_table, target_table=target_table_scope
+            ),
+        )
+
+
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
@@ -872,9 +960,13 @@ def get_lineage_by_query(
         _key_struct_field_parents(column_lineage, lineage_parser)
         # Read the projections only when there is column lineage to follow into nested fields.
         copied_columns = cast("CopiedColumns", lineage_parser.copied_columns) if column_lineage else NOTHING_COPIED
+        intermediate_tables = cast("list", lineage_parser.intermediate_tables)
+        source_tables = cast("list", lineage_parser.source_tables)
+        target_tables = cast("list", lineage_parser.target_tables)
 
-        for intermediate_table in lineage_parser.intermediate_tables:
-            for source_table in lineage_parser.source_tables:
+        for intermediate_table in intermediate_tables:
+            intermediate_name = str(intermediate_table)
+            for source_table in source_tables:
                 for procedure, from_table_name in get_source_table_names(
                     metadata=metadata,
                     dialect=dialect,
@@ -885,10 +977,11 @@ def get_lineage_by_query(
                     timeout_seconds=timeout_seconds,
                     column_lineage=column_lineage,
                 ):
+                    from_name = str(from_table_name)
                     yield from _create_lineage_by_table_name(
                         metadata,
-                        from_table=str(from_table_name),
-                        to_table=str(intermediate_table),
+                        from_table=from_name,
+                        to_table=intermediate_name,
                         service_names=service_names,
                         database_name=database_name,
                         schema_name=schema_name,
@@ -899,12 +992,34 @@ def get_lineage_by_query(
                         procedure=procedure,
                         graph=graph,
                         schema_fallback=schema_fallback,
+                        dependency_type=lineage_parser.get_table_dependency_type(
+                            from_name, target_table=intermediate_name
+                        ),
+                        indirect_column_refs=lineage_parser.get_indirect_column_refs(
+                            from_name, target_table=intermediate_name
+                        ),
                     )
-            for target_table in lineage_parser.target_tables:
+            yield from _yield_indirect_only_lineage(
+                metadata=metadata,
+                lineage_parser=lineage_parser,
+                to_table=intermediate_name,
+                service_names=service_names,
+                database_name=database_name,
+                schema_name=schema_name,
+                masked_query=masked_query,
+                column_lineage_map=column_lineage,
+                copied_columns=copied_columns,
+                lineage_source=lineage_source,
+                graph=graph,
+                schema_fallback=schema_fallback,
+                target_table_scope=intermediate_name,
+            )
+            for target_table in target_tables:
+                target_name = str(target_table)
                 yield from _create_lineage_by_table_name(
                     metadata,
-                    from_table=str(intermediate_table),
-                    to_table=str(target_table),
+                    from_table=intermediate_name,
+                    to_table=target_name,
                     service_names=service_names,
                     database_name=database_name,
                     schema_name=schema_name,
@@ -915,10 +1030,18 @@ def get_lineage_by_query(
                     schema_fallback=schema_fallback,
                     graph=graph,
                     to_table_entities=_view_target(view_entity, target_table),
+                    dependency_type=lineage_parser.get_table_dependency_type(
+                        intermediate_name, target_table=target_name
+                    ),
+                    indirect_column_refs=lineage_parser.get_indirect_column_refs(
+                        intermediate_name, target_table=target_name
+                    ),
                 )
-        if not lineage_parser.intermediate_tables:
-            for target_table in lineage_parser.target_tables:
-                for source_table in lineage_parser.source_tables:
+        for target_table in target_tables:
+            target_name = str(target_table)
+            target_entities = _view_target(view_entity, target_table)
+            if not intermediate_tables:
+                for source_table in source_tables:
                     for procedure, from_table_name in get_source_table_names(
                         metadata=metadata,
                         dialect=dialect,
@@ -929,10 +1052,11 @@ def get_lineage_by_query(
                         timeout_seconds=timeout_seconds,
                         column_lineage=column_lineage,
                     ):
+                        from_name = str(from_table_name)
                         yield from _create_lineage_by_table_name(
                             metadata,
-                            from_table=str(from_table_name),
-                            to_table=str(target_table),
+                            from_table=from_name,
+                            to_table=target_name,
                             service_names=service_names,
                             database_name=database_name,
                             schema_name=schema_name,
@@ -943,8 +1067,30 @@ def get_lineage_by_query(
                             procedure=procedure,
                             graph=graph,
                             schema_fallback=schema_fallback,
-                            to_table_entities=_view_target(view_entity, target_table),
+                            to_table_entities=target_entities,
+                            dependency_type=lineage_parser.get_table_dependency_type(
+                                from_name, target_table=target_name
+                            ),
+                            indirect_column_refs=lineage_parser.get_indirect_column_refs(
+                                from_name, target_table=target_name
+                            ),
                         )
+            yield from _yield_indirect_only_lineage(
+                metadata=metadata,
+                lineage_parser=lineage_parser,
+                to_table=target_name,
+                service_names=service_names,
+                database_name=database_name,
+                schema_name=schema_name,
+                masked_query=masked_query,
+                column_lineage_map=column_lineage,
+                copied_columns=copied_columns,
+                lineage_source=lineage_source,
+                graph=graph,
+                schema_fallback=schema_fallback,
+                to_table_entities=target_entities,
+                target_table_scope=target_name,
+            )
     except Exception as exc:
         yield Either(
             left=StackTraceError(
@@ -994,10 +1140,11 @@ def get_lineage_via_table_entity(
                 timeout_seconds=timeout_seconds,
                 column_lineage=column_lineage,
             ):
+                source_name = str(source_table)
                 yield from (
                     _create_lineage_by_table_name(
                         metadata,
-                        from_table=str(source_table),
+                        from_table=source_name,
                         to_table=f"{schema_name}.{to_table_name}",
                         service_names=service_names,
                         database_name=database_name,
@@ -1011,9 +1158,31 @@ def get_lineage_via_table_entity(
                         # The view was looked up by its FQN already. Joining its names
                         # with dots loses the boundary of a name that contains one.
                         to_table_entities=[table_entity],
+                        dependency_type=lineage_parser.get_table_dependency_type(source_name),
+                        indirect_column_refs=lineage_parser.get_indirect_column_refs(source_name),
                     )
                     or []
                 )
+        for indirect_table in lineage_parser.get_indirect_only_tables():
+            yield from (
+                _create_lineage_by_table_name(
+                    metadata,
+                    from_table=indirect_table,
+                    to_table=f"{schema_name}.{to_table_name}",
+                    service_names=service_names,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    masked_query=masked_query,
+                    column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
+                    graph=graph,
+                    schema_fallback=schema_fallback,
+                    to_table_entities=[table_entity],
+                    dependency_type=DependencyType.INDIRECT,
+                    indirect_column_refs=lineage_parser.get_indirect_column_refs(indirect_table),
+                )
+                or []
+            )
     except Exception as exc:  # pylint: disable=broad-except
         Either(
             left=StackTraceError(
