@@ -1,7 +1,7 @@
 # Python CI selects workloads by event and shares preparation across runners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-20 (entrypoint ownership); v3 2026-11-23 (runner consolidation); v4 2026-11-25 (single PR Python job)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-20 (entrypoint ownership); v3 2026-11-23 (runner consolidation); v4 2026-11-25 (single PR Python job); v5 2026-11-26 (nightly selection and reporting); v6 2026-11-26 (native PR Python check); v7 2026-11-27 (nightly alerts go to the failing job's owner); v8 2026-11-27 (shared status gate)
 - **Deciders:** Pablo Takara
 - **Guard:** reviewer; `actionlint`; `ingestion/tests/cli_e2e_v2/meta/test_ci_workflow.py`
 - **Related:** ADR:2026-11-09-python-classification-models-use-explicit-profiles-and-caches; https://github.com/open-metadata/OpenMetadata/issues/35889; https://github.com/open-metadata/OpenMetadata/pull/37562; https://github.com/open-metadata/OpenMetadata/pull/38105
@@ -136,3 +136,36 @@ server environments.
 Shared preparation removes repeated model preparation and backend builds. A preparation failure
 blocks its consumers and fails the required status. Manual dispatch validates the workloads;
 hosted merge-group events are still needed to validate merge commits and base-SHA path filtering.
+
+## Amendment: nightly selection and reporting (2026-11-26)
+
+The scheduled run selects all Java and Python workloads. Manual runs can select `all`, `java`,
+`python`, or `connectors`. The Python selection includes connector E2E. The connector selection
+runs connector E2E and its image and model preparation with coverage disabled. Java and Python
+Sonar publication is restricted to `main`.
+
+One final nightly job verifies the selected results and writes a workflow summary. On a failure it
+posts the failed and incomplete jobs to Slack with a link to the run. Each alert goes to the team
+that owns the job that failed: Python and ingestion jobs post to the ingestion channel and mention
+`onduty-integrations`; the backend image, the Java integration runtime and tests, and Java Sonar
+post to `#ci-cleanup` and mention `onduty-platform`. A job skipped because an upstream job failed
+is listed in the upstream owner's alert, so a backend failure never mentions the ingestion team.
+Sonar-only failures are reported without a mention.
+
+## Amendment: native PR Python check (2026-11-26)
+
+The PR job runs the selected suites and verifies their outcomes under the required
+`py-tests-status` name. Static checks and Airflow APIs report as steps within the job. GitHub
+publishes the native job result for both same-repository and fork PRs.
+
+The job uses a fixed `ubuntu-latest` runner. Checkout and suites run only after successful
+planning selects them. The final verification step also runs on planner failures and empty
+selections.
+
+## Amendment: shared status gate (2026-11-27)
+
+Both `py-tests-status` jobs verify their results through `ci-status-gate`, under
+ADR:2026-11-27-ci-components-share-one-status-gate-that-always-runs. The merge-queue job checks out
+only that action. The PR job's checkout now always runs: it fetches the repository when a suite is
+selected, and only the gate action otherwise, including after a planner failure. Suites still run
+only after successful planning selects them.

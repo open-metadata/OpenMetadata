@@ -11,13 +11,17 @@
 
 name: CI status gate
 description: >-
-  Fail unless every job in `needs` ended with its expected result. A job
-  expected to run must succeed, one not selected must be skipped, and the two
-  lists must name the same jobs, so a dependency added to `needs` without an
-  expectation (or the reverse) fails the gate.
+  The one status gate of every CI component. Fail unless every job in `needs`
+  ended with its expected result. A job expected to run must succeed, one not
+  selected must be skipped, and the two lists must name the same jobs, so a
+  dependency added to `needs` without an expectation (or the reverse) fails the
+  gate.
 inputs:
   needs:
-    description: The caller's `toJSON(needs)`.
+    description: >-
+      The caller's `toJSON(needs)`. When the suites run as steps of the gate's
+      own job, an object of the same shape built from their outcomes:
+      `{"<id>": {"result": "<the step's outcome>"}}`.
     required: true
   expected:
     description: JSON object mapping each job id to "success" or "skipped".
@@ -31,7 +35,10 @@ runs:
         EXPECTED_RESULTS: ${{ inputs.expected }}
       run: |
         jq -r -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
-          $expected | to_entries[] | "\(.key): expected \(.value), got \($needs[.key].result // "missing")"
+          ($expected | to_entries[] | (($needs[.key].result // "missing") as $got
+            | if $got == .value then "\(.key): \($got)"
+              else "::error::\(.key): expected \(.value), got \($got)" end)),
+          (($needs | keys) - ($expected | keys) | .[] | "::error::\(.): has no expected result")
         ' || true
         jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
           $expected | length > 0 and

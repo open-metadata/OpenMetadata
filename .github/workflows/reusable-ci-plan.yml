@@ -1,0 +1,116 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Select CI Workloads
+
+on:
+  workflow_call:
+    inputs:
+      entrypoint:
+        description: CI entrypoint requesting the workload plan
+        required: true
+        type: string
+    outputs:
+      ref:
+        value: ${{ jobs.select.outputs.ref }}
+      python-lowest:
+        value: ${{ jobs.select.outputs.python-lowest }}
+      python-highest:
+        value: ${{ jobs.select.outputs.python-highest }}
+      checkstyle:
+        value: ${{ jobs.select.outputs.checkstyle }}
+      java-unit:
+        value: ${{ jobs.select.outputs.java-unit }}
+      java-operator:
+        value: ${{ jobs.select.outputs.java-operator }}
+      docker-smoke:
+        value: ${{ jobs.select.outputs.docker-smoke }}
+      java-it:
+        value: ${{ jobs.select.outputs.java-it }}
+      java-it-redis:
+        value: ${{ jobs.select.outputs.java-it-redis }}
+      python:
+        value: ${{ jobs.select.outputs.python }}
+      airflow-apis:
+        value: ${{ jobs.select.outputs.airflow-apis }}
+      ui:
+        value: ${{ jobs.select.outputs.ui }}
+      ui-unit:
+        value: ${{ jobs.select.outputs.ui-unit }}
+      static:
+        value: ${{ jobs.select.outputs.static }}
+      json-yaml:
+        value: ${{ jobs.select.outputs.json-yaml }}
+      ci-rules:
+        value: ${{ jobs.select.outputs.ci-rules }}
+      quickstart-compose:
+        value: ${{ jobs.select.outputs.quickstart-compose }}
+      dar:
+        value: ${{ jobs.select.outputs.dar }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  select:
+    name: Select CI workloads
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      ref: ${{ github.sha }}
+      python-lowest: ${{ steps.versions.outputs.lowest }}
+      python-highest: ${{ steps.versions.outputs.highest }}
+      checkstyle: ${{ steps.workloads.outputs.checkstyle }}
+      java-unit: ${{ steps.workloads.outputs.java-unit }}
+      java-operator: ${{ steps.workloads.outputs.java-operator }}
+      docker-smoke: ${{ steps.workloads.outputs.docker-smoke }}
+      java-it: ${{ steps.workloads.outputs.java-it }}
+      java-it-redis: ${{ steps.workloads.outputs.java-it-redis }}
+      python: ${{ steps.workloads.outputs.python }}
+      airflow-apis: ${{ steps.workloads.outputs.airflow-apis }}
+      ui: ${{ steps.workloads.outputs.ui }}
+      ui-unit: ${{ steps.workloads.outputs.ui-unit }}
+      static: ${{ steps.workloads.outputs.static }}
+      json-yaml: ${{ steps.workloads.outputs.json-yaml }}
+      ci-rules: ${{ steps.workloads.outputs.ci-rules }}
+      quickstart-compose: ${{ steps.workloads.outputs.quickstart-compose }}
+      dar: ${{ steps.workloads.outputs.dar }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        # Use the PR merge commit so the planner files exist even on older branches.
+        with:
+          persist-credentials: false
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          sparse-checkout: |
+            .github/ci/paths.yml
+            ingestion/pyproject.toml
+            scripts/ci_plan.py
+            scripts/python_ci.py
+            scripts/prepare_classification_models.py
+          sparse-checkout-cone-mode: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          base: ${{ github.event.merge_group.base_sha || '' }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || '' }}
+          filters: .github/ci/paths.yml
+      - name: Select workloads
+        id: workloads
+        env:
+          ENTRYPOINT: ${{ inputs.entrypoint }}
+          MATCHED_FILTERS: ${{ steps.filter.outputs.changes }}
+        run: python3 scripts/ci_plan.py "$ENTRYPOINT"
+      - name: Read Python versions
+        id: versions
+        if: ${{ steps.workloads.outputs.static == 'true' }}
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"

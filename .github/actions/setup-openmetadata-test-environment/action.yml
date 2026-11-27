@@ -43,16 +43,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Download backend image
-      if: inputs.use-backend-image == 'true'
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-      with:
-        name: ci-backend-image
-        path: ${{ runner.temp }}
     - name: Load backend image
       if: inputs.use-backend-image == 'true'
-      run: bash .github/scripts/ci_backend_image.sh load "$RUNNER_TEMP/ci-backend.tar.zst"
-      shell: bash
+      uses: ./.github/actions/load-backend-image
     - name: Setup JDK 21
       if: inputs.setup-java == 'true'
       uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5

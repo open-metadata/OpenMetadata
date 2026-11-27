@@ -1,10 +1,10 @@
 # UI CI runs from the event entrypoints behind one required check
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-26 (initial)
+- **Revisions:** v1 2026-11-26 (initial), v2 2026-11-27 (shared planning and manual UI selection),
+  v3 2026-11-27 (one status gate for every component)
 - **Deciders:** Chirag Madlani
-- **Guard:** `.github/scripts/tests/test_python_ci.py` (`test_ui_status_expects_a_result_for_every_dependency`
-  and the `ci-status-gate` cases of the gate tests); actionlint
+- **Guard:** `.github/scripts/tests/test_ci_speed_status_gates.py`; actionlint
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
   ADR:2026-11-26-ui-jest-runs-sharded-without-coverage-before-main,
   ADR:2026-11-25-browser-tests-are-selected-before-main-and-run-in-full-on-main
@@ -18,9 +18,10 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
 50 minutes.
 
 ## Decision
-- `ci-pr.yml` and `ci-merge-queue.yml` own the UI trigger, path selection
-  (`.github/ui-ci/paths.yml`, read by the shared `plan` job) and the required check. Each runs
-  the UI as one `ui` job, like the `python` job, calling the reusable `ui-ci.yml`.
+- `ci-pr.yml` and `ci-merge-queue.yml` own the UI trigger and the required check. Both call
+  `reusable-ci-plan.yml` to select Python, Java and UI workloads from `.github/ci/paths.yml`.
+  The planner reads its filters and script from the event commit, including the merge commit on
+  pull requests. The `ui` job calls the reusable `ui-ci.yml` and passes the separate Jest decision.
 - `ui-ci.yml` runs `lint` (`setup-ui` + the `ui-checkstyle` composite) first. Once it passes,
   `unit` (`setup-ui` + the `ui-unit` composite, the whole Jest suite in four shards) and
   `browser` (the reusable `ui-browser-tests.yml`, which selects by impact and shards) fan out in
@@ -50,6 +51,11 @@ costs one runner. A queue entry also waits for lint before its tests start, so i
 in two rounds at most. Every UI job pays its own setup, about 30 seconds when the dependency caches
 hit. Browser tests and the core-components tests become merge-blocking for the first time; the
 ruleset never required them. A queue entry's impact map counts only when the whole `ci-merge-queue`
-run passed. Dispatching an entrypoint by hand runs every UI job. Backend joins the same entrypoints
-separately, coordinated with its owners and the ruleset change. Python's gates can move onto
-`ci-status-gate` the same way.
+run passed. Manual dispatch runs the UI when `workload` is `ui` on either entrypoint or `all`
+on `ci-merge-queue`. Python's gates can move onto `ci-status-gate` the same way.
+
+## Amendment: one status gate for every component (2026-11-27)
+
+ADR:2026-11-27-ci-components-share-one-status-gate-that-always-runs makes `ci-status-gate` the
+status gate of the Python and backend checks too. `ui-tests-status` keeps its shape. Its tests
+moved to `test_ci_speed_status_gates.py`, which runs on pull requests.

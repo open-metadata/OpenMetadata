@@ -1,0 +1,89 @@
+name: Build the Java integration test runtime
+description: Build the Java integration test runtime.
+runs:
+  using: composite
+  steps:
+    - name: Hydrate Maven dependencies
+      uses: ./.github/actions/hydrate-maven-cache
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Build and Bundle Integration Test Runtime
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        SOURCE_SHA: ${{ github.sha }}
+      shell: bash
+      run: |
+        project_version="$(mvn --quiet --non-recursive help:evaluate \
+          -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
+        if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+          echo "Invalid Maven project version: $project_version"
+          exit 1
+        fi
+
+        project_repository="$HOME/.m2/repository/org/open-metadata"
+        if [[ -d "$project_repository" ]]; then
+          find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+            -name "$project_version" -prune -exec rm -rf -- {} +
+        fi
+
+        mvn -B -T 1C -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
+          clean install -pl :openmetadata-integration-tests -am
+
+        staging="$RUNNER_TEMP/java-it-reactor-repository"
+        bundle="$RUNNER_TEMP/java-it-build"
+        mkdir -p "$staging/org/open-metadata" "$bundle"
+        version_directory_count=0
+        while IFS= read -r -d '' version_directory; do
+          artifact_id="$(basename "$(dirname "$version_directory")")"
+          mkdir -p "$staging/org/open-metadata/$artifact_id"
+          cp -a "$version_directory" "$staging/org/open-metadata/$artifact_id/"
+          version_directory_count=$((version_directory_count + 1))
+        done < <(find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+          -name "$project_version" -print0)
+
+        if (( version_directory_count == 0 )); then
+          echo "The Maven build did not install any reactor artifacts."
+          exit 1
+        fi
+
+        find "$staging" -type f -name '*-boot.jar' -delete
+        tar -C "$staging" -czf "$bundle/reactor-repository.tar.gz" org
+        (
+          cd "$bundle"
+          sha256sum reactor-repository.tar.gz > reactor-repository.sha256
+        )
+        printf '%s\n' "$project_version" > "$bundle/project-version.txt"
+        printf '%s\n' "$SOURCE_SHA" > "$bundle/source-sha.txt"
+        du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload Integration Test Runtime
+      id: upload-runtime
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: java-it-build-${{ github.run_id }}
+        overwrite: true
+        path: ${{ runner.temp }}/java-it-build
+        if-no-files-found: error
+        retention-days: 1
+        compression-level: 0
+
+    # upload-artifact has no built-in retry, and a FinalizeArtifact 403 from the
+    # blob-storage intermediary is transient — without a second attempt it fails the
+    # build job and every lane that depends on it. overwrite: true keeps the re-upload
+    # safe even when the first attempt already staged blobs.
+    - name: Upload Integration Test Runtime (retry)
+      if: ${{ steps.upload-runtime.outcome == 'failure' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: java-it-build-${{ github.run_id }}
+        overwrite: true
+        path: ${{ runner.temp }}/java-it-build
+        if-no-files-found: error
+        retention-days: 1
+        compression-level: 0

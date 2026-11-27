@@ -1,0 +1,10 @@
+name: Smoke test the server image
+description: Smoke test the server image.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/load-backend-image
+
+    - name: Smoke test the server image
+      shell: bash
+      run: ./scripts/docker_smoke_test.sh

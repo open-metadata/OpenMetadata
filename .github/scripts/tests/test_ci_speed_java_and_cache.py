@@ -483,6 +483,26 @@ def steps_of(workflow: str, job: str) -> list[dict]:
     return load(WORKFLOWS / workflow)["jobs"][job]["steps"]
 
 
+def java_steps(workflow: str, job: str) -> list[dict]:
+    if job == "backend-checks":
+        # Each stage is a composite; expand them in place to see their commands.
+        return [
+            stage
+            for step in steps_of(workflow, job)
+            for stage in (
+                load(ROOT / step["uses"][2:] / "action.yml")["runs"]["steps"]
+                if step.get("uses", "").startswith("./.github/actions/java-")
+                else [step]
+            )
+        ]
+    [action] = [
+        step["uses"]
+        for step in steps_of(workflow, job)
+        if step.get("uses", "").startswith("./.github/actions/java-")
+    ]
+    return load(ROOT / action[2:] / "action.yml")["runs"]["steps"]
+
+
 def index_of(steps: list[dict], predicate) -> int:
     return next(i for i, step in enumerate(steps) if predicate(step))
 
@@ -490,51 +510,55 @@ def index_of(steps: list[dict], predicate) -> int:
 MAVEN_JOBS = [
     "backend-checks",
     "k8s_operator-unit-tests",
-    "docker-image-smoke-test",
-    "maven-sonarcloud-ci",
 ]
 
 
+# ci-pr.yml and ci-merge-queue.yml share these jobs, and
+# test_ci_speed_status_gates.py keeps them identical, so they are tested once.
 @pytest.mark.parametrize("job", MAVEN_JOBS)
-def test_unit_test_jobs_still_restore_maven_on_prs_and_save_on_main(job: str) -> None:
-    steps = steps_of("openmetadata-service-unit-tests.yml", job)
+def test_java_jobs_restore_maven_before_build(job: str) -> None:
+    steps = java_steps("ci-pr.yml", job)
     hydrate = index_of(
         steps, lambda s: s.get("uses") == "./.github/actions/hydrate-maven-cache"
     )
-    save = index_of(
-        steps, lambda s: s.get("uses", "").startswith("actions/cache/save@")
-    )
     first_mvn = index_of(steps, lambda s: "mvn " in s.get("run", ""))
-    assert hydrate < first_mvn < save
-    assert steps[save]["with"]["path"] == "~/.m2"
+    assert hydrate < first_mvn
     assert not excludes_pull_request(steps[hydrate].get("if", ""))
-    # Saved after the build so the entry holds what the build downloaded, and
-    # only from push (main), the scope every PR can read.
-    assert steps[save]["if"].replace(" ", "").startswith("github.event_name=='push'")
+    assert not any(
+        step.get("uses", "").startswith(("actions/cache@", "actions/cache/save@"))
+        for step in steps
+    )
 
 
-def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests() -> (
-    None
-):
-    for retired in (
-        "java-checkstyle.yml",
-        "maven-sonar-build.yml",
-        "integration-tests-mysql-elasticsearch.yml",
-        "integration-tests-postgres-opensearch.yml",
-        "integration-tests-postgres-elasticsearch-redis.yml",
-    ):
-        assert not (WORKFLOWS / retired).exists(), f"{retired} should be consolidated"
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_smoke_uses_the_workflow_backend_image(workflow: str) -> None:
+    jobs = load(WORKFLOWS / workflow)["jobs"]
+    assert "backend" in jobs["docker-image-smoke-test"]["needs"]
+    assert jobs["backend"]["uses"] == "./.github/workflows/reusable-build-backend.yml"
+    assert "needs.plan.outputs.docker-smoke == 'true'" in jobs["backend"]["if"]
 
-    backend = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")
-    jobs = backend["jobs"]
+    loader = ROOT / ".github/actions/load-backend-image/action.yml"
+    [download] = [
+        step
+        for step in load(loader)["runs"]["steps"]
+        if "download-artifact" in step.get("uses", "")
+    ]
+    builder = load(WORKFLOWS / "reusable-build-backend.yml")["jobs"]["build"]
+    [upload] = [
+        step for step in builder["steps"] if "upload-artifact" in step.get("uses", "")
+    ]
+    assert download["with"]["name"] == upload["with"]["name"]
+    assert any(
+        step.get("uses") == "./.github/actions/load-backend-image"
+        for step in java_steps(workflow, "docker-image-smoke-test")
+    )
 
-    # SonarCloud stays off PR and merge_group inside the unified backend workflow.
-    sonar_if = jobs["maven-sonarcloud-ci"]["if"]
-    assert excludes_pull_request(sonar_if)
-    assert "github.event_name != 'merge_group'" in sonar_if
+
+def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests() -> None:
+    jobs = load(WORKFLOWS / "ci-merge-queue.yml")["jobs"]
 
     # Integration-test build runs once and shares its artifact across all 3 profiles.
-    build_steps = jobs["integration-test-build"]["steps"]
+    build_steps = java_steps("ci-merge-queue.yml", "integration-test-build")
     assert any(
         s.get("uses") == "./.github/actions/hydrate-maven-cache" for s in build_steps
     )
@@ -544,7 +568,7 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
         for s in build_steps
     )
 
-    reusable_steps = load(WORKFLOWS / "java-integration-lanes-reusable.yml")["jobs"][
+    reusable_steps = load(WORKFLOWS / "reusable-java-integration-lanes.yml")["jobs"][
         "integration-test-lanes"
     ]["steps"]
     assert any(
@@ -556,35 +580,27 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
         for s in reusable_steps
     )
 
+    rollup_needs = jobs["backend-checks-status"]["needs"]
+    assert "integration-test-build" in rollup_needs
     for profile_job in (
         "it-mysql-elasticsearch",
         "it-postgres-opensearch",
         "it-postgres-elasticsearch-redis",
     ):
+        assert profile_job in rollup_needs
         job = jobs[profile_job]
-        assert job["uses"] == "./.github/workflows/java-integration-lanes-reusable.yml"
+        assert job["uses"] == "./.github/workflows/reusable-java-integration-lanes.yml"
         assert "backend-checks" in job["needs"]
         assert "integration-test-build" in job["needs"]
-        assert excludes_pull_request(job["if"])
         # `!cancelled()` overrides GitHub's implicit `success()`, so IT-only paths
         # (where unit tests are legitimately skipped) still run Stage 2.
         assert "!cancelled()" in job["if"]
-        assert "needs.changes.result == 'success'" in job["if"]
+        assert "needs.plan.result == 'success'" in job["if"]
         assert (
             "(needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped')"
             in job["if"]
         )
         assert job["with"]["artifact_name"] == "java-it-build-${{ github.run_id }}"
-
-    # Required status check job names stay top-level so merge-rules matches them.
-    for required_check in (
-        "backend-checks",
-        "backend-checks-status",
-        "integration-tests-mysql-elasticsearch",
-        "integration-tests-postgres-opensearch",
-        "integration-tests-postgres-elasticsearch-redis",
-    ):
-        assert required_check in jobs
 
 
 # ---------------------------------------------------------------------------
@@ -601,14 +617,12 @@ def mvn_command(steps: list[dict]) -> list[str]:
     return shlex.split(script.replace("\\\n", " "))
 
 
-def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
-    steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "backend-checks"
-    )
+def test_service_unit_tests_use_pom_forks_without_jacoco() -> None:
+    steps = java_steps("ci-pr.yml", "backend-checks")
     command = mvn_command(steps)
-    # Tests share static registries (Entity's repository map); split across forks
-    # they meet another order and fail (RdfLiveWriterTest, PR #37493).
-    assert not any(arg.startswith("-DforkCount") for arg in command)
+    assert not any(
+        arg.startswith(("-DforkCount", "-DunitTests.forkCount")) for arg in command
+    )
     assert not any(
         arg.startswith("-P") and "static-code-analysis" in arg for arg in command
     )
@@ -620,9 +634,7 @@ def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
 
 
 def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
-    steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "backend-checks"
-    )
+    steps = java_steps("ci-pr.yml", "backend-checks")
     scripts = " ".join(s.get("run", "") for s in steps)
     assert "apt-get" not in scripts
     assert "install_antlr_cli" not in scripts
@@ -634,72 +646,40 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
 
 
 def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
-    assert not (WORKFLOWS / "java-checkstyle.yml").exists()
-    jobs = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")["jobs"]
-    assert "java-checkstyle" not in jobs
-    assert "openmetadata-service-unit-tests" not in jobs
-    assert "openmetadata-service-unit-tests-status" not in jobs
-    assert "backend-checks" in jobs["backend-checks-status"]["needs"]
+    for workflow in ("ci-pr.yml", "ci-merge-queue.yml"):
+        jobs = load(WORKFLOWS / workflow)["jobs"]
+        assert "backend-checks" in jobs["backend-checks-status"]["needs"]
 
-    steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "backend-checks"
-    )
+    # Both entrypoints share the job, so its stages are checked once.
+    steps = steps_of("ci-pr.yml", "backend-checks")
     checkstyle = index_of(steps, lambda s: s.get("id") == "checkstyle")
     unit_tests = index_of(steps, lambda s: s.get("id") == "unit-tests")
-    summarize = index_of(
-        steps, lambda s: "summarize_surefire.py" in s.get("run", "")
-    )
+    report_action = "./.github/actions/java-backend-report"
+    summarize = index_of(steps, lambda s: s.get("uses") == report_action)
     assert checkstyle < unit_tests < summarize
-    assert "spotless:apply" in steps[checkstyle]["run"]
+    # Each stage is its own composite step, so each fails natively.
+    assert steps[checkstyle]["uses"] == "./.github/actions/java-checkstyle"
+    assert steps[unit_tests]["uses"] == "./.github/actions/java-service-unit-tests"
+    stages = {
+        index: load(ROOT / steps[index]["uses"][2:] / "action.yml")["runs"]["steps"]
+        for index in (checkstyle, unit_tests)
+    }
+    assert any("spotless:apply" in s.get("run", "") for s in stages[checkstyle])
     assert "steps.checkstyle.outcome == 'success'" in steps[unit_tests]["if"]
     for index in (checkstyle, unit_tests):
         assert steps[index].get("continue-on-error", "false") == "false"
+        for stage in stages[index]:
+            assert not stage.get("continue-on-error", False)
     assert "always()" in steps[summarize]["if"]
+    assert steps[summarize]["with"] == {
+        "checkstyle-outcome": "${{ steps.checkstyle.outcome }}",
+        "unit-tests-outcome": "${{ steps.unit-tests.outcome }}",
+    }
+    report_steps = load(ROOT / report_action[2:] / "action.yml")["runs"]["steps"]
     reports = next(
-        s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@")
+        s for s in report_steps if s.get("uses", "").startswith("actions/upload-artifact@")
     )
-    assert "failure()" in reports["if"]
-    assert "steps.unit-tests.outcome == 'failure'" in reports["if"]
-    assert not any(s.get("name") == "Enforce Backend CI outcome" for s in steps)
-
-
-@pytest.mark.parametrize(
-    "gate",
-    [
-        "integration-tests-mysql-elasticsearch",
-        "integration-tests-postgres-opensearch",
-        "integration-tests-postgres-elasticsearch-redis",
-    ],
-)
-@pytest.mark.parametrize(
-    ("backend_result", "lane_result", "exit_code"),
-    [
-        ("success", "success", 0),
-        ("skipped", "success", 0),
-        ("failure", "skipped", 1),
-        ("cancelled", "skipped", 1),
-    ],
-)
-def test_integration_gate_enforces_backend_result(
-    gate, backend_result, lane_result, exit_code
-):
-    step = steps_of("openmetadata-service-unit-tests.yml", gate)[0]
-    assert step["env"]["UNIT_RESULT"] == "${{ needs.backend-checks.result }}"
-    result = subprocess.run(
-        ["bash", "-e", "-c", step["run"]],
-        env={
-            **os.environ,
-            "CHANGES_RESULT": "success",
-            "BACKEND_CHANGED": "true",
-            "UNIT_RESULT": backend_result,
-            "BUILD_RESULT": "success",
-            "LANES_RESULT": lane_result,
-        },
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == exit_code, result.stdout + result.stderr
+    assert "inputs.unit-tests-outcome == 'failure'" in reports["if"]
 
 
 def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:
@@ -731,8 +711,8 @@ def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:
     )
 
     for wf in (
-        "openmetadata-service-unit-tests.yml",
-        "java-integration-lanes-reusable.yml",
+        "ci-pr.yml",
+        "reusable-java-integration-lanes.yml",
         "reusable-build-backend.yml",
         "ci-merge-queue.yml",
         "ci-nightly.yml",

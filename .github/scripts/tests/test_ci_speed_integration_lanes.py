@@ -16,25 +16,14 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+LANE_WORKFLOW = REPO_ROOT / ".github/workflows/reusable-java-integration-lanes.yml"
 STORAGE_SCRIPT = ".github/scripts/configure_docker_storage.sh"
-LANE_WORKFLOWS = ("java-integration-lanes-reusable.yml",)
-BACKEND_WORKFLOW = "openmetadata-service-unit-tests.yml"
 LANE_JOB = "integration-test-lanes"
 LANE_MODULE = "openmetadata-integration-tests"
 
 
-def load_workflow(name):
-    return yaml.safe_load((WORKFLOWS / name).read_text())
-
-
-def triggers(workflow):
-    # PyYAML reads the bare `on:` key as the boolean True.
-    return workflow.get("on", workflow.get(True))
-
-
-def lane_steps(name):
-    return load_workflow(name)["jobs"][LANE_JOB]["steps"]
+def lane_steps():
+    return yaml.safe_load(LANE_WORKFLOW.read_text())["jobs"][LANE_JOB]["steps"]
 
 
 def index_of(steps, predicate, description):
@@ -65,9 +54,8 @@ def failed_check_condition(steps):
     return f"steps.{storage_check(steps)['id']}.outcome == 'failure'"
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_storage_check_runs_after_checkout_and_before_tests(workflow):
-    steps = lane_steps(workflow)
+def test_storage_check_runs_after_checkout_and_before_tests():
+    steps = lane_steps()
     checkout = index_of(steps, lambda s: uses(s, "actions/checkout"), "checks out")
     check = steps.index(storage_check(steps))
     setup_java = index_of(
@@ -80,9 +68,8 @@ def test_storage_check_runs_after_checkout_and_before_tests(workflow):
     assert checkout < check < setup_java < tests
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_no_disk_purge_runs_before_checkout_or_unconditionally(workflow):
-    steps = lane_steps(workflow)
+def test_no_disk_purge_runs_before_checkout_or_unconditionally():
+    steps = lane_steps()
     checkout = index_of(steps, lambda s: uses(s, "actions/checkout"), "checks out")
 
     for position, step in enumerate(steps):
@@ -91,9 +78,8 @@ def test_no_disk_purge_runs_before_checkout_or_unconditionally(workflow):
             assert "if" in step, "the purge must only run as a fallback"
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_fallback_purge_runs_only_when_the_storage_check_fails(workflow):
-    steps = lane_steps(workflow)
+def test_fallback_purge_runs_only_when_the_storage_check_fails():
+    steps = lane_steps()
     check = storage_check(steps)
     condition = failed_check_condition(steps)
 
@@ -103,9 +89,8 @@ def test_fallback_purge_runs_only_when_the_storage_check_fails(workflow):
     assert condition in purges[0]["if"]
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_storage_is_rechecked_after_the_fallback_purge_and_fails_closed(workflow):
-    steps = lane_steps(workflow)
+def test_storage_is_rechecked_after_the_fallback_purge_and_fails_closed():
+    steps = lane_steps()
     condition = failed_check_condition(steps)
     purge = index_of(steps, is_disk_purge, "purges disk")
     rechecks = [
@@ -126,20 +111,18 @@ def test_storage_is_rechecked_after_the_fallback_purge_and_fails_closed(workflow
     )
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_lanes_do_not_install_host_packages_or_the_antlr_cli(workflow):
-    for step in lane_steps(workflow):
+def test_lanes_do_not_install_host_packages_or_the_antlr_cli():
+    for step in lane_steps():
         script = step.get("run", "")
         assert "apt-get" not in script, step.get("name")
         assert "install_antlr_cli" not in script, step.get("name")
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_lane_maven_build_cannot_need_the_antlr_cli(workflow):
+def test_lane_maven_build_cannot_need_the_antlr_cli():
     # The ANTLR CLI only generates the Python and JavaScript parsers (Makefile
     # py_antlr/js_antlr). Java parsers come from antlr4-maven-plugin in the spec
     # and service modules, which the lane takes prebuilt from the runtime bundle.
-    steps = lane_steps(workflow)
+    steps = lane_steps()
     tests = steps[
         index_of(steps, lambda s: s.get("id") == "integration-tests", "runs tests")
     ]
@@ -149,19 +132,6 @@ def test_lane_maven_build_cannot_need_the_antlr_cli(workflow):
     assert " -am" not in command and "--also-make" not in command
     lane_pom = (REPO_ROOT / LANE_MODULE / "pom.xml").read_text()
     assert "antlr" not in lane_pom.lower()
-
-
-def test_storage_script_changes_trigger_the_lanes():
-    loaded = load_workflow(BACKEND_WORKFLOW)
-    filter_steps = [
-        step
-        for step in loaded["jobs"]["changes"]["steps"]
-        if uses(step, "dorny/paths-filter")
-    ]
-
-    assert len(filter_steps) == 1
-    backend_filter = yaml.safe_load(filter_steps[0]["with"]["filters"])["backend_it"]
-    assert STORAGE_SCRIPT in backend_filter
 
 
 def write_stub(directory, name, body):

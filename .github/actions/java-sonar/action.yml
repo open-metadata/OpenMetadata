@@ -1,0 +1,26 @@
+name: Publish Java Sonar analysis
+description: Build the Java reactor and publish static analysis to SonarCloud.
+inputs:
+  sonar-token:
+    description: SonarCloud token for the Java project.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Hydrate Maven dependencies
+      uses: ./.github/actions/hydrate-maven-cache
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      with:
+        java-version: "21"
+        distribution: "temurin"
+
+    - name: Build and analyze with Maven
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        SONAR_TOKEN: ${{ inputs.sonar-token }}
+      shell: bash
+      run: >-
+        mvn -B -T 1C -Pstatic-code-analysis clean verify -DskipTests
+        -pl '!:openmetadata-ui,!:openmetadata-ui-core-components,!:openmetadata-dist,!:openmetadata-clients,!:openmetadata-java-client'

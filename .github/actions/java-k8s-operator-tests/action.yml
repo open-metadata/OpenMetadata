@@ -1,0 +1,48 @@
+name: Run Kubernetes operator unit tests
+description: Run Kubernetes operator unit tests.
+runs:
+  using: composite
+  steps:
+    - name: Hydrate Maven dependencies
+      uses: ./.github/actions/hydrate-maven-cache
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
+      with:
+        java-version: "21"
+        distribution: "temurin"
+
+    - name: Build k8s-operator dependencies
+      shell: bash
+      run: |
+        mvn -B -T 1C clean install -pl openmetadata-k8s-operator -am -Dmaven.test.skip=true
+
+    - name: Run k8s-operator unit tests
+      id: k8s-tests
+      continue-on-error: true
+      shell: bash
+      run: |
+        mvn -B test -pl openmetadata-k8s-operator
+
+    - name: Summarize k8s-operator unit tests
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        python3 .github/scripts/summarize_surefire.py \
+          --title "K8s Operator Unit Tests" \
+          --checkstyle-outcome "skipped" \
+          --unit-tests-outcome "${{ steps.k8s-tests.outcome }}" \
+          --report-glob "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml" \
+          --emit-annotations
+
+    - name: Upload surefire reports
+      if: ${{ steps.k8s-tests.outcome == 'failure' && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: k8s-operator-surefire-reports
+        path: openmetadata-k8s-operator/target/surefire-reports/
+
+    - name: Enforce k8s-operator outcome
+      if: ${{ steps.k8s-tests.outcome == 'failure' }}
+      shell: bash
+      run: exit 1

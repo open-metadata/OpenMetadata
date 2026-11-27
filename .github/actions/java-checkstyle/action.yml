@@ -1,0 +1,18 @@
+name: Java checkstyle
+description: >-
+  Fail when Spotless would reformat any Java file, and list those files in
+  `$RUNNER_TEMP/checkstyle-failed-files.txt` for `java-backend-report`. The caller
+  checks out the repository, hydrates Maven and sets up JDK 21 first.
+runs:
+  using: composite
+  steps:
+    - name: Check Java formatting
+      shell: bash
+      run: |
+        mvn -B -T 1C spotless:apply
+        git diff --name-only > "$RUNNER_TEMP/checkstyle-failed-files.txt"
+        if [[ -s "$RUNNER_TEMP/checkstyle-failed-files.txt" ]]; then
+          echo "Java checkstyle found unformatted files:"
+          cat "$RUNNER_TEMP/checkstyle-failed-files.txt"
+          exit 1
+        fi

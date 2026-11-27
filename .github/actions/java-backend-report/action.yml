@@ -1,0 +1,33 @@
+name: Report Java backend checks
+description: Summarize Java formatting and service unit tests.
+inputs:
+  checkstyle-outcome:
+    description: Result of the Java formatting check
+    required: true
+  unit-tests-outcome:
+    description: Result of the service unit tests
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Summarize backend checks
+      env:
+        CHECKSTYLE_OUTCOME: ${{ inputs.checkstyle-outcome }}
+        UNIT_TESTS_OUTCOME: ${{ inputs.unit-tests-outcome }}
+      shell: bash
+      run: |
+        python3 .github/scripts/summarize_surefire.py \
+          --title "Backend checks" \
+          --checkstyle-outcome "$CHECKSTYLE_OUTCOME" \
+          --checkstyle-files "$RUNNER_TEMP/checkstyle-failed-files.txt" \
+          --unit-tests-outcome "$UNIT_TESTS_OUTCOME" \
+          --report-glob "openmetadata-service/target/surefire-reports/TEST-*.xml" \
+          --emit-annotations
+
+    - name: Upload surefire reports
+      if: ${{ inputs.unit-tests-outcome == 'failure' && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: openmetadata-service-surefire-reports
+        path: openmetadata-service/target/surefire-reports/
+        retention-days: 7

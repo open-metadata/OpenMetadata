@@ -19,11 +19,11 @@
 #
 #   ./scripts/docker_smoke_test.sh [image-tag]
 #
-# Requires openmetadata-dist/target/openmetadata-*.tar.gz (mvn -DskipTests package).
+# Requires a prebuilt server image (defaults to ci-backend:local).
 
 set -euo pipefail
 
-IMAGE="${1:-openmetadata-server:smoke}"
+IMAGE="${1:-ci-backend:local}"
 CONTAINER="om-smoke-$$"
 WORKDIR_TMP="$(mktemp -d)"
 
@@ -41,8 +41,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Preflight"
-if ! compgen -G "openmetadata-dist/target/openmetadata-*.tar.gz" >/dev/null; then
-  echo "missing openmetadata-dist/target/openmetadata-*.tar.gz -- run 'mvn -DskipTests package' first"
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "missing prebuilt image: $IMAGE"
   exit 1
 fi
 
@@ -55,6 +55,11 @@ for ignore in docker/docker-compose-quickstart/Dockerfile.dockerignore \
               docker/development/Dockerfile.dockerignore; do
   while IFS= read -r entry; do
     path="${entry#!}"
+    # The image build consumes the generated distribution before the smoke job starts.
+    case "$ignore:$path" in
+      'docker/development/Dockerfile.dockerignore:openmetadata-dist/target/'|\
+      'docker/development/Dockerfile.dockerignore:openmetadata-dist/target/openmetadata-*.tar.gz') continue ;;
+    esac
     case "$path" in
       *[*?]*) compgen -G "$path" >/dev/null 2>&1 || stale_includes="$stale_includes $ignore:$path" ;;
       *)      [ -e "${path%/}" ] || stale_includes="$stale_includes $ignore:$path" ;;
@@ -66,11 +71,11 @@ if [ -n "$stale_includes" ]; then
   exit 1
 fi
 
-# Same rot, different file: the workflow's `docker:` path filter decides whether
+# Same rot, different file: the shared `docker-smoke:` path filter decides whether
 # this smoke test runs at all, so an entry left pointing at a deleted file makes
 # the gate quietly narrower than it reads. That is how docker/Health.java
 # survived in the filter after the file was removed.
-WORKFLOW=".github/workflows/openmetadata-service-unit-tests.yml"
+PATH_FILTERS=".github/ci/paths.yml"
 stale_filters=""
 while IFS= read -r entry; do
   probe="${entry%/\*\*}"
@@ -78,18 +83,11 @@ while IFS= read -r entry; do
     *[*?]*) compgen -G "$probe" >/dev/null 2>&1 || stale_filters="$stale_filters $entry" ;;
     *)      [ -e "$probe" ] || stale_filters="$stale_filters $entry" ;;
   esac
-done < <(awk '/^ *docker:$/{f=1;next} f && /^ *[a-z_]+:$/{f=0} f' "$WORKFLOW" \
+done < <(awk '/^docker-smoke:$/{f=1;next} f && /^[a-z_-]+:$/{f=0} f' "$PATH_FILTERS" \
            | sed -n "s/^ *- '\(.*\)'$/\1/p")
 if [ -n "$stale_filters" ]; then
-  echo "stale docker path-filter entr(ies) in $WORKFLOW, the path no longer exists:$stale_filters"
+  echo "stale docker path-filter entr(ies) in $PATH_FILTERS, the path no longer exists:$stale_filters"
   exit 1
-fi
-
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-  echo "==> Building $IMAGE"
-  docker build -f docker/development/Dockerfile -t "$IMAGE" .
-else
-  echo "==> Using pre-built $IMAGE"
 fi
 
 echo

@@ -1,12 +1,14 @@
 # The Redis cache lane gates the merge queue
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-11-27 (required through `backend-checks-status`)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** the `merge-rules` ruleset lists `integration-tests-postgres-elasticsearch-redis` as a
-  required check; reviewer for the workflow's skip-everything `pull_request` trigger
+- **Guard:** the `merge-rules` ruleset lists `backend-checks-status` as a required check; that job
+  in `ci-merge-queue.yml` fails when `it-postgres-elasticsearch-redis` is selected and does not
+  succeed, pinned by `test_merge_queue_backend_gate_verifies_selected_integration_jobs` in
+  `.github/scripts/tests/test_ci_speed_status_gates.py`
 - **Related:** #35761 (the rollout, steps 1-4 below); #35769 (the PR trigger); #35672; #35722 (the
-  rollback cache eviction that made this lane green)
+  rollback cache eviction that made this lane green); ADR:2026-11-25-backend-checks-reports-native-stage-failures
 
 ## Context
 
@@ -55,3 +57,19 @@ Require the check in this order:
 3. Fix or quarantine the failures listed above.
 4. Add the check to the `merge-rules` required status checks, with integration id 15368 (GitHub
    Actions).
+
+## Amendment: required through backend-checks-status (2026-11-27)
+
+The Redis lane still gates the merge queue, but no longer as its own check. Java integration tests
+now run in `ci-merge-queue.yml`, and ADR:2026-11-25-backend-checks-reports-native-stage-failures
+folds the three per-profile checks into `backend-checks-status`. The Redis lane is the
+`it-postgres-elasticsearch-redis` job (Maven profile `cache-tests`), and change detection still
+skips it when no relevant path changed. The required `backend-checks-status` check fails when that
+job is selected and does not succeed, so a merge group that breaks a cache path is still ejected.
+`merge-rules` requires `backend-checks-status` in place of
+`integration-tests-postgres-elasticsearch-redis`.
+
+The skip-everything `pull_request` trigger is gone: PRs neither run this lane nor report its check.
+Pushes to `main` no longer run it either. `ci-nightly.yml` runs it every night with the same inputs,
+so a merge that bypasses the ruleset gets its Redis signal from the next nightly run, or earlier
+from the next merge group that selects the lane.

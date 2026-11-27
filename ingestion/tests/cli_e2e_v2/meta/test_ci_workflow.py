@@ -45,8 +45,13 @@ def _workflows(caller):
     return workflow, workflow["jobs"][preparation_id], reusable, inputs
 
 
-def _condition_holds(condition, connector, suite):
-    values = {"matrix.e2e-test": connector, "inputs.test-suite": suite, "github.ref": "refs/heads/main"}
+def _condition_holds(condition, connector, suite, workload=""):
+    values = {
+        "matrix.e2e-test": connector,
+        "inputs.test-suite": suite,
+        "inputs.workload": workload,
+        "github.ref": "refs/heads/main",
+    }
     for clause in condition.strip().removeprefix("${{").removesuffix("}}").split("&&"):
         left, operator, right = shlex.split(clause)
         assert operator in ("==", "!="), condition
@@ -55,12 +60,12 @@ def _condition_holds(condition, connector, suite):
     return True
 
 
-def _run_workflow(tmp_path, connector, command_exit=0, caller="v2"):
+def _run_workflow(tmp_path, connector, command_exit=0, caller="v2", workload=""):
     workflow, preparation, reusable, inputs = _workflows(caller)
     suite = inputs["test-suite"]
     coverage = inputs["collect-coverage"]
     if coverage.startswith("${{"):
-        coverage = str(_condition_holds(coverage, connector, suite)).lower()
+        coverage = str(_condition_holds(coverage, connector, suite, workload)).lower()
     job = reusable["jobs"]["py-cli-e2e-tests"]
     binaries = tmp_path / "env/bin"
     binaries.mkdir(parents=True)
@@ -141,6 +146,13 @@ def test_ci_forwards_caller_inputs_and_command_status(
         expected_suite,
         *([] if coverage else ["--no-cov"]),
     ]
+
+
+def test_nightly_connector_dispatch_disables_coverage_on_main(tmp_path):
+    result = _run_workflow(tmp_path, "mysql", caller="legacy", workload="connectors")
+    assert result.returncode == 0, result.stderr
+    arguments = json.loads((tmp_path / "ingestion/nox-args.json").read_text())
+    assert "--no-cov" in arguments
 
 
 def test_ci_routes_each_connector_to_one_step_and_limits_its_credentials():
