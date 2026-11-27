@@ -146,8 +146,8 @@
       ],
       "qualityExpectations": [
         "sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals",
-        "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between",
-        "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between_with_sample_rows"
+        "sample_data.ecommerce_db.shopify.dim_address.shop_id.column_values_to_be_between",
+        "sample_data.ecommerce_db.shopify.dim_address.shop_id.column_values_to_be_between_with_sample_rows"
       ],
       "effectiveFrom": "2024-02-01T00:00:00Z"
     }
