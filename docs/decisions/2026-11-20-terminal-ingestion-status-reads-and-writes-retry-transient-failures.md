@@ -18,11 +18,13 @@ failed executions.
 ## Decision
 
 - For terminal pipeline states, retry both the run-specific status GET and the final PUT **at most
-  three times** each when the request fails with a transport error or HTTP 500/502.
+  three times** each when the request fails with a transport error or HTTP 500/502/503/504.
 - Use a short linear pause of 0.25 seconds times the failed attempt number, so this layer adds at
   most 0.75 seconds of pause per terminal read or write if its failures are immediately reported.
-- Do not add outer retries for HTTP 503/504: the shared OpenMetadata REST client already retries
-  those codes, and stacking attempts could delay termination and SSE completion for minutes.
+- Disable the REST client's HTTP retry loop for each terminal GET/PUT using the per-call
+  `retries=0` override. The outer budget handles both gateway and transport failures, including
+  mixed failure sequences, without restarting the REST client's long backoff. Ordinary callers
+  retain the configured REST defaults.
 - Accept `requests.HTTPError` as well as API-wrapped and transport exceptions. Gate HTTP retries
   on the response's actual status code, including plain HTML or empty gateway error responses.
 - Do not retry non-terminal `Running` status operations or permanent errors such as 400/401/403.
@@ -34,9 +36,11 @@ failed executions.
 ## Consequences
 
 A transient failure on the final GET or PUT is less likely to produce a stale `Running` card after
-a refresh. Ordinary running-state updates are unchanged. Calls still use the REST client's normal
-timeout and retry behavior for 503/504; this decision does not override those client defaults.
+a refresh. Ordinary running-state updates are unchanged. Terminal calls retain the existing network timeout
+and urllib3 transport adapter behavior; three attempts bounds REST-level calls, not individual
+socket operations or total wall-clock time. The REST client's 30/60/90-second HTTP backoff no
+longer applies to terminal status calls.
 
 The Oracle AutoPilot reproduction from #37081 has not been independently verified against this
 failure mechanism. This proposed mitigation requires maintainer review, CI/unit checks, and
-inspection of the persisted pipeline run status before the Draft PR is considered complete.
+inspection of the persisted pipeline run status before the PR is considered complete.

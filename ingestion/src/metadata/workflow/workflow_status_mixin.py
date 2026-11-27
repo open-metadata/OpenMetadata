@@ -49,7 +49,7 @@ logger = ometa_logger()
 
 TERMINAL_STATUS_WRITE_ATTEMPTS = 3
 TERMINAL_STATUS_WRITE_RETRY_DELAY = 0.25
-RETRYABLE_STATUS_HTTP_CODES = {500, 502}
+RETRYABLE_STATUS_HTTP_CODES = {500, 502, 503, 504}
 
 _StatusResponse = TypeVar("_StatusResponse")
 
@@ -115,9 +115,9 @@ class WorkflowStatusMixin:
     ) -> _StatusResponse:
         """Retry the terminal read and write separately on short transient failures.
 
-        The underlying REST client already retries 503/504. Never stack another
-        retry budget on those responses: that could delay the final SSE frame for
-        minutes. HTTPError also covers gateways returning plain HTML or empty 5xx.
+        Terminal callers disable the REST client's HTTP retry loop per call, so
+        mixed gateway and transport failures share this budget. HTTPError also
+        covers gateways returning plain HTML or empty 5xx.
         """
         attempts = TERMINAL_STATUS_WRITE_ATTEMPTS if terminal else 1
         for attempt in range(attempts):
@@ -149,7 +149,9 @@ class WorkflowStatusMixin:
     ) -> None:
         """Repeat an idempotent final status PUT without changing the run's outcome."""
         self._run_pipeline_status_request(
-            lambda: self.metadata.create_or_update_pipeline_status(fqn, status),
+            lambda: self.metadata.create_or_update_pipeline_status(
+                fqn, status, **({"retries": 0} if terminal else {})
+            ),
             terminal=terminal,
         )
 
@@ -158,7 +160,9 @@ class WorkflowStatusMixin:
     ) -> PipelineStatus | None:
         """Do not abandon a terminal status because its preceding GET times out."""
         return self._run_pipeline_status_request(
-            lambda: self.metadata.get_pipeline_status(fqn, run_id),
+            lambda: self.metadata.get_pipeline_status(
+                fqn, run_id, **({"retries": 0} if terminal else {})
+            ),
             terminal=terminal,
         )
 

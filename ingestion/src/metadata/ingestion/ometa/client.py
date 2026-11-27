@@ -423,7 +423,7 @@ class REST:
 
         return None
 
-    def get(self, path, data=None, headers=None):
+    def get(self, path, data=None, headers=None, *, retries: int | None = None):
         """
         GET method
 
@@ -435,7 +435,9 @@ class REST:
         Returns:
             Response
         """
-        return self._request("GET", path, data, headers=headers)
+        return self._request(
+            "GET", path, data, headers=headers, **({"retries": retries} if retries is not None else {})
+        )
 
     def get_raw(
         self,
@@ -540,7 +542,7 @@ class REST:
             headers = {**headers, **extra_headers}
         return headers
 
-    def put(self, path, data=None, json=None, headers=None):
+    def put(self, path, data=None, json=None, headers=None, *, retries: int | None = None):
         """
         PUT method
 
@@ -553,7 +555,9 @@ class REST:
         Returns:
             Response
         """
-        return self._request("PUT", path, data, json=json, headers=headers)
+        return self._request(
+            "PUT", path, data, json=json, headers=headers, **({"retries": retries} if retries is not None else {})
+        )
 
     def patch(self, path, data=None, headers=None):
         """
