@@ -12,6 +12,7 @@
  */
 
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { noop } from 'lodash';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,
@@ -212,7 +213,7 @@ describe('useServiceAgents', () => {
   });
 
   it("ignores a previous service's pipelines that land after the switch", async () => {
-    let resolveA: (value: unknown) => void = () => undefined;
+    let resolveA: (value: unknown) => void = noop;
     (getIngestionPipelines as jest.Mock).mockImplementation(
       ({ serviceFilter }: { serviceFilter: string }) =>
         serviceFilter === 'service-a'

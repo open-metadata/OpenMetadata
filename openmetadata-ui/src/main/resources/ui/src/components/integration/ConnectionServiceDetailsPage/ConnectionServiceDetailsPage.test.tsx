@@ -678,7 +678,9 @@ describe('ConnectionServiceDetailsPage', () => {
       expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId('service-insights-tab')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('service-insights-tab')
+    ).not.toBeInTheDocument();
   });
 
   it('falls back to the default tab for an invalid tab param', async () => {
