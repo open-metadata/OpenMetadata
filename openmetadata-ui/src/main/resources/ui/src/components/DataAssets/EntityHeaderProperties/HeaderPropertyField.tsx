@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonUtility,
   Typography,
@@ -33,6 +34,7 @@ const HeaderPropertyField = ({ property }: { property: HeaderProperty }) => {
     return renderEditor
       ? renderEditor(
           <Button
+            aria-label={t('label.add-entity', { entity: label })}
             color="secondary"
             data-testid={editorTestId}
             iconLeading={Plus}
@@ -44,13 +46,12 @@ const HeaderPropertyField = ({ property }: { property: HeaderProperty }) => {
   };
 
   return (
-    <div
-      className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1"
-      data-testid={testId}>
-      <div className="tw:flex tw:min-h-5 tw:items-center tw:gap-1">
+    <Box className="tw:min-w-0" data-testid={testId} direction="col" gap={1}>
+      <Box align="center" className="tw:min-h-5" gap={1}>
         <Typography
           as="span"
-          className="tw:whitespace-nowrap tw:text-quaternary"
+          className="tw:whitespace-nowrap"
+          color="quaternary"
           size="text-xs"
           weight="medium">
           {label}
@@ -65,11 +66,13 @@ const HeaderPropertyField = ({ property }: { property: HeaderProperty }) => {
               tooltip={t('label.edit-entity', { entity: label })}
             />
           )}
-      </div>
-      <div className="tw:flex tw:min-h-6 tw:max-w-60 tw:min-w-0 tw:items-center tw:text-sm tw:font-medium tw:text-primary">
+      </Box>
+      <Box
+        align="center"
+        className="tw:min-h-6 tw:max-w-60 tw:min-w-0 tw:text-sm tw:font-medium tw:text-primary">
         {renderValue()}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

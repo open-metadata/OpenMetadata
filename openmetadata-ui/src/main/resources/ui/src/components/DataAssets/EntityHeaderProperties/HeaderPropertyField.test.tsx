@@ -51,6 +51,10 @@ describe('HeaderPropertyField', () => {
     );
 
     expect(screen.getByTestId('edit-owners')).toHaveTextContent('label.add');
+    expect(screen.getByTestId('edit-owners')).toHaveAttribute(
+      'aria-label',
+      'label.add-entity'
+    );
     expect(screen.queryByText('Anika')).not.toBeInTheDocument();
   });
 
