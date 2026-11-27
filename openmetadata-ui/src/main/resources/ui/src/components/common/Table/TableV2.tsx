@@ -90,6 +90,7 @@ import type {
   ColumnType,
   FilterValue,
   SorterResult,
+  SortOrder,
   TableCurrentDataSource,
   TablePaginationConfig,
 } from './Table.interface';
@@ -403,22 +404,25 @@ const HeaderFilterTrigger = ({
 };
 
 /**
- * React Aria always opens a fresh sort on 'ascending'. AntD lets a column say
- * which way the first click should go via `sortDirections`, so honour the head
- * of that list when the sort moves to a different column.
+ * React Aria only flips a column between ascending and descending, so the
+ * table could never return to its original order. AntD walks the column's
+ * `sortDirections` (ascend → descend by default) and clears the sort once past
+ * the last entry; a column moving to a new sort starts at the head of the list.
  */
-const resolveSortDirection = <T,>(
+const getNextSortDirection = <T,>(
   column: ColumnType<T> | undefined,
-  isFirstClickOnColumn: boolean,
-  fallback: 'ascending' | 'descending' | null
+  current: 'ascending' | 'descending' | null
 ) => {
-  const preferred = column?.sortDirections?.[0];
+  const directions: SortOrder[] = column?.sortDirections ?? [
+    'ascend',
+    'descend',
+  ];
+  const currentOrder = current === 'descending' ? 'descend' : 'ascend';
+  const next = current
+    ? directions[directions.indexOf(currentOrder) + 1]
+    : directions[0];
 
-  if (!isFirstClickOnColumn || !preferred) {
-    return fallback;
-  }
-
-  return toAriaDirection(preferred);
+  return next ? toAriaDirection(next) : null;
 };
 
 /**
@@ -1587,10 +1591,9 @@ const TableV2 = <T extends object>(
         | undefined;
       const reportedKey = columnKeys[clickedIndex] ?? '';
 
-      const newDirection = resolveSortDirection(
+      const newDirection = getNextSortDirection(
         clickedColumn,
-        sortState.columnKey !== newKey,
-        descriptor.direction ?? null
+        effectiveSort.columnKey === newKey ? effectiveSort.direction : null
       );
       setSortState({ columnKey: newKey, direction: newDirection });
 
@@ -1628,7 +1631,7 @@ const TableV2 = <T extends object>(
       filteredDataSource.length,
       internalCurrentPage,
       clientPagination,
-      sortState.columnKey,
+      effectiveSort,
       columnIds,
       columnKeys,
     ]

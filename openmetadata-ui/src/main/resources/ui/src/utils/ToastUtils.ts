@@ -101,32 +101,30 @@ const resolveErrorDetails = (
  * @param error error text or AxiosError object
  * @param fallbackText Fallback error message to be displayed.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
+ * @returns the toast key, to dismiss it later; undefined when nothing was shown.
  */
 export const showErrorToast = (
   error: AxiosError | string | JSX.Element,
   fallbackText?: string,
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
-) => {
+): string | undefined => {
   const { errorMessage, isRuleViolation, shouldSuppress } = resolveErrorDetails(
     error,
     fallbackText
   );
+  // The key lets a caller dismiss this toast, e.g. to replace it with a newer one.
+  let toastKey: string | undefined;
 
-  if (shouldSuppress) {
-    return;
+  if (!shouldSuppress) {
+    callback && callback(errorMessage);
+    const errorOptions = autoCloseTimer ? { timeout: autoCloseTimer } : {};
+    toastKey = isRuleViolation
+      ? toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 })
+      : toast.error(errorMessage, errorOptions);
   }
 
-  callback && callback(errorMessage);
-
-  if (isRuleViolation) {
-    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
-  } else {
-    toast.error(
-      errorMessage,
-      autoCloseTimer ? { timeout: autoCloseTimer } : {}
-    );
-  }
+  return toastKey;
 };
 
 /**

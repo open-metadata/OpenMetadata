@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.RefreshFrequency;
@@ -50,6 +51,45 @@ class ODCSSlaMapperTest {
     assertEquals("UPDATED_AT", sla.getColumnName());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"minute", "minutes", "mins", "m", " MINUTES "})
+  void minuteFreshnessRetainsItsValueAndColumn(String unit) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(
+                new ODCSSlaProperty()
+                    .withProperty("freshness")
+                    .withValue(new BigDecimal("15.00"))
+                    .withUnit(unit)
+                    .withElement("ORDERS.UPDATED_AT")),
+            issues);
+
+    assertTrue(issues.toList().isEmpty());
+    assertEquals(15, sla.getRefreshFrequency().getInterval());
+    assertEquals("minute", sla.getRefreshFrequency().getUnit().value());
+    assertEquals("UPDATED_AT", sla.getColumnName());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"15.000000000000000001", "2147483648"})
+  void unrepresentableMinuteFreshnessReportsAnIntervalWarning(String interval) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(
+                new ODCSSlaProperty()
+                    .withProperty("freshness")
+                    .withValue(new BigDecimal(interval))
+                    .withUnit("minute")),
+            issues);
+
+    assertNull(sla.getRefreshFrequency());
+    assertEquals(1, issues.toList().size());
+    assertEquals("slaProperties[0].value", issues.toList().getFirst().getPath());
+    assertTrue(issues.toList().getFirst().getMessage().contains("32-bit integer range"));
+  }
+
   @Test
   void valueThatIsNotAWholeNumberIsLeftOutInsteadOfBecomingZero() {
     ODCSImportIssues issues = new ODCSImportIssues();
@@ -70,13 +110,13 @@ class ODCSSlaMapperTest {
     ContractSLA sla =
         ODCSSlaMapper.toContractSla(
             List.of(
-                new ODCSSlaProperty().withProperty("freshness").withValue("30").withUnit("minutes"),
+                new ODCSSlaProperty().withProperty("freshness").withValue("30").withUnit("seconds"),
                 new ODCSSlaProperty().withProperty("latency").withValue("30").withUnit("minutes")),
             issues);
 
     assertNull(sla.getRefreshFrequency());
     assertEquals(MaxLatency.Unit.MINUTE, sla.getMaxLatency().getUnit());
-    assertTrue(issues.toList().getFirst().getMessage().contains("hour, day, week, month, year"));
+    assertTrue(issues.toList().getFirst().getMessage().contains("second"));
   }
 
   @Test

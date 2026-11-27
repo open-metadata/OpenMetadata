@@ -82,6 +82,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -861,7 +862,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     setFieldsInternal(updated, putFields);
 
     if (supportsSoftDelete && !hardDelete) {
-      updated.setUpdatedBy(updatedBy);
+      EntityUtil.recordWriter(updated, updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
       EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
@@ -920,20 +921,21 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
-            () -> {
-              try {
-                RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                    deleteLogicalTestSuite(
-                        securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-                deleteFromSearch(deleteResponse.entity(), hardDelete);
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                        deleteLogicalTestSuite(
+                            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
+                    deleteFromSearch(deleteResponse.entity(), hardDelete);
 
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId, securityContext, testSuite, e.getMessage());
-              }
-            });
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId, securityContext, testSuite, e.getMessage());
+                  }
+                }));
     return Response.accepted()
         .entity(
             new DeleteEntityResponse(
@@ -1032,7 +1034,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private Double persistSuiteUpdate(TestSuite suite, String updatedBy) {
     Double previousVersion = suite.getVersion();
     suite.setVersion(EntityUtil.nextVersion(previousVersion));
-    suite.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(suite, updatedBy);
     suite.setUpdatedAt(System.currentTimeMillis());
     storeEntity(suite, true);
     searchRepository.updateEntityIndex(suite);

@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   plan:
-    name: Select Python workloads
+    name: Select workloads
     runs-on: ubuntu-latest
     outputs:
       python-lowest: ${{ steps.versions.outputs.lowest }}
@@ -31,6 +31,9 @@ jobs:
       python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' }}
       airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
       static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
+      # ui-unit implies ui: Jest waits for checkstyle on pull requests.
+      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' || steps.ui-filter.outputs.ui-unit == 'true' }}
+      ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -39,6 +42,7 @@ jobs:
           fetch-depth: 1
           sparse-checkout: |
             .github/python-ci/paths.yml
+            .github/ui-ci/paths.yml
             ingestion/pyproject.toml
             scripts/python_ci.py
             scripts/prepare_classification_models.py
@@ -50,6 +54,13 @@ jobs:
           base: ${{ github.event.merge_group.base_sha }}
           initial-fetch-depth: 2
           filters: .github/python-ci/paths.yml
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: ui-filter
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event.merge_group.base_sha }}
+          initial-fetch-depth: 2
+          filters: .github/ui-ci/paths.yml
       - name: Read Python versions
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
@@ -183,3 +194,59 @@ jobs:
               $needs[$job.key].result == $job.value)
           '
         shell: bash
+
+  # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
+  # Jest and the browser tests out to parallel shards.
+  ui:
+    name: ui
+    needs: plan
+    if: ${{ needs.plan.outputs.ui == 'true' }}
+    permissions:
+      contents: read
+      # The browser tests download the impact map from earlier runs.
+      actions: read
+    uses: ./.github/workflows/ui-ci.yml
+    with:
+      unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
+
+  # Required check for the UI. It runs even when ui is skipped, so the check is
+  # always reported.
+  ui-tests-status:
+    name: ui-tests-status
+    needs: [plan, ui]
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions/ci-status-gate
+      - uses: ./.github/actions/ci-status-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          expected: |
+            {
+              "plan": "success",
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+            }
+
+  # TEMPORARY: the merge-rules ruleset still requires these two names. Remove
+  # both once it requires ui-tests-status instead.
+  ui-checkstyle:
+    name: ui-checkstyle
+    needs: ui-tests-status
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success
+
+  ui-coverage:
+    name: ui-coverage
+    needs: ui-tests-status
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success

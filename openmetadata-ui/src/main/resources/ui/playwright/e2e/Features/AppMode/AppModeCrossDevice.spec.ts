@@ -20,7 +20,7 @@ import { signInThroughForm } from '../../../utils/formSignIn';
 import {
   AppModeExpectation,
   assertAppMode,
-  switchToAiModeViaProfileToggle,
+  switchToAiModeViaSidebarSwitcher,
 } from '../../Utils/appMode';
 
 // The AI sidebar renders two AppModeSwitcher instances (compact rail + expanded
@@ -57,7 +57,7 @@ const waitForAppMode = async (page: Page, expected: AppModeExpectation) => {
 
 const openSwitcherAsAi = async (page: Page, user: UserClass) => {
   await signInThroughForm(page, user);
-  await switchToAiModeViaProfileToggle(page);
+  await switchToAiModeViaSidebarSwitcher(page);
   await expect(page.getByTestId('ask-sidebar')).toBeVisible();
   await page.locator(VISIBLE_SWITCHER_TRIGGER).click();
   await expect(page.locator(VISIBLE_SWITCHER_CARD)).toBeVisible();
@@ -89,7 +89,7 @@ test.describe('AppMode — cross-device sync', { tag: ['@Platform'] }, () => {
   test('Preference set in browser A is visible on a fresh login in browser B', async ({
     browser,
   }) => {
-    // openSwitcherAsAi (full login + profile-toggle + switcher-open) plus a
+    // openSwitcherAsAi (full login + sidebar-switch + switcher-open) plus a
     // second login on browser B tips past the 60s per-test default under CI
     // load. Bump.
     test.setTimeout(150_000);

@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -30,6 +31,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGED_BY_BOT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -60,6 +64,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -121,6 +126,83 @@ class WorkflowEventConsumerTest {
       assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotAWorkflowListsStartsWorkflowsNamingTheBot() {
+    ChangeEvent event = createChangeEvent("kpler-bot", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+        MockedStatic<GovernanceApprovalRegistry> registry =
+            mockStatic(GovernanceApprovalRegistry.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "kpler-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+      registry
+          .when(() -> GovernanceApprovalRegistry.isTriggeringBotOf("table", "kpler-bot"))
+          .thenReturn(true);
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(
+              eq("table-entityUpdated"),
+              argThat(
+                  variables ->
+                      "kpler-bot"
+                          .equals(
+                              variables.get(
+                                  getNamespacedVariableName(
+                                      GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE)))));
+    }
+  }
+
+  @Test
+  void testSendMessage_WorkflowAutomationNeverStartsWorkflowsEvenIfListed() {
+    ChangeEvent event = createChangeEvent("alice", EventType.ENTITY_UPDATED);
+    event.setImpersonatedBy(WorkflowEventConsumer.GOVERNANCE_BOT);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<GovernanceApprovalRegistry> registry =
+            mockStatic(GovernanceApprovalRegistry.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      registry
+          .when(() -> GovernanceApprovalRegistry.isTriggeringBotOf(anyString(), anyString()))
+          .thenReturn(true);
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_PersonsChangeCarriesNoBot() {
+    ChangeEvent event = createChangeEvent("alice", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("alice"), any()))
+          .thenReturn(new User().withName("alice").withIsBot(false));
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(
+              eq("table-entityUpdated"),
+              argThat(
+                  variables ->
+                      !variables.containsKey(
+                          getNamespacedVariableName(GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE))));
     }
   }
 

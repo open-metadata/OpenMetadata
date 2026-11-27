@@ -20,6 +20,7 @@ import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
@@ -35,6 +36,7 @@ import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -431,8 +433,7 @@ public class GetEntityTool implements McpTool {
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
-      String body = AIContextBuilder.fullContentOf(ctx.entity());
-      rendered = renderText(ctx, body == null ? "" : body);
+      rendered = renderText(ctx, fullKnowledgeText(ctx.entity()));
     } else {
       rendered =
           ctx.options().asJson()
@@ -440,6 +441,14 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
+  }
+
+  private static String fullKnowledgeText(EntityInterface<?> entity) {
+    String body =
+        entity instanceof Page page && isArticle(page)
+            ? PromptText.forArticleRead(page.getDescription())
+            : AIContextBuilder.fullContentOf(entity);
+    return body == null ? "" : body;
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
@@ -461,15 +470,20 @@ public class GetEntityTool implements McpTool {
                 query,
                 ctx.options().passages(),
                 getSubjectContext(ctx.securityContext()));
-    // PageBodyTextContributor includes the raw editor HTML in indexed page chunks.
-    return ctx.entity() instanceof Page ? readablePassages(found) : found;
+    return ctx.entity() instanceof Page page ? readablePassages(page, found) : found;
   }
 
-  private static List<String> readablePassages(List<String> passages) {
-    return passages.stream()
-        .map(PromptText::forContentRead)
-        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
-        .toList();
+  private static List<String> readablePassages(Page page, List<String> passages) {
+    return isArticle(page)
+        ? PageBodyTextContributor.readableArticlePassages(page, passages)
+        : passages.stream()
+            .map(PromptText::forContentRead)
+            .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+            .toList();
+  }
+
+  private static boolean isArticle(Page page) {
+    return page.getPageType() != PageType.QUICK_LINK;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {
