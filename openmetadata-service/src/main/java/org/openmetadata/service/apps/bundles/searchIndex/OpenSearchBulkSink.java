@@ -1485,7 +1485,7 @@ public class OpenSearchBulkSink implements BulkSink {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, false);
                 }
                 circuitBreaker.recordSuccess();
-                handlePartialFailure(response, executionId, numberOfActions);
+                retryScheduled = handlePartialFailure(attempt, response);
               } else {
                 if (metrics != null && bulkTimerSample != null) {
                   metrics.recordBulkRequestCompleted(bulkTimerSample, true);
@@ -1653,77 +1653,173 @@ public class OpenSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
-    private void handlePartialFailure(
-        BulkResponse response, long executionId, int numberOfActions) {
-      int failures = 0;
-      int warnings = 0;
-      Map<String, Integer> successesByType = new ConcurrentHashMap<>();
-      Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
-      for (BulkResponseItem item : response.items()) {
-        String docId = item.id();
-        StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
-        if (item.error() != null) {
-          String failureMessage = item.error().reason();
-          boolean staleReference = isStaleReferenceMessage(failureMessage);
-          if (staleReference) {
-            warnings++;
-          } else {
-            failures++;
-          }
-          if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
-            LOG.warn(
-                "Document missing error for {}: {} - This may occur during concurrent reindexing",
-                docId,
-                failureMessage);
-          } else {
-            LOG.warn("Failed to index document {}: {}", docId, failureMessage);
-          }
-          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
-          if (entityType == null) {
-            entityType = extractEntityTypeFromIndex(item.index());
-          }
-          if (!staleReference) {
-            failuresByType.merge(entityType, 1, Integer::sum);
-          }
-          if (tracker != null) {
-            tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
-          }
-          if (!staleReference && failureCallback != null) {
-            failureCallback.onFailure(
-                entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
-          }
-        } else {
-          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
-          if (entityType == null) {
-            entityType = extractEntityTypeFromIndex(item.index());
-          }
-          successesByType.merge(entityType, 1, Integer::sum);
-          if (tracker != null) {
-            tracker.recordSink(StatsResult.SUCCESS);
+    /**
+     * Records the outcome of a bulk the cluster answered with per-item errors, and re-sends the
+     * items it only turned away for want of capacity. An indexing-pressure rejection says the
+     * cluster was momentarily full, not that the document is bad, so recording it as a failure
+     * drops a document a later send would have written. Returns true when such a re-send was
+     * scheduled, in which case the bulk keeps its processor slot until that send settles.
+     * ADR:2026-11-24-bulk-items-rejected-for-capacity-are-re-sent
+     */
+    private boolean handlePartialFailure(
+        BulkAttempt<BulkOperation> attempt, BulkResponse response) {
+      List<BulkResponseItem> items = response.items();
+      List<BulkOperation> rejected = rejectedForCapacity(attempt, items);
+      boolean retrying = canRetryCapacityRejections(attempt, rejected);
+      // Record what the cluster did settle before scheduling, so each item is counted once even
+      // when the re-send is refused and only the deferred items are then recorded as failed.
+      recordItemOutcomes(attempt, items, retrying);
+      if (retrying) {
+        scheduleCapacityRetry(attempt, rejected);
+      }
+      return retrying;
+    }
+
+    /**
+     * The operations the cluster rejected for want of capacity. The bulk API answers each operation
+     * with the item at the same position, so a response of a different length leaves nothing safe
+     * to re-send.
+     */
+    private List<BulkOperation> rejectedForCapacity(
+        BulkAttempt<BulkOperation> attempt, List<BulkResponseItem> items) {
+      List<BulkOperation> operations = attempt.operations();
+      List<BulkOperation> rejected = new ArrayList<>();
+      if (items.size() == operations.size()) {
+        for (int i = 0; i < items.size(); i++) {
+          if (isCapacityRejection(items.get(i))) {
+            rejected.add(operations.get(i));
           }
         }
       }
-      int successes = numberOfActions - failures - warnings;
-      totalSuccess.addAndGet(successes);
-      totalFailed.addAndGet(failures);
-      totalWarnings.addAndGet(warnings);
+      return rejected;
+    }
+
+    private boolean canRetryCapacityRejections(
+        BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
+      return !rejected.isEmpty()
+          && attempt.attemptNumber() < retryPolicy.maxRetries()
+          && attempt.outlasts(retryPolicy.backoffMillis(attempt.attemptNumber()));
+    }
+
+    /**
+     * Sends the rejected items again as the next attempt of this bulk. The re-send carries only
+     * those items, so a processor that has already shut down fails them alone rather than the
+     * whole bulk, whose other items the cluster wrote.
+     */
+    private void scheduleCapacityRetry(
+        BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
+      long backoffMillis = retryPolicy.backoffMillis(attempt.attemptNumber());
+      BulkAttempt<BulkOperation> resend = attempt.nextWith(rejected);
+      LOG.warn(
+          "Bulk request {} had {} of {} actions rejected for indexing capacity (attempt {}), re-sending them in {}ms",
+          attempt.executionId(),
+          rejected.size(),
+          attempt.size(),
+          resend.attemptNumber(),
+          backoffMillis);
+      scheduleAttempt(() -> executeBulkWithRetry(resend), backoffMillis, resend);
+    }
+
+    private boolean isCapacityRejection(BulkResponseItem item) {
+      return item.error() != null
+          && BulkRetryPolicy.isCapacityRejection(item.status(), item.error().reason());
+    }
+
+    private void recordItemOutcomes(
+        BulkAttempt<BulkOperation> attempt,
+        List<BulkResponseItem> items,
+        boolean retryingRejected) {
+      ItemOutcomes outcomes = new ItemOutcomes();
+      for (BulkResponseItem item : items) {
+        if (retryingRejected && isCapacityRejection(item)) {
+          outcomes.deferred++;
+        } else if (item.error() != null) {
+          recordItemFailure(item, outcomes);
+        } else {
+          recordItemSuccess(item, outcomes);
+        }
+      }
+      publishItemOutcomes(attempt, outcomes);
+    }
+
+    private void recordItemFailure(BulkResponseItem item, ItemOutcomes outcomes) {
+      String docId = item.id();
+      String failureMessage = item.error().reason();
+      boolean staleReference = isStaleReferenceMessage(failureMessage);
+      if (staleReference) {
+        outcomes.warnings++;
+      } else {
+        outcomes.failures++;
+      }
+      if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
+        LOG.warn(
+            "Document missing error for {}: {} - This may occur during concurrent reindexing",
+            docId,
+            failureMessage);
+      } else {
+        LOG.warn("Failed to index document {}: {}", docId, failureMessage);
+      }
+      String entityType = resolveEntityType(docId, item.index());
+      if (!staleReference) {
+        outcomes.failuresByType.merge(entityType, 1, Integer::sum);
+      }
+      StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
+      if (tracker != null) {
+        tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
+      }
+      if (!staleReference && failureCallback != null) {
+        failureCallback.onFailure(
+            entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
+      }
+    }
+
+    private void recordItemSuccess(BulkResponseItem item, ItemOutcomes outcomes) {
+      String docId = item.id();
+      outcomes.successesByType.merge(resolveEntityType(docId, item.index()), 1, Integer::sum);
+      StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    }
+
+    private String resolveEntityType(String docId, String indexName) {
+      String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+      return entityType != null ? entityType : extractEntityTypeFromIndex(indexName);
+    }
+
+    private void publishItemOutcomes(BulkAttempt<BulkOperation> attempt, ItemOutcomes outcomes) {
+      int numberOfActions = attempt.size();
+      totalSuccess.addAndGet(
+          numberOfActions - outcomes.failures - outcomes.warnings - outcomes.deferred);
+      totalFailed.addAndGet(outcomes.failures);
+      totalWarnings.addAndGet(outcomes.warnings);
 
       if (statsCallback != null) {
-        for (Map.Entry<String, Integer> entry : successesByType.entrySet()) {
+        for (Map.Entry<String, Integer> entry : outcomes.successesByType.entrySet()) {
           statsCallback.onSuccess(entry.getKey(), entry.getValue());
         }
-        for (Map.Entry<String, Integer> entry : failuresByType.entrySet()) {
+        for (Map.Entry<String, Integer> entry : outcomes.failuresByType.entrySet()) {
           statsCallback.onFailure(entry.getKey(), entry.getValue());
         }
       }
 
       LOG.warn(
-          "Bulk request {} completed with {} failures and {} warnings out of {} actions",
-          executionId,
-          failures,
-          warnings,
+          "Bulk request {} completed with {} failures, {} warnings and {} actions awaiting re-send out of {} actions",
+          attempt.executionId(),
+          outcomes.failures,
+          outcomes.warnings,
+          outcomes.deferred,
           numberOfActions);
       statsUpdater.run();
+    }
+
+    /** Running tally of one bulk response's items, by outcome and by entity type. */
+    private static final class ItemOutcomes {
+      private final Map<String, Integer> successesByType = new ConcurrentHashMap<>();
+      private final Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
+      private int failures;
+      private int warnings;
+      private int deferred;
     }
 
     private void reportSuccessByEntityType(List<BulkOperation> operations) {

@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -4061,6 +4065,39 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
     assertEquals(1, inputPorts.getPaging().getTotal());
+  }
+
+  @Test
+  void concurrentPortAddsKeepBothEditsAndVersions(final TestNamespace ns) throws Exception {
+    final Domain domain = getOrCreateDomain(ns);
+    final DataProduct product =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("parallel_ports"))
+                .withDescription("Product with concurrent port edits")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    final List<Table> ports =
+        List.of(
+            createTestTable(ns, "first_port", domain), createTestTable(ns, "second_port", domain));
+    final CyclicBarrier start = new CyclicBarrier(ports.size());
+    final List<Callable<BulkOperationResult>> edits =
+        ports.stream()
+            .<Callable<BulkOperationResult>>map(
+                port ->
+                    () -> {
+                      start.await(15, TimeUnit.SECONDS);
+                      return addInputPortsWithResult(
+                          product.getFullyQualifiedName(),
+                          new BulkAssets().withAssets(List.of(port.getEntityReference())));
+                    })
+            .toList();
+    try (var workers = Executors.newFixedThreadPool(ports.size())) {
+      for (var edit : workers.invokeAll(edits, 30, TimeUnit.SECONDS)) {
+        assertEquals(1, edit.get().getNumberOfRowsPassed());
+      }
+    }
+    assertEquals(2, getInputPorts(product.getId(), 10, 0).getPaging().getTotal());
+    assertEquals(3, getVersionHistory(product.getId()).getVersions().size());
   }
 
   @Test

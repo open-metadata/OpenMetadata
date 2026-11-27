@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -83,7 +84,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -142,6 +146,9 @@ public class AIContextBuilder {
   /** Max query-relevant vector lookups per bundle; items beyond it use the structural preview. */
   private static final int MAX_QUERY_EXCERPTS = 5;
 
+  /** Lets an article excerpt skip image-only hits within one bounded vector lookup. */
+  private static final int ARTICLE_EXCERPT_CANDIDATES = 3;
+
   /** Max upstream edges whose data-quality standing is checked for staleness stamping. */
   static final int MAX_UPSTREAM_DQ_CHECKS = 3;
 
@@ -166,10 +173,9 @@ public class AIContextBuilder {
   }
 
   /**
-   * Supply the user's question so a truncated knowledge item's excerpt is the passage most relevant
-   * to it (top chunk from the per-chunk embeddings, issue #4789) rather than the positional lead —
-   * giving the agent a decision-grade snippet for whether to fetch the full body. Ignored when
-   * blank or when vector search is unavailable, where the structural preview is used instead.
+   * Supply the user's question to find a relevant excerpt from the per-chunk embeddings (issue
+   * #4789). Truncated items use a structural preview when the question is absent, vector search is
+   * unavailable, or the search supplies no usable passage.
    */
   public AIContextBuilder withQuery(String query) {
     this.query = nullOrEmpty(query) ? null : query;
@@ -405,23 +411,18 @@ public class AIContextBuilder {
     return subject;
   }
 
-  /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
+  /** Best readable article hit or the top hit for other knowledge items, or null when absent. */
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {
-      VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
-      if (item.getType() != null
-          && vectorService != null
-          && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-        EntityReference reference =
-            Entity.getEntityReferenceByName(
-                item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
-        List<String> passages =
-            vectorService.searchChunksByParent(
-                reference.getId().toString(), query, 1, subjectContextOrNull());
-        if (!nullOrEmpty(passages)) {
-          result = excerpt(passages.getFirst(), limit);
-        }
+      SearchRepository search = Entity.getSearchRepository();
+      VectorIndexService vectorService = search.getVectorIndexService();
+      if (item.getType() != null && vectorService != null && search.isVectorEmbeddingEnabled()) {
+        String passage =
+            item.getType() == KnowledgeItem.Type.PAGE
+                ? queryPagePassage(vectorService, item.getId())
+                : queryKnowledgePassage(vectorService, item);
+        result = excerpt(passage, limit);
       }
     } catch (Exception e) {
       LOG.debug(
@@ -430,6 +431,33 @@ public class AIContextBuilder {
           e.getMessage());
     }
     return result;
+  }
+
+  private String queryPagePassage(VectorIndexService vectorService, UUID pageId) {
+    Page page = Entity.getEntity(Entity.PAGE, pageId, "", Include.NON_DELETED);
+    boolean isArticle = page.getPageType() != PageType.QUICK_LINK;
+    List<String> passages =
+        vectorService.searchChunksByParent(
+            pageId.toString(),
+            query,
+            isArticle ? ARTICLE_EXCERPT_CANDIDATES : 1,
+            subjectContextOrNull());
+    return isArticle
+        ? PageBodyTextContributor.firstReadableArticleBody(page, passages)
+        : firstPassage(passages);
+  }
+
+  private String queryKnowledgePassage(VectorIndexService vectorService, KnowledgeItem item) {
+    EntityReference reference =
+        Entity.getEntityReferenceByName(
+            item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
+    return firstPassage(
+        vectorService.searchChunksByParent(
+            reference.getId().toString(), query, 1, subjectContextOrNull()));
+  }
+
+  private static String firstPassage(List<String> passages) {
+    return nullOrEmpty(passages) ? null : passages.getFirst();
   }
 
   /**
@@ -741,10 +769,29 @@ public class AIContextBuilder {
     return value == null ? null : String.valueOf(value);
   }
 
-  private EntityLineage fetchLineage(EntityInterface<?> entity) {
+  /**
+   * Depth-1 lineage of the asset. Being allowed to view this asset does not imply access to its
+   * neighbours, and the lineage section names each of them with the columns mapped on the edge, so
+   * with a caller the graph gets the same domain prune and per-node VIEW_BASIC filter as the lineage
+   * API and the MCP lineage section. A failure in either step leaves the section empty rather than
+   * unfiltered. Server-internal callers (persona materialization) have nobody to authorize and read
+   * the graph as is, like the other caller-relative checks in this builder.
+   */
+  EntityLineage fetchLineage(EntityInterface<?> entity) {
     EntityLineage lineage = null;
     try {
-      lineage = Entity.getLineageRepository().get(entityType, entity.getId().toString(), 1, 1);
+      String id = entity.getId().toString();
+      if (authorizer == null || securityContext == null) {
+        lineage = Entity.getLineageRepository().get(entityType, id, 1, 1);
+      } else {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        EntityLineage scoped =
+            Entity.getLineageRepository().get(entityType, id, 1, 1, subjectContext);
+        lineage =
+            new LineagePermissionFilter(authorizer)
+                .filter(securityContext, subjectContext, scoped)
+                .lineage();
+      }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch lineage for {}: {}", fqn, e.getMessage());
     }
@@ -1280,7 +1327,10 @@ public class AIContextBuilder {
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(unescapeRichText(page.getDescription()));
+                .withContent(
+                    page.getPageType() == PageType.QUICK_LINK
+                        ? unescapeRichText(page.getDescription())
+                        : PromptText.forBudgetedArticleRead(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(

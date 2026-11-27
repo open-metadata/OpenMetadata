@@ -21,6 +21,7 @@ on:
         default: &default-connectors '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
 permissions:
   contents: read
+  packages: read
 env:
   DEFAULT_CONNECTORS: *default-connectors
 concurrency:

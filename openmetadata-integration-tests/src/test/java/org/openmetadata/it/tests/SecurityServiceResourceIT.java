@@ -7,8 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -18,10 +23,15 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateSecurityService;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SecurityConnection;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -500,5 +510,184 @@ public class SecurityServiceResourceIT {
     authTypeMap.put("username", "admin");
     authTypeMap.put("password", "admin");
     return authTypeMap;
+  }
+
+  private String exportSecurityServiceCsv(String serviceName)
+      throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl + SECURITY_SERVICES_ENDPOINT + "/name/" + serviceName + "/export"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .GET()
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to export CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    return response.body();
+  }
+
+  private CsvImportResult importSecurityServiceCsv(
+      String serviceName, String csvData, boolean dryRun) throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl
+                        + SECURITY_SERVICES_ENDPOINT
+                        + "/name/"
+                        + serviceName
+                        + "/import?dryRun="
+                        + dryRun))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "text/plain")
+            .PUT(HttpRequest.BodyPublishers.ofString(csvData))
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to import CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    try {
+      return MAPPER.readValue(response.body(), CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse import result: " + e.getMessage(), e);
+    }
+  }
+
+  private SecurityService getSecurityServiceByName(String serviceName, String fields)
+      throws IOException, InterruptedException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = (fields == null || fields.isEmpty()) ? "" : "?fields=" + fields;
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            SECURITY_SERVICES_ENDPOINT + "/name/" + serviceName + suffix,
+            null,
+            SecurityService.class);
+  }
+
+  /**
+   * Export->import round trip preserves the service's owners, classification tags and direct domain
+   * assignment. Regression for {@code SecurityServiceRepository.exportToCsv} fetching with {@code
+   * EMPTY_FIELDS} (which nulled the relationships on the read path) so the exported CSV carried
+   * empty columns and importing it wiped the relationships.
+   */
+  @Test
+  void test_csvRoundTripPreservesOwnersTagsAndDomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceName = ns.prefix("ranger_csv_round_trip");
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("csv_rt_domain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Round-trip domain for SecurityService CSV test"));
+    EntityReference owner = client.users().getByName("admin").getEntityReference();
+    TagLabel tag = new TagLabel().withTagFQN("PII.Sensitive");
+
+    RangerConnection rangerConn =
+        new RangerConnection()
+            .withHostPort(URI.create("http://localhost:6080"))
+            .withAuthType(createAuthTypeMap());
+    CreateSecurityService createRequest =
+        new CreateSecurityService()
+            .withName(serviceName)
+            .withServiceType(CreateSecurityService.SecurityServiceType.Ranger)
+            .withConnection(new SecurityConnection().withConfig(rangerConn))
+            .withDescription("Round-trip Security service")
+            .withOwners(List.of(owner))
+            .withTags(List.of(tag))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+
+    client
+        .getHttpClient()
+        .execute(HttpMethod.POST, SECURITY_SERVICES_ENDPOINT, createRequest, SecurityService.class);
+
+    SecurityService stored = getSecurityServiceByName(serviceName, "owners,tags,domains");
+    assertNotNull(stored.getOwners(), "owner must be persisted before the round trip");
+    assertFalse(stored.getTags() == null || stored.getTags().isEmpty(), "tag must be persisted");
+    assertNotNull(stored.getDomains(), "domain must be persisted before the round trip");
+
+    String exportedCsv = exportSecurityServiceCsv(serviceName);
+    assertTrue(
+        exportedCsv.contains("user:admin"),
+        "exported CSV must carry the owner column: " + exportedCsv);
+    assertTrue(
+        exportedCsv.contains("PII.Sensitive"),
+        "exported CSV must carry the tag column: " + exportedCsv);
+    assertTrue(
+        exportedCsv.contains(domain.getFullyQualifiedName()),
+        "exported CSV must carry the domain column: " + exportedCsv);
+
+    CsvImportResult dryRunResult = importSecurityServiceCsv(serviceName, exportedCsv, true);
+    assertEquals(1, dryRunResult.getNumberOfRowsProcessed());
+    assertEquals(0, dryRunResult.getNumberOfRowsFailed());
+
+    SecurityService afterDryRun = getSecurityServiceByName(serviceName, "owners,tags,domains");
+    assertFalse(
+        afterDryRun.getOwners() == null || afterDryRun.getOwners().isEmpty(),
+        "dry-run import must not change owners");
+    assertFalse(
+        afterDryRun.getTags() == null || afterDryRun.getTags().isEmpty(),
+        "dry-run import must not change tags");
+    assertNotNull(afterDryRun.getDomains(), "dry-run import must not change domain");
+
+    CsvImportResult wetRunResult = importSecurityServiceCsv(serviceName, exportedCsv, false);
+    assertEquals(1, wetRunResult.getNumberOfRowsProcessed());
+    assertEquals(0, wetRunResult.getNumberOfRowsFailed());
+
+    SecurityService afterWetRun = getSecurityServiceByName(serviceName, "owners,tags,domains");
+    assertFalse(
+        afterWetRun.getOwners() == null || afterWetRun.getOwners().isEmpty(),
+        "export->import round trip must preserve owners");
+    assertTrue(
+        afterWetRun.getTags() != null
+            && afterWetRun.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())),
+        "export->import round trip must preserve classification tag");
+    assertNotNull(
+        afterWetRun.getDomains(), "export->import round trip must preserve direct domain");
+
+    // Prepend the real CSV header (the import path treats the first row as the header).
+    String headerLine = exportedCsv.split("\\r?\\n", 2)[0];
+    String emptyColumnsCsv =
+        headerLine
+            + "\n"
+            + String.join(
+                ",", serviceName, "", "Round-trip Security service", "Ranger", "", "", "", "");
+    CsvImportResult clearResult = importSecurityServiceCsv(serviceName, emptyColumnsCsv, false);
+    assertEquals(0, clearResult.getNumberOfRowsFailed());
+    SecurityService afterClear = getSecurityServiceByName(serviceName, "owners,tags,domains");
+    assertTrue(
+        afterClear.getOwners() == null || afterClear.getOwners().isEmpty(),
+        "empty owner column must clear owners (documented contract)");
+    assertTrue(
+        afterClear.getTags() == null || afterClear.getTags().isEmpty(),
+        "empty tag column must clear tags (documented contract)");
+    assertTrue(
+        afterClear.getDomains() == null || afterClear.getDomains().isEmpty(),
+        "empty domain column must clear direct domain (documented contract)");
   }
 }

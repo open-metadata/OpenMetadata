@@ -16,7 +16,7 @@ import {
   SlashCircle02,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
-import { get } from 'lodash';
+import { get, maxBy } from 'lodash';
 import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
@@ -94,9 +94,12 @@ const PipelineTaskTab = withSuspenseFallback(
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
-export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
-  return tasks.find((task) => task.name === taskName)?.executionStatus;
-};
+// A task retried within one run has a line per try, and its status is that of its latest try.
+export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) =>
+  maxBy(
+    tasks.filter((task) => task.name === taskName),
+    (task) => task.startTime ?? task.endTime ?? 0
+  )?.executionStatus;
 
 export const getStatusBadgeClassName = (status?: StatusType) => {
   switch (status) {

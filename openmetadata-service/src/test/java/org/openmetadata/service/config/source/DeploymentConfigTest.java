@@ -18,8 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.dropwizard.configuration.ConfigurationSourceProvider;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -29,17 +31,27 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SettingsRowMapper;
 
 class DeploymentConfigTest {
+  private static final String EXTENSIONS = "extensions";
+  private static final Map<String, Object> MCP_EXTENSIONS =
+      Map.of(
+          "distribution",
+          Map.of("flags", List.of("search", "lineage"), "enabled", true, "limit", 3));
+
   private static final String SERVER_YAML =
       """
       authenticationConfiguration:
@@ -104,6 +116,37 @@ class DeploymentConfigTest {
     assertEquals(ConfigSourceMode.AUTO, deployment.modeOf(AUTHENTICATION_CONFIGURATION));
     assertEquals(ConfigSourceMode.DB, deployment.modeOf(APP_CONFIGURATION));
     assertEquals(Duration.ofSeconds(10), deployment.watchInterval());
+  }
+
+  @Test
+  void roundTripsMcpExtensionsFromDeploymentYaml() throws IOException {
+    var config =
+        new YAMLMapper()
+            .readValue(
+                """
+                mcpConfiguration:
+                  extensions:
+                    distribution:
+                      flags: [search, lineage]
+                      enabled: true
+                      limit: 3
+                """,
+                OpenMetadataApplicationConfig.class);
+    var mcp = config.getMcpConfiguration();
+    var json = JsonUtils.pojoToJson(mcp);
+
+    assertEquals(JsonUtils.valueToTree(MCP_EXTENSIONS), JsonUtils.readTree(json).get(EXTENSIONS));
+    assertEquals(mcp, JsonUtils.readValue(json, MCPConfiguration.class));
+  }
+
+  @Test
+  void roundTripsMcpExtensionsThroughTheSettingsRowMapper() {
+    var json = JsonUtils.pojoToJson(Map.of(EXTENSIONS, MCP_EXTENSIONS));
+    var settings = SettingsRowMapper.getSettings(MCP_CONFIGURATION, json);
+
+    assertEquals(
+        JsonUtils.readTree(json).get(EXTENSIONS),
+        JsonUtils.valueToTree(settings.getConfigValue()).get(EXTENSIONS));
   }
 
   @Test

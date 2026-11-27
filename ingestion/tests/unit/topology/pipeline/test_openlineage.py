@@ -52,11 +52,13 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
+    KNOWN_TASKS_CACHE_MAXSIZE,
     KPL_AGGREGATED_MAGIC,
     MISSING_ENTITY_CACHE_TTL_SECONDS,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
     deaggregate_kinesis_record,
+    known_pipeline_weight,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
@@ -192,6 +194,7 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
     event_type=FULL_OL_KAFKA_EVENT["eventType"],
     inputs=FULL_OL_KAFKA_EVENT["inputs"],
     outputs=FULL_OL_KAFKA_EVENT["outputs"],
+    event_time=FULL_OL_KAFKA_EVENT["eventTime"],
 )
 
 
@@ -229,6 +232,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
                 source.source_config.lineageInformation = LineageInformation(dbServiceNames=["demo_db"])
                 source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+                source._known_pipelines = LRUCache(maxsize=KNOWN_TASKS_CACHE_MAXSIZE, getsizeof=known_pipeline_weight)
             yield
 
     def setup_mock_consumer_with_kafka_event(self, event):
@@ -325,12 +329,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_empty_input(self):
         """Test with an empty input list."""
-        result = self.open_lineage_source._create_output_lineage_dict([])
+        result = self.open_lineage_source._create_output_lineage_dict({})
         self.assertEqual(result, {})
 
     def test_create_output_lineage_dict_single_lineage_entry(self):
         """Test with a single lineage entry."""
-        lineage_info = [("output_table", "input_table", "output_column", "input_column")]
+        lineage_info = {("output_table", "input_table", "output_column", None): ["input_column"]}
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {"input_table": [ColumnLineage(toColumn="output_column", fromColumns=["input_column"])]}
@@ -339,10 +343,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_different_outputs(self):
         """Test with multiple entries having different output tables."""
-        lineage_info = [
-            ("output_table1", "input_table", "output_column1", "input_column"),
-            ("output_table2", "input_table", "output_column2", "input_column"),
-        ]
+        lineage_info = {
+            ("output_table1", "input_table", "output_column1", None): ["input_column"],
+            ("output_table2", "input_table", "output_column2", None): ["input_column"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table1": {"input_table": [ColumnLineage(toColumn="output_column1", fromColumns=["input_column"])]},
@@ -352,10 +356,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_same_output(self):
         """Test with multiple entries sharing the same output table."""
-        lineage_info = [
-            ("output_table", "input_table1", "output_column", "input_column1"),
-            ("output_table", "input_table2", "output_column", "input_column2"),
-        ]
+        lineage_info = {
+            ("output_table", "input_table1", "output_column", None): ["input_column1"],
+            ("output_table", "input_table2", "output_column", None): ["input_column2"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {
@@ -518,6 +522,65 @@ class OpenLineageUnitTest(unittest.TestCase):
             }
         }
         self.assertEqual(result, expected)
+
+    def test_column_transformations_are_kept_with_their_input_columns(self):
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        fields = event["outputs"][0]["facets"]["columnLineage"]["fields"]
+        source = fields["id"]["inputFields"][0]
+        aggregate = [{"type": "DIRECT", "subtype": "AGGREGATION"}]
+        fields["id"] = {
+            "inputFields": [
+                {**source, "field": "amount", "transformations": aggregate},
+                {
+                    **source,
+                    "field": "flag",
+                    "transformations": [
+                        {"type": "INDIRECT", "subtype": "FILTER", "description": "eligible rows"},
+                        {"type": "DIRECT", "masking": True},
+                    ],
+                },
+                {**source, "field": "tax", "transformations": aggregate},
+                {**source, "field": "old", "transformations": []},
+            ],
+            "transformationDescription": "  legacy formula  ",
+            "transformationType": "IDENTITY",
+        }
+        fields["randomid"]["transformationType"] = "IDENTITY"
+        parsed = self.read_openlineage_event_from_kafka(event)
+        with (
+            patch.object(
+                OpenMetadataConnection,
+                "get_by_name",
+                create=True,
+                side_effect=lambda entity, fqn, **kwargs: Mock(id=Mock(root=uuid4()), columns=[]),
+            ),
+            patch.object(OpenMetadataConnection, "get_lineage_by_id", create=True, return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn_from_om",
+                side_effect=lambda table, services=None: f"svc.db.{table.name}",
+            ),
+        ):
+            (request,) = self.open_lineage_source.yield_pipeline_lineage_details(parsed)
+
+        columns = request.right.edge.lineageDetails.columnsLineage
+        self.assertEqual(
+            [
+                (
+                    col.toColumn.root.rsplit(".", 1)[1],
+                    col.function.root if col.function else None,
+                    [fqn.root.rsplit(".", 1)[1] for fqn in col.fromColumns],
+                )
+                for col in columns
+            ],
+            [
+                ("id", "DIRECT/AGGREGATION", ["amount", "tax"]),
+                ("id", "INDIRECT/FILTER (eligible rows), DIRECT [masked]", ["flag"]),
+                ("id", "  legacy formula  ", ["old"]),
+                ("randomid", "IDENTITY", ["products"]),
+                ("zip", None, ["platform"]),
+            ],
+        )
 
     @staticmethod
     def _mock_table_with_columns(table_fqn, fqn_segment_by_name):
@@ -1287,6 +1350,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "_resolve_pipeline_service",
                 return_value=MOCK_PIPELINE_SERVICE.name.root,
             ),
+            patch.object(OpenMetadataConnection, "get_by_name", create=True, return_value=None),
             patch.object(self.open_lineage_source, "register_record"),
         ):
             results = list(self.open_lineage_source.yield_pipeline(ol_event))
@@ -1555,27 +1619,24 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "START")
 
-    def test_get_pipelines_list_filters_out_fail_events(self):
-        """Test that get_pipelines_list filters out FAIL events"""
+    def test_get_pipelines_list_returns_fail_and_abort_events(self):
+        """FAIL and ABORT events carry the run's outcome, so they reach the pipeline status stage"""
+        for event_type in ("FAIL", "ABORT"):
+            event = copy.deepcopy(VALID_EVENT)
+            event["eventType"] = event_type
+            self.setup_mock_consumer_with_kafka_event(event)
+
+            results = list(self.open_lineage_source.get_pipelines_list())
+
+            self.assertEqual([result.event_type for result in results], [event_type])
+
+    def test_get_pipelines_list_filters_out_other_events(self):
+        """OTHER events carry no run outcome and no lineage"""
         event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "FAIL"
+        event["eventType"] = "OTHER"
         self.setup_mock_consumer_with_kafka_event(event)
 
-        result_generator = self.open_lineage_source.get_pipelines_list()
-        results = list(result_generator)
-
-        self.assertEqual(len(results), 0)
-
-    def test_get_pipelines_list_filters_out_abort_events(self):
-        """Test that get_pipelines_list filters out ABORT events"""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "ABORT"
-        self.setup_mock_consumer_with_kafka_event(event)
-
-        result_generator = self.open_lineage_source.get_pipelines_list()
-        results = list(result_generator)
-
-        self.assertEqual(len(results), 0)
+        self.assertEqual(list(self.open_lineage_source.get_pipelines_list()), [])
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_lineage_merge_start_with_data_running_without(self, mock_get_table_from_om):
@@ -1750,25 +1811,18 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertIsInstance(results[0], OpenLineageEvent)
         self.assertEqual(results[0].event_type, "START")
 
-    def test_get_pipelines_list_kinesis_filters_out_fail_events(self):
-        """Test that Kinesis get_pipelines_list filters out FAIL events."""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "FAIL"
-        self._build_mock_kinesis_client([event])
+    def test_get_pipelines_list_kinesis_returns_fail_and_abort_events(self):
+        """Kinesis hands FAIL and ABORT events to the pipeline status stage, like Kafka."""
+        events = []
+        for event_type in ("FAIL", "ABORT", "OTHER"):
+            event = copy.deepcopy(VALID_EVENT)
+            event["eventType"] = event_type
+            events.append(event)
+        self._build_mock_kinesis_client(events)
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        self.assertEqual(len(results), 0)
-
-    def test_get_pipelines_list_kinesis_filters_out_abort_events(self):
-        """Test that Kinesis get_pipelines_list filters out ABORT events."""
-        event = copy.deepcopy(VALID_EVENT)
-        event["eventType"] = "ABORT"
-        self._build_mock_kinesis_client([event])
-
-        results = list(self.open_lineage_kinesis_source.get_pipelines_list())
-
-        self.assertEqual(len(results), 0)
+        self.assertEqual([result.event_type for result in results], ["FAIL", "ABORT"])
 
     def test_get_pipelines_list_kinesis_multiple_records(self):
         """Test Kinesis polling with multiple records in a single batch."""
@@ -3293,7 +3347,7 @@ class TestKafkaOffsetCommit:
     def test_filtered_and_unparseable_messages_are_stored(self):
         unparseable = self._message(1)
         unparseable.value.return_value = b"not json"
-        source, stored = self._source(self._message(0, event_type="FAIL"), unparseable)
+        source, stored = self._source(self._message(0, event_type="OTHER"), unparseable)
 
         assert list(source._poll_kafka(self.BROKER)) == []
         assert stored == [(0, 0), (0, 1)]

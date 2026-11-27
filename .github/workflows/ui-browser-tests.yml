@@ -15,24 +15,21 @@
 name: UI Browser Tests
 
 on:
-  pull_request:
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
-      - ".github/workflows/ui-browser-tests.yml"
-      - ".github/actions/ui-browser-setup/**"
-  # Without the merge queue, a full run on main every 6 hours (or run by hand)
-  # keeps the map fresh and catches what a selection missed.
+  # Pull requests and merge-queue entries: called by ci-pr.yml and ci-merge-queue.yml.
+  workflow_call: null
+  # A full run on main every 6 hours (or run by hand) keeps the map fresh and
+  # catches what a selection missed.
   schedule:
     - cron: "0 */6 * * *"
-  merge_group:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# github.workflow is the caller's name when called, so this never shares a group
+# with the scheduled run.
 concurrency:
-  group: ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -42,14 +39,15 @@ env:
   SHARDS: 5
   # Test files per runner when only some run (130 files over 5 runners).
   FILES_PER_SHARD: 26
-  # What a merge-queue entry must touch to select browser tests at all
-  # (merge_group has no `paths` filter). A core change that breaks the app
-  # is caught by the scheduled full run.
+  # What the scheduled run must see changed since the last full run to run at
+  # all. Pull requests and merge-queue entries are selected by the caller's
+  # plan job (.github/ui-ci/paths.yml).
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
     openmetadata-ui-core-components/src/main/resources/ui/
     .github/workflows/ui-browser-tests.yml
     .github/actions/ui-browser-setup/
+    .github/actions/setup-ui/
 
 jobs:
   select:
@@ -127,9 +125,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=100" \
-              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\")
-                | select(.event == \"merge_group\" or ((.event == \"schedule\" or .event == \"workflow_dispatch\") and .head_branch == \"main\")) | .id"); do
+          # Queried per event, so pull-request runs cannot push a good map off
+          # the list while main's full run stays red; newest first across them.
+          # Merge-queue entries run this workflow from ci-merge-queue.yml.
+          runs=$(for query in "ui-browser-tests.yml event=schedule&branch=main" "ui-browser-tests.yml event=workflow_dispatch&branch=main" "ci-merge-queue.yml event=merge_group"; do
+            read -r workflow filter <<< "$query"
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?status=success&per_page=50&$filter" \
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | \"\\(.created_at) \\(.id)\""
+          done | sort -r | cut -d' ' -f2)
+          for run in $runs; do
             if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
               echo "Impact map from run $run" >> "$GITHUB_STEP_SUMMARY"
               break
@@ -146,9 +150,7 @@ jobs:
         env:
           BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         run: |
-          if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
-            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
-          elif [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
             # A pull request's merge commit has its base at HEAD^1; a merge-queue
@@ -173,25 +175,20 @@ jobs:
             echo "shard-count=$shard_count"
             echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
           } >> "$GITHUB_OUTPUT"
-      # The map rides along: a passing selected run updates it for the tests it ran.
+      # A merge-queue entry carries its map along, to update it for the tests it ran.
       - uses: actions/upload-artifact@v7
         with:
           name: browser-selection
           path: |
             ${{ env.UI_DIR }}/selection.json
-            ${{ env.UI_DIR }}/impact-map.json
+            ${{ github.event_name == 'merge_group' && format('{0}/impact-map.json', env.UI_DIR) || '' }}
           retention-days: 1
-      # When nothing runs, the report job is skipped; leave a comment saying
-      # why, so an earlier push's results are not left standing.
+      # When nothing runs, the report job is skipped; say why in the summary.
       - name: Report that no browser test ran
         if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
         working-directory: ${{ env.UI_DIR }}
-        env:
-          PR: ${{ github.event.pull_request.number }}
         run: |
-          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
           {
-            echo '<!-- ui-browser-tests -->'
             echo '### UI browser tests'
             echo
             echo "**Ran:** none ($(jq -r .reason selection.json))"
@@ -204,15 +201,7 @@ jobs:
               echo
               echo '</details>'
             fi
-          } > "$RUNNER_TEMP/browser-tests-comment/comment.md"
-          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
-          cat "$RUNNER_TEMP/browser-tests-comment/comment.md" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
-        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
-        with:
-          name: browser-tests-comment
-          path: ${{ runner.temp }}/browser-tests-comment/
-          retention-days: 3
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Core components' own tests, run whenever core changes. A core change
   # selects no browser tests, so this is its gate.
@@ -260,7 +249,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/ui-browser-setup
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
@@ -269,9 +258,10 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
         env:
-          # Every run records what each test file executes; a passing one
-          # writes (full run) or updates (selected run) the impact map.
-          BROWSER_IMPACT_DIR: ${{ github.workspace }}/${{ env.UI_DIR }}/.impact
+          # Runs on code that reaches main record what each test file executes;
+          # a passing one writes (full run) or updates (queue entry) the map.
+          # Pull requests skip it: their map is never used.
+          BROWSER_IMPACT_DIR: ${{ github.event_name != 'pull_request' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
         # The blob report carries this shard's results and coverage for the
         # merge in browser-tests-report.
         run: |
@@ -289,7 +279,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         with:
           name: browser-impact-${{ matrix.shard }}
           path: ${{ env.UI_DIR }}/.impact/*.jsonl
@@ -309,9 +299,9 @@ jobs:
         if: always() && steps.tests.outcome == 'failure'
         run: exit 1
 
-  # Merges the shards into one result. A pull request gets one report (posted
-  # as a comment by ui-browser-tests-comment.yml): what ran and why, the
-  # result, and the changed code the tests executed. A passing run publishes
+  # Merges the shards into one result. A pull request gets one report in the
+  # job summary (PR jobs post no comments, ADR:2026-11-10-pr-jobs-never-receive-credentials):
+  # what ran and why, the result, and the changed code the tests executed. A passing run publishes
   # the impact map.
   browser-tests-report:
     name: browser tests + coverage
@@ -333,12 +323,12 @@ jobs:
           # The changed-code coverage diffs against the base (HEAD^1).
           fetch-depth: 2
       - uses: ./.github/actions/ui-browser-setup
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: browser-blob-*
           merge-multiple: true
           path: ${{ env.UI_DIR }}/.vitest-reports
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
@@ -354,25 +344,9 @@ jobs:
         run: |
           node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
             --junit src/test/browser/junit.xml \
-            --coverage src/test/browser/coverage/coverage-final.json > "$RUNNER_TEMP/comment.md"
-          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
-      # Pull-request jobs are read-only, so the comment is posted by
-      # ui-browser-tests-comment.yml from this artifact once the run ends.
-      - name: Save the report for the comment
-        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
-        env:
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
-          cp "$RUNNER_TEMP/comment.md" "$RUNNER_TEMP/browser-tests-comment/comment.md"
-          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
-      - uses: actions/upload-artifact@v7
-        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
-        with:
-          name: browser-tests-comment
-          path: ${{ runner.temp }}/browser-tests-comment/
-          retention-days: 3
-      - uses: actions/download-artifact@v7
+            --coverage src/test/browser/coverage/coverage-final.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/download-artifact@v8
+        if: github.event_name != 'pull_request'
         with:
           # One folder per shard: each names its file after its process id,
           # which can repeat across runners.
@@ -407,3 +381,27 @@ jobs:
       - name: Fail if any shard failed
         if: always() && needs.browser-tests.result != 'success'
         run: exit 1
+
+  # GitHub emails only the last person to edit the schedule when a scheduled
+  # run fails. A failed full run on main is how a selection miss surfaces, so
+  # it goes to #pw-health, with the daily Playwright report.
+  notify:
+    needs: [select, browser-tests, browser-tests-report]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Slack on failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C0C008ZAK0V",
+              "text": "🔥 *UI Browser Tests* full run failed on `main`: a pull request may have merged a regression its browser-test selection missed.\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
