@@ -327,6 +327,10 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
 
+jest.mock('../EntityHeaderProperties/useHeaderCustomProperties', () => ({
+  useHeaderCustomProperties: jest.fn().mockReturnValue([]),
+}));
+
 jest.mock('../../Modals/IconColorModal/IconColorModal', () =>
   jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
     <div data-testid="icon-color-modal">
@@ -666,6 +670,46 @@ describe('DataAssetsHeader component', () => {
   });
 
   describe('header properties', () => {
+    const headerPropertyIds = () =>
+      within(screen.getByTestId('data-asset-header-metadata'))
+        .getAllByTestId(/^header-property-/)
+        .map((element) => element.dataset.testid);
+
+    afterEach(() => {
+      (useCustomPages as jest.Mock).mockReturnValue({ customizedPage: null });
+    });
+
+    it('draws the properties the persona pins, in its order', () => {
+      (useCustomPages as jest.Mock).mockReturnValue({
+        customizedPage: { entityHeader: { properties: ['tier', 'owners'] } },
+      });
+
+      render(<DataAssetsHeader {...mockProps} />);
+
+      expect(headerPropertyIds()).toEqual([
+        'header-property-tier',
+        'header-property-owners',
+      ]);
+    });
+
+    it('edits the draft header, not the saved one, on the customize page', () => {
+      (useCustomPages as jest.Mock).mockReturnValue({
+        customizedPage: { entityHeader: { properties: ['tier'] } },
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          isCustomizedView
+          entityHeader={{ properties: ['owners'] }}
+          onEntityHeaderChange={jest.fn()}
+        />
+      );
+
+      expect(headerPropertyIds()).toEqual(['header-property-owners']);
+      expect(screen.getByTestId('customize-header-button')).toBeInTheDocument();
+    });
+
     describe('for a user who can edit the asset', () => {
       const editPermissions = {
         ...DEFAULT_ENTITY_PERMISSION,

@@ -45,6 +45,7 @@ import { PipelineService } from '../../../generated/entity/services/pipelineServ
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
+import { EntityHeader } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/schema';
 import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
@@ -168,6 +169,10 @@ export type DataAssetsHeaderProps = {
   onStyleUpdate?: (style: Style | null) => Promise<void>;
   disableRunAgentsButtonMessage?: string;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
+  /** The header being customized; only read when `isCustomizedView` is set. */
+  entityHeader?: EntityHeader;
+  personaName?: string;
+  onEntityHeaderChange?: (entityHeader?: EntityHeader) => void;
 } & (
   | DataAssetTable
   | DataAssetTopic

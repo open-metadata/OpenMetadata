@@ -12,12 +12,13 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Document } from '../../src/generated/entity/docStore/document';
+import { EntityHeader, PageType } from '../../src/generated/system/ui/page';
 import { PersonaPreferences } from '../../src/generated/type/personaPreferences';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { GlobalSettingOptions } from '../constant/settings';
 import { PersonaClass } from '../support/persona/PersonaClass';
 import { UserClass } from '../support/user/UserClass';
-import { okJson } from './apiResponse';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
@@ -246,6 +247,43 @@ export const createPersonaAppLayoutDoc = async (
 
   return okJson<Document>(response, 'Create persona App Layout document');
 };
+
+/**
+ * Creates the persona's customization document with the given pages' entity headers —
+ * what the customize page's Save writes for a persona without a document.
+ */
+export const createPersonaEntityHeaderDoc = async (
+  apiContext: APIRequestContext,
+  persona: PersonaClass,
+  pages: { pageType: PageType; entityHeader: EntityHeader }[]
+) => {
+  const personaFqn =
+    persona.responseData.fullyQualifiedName ?? persona.responseData.name;
+  const response = await apiContext.post('/api/v1/docStore', {
+    data: {
+      name: `${persona.responseData.name}-persona.${personaFqn}`,
+      fullyQualifiedName: `persona.${personaFqn}`,
+      entityType: 'Page',
+      data: { pages },
+    },
+  });
+
+  return okJson<Document>(response, 'Create persona entity header document');
+};
+
+/** Deletes the persona's customization document, whether a test or a page Save created it. */
+export const deletePersonaDocument = (
+  apiContext: APIRequestContext,
+  persona: PersonaClass
+) =>
+  deleteFixtureEntity(
+    apiContext,
+    `/api/v1/docStore/name/${encodeURIComponent(
+      `persona.${
+        persona.responseData.fullyQualifiedName ?? persona.responseData.name
+      }`
+    )}?hardDelete=true`
+  );
 
 /** Makes `persona` the user's default persona; the user must already hold it. */
 export const setDefaultPersona = async (

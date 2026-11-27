@@ -14,11 +14,13 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Dot,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { isCustomHeaderProperty } from '../../../utils/EntityHeaderProperties.utils';
 import { HeaderProperty } from './EntityHeaderProperties.types';
 
 const HeaderPropertyField = ({ property }: { property: HeaderProperty }) => {
@@ -48,6 +50,9 @@ const HeaderPropertyField = ({ property }: { property: HeaderProperty }) => {
   return (
     <Box className="tw:min-w-0" data-testid={testId} direction="col" gap={1}>
       <Box align="center" className="tw:min-h-5" gap={1}>
+        {isCustomHeaderProperty(property) && (
+          <Dot aria-hidden className="tw:text-utility-purple-500" size="xs" />
+        )}
         <Typography
           as="span"
           className="tw:whitespace-nowrap"

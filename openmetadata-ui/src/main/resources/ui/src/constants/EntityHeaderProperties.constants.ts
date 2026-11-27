@@ -14,7 +14,13 @@
 // ADR:2026-11-27-entity-header-shows-five-properties-behind-show-more
 export const COLLAPSED_HEADER_PROPERTY_COUNT = 5;
 
-/** Ids of the properties an entity header can show. */
+export const CUSTOM_PROPERTY_HEADER_ID_PREFIX = 'extension.';
+
+/**
+ * Ids of the standard entity header properties. They are stored in a persona's
+ * page as `entityHeader.properties`, so renaming one drops it from every saved
+ * header that pins it (ADR:2026-11-27-persona-entity-header-stores-ordered-property-ids).
+ */
 export enum HeaderPropertyId {
   Domains = 'domains',
   Owners = 'owners',
@@ -46,4 +52,10 @@ export enum HeaderPropertyId {
   FileExtension = 'fileExtension',
   FileVersion = 'fileVersion',
   MimeType = 'mimeType',
+}
+
+export enum HeaderPropertyFilter {
+  All = 'all',
+  Standard = 'standard',
+  Custom = 'custom',
 }

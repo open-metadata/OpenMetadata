@@ -20,6 +20,11 @@ export interface Page {
      */
     domains?: EntityReference[];
     /**
+     * Properties shown in the entity header for this persona. When unset, the page type's
+     * default header properties are shown.
+     */
+    entityHeader?: EntityHeader;
+    /**
      * Entity Type.
      */
     entityType: EntityType;
@@ -98,6 +103,26 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Properties shown in the entity header for this persona. When unset, the page type's
+ * default header properties are shown.
+ *
+ * The properties shown in the header of an entity page.
+ */
+export interface EntityHeader {
+    /**
+     * Ids of the properties shown in the header, in display order. A standard property uses its
+     * own id (for example `owners`), a custom property uses `extension.<propertyName>`. Ids the
+     * entity type does not have are ignored.
+     */
+    properties: string[];
+    /**
+     * Keep editable properties that have no value in the header, so people with edit access can
+     * fill them in.
+     */
+    showEmptyProperties?: boolean;
 }
 
 /**

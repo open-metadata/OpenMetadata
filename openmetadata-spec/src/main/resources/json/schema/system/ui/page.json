@@ -39,6 +39,28 @@
         "Spreadsheet",
         "Worksheet"
       ]
+    },
+    "entityHeader": {
+      "javaType": "org.openmetadata.schema.system.ui.EntityHeader",
+      "description": "The properties shown in the header of an entity page.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "description": "Ids of the properties shown in the header, in display order. A standard property uses its own id (for example `owners`), a custom property uses `extension.<propertyName>`. Ids the entity type does not have are ignored.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "showEmptyProperties": {
+          "description": "Keep editable properties that have no value in the header, so people with edit access can fill them in.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["properties"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -63,6 +85,10 @@
         "$ref": "tab.json"
       },
       "default": []
+    },
+    "entityHeader": {
+      "description": "Properties shown in the entity header for this persona. When unset, the page type's default header properties are shown.",
+      "$ref": "#/definitions/entityHeader"
     },
     "persona": {
       "description": "Persona this page belongs to.",

@@ -11,14 +11,25 @@
  *  limitations under the License.
  */
 import { ReactElement, ReactNode } from 'react';
-import { HeaderPropertyId } from '../../../constants/EntityHeaderProperties.constants';
+import {
+  CUSTOM_PROPERTY_HEADER_ID_PREFIX,
+  HeaderPropertyId,
+} from '../../../constants/EntityHeaderProperties.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityHeader } from '../../../generated/system/ui/page';
+
+/** A custom property's header id: `extension.<propertyName>`. */
+export type CustomHeaderPropertyId =
+  `${typeof CUSTOM_PROPERTY_HEADER_ID_PREFIX}${string}`;
 
 export interface HeaderProperty {
-  id: HeaderPropertyId;
+  id: HeaderPropertyId | CustomHeaderPropertyId;
   label: string;
   isEmpty: boolean;
   /** Set by the system, so an empty one has nothing for anyone to fill in. */
   isReadOnly: boolean;
+  /** The custom property's type name; unset for standard properties. */
+  customPropertyType?: string;
   /** The value, drawn under the label; an empty value is drawn by the field. */
   content: ReactNode;
   /** Wraps a trigger in the property's editor; unset when the viewer cannot edit it. */
@@ -28,5 +39,23 @@ export interface HeaderProperty {
 }
 
 export interface EntityHeaderPropertiesProps {
+  entityType: EntityType;
   properties: HeaderProperty[];
+  entityHeader?: EntityHeader;
+  /** The persona whose header is being customized. */
+  personaName?: string;
+  /**
+   * Set on the persona customize page, where the header can be edited.
+   * `undefined` means the page type's default header.
+   */
+  onEntityHeaderChange?: (entityHeader?: EntityHeader) => void;
+}
+
+export interface CustomizeEntityHeaderPanelProps {
+  entityType: EntityType;
+  personaName?: string;
+  properties: HeaderProperty[];
+  entityHeader: EntityHeader;
+  onApply: (entityHeader: EntityHeader) => void;
+  onClose: () => void;
 }

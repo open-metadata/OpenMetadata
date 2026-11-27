@@ -1,0 +1,68 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { DialogTrigger } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { ReactElement, useState } from 'react';
+import { CustomProperty } from '../../../generated/type/customProperty';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyEditModal } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
+
+interface HeaderCustomPropertyEditorProps {
+  property: CustomProperty;
+  value: unknown;
+  onSave: (value: unknown) => Promise<void>;
+  /** The button that opens the editor. */
+  children: ReactElement;
+}
+
+/** Opens the custom property's value editor from a header trigger. */
+const HeaderCustomPropertyEditor = ({
+  property,
+  value,
+  onSave,
+  children,
+}: HeaderCustomPropertyEditorProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (updatedValue: unknown) => {
+    setIsSaving(true);
+    try {
+      await onSave(updatedValue);
+      setIsEditing(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <DialogTrigger isOpen={isEditing} onOpenChange={setIsEditing}>
+      {children}
+      {isEditing && (
+        <CustomPropertyEditModal
+          isNewValue={isPropertyValueEmpty(property.propertyType.name, value)}
+          isSaving={isSaving}
+          property={property}
+          value={value}
+          onCancel={() => setIsEditing(false)}
+          onSave={handleSave}
+        />
+      )}
+    </DialogTrigger>
+  );
+};
+
+export default HeaderCustomPropertyEditor;
