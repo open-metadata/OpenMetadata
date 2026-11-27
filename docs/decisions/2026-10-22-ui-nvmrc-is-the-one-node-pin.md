@@ -45,4 +45,9 @@ from the hand-kept list.
 v2 2026-10-29: the UI moved to Yarn 4 (ADR:2026-10-29-ui-yarn-4-registry-from-config), which does
 not check `engines`, and `openmetadata-ui/.npmrc` (`engine-strict=true`) was removed. The root
 `.yarnrc.yml` loads `.yarn/plugins/engines-node.cjs`, which fails `yarn install` when the running
-Node does not satisfy `engines.node`, so the rule above holds unchanged.
+Node does not satisfy `engines.node`, so the rule above holds for the project's own Node floor.
+The plugin checks less than Yarn 1 did: it reads only the UI project's `engines.node`. Yarn 1 also
+checked `engines` on every dependency and `engines.yarn`; neither is checked now, so a dependency
+that needs a newer Node fails at runtime rather than at install, and `engines.yarn` is
+documentation only. `scripts/tests/test_yarn_engines_plugin.py` runs the real Yarn release with the
+plugin in CI (`validate-jsons-yamls.yml`), so a Yarn upgrade that breaks the plugin fails there.

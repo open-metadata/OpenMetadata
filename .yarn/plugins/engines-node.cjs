@@ -10,7 +10,8 @@ module.exports = {
       hooks: {
         validateProject(project, report) {
           const range = project.topLevelWorkspace.manifest.raw.engines?.node;
-          if (range && !semver.satisfies(process.version, range)) {
+          // includePrerelease: a Node RC or nightly above the floor still satisfies the range.
+          if (range && !semver.satisfies(process.version, range, { includePrerelease: true })) {
             report.reportError(
               MessageName.UNNAMED,
               `Node ${process.version} does not satisfy engines.node "${range}". Run: nvm install`
