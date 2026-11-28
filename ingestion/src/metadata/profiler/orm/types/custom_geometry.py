@@ -63,10 +63,11 @@ def _hex_wkb_to_wkt(value: str) -> str | None:
     geom = _decode_complete_wkb(value)
     if geom is None:
         return None
-    # Some MySQL SRID prefixes also form a complete EWKB header (`00200000` is a
-    # big-endian Point with the SRID flag), so the length guard cannot catch them. If the
-    # bytes after a 4-byte prefix are a complete geometry on their own, the value is
-    # ambiguous, and no WKT is safer than possibly wrong WKT.
+    # MySQL and MariaDB never reach this point, but other dialects may still hand us
+    # `SRID(4) + WKB` values. Some 4-byte SRID prefixes also form a complete EWKB header
+    # (`00200000` is a big-endian Point with the SRID flag), so the length guard cannot
+    # catch them. If the bytes after a 4-byte prefix are a complete geometry on their own,
+    # the value is ambiguous, and no WKT is safer than possibly wrong WKT.
     if _decode_complete_wkb(value[_SRID_PREFIX_HEX_LENGTH:]) is not None:
         return None
     return geom.wkt
