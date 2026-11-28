@@ -24,16 +24,26 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
     return clusterAlias;
   }
 
-  private Response performRequest(String method, String path) throws IOException {
-    Request request = new Request(method, path);
-    return client.performRequest(request);
+  private int performRequest(String method, String path) throws IOException {
+    return performRequest(method, path, null);
   }
 
-  private Response performRequest(String method, String path, String payload) throws IOException {
+  private int performRequest(String method, String path, String payload) throws IOException {
     Request request = new Request(method, path);
-    request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-
-    return client.performRequest(request);
+    if (payload != null) {
+      request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
+    }
+    Response response = client.performRequest(request);
+    int status = response.getStatusCode();
+    // Rest5Client only throws on status >= 500, so 4xx (e.g. a 400 mapping conflict) would
+    // otherwise be silently swallowed — check the status and surface it as an IOException,
+    // mirroring OpenSearchDataInsightsClient. A HEAD 404 ("stream not found") is expected and
+    // must not throw, since dataAssetDataStreamExists reads the status code from the return value.
+    if (status >= 300 && !("HEAD".equals(method) && status == 404)) {
+      throw new IOException(
+          "Data Insights request " + method + " " + path + " failed with " + status);
+    }
+    return status;
   }
 
   @Override
@@ -58,8 +68,7 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
 
   @Override
   public Boolean dataAssetDataStreamExists(String name) throws IOException {
-    Response response = performRequest("HEAD", String.format("/%s", name));
-    return response.getStatusCode() == 200;
+    return performRequest("HEAD", String.format("/%s", name)) == 200;
   }
 
   @Override
@@ -79,7 +88,16 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
     Request request = new Request("PUT", "/" + name + "/_mapping");
     request.addParameter("write_index_only", "true");
     request.setEntity(new StringEntity(mappings, ContentType.APPLICATION_JSON));
-    client.performRequest(request);
+    Response response = client.performRequest(request);
+    int status = response.getStatusCode();
+    // Rest5Client only throws on status >= 500, so a 400 mapping conflict (the rollover trigger)
+    // would otherwise be silently swallowed and the recovery in updateDataAssetsDataStream would
+    // never fire. Surface any >= 300 as an IOException so isMappingConflict can match the 400 —
+    // mirroring OpenSearchDataInsightsClient.putWriteIndexMapping.
+    if (status >= 300) {
+      throw new IOException(
+          "Data Insights request PUT /" + name + "/_mapping failed with " + status);
+    }
   }
 
   @Override
