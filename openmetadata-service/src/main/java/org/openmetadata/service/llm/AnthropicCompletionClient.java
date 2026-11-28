@@ -10,6 +10,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMAnthropicConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -20,6 +22,7 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ANTHROPIC_VERSION = "2023-06-01";
   private static final String DEFAULT_BASE_URL = "https://api.anthropic.com";
+  private static final String TEXT = "text";
 
   private final HttpClient httpClient;
   private final String apiKey;
@@ -108,20 +111,31 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
     CompletionResult result;
     try {
       JsonNode root = MAPPER.readTree(responseBody);
-      JsonNode text = root.path("content").path(0).path("text");
-      if (!text.isTextual()) {
-        throw new LLMCompletionException("Invalid Anthropic response: no text content returned");
-      }
       JsonNode usage = root.path("usage");
       result =
           new CompletionResult(
-              text.asText(),
+              extractText(root.path("content")),
               usage.path("input_tokens").asInt(0),
               usage.path("output_tokens").asInt(0));
     } catch (IOException e) {
       throw new LLMCompletionException("Failed to parse Anthropic response", e);
     }
     return result;
+  }
+
+  private static String extractText(JsonNode content) {
+    final List<String> textBlocks = new ArrayList<>();
+    if (content.isArray()) {
+      for (JsonNode block : content) {
+        if (TEXT.equals(block.path("type").textValue()) && block.path(TEXT).isTextual()) {
+          textBlocks.add(block.get(TEXT).textValue());
+        }
+      }
+    }
+    if (textBlocks.isEmpty()) {
+      throw new LLMCompletionException("Invalid Anthropic response: no text content returned");
+    }
+    return String.join("", textBlocks);
   }
 
   @Override
