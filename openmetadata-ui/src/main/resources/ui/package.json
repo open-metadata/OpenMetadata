@@ -287,7 +287,7 @@
     "less": "4.9.1",
     "license-check-and-add": "^4.0.5",
     "msw": "2.15.0",
-    "organize-imports-cli": "^0.10.0",
+    "organize-imports-cli": "^1.0.2",
     "pinst": "^3.0.0",
     "postcss": "8.5.33",
     "prettier": "2.8.8",
