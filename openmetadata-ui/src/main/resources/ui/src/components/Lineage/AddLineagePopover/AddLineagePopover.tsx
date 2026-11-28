@@ -305,7 +305,11 @@ const AddLineagePopover = ({
   const excludeQueryFilter = useMemo(
     () =>
       excludeEntityId
-        ? { query: { bool: { must_not: [{ term: { id: excludeEntityId } }] } } }
+        ? {
+            query: {
+              bool: { must_not: [{ ids: { values: [excludeEntityId] } }] },
+            },
+          }
         : undefined,
     [excludeEntityId]
   );
