@@ -1,5 +1,7 @@
 package org.openmetadata.service.security;
 
+import java.util.function.Supplier;
+
 /**
  * Thread-local record of which bot an action is attributed to, so writes can be stamped with
  * {@code impersonatedBy} in change events and audit trails.
@@ -29,6 +31,40 @@ public class ImpersonationContext {
 
   public static String getImpersonatedBy() {
     return impersonatedBy.get();
+  }
+
+  /**
+   * Runs {@code task} with the bot of the thread that submits it. A task on a worker thread does not
+   * see that bot, so the writes it makes would be stamped as nobody's; the bot is captured here and
+   * cleared from the worker when the task ends.
+   */
+  public static Runnable propagate(Runnable task) {
+    return runAs(getImpersonatedBy(), task);
+  }
+
+  /** {@link #propagate(Runnable)} for a task that returns a result. */
+  public static <T> Supplier<T> propagateResult(Supplier<T> task) {
+    String submitter = getImpersonatedBy();
+    return () -> {
+      setImpersonatedBy(submitter);
+      try {
+        return task.get();
+      } finally {
+        clear();
+      }
+    };
+  }
+
+  /** Runs {@code task} with {@code bot} as its thread's bot, and clears it when the task ends. */
+  public static Runnable runAs(String bot, Runnable task) {
+    return () -> {
+      setImpersonatedBy(bot);
+      try {
+        task.run();
+      } finally {
+        clear();
+      }
+    };
   }
 
   public static boolean isValidated(String botName, String targetUser) {

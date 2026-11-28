@@ -3623,6 +3623,8 @@ public class TableRepository extends EntityRepository<Table> {
     return nameMatches || displayNameMatches;
   }
 
+  // The UI mirrors this order to find a deep-linked column's page (getColumnPageForFqn); change
+  // both together. ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
   private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {

@@ -389,6 +389,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Checkbox: ({
       'aria-label': ariaLabel,
       'data-testid': dataTestId,
+      isDisabled,
       isSelected,
       onChange,
     }: Record<string, unknown>) => (
@@ -396,6 +397,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         aria-checked={Boolean(isSelected)}
         aria-label={ariaLabel as string}
         data-testid={dataTestId as string}
+        disabled={Boolean(isDisabled)}
         role="checkbox"
         onClick={() =>
           (onChange as ((selected: boolean) => void) | undefined)?.(!isSelected)
@@ -1191,13 +1193,23 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses normal top-level pagination and clears selection between pages', async () => {
+  it('uses normal top-level pagination and keeps selection between pages', async () => {
+    const pageTwoMetric = {
+      id: 'metric-2',
+      name: 'gross_margin',
+      fullyQualifiedName: 'gross_margin',
+    };
     setHierarchy({ total: 41 });
     renderPage();
     fireEvent.click(await screen.findByTestId('select-metric-1'));
 
     expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
 
+    setHierarchy({
+      rows: [pageTwoMetric],
+      topLevelNodes: [{ row: pageTwoMetric }],
+      total: 41,
+    });
     fireEvent.click(screen.getByTestId('metric-page-next'));
 
     await waitFor(() =>
@@ -1210,12 +1222,60 @@ describe('MetricListPage', () => {
       )
     );
 
-    expect(
-      screen.queryByText(/1 label.selected-lowercase/)
-    ).not.toBeInTheDocument();
+    expect(await screen.findByTestId('select-metric-2')).toBeInTheDocument();
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('select-metric-2'));
+
+    expect(screen.getByText(/2 label.selected-lowercase/)).toBeInTheDocument();
+
+    (getMetricParentIds as jest.Mock).mockResolvedValueOnce(new Map());
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+
+    expect(screen.getAllByText(/2 label.selected-lowercase/)).toHaveLength(2);
+
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(getMetricParentIds).toHaveBeenCalledWith(['metric-1']);
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(2);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-2', true);
   });
 
-  it('prunes hidden child selections when their group is collapsed', async () => {
+  it.each([
+    ['table', 'select-metric-1'],
+    ['card', 'select-metric-card-metric-1'],
+  ])(
+    'does not let stale rows be ticked in %s view while a filtered search is still loading',
+    async (viewMode, checkboxTestId) => {
+      mockSearchQuery.mockResolvedValue(buildSearchResponse([rootMetric]));
+      renderPage();
+      await screen.findByText('net_sales');
+      if (viewMode === 'card') {
+        fireEvent.click(screen.getByTestId('metric-card-view-button'));
+      }
+      fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
+
+      expect(await screen.findByTestId(checkboxTestId)).toBeEnabled();
+
+      mockSearchQuery.mockReturnValue(new Promise(() => undefined));
+      fireEvent.change(screen.getByTestId('metric-search'), {
+        target: { value: 'sales' },
+      });
+
+      await waitFor(() =>
+        expect(mockSearchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ query: 'sales' })
+        )
+      );
+
+      expect(await screen.findByTestId(checkboxTestId)).toBeDisabled();
+    }
+  );
+
+  it('keeps hidden child selections when their group is collapsed', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1252,12 +1312,13 @@ describe('MetricListPage', () => {
     fireEvent.click(screen.getByTestId('metric-card-view-button'));
 
     await waitFor(() =>
-      expect(
-        screen.queryByText(/1 label.selected-lowercase/)
-      ).not.toBeInTheDocument()
+      expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1 })
+      )
     );
 
-    expect(screen.queryByTestId('bulk-delete-metric')).not.toBeInTheDocument();
+    expect(screen.getByText(/1 label.selected-lowercase/)).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-delete-metric')).toBeInTheDocument();
   });
 
   it('passes filtered and selected scopes to bulk edit', async () => {

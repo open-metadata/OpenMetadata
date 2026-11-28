@@ -355,12 +355,13 @@ describe('FileVersion', () => {
       ViewAll: false,
     };
 
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+
     renderFileVersion({
       entityPermissions: limitedPermissions,
     });
-
-    const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
-    fireEvent.click(customPropertiesTab);
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
@@ -413,7 +414,39 @@ describe('FileVersion', () => {
     ).toBeInTheDocument();
   });
 
+  it('should follow the tab route param when it changes without a remount', async () => {
+    const { rerender } = renderFileVersion();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /schema/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    mockUseRequiredParams.mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(
+      <MemoryRouter>
+        <FileVersion {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('tab', { name: /custom/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+  });
+
   describe('ViewCustomFields Permission Tests', () => {
+    beforeEach(() => {
+      mockUseRequiredParams.mockReturnValue({
+        tab: EntityTabs.CUSTOM_PROPERTIES,
+      });
+    });
+
     it('should render custom properties tab when ViewCustomFields is true', () => {
       const permissionsWithViewCustomFields = {
         ...ENTITY_PERMISSIONS,
@@ -429,8 +462,6 @@ describe('FileVersion', () => {
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
     });
@@ -450,8 +481,6 @@ describe('FileVersion', () => {
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
     });
@@ -473,8 +502,6 @@ describe('FileVersion', () => {
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
     });

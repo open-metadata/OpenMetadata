@@ -21,6 +21,12 @@ import java.util.function.Consumer;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -36,6 +42,23 @@ public final class OntologyTestDatabase {
             assertion.accept(handle);
           }
         });
+  }
+
+  public static void withRepositories(Handle handle, Runnable assertion) {
+    final var registry = EntityRegistrySnapshot.capture();
+    try (OntologyFixtureWork work = new OntologyFixtureWork()) {
+      Entity.setJdbi(handle.getJdbi());
+      Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
+      Entity.setEntityRelationshipRepository(
+          new EntityRelationshipRepository(Entity.getCollectionDAO()));
+      new SystemRepository();
+      new WorkflowDefinitionRepository();
+      GovernanceApprovalRegistry.invalidate();
+      assertion.run();
+    } finally {
+      GovernanceApprovalRegistry.invalidate();
+      registry.restore();
+    }
   }
 
   public static String user() {

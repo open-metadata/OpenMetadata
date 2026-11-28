@@ -849,7 +849,7 @@ def test_get_users_stops_on_an_empty_page():
 
 
 def test_documents_response_accepts_object_shaped_labels():
-    """The documents API reports labels as objects. Typing them as plain strings
+    """The documents API can report labels as objects. Typing them as plain strings
     made one labelled document invalidate its whole page, and `get_documents`
     turns a page failure into an empty list -- dropping every dashboard."""
     from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
@@ -870,6 +870,32 @@ def test_documents_response_accepts_object_shaped_labels():
     assert [d.identifier for d in response.records] == ["a", "b"]
     assert response.records[0].label_names == []
     assert response.records[1].label_names == ["Company North Star", "Executive"]
+
+
+def test_documents_response_accepts_string_labels():
+    """Some instances report labels as bare names, alone or mixed with objects."""
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {
+        "records": [
+            {"identifier": "a", "name": "Funnel", "hasDashboard": True, "labels": ["Finance"]},
+            {"identifier": "b", "name": "Sales", "hasDashboard": True, "labels": ["Sales", {"name": "Executive"}]},
+            {"identifier": "c", "name": "Unlabelled", "hasDashboard": True, "labels": None},
+        ],
+        "pageInfo": {"hasNextPage": False},
+    }
+    response = DocumentsResponse.model_validate(page)
+    assert [d.label_names for d in response.records] == [["Finance"], ["Sales", "Executive"], []]
+
+
+def test_document_rejects_labels_that_are_not_a_list():
+    """A bare string is neither one label nor a list of its characters."""
+    from pydantic import ValidationError
+
+    from metadata.ingestion.source.dashboard.omni.models import OmniDocument
+
+    with pytest.raises(ValidationError):
+        OmniDocument.model_validate({"identifier": "demo", "labels": "ops"})
 
 
 def test_yield_tags_emits_document_labels(omni_source):
@@ -896,3 +922,77 @@ def test_yield_dashboard_attaches_label_tags(omni_source, tag_metadata):
     details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
     dashboard = _rights(omni_source.yield_dashboard(details))[0]
     assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Shared.Tag"']
+
+
+ORDERS_TOPIC = OmniTopic(
+    model_id="m1", model_name="sales", name="Orders", base_view="analytics__orders", base_schema="ANALYTICS"
+)
+ORDERS_VIEW = OmniTopic(model_id="m1", model_name="sales", name="orders", base_view="orders", base_schema="ANALYTICS")
+
+
+def _index(source, *topics):
+    for topic in topics:
+        for key in source._topic_name_keys(topic):
+            source._topic_name_index[key].append(topic)
+        for key in source._topic_alias_keys(topic):
+            source._topic_alias_index[key].append(topic)
+
+
+def test_resolve_topic_view_handle_picks_the_view_over_a_same_named_topic(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("analytics__orders") is ORDERS_VIEW
+    assert omni_source._resolve_topic("ANALYTICS/orders") is ORDERS_VIEW
+
+
+def test_resolve_topic_topic_name_picks_the_topic_over_a_same_named_view(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("Orders") is ORDERS_TOPIC
+
+
+def test_resolve_topic_same_named_views_across_models_stay_ambiguous(omni_source):
+    _index(omni_source, ORDERS_VIEW, ORDERS_VIEW.model_copy(update={"model_id": "m2", "model_name": "finance"}))
+    assert omni_source._resolve_topic("analytics__orders") is None
+
+
+def test_resolve_topic_same_model_collision_without_exact_spelling_stays_ambiguous(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("ORDERS") is None
+
+
+def test_resolve_topic_shared_base_view_named_like_a_topic_stays_ambiguous(omni_source):
+    """A reference that only matches a shared base view names the view, not a topic,
+    so a topic spelled like the view's leaf must not win the tie."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "model": "",
+        "orders.topic": "base_view: schema__shared__orders\n",
+        "returns.topic": "base_view: schema__shared__orders\n",
+    }
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    assert omni_source._resolve_topic("schema__shared__orders") is None
+
+
+MOCK_APP = OmniDocument(
+    identifier="doc-4",
+    name="Sales App",
+    hasDashboard=False,
+    hasApp=True,
+    url="https://acme.omniapp.co/apps/doc-4",
+)
+
+
+def test_get_dashboards_list_includes_apps(omni_source):
+    archived_app = MOCK_APP.model_copy(update={"identifier": "doc-5", "deleted": True})
+    omni_source.client.get_documents = lambda *_: [MOCK_DOCUMENT, MOCK_APP, archived_app, MOCK_WORKBOOK_ONLY]
+    assert [d.identifier for d in omni_source.get_dashboards_list()] == ["doc-1", "doc-4"]
+
+
+def test_documents_response_reads_has_app():
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {"records": [{"identifier": "doc-4", "hasDashboard": False, "hasApp": True}], "pageInfo": {}}
+    assert DocumentsResponse.model_validate(page).records[0].hasApp is True

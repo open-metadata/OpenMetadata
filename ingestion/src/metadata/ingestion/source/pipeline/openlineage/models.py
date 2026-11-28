@@ -12,9 +12,12 @@
 Openlineage Source Model module
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.type.basic import DateTime
 
 
 @dataclass
@@ -29,6 +32,15 @@ class OpenLineageEvent:
     event_type: str
     inputs: list[Any]
     outputs: list[Any]
+    event_time: str | None = None
+
+
+@dataclass
+class KnownPipeline:
+    """The tasks and start date a pipeline holds, carried between events because every PUT replaces both."""
+
+    tasks: dict[str, Task] = field(default_factory=dict)
+    start_date: DateTime | None = None
 
 
 @dataclass

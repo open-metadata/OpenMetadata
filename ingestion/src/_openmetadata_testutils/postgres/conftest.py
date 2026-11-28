@@ -9,13 +9,14 @@ import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import postgres_source_image
 from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 
 
 @pytest.fixture(autouse=True, scope="session")
 def config_logging():
-    """Set the log level of sqlfluff to CRITICAL."""
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+    """Set the log level of collate-sqlfluff to CRITICAL."""
+    logging.getLogger("collate_sqlfluff").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="module")
@@ -24,7 +25,7 @@ def postgres_container(tmp_path_factory):
     data_dir = tmp_path_factory.mktemp("data")
     dvd_rental_zip = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip")  # noqa: PTH118, PTH120
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
-    container = PostgresContainer("postgres:15", dbname="dvdrental")
+    container = PostgresContainer(postgres_source_image(), dbname="dvdrental")
     container._command = [  # pyright: ignore[reportAttributeAccessIssue]
         "-c",
         "shared_preload_libraries=pg_stat_statements",

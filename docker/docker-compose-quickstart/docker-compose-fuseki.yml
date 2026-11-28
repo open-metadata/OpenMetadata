@@ -37,7 +37,7 @@ services:
     container_name: openmetadata_fuseki
     # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
     # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
-    image: openmetadata/fuseki:6.2.0-91a23ac
+    image: openmetadata/fuseki:6.3.0-9e53975
     restart: always
     environment:
       # ADMIN_PASSWORD is the image's only required variable. The datasets are the serving dataset
@@ -48,7 +48,7 @@ services:
       - FUSEKI_QUERY_TIMEOUT_MS=50000
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
-      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-2g}
     # Loopback only: OpenMetadata reaches Fuseki over app_net, and the default password is admin.
     ports:
       - "127.0.0.1:3030:3030"

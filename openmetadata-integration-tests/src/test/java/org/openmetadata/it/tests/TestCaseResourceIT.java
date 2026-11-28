@@ -50,6 +50,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -57,6 +58,10 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
@@ -67,7 +72,11 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -97,6 +106,9 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
@@ -3542,12 +3554,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             version ->
                 assertMaskedTestCase(
                     JsonUtils.readOrConvertValue(version, TestCase.class), testCase));
-    List<TestCaseResult> results =
-        JsonUtils.convertObjects(
-            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
-            TestCaseResult.class);
-    assertEquals(1, results.size());
-    assertNull(results.getFirst().getResult());
+    ListResponse<TestCaseResult> resultsResponse =
+        readerClient.testCaseResults().get(testCase.getFullyQualifiedName());
+    assertEquals(1, resultsResponse.getData().size());
+    for (TestCaseResult item : resultsResponse.getData()) {
+      assertEquals(testCase.getFullyQualifiedName(), item.getTestCaseFQN());
+      assertNull(item.getResult());
+    }
 
     Awaitility.await("all test case read paths mask PII")
         .atMost(SEARCH_CONVERGENCE_TIMEOUT)
@@ -3657,18 +3670,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                                 .path("_source")
                                 .has("result")),
                     () -> {
-                      List<TestCaseResult> searchedResults =
-                          JsonUtils.convertObjects(
-                              readerClient
-                                  .testCaseResults()
-                                  .searchList(
-                                      new ListParams()
-                                          .addFilter(
-                                              "testCaseFQN", testCase.getFullyQualifiedName()))
-                                  .getData(),
-                              TestCaseResult.class);
-                      assertEquals(1, searchedResults.size());
-                      assertNull(searchedResults.getFirst().getResult());
+                      ListResponse<TestCaseResult> searchedResults =
+                          readerClient
+                              .testCaseResults()
+                              .searchList(
+                                  new ListParams()
+                                      .addFilter("testCaseFQN", testCase.getFullyQualifiedName()));
+                      assertEquals(1, searchedResults.getData().size());
+                      for (TestCaseResult item : searchedResults.getData()) {
+                        assertEquals(testCase.getFullyQualifiedName(), item.getTestCaseFQN());
+                        assertNull(item.getResult());
+                      }
                     },
                     () -> {
                       TestCaseResult latest =
@@ -4688,6 +4700,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertFalse(
                   latest.path("testDefinition").path("id").asText().isEmpty(),
                   "the requested `testDefinition` field must be resolved, got: " + response);
+
+              ListResponse<TestCaseResult> sdkLatest =
+                  client
+                      .testCaseResults()
+                      .searchLatest(
+                          new ListParams()
+                              .addFilter("testCaseFQN", testCaseFQN)
+                              .setFields(TEST_CASE_RESULT_FIELDS));
+              assertEquals(1, sdkLatest.getData().size());
+              for (TestCaseResult item : sdkLatest.getData()) {
+                assertEquals(testCaseFQN, item.getTestCaseFQN());
+                assertNotNull(item.getTestCase());
+                assertEquals(testCase.getId(), item.getTestCase().getId());
+                assertNotNull(item.getTestDefinition());
+                assertNotNull(item.getTestDefinition().getId());
+              }
             });
   }
 
@@ -4937,6 +4965,161 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     return new TableData()
         .withColumns(List.of("id"))
         .withRows(List.of(List.of("1"), List.of("2"), List.of("3")));
+  }
+
+  @Test
+  void failedRowsSampleDelete_isAdvertisedOnTestCaseAndEvaluatedPerEntity(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User owner = UserTestFactory.createUser(ns, "frs_owner");
+    TestCase testCase = createFailedTestCaseWithSample(ns, owner.getEntityReference());
+    OpenMetadataClient ownerClient = clientFor(owner);
+    OpenMetadataClient editor =
+        clientGrantedOnTestCase(ns.shortPrefix("frsedit"), MetadataOperation.EDIT_ALL);
+    OpenMetadataClient grantee =
+        clientGrantedOnTestCase(
+            ns.shortPrefix("frsdel"), MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
+
+    assertAll(
+        () -> assertEquals(Permission.Access.ALLOW, failedRowsSampleDeleteAccess(admin, testCase)),
+        () ->
+            assertEquals(
+                Permission.Access.NOT_ALLOW, failedRowsSampleDeleteAccess(editor, testCase)),
+        () ->
+            assertEquals(
+                Permission.Access.ALLOW, failedRowsSampleDeleteAccess(ownerClient, testCase)),
+        () ->
+            assertEquals(Permission.Access.ALLOW, failedRowsSampleDeleteAccess(grantee, testCase)));
+
+    String testCaseId = testCase.getId().toString();
+    OpenMetadataException forbidden =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> editor.testCases().deleteFailedRowsSample(testCaseId));
+    assertEquals(403, forbidden.getStatusCode());
+    ownerClient.testCases().deleteFailedRowsSample(testCaseId);
+    assertFailedRowsSampleGone(admin, testCaseId);
+    admin.testCases().addFailedRowsSample(testCaseId, idSample());
+    grantee.testCases().deleteFailedRowsSample(testCaseId);
+    assertFailedRowsSampleGone(admin, testCaseId);
+  }
+
+  @Test
+  void failedRowsSampleDelete_teamOwnerAllowed_explicitDenyWins(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User member = UserTestFactory.createUser(ns, "frs_member");
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.shortPrefix("frsteam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withUsers(List.of(member.getId())));
+    TestCase teamOwned = createFailedTestCaseWithSample(ns, team.getEntityReference());
+    User deniedOwner =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("frsdeny"),
+            Entity.TEST_CASE,
+            MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE,
+            null);
+    TestCase denyOwned = createFailedTestCaseWithSample(ns, deniedOwner.getEntityReference());
+    OpenMetadataClient memberClient = clientFor(member);
+    OpenMetadataClient deniedOwnerClient = clientFor(deniedOwner);
+
+    assertEquals(Permission.Access.ALLOW, failedRowsSampleDeleteAccess(memberClient, teamOwned));
+    assertEquals(
+        Permission.Access.DENY, failedRowsSampleDeleteAccess(deniedOwnerClient, denyOwned));
+    String denyOwnedId = denyOwned.getId().toString();
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> deniedOwnerClient.testCases().deleteFailedRowsSample(denyOwnedId));
+    assertEquals(403, denied.getStatusCode());
+    memberClient.testCases().deleteFailedRowsSample(teamOwned.getId().toString());
+    assertFailedRowsSampleGone(admin, teamOwned.getId().toString());
+  }
+
+  /** A Failed test case with a stored sample, on a table owned by {@code tableOwner}. */
+  private TestCase createFailedTestCaseWithSample(TestNamespace ns, EntityReference tableOwner) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = createTable(ns);
+    table.setOwners(List.of(tableOwner));
+    admin.tables().update(table.getId().toString(), table);
+    TestCase testCase =
+        TestCaseBuilder.create(admin)
+            .name(ns.prefix("failed_rows_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addTestCaseResult(admin, testCase, TestCaseStatus.Failed, null);
+    admin.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+    return testCase;
+  }
+
+  private static OpenMetadataClient clientGrantedOnTestCase(
+      String uniquePrefix, MetadataOperation operation) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule allow =
+        new Rule()
+            .withName(uniquePrefix + "_allow")
+            .withResources(List.of(Entity.TEST_CASE))
+            .withOperations(List.of(operation))
+            .withEffect(Rule.Effect.ALLOW);
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(uniquePrefix + "_policy")
+                    .withDescription("Grants one test case operation for a permission IT")
+                    .withRules(List.of(allow)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(uniquePrefix + "_role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(uniquePrefix + "_user")
+                    .withEmail(uniquePrefix + "_user@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    return clientFor(user);
+  }
+
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+  }
+
+  /** The caller's access to DeleteTestCaseFailedRowsSample, or null when it is not advertised. */
+  private static Permission.Access failedRowsSampleDeleteAccess(
+      OpenMetadataClient client, TestCase testCase) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/permissions/" + Entity.TEST_CASE + "/" + testCase.getId(),
+                null);
+    return JsonUtils.readValue(response, ResourcePermission.class).getPermissions().stream()
+        .filter(
+            permission ->
+                permission.getOperation() == MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE)
+        .map(Permission::getAccess)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private static void assertFailedRowsSampleGone(OpenMetadataClient admin, String testCaseId) {
+    OpenMetadataException missing =
+        assertThrows(
+            OpenMetadataException.class, () -> admin.testCases().getFailedRowsSample(testCaseId));
+    assertEquals(404, missing.getStatusCode());
   }
 
   @Test
@@ -5770,15 +5953,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .orElse(null);
   }
 
-  private org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestIncidentStatus(
+  private TestCaseResolutionStatus latestIncidentStatus(
       OpenMetadataClient client, String testCaseFqn) {
     ListParams params =
         new ListParams().withLatest(true).withLimit(10).addFilter("testCaseFQN", testCaseFqn);
-    ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
     assertEquals(1, response.getData().size());
-    return JsonUtils.convertValue(
-        response.getData().get(0),
-        org.openmetadata.schema.tests.type.TestCaseResolutionStatus.class);
+    return response.getData().getFirst();
   }
 
   @Test

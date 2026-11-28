@@ -18,10 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
@@ -32,12 +37,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
@@ -52,6 +61,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -74,6 +84,10 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -263,6 +277,109 @@ class AIContextBuilderTest {
     assertTrue(
         article.getContent().length() <= AIContextBuilder.EXCERPT_CHARS + 1,
         "excerpted article bounded to the excerpt length");
+  }
+
+  @Test
+  void applyKnowledgeBudget_usesTheTopIndexedPassageForGlossaryTerms() {
+    KnowledgeItem term =
+        knowledgeItem("refunds", "z".repeat(4000)).withType(KnowledgeItem.Type.GLOSSARY_TERM);
+    UUID termId = UUID.randomUUID();
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.searchChunksByParent(termId.toString(), "refund window", 1, null))
+        .thenReturn(List.of("Refunds are accepted within 30 days."));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.GLOSSARY_TERM, term.getFullyQualifiedName(), Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(termId));
+
+      new AIContextBuilder("table", "svc.db.sch.orders")
+          .withQuery("refund window")
+          .applyKnowledgeBudget(new AIContext().withGlossaryTerms(List.of(term)));
+    }
+
+    assertEquals("Refunds are accepted within 30 days.", term.getContent());
+    assertTrue(term.getContentTruncated());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void applyKnowledgeBudget_skipsImageOnlyArticleHits(boolean hasReadableHit) {
+    String lead = "Start with policy.";
+    String answer = "Refunds are accepted within 30 days.";
+    String diagram = "<img src=\"data:image/png;base64,AAAA\">";
+    // The labels, opening diagram and prose fill chunk 1, leaving an image-only chunk 2.
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("article")
+            .withFullyQualifiedName("kb.article")
+            .withDescription(
+                "<p>"
+                    + diagram
+                    + "</p>\n\n"
+                    + lead
+                    + "\n\n"
+                    + answer
+                    + " "
+                    + "detail ".repeat(366)
+                    + diagram);
+    EntityReference reference = new EntityReference().withType(Entity.PAGE).withId(page.getId());
+    Page indexedPage = spy(page);
+    when(indexedPage.getEntityReference()).thenReturn(reference);
+    PageBodyTextContributor.INSTANCE.register();
+    List<Map<String, Object>> chunks =
+        VectorDocBuilder.fromEntityReusingEmbeddings(
+            indexedPage, Map.of(0, new float[] {1}, 1, new float[] {1}));
+    assertEquals(2, chunks.size());
+    String imageHit = (String) chunks.getLast().get("textToLLMContext");
+    assertTrue(imageHit.contains(diagram));
+    assertFalse(imageHit.contains(answer));
+    List<String> hits =
+        hasReadableHit
+            ? List.of(imageHit, (String) chunks.getFirst().get("textToLLMContext"))
+            : List.of(imageHit);
+    KnowledgeItem article =
+        knowledgeItem(page.getName(), PromptText.forBudgetedArticleRead(page.getDescription()))
+            .withId(page.getId());
+
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.searchChunksByParent(
+            eq(page.getId().toString()), eq("refund window"), anyInt(), isNull()))
+        .thenAnswer(invocation -> hits.stream().limit(invocation.<Integer>getArgument(2)).toList());
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity
+          .when(() -> Entity.getEntity(Entity.PAGE, page.getId(), "", Include.NON_DELETED))
+          .thenReturn(page);
+
+      new AIContextBuilder("table", "svc.db.sch.orders")
+          .withQuery("refund window")
+          .applyKnowledgeBudget(new AIContext().withArticles(List.of(article)));
+    }
+
+    String excerpt = article.getContent();
+    assertTrue(article.getContentTruncated());
+    assertTrue(excerpt.length() <= AIContextBuilder.EXCERPT_CHARS);
+    assertFalse(excerpt.contains("base64"));
+    assertFalse(excerpt.contains("chunk 2/2"));
+    if (hasReadableHit) {
+      assertTrue(excerpt.startsWith(lead));
+      assertTrue(excerpt.contains(answer));
+    } else {
+      assertEquals(lead, excerpt);
+    }
   }
 
   @Test
@@ -985,5 +1102,61 @@ class AIContextBuilderTest {
     assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
     rows.get(0).set(1, "mutated");
     assertEquals("value-0", bounded.getRows().get(0).get(1));
+  }
+
+  @Test
+  void fullContentOf_stripsImagesFromArticleAndKeepsMetricExpressionVerbatim() {
+    String payload = "A".repeat(5_000);
+    Page article =
+        new Page()
+            .withName("architecture")
+            .withDescription(
+                "<p class=\"om-p\">Overview: x &gt;&#61; 1 and &#39;a&#39;</p>"
+                    + "<p><img src=\"data:image/png;base64,"
+                    + payload
+                    + "\"></p>"
+                    + "<p>References <a data-entitytype=\"table\" data-fqn=\"svc.db.sch.orders\""
+                    + " class=\"om-mention\">Orders</a>.</p>");
+
+    String pageContent = AIContextBuilder.fullContentOf(article);
+
+    assertFalse(pageContent.contains("base64"));
+    assertFalse(pageContent.contains("<img"));
+    assertFalse(pageContent.contains("class="));
+    assertTrue(pageContent.contains("Overview: x >= 1 and 'a'"), pageContent);
+    assertTrue(pageContent.contains("data-fqn=\"svc.db.sch.orders\""));
+
+    Metric metric =
+        new Metric()
+            .withName("net_revenue")
+            .withDescription(
+                "<p>Net revenue</p><img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"));
+
+    String metricContent = AIContextBuilder.fullContentOf(metric);
+
+    assertFalse(metricContent.contains("base64"));
+    assertTrue(metricContent.contains("Net revenue"));
+    assertTrue(
+        metricContent.contains("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"),
+        "SQL comparison operators must not be HTML-escaped by PromptText");
+
+    Metric imageOnlyMetric =
+        new Metric()
+            .withName("image_only")
+            .withDescription("<img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
+    assertEquals("COUNT(*)", AIContextBuilder.fullContentOf(imageOnlyMetric));
+
+    ContextMemory memory =
+        new ContextMemory()
+            .withName("memo")
+            .withAnswer(
+                "<p>Keep active accounts.</p><img src=\"data:image/png;base64," + payload + "\">");
+    String memoryContent = AIContextBuilder.fullContentOf(memory);
+    assertFalse(memoryContent.contains("base64"));
+    assertTrue(memoryContent.contains("Keep active accounts."));
   }
 }

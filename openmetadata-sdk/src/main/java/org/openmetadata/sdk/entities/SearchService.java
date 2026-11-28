@@ -10,27 +10,30 @@ import org.openmetadata.sdk.models.ListResponse;
 
 public class SearchService extends org.openmetadata.schema.entity.services.SearchService {
 
-  public static SearchService create(org.openmetadata.schema.entity.services.SearchService entity)
+  public static org.openmetadata.schema.entity.services.SearchService create(
+      org.openmetadata.schema.entity.services.SearchService entity) throws OpenMetadataException {
+    return OpenMetadata.client().searchServices().create(entity);
+  }
+
+  public static org.openmetadata.schema.entity.services.SearchService retrieve(String id)
       throws OpenMetadataException {
-    return (SearchService) OpenMetadata.client().searchServices().create(entity);
+    return OpenMetadata.client().searchServices().get(id);
   }
 
-  public static SearchService retrieve(String id) throws OpenMetadataException {
-    return (SearchService) OpenMetadata.client().searchServices().get(id);
-  }
-
-  public static SearchService retrieve(UUID id) throws OpenMetadataException {
+  public static org.openmetadata.schema.entity.services.SearchService retrieve(UUID id)
+      throws OpenMetadataException {
     return retrieve(id.toString());
   }
 
-  public static SearchService retrieveByName(String name) throws OpenMetadataException {
-    return (SearchService) OpenMetadata.client().searchServices().getByName(name);
+  public static org.openmetadata.schema.entity.services.SearchService retrieveByName(String name)
+      throws OpenMetadataException {
+    return OpenMetadata.client().searchServices().getByName(name);
   }
 
-  public static SearchService update(
+  public static org.openmetadata.schema.entity.services.SearchService update(
       String id, org.openmetadata.schema.entity.services.SearchService patch)
       throws OpenMetadataException {
-    return (SearchService) OpenMetadata.client().searchServices().update(id, patch);
+    return OpenMetadata.client().searchServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

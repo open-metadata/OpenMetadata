@@ -28,6 +28,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -62,6 +64,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -69,6 +72,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 
 /**
  * Integration tests for TestSuite entity operations.
@@ -1799,5 +1803,210 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     assertEquals(200, response.getStatusCode());
     return new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void pipelineCreateRequiresSuiteTable(boolean basic, TestNamespace ns) {
+    final Table table = createTableForBasicTestSuite(ns, "pipeline_config");
+    final TestSuite suite =
+        basic ? createBasicTestSuiteForTable(table) : createEntity(createMinimalRequest(ns));
+    final CreateIngestionPipeline request = suitePipelineRequest(ns, suite);
+    request.setSourceConfig(
+        new SourceConfig()
+            .withConfig(
+                new TestSuitePipeline().withEntityFullyQualifiedName("other.db.schema.table")));
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().ingestionPipelines().create(request));
+    assertEquals(400, exception.getStatusCode());
+    request.setSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+    assertNotNull(SdkClients.adminClient().ingestionPipelines().create(request).getId());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PUT", "PATCH", "PATCH_BY_NAME"})
+  void pipelineUpdatesKeepSuiteTable(String operation, TestNamespace ns) {
+    final Table table = createTableForBasicTestSuite(ns, "pipeline_update");
+    final TestSuite suite = createBasicTestSuiteForTable(table);
+    final CreateIngestionPipeline request = suitePipelineRequest(ns, suite);
+    final IngestionPipeline pipeline =
+        SdkClients.adminClient().ingestionPipelines().create(request);
+    final String replacement = "other.db.schema.table";
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> updatePipelineTable(operation, pipeline, request, replacement));
+
+    assertEquals(400, exception.getStatusCode());
+    final IngestionPipeline stored =
+        SdkClients.adminClient().ingestionPipelines().get(pipeline.getId().toString());
+    assertEquals(suite.getId(), stored.getService().getId());
+    assertEquals(
+        table.getFullyQualifiedName(),
+        JsonUtils.convertValue(stored.getSourceConfig().getConfig(), TestSuitePipeline.class)
+            .getEntityFullyQualifiedName());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"basic", "logical", "clear"})
+  void suitePatchKeepsTableAssociation(String mode, TestNamespace ns) {
+    final boolean basic = !mode.equals("logical");
+    final Table table = createTableForBasicTestSuite(ns, "suite_attributes");
+    final Table replacement = createTableForBasicTestSuite(ns, "suite_replacement");
+    final TestSuite suite =
+        basic ? createBasicTestSuiteForTable(table) : createEntity(createMinimalRequest(ns));
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/basic")
+        .put("value", mode.equals("clear") ? null : !basic);
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/basicEntityReference")
+        .set(
+            "value",
+            JsonUtils.getObjectMapper()
+                .valueToTree(mode.equals("clear") ? null : replacement.getEntityReference()));
+    patch.addObject().put("op", "add").put("path", "/description").put("value", "Updated suite");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PATCH, getResourcePath() + suite.getId(), patch, TestSuite.class);
+
+    final TestSuite stored = getEntity(suite.getId().toString());
+    assertEquals(suite.getBasic(), stored.getBasic());
+    assertEquals(suite.getBasicEntityReference(), stored.getBasicEntityReference());
+    assertEquals("Updated suite", stored.getDescription());
+  }
+
+  @Test
+  void suitePutKeepsTableAssociation(TestNamespace ns) {
+    final Table table = createTableForBasicTestSuite(ns, "suite_put");
+    final TestSuite basicSuite = createBasicTestSuiteForTable(table);
+    final CreateTestSuite basicUpdate =
+        new CreateTestSuite()
+            .withName(table.getFullyQualifiedName())
+            .withBasicEntityReference(table.getFullyQualifiedName())
+            .withDescription("Updated basic suite");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, getResourcePath() + "basic", basicUpdate, TestSuite.class);
+
+    final TestSuite storedBasic = getEntity(basicSuite.getId().toString());
+    assertEquals(Boolean.TRUE, storedBasic.getBasic());
+    assertEquals(basicSuite.getBasicEntityReference(), storedBasic.getBasicEntityReference());
+    assertEquals("Updated basic suite", storedBasic.getDescription());
+
+    final TestSuite logicalSuite = createEntity(createMinimalRequest(ns));
+    final CreateTestSuite logicalUpdate =
+        new CreateTestSuite()
+            .withName(logicalSuite.getName())
+            .withBasicEntityReference(table.getFullyQualifiedName())
+            .withDescription("Updated logical suite");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, getResourcePath(), logicalUpdate, TestSuite.class);
+
+    final TestSuite storedLogical = getEntity(logicalSuite.getId().toString());
+    assertEquals(Boolean.FALSE, storedLogical.getBasic());
+    assertEquals(null, storedLogical.getBasicEntityReference());
+    assertEquals("Updated logical suite", storedLogical.getDescription());
+  }
+
+  @Test
+  void pipelinePatchValidatesRestoredSuite(TestNamespace ns) {
+    final TestSuite suite =
+        createBasicTestSuiteForTable(createTableForBasicTestSuite(ns, "original_suite"));
+    final TestSuite other =
+        createBasicTestSuiteForTable(createTableForBasicTestSuite(ns, "other_suite"));
+    final IngestionPipeline pipeline =
+        SdkClients.adminClient().ingestionPipelines().create(suitePipelineRequest(ns, suite));
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/service")
+        .set("value", JsonUtils.getObjectMapper().valueToTree(other.getEntityReference()));
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/sourceConfig/config/entityFullyQualifiedName")
+        .put("value", other.getBasicEntityReference().getFullyQualifiedName());
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        IngestionPipelineResource.COLLECTION_PATH + pipeline.getId(),
+                        patch,
+                        IngestionPipeline.class));
+    assertEquals(400, exception.getStatusCode());
+    final IngestionPipeline stored =
+        SdkClients.adminClient().ingestionPipelines().get(pipeline.getId().toString());
+    assertEquals(suite.getId(), stored.getService().getId());
+    assertEquals(
+        suite.getBasicEntityReference().getFullyQualifiedName(),
+        JsonUtils.convertValue(stored.getSourceConfig().getConfig(), TestSuitePipeline.class)
+            .getEntityFullyQualifiedName());
+  }
+
+  private CreateIngestionPipeline suitePipelineRequest(TestNamespace ns, TestSuite suite) {
+    final String tableFqn =
+        suite.getBasicEntityReference() == null
+            ? null
+            : suite.getBasicEntityReference().getFullyQualifiedName();
+    return new CreateIngestionPipeline()
+        .withName(ns.uniqueShortId())
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withService(suite.getEntityReference())
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(new TestSuitePipeline().withEntityFullyQualifiedName(tableFqn)))
+        .withAirflowConfig(new AirflowConfig());
+  }
+
+  private void updatePipelineTable(
+      String operation,
+      IngestionPipeline pipeline,
+      CreateIngestionPipeline request,
+      String tableFqn) {
+    final var client = SdkClients.adminClient().getHttpClient();
+    if (operation.equals("PUT")) {
+      request.setSourceConfig(
+          new SourceConfig()
+              .withConfig(new TestSuitePipeline().withEntityFullyQualifiedName(tableFqn)));
+      client.execute(
+          HttpMethod.PUT,
+          IngestionPipelineResource.COLLECTION_PATH,
+          request,
+          IngestionPipeline.class);
+    } else {
+      final String target =
+          operation.equals("PATCH_BY_NAME")
+              ? "name/" + pipeline.getFullyQualifiedName()
+              : pipeline.getId().toString();
+      client.execute(
+          HttpMethod.PATCH,
+          IngestionPipelineResource.COLLECTION_PATH + target,
+          JsonUtils.getObjectMapper()
+              .valueToTree(
+                  List.of(
+                      Map.of(
+                          "op",
+                          "replace",
+                          "path",
+                          "/sourceConfig/config/entityFullyQualifiedName",
+                          "value",
+                          tableFqn))),
+          IngestionPipeline.class);
+    }
   }
 }

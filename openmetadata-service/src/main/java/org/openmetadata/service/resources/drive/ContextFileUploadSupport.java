@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -144,6 +148,48 @@ public final class ContextFileUploadSupport {
     }
     String sanitized = fileName.replaceAll("[\"\\\\\\r\\n]", "_").trim();
     return sanitized.isEmpty() ? "download" : sanitized;
+  }
+
+  /**
+   * Recover the original name of an uploaded file. Browsers send the multipart
+   * {@code filename} as raw UTF-8 bytes, but the multipart parser decodes part headers as
+   * ISO-8859-1, so {@code Отчёт.xlsx} arrives as {@code ÐžÑ‚Ñ‡Ñ‘Ñ‚.xlsx}. Re-decodes such a
+   * name as UTF-8. Names that are ASCII, contain characters outside ISO-8859-1 (already
+   * decoded), or whose bytes are not valid UTF-8 are returned unchanged.
+   */
+  public static String decodeMultipartFileName(final String fileName) {
+    if (fileName == null || !isUtf8DecodingCandidate(fileName)) {
+      return fileName;
+    }
+    return decodeUtf8OrKeep(fileName);
+  }
+
+  /** Whether {@code fileName} has non-ASCII characters and all of them fit in ISO-8859-1. */
+  private static boolean isUtf8DecodingCandidate(final String fileName) {
+    boolean hasNonAscii = false;
+    for (int i = 0; i < fileName.length(); i++) {
+      final char character = fileName.charAt(i);
+      if (character > '\u00FF') {
+        return false;
+      }
+      hasNonAscii |= character > '\u007F';
+    }
+    return hasNonAscii;
+  }
+
+  /** Re-decode the ISO-8859-1 bytes of {@code fileName} as UTF-8, or keep it if invalid. */
+  private static String decodeUtf8OrKeep(final String fileName) {
+    final ByteBuffer input = ByteBuffer.wrap(fileName.getBytes(StandardCharsets.ISO_8859_1));
+    final CharBuffer output = CharBuffer.allocate(input.remaining());
+    final CharsetDecoder decoder =
+        StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
+    if (decoder.decode(input, output, true).isError() || decoder.flush(output).isError()) {
+      return fileName;
+    }
+    return output.flip().toString();
   }
 
   /**

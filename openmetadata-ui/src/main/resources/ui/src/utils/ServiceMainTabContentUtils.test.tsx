@@ -177,3 +177,36 @@ describe('getServiceMainTabColumns — Usage column', () => {
     expect(getUsagePercentile).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('getServiceMainTabColumns — Name column sorting', () => {
+  const sortByName = (rows: Partial<ServicePageData>[]) => {
+    const nameColumn = getServiceMainTabColumns(
+      ServiceCategory.DASHBOARD_SERVICES
+    )[0];
+    const sorter = nameColumn.sorter as (
+      a: ServicePageData,
+      b: ServicePageData
+    ) => number;
+
+    return [...(rows as ServicePageData[])].sort(sorter).map((r) => r.id);
+  };
+
+  it('sorts by displayName rather than the source-ID name', () => {
+    expect(
+      sortByName([
+        { id: 'b', name: '0121e59d-guid', displayName: 'Sales Report' },
+        { id: 'a', name: 'f90a1c2e-guid', displayName: 'Inventory Report' },
+      ])
+    ).toEqual(['a', 'b']);
+  });
+
+  it('falls back to name when displayName is empty', () => {
+    expect(
+      sortByName([
+        { id: 'b', name: 'zeta', displayName: '' },
+        { id: 'a', name: 'alpha' },
+        { id: 'c', name: '0000-guid', displayName: 'Middle' },
+      ])
+    ).toEqual(['a', 'c', 'b']);
+  });
+});

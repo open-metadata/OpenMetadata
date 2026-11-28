@@ -132,6 +132,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftSt
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
@@ -730,7 +731,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private void postUpdate(SettingsType settingsType) {
-    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    // MCP is not acknowledged: the generic settings API saves it without reloading it, so this
+    // server's watcher applies it like every other server's, retrying and reporting a failed
+    // reload. /system/mcp/config reloads it itself, which leaves the watcher nothing to do.
+    if (settingsType != SettingsType.MCP_CONFIGURATION) {
+      SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    }
     refreshLocalState(settingsType);
     // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
     if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
@@ -1370,8 +1376,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return embeddingResult;
       }
 
-      return validateHybridSearchPipeline(
-          searchRepository, embeddingResult, description, configMessage);
+      return embeddingsWorking(embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -1399,8 +1404,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
           return embeddingResult;
         }
-        return validateHybridSearchPipeline(
-            searchRepository, embeddingResult, description, configMessage);
+        return embeddingsWorking(embeddingResult, description, configMessage);
       } catch (Exception e) {
         LOG.error("Error during embedding generation validation after retry", e);
         return embeddingsValidation
@@ -1427,35 +1431,18 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withDescription(description)
         .withMessage(
             "Vector search service could not be initialized. "
-                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + "The embedding client is configured but the vector service failed to start."
                 + errorSuffix
                 + " "
                 + configMessage)
         .withPassed(false);
   }
 
-  private StepValidation validateHybridSearchPipeline(
-      SearchRepository searchRepository,
-      StepValidation embeddingsValidation,
-      String description,
-      String configMessage) {
-    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
-    if (pipelineError.isPresent()) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Embeddings are working but the hybrid search pipeline check failed: "
-                  + pipelineError.get()
-                  + " "
-                  + configMessage)
-          .withPassed(false);
-    }
-
+  private static StepValidation embeddingsWorking(
+      StepValidation embeddingsValidation, String description, String configMessage) {
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(
-            String.format(
-                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
+        .withMessage("Embeddings are working correctly. " + configMessage)
         .withPassed(true);
   }
 
@@ -1564,21 +1551,25 @@ public class SystemRepository implements DeploymentSettingPreparer {
     String message = "OpenAI provider selected but openai configuration block is missing";
     if (embeddings.getOpenai() != null) {
       LLMOpenAIConfig openaiCreds = llmConfig.getOpenai();
-      String openaiEndpoint =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
-              ? "api.openai.com"
-              : openaiCreds.getEndpoint();
-      String deploymentInfo =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getDeploymentName())
-              ? ""
-              : String.format(", deploymentName: %s", openaiCreds.getDeploymentName());
-      message =
-          String.format(
-              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
-              openaiEndpoint,
-              embeddings.getOpenai().getEmbeddingModelId(),
-              embeddings.getOpenai().getEmbeddingDimension(),
-              deploymentInfo);
+      try {
+        String deploymentName =
+            OpenAIEmbeddingClient.azureDeploymentName(openaiCreds, embeddings.getOpenai());
+        String openaiEndpoint =
+            openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
+                ? "api.openai.com"
+                : openaiCreds.getEndpoint();
+        String deploymentInfo =
+            deploymentName == null ? "" : String.format(", deploymentName: %s", deploymentName);
+        message =
+            String.format(
+                "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
+                openaiEndpoint,
+                embeddings.getOpenai().getEmbeddingModelId(),
+                embeddings.getOpenai().getEmbeddingDimension(),
+                deploymentInfo);
+      } catch (IllegalArgumentException invalidConfiguration) {
+        message = invalidConfiguration.getMessage();
+      }
     }
     return message;
   }

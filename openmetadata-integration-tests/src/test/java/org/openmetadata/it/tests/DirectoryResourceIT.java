@@ -40,6 +40,7 @@ import org.openmetadata.sdk.services.drives.SpreadsheetService;
 public class DirectoryResourceIT extends BaseEntityIT<Directory, CreateDirectory> {
 
   {
+    supportsLineage = true;
     supportsFollowers = false;
     supportsDomains = false;
     supportsDataProducts = false;

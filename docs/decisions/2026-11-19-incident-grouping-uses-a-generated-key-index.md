@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-19 (initial)
 - **Deciders:** Teddy Crepineau
-- **Guard:** `IncidentGroupingIndexSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`, `IncidentGroupTrendScaleIT`
+- **Guard:** `IncidentGroupingIndexSqlIT`, `IncidentGroupQueriesSqlIT`, `IncidentGroupTrendSqlIT`, `IncidentGroupTrendScaleIT`
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164
 
 ## Context
@@ -47,7 +47,7 @@ They do not establish latency for the prefix index. A change in grouping-key sem
 
 ## Guard
 
-`IncidentGroupingIndexSqlTest` applies the actual migration, checks generated values after all write
+`IncidentGroupingIndexSqlIT` applies the actual migration, checks generated values after all write
 shapes and verifies full-name equality when two names collide in the MySQL prefix index.
-`IncidentGroupQueriesSqlTest` executes grouping and preview queries against the migrated column on
+`IncidentGroupQueriesSqlIT` executes grouping and preview queries against the migrated column on
 both engines. Scale workload details and commands live in the [implementation plan](../plans/2026-11-17-incident-open-count-trend.md).

@@ -40,14 +40,18 @@ fi
 if [ -d "${LIBS_DIR}" ]; then
   # First, add collate-service jar to the classpath.
   # This is required for cases where we override classes from dependencies.
+  # Java reads an empty classpath entry as the working directory, so a separator only goes
+  # between entries, never in front of the first one. It starts empty because an inherited
+  # CLASSPATH may carry '.' or empty entries.
+  CLASSPATH=""
   for file in "${LIBS_DIR}"collate-spec-*.jar;
   do
-      CLASSPATH="$CLASSPATH":"$file"
+      CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"
   done
   # Then, add the rest of the libraries
   for file in "${LIBS_DIR}"*.jar;
   do
-      CLASSPATH="$CLASSPATH":"$file"
+      CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"
   done
 else
   CLASSPATH=`mvn -pl openmetadata-service -q exec:exec -Dexec.executable=echo -Dexec.args="%classpath"`
