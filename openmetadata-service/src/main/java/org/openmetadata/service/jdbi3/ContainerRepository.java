@@ -56,6 +56,7 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -603,13 +604,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    Container container = (Container) entity;
-    EntityUtil.mergeTags(allTags, container.getTags());
-    if (container.getDataModel() != null) {
-      EntityUtil.mergeColumnTags(allTags, container.getDataModel().getColumns());
-    }
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   public ResultList<Container> listChildren(String parentFQN, Integer limit, Integer offset) {

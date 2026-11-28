@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
 import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -538,20 +539,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    APIEndpoint apiEndpoint = (APIEndpoint) entity;
-    EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
-    List<Field> requestSchemaFields =
-        apiEndpoint.getRequestSchema() != null
-            ? apiEndpoint.getRequestSchema().getSchemaFields()
-            : null;
-    List<Field> responseSchemaFields =
-        apiEndpoint.getResponseSchema() != null
-            ? apiEndpoint.getResponseSchema().getSchemaFields()
-            : null;
-    EntityUtil.mergeFieldTags(allTags, responseSchemaFields);
-    EntityUtil.mergeFieldTags(allTags, requestSchemaFields);
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   @Override

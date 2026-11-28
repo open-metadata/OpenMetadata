@@ -39,6 +39,7 @@ public class RBACConditionEvaluator {
   private static final String POLICY_TAGS_FIELD = "policyTags";
 
   private final QueryBuilderFactory queryBuilderFactory;
+  private final boolean includeVectorChunks;
   private final ExpressionParser spelParser = new SpelExpressionParser();
   private final Cache<String, SpelExpression> expressionCache =
       Caffeine.newBuilder().maximumSize(512).build();
@@ -66,7 +67,14 @@ public class RBACConditionEvaluator {
   private static final int MAX_WARNED_UNTRANSLATED_FUNCTIONS = 128;
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
+    this(queryBuilderFactory, false);
+  }
+
+  /** Chunk documents share one index, so resource rules must also match their parent entity type. */
+  public RBACConditionEvaluator(
+      QueryBuilderFactory queryBuilderFactory, boolean includeVectorChunks) {
     this.queryBuilderFactory = queryBuilderFactory;
+    this.includeVectorChunks = includeVectorChunks;
   }
 
   public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
@@ -611,6 +619,16 @@ public class RBACConditionEvaluator {
         indices.add(searchRepository.getIndexOrAliasName(childAlias));
       }
     }
-    return queryBuilderFactory.termsQuery("_index", indices);
+    OMQueryBuilder resourceFilter = queryBuilderFactory.termsQuery("_index", indices);
+    if (includeVectorChunks) {
+      OMQueryBuilder chunks =
+          queryBuilderFactory
+              .boolQuery()
+              .must(queryBuilderFactory.existsQuery("parentId"))
+              .mustNot(List.of(queryBuilderFactory.existsQuery("id")))
+              .must(queryBuilderFactory.termsQuery("entityType", resources));
+      resourceFilter = queryBuilderFactory.boolQuery().should(List.of(resourceFilter, chunks));
+    }
+    return resourceFilter;
   }
 }

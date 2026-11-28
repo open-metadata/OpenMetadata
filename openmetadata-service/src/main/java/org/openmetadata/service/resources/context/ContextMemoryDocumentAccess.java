@@ -73,6 +73,14 @@ public final class ContextMemoryDocumentAccess {
     redactDocuments(memories, callerAccess(securityContext));
   }
 
+  public static void redactDocumentsAs(List<ContextMemory> memories, String caller, boolean admin) {
+    redactDocuments(
+        memories,
+        admin
+            ? file -> true
+            : decidedOncePerFile(file -> ContextMemoryAnchorAccess.canView(caller, file)));
+  }
+
   static UnaryOperator<ContextMemory> versionRedaction(FileAccess access) {
     return version -> redactVersion(version, access);
   }

@@ -58,6 +58,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -528,16 +529,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    MlModel mlModel = (MlModel) entity;
-    EntityUtil.mergeTags(allTags, mlModel.getTags());
-    for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
-      EntityUtil.mergeTags(allTags, feature.getTags());
-      for (MlFeatureSource source : listOrEmpty(feature.getFeatureSources())) {
-        EntityUtil.mergeTags(allTags, source.getTags());
-      }
-    }
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   private void populateService(MlModel mlModel) {

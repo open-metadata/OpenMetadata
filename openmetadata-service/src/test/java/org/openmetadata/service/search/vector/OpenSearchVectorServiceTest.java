@@ -430,7 +430,13 @@ class OpenSearchVectorServiceTest {
       String anchorId,
       AbstractVectorIndexService.MemoryKind kind) {
     return new AbstractVectorIndexService.ChunkHeader(
-        fingerprint, 1, docVersion, status, anchorId, kind);
+        fingerprint,
+        1,
+        docVersion,
+        status,
+        anchorId,
+        kind,
+        ChunkSecurityMetadata.fingerprint(refreshableMemory()));
   }
 
   private static final AbstractVectorIndexService.MemoryKind MEMORY_KIND =
@@ -484,7 +490,9 @@ class OpenSearchVectorServiceTest {
             + jsonString(ContextMemoryIndex.memoryScopeValue(memory))
             + ",\"memoryType\":"
             + jsonString(ContextMemoryIndex.memoryTypeValue(memory))
-            + ",\"pinned\":false}}");
+            + ",\"accessMetadataFingerprint\":\""
+            + ChunkSecurityMetadata.fingerprint(memory)
+            + "\",\"pinned\":false}}");
 
     vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
 
@@ -495,7 +503,7 @@ class OpenSearchVectorServiceTest {
     assertEquals(
         "/chunkIndex/_doc/"
             + memory.getId()
-            + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
+            + "_0?_source_includes=fingerprint,chunkCount,docVersion,accessMetadataFingerprint,"
             + String.join(
                 ",",
                 ContextMemoryIndex.FIELD_STATUS,
@@ -868,7 +876,7 @@ class OpenSearchVectorServiceTest {
     long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
     assertEquals(3, distinctParents, "Should fetch a second page to fill 3 distinct parents");
     assertEquals(7, results.hits.size(), "Should return all chunks for the 3 selected parents");
-    assertEquals(8L, results.totalHits);
+    assertNull(results.totalHits, "A raw candidate count is not an authorized count");
     assertTrue(results.hasMore, "Should report additional parents beyond the returned page");
 
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
@@ -910,7 +918,7 @@ class OpenSearchVectorServiceTest {
         vectorService.search("test query", Map.of(), 2, 1, 100, 0.0);
 
     assertEquals(2L, results.hits.stream().map(r -> r.get("parentId")).distinct().count());
-    assertEquals(3L, results.totalHits);
+    assertNull(results.totalHits, "A raw candidate count is not an authorized count");
     assertEquals(Boolean.FALSE, results.hasMore);
   }
 
@@ -1087,7 +1095,8 @@ class OpenSearchVectorServiceTest {
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 
-    assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(
+        VectorDocBuilder.CHUNK_DOC_VERSION, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryScope").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryType").path("type").asText());

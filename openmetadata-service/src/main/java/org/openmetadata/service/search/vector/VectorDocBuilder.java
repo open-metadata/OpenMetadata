@@ -58,7 +58,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 8;
+  public static final int CHUNK_DOC_VERSION = 9;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -403,6 +403,7 @@ public class VectorDocBuilder {
     addReferenceField(fields, entity, "service", "getService");
     addReferenceField(fields, entity, "database", "getDatabase");
     addReferenceField(fields, entity, "databaseSchema", "getDatabaseSchema");
+    fields.putAll(ChunkSecurityMetadata.fields(entity));
 
     if (entity instanceof GlossaryTerm term
         && term.getSynonyms() != null

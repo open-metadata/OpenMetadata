@@ -70,7 +70,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private static final String PARENT_ID_FIELD = "parentId";
   private static final String ENTITY_TYPE_FILTER = "entityType";
   private static final String CHUNK_HEADER_FIELDS =
-      "fingerprint,chunkCount,docVersion,"
+      "fingerprint,chunkCount,docVersion,accessMetadataFingerprint,"
           + String.join(
               ",",
               ContextMemoryIndex.FIELD_STATUS,
@@ -595,7 +595,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String queryJson = buildKnnSearch(vector, parameters, Set.of());
       String response =
           executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
-      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+      JsonNode hits =
+          VectorMemoryAdmission.retain(
+              MAPPER.readTree(response).path("hits").path("hits"), parameters);
       for (JsonNode hit : hits) {
         String text = hit.path("_source").path("textToLLMContext").asText(null);
         if (text != null && !text.isBlank()) {
@@ -1391,7 +1393,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     properties.set(
         ContextMemoryIndex.FIELD_PINNED, MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
-    properties.set("domains", objectKeyword("name"));
+    properties.set("domains", nameDisplayNameObject());
+    properties.set("reviewers", nameDisplayNameObject());
+    properties.set("policyTags", MAPPER.createObjectNode().put("type", "keyword"));
+    properties.set(
+        ChunkSecurityMetadata.VERSION_FIELD, MAPPER.createObjectNode().put("type", "integer"));
+    properties.set(
+        ChunkSecurityMetadata.FINGERPRINT_FIELD, MAPPER.createObjectNode().put("type", "keyword"));
     properties.set("tier", objectKeyword("tagFQN"));
     properties.set("certification", certificationMapping());
     // owners is a `nested` type: NLQ owner filters run a nested query over owners.name, and the
@@ -1447,6 +1455,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private ObjectNode nameDisplayNameObject() {
     var props = MAPPER.createObjectNode();
+    props.set("id", MAPPER.createObjectNode().put("type", "keyword"));
+    props.set("fullyQualifiedName", MAPPER.createObjectNode().put("type", "keyword"));
     props.set("name", MAPPER.createObjectNode().put("type", "keyword"));
     props.set("displayName", MAPPER.createObjectNode().put("type", "keyword"));
     return (ObjectNode) MAPPER.createObjectNode().set("properties", props);
@@ -1611,7 +1621,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       int docVersion,
       String status,
       String anchorId,
-      MemoryKind memoryKind) {}
+      MemoryKind memoryKind,
+      String accessMetadataFingerprint) {}
 
   /** The memory kind a chunk was stamped with; filters read it, the fingerprint does not see it. */
   record MemoryKind(String scope, String type, boolean pinned) {
@@ -1643,7 +1654,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     ChunkRefresh refresh = ChunkRefresh.NONE;
     if (header == null || !fingerprint.equals(header.fingerprint())) {
       refresh = ChunkRefresh.REEMBED;
-    } else if (docVersionStale(header) || memoryFilterChanged(entity, header)) {
+    } else if (docVersionStale(header)
+        || memoryFilterChanged(entity, header)
+        || !Objects.equals(
+            ChunkSecurityMetadata.fingerprint(entity), header.accessMetadataFingerprint())) {
       refresh = ChunkRefresh.RESTAMP;
     }
     return refresh;
@@ -1725,7 +1739,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
                 source.path("docVersion").asInt(0),
                 source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
                 source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null),
-                MemoryKind.read(source));
+                MemoryKind.read(source),
+                source.path(ChunkSecurityMetadata.FINGERPRINT_FIELD).asText(null));
       }
     } catch (Exception e) {
       LOG.debug("No chunk header for {} in {}: {}", parentId, indexName, e.getMessage());
@@ -2015,7 +2030,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         JsonNode hitsNode = root.path("hits").path("hits");
         totalHits = extractTotalHits(root);
 
-        int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
+        int pageHitCount = hitsNode.size();
+        collectSearchHits(VectorMemoryAdmission.retain(hitsNode, parameters), threshold, byParent);
         if (pageHitCount == 0) {
           exhausted = true;
           break;
@@ -2043,7 +2059,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       boolean hasMore = byParent.size() > (from + parentCount);
       long tookMillis = System.currentTimeMillis() - start;
       return new VectorSearchResponse(
-          tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
+          tookMillis,
+          results,
+          parameters.subjectContext() != null
+                  && parameters.subjectContext().isAdmin()
+                  && totalHits >= 0
+              ? totalHits
+              : null,
+          hasMore);
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);

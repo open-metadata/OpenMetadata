@@ -369,7 +369,7 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void testTotalHitsPopulatedFromResponse() throws Exception {
+  void testRawTotalHitsAreHiddenWithoutAnAdministrator() throws Exception {
     String esResponse =
         """
         {
@@ -389,7 +389,7 @@ class ElasticSearchVectorServiceTest {
     DTOs.VectorSearchResponse results =
         vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
-    assertEquals(Long.valueOf(3), results.totalHits);
+    assertNull(results.totalHits);
   }
 
   @Test
