@@ -161,12 +161,14 @@ class TestRuleLibraryPandas:
                 "name": "rule_library_age_greater_than_35",
                 "testDefinitionName": "columnRuleLibrarySqlExpressionValidator",
                 "columnName": "age",
+                "computePassedFailedRowCount": True,
                 "parameterValues": [{"name": "minValue", "value": "35"}],
             },
             {
                 "name": "rule_library_age_greater_than_100",
                 "testDefinitionName": "columnRuleLibrarySqlExpressionValidator",
                 "columnName": "age",
+                "computePassedFailedRowCount": True,
                 "parameterValues": [{"name": "minValue", "value": "100"}],
             },
         ]
@@ -177,12 +179,12 @@ class TestRuleLibraryPandas:
         ingestion_workflow.stop()
 
     @pytest.mark.parametrize(
-        "test_case_name,expected_status",
+        "test_case_name,expected_status,expected_sample_rows",
         [
-            # age > 35 matches 2 rows (40, 39) -> Failed (rows found)
-            ("rule_library_age_greater_than_35", TestCaseStatus.Failed),
+            # age > 35 matches 2 rows (40, 39) -> Failed (rows found), and they are the sample
+            ("rule_library_age_greater_than_35", TestCaseStatus.Failed, 2),
             # age > 100 matches 0 rows -> Success (no violations)
-            ("rule_library_age_greater_than_100", TestCaseStatus.Success),
+            ("rule_library_age_greater_than_100", TestCaseStatus.Success, None),
         ],
     )
     def test_rule_library_pandas_expression(
@@ -192,6 +194,7 @@ class TestRuleLibraryPandas:
         datalake_service_name,
         test_case_name,
         expected_status,
+        expected_sample_rows,
     ):
         """Test the Rule Library Pandas Expression validator.
 
@@ -212,3 +215,14 @@ class TestRuleLibraryPandas:
         assert test_case.testCaseResult.testCaseStatus == expected_status, (
             f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
         )
+        # A pandas expression is not SQL, so there is no inspection query to show
+        assert test_case.inspectionQuery is None
+
+        failed_rows_sample = metadata.get_failed_rows_sample(test_case)
+        if expected_sample_rows is None:
+            assert failed_rows_sample is None
+            return
+        assert failed_rows_sample is not None
+        assert len(failed_rows_sample.rows) == expected_sample_rows
+        age = [column.root for column in failed_rows_sample.columns].index("age")
+        assert sorted(row[age] for row in failed_rows_sample.rows) == [39, 40]

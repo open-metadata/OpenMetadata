@@ -11,14 +11,22 @@
 
 """Pandas validator for rule library SQL expression tests"""
 
+from typing import TYPE_CHECKING
+
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
+)
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    PandasRuleLibrarySample,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
 from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import TableData
 
 logger = test_suite_logger()
 
@@ -38,6 +46,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
     # Rows read while evaluating the expression, so the denominator does not cost a second pass
     # over the dataset.
     _evaluated_rows: int = 0
+    _sample: PandasRuleLibrarySample | None = None
 
     def _run_results(self, sql_expression: str) -> int:
         """Execute the pandas query expression and return matching row count.
@@ -51,10 +60,12 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
         Returns:
             Total count of matching rows across all dataframe chunks
         """
+        self._sample = None
         if not is_safe_pandas_query(sql_expression):
             raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         total_count = 0
         evaluated_rows = 0
+        sample = PandasRuleLibrarySample() if self.test_case.computePassedFailedRowCount else None
         for df in self.runner:
             evaluated_rows += len(df)
             try:
@@ -63,8 +74,14 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
             except Exception as exc:
                 logger.exception(f"Error executing pandas query expression on chunk: {exc}")  # noqa: TRY401
                 raise exc  # noqa: TRY201
+            if sample is not None:
+                sample.add(matching_rows)
         self._evaluated_rows = evaluated_rows
+        self._sample = sample
         return total_count
+
+    def fetch_failed_rows_sample(self) -> "TableData | None":
+        return self._sample.to_table_data() if self._sample is not None else None
 
     def _run_row_count(self) -> int:
         return self._evaluated_rows

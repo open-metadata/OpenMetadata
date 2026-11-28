@@ -396,6 +396,7 @@ public class PIIMasker {
     testCase.setIncidentStatus(null);
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
+    testCase.setInspectionQuery(null);
     testCase.setDescription(null);
     testCase.setChangeDescription(null);
     testCase.setIncrementalChangeDescription(null);

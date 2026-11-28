@@ -809,6 +809,39 @@ class PIIMaskerTest {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({"false,false,true", "false,true,true", "true,false,true", "false,false,false"})
+  void inspectionQueryFollowsColumnPiiAuthorization(
+      boolean unrestricted, boolean ownerAuthorized, boolean sensitive) {
+    String tableFqn = "service.db.schema.customers";
+    String inspectionQuery = "SELECT ssn FROM customers WHERE ssn = 'synthetic_forbidden_value'";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table table =
+        table(tableFqn, List.of(column(tableFqn, "ssn", sensitive)), false, List.of(owner));
+    TestCase testCase =
+        new TestCase()
+            .withName("ssn_format")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::ssn>")
+            .withInspectionQuery(inspectionQuery);
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(unrestricted);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(ownerAuthorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      TestCase visible = PIIMasker.getTestCase(testCase, authorizer, securityContext);
+      assertEquals(
+          unrestricted || ownerAuthorized || !sensitive ? inspectionQuery : null,
+          visible.getInspectionQuery());
+    }
+  }
+
   @Test
   void getTestCasesMasksSensitiveColumnCasesAndCachesTableLookups() {
     String tableFqn = "service.db.schema.orders";
