@@ -1459,6 +1459,10 @@ public class RdfPropertyMapper {
         columnResource.addProperty(isUnique, model.createTypedLiteral(true));
       }
       case "UNIQUE" -> columnResource.addProperty(isUnique, model.createTypedLiteral(true));
+      case "NOT_NULL_UNIQUE" -> {
+        columnResource.addProperty(isUnique, model.createTypedLiteral(true));
+        columnResource.addProperty(isNullable, model.createTypedLiteral(false));
+      }
       case "NOT_NULL" -> columnResource.addProperty(isNullable, model.createTypedLiteral(false));
       case "NULL" -> columnResource.addProperty(isNullable, model.createTypedLiteral(true));
       default -> {

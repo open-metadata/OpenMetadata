@@ -2550,6 +2550,7 @@
     "not-linked-to-any-data-asset": "غير مرتبط بأي أصل بيانات",
     "not-mapped": "غير معيّن",
     "not-null": "ليس خاليًا",
+    "not-null-unique": "ليس خاليًا + فريد",
     "not-processed": "لم تتم المعالجة",
     "not-ran": "لم يتم التشغيل",
     "not-run": "لا يتم تشغيله",

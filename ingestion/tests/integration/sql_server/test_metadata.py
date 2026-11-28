@@ -93,7 +93,7 @@ def test_table_and_stored_procedure_descriptions_are_ingested(ingested, metadata
 
 
 def test_unique_constraints_reach_the_catalogue(ingested, metadata):
-    """A single-column UNIQUE lands on the column, a composite one on the table."""
+    """A single-column UNIQUE lands on the column, keeping its nullability; a composite one on the table."""
     # tableConstraints is not a default field: the API returns null for it unless
     # it is asked for by name (TableRepository.setFields).
     table: Table = metadata.get_by_name(
@@ -109,7 +109,8 @@ def test_unique_constraints_reach_the_catalogue(ingested, metadata):
         if constraint.constraintType == ConstraintType.UNIQUE
     ]
 
-    assert constraints["code"] == Constraint.UNIQUE
+    assert constraints["code"] == Constraint.NOT_NULL_UNIQUE
+    assert constraints["alt_code"] == Constraint.UNIQUE
     assert composite == [["region", "ref"]]
 
 

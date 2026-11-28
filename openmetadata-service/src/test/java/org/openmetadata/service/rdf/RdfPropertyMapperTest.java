@@ -493,6 +493,32 @@ class RdfPropertyMapperTest {
     }
 
     @Test
+    @DisplayName("NOT_NULL_UNIQUE column should retain RDF uniqueness and non-nullability")
+    void testNotNullUniqueColumnExportsBothRdfFacts() throws Exception {
+      ObjectNode column = objectMapper.createObjectNode();
+      column.put("name", "code");
+      column.put("dataType", "VARCHAR");
+      column.put("fullyQualifiedName", "service.db.schema.items.code");
+      column.put("constraint", "NOT_NULL_UNIQUE");
+      ArrayNode columns = objectMapper.createArrayNode().add(column);
+
+      invokePrivate(
+          "emitColumns",
+          new Class[] {JsonNode.class, Resource.class, Model.class},
+          columns,
+          entityResource,
+          model);
+
+      Resource columnResource =
+          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.schema.items.code"));
+      Property isUnique = model.createProperty(OM_NS, "isUnique");
+      Property isNullable = model.createProperty(OM_NS, "isNullable");
+      assertTrue(model.getRequiredProperty(columnResource, isUnique).getBoolean());
+      assertFalse(model.getRequiredProperty(columnResource, isNullable).getBoolean());
+      assertFalse(model.contains(columnResource, model.createProperty(OM_NS, "isPrimaryKey")));
+    }
+
+    @Test
     @DisplayName("Nested struct/map columns should link via om:hasChildColumn")
     void testNestedChildColumns() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();

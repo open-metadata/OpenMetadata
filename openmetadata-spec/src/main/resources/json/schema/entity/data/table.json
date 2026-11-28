@@ -195,6 +195,7 @@
         "NULL",
         "NOT_NULL",
         "UNIQUE",
+        "NOT_NULL_UNIQUE",
         "PRIMARY_KEY"
       ],
       "default": null,

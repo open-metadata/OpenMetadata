@@ -408,7 +408,7 @@ class SqlColumnHandlerMixin:
                 return None
             constraint = Constraint.PRIMARY_KEY
         elif column["name"] in unique_columns:
-            constraint = Constraint.UNIQUE
+            constraint = Constraint.UNIQUE if column["nullable"] else Constraint.NOT_NULL_UNIQUE
         return constraint
 
     def clean_raw_data_type(self, raw_data_type):

@@ -2550,6 +2550,7 @@
     "not-linked-to-any-data-asset": "Non lié à un actif de données",
     "not-mapped": "Non mappé",
     "not-null": "Non Null",
+    "not-null-unique": "Non Null + Unique",
     "not-processed": "Non traité",
     "not-ran": "Non exécuté",
     "not-run": "Non Exécuté",

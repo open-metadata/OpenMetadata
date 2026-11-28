@@ -61,6 +61,7 @@ export interface UpdateColumn {
  */
 export enum Constraint {
     NotNull = "NOT_NULL",
+    NotNullUnique = "NOT_NULL_UNIQUE",
     Null = "NULL",
     PrimaryKey = "PRIMARY_KEY",
     Unique = "UNIQUE",

@@ -170,6 +170,7 @@ def test_unique_constraints_are_reflected(source):
 
     assert {constraint["name"]: constraint["column_names"] for constraint in constraints} == {
         "uq_orders_code": ["code"],
+        "uq_orders_alt_code": ["alt_code"],
         "uq_orders_region_ref": ["region", "ref"],
     }
 
@@ -187,7 +188,9 @@ def test_a_composite_unique_constraint_becomes_a_table_constraint(source):
         inspector=source.inspector,
     )
 
-    assert {column.name.root: column.constraint for column in columns}["code"] == Constraint.UNIQUE
+    column_constraints = {column.name.root: column.constraint for column in columns}
+    assert column_constraints["code"] == Constraint.NOT_NULL_UNIQUE
+    assert column_constraints["alt_code"] == Constraint.UNIQUE
     assert [
         constraint.columns for constraint in table_constraints if constraint.constraintType == ConstraintType.UNIQUE
     ] == [["region", "ref"]]
