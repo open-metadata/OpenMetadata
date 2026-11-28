@@ -1,11 +1,14 @@
 package org.openmetadata.sdk.network;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -32,14 +35,14 @@ public class OpenMetadataHttpClient implements HttpClient {
       MediaType.parse("application/json; charset=utf-8");
   private static final MediaType JSON_PATCH_MEDIA_TYPE =
       MediaType.parse("application/json-patch+json; charset=utf-8");
+  private static final ObjectMapper SHARED_OBJECT_MAPPER = createObjectMapper();
   private final OkHttpClient okHttpClient;
   private final ObjectMapper objectMapper;
   private final OpenMetadataConfig config;
 
   public OpenMetadataHttpClient(OpenMetadataConfig config) {
     this.config = config;
-    this.objectMapper =
-        new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    this.objectMapper = SHARED_OBJECT_MAPPER;
 
     OkHttpClient.Builder builder =
         new OkHttpClient.Builder()
@@ -52,6 +55,32 @@ public class OpenMetadataHttpClient implements HttpClient {
     }
 
     this.okHttpClient = builder.build();
+  }
+
+  public static ObjectMapper createObjectMapper() {
+    return new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
+
+  static JavaType constructType(TypeReference<?> responseType) {
+    Objects.requireNonNull(responseType, "responseType must not be null");
+    return SHARED_OBJECT_MAPPER.getTypeFactory().constructType(responseType);
+  }
+
+  static <T> T readValue(String responseString, JavaType responseType)
+      throws OpenMetadataException {
+    Objects.requireNonNull(responseType, "responseType must not be null");
+    if (isVoidType(responseType) || responseString == null || responseString.isBlank()) {
+      return null;
+    }
+    try {
+      return SHARED_OBJECT_MAPPER.readValue(responseString, responseType);
+    } catch (IOException e) {
+      throw new OpenMetadataException("Failed to parse response: " + e.getMessage(), e);
+    }
+  }
+
+  private static boolean isVoidType(JavaType responseType) {
+    return responseType.hasRawClass(Void.class) || responseType.hasRawClass(void.class);
   }
 
   @Override
@@ -72,6 +101,24 @@ public class OpenMetadataHttpClient implements HttpClient {
 
     try (Response response = okHttpClient.newCall(request).execute()) {
       return handleResponse(response, responseClass);
+    } catch (IOException e) {
+      throw new OpenMetadataException("Network error: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public <T> T executeForType(
+      HttpMethod method,
+      String path,
+      Object requestBody,
+      JavaType responseType,
+      RequestOptions options)
+      throws OpenMetadataException {
+    Objects.requireNonNull(responseType, "responseType must not be null");
+    Request request = buildRequest(method, path, requestBody, options);
+
+    try (Response response = okHttpClient.newCall(request).execute()) {
+      return handleResponse(response, responseType);
     } catch (IOException e) {
       throw new OpenMetadataException("Network error: " + e.getMessage(), e);
     }
@@ -254,28 +301,29 @@ public class OpenMetadataHttpClient implements HttpClient {
 
   private <T> T handleResponse(Response response, Class<T> responseClass)
       throws OpenMetadataException {
-    if (response.isSuccessful()) {
-      if (responseClass == Void.class || responseClass == void.class) {
-        return null;
-      }
+    Objects.requireNonNull(responseClass, "responseClass must not be null");
+    return handleResponse(response, objectMapper.constructType(responseClass));
+  }
 
-      ResponseBody responseBody = response.body();
-      if (responseBody == null) {
-        return null;
-      }
-
-      try {
-        String responseString = responseBody.string();
-        if (responseString.isEmpty()) {
-          return null;
-        }
-        return objectMapper.readValue(responseString, responseClass);
-      } catch (IOException e) {
-        throw new OpenMetadataException("Failed to parse response: " + e.getMessage(), e);
-      }
-    } else {
+  private <T> T handleResponse(Response response, JavaType responseType)
+      throws OpenMetadataException {
+    if (!response.isSuccessful()) {
       handleErrorResponse(response);
-      return null; // This line will never be reached due to exception
+      return null;
+    }
+    if (isVoidType(responseType)) {
+      return null;
+    }
+
+    ResponseBody responseBody = response.body();
+    if (responseBody == null) {
+      return null;
+    }
+
+    try {
+      return readValue(responseBody.string(), responseType);
+    } catch (IOException e) {
+      throw new OpenMetadataException("Failed to parse response: " + e.getMessage(), e);
     }
   }
 

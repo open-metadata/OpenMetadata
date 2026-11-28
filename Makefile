@@ -29,7 +29,9 @@ run_e2e_tests: ## Run e2e tests
 ## Yarn
 .PHONY: yarn_install_cache
 yarn_install_cache:  ## Use Yarn to install UI dependencies
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile
+# Yarn 4 reruns the UI's preinstall/postinstall only when its dependency tree changes, never for
+# edits inside the linked core-components or the antlr grammars, so rebuild those outputs here.
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn run preinstall && yarn run postinstall
 
 .PHONY: yarn_start_dev_ui
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
@@ -374,73 +376,73 @@ update_typescript_types:
 # Fix license header in all UI files.
 .PHONY: license-header-fix
 license-header-fix:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn license-header-fix
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn license-header-fix
 
 # Run TypeScript type-checking for src files (does not auto-fix errors).
 .PHONY: tsc-src-fix
 tsc-src-fix:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn tsc:check
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn tsc:check
 
 # Run TypeScript type-checking for Playwright files (does not auto-fix errors).
 .PHONY: tsc-playwright-fix
 tsc-playwright-fix:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn tsc:playwright
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn tsc:playwright
 
 # Sync all i18n files to have the same keys and order. This doesn't modify the translation.
 # Just makes sure all files have the same keys in the same order to avoid conflicts and make it easier to maintain.
 .PHONY: i18n-sync-fix
 i18n-sync-fix:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn i18n
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn i18n
 
 # Generate the docs markdown file for all applications.
 .PHONY: generate-app-docs
 generate-app-docs:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn generate:app-docs
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn generate:app-docs
 
 # Fix all linting and formatting errors in src folder.
 .PHONY: ui-checkstyle-src
 ui-checkstyle-src:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle
 
 # Fix all linting and formatting errors in playwright tests.
 .PHONY: ui-checkstyle-playwright
 ui-checkstyle-playwright:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:playwright
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:playwright
 
 # Fix all linting and formatting errors in core components.
 .PHONY: ui-checkstyle-core-components
 ui-checkstyle-core-components:
-	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --immutable && yarn lint:fix && yarn pretty
 
 # Fix linting and formatting errors in changed files in src folder
 # Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-src-changed
 ui-checkstyle-src-changed:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:changed
 
 # Fix linting and formatting errors in changed playwright test files
 # Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-playwright-changed
 ui-checkstyle-playwright-changed:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:playwright:changed
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:playwright:changed
 
 # Fix linting and formatting errors in changed core components files
 # Changed files are detected based on the current branch against main branch.
 # So make sure to run this after rebasing to main to get the correct list of changed files.
 .PHONY: ui-checkstyle-core-components-changed
 ui-checkstyle-core-components-changed:
-	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:changed
 
 # Run all full UI checkstyle operations with one command.
 .PHONY: ui-checkstyle-all
 ui-checkstyle-all:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle && yarn ui-checkstyle:playwright
-	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn lint:fix && yarn pretty
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle && yarn ui-checkstyle:playwright
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --immutable && yarn lint:fix && yarn pretty
 
 # Run all changed-file UI checkstyle operations with one command.
 .PHONY: ui-checkstyle-changed
 ui-checkstyle-changed:
-	cd openmetadata-ui/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed && yarn ui-checkstyle:playwright:changed
-	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --frozen-lockfile && yarn ui-checkstyle:changed
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:changed && yarn ui-checkstyle:playwright:changed
+	cd openmetadata-ui-core-components/src/main/resources/ui && yarn install --immutable && yarn ui-checkstyle:changed

@@ -1,15 +1,20 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Service for managing test case results.
@@ -19,6 +24,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class TestCaseResultService {
 
   private static final String BASE_PATH = "/v1/dataQuality/testCases/testCaseResults";
+  private static final TypeReference<ResultList<TestCaseResult>> TEST_CASE_RESULT_LIST_TYPE =
+      new TypeReference<>() {};
   private final HttpClient httpClient;
 
   public TestCaseResultService(HttpClient httpClient) {
@@ -66,14 +73,9 @@ public class TestCaseResultService {
   public ListResponse<TestCaseResult> get(String testCaseFqn, ListParams params)
       throws OpenMetadataException {
     String path = BASE_PATH + "/" + testCaseFqn;
-    if (params != null) {
-      Map<String, String> queryParams = params.toQueryParams();
-      if (!queryParams.isEmpty()) {
-        path += "?" + buildQueryString(queryParams);
-      }
-    }
     ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+        httpClient.executeForType(
+            HttpMethod.GET, path, null, TEST_CASE_RESULT_LIST_TYPE, toRequestOptions(params));
     return new ListResponse<>(result);
   }
 
@@ -84,35 +86,34 @@ public class TestCaseResultService {
    * @return List of test case results matching the search
    */
   public ListResponse<TestCaseResult> searchList(ListParams params) throws OpenMetadataException {
-    String path = BASE_PATH + "/search/list";
-    if (params != null) {
-      Map<String, String> queryParams = params.toQueryParams();
-      if (!queryParams.isEmpty()) {
-        path += "?" + buildQueryString(queryParams);
-      }
-    }
     ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+        httpClient.executeForType(
+            HttpMethod.GET,
+            BASE_PATH + "/search/list",
+            null,
+            TEST_CASE_RESULT_LIST_TYPE,
+            toRequestOptions(params));
     return new ListResponse<>(result);
   }
 
   /**
-   * Get latest test case results from search.
+   * Get the latest test case result from search.
    *
    * @param params Search parameters
-   * @return List of latest test case results
+   * @return The latest matching test case result as a single-element list, or an empty list when
+   *     nothing matches
    */
   public ListResponse<TestCaseResult> searchLatest(ListParams params) throws OpenMetadataException {
-    String path = BASE_PATH + "/search/latest";
-    if (params != null) {
-      Map<String, String> queryParams = params.toQueryParams();
-      if (!queryParams.isEmpty()) {
-        path += "?" + buildQueryString(queryParams);
-      }
-    }
-    ResultList<TestCaseResult> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    return new ListResponse<>(result);
+    TestCaseResult latest =
+        httpClient.execute(
+            HttpMethod.GET,
+            BASE_PATH + "/search/latest",
+            null,
+            TestCaseResult.class,
+            toRequestOptions(params));
+    return latest == null
+        ? new ListResponse<>(Collections.emptyList())
+        : new ListResponse<>(List.of(latest), new AllModels.Paging().withTotal(1));
   }
 
   // ===================================================================
@@ -155,20 +156,15 @@ public class TestCaseResultService {
   // HELPER METHODS
   // ===================================================================
 
-  private String buildQueryString(Map<String, String> params) {
-    StringBuilder sb = new StringBuilder();
-    for (Map.Entry<String, String> entry : params.entrySet()) {
-      if (sb.length() > 0) {
-        sb.append("&");
-      }
-      sb.append(entry.getKey()).append("=").append(entry.getValue());
+  private static RequestOptions toRequestOptions(ListParams params) {
+    if (params == null) {
+      return null;
     }
-    return sb.toString();
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseResult>> getResultListType() {
-    return (Class<ResultList<TestCaseResult>>) (Class<?>) ResultList.class;
+    Map<String, String> queryParams = params.toQueryParams();
+    if (queryParams.isEmpty()) {
+      return null;
+    }
+    return RequestOptions.builder().queryParams(queryParams).build();
   }
 
   // ===================================================================

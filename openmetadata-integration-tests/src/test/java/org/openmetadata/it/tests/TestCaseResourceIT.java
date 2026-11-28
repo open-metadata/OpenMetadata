@@ -3554,12 +3554,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             version ->
                 assertMaskedTestCase(
                     JsonUtils.readOrConvertValue(version, TestCase.class), testCase));
-    List<TestCaseResult> results =
-        JsonUtils.convertObjects(
-            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
-            TestCaseResult.class);
-    assertEquals(1, results.size());
-    assertNull(results.getFirst().getResult());
+    ListResponse<TestCaseResult> resultsResponse =
+        readerClient.testCaseResults().get(testCase.getFullyQualifiedName());
+    assertEquals(1, resultsResponse.getData().size());
+    for (TestCaseResult item : resultsResponse.getData()) {
+      assertEquals(testCase.getFullyQualifiedName(), item.getTestCaseFQN());
+      assertNull(item.getResult());
+    }
 
     Awaitility.await("all test case read paths mask PII")
         .atMost(SEARCH_CONVERGENCE_TIMEOUT)
@@ -3669,18 +3670,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                                 .path("_source")
                                 .has("result")),
                     () -> {
-                      List<TestCaseResult> searchedResults =
-                          JsonUtils.convertObjects(
-                              readerClient
-                                  .testCaseResults()
-                                  .searchList(
-                                      new ListParams()
-                                          .addFilter(
-                                              "testCaseFQN", testCase.getFullyQualifiedName()))
-                                  .getData(),
-                              TestCaseResult.class);
-                      assertEquals(1, searchedResults.size());
-                      assertNull(searchedResults.getFirst().getResult());
+                      ListResponse<TestCaseResult> searchedResults =
+                          readerClient
+                              .testCaseResults()
+                              .searchList(
+                                  new ListParams()
+                                      .addFilter("testCaseFQN", testCase.getFullyQualifiedName()));
+                      assertEquals(1, searchedResults.getData().size());
+                      for (TestCaseResult item : searchedResults.getData()) {
+                        assertEquals(testCase.getFullyQualifiedName(), item.getTestCaseFQN());
+                        assertNull(item.getResult());
+                      }
                     },
                     () -> {
                       TestCaseResult latest =
@@ -4700,6 +4700,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertFalse(
                   latest.path("testDefinition").path("id").asText().isEmpty(),
                   "the requested `testDefinition` field must be resolved, got: " + response);
+
+              ListResponse<TestCaseResult> sdkLatest =
+                  client
+                      .testCaseResults()
+                      .searchLatest(
+                          new ListParams()
+                              .addFilter("testCaseFQN", testCaseFQN)
+                              .setFields(TEST_CASE_RESULT_FIELDS));
+              assertEquals(1, sdkLatest.getData().size());
+              for (TestCaseResult item : sdkLatest.getData()) {
+                assertEquals(testCaseFQN, item.getTestCaseFQN());
+                assertNotNull(item.getTestCase());
+                assertEquals(testCase.getId(), item.getTestCase().getId());
+                assertNotNull(item.getTestDefinition());
+                assertNotNull(item.getTestDefinition().getId());
+              }
             });
   }
 
@@ -5937,15 +5953,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .orElse(null);
   }
 
-  private org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestIncidentStatus(
+  private TestCaseResolutionStatus latestIncidentStatus(
       OpenMetadataClient client, String testCaseFqn) {
     ListParams params =
         new ListParams().withLatest(true).withLimit(10).addFilter("testCaseFQN", testCaseFqn);
-    ListResponse<?> response = client.testCaseResolutionStatuses().searchList(params);
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
     assertEquals(1, response.getData().size());
-    return JsonUtils.convertValue(
-        response.getData().get(0),
-        org.openmetadata.schema.tests.type.TestCaseResolutionStatus.class);
+    return response.getData().getFirst();
   }
 
   @Test

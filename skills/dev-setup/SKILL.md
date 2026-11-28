@@ -133,9 +133,9 @@ The UI `.nvmrc` pins Node 22 (`engines.node: ">=22.23.5"`). The script uses `mis
 already installed, otherwise it falls back to a user-local `nvm` install of Node 22 — neither
 path needs root. Re-source `.dev-env.local.sh` afterwards.
 
-**Yarn resolves to 3.x/4.x (Berry)**
-This repo is Yarn Classic (`engines.yarn: ^1.22.0`). `npm i -g yarn@1.22.22`. A Berry yarn
-will fail `yarn install --frozen-lockfile`.
+**`yarn --version` is not 4.18.1 inside the repo**
+The repo pins Yarn 4 through `yarnPath` in the root `.yarnrc.yml`; any global Yarn >= 1.22 hands
+off to it. A global Yarn older than 1.22 ignores `.yarnrc.yml`: `npm i -g yarn@1.22.22`.
 
 **spaCy/Thinc/Blis fails while installing build dependencies on Python 3.13/3.14**
 The project metadata has no Python ceiling, but the current native dev dependency versions do not
