@@ -56,11 +56,16 @@ export const useUserAssetsList = (
   );
 
   // Clear the previous list during render, so the frame before the new
-  // request starts shows a loader rather than "no match".
+  // request starts shows a loader rather than "no match". Bump the request
+  // counter here too, so any in-flight response belonging to the previous
+  // listKey is invalidated before the new fetch starts in the passive effect;
+  // otherwise it would still pass `isCurrent()` and commit stale data in the
+  // commit→effect window.
   const listKey = `${kind}|${ownerIdsKey}|${search}|${indexes.join(',')}`;
   const [prevListKey, setPrevListKey] = useState(listKey);
   if (prevListKey !== listKey) {
     setPrevListKey(listKey);
+    requestRef.current += 1;
     setPage(1);
     setAssets([]);
     setError(undefined);

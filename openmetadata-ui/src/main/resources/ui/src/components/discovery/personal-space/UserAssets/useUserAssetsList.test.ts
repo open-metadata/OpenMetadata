@@ -261,4 +261,116 @@ describe('useUserAssetsList', () => {
 
     expect(lastRequest().pageNumber).toBe(2);
   });
+
+  /**
+   * A `listKey` change resets the list during render and restarts the fetch
+   * from page 1 in a passive effect. The request counter (`requestRef`) is
+   * bumped both in the render-phase reset (the fix) and at the start of every
+   * `fetchPage`, so a response that belongs to the *previous* query — whether
+   * its first page or a slower load-more page — can no longer pass
+   * `isCurrent()` once the key has changed and must not overwrite the new
+   * query's results. These tests guard that invariant.
+   */
+  describe('reset interleaving across list-key changes', () => {
+    it('ignores a slower earlier first-page response once the list key changes', async () => {
+      let resolveFirst: ((value: unknown) => void) | undefined;
+      mockSearchQuery
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirst = resolve; // slow alpha page 1
+            })
+        )
+        .mockResolvedValueOnce(page(['z'], 1)); // beta page 1
+      const { result, rerender } = renderList();
+      // Alpha page 1 stays in flight while the search flips to "z".
+      rerender({ kind: 'owned', search: 'z', indexes: [] });
+
+      await waitFor(() =>
+        expect(result.current.assets.map((a) => a.id)).toEqual(['z'])
+      );
+
+      // The stale alpha page-1 response lands after the reset; it must not
+      // overwrite beta's results.
+      await act(async () => {
+        resolveFirst?.(page(['a'], 1));
+      });
+
+      expect(result.current.assets.map((a) => a.id)).toEqual(['z']);
+    });
+
+    it('ignores a slower earlier load-more response once the list key changes', async () => {
+      let resolveAlphaPage2: ((value: unknown) => void) | undefined;
+      mockSearchQuery
+        .mockResolvedValueOnce(page(['a1', 'a2', 'a3'], 6)) // alpha page 1
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveAlphaPage2 = resolve; // slow alpha page 2 (load-more)
+            })
+        )
+        .mockResolvedValueOnce(page(['z'], 1)); // beta page 1
+      const { result, rerender } = renderList();
+      await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+      act(() => {
+        result.current.loadMore();
+      }); // alpha page 2 in flight
+
+      rerender({ kind: 'owned', search: 'z', indexes: [] });
+
+      await waitFor(() =>
+        expect(result.current.assets.map((a) => a.id)).toEqual(['z'])
+      );
+
+      // The stale alpha page-2 response lands after the reset; it must not be
+      // appended to beta's results.
+      await act(async () => {
+        resolveAlphaPage2?.(page(['a4', 'a5', 'a6'], 6));
+      });
+
+      expect(result.current.assets.map((a) => a.id)).toEqual(['z']);
+      expect(result.current.total).toBe(1);
+    });
+
+    it('anchors load-more at the reset page after a list-key change', async () => {
+      mockSearchQuery
+        .mockResolvedValueOnce(page(['a1', 'a2', 'a3'], 6)) // alpha page 1
+        .mockResolvedValueOnce(page(['b1', 'b2', 'b3', 'b4'], 4)) // beta page 1
+        .mockResolvedValueOnce(page(['b5', 'b6'], 4)); // beta page 2 (load-more)
+      const { result, rerender } = renderList();
+      await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+      rerender({ kind: 'owned', search: 'b', indexes: [] });
+
+      await waitFor(() =>
+        expect(result.current.assets.map((a) => a.id)).toEqual([
+          'b1',
+          'b2',
+          'b3',
+          'b4',
+        ])
+      );
+
+      act(() => {
+        result.current.loadMore();
+      });
+
+      await waitFor(() =>
+        expect(result.current.assets.map((a) => a.id)).toEqual([
+          'b1',
+          'b2',
+          'b3',
+          'b4',
+          'b5',
+          'b6',
+        ])
+      );
+
+      // load-more continues from the reset page (1), so it asks for page 2 —
+      // never a stale page carried over from the previous query.
+      expect(lastRequest().pageNumber).toBe(2);
+      expect(result.current.hasMore).toBe(false);
+    });
+  });
 });
