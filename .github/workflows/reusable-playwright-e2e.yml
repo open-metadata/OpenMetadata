@@ -656,19 +656,19 @@ jobs:
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            yarn-pkg-cache-${{ runner.os }}-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
           # Retry transient registry failures (5xx on tarball fetches) —
-          # yarn v1 does not retry HTTP errors on its own.
+          # Yarn retries each request, but not a sustained outage.
           for attempt in 1 2 3; do
-            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --mode=skip-build --immutable && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1
@@ -757,7 +757,7 @@ jobs:
           mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
           # Dependency installation can execute repository-controlled package-manager
           # configuration even with lifecycle scripts disabled. Keep it off the runner.
-          # Retry transient registry failures — yarn v1 does not retry HTTP errors.
+          # Retry transient registry failures — Yarn retries each request, but not a sustained outage.
           for attempt in 1 2 3; do
             docker run --rm --read-only \
               --cap-drop ALL --security-opt no-new-privileges \
@@ -766,9 +766,11 @@ jobs:
               --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
               --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
               --workdir "/workspace/$core_dir" \
+              --env YARN_GLOBAL_FOLDER=/tmp/yarn-cache \
+              --env YARN_INSTALL_STATE_PATH=/tmp/install-state.gz \
+              --env YARN_HTTP_TIMEOUT=100000 \
               "node:$(sed 's/^v//' "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/.nvmrc")-bookworm-slim" \
-              yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache \
-                --network-timeout 100000 && break
+              yarn install --immutable --mode=skip-build && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1
@@ -1103,10 +1105,10 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            yarn-pkg-cache-${{ runner.os }}-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install fixture-state dependencies
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -1114,7 +1116,7 @@ jobs:
         run: |
           corepack enable
           for attempt in 1 2 3; do
-            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --mode=skip-build --immutable && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1
@@ -1678,10 +1680,10 @@ jobs:
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            yarn-pkg-cache-${{ runner.os }}-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         id: install-dependencies
@@ -1689,7 +1691,7 @@ jobs:
         run: |
           corepack enable
           for attempt in 1 2 3; do
-            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --mode=skip-build --immutable && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1
@@ -2315,17 +2317,17 @@ jobs:
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            yarn-pkg-cache-${{ runner.os }}-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           corepack enable
           for attempt in 1 2 3; do
-            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --mode=skip-build --immutable && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1

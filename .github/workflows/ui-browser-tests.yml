@@ -222,7 +222,7 @@ jobs:
         working-directory: ${{ env.CORE_DIR }}
         run: |
           for attempt in 1 2 3; do
-            yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+            YARN_HTTP_TIMEOUT=120000 yarn install --immutable && exit 0
             echo "yarn install failed (attempt $attempt), retrying"
             sleep 15
           done

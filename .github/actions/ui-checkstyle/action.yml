@@ -281,7 +281,7 @@ runs:
       working-directory: openmetadata-ui-core-components/src/main/resources/ui
       run: |
         for attempt in 1 2 3; do
-          yarn install --frozen-lockfile --network-timeout 100000 && break
+          YARN_HTTP_TIMEOUT=100000 yarn install --immutable && break
           if [[ "$attempt" -eq 3 ]]; then
             echo "yarn install failed after 3 attempts" >&2
             exit 1
@@ -473,7 +473,7 @@ runs:
       continue-on-error: true
       working-directory: openmetadata-ui/src/main/resources/ui
       run: |
-        if ! yarn --silent knip:files > /tmp/knip.out 2>&1; then
+        if ! yarn knip:files > /tmp/knip.out 2>&1; then
           cat /tmp/knip.out
           OUT=$(grep -E '^src/' /tmp/knip.out | head -30 | sed 's/^/  - `/; s/[[:space:]]*$/`/')
           echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
