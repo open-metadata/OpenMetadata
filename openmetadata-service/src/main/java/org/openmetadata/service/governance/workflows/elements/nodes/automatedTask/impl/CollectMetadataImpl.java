@@ -58,7 +58,7 @@ public class CollectMetadataImpl implements JavaDelegate {
     final var configuration =
         JsonUtils.readOrConvertValue(
             configurationExpr.getValue(execution), MetadataCollectionConfiguration.class);
-    final var entity = variables.getRelatedEntity(link, "*", Include.NON_DELETED);
+    final var entity = variables.getRelatedEntity(link, "*", Include.ALL);
     final var repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     final var actor =
         Entity.getEntityReferenceByName(Entity.USER, "governance-bot", Include.NON_DELETED);
@@ -67,7 +67,9 @@ public class CollectMetadataImpl implements JavaDelegate {
         new Step(
             (String) workflowNameExpr.getValue(execution),
             (String) nodeNameExpr.getValue(execution));
-    if (configuration.getRevision() == null) {
+    if (Boolean.TRUE.equals(entity.getDeleted())) {
+      service.closeTasksOfDeletedAsset(entity);
+    } else if (configuration.getRevision() == null) {
       service.reconcile(entity, configuration, step.workflow(), step.node());
     } else {
       revise(service, variables, entity, configuration, step);

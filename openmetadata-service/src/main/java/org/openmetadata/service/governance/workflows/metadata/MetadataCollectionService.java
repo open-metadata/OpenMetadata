@@ -71,6 +71,7 @@ public final class MetadataCollectionService {
   static final String CONDITIONS_NOT_MET = "The lifecycle conditions are not met.";
   static final String FILLED_IN = "Everything the stage needs is in place";
   static final String LEFT_STAGE = "The asset left %s";
+  static final String ASSET_DELETED = "The asset was deleted";
   static final String REVISION_TITLE = "Revise and resubmit";
   static final String REVISION_DESCRIPTION =
       "The approval to leave %s was rejected. Make the requested changes: the next edit to the"
@@ -156,11 +157,27 @@ public final class MetadataCollectionService {
    * can no longer be resubmitted there, so it closes.
    */
   public void closeRevisionsOutside(final EntityInterface<?> entity, final String stage) {
-    repository
-        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
-        .stream()
+    openTasksOf(entity).stream()
         .filter(task -> isRevisionOutside(task, stage))
         .forEach(task -> finish(task, false));
+  }
+
+  /**
+   * A soft-deleted asset can't be completed or resubmitted, so each of its open tasks, of every
+   * stage, is cancelled. A restore needs nothing more: the next reconcile reopens the collection
+   * task while fields are still missing.
+   */
+  public void closeTasksOfDeletedAsset(final EntityInterface<?> entity) {
+    final List<Task> open = openTasksOf(entity);
+    if (!open.isEmpty()) {
+      LOG.info(
+          "[MetadataCompletion] {} is deleted: cancelling its {} open tasks",
+          entity.getFullyQualifiedName(),
+          open.size());
+    }
+    // resolveTask re-reads the task and never refuses one another server closed meanwhile, so a
+    // lost race writes one more version instead of failing the run.
+    open.forEach(task -> resolve(task, TaskResolutionType.Cancelled, ASSET_DELETED));
   }
 
   private static boolean isRevisionOutside(final Task task, final String stage) {
@@ -182,9 +199,9 @@ public final class MetadataCollectionService {
     if (payload.getRevision() != null) {
       throw BadRequestException.of(REVISION_CLOSES_ON_EDIT);
     }
-    final EntityInterface<?> entity = Entity.getEntity(task.getAbout(), "*", Include.NON_DELETED);
+    final EntityInterface<?> entity = Entity.getEntity(task.getAbout(), "*", Include.ALL);
     final Outstanding outstanding =
-        isInStage(entity, payload.getStage())
+        isAskedFor(entity, payload.getStage())
             ? configuration(payload.getWorkflow(), payload.getNode())
                 .map(configuration -> outstanding(entity, configuration))
                 .orElse(Outstanding.NOTHING)
@@ -232,6 +249,11 @@ public final class MetadataCollectionService {
     return Boolean.TRUE.equals(RuleEngine.getInstance().apply(rules, attributes));
   }
 
+  /** A deleted asset asks for nothing, so a Re-check closes what the next run would cancel. */
+  private static boolean isAskedFor(final EntityInterface<?> entity, final EntityStatus stage) {
+    return !Boolean.TRUE.equals(entity.getDeleted()) && isInStage(entity, stage);
+  }
+
   private static boolean isInStage(final EntityInterface<?> entity, final EntityStatus stage) {
     final Enum<?> current = entity.getEntityStatus();
     return current != null && stage != null && stage.value().equals(current.toString());
@@ -258,12 +280,27 @@ public final class MetadataCollectionService {
    * next time any of its stages is reconciled.
    */
   private void closeTasksOfOtherStages(final EntityInterface<?> entity, final UUID current) {
-    repository
-        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
-        .stream()
+    openTasksOf(entity).stream()
         .filter(task -> !current.equals(task.getId()))
         .filter(task -> !isInStage(entity, stageOf(task)))
         .forEach(task -> finish(task, false));
+  }
+
+  /**
+   * The asset's own open tasks. They are found by FQN, which assets of different types can share (a
+   * domain and a classification can both be "Finance"), so only the tasks about this asset's id are
+   * kept.
+   */
+  private List<Task> openTasksOf(final EntityInterface<?> entity) {
+    return repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> isAbout(task, entity))
+        .toList();
+  }
+
+  private static boolean isAbout(final Task task, final EntityInterface<?> entity) {
+    return task.getAbout() != null && entity.getId().equals(task.getAbout().getId());
   }
 
   private static EntityStatus stageOf(final Task task) {
