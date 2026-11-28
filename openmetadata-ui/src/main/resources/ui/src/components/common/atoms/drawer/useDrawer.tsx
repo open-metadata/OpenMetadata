@@ -18,6 +18,14 @@ import { ReactNode, useCallback, useMemo, useState } from 'react';
 export interface DrawerConfig {
   width?: number | string;
   onClose?: () => void;
+  /**
+   * Runs once before the drawer closes regardless of how the close is
+   * triggered: a programmatic `closeDrawer()` call, the header close button,
+   * the footer Cancel button, the Escape key, or a backdrop click. Use this for
+   * cleanup that must run on every close (e.g. resetting form state, discarding
+   * pending edits). It fires before `onClose`.
+   */
+  onBeforeClose?: () => void;
   onOpen?: () => void;
   closeOnEscape?: boolean;
   closeOnBackdrop?: boolean;
@@ -41,9 +49,10 @@ export const useDrawer = (config: DrawerConfig = {}) => {
   }, [config.onOpen]);
 
   const closeDrawer = useCallback(() => {
+    config.onBeforeClose?.();
     setOpen(false);
     config.onClose?.();
-  }, [config.onClose]);
+  }, [config.onBeforeClose, config.onClose]);
 
   const toggleDrawer = useCallback(() => {
     setOpen((prev) => !prev);

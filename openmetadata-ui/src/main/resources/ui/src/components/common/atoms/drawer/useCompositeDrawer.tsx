@@ -21,7 +21,6 @@ export interface CompositeDrawerConfig extends DrawerConfig {
   header?: DrawerHeaderConfig;
   body?: DrawerBodyConfig;
   footer?: DrawerFooterConfig;
-  onBeforeClose?: () => void;
 }
 
 export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
@@ -33,11 +32,16 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
     ...drawerConfig
   } = config;
 
-  const baseDrawer = useDrawer(drawerConfig);
+  // `onBeforeClose` is the single interception point: it lives on the base
+  // `useDrawer` so Escape/backdrop dismissals (which route through the base
+  // `handleOpenChange` → `closeDrawer`) run it just like the programmatic and
+  // header-button paths. The wrappers below therefore only call it for the
+  // custom `header.onClose` branch, which bypasses `baseDrawer.closeDrawer`.
+  const baseDrawer = useDrawer({ ...drawerConfig, onBeforeClose });
 
   const handleClose = useCallback(() => {
-    onBeforeClose?.();
     if (header.onClose) {
+      onBeforeClose?.();
       header.onClose();
     } else {
       baseDrawer.closeDrawer();
@@ -69,14 +73,8 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
     return <Component {...DrawerComponent.props}>{drawerContent}</Component>;
   }, [baseDrawer.drawer, drawerContent]);
 
-  const closeDrawer = useCallback(() => {
-    onBeforeClose?.();
-    baseDrawer.closeDrawer();
-  }, [onBeforeClose, baseDrawer.closeDrawer]);
-
   return {
     ...baseDrawer,
-    closeDrawer,
     compositeDrawer,
     drawerHeader,
     drawerBody,

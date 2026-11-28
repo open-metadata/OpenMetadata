@@ -123,10 +123,12 @@ export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
   const compositeDrawer = useCompositeDrawer({
     ...drawerConfig,
     closeOnEscape,
-    onBeforeClose: onCancel, // Call onCancel before closing
+    // `onBeforeClose` is forwarded down to `useDrawer`, which runs it for
+    // every close reason (header X, Cancel button, Escape, backdrop, and
+    // programmatic closeDrawer) — see useDrawer.closeDrawer.
+    onBeforeClose: onCancel,
     header: {
       title,
-      // onClose will be handled by useCompositeDrawer with onBeforeClose
       actions: headerActions,
       ...header,
     },
