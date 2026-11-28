@@ -18,7 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
+import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import {
   DataAssetHeaderInfo,
@@ -27,7 +27,9 @@ import {
   DataAssetsWithoutServiceField,
   DataAssetsWithServiceField,
 } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { HeaderProperty } from '../components/DataAssets/EntityHeaderProperties/EntityHeaderProperties.types';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { HeaderPropertyId } from '../constants/EntityHeaderProperties.constants';
 import { EntityType } from '../enums/entity.enum';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -51,6 +53,7 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTime,
   formatDateTimeLong,
+  getRelativeTime,
 } from './date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
@@ -179,7 +182,83 @@ export const ExtraInfoLink = ({
   </div>
 );
 
-const EMPTY_EXTRA_INFO = <></>;
+const getUsageValue = (percentileRank?: number) =>
+  isUndefined(percentileRank)
+    ? undefined
+    : getUsagePercentile(percentileRank, false);
+
+interface ReadOnlyPropertyOptions {
+  dataTestId?: string;
+  tooltip?: ReactNode;
+  /** Renders the value as a link to this address. */
+  href?: string;
+  newTab?: boolean;
+}
+
+const readOnlyProperty = (
+  id: HeaderPropertyId,
+  label: string,
+  value: ReactNode,
+  { dataTestId, tooltip, href, newTab }: ReadOnlyPropertyOptions = {}
+): HeaderProperty => {
+  return {
+    id,
+    label,
+    isReadOnly: true,
+    isEmpty: isNil(value) || value === '',
+    content: href ? (
+      <ExtraInfoLink
+        href={href}
+        label=""
+        newTab={newTab}
+        value={value as string}
+      />
+    ) : (
+      <ExtraInfoLabel
+        dataTestId={dataTestId}
+        label=""
+        tooltip={tooltip}
+        value={value}
+      />
+    ),
+  };
+};
+
+const createdTimeProperty = (
+  timestamp: number | undefined,
+  dataTestId: string
+) =>
+  readOnlyProperty(
+    HeaderPropertyId.CreatedTime,
+    t('label.created-time'),
+    isRecordedLifeCycleTimestamp(timestamp)
+      ? formatDateTimeLong(timestamp, DATE_TIME_12_HOUR_FORMAT)
+      : undefined,
+    {
+      dataTestId,
+      tooltip: isRecordedLifeCycleTimestamp(timestamp)
+        ? formatDateTime(timestamp)
+        : undefined,
+    }
+  );
+
+// lifeCycle.updated is when the asset last changed at its source, set by
+// ingestion from the source's metadata or the usage workflow's query log; it
+// is not when the entity was edited in OpenMetadata.
+export const getSourceUpdatedAtProperty = (timestamp?: number) =>
+  readOnlyProperty(
+    HeaderPropertyId.SourceUpdatedAt,
+    t('label.updated-at-source'),
+    isRecordedLifeCycleTimestamp(timestamp)
+      ? getRelativeTime(timestamp)
+      : undefined,
+    {
+      dataTestId: 'source-updated-at',
+      tooltip: isRecordedLifeCycleTimestamp(timestamp)
+        ? formatDateTime(timestamp)
+        : undefined,
+    }
+  );
 
 type HeaderInfoBuilder = (
   dataAsset: DataAssetsHeaderProps['dataAsset'],
@@ -192,28 +271,18 @@ const getTopicHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(topicDetails),
-    extraInfo: (
-      <>
-        {topicDetails?.partitions ? (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.partition-plural')}
-              value={topicDetails.partitions}
-            />
-          </>
-        ) : null}
-        {topicDetails?.replicationFactor && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.replication-factor')}
-              value={topicDetails.replicationFactor}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Partitions,
+        t('label.partition-plural'),
+        topicDetails.partitions || undefined
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.ReplicationFactor,
+        t('label.replication-factor'),
+        topicDetails.replicationFactor || undefined
+      ),
+    ],
   };
 };
 
@@ -222,42 +291,26 @@ const getDashboardHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(dashboardDetails),
-    extraInfo: (
-      <>
-        {dashboardDetails.dashboardType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.entity-type-plural', {
-                entity: t('label.dashboard'),
-              })}
-              value={dashboardDetails.dashboardType}
-            />
-          </>
-        )}
-        {dashboardDetails.project && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.project')}
-              value={dashboardDetails.project}
-            />
-          </>
-        )}
-        {dashboardDetails?.usageSummary && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                dashboardDetails.usageSummary?.weeklyStats?.percentileRank ?? 0,
-                false
-              )}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Type,
+        t('label.entity-type-plural', { entity: t('label.dashboard') }),
+        dashboardDetails.dashboardType
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Project,
+        t('label.project'),
+        dashboardDetails.project
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Usage,
+        t('label.usage'),
+        dashboardDetails.usageSummary &&
+          getUsageValue(
+            dashboardDetails.usageSummary.weeklyStats?.percentileRank ?? 0
+          )
+      ),
+    ],
   };
 };
 
@@ -266,32 +319,21 @@ const getPipelineHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(pipelineDetails),
-    extraInfo: (
-      <>
-        {pipelineDetails.state && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.state')}
-              value={pipelineDetails.state}
-            />
-          </>
-        )}
-
-        {pipelineDetails?.usageSummary && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                pipelineDetails.usageSummary?.weeklyStats?.percentileRank ?? 0,
-                false
-              )}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.State,
+        t('label.state'),
+        pipelineDetails.state
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Usage,
+        t('label.usage'),
+        pipelineDetails.usageSummary &&
+          getUsageValue(
+            pipelineDetails.usageSummary.weeklyStats?.percentileRank ?? 0
+          )
+      ),
+    ],
   };
 };
 
@@ -301,71 +343,45 @@ const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail),
-    extraInfo: (
-      <>
-        {mlModelDetail.algorithm && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.algorithm')}
-              value={mlModelDetail.algorithm}
-            />
-          </>
-        )}
-        {mlModelDetail.target && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.target')}
-              value={mlModelDetail.target}
-            />
-          </>
-        )}
-        {mlModelDetail.server && (
-          <>
-            <HeaderDotSeparator />
-            {safeServerUrl ? (
-              <ExtraInfoLink
-                newTab
-                href={safeServerUrl}
-                label={t('label.server')}
-                value={mlModelDetail.server}
-              />
-            ) : (
-              <ExtraInfoLabel
-                label={t('label.server')}
-                value={mlModelDetail.server}
-              />
-            )}
-          </>
-        )}
-        {mlModelDetail.dashboard && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLink
-              href={getEntityDetailsPath(
-                EntityType.DASHBOARD,
-                mlModelDetail.dashboard?.fullyQualifiedName as string
-              )}
-              label={t('label.dashboard')}
-              value={entityName}
-            />
-          </>
-        )}
-        {mlModelDetail?.usageSummary && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
-                false
-              )}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Algorithm,
+        t('label.algorithm'),
+        mlModelDetail.algorithm
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Target,
+        t('label.target'),
+        mlModelDetail.target
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Server,
+        t('label.server'),
+        mlModelDetail.server,
+        { href: safeServerUrl, newTab: true }
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Dashboard,
+        t('label.dashboard'),
+        mlModelDetail.dashboard && entityName,
+        {
+          href:
+            mlModelDetail.dashboard &&
+            getEntityDetailsPath(
+              EntityType.DASHBOARD,
+              mlModelDetail.dashboard.fullyQualifiedName as string
+            ),
+        }
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Usage,
+        t('label.usage'),
+        mlModelDetail.usageSummary &&
+          getUsageValue(
+            mlModelDetail.usageSummary.weeklyStats?.percentileRank || 0
+          )
+      ),
+    ],
   };
 };
 
@@ -375,6 +391,8 @@ const getContainerHeaderInfo: HeaderInfoBuilder = (
   parentContainers
 ) => {
   const containerDetails = dataAsset as Container;
+  const isPartitioned = containerDetails.dataModel?.isPartitioned;
+  const partitionedLabel = t(isPartitioned ? 'label.yes' : 'label.no');
 
   return {
     breadcrumbs: getBreadcrumbForEntityWithParent({
@@ -382,41 +400,25 @@ const getContainerHeaderInfo: HeaderInfoBuilder = (
       entityType: EntityType.CONTAINER,
       parents: parentContainers,
     }),
-    extraInfo: (
-      <>
-        {!isUndefined(containerDetails?.dataModel?.isPartitioned) && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label=""
-              value={
-                containerDetails?.dataModel?.isPartitioned
-                  ? (t('label.partitioned') as string)
-                  : (t('label.non-partitioned') as string)
-              }
-            />
-          </>
-        )}
-        {!isUndefined(containerDetails.numberOfObjects) && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.number-of-object-plural')}
-              value={containerDetails.numberOfObjects}
-            />
-          </>
-        )}
-        {!isUndefined(containerDetails.size) && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.size')}
-              value={bytesToSize(containerDetails.size)}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Partitioned,
+        t('label.partitioned'),
+        isUndefined(isPartitioned) ? undefined : partitionedLabel
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.NumberOfObjects,
+        t('label.number-of-object-plural'),
+        containerDetails.numberOfObjects
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Size,
+        t('label.size'),
+        isUndefined(containerDetails.size)
+          ? undefined
+          : bytesToSize(containerDetails.size)
+      ),
+    ],
   };
 };
 
@@ -425,53 +427,36 @@ const getDashboardDataModelHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(dataModelDetails),
-    extraInfo: (
-      <>
-        {dataModelDetails.dataModelType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.data-model-type')}
-              value={dataModelDetails.dataModelType}
-            />
-          </>
-        )}
-        {dataModelDetails.project && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.project')}
-              value={dataModelDetails.project}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Type,
+        t('label.data-model-type'),
+        dataModelDetails.dataModelType
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Project,
+        t('label.project'),
+        dataModelDetails.project
+      ),
+    ],
   };
 };
 
 const getStoredProcedureHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
-  const storedProcedureDetails = dataAsset as StoredProcedure;
+  const { storedProcedureCode } = dataAsset as StoredProcedure;
+  const code = isObject(storedProcedureCode)
+    ? (storedProcedureCode as StoredProcedureCodeObject)
+    : undefined;
 
   return {
     breadcrumbs: getBreadcrumbForTable(dataAsset as Table),
-    extraInfo: (
-      <>
-        {isObject(storedProcedureDetails.storedProcedureCode) && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.language')}
-              value={
-                (
-                  storedProcedureDetails.storedProcedureCode as StoredProcedureCodeObject
-                ).language ?? NO_DATA_PLACEHOLDER
-              }
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Language,
+        t('label.language'),
+        code?.language
+      ),
+    ],
   };
 };
 
@@ -480,20 +465,14 @@ const getApiEndpointHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getEntityBreadcrumbs(apiEndpoint, EntityType.API_ENDPOINT),
-    extraInfo: (
-      <>
-        {apiEndpoint.requestMethod && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              dataTestId="api-endpoint-request-method"
-              label={t('label.request-method')}
-              value={apiEndpoint.requestMethod}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.RequestMethod,
+        t('label.request-method'),
+        apiEndpoint.requestMethod,
+        { dataTestId: 'api-endpoint-request-method' }
+      ),
+    ],
   };
 };
 
@@ -502,37 +481,23 @@ const getDirectoryHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getEntityBreadcrumbs(directory, EntityType.DIRECTORY),
-    extraInfo: (
-      <>
-        {directory.directoryType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.type')}
-              value={directory.directoryType}
-            />
-          </>
-        )}
-        {directory.numberOfFiles !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.file-plural')}
-              value={directory.numberOfFiles}
-            />
-          </>
-        )}
-        {directory.numberOfSubDirectories !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.subdirectory-plural')}
-              value={directory.numberOfSubDirectories}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Type,
+        t('label.type'),
+        directory.directoryType
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Files,
+        t('label.file-plural'),
+        directory.numberOfFiles
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.SubDirectories,
+        t('label.subdirectory-plural'),
+        directory.numberOfSubDirectories
+      ),
+    ],
   };
 };
 
@@ -541,34 +506,19 @@ const getFileHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getEntityBreadcrumbs(file, EntityType.FILE),
-    extraInfo: (
-      <>
-        {file.fileType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
-          </>
-        )}
-        {file.fileExtension !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.extension')}
-              value={file.fileExtension}
-            />
-          </>
-        )}
-        {file.fileVersion !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.version')}
-              value={file.fileVersion}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(HeaderPropertyId.Type, t('label.type'), file.fileType),
+      readOnlyProperty(
+        HeaderPropertyId.FileExtension,
+        t('label.extension'),
+        file.fileExtension
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.FileVersion,
+        t('label.version'),
+        file.fileVersion
+      ),
+    ],
   };
 };
 
@@ -577,80 +527,52 @@ const getSpreadsheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getEntityBreadcrumbs(spreadsheet, EntityType.SPREADSHEET),
-    extraInfo: (
-      <>
-        {spreadsheet.mimeType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.mime-type')}
-              value={
-                <Typography
-                  as="span"
-                  className="tw:text-primary"
-                  ellipsis={{ tooltip: spreadsheet.mimeType }}
-                  size="text-sm"
-                  weight="medium">
-                  {spreadsheet.mimeType}
-                </Typography>
-              }
-            />
-          </>
-        )}
-        {spreadsheet.createdTime !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              dataTestId="spreadsheet-created-time"
-              label={t('label.created-time')}
-              tooltip={formatDateTime(spreadsheet.createdTime)}
-              value={formatDateTimeLong(
-                spreadsheet.createdTime,
-                DATE_TIME_12_HOUR_FORMAT
-              )}
-            />
-          </>
-        )}
-        {spreadsheet.modifiedTime !== undefined && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.modified-time')}
-              value={formatDateTime(spreadsheet.modifiedTime)}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.MimeType,
+        t('label.mime-type'),
+        spreadsheet.mimeType && (
+          <Typography
+            as="span"
+            className="tw:text-primary"
+            ellipsis={{ tooltip: spreadsheet.mimeType }}
+            size="text-sm"
+            weight="medium">
+            {spreadsheet.mimeType}
+          </Typography>
+        )
+      ),
+      createdTimeProperty(spreadsheet.createdTime, 'spreadsheet-created-time'),
+      readOnlyProperty(
+        HeaderPropertyId.ModifiedTime,
+        t('label.modified-time'),
+        isUndefined(spreadsheet.modifiedTime)
+          ? undefined
+          : formatDateTime(spreadsheet.modifiedTime)
+      ),
+    ],
   };
 };
 
-const getWorksheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
-  const worksheet = dataAsset as Worksheet;
-
-  return {
-    breadcrumbs: getEntityBreadcrumbs(worksheet, EntityType.WORKSHEET),
-    extraInfo: (
-      <>
-        {worksheet.rowCount && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.row-count')}
-              value={worksheet.rowCount}
-            />
-          </>
-        )}
-      </>
+const getWorksheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => ({
+  breadcrumbs: getEntityBreadcrumbs(
+    dataAsset as Worksheet,
+    EntityType.WORKSHEET
+  ),
+  extraInfo: [
+    readOnlyProperty(
+      HeaderPropertyId.Rows,
+      t('label.row-count'),
+      (dataAsset as Worksheet).rowCount || undefined
     ),
-  };
-};
+  ],
+});
 
 const getSearchIndexHeaderInfo: HeaderInfoBuilder = (dataAsset) => ({
   breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(
     dataAsset as SearchIndex
   ),
-  extraInfo: EMPTY_EXTRA_INFO,
+  extraInfo: [],
 });
 
 const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
@@ -658,65 +580,35 @@ const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
   return {
     breadcrumbs: getBreadcrumbForTable(tableDetails),
-    extraInfo: (
-      <>
-        {tableDetails.tableType && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.type')}
-              value={tableDetails.tableType}
-            />
-          </>
-        )}
-        {tableDetails?.usageSummary && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.usage')}
-              value={getUsagePercentile(
-                tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
-                false
-              )}
-            />
-          </>
-        )}
-        {tableDetails?.profile?.columnCount && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.column-plural')}
-              value={tableDetails.profile?.columnCount}
-            />
-          </>
-        )}
-        {tableDetails?.profile?.rowCount && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              label={t('label.row-plural')}
-              value={tableDetails.profile?.rowCount}
-            />
-          </>
-        )}
-        {isRecordedLifeCycleTimestamp(
-          tableDetails?.lifeCycle?.created?.timestamp
-        ) && (
-          <>
-            <HeaderDotSeparator />
-            <ExtraInfoLabel
-              dataTestId="table-created-time"
-              label={t('label.created-time')}
-              tooltip={formatDateTime(tableDetails.lifeCycle.created.timestamp)}
-              value={formatDateTimeLong(
-                tableDetails.lifeCycle.created.timestamp,
-                DATE_TIME_12_HOUR_FORMAT
-              )}
-            />
-          </>
-        )}
-      </>
-    ),
+    extraInfo: [
+      readOnlyProperty(
+        HeaderPropertyId.Type,
+        t('label.type'),
+        tableDetails.tableType
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Usage,
+        t('label.usage'),
+        tableDetails.usageSummary &&
+          getUsageValue(
+            tableDetails.usageSummary.weeklyStats?.percentileRank || 0
+          )
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Columns,
+        t('label.column-plural'),
+        tableDetails.profile?.columnCount || undefined
+      ),
+      readOnlyProperty(
+        HeaderPropertyId.Rows,
+        t('label.row-plural'),
+        tableDetails.profile?.rowCount || undefined
+      ),
+      createdTimeProperty(
+        tableDetails.lifeCycle?.created?.timestamp,
+        'table-created-time'
+      ),
+    ],
   };
 };
 
@@ -728,7 +620,7 @@ const makeBreadcrumbOnlyBuilder =
       dataAsset as DataAssetsWithoutServiceField,
       breadcrumbEntityType
     ),
-    extraInfo: EMPTY_EXTRA_INFO,
+    extraInfo: [],
   });
 
 const entityHeaderInfoBuilders: Partial<Record<EntityType, HeaderInfoBuilder>> =
@@ -804,12 +696,4 @@ export const isDataAssetsWithServiceField = (
   asset: DataAssetsType
 ): asset is DataAssetsWithServiceField => {
   return (asset as DataAssetsWithServiceField).service !== undefined;
-};
-
-export const getEntityExtraInfoLength = (element: ReactNode): number => {
-  if (React.isValidElement(element) && isArray(element.props.children)) {
-    return element.props.children?.filter((child?: ReactNode) => child).length;
-  }
-
-  return 0;
 };

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-span.extra-info-label-heading {
-  font-weight: var(--om-font-weight-medium);
-}
+import { HeaderProperty } from '../components/DataAssets/EntityHeaderProperties/EntityHeaderProperties.types';
 
-.retention-period-container {
-  max-width: 148px;
-}
+/**
+ * The properties the header draws. An empty read-only property has nothing to
+ * fill in, so it never shows; an empty editable one shows so it can be filled.
+ */
+export const getShownHeaderProperties = (
+  properties: HeaderProperty[]
+): HeaderProperty[] =>
+  properties.filter(({ isEmpty, isReadOnly }) => !isEmpty || !isReadOnly);

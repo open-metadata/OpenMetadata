@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -51,6 +50,7 @@ import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { HeaderProperty } from '../EntityHeaderProperties/EntityHeaderProperties.types';
 
 export type DataAssetsType =
   | Table
@@ -341,7 +341,8 @@ export interface DataAssetWorksheet {
   entityType: EntityType.WORKSHEET;
 }
 export interface DataAssetHeaderInfo {
-  extraInfo: ReactNode;
+  /** The entity type's read-only header properties, empty ones included. */
+  extraInfo: HeaderProperty[];
   breadcrumbs: TitleBreadcrumbProps['titleLinks'];
 }
 

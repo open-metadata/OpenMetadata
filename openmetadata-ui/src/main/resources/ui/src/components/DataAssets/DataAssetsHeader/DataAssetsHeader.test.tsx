@@ -29,6 +29,7 @@ import {
 } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import type { Metric } from '../../../generated/entity/data/metric';
+import type { Table } from '../../../generated/entity/data/table';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
@@ -145,14 +146,10 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
     breadcrumbs: [],
     extraInfo: [],
   })),
-  getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
-  isRecordedLifeCycleTimestamp: jest.requireActual(
+  getSourceUpdatedAtProperty: jest.requireActual(
     '../../../utils/DataAssetsHeader.utils'
-  ).isRecordedLifeCycleTimestamp,
-  HeaderDotSeparator: jest
-    .fn()
-    .mockImplementation(() => <span data-testid="header-dot-separator" />),
+  ).getSourceUpdatedAtProperty,
   ExtraInfoLabel: jest.requireActual('../../../utils/DataAssetsHeader.utils')
     .ExtraInfoLabel,
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
@@ -203,6 +200,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </a>
     )),
 }));
+
+// A function declaration, so it is hoisted above the jest.mock factories that call it.
+function mockPicker(name: string) {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid={name}>{children}</div>
+    ));
+}
+
+jest.mock(
+  '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({ UserTeamSelectableList: mockPicker('owner-picker') })
+);
+jest.mock(
+  '../../../components/common/DomainSelectableList/DomainSelectableList.component',
+  () => mockPicker('domain-picker')
+);
+jest.mock('../../Certification/Certification.component', () =>
+  mockPicker('certification-picker')
+);
 jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
     <div>
@@ -647,6 +665,80 @@ describe('DataAssetsHeader component', () => {
     );
   });
 
+  describe('header properties', () => {
+    describe('for a user who can edit the asset', () => {
+      const editPermissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditOwners: true,
+      };
+      const tableProps: DataAssetsHeaderProps = {
+        ...mockProps,
+        dataAsset: mockProps.dataAsset as unknown as Table,
+        entityType: EntityType.TABLE,
+        permissions: editPermissions,
+        onUpdateRetentionPeriod: jest.fn(),
+      };
+
+      beforeEach(() => {
+        (useEntityPermissions as jest.Mock).mockReturnValue({
+          ...getDerivedPermissionFlags(editPermissions),
+          isLoading: false,
+          error: null,
+          refresh: jest.fn(),
+        });
+      });
+
+      it.each([
+        ['domain-picker', 'add-domain'],
+        ['owner-picker', 'edit-owner'],
+        ['certification-picker', 'edit-certification'],
+      ])(
+        'offers Add for an empty value inside %s',
+        (pickerTestId, triggerTestId) => {
+          render(<DataAssetsHeader {...tableProps} />);
+
+          const trigger = within(screen.getByTestId(pickerTestId)).getByTestId(
+            triggerTestId
+          );
+
+          expect(trigger).toHaveTextContent('label.add');
+        }
+      );
+
+      it('opens the retention period editor from Add', () => {
+        render(<DataAssetsHeader {...tableProps} />);
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('edit-retention-period-button'));
+        });
+
+        expect(
+          screen.getByTestId('retention-period-modal')
+        ).toBeInTheDocument();
+      });
+
+      it('shows a set value with the edit trigger beside its label', () => {
+        render(
+          <DataAssetsHeader
+            {...tableProps}
+            dataAsset={{
+              ...(tableProps.dataAsset as Table),
+              retentionPeriod: 'P0Y0M4D',
+            }}
+          />
+        );
+
+        const cell = screen.getByTestId('header-property-retentionPeriod');
+
+        expect(cell).toHaveTextContent('4 days');
+        expect(
+          within(cell).getByTestId('edit-retention-period-button')
+        ).not.toHaveTextContent('label.add');
+      });
+    });
+  });
+
   it('should render the Tier data if present', () => {
     render(
       <DataAssetsHeader
@@ -681,10 +773,27 @@ describe('DataAssetsHeader component', () => {
     );
   });
 
-  it('should not render the Tier data if not  present', () => {
-    render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
+  it('shows a dash for an empty tier the user cannot set', () => {
+    render(<DataAssetsHeader {...mockProps} />);
 
-    expect(screen.getByTestId('Tier')).toContainHTML('--');
+    expect(screen.queryByTestId('Tier')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-tier-container')).toHaveTextContent('--');
+  });
+
+  it('offers Add in the tier picker for an empty tier the user can set', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditTier: true }}
+      />
+    );
+
+    const addTier = screen.getByTestId('edit-tier');
+
+    expect(addTier).toHaveTextContent('label.add');
+    expect(addTier.closest('div')?.parentElement).toHaveTextContent(
+      'TierCard.component'
+    );
   });
 
   it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {

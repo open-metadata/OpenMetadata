@@ -14,6 +14,7 @@ import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { expandHeaderProperties } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 // 2021-01-01T00:00:00Z — fixed so the rendered string is deterministic.
@@ -80,7 +81,10 @@ test.describe('Table source creation time in the entity header', () => {
     await tableWithCreationTime.visitEntityPage(page);
 
     await expect(page.getByTestId('data-assets-header')).toBeVisible();
-    await expect(page.getByTestId('table-created-time-label')).toBeVisible();
+    await expandHeaderProperties(page);
+    await expect(page.getByTestId('header-property-createdTime')).toContainText(
+      'Created Time'
+    );
     await expect(page.getByTestId('table-created-time')).toContainText('2021');
   });
 
@@ -90,6 +94,7 @@ test.describe('Table source creation time in the entity header', () => {
     await tableWithoutCreationTime.visitEntityPage(page);
 
     await expect(page.getByTestId('data-assets-header')).toBeVisible();
+    await expandHeaderProperties(page);
     await expect(page.getByTestId('table-created-time')).toHaveCount(0);
   });
 
@@ -109,6 +114,7 @@ test.describe('Table source creation time in the entity header', () => {
     await tableWithPlaceholderCreationTime.visitEntityPage(page);
 
     await expect(page.getByTestId('data-assets-header')).toBeVisible();
+    await expandHeaderProperties(page);
     await expect(page.getByTestId('table-created-time')).toHaveCount(0);
   });
 });

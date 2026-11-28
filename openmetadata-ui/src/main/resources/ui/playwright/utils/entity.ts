@@ -74,6 +74,17 @@ export const waitForAllLoadersToDisappear = async (
 };
 
 /**
+ * The entity header shows its first five properties and hides the rest behind
+ * "Show N more"; open it before asserting on a later property.
+ */
+export const expandHeaderProperties = async (page: Page) => {
+  const toggle = page.getByTestId('header-properties-toggle');
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+};
+
+/**
  * Wait for the lazily-mounted entity-detail widgets to replace their Suspense
  * fallback.
  *
@@ -712,7 +723,8 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('Tier')).toContainText('--');
+  await expect(page.getByTestId('Tier')).not.toBeAttached();
+  await expect(page.getByTestId('edit-tier')).toHaveText('Add');
 };
 
 // The certification picker loads 50 at a time; searching reaches any certification.
@@ -802,7 +814,8 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   expect(response.status()).toBe(200);
   await certificationMenu.waitFor({ state: 'hidden' });
 
-  await expect(page.getByTestId('certification-label')).toContainText('--');
+  await expect(page.getByTestId('certification-value')).not.toBeAttached();
+  await expect(page.getByTestId('edit-certification')).toHaveText('Add');
 };
 
 export const updateDescription = async (

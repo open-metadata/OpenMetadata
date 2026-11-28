@@ -16,7 +16,7 @@ export const LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT = [
     elementSelector: '[data-testid="add-domain"]',
   },
   {
-    containerSelector: '[data-testid="owner-label"]',
+    containerSelector: '[data-testid="header-owner-container"]',
     elementSelector: '[data-testid="edit-owner"]',
   },
   {
