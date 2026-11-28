@@ -1,7 +1,12 @@
 package org.openmetadata.service.socket;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.socket.HandshakeIdentity.PROVIDER_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.SESSION_ID_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.TOKEN_EXPIRES_AT_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.USER_ID_HEADER;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.socket.engineio.server.EngineIoServer;
@@ -9,6 +14,8 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
 import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +23,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +62,14 @@ public class WebSocketManager {
   public static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";
   public static final String QUERY_RUNNER_CHANNEL = "queryRunnerChannel";
 
+  /**
+   * Sent to a socket opened without a session right before the sweep closes it because its token
+   * expired. The UI reconnects with its renewed token only after this notice; every other server
+   * close is final.
+   * ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
+   */
+  public static final String TOKEN_EXPIRED_CHANNEL = "tokenExpiredChannel";
+
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
       new ConcurrentHashMap<>();
@@ -61,6 +78,7 @@ public class WebSocketManager {
       TimeUnit.MINUTES.toMillis(1);
   private final Map<String, String> socketSessionIds = new ConcurrentHashMap<>();
   private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
+  private final SocketTokenExpiries socketTokenExpiries = new SocketTokenExpiries();
 
   // Cross-pod delivery for sendToOne; a Redis or DB relay is injected at startup (no-op by
   // default).
@@ -73,11 +91,17 @@ public class WebSocketManager {
    */
   private final Supplier<AuthProvider> appliedProvider;
 
-  private WebSocketManager(
-      EngineIoServerOptions eiOptions, Supplier<AuthProvider> appliedProvider) {
+  private final Clock clock;
+  private final Predicate<UUID> isUserGone;
+  private final Consumer<UUID> notifyPeersAccessEnded;
+
+  private WebSocketManager(EngineIoServerOptions eiOptions, PushFeedSocketPolicy policy) {
     engineIoServer = new EngineIoServer(eiOptions);
     socketIoServer = new SocketIoServer(engineIoServer);
-    this.appliedProvider = appliedProvider;
+    this.appliedProvider = policy.appliedProvider();
+    this.clock = policy.clock();
+    this.isUserGone = policy.isUserGone();
+    this.notifyPeersAccessEnded = policy.notifyPeersAccessEnded();
     initializeHandlers();
   }
 
@@ -90,64 +114,71 @@ public class WebSocketManager {
 
   @VisibleForTesting
   void onConnection(SocketIoSocket socket) {
-    List<String> remoteAddress = socket.getInitialHeaders().get("RemoteAddress");
     Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
-    List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
-    List<String> sessionIdHeaders = listOrEmpty(initialHeaders.get("SessionId"));
-    List<String> providerHeaders = listOrEmpty(initialHeaders.get("AuthProvider"));
+    List<String> remoteAddress = initialHeaders.get("RemoteAddress");
     // The socket identity, session and provider come exclusively from the headers stamped by
     // SocketAddressFilter after validating the handshake credential. The raw query params are
     // client-controlled and must never key a socket.
-    String userId = userIdHeaders.isEmpty() ? null : userIdHeaders.get(0);
-    String sessionId = sessionIdHeaders.isEmpty() ? null : sessionIdHeaders.get(0);
-    String validatedProvider = providerHeaders.isEmpty() ? null : providerHeaders.get(0);
-
+    String userId = firstHeader(initialHeaders, USER_ID_HEADER);
     if (userId != null && !userId.isEmpty()) {
       LOG.info("Client : {} with Remote Address:{} connected", userId, remoteAddress);
-
-      // On Socket Disconnect
-      socket.on(
-          "disconnect",
-          args1 -> {
-            LOG.info("Client from: {} with Remote Address:{} disconnected.", userId, remoteAddress);
-            UUID id = UUID.fromString(userId);
-            activityFeedEndpoints.computeIfPresent(
-                id,
-                (key, connections) -> {
-                  connections.remove(socket.getId());
-                  socketSessionIds.remove(socket.getId());
-                  socketSessionValidatedAt.remove(socket.getId());
-                  return connections.isEmpty() ? null : connections;
-                });
-          });
-
-      // On Socket Connection Error
-      socket.on(
-          "connect_error",
-          args1 ->
-              LOG.error(
-                  "Connection ERROR for user:{} with Remote Address:{} disconnected",
-                  userId,
-                  remoteAddress));
-
-      // On Socket Connection Failure
-      socket.on(
-          "connect_failed",
-          args1 ->
-              LOG.error(
-                  "Connection failed ERROR for user: {} with Remote Address: {} disconnected",
-                  userId,
-                  remoteAddress));
-
       UUID id = UUID.fromString(userId);
-      Map<String, SocketIoSocket> userSocketConnections =
-          activityFeedEndpoints.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
-      userSocketConnections.put(socket.getId(), socket);
-      if (sessionId != null && !sessionId.isEmpty()) {
-        socketSessionIds.put(socket.getId(), sessionId);
-      }
-      disconnectIfValidatedUnderAnotherProvider(id, socket, validatedProvider);
+      listenForClose(socket, id, remoteAddress);
+      register(socket, id, initialHeaders);
+      disconnectIfValidatedUnderAnotherProvider(
+          id, socket, firstHeader(initialHeaders, PROVIDER_HEADER));
     }
+  }
+
+  private void listenForClose(SocketIoSocket socket, UUID userId, List<String> remoteAddress) {
+    socket.on(
+        "disconnect",
+        args -> {
+          LOG.info("Client from: {} with Remote Address:{} disconnected.", userId, remoteAddress);
+          forgetSocket(socket.getId());
+          activityFeedEndpoints.computeIfPresent(
+              userId,
+              (key, connections) -> {
+                connections.remove(socket.getId());
+                return connections.isEmpty() ? null : connections;
+              });
+        });
+    socket.on(
+        "connect_error",
+        args ->
+            LOG.error(
+                "Connection ERROR for user:{} with Remote Address:{} disconnected",
+                userId,
+                remoteAddress));
+    socket.on(
+        "connect_failed",
+        args ->
+            LOG.error(
+                "Connection failed ERROR for user: {} with Remote Address: {} disconnected",
+                userId,
+                remoteAddress));
+  }
+
+  /** The per-socket entries come first, so a sweep never sees a socket without them. */
+  private void register(
+      SocketIoSocket socket, UUID userId, Map<String, List<String>> initialHeaders) {
+    String socketId = socket.getId();
+    String sessionId = firstHeader(initialHeaders, SESSION_ID_HEADER);
+    if (sessionId != null && !sessionId.isEmpty()) {
+      socketSessionIds.put(socketId, sessionId);
+    }
+    String tokenExpiresAt = firstHeader(initialHeaders, TOKEN_EXPIRES_AT_HEADER);
+    if (tokenExpiresAt != null) {
+      socketTokenExpiries.record(socketId, tokenExpiresAt);
+    }
+    activityFeedEndpoints
+        .computeIfAbsent(userId, k -> new ConcurrentHashMap<>())
+        .put(socketId, socket);
+  }
+
+  private static String firstHeader(Map<String, List<String>> headers, String name) {
+    List<String> values = listOrEmpty(headers.get(name));
+    return values.isEmpty() ? null : values.getFirst();
   }
 
   /**
@@ -242,31 +273,36 @@ public class WebSocketManager {
   }
 
   /**
-   * Force-close every Socket.IO connection this pod is holding for the given user. Called locally
-   * by {@code SessionService} when a session is revoked and via the cache-invalidation pub/sub
-   * when revocation happens on another pod. Idempotent — a no-op if the user has no open sockets
-   * on this pod.
+   * Force-close every Socket.IO connection this pod is holding for the given user. Called when a
+   * provider switch closes every socket, when the user is deleted (here through {@link
+   * #endAccessForUser}, on peers through the cache-invalidation pub/sub), and by the sweep for a
+   * user who is gone. Idempotent: a no-op if the user has no open sockets on this pod.
    */
   public void disconnectAllForUser(UUID userId) {
-    if (userId == null) {
-      return;
+    Map<String, SocketIoSocket> sockets =
+        userId == null ? null : activityFeedEndpoints.remove(userId);
+    if (!nullOrEmpty(sockets)) {
+      LOG.info("Force-disconnecting {} socket(s) for user {}", sockets.size(), userId);
+      sockets.values().forEach(socket -> disconnectSocket(userId, socket));
     }
-    Map<String, SocketIoSocket> sockets = activityFeedEndpoints.remove(userId);
-    if (sockets == null || sockets.isEmpty()) {
-      return;
-    }
-    LOG.info(
-        "Force-disconnecting {} socket(s) for user {} on session revocation",
-        sockets.size(),
-        userId);
-    for (SocketIoSocket socket : sockets.values()) {
-      disconnectSocket(userId, socket);
+  }
+
+  /**
+   * Ends a deleted user's push feed: closes their sockets on this server and tells the other
+   * servers to close theirs. The session revocation a delete performs cannot reach a socket opened
+   * with a token that carries no session.
+   * ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
+   */
+  public void endAccessForUser(UUID userId) {
+    if (userId != null) {
+      disconnectAllForUser(userId);
+      notifyPeersAccessEnded.accept(userId);
     }
   }
 
   /**
    * Closes every socket this server holds, with or without a session: a socket opened with a
-   * provider token has no session the sweep could re-check.
+   * provider token has no session the sweep could re-check against the new provider.
    */
   public void disconnectAll() {
     activityFeedEndpoints.keySet().forEach(this::disconnectAllForUser);
@@ -304,32 +340,84 @@ public class WebSocketManager {
     disconnectInactiveSessions(sessionService, DEFAULT_SESSION_REVALIDATION_INTERVAL_MILLIS);
   }
 
+  /**
+   * One sweep pass over this server's sockets. A socket opened without a session closes, after the
+   * token expired notice, once its token's exp is before now; every socket of a user who is gone
+   * closes; a socket with a session closes once its session is no longer active, checked at most
+   * once per interval.
+   */
   public void disconnectInactiveSessions(
       SessionService sessionService, long sessionRevalidationIntervalMillis) {
-    if (sessionService == null || activityFeedEndpoints.isEmpty()) {
-      return;
+    SweepPass pass =
+        new SweepPass(
+            sessionService,
+            clock.instant(),
+            sessionRevalidationIntervalMillis,
+            appliedProvider.get());
+    activityFeedEndpoints.forEach((userId, sockets) -> sweepUser(pass, userId, sockets));
+  }
+
+  /** Only users holding a socket without a session are looked up: sessions end with a delete. */
+  private void sweepUser(SweepPass pass, UUID userId, Map<String, SocketIoSocket> sockets) {
+    if (hasSocketWithoutSession(sockets) && isUserGone.test(userId)) {
+      LOG.info("Closing every push-feed socket of user {}: the user no longer exists", userId);
+      disconnectAllForUser(userId);
+    } else {
+      socketsMatching(sockets, socketId -> socketTokenExpiries.hasExpired(socketId, pass.now()))
+          .forEach(socket -> closeForExpiredToken(userId, socket));
+      closeSocketsWhoseSessionEnded(pass, userId, sockets);
+      activityFeedEndpoints.computeIfPresent(
+          userId, (key, connections) -> connections.isEmpty() ? null : connections);
     }
-    long now = System.currentTimeMillis();
-    AuthProvider applied = appliedProvider.get();
-    activityFeedEndpoints.forEach(
-        (userId, sockets) -> {
-          List<SocketIoSocket> socketsToDisconnect = new ArrayList<>();
-          sockets.forEach(
-              (socketId, socket) -> {
-                String sessionId = socketSessionIds.get(socketId);
-                if (sessionId != null
-                    && isSessionRevalidationDue(socketId, now, sessionRevalidationIntervalMillis)) {
-                  if (isSessionActiveForUser(sessionService, sessionId, userId, applied)) {
-                    socketSessionValidatedAt.put(socketId, now);
-                  } else {
-                    socketsToDisconnect.add(socket);
-                  }
-                }
-              });
-          socketsToDisconnect.forEach(socket -> disconnectSocket(userId, socket));
-          activityFeedEndpoints.computeIfPresent(
-              userId, (key, connections) -> connections.isEmpty() ? null : connections);
-        });
+  }
+
+  private boolean hasSocketWithoutSession(Map<String, SocketIoSocket> sockets) {
+    return sockets.keySet().stream().anyMatch(socketId -> !socketSessionIds.containsKey(socketId));
+  }
+
+  /** The notice goes out first; both ride the socket's ordered write buffer. */
+  private void closeForExpiredToken(UUID userId, SocketIoSocket socket) {
+    LOG.info(
+        "Closing push-feed socket {} of user {}: the token it was opened with has expired",
+        socket.getId(),
+        userId);
+    try {
+      socket.send(TOKEN_EXPIRED_CHANNEL);
+    } catch (RuntimeException sendFailure) {
+      LOG.debug(
+          "Could not send the token expired notice to socket {}", socket.getId(), sendFailure);
+    }
+    disconnectSocket(userId, socket);
+  }
+
+  private void closeSocketsWhoseSessionEnded(
+      SweepPass pass, UUID userId, Map<String, SocketIoSocket> sockets) {
+    if (pass.sessionService() != null) {
+      socketsMatching(sockets, socketId -> failsSessionRevalidation(pass, userId, socketId))
+          .forEach(socket -> disconnectSocket(userId, socket));
+    }
+  }
+
+  /** True when the socket's session was due for a recheck and failed it; a pass is recorded. */
+  private boolean failsSessionRevalidation(SweepPass pass, UUID userId, String socketId) {
+    String sessionId = socketSessionIds.get(socketId);
+    long now = pass.now().toEpochMilli();
+    boolean failed = false;
+    if (sessionId != null && isSessionRevalidationDue(socketId, now, pass.intervalMillis())) {
+      failed = !isSessionActiveForUser(pass.sessionService(), sessionId, userId, pass.applied());
+      if (!failed) {
+        socketSessionValidatedAt.put(socketId, now);
+      }
+    }
+    return failed;
+  }
+
+  private static List<SocketIoSocket> socketsMatching(
+      Map<String, SocketIoSocket> sockets, Predicate<String> socketIdMatches) {
+    return sockets.entrySet().stream()
+        .filter(entry -> socketIdMatches.test(entry.getKey()))
+        .map(Map.Entry::getValue)
+        .toList();
   }
 
   private boolean isSessionRevalidationDue(
@@ -359,16 +447,21 @@ public class WebSocketManager {
 
   private void disconnectSocket(UUID userId, SocketIoSocket socket) {
     try {
-      socketSessionIds.remove(socket.getId());
-      socketSessionValidatedAt.remove(socket.getId());
+      forgetSocket(socket.getId());
       Map<String, SocketIoSocket> sockets = activityFeedEndpoints.get(userId);
       if (sockets != null) {
         sockets.remove(socket.getId());
       }
       socket.disconnect(true);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Failed to disconnect socket {} for user {}", socket.getId(), userId, e);
     }
+  }
+
+  private void forgetSocket(String socketId) {
+    socketSessionIds.remove(socketId);
+    socketSessionValidatedAt.remove(socketId);
+    socketTokenExpiries.forget(socketId);
   }
 
   public void sendToManyWithString(
@@ -384,9 +477,17 @@ public class WebSocketManager {
       build(eiOptions, () -> null);
     }
 
+    /** Judged against {@code appliedProvider}; no user is treated as gone, no peer is told. */
     public static void build(
         EngineIoServerOptions eiOptions, Supplier<AuthProvider> appliedProvider) {
-      instance = new WebSocketManager(eiOptions, appliedProvider);
+      build(eiOptions, PushFeedSocketPolicy.validatingUnder(appliedProvider));
+    }
+
+    public static void build(EngineIoServerOptions eiOptions, PushFeedSocketPolicy policy) {
+      instance = new WebSocketManager(eiOptions, policy);
     }
   }
+
+  private record SweepPass(
+      SessionService sessionService, Instant now, long intervalMillis, AuthProvider applied) {}
 }

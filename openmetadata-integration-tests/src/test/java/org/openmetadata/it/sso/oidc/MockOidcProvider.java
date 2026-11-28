@@ -22,6 +22,7 @@ import static org.openmetadata.it.sso.oidc.MockOidcProtocol.USERINFO_PATH;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,6 +132,11 @@ public final class MockOidcProvider implements AutoCloseable {
   /** Mints an ID token directly, as a single-page app receives one in the public-client flow. */
   public String issueIdToken(MockOidcIdentity identity) {
     return tokens.idToken(identity, null);
+  }
+
+  /** An ID token that expires {@code lifetime} after it is minted. */
+  public String issueIdToken(MockOidcIdentity identity, Duration lifetime) {
+    return tokens.idTokenLasting(identity, lifetime);
   }
 
   /** An ID token for {@code identity} that only looks like this provider issued it. */

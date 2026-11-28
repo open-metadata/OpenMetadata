@@ -79,6 +79,10 @@ final class MockOidcTokens {
     return idToken(identity, nonce, ID_TOKEN_LIFETIME);
   }
 
+  String idTokenLasting(MockOidcIdentity identity, Duration lifetime) {
+    return idToken(identity, null, lifetime);
+  }
+
   String forgedIdToken(MockOidcIdentity identity, TokenForgery forgery) {
     return keys.forge(claims(identity, null, ID_TOKEN_LIFETIME, null), forgery);
   }

@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,7 @@ import io.socket.socketio.server.SocketIoSocket;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -38,8 +40,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -181,6 +189,62 @@ class OpenMetadataApplicationAuthReloadTest {
 
     verify(socket).disconnect(true);
     assertEquals(Map.of(), sockets.getActivityFeedEndpoints());
+  }
+
+  /**
+   * A socket opened with a token that carries no session outlives the session revocation a delete
+   * performs, and a peer without Redis never hears of the delete, so the sweep checks whether the
+   * user behind such a socket still exists and closes every socket of one who does not (#38245).
+   */
+  @Test
+  void buildPushFeedSockets_closesEverySocketOfAUserWhoIsGone() {
+    OpenMetadataApplication.buildPushFeedSockets(
+        EngineIoServerOptions.newFromDefault(),
+        PushFeedFilters.validatingUnder(AuthProvider.GOOGLE));
+    WebSocketManager sockets = WebSocketManager.getInstance();
+    UUID deletedUser = UUID.randomUUID();
+    UUID presentUser = UUID.randomUUID();
+    SocketIoSocket deletedUsersSocket = openSocket(sockets, deletedUser, "socket-deleted");
+    SocketIoSocket presentUsersSocket = openSocket(sockets, presentUser, "socket-present");
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityReferenceById(Entity.USER, deletedUser, Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byId(deletedUser.toString()));
+      entities
+          .when(() -> Entity.getEntityReferenceById(Entity.USER, presentUser, Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(presentUser));
+
+      sockets.disconnectInactiveSessions(mock(SessionService.class), 0L);
+    }
+
+    verify(deletedUsersSocket).disconnect(true);
+    verify(presentUsersSocket, never()).disconnect(anyBoolean());
+    assertEquals(Set.of(presentUser), sockets.getActivityFeedEndpoints().keySet());
+  }
+
+  /** Peers already close every socket of a user on a revoke that carries no session id. */
+  @Test
+  void publishUserAccessEnded_publishesARevokeWithoutASessionId() {
+    UUID userId = UUID.randomUUID();
+    CacheInvalidationPubSub pubSub = mock(CacheInvalidationPubSub.class);
+
+    try (MockedStatic<CacheBundle> cache = mockStatic(CacheBundle.class)) {
+      cache.when(CacheBundle::getCacheInvalidationPubSub).thenReturn(pubSub);
+
+      OpenMetadataApplication.publishUserAccessEnded(userId);
+    }
+
+    verify(pubSub).publish("session", userId, null, "revoke");
+  }
+
+  @Test
+  void publishUserAccessEnded_doesNothingWithoutRedis() {
+    try (MockedStatic<CacheBundle> cache = mockStatic(CacheBundle.class)) {
+      cache.when(CacheBundle::getCacheInvalidationPubSub).thenReturn(null);
+
+      assertDoesNotThrow(() -> OpenMetadataApplication.publishUserAccessEnded(UUID.randomUUID()));
+    }
   }
 
   private static UserSession googleSession(String sessionId, UUID userId) {

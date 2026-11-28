@@ -22,7 +22,7 @@ import {
   useState,
 } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getBasePath } from '../../utils/HistoryUtils';
 import { getOidcToken } from '../../utils/SwTokenStorageUtils';
@@ -50,11 +50,16 @@ type SocketDisposer = () => void;
  * token read (service worker / IndexedDB). So reconnection is driven here: read the current
  * token first, then reconnect. An expired initial token can therefore never burn through the
  * reconnect budget.
+ *
+ * A server close is final, except the one that follows the token expired notice: the server ends a
+ * socket opened without a session once its token expires, and by then the app has renewed the
+ * token, so the reconnect reads the renewed one.
  */
 const driveReconnects = (socket: Socket): SocketDisposer => {
   let attempts = 0;
   let timer: number | undefined;
   let disposed = false;
+  let tokenExpiredByServer = false;
 
   const scheduleReconnect = () => {
     if (disposed || timer || attempts >= RECONNECT_ATTEMPTS) {
@@ -81,10 +86,14 @@ const driveReconnects = (socket: Socket): SocketDisposer => {
     attempts = 0;
   });
   socket.on('connect_error', scheduleReconnect);
+  socket.on(SOCKET_EVENTS.TOKEN_EXPIRED_CHANNEL, () => {
+    tokenExpiredByServer = true;
+  });
   socket.on('disconnect', (reason) => {
-    if (!NON_RETRIABLE_DISCONNECT_REASONS.has(reason)) {
+    if (!NON_RETRIABLE_DISCONNECT_REASONS.has(reason) || tokenExpiredByServer) {
       scheduleReconnect();
     }
+    tokenExpiredByServer = false;
   });
 
   return () => {

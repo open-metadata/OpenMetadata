@@ -201,6 +201,41 @@ describe('WebSocketProvider', () => {
     }
   );
 
+  // The server closes a socket opened without a session once its token expires, and sends this
+  // notice first. By then the app has renewed the token, so the reconnect reads the renewed one.
+  it('reconnects with the current token after the server closes a socket whose token expired', async () => {
+    await renderProvider();
+    (getOidcToken as jest.Mock).mockResolvedValue('renewed-token');
+
+    fake.emit('tokenExpiredChannel');
+    fake.emit('disconnect', 'io server disconnect');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    await flushPromises();
+
+    expect(fake.connectTokens).toEqual(['renewed-token']);
+  });
+
+  it('retries only the server close that follows the token expired notice', async () => {
+    await renderProvider();
+
+    fake.emit('tokenExpiredChannel');
+    fake.emit('disconnect', 'io server disconnect');
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    await flushPromises();
+    fake.emit('connect');
+    fake.emit('disconnect', 'io server disconnect');
+    act(() => {
+      jest.advanceTimersByTime(60_000);
+    });
+    await flushPromises();
+
+    expect(fake.socket.connect).toHaveBeenCalledTimes(1);
+  });
+
   it('never publishes a socket for a setup superseded while its token read was pending', async () => {
     let resolveFirstToken: ((token: string) => void) | undefined;
     (getOidcToken as jest.Mock).mockImplementationOnce(

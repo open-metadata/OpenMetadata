@@ -13,17 +13,21 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SessionMultiNodeCluster;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.sso.browser.PushFeedSocket;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -48,6 +52,13 @@ import org.openmetadata.service.security.session.UserSession;
 class SessionMultiNodeIT {
   private static final String USER_REFRESH_TOKENS =
       " WHERE userId = :userId AND tokenType = 'REFRESH_TOKEN'";
+  private static final String ADMIN_EMAIL = "admin@open-metadata.org";
+  private static final long ADMIN_TOKEN_TTL_SECONDS = 600;
+  private static final Duration PUSH_FEED_SWEEP_INTERVAL =
+      Duration.ofSeconds(
+          Long.getLong("openmetadata.websocketSessionValidationIntervalSeconds", 60));
+  private static final Duration ENTITY_CACHE_TTL = Duration.ofSeconds(30);
+  private static final Duration PUSH_FEED_CLOSE_MARGIN = Duration.ofSeconds(15);
 
   @Test
   void refreshAndLogoutAreSharedAcrossNodes(TestNamespace ns) throws Exception {
@@ -220,6 +231,34 @@ class SessionMultiNodeIT {
     HttpResponse<String> handshakeAfterSwitch =
         pushFeedHandshake(client, cookies, cluster.nodeBBaseUrl());
     assertEquals(401, handshakeAfterSwitch.statusCode(), handshakeAfterSwitch.body());
+  }
+
+  /**
+   * A personal access token carries no session, so the session revocation a delete performs never
+   * reaches a socket opened with one (#38245). The nodes of this in-process cluster share one
+   * push-feed socket registry, so this checks the close end to end across the nodes' endpoints; the
+   * sweep that closes such a socket on a peer without Redis has its own unit test
+   * (OpenMetadataApplicationAuthReloadTest).
+   */
+  @Test
+  void pushFeedSocketOpenedWithAPersonalAccessTokenClosesWhenItsUserIsDeletedOnAnotherNode(
+      TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+    String personalAccessToken =
+        CredentialFixtures.createPat(user, ns.prefix("push-feed")).getJwtToken();
+
+    try (PushFeedSocket socket = PushFeedSocket.open(cluster.nodeBBaseUrl(), personalAccessToken)) {
+      HttpResponse<String> deleted = deleteUserThrough(cluster.nodeABaseUrl(), user);
+      assertEquals(200, deleted.statusCode(), deleted.body());
+
+      Awaitility.await("the deleted user's socket on the other node is closed")
+          .atMost(PUSH_FEED_SWEEP_INTERVAL.plus(ENTITY_CACHE_TTL).plus(PUSH_FEED_CLOSE_MARGIN))
+          .until(() -> !socket.isConnected());
+      assertEquals(
+          List.of(PushFeedSocket.disconnectedBy(PushFeedSocket.SERVER_DISCONNECT)),
+          socket.received());
+    }
   }
 
   @Test
@@ -526,6 +565,18 @@ class SessionMultiNodeIT {
             .GET()
             .build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> deleteUserThrough(String baseUrl, User user) throws Exception {
+    String adminToken =
+        JwtAuthProvider.tokenFor(
+            ADMIN_EMAIL, ADMIN_EMAIL, new String[] {"admin"}, ADMIN_TOKEN_TTL_SECONDS);
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/users/" + user.getId()))
+            .header("Authorization", "Bearer " + adminToken)
+            .DELETE()
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> pushFeedHandshake(

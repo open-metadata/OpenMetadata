@@ -20,8 +20,10 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
+import io.socket.engineio.server.EngineIoServer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.Cookie;
@@ -30,6 +32,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.Field;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +74,10 @@ import org.openmetadata.service.security.session.UserSession;
 
 @ExtendWith(MockitoExtension.class)
 class SocketAddressFilterTest {
+  /** The header name WebSocketManager reads the stamped expiry from; pinned as the contract. */
+  private static final String TOKEN_EXPIRES_AT_HEADER = "TokenExpiresAt";
+
+  private static final String FAR_FUTURE_MILLIS = "99999999999999";
 
   @Mock private AuthenticationConfiguration authConfig;
   @Mock private AuthorizerConfiguration authorizerConfig;
@@ -732,6 +741,107 @@ class SocketAddressFilterTest {
     HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
     org.junit.jupiter.api.Assertions.assertEquals(
         tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+    // The session claim keys the socket under its session, which the sweep checks once the store
+    // is wired, so no token expiry is stamped.
+    assertEquals("session-1", wrappedRequest.getHeader("SessionId"));
+    assertNull(wrappedRequest.getHeader(TOKEN_EXPIRES_AT_HEADER));
+  }
+
+  /**
+   * A provider token carries no session, so nothing re-checks the socket once it is open: the
+   * handshake stamps the token's verified expiry for the sweep to close the socket at (#38245).
+   */
+  @Test
+  void providerTokenHandshakeWithoutSessionIsStampedWithItsExpiry() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    Instant expiresAt = inTenMinutes();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockProviderTokenClaims(providerClaims(expiresAt, null));
+
+    HttpServletRequest wrappedRequest = filterAs(tokenUserId);
+
+    assertEquals(
+        String.valueOf(expiresAt.toEpochMilli()),
+        wrappedRequest.getHeader(TOKEN_EXPIRES_AT_HEADER));
+    assertNull(wrappedRequest.getHeader("SessionId"));
+  }
+
+  /** A session-bound socket is governed by its session; its access token is renewed under it. */
+  @Test
+  void sessionBoundHandshakeIsNotStampedWithATokenExpiry() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockProviderTokenClaims(providerClaims(inTenMinutes(), "session-1"));
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+
+    HttpServletRequest wrappedRequest = filterAs(tokenUserId);
+
+    assertEquals("session-1", wrappedRequest.getHeader("SessionId"));
+    assertNull(wrappedRequest.getHeader(TOKEN_EXPIRES_AT_HEADER));
+  }
+
+  /** An Unlimited bot token or personal access token has no exp, so expiry does not bound it. */
+  @Test
+  void tokenWithoutExpiryIsStampedWithoutAnExpiry() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockProviderTokenClaims(providerClaims(null, null));
+
+    HttpServletRequest wrappedRequest = filterAs(tokenUserId);
+
+    assertEquals(tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
+    assertNull(wrappedRequest.getHeader(TOKEN_EXPIRES_AT_HEADER));
+  }
+
+  /** The polling transport: a client cannot extend its socket by sending its own expiry. */
+  @Test
+  void clientSentTokenExpiresAtHeaderIsDropped() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockProviderTokenClaims(providerClaims(null, null));
+    lenient().when(request.getHeader(TOKEN_EXPIRES_AT_HEADER)).thenReturn(FAR_FUTURE_MILLIS);
+    lenient()
+        .when(request.getHeaders(TOKEN_EXPIRES_AT_HEADER))
+        .thenReturn(java.util.Collections.enumeration(List.of(FAR_FUTURE_MILLIS)));
+
+    HttpServletRequest wrappedRequest = filterAs(tokenUserId);
+
+    assertNull(wrappedRequest.getHeader(TOKEN_EXPIRES_AT_HEADER));
+    assertEquals(
+        List.of(), java.util.Collections.list(wrappedRequest.getHeaders(TOKEN_EXPIRES_AT_HEADER)));
+  }
+
+  /**
+   * The websocket transport, the only one the UI uses: the identity the upgrade creator validates
+   * carries the token's expiry into the socket's connection headers, and the client's own copy of
+   * that header never survives, under any casing.
+   */
+  @Test
+  void upgradeHandlerStampsTheValidatedExpiryAndDropsTheClientsCopy() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    Instant expiresAt = inTenMinutes();
+    when(request.getQueryString()).thenReturn("token=token");
+    mockProviderTokenClaims(providerClaims(expiresAt, null));
+    HandshakeIdentity identity;
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      identity = filter.authenticate(request);
+    }
+    Jetty12WebSocketHandler handler =
+        new Jetty12WebSocketHandler(mock(EngineIoServer.class), identity);
+
+    handler.onOpen(upgradeSessionWithHeader("tokenexpiresat", FAR_FUTURE_MILLIS));
+
+    Map<String, List<String>> headers = handler.getConnectionHeaders();
+    assertEquals(
+        List.of(String.valueOf(expiresAt.toEpochMilli())), headers.get(TOKEN_EXPIRES_AT_HEADER));
+    assertEquals(
+        List.of("Cookie", TOKEN_EXPIRES_AT_HEADER, "UserId"),
+        headers.keySet().stream().sorted().toList());
   }
 
   @Test
@@ -788,6 +898,55 @@ class SocketAddressFilterTest {
     when(jwtFilter.verifySignatureOnly("token"))
         .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
     when(jwtFilter.resolveUserName(any(), anyString())).thenReturn(username);
+  }
+
+  /** Real decoded claims, as the validator hands them over once the signature is checked. */
+  private static Map<String, Claim> providerClaims(Instant expiresAt, String sessionId) {
+    JWTCreator.Builder token = JWT.create().withSubject("sam");
+    if (expiresAt != null) {
+      token.withExpiresAt(expiresAt);
+    }
+    if (sessionId != null) {
+      token.withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, sessionId);
+    }
+    return JWT.decode(token.sign(Algorithm.none())).getClaims();
+  }
+
+  private void mockProviderTokenClaims(Map<String, Claim> claims) {
+    when(jwtFilter.verifySignatureOnly("token")).thenReturn(claims);
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
+  }
+
+  /** Runs the polling handshake for "sam" and returns the request the servlet behind sees. */
+  private HttpServletRequest filterAs(UUID tokenUserId) throws Exception {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    return (HttpServletRequest) requestCaptor.getValue();
+  }
+
+  /** Exp has whole-second precision, so the stamped value is too. */
+  private static Instant inTenMinutes() {
+    return Instant.now().plus(Duration.ofMinutes(10)).truncatedTo(ChronoUnit.SECONDS);
+  }
+
+  private static org.eclipse.jetty.websocket.api.Session upgradeSessionWithHeader(
+      String name, String value) {
+    org.eclipse.jetty.websocket.api.Session session =
+        mock(org.eclipse.jetty.websocket.api.Session.class);
+    org.eclipse.jetty.websocket.api.UpgradeRequest upgradeRequest =
+        mock(org.eclipse.jetty.websocket.api.UpgradeRequest.class);
+    when(session.getUpgradeRequest()).thenReturn(upgradeRequest);
+    when(upgradeRequest.getParameterMap()).thenReturn(Map.of("token", List.of("token")));
+    when(upgradeRequest.getHeaders())
+        .thenReturn(Map.of(name, List.of(value), "Cookie", List.of("theme=dark")));
+    return session;
   }
 
   private UserSession activeSession(String sessionId, String username) {

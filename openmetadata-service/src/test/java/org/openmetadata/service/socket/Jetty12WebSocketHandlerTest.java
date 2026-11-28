@@ -13,6 +13,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.socket.engineio.server.EngineIoServer;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -110,6 +111,38 @@ class Jetty12WebSocketHandlerTest {
         List.of("Cookie", "UserId"),
         headers.keySet().stream().sorted().toList(),
         "only the validated identity may survive next to unrelated headers");
+  }
+
+  /**
+   * The sweep closes a socket opened without a session once the expiry stamped here passes, so a
+   * client must not be able to send its own expiry and keep the socket open past its token (#38245).
+   */
+  @Test
+  void clientTokenExpiryHeaderIsDroppedBeforeStamping() {
+    Jetty12WebSocketHandler stamped =
+        new Jetty12WebSocketHandler(
+            mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", null, null));
+    Map<String, List<String>> forged = new HashMap<>();
+    forged.put("TokenExpiresAt", List.of("99999999999999"));
+    forged.put("tokenexpiresat", List.of("99999999999998"));
+
+    stamped.onOpen(upgradeSession(Map.of(), forged));
+
+    assertEquals(List.of("UserId"), List.copyOf(stamped.getConnectionHeaders().keySet()));
+  }
+
+  @Test
+  void validatedTokenExpiryIsStampedAsEpochMillis() {
+    Jetty12WebSocketHandler stamped =
+        new Jetty12WebSocketHandler(
+            mock(EngineIoServer.class),
+            new HandshakeIdentity(
+                "user-uuid", null, "google", Instant.ofEpochMilli(1_790_000_000_000L)));
+
+    stamped.onOpen(upgradeSession(Map.of(), Map.of("TokenExpiresAt", List.of("1"))));
+
+    assertEquals(List.of("1790000000000"), stamped.getConnectionHeaders().get("TokenExpiresAt"));
+    assertEquals(List.of("google"), stamped.getConnectionHeaders().get("AuthProvider"));
   }
 
   /** The handshake query carries the bearer token, so no log line may contain it at any level. */

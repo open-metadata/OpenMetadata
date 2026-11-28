@@ -13,6 +13,13 @@
 
 package org.openmetadata.service.socket;
 
+import static org.openmetadata.service.socket.HandshakeIdentity.PROVIDER_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.SESSION_ID_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.STAMPED_HEADERS;
+import static org.openmetadata.service.socket.HandshakeIdentity.TOKEN_EXPIRES_AT_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.USER_ID_HEADER;
+
+import com.auth0.jwt.RegisteredClaims;
 import com.auth0.jwt.interfaces.Claim;
 import io.socket.engineio.server.utils.ParseQS;
 import jakarta.servlet.Filter;
@@ -22,6 +29,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -179,28 +187,33 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
-  /** The token binds the socket to its user only when the caller-id agrees — else it is invalid. */
+  /** Null when the handshake presents no token. */
   private TokenIdentity resolveTokenIdentity(
       JwtFilter validator,
       HttpServletRequest request,
       Map<String, String> query,
       String requestedUserId) {
     String tokenWithType = resolveHandshakeToken(request, query);
-    if (!hasText(tokenWithType)) {
-      return null;
-    }
+    return hasText(tokenWithType)
+        ? validatedTokenIdentity(validator, tokenWithType, requestedUserId)
+        : null;
+  }
+
+  /** The token binds the socket to its user only when the caller-id agrees — else it is invalid. */
+  private TokenIdentity validatedTokenIdentity(
+      JwtFilter validator, String tokenWithType, String requestedUserId) {
     if (validator == null) {
       // A credential was presented but this filter has no configuration to validate it.
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
     }
-    ValidatedTokenPrincipal tokenPrincipal = validatePrefixedTokenRequest(validator, tokenWithType);
-    UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
+    ValidatedToken validated = validateToken(validator, tokenWithType);
+    UUID resolvedUserId = getUserIdForPrincipal(validated.principal().userName());
     if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_FORBIDDEN, SOCKET_USER_TOKEN_MISMATCH_MESSAGE);
     }
-    return new TokenIdentity(tokenPrincipal, resolvedUserId);
+    return new TokenIdentity(validated.principal(), resolvedUserId, validated.expiresAt());
   }
 
   private void sendHandshakeError(ServletResponse response, int status, String message)
@@ -312,6 +325,10 @@ public class SocketAddressFilter implements Filter {
    */
   public static ValidatedTokenPrincipal validatePrefixedTokenRequest(
       JwtFilter jwtFilter, String prefixedToken) {
+    return validateToken(jwtFilter, prefixedToken).principal();
+  }
+
+  private static ValidatedToken validateToken(JwtFilter jwtFilter, String prefixedToken) {
     String token = JwtFilter.extractToken(prefixedToken);
     Map<String, Claim> claims = jwtFilter.verifySignatureOnly(token);
     String userName = jwtFilter.resolveUserName(claims, token);
@@ -320,7 +337,15 @@ public class SocketAddressFilter implements Filter {
         claims.containsKey(JWTTokenGenerator.SESSION_ID_CLAIM)
             ? claims.get(JWTTokenGenerator.SESSION_ID_CLAIM).asString()
             : null;
-    return new ValidatedTokenPrincipal(userName, sessionId);
+    return new ValidatedToken(new ValidatedTokenPrincipal(userName, sessionId), expiryOf(claims));
+  }
+
+  /** The verified exp; null when the token has none, as an Unlimited bot token or PAT may lack. */
+  private static Instant expiryOf(Map<String, Claim> claims) {
+    Claim expiresAt = claims.get(RegisteredClaims.EXPIRES_AT);
+    return expiresAt == null || expiresAt.isNull() || expiresAt.isMissing()
+        ? null
+        : expiresAt.asInstant();
   }
 
   private UUID getUserIdForPrincipal(String userName) {
@@ -380,7 +405,17 @@ public class SocketAddressFilter implements Filter {
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, HANDSHAKE_UNAUTHORIZED_MESSAGE);
     }
-    return new HandshakeIdentity(userId, sessionId, provider);
+    return new HandshakeIdentity(
+        userId, sessionId, provider, sessionlessTokenExpiry(sessionId, tokenIdentity));
+  }
+
+  /**
+   * A socket with a session is governed by that session, which the sweep re-checks; only a socket
+   * accepted on its token alone is bounded by the token's exp.
+   * ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
+   */
+  private static Instant sessionlessTokenExpiry(String sessionId, TokenIdentity tokenIdentity) {
+    return hasText(sessionId) || tokenIdentity == null ? null : tokenIdentity.expiresAt();
   }
 
   private static ValidatedTokenPrincipal tokenPrincipal(TokenIdentity tokenIdentity) {
@@ -393,23 +428,26 @@ public class SocketAddressFilter implements Filter {
    */
   private static void stampIdentity(
       HeaderRequestWrapper requestWrapper, HandshakeIdentity identity) {
-    requestWrapper.removeHeader("UserId");
-    requestWrapper.removeHeader("SessionId");
-    requestWrapper.removeHeader("AuthProvider");
-    if (hasText(identity.userId())) {
-      requestWrapper.addHeader("UserId", identity.userId());
-    }
-    if (hasText(identity.sessionId())) {
-      requestWrapper.addHeader("SessionId", identity.sessionId());
-    }
-    if (hasText(identity.provider())) {
-      requestWrapper.addHeader("AuthProvider", identity.provider());
+    STAMPED_HEADERS.forEach(requestWrapper::removeHeader);
+    stampIfPresent(requestWrapper, USER_ID_HEADER, identity.userId());
+    stampIfPresent(requestWrapper, SESSION_ID_HEADER, identity.sessionId());
+    stampIfPresent(requestWrapper, PROVIDER_HEADER, identity.provider());
+    stampIfPresent(requestWrapper, TOKEN_EXPIRES_AT_HEADER, identity.tokenExpiresAtHeaderValue());
+  }
+
+  private static void stampIfPresent(
+      HeaderRequestWrapper requestWrapper, String name, String value) {
+    if (hasText(value)) {
+      requestWrapper.addHeader(name, value);
     }
   }
 
   public record ValidatedTokenPrincipal(String userName, String sessionId) {}
 
-  private record TokenIdentity(ValidatedTokenPrincipal tokenPrincipal, UUID userId) {}
+  private record ValidatedToken(ValidatedTokenPrincipal principal, Instant expiresAt) {}
+
+  private record TokenIdentity(
+      ValidatedTokenPrincipal tokenPrincipal, UUID userId, Instant expiresAt) {}
 
   private record SessionValidationResult(String sessionId, String userId) {
     private static SessionValidationResult accepted() {

@@ -1,7 +1,8 @@
 # Push-feed socket handshakes are always authenticated
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-26 (trust in a token without a session ends
+  at its `exp`)
 - **Deciders:** TeddyCr
 - **Guard:** `SocketAddressFilterTest` (unit) — the credential-less regression test fails any
   change that re-opens a token-less, cookie-less handshake under the default configuration, and the
@@ -67,3 +68,12 @@ Because a presented token must validate, the browser cannot reconnect with a tok
 the socket was down; the UI therefore drives its own bounded reconnection, reading the current token
 before each attempt instead of relying on socket.io's automatic reconnect, whose handshake query is
 fixed at construction.
+
+## Amendment
+
+v2 (2026-11-26): a socket accepted on a token without the session claim is trusted on that token's
+validation only until the token's `exp` (#38245). The handshake stamps the verified `exp` on such a
+socket, the sweep closes it at its first pass after `exp`, and deleting its user closes it at once.
+A token without `exp` sets no such bound. A socket with a session stays governed by its session.
+ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
+records the rule.

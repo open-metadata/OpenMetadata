@@ -109,6 +109,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
 import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -1822,8 +1823,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /**
    * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
-   * without calling {@link #postDelete}, so the credential change is announced and the user's MCP
-   * grants end here.
+   * without calling {@link #postDelete}, so the credential change is announced, the user's MCP
+   * grants end and their push-feed sockets close here.
    */
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
@@ -1832,8 +1833,21 @@ public class UserRepository extends EntityRepository<User> {
       try (parentLifecycle) {
         Credentials.changed(entity.getName());
         daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
+        PostCommitActionQueue.runOrDefer(() -> endPushFeedAccess(entity));
       }
     };
+  }
+
+  /**
+   * Closes every push-feed socket of the deleted user, on this server and on its peers, including
+   * those opened with a token that carries no session, which revoking sessions cannot reach.
+   * ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
+   */
+  private static void endPushFeedAccess(User user) {
+    WebSocketManager sockets = WebSocketManager.getInstance();
+    if (sockets != null && user.getId() != null) {
+      sockets.endAccessForUser(user.getId());
+    }
   }
 
   @Override
@@ -1891,7 +1905,8 @@ public class UserRepository extends EntityRepository<User> {
    * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
    * user's existing session-bound tokens keep working until natural expiry (7 days by default)
    * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
-   * sockets as well.
+   * session-bound sockets as well; the delete lifecycle closes the rest ({@link
+   * #endPushFeedAccess}).
    */
   private void revokeLiveSessions(User entity) {
     revokeLiveSessions(entity, AuthServeletHandlerRegistry.getSessionService());

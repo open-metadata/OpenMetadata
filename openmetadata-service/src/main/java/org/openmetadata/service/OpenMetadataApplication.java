@@ -53,12 +53,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +109,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.Distributed
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
@@ -231,6 +235,8 @@ import org.openmetadata.service.socket.HandshakeIdentity;
 import org.openmetadata.service.socket.HandshakeRejectedException;
 import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
+import org.openmetadata.service.socket.PushFeedSocketPolicy;
+import org.openmetadata.service.socket.PushFeedUserPresence;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.swagger.SwaggerBundle;
@@ -1229,7 +1235,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             org.openmetadata.service.cache.CacheInvalidationPubSub pubSub =
                 org.openmetadata.service.cache.CacheBundle.getCacheInvalidationPubSub();
             if (pubSub != null) {
-              pubSub.publish("session", id, session.getId(), "revoke");
+              pubSub.publish(
+                  CacheInvalidationPubSub.TYPE_SESSION,
+                  id,
+                  session.getId(),
+                  CacheInvalidationPubSub.OP_REVOKE);
             }
           } catch (IllegalArgumentException e) {
             LOG.debug("Skipping revocation broadcast for non-UUID userId {}", session.getUserId());
@@ -1541,11 +1551,34 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    * validates under, not the published configuration: a reload publishes before it initializes the
    * new authenticator and rolls back if that fails, while only a reload that succeeded rebuilds the
    * filter. ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   *
+   * <p>The sweep also closes the sockets of a user who is gone, and a user delete tells the other
+   * servers to close that user's sockets.
+   * ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted
    */
   @VisibleForTesting
   static void buildPushFeedSockets(
       EngineIoServerOptions options, SocketAddressFilter websocketFilter) {
-    WebSocketManager.WebSocketManagerBuilder.build(options, websocketFilter::validatingProvider);
+    WebSocketManager.WebSocketManagerBuilder.build(
+        options,
+        new PushFeedSocketPolicy(
+            websocketFilter::validatingProvider,
+            Clock.systemUTC(),
+            PushFeedUserPresence::isGone,
+            OpenMetadataApplication::publishUserAccessEnded));
+  }
+
+  /**
+   * A revoke without a session id: peers close every socket the deleted user holds on them. Peers
+   * without Redis never get it, and their sweep closes those sockets instead.
+   */
+  @VisibleForTesting
+  static void publishUserAccessEnded(UUID userId) {
+    CacheInvalidationPubSub pubSub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubSub != null) {
+      pubSub.publish(
+          CacheInvalidationPubSub.TYPE_SESSION, userId, null, CacheInvalidationPubSub.OP_REVOKE);
+    }
   }
 
   /**
