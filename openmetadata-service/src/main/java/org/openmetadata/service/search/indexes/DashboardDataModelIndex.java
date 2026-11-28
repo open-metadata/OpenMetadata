@@ -26,6 +26,22 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     return Entity.DASHBOARD_DATA_MODEL;
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // "columns" is fields-gated in DashboardDataModelRepository.setFieldsInBulk; without it
+    // column-level tags are not hydrated (fetchAndSetColumnTags skips
+    // bulkPopulateEntityFieldTags / inheritEntityTermsOnFields, breaking the tag merge in
+    // buildSearchIndexDocInternal) and reference-typed column custom properties are never
+    // merged back from custom_property_reference via applyColumnReferences. A reindex-built
+    // dashboard_data_model_search_index doc would then lose columns.customPropertiesTyped
+    // reference values and serve stale/missing column tags in the Explore tag facet, until
+    // each data model is edited again. Mirrors TableIndex / WorksheetIndex / FileIndex /
+    // ContainerIndex.
+    fields.add("columns");
+    return Set.copyOf(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     if (dashboardDataModel.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
