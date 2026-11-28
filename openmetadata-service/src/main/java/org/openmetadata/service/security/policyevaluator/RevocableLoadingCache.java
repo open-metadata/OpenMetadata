@@ -50,7 +50,7 @@ final class RevocableLoadingCache<V> {
   static final int SHARDS = 32;
   private static final int MAX_LOAD_ATTEMPTS = 3;
 
-  private final Duration expireAfterWrite;
+  private volatile Duration expireAfterWrite;
   private final Ticker ticker;
   private final Function<String, V> loader;
   private final Object swapLock = new Object();
@@ -116,6 +116,15 @@ final class RevocableLoadingCache<V> {
   void resize(int newMaxEntries) {
     synchronized (swapLock) {
       maxEntries = newMaxEntries;
+      replaceAllShards();
+    }
+  }
+
+  /** Resizes and changes the TTL; entries already cached are dropped with the old shards. */
+  void resize(int newMaxEntries, Duration newExpireAfterWrite) {
+    synchronized (swapLock) {
+      maxEntries = newMaxEntries;
+      expireAfterWrite = newExpireAfterWrite;
       replaceAllShards();
     }
   }
