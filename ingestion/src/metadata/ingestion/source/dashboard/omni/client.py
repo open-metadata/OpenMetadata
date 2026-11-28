@@ -53,10 +53,12 @@ PAGE_SIZE = 100
 # versioned REST API rather than under it.
 SCIM_API_VERSION = "scim/v2"
 SCIM_PAGE_SIZE = 100
-# Only the shared semantic-layer model(s) carry the real views/topics. The other
-# model kinds (QUERY, WORKBOOK, BRANCH, SCHEMA) are per-document and would explode
-# the number of API calls against the 60 req/min rate limit.
-SEMANTIC_MODEL_KINDS = {"SHARED"}
+# Only the shared semantic-layer model(s) carry the real views/topics. SHARED is
+# the global model and SHARED_EXTENSION adds to or overrides it (and can be the
+# base model for workbooks); both can carry their own queryable topics/views. The
+# other model kinds (QUERY, WORKBOOK, BRANCH, SCHEMA) are per-document and would
+# explode the number of API calls against the 60 req/min rate limit.
+SEMANTIC_MODEL_KINDS = {"SHARED", "SHARED_EXTENSION"}
 # Omni model YAML uses LookML-like keys. A model bundle has a top-level ``model``
 # file, ``<schema>/<name>.view`` files (physical tables + fields), and
 # ``<name>.topic`` files (curated datasets that reference a base view).
@@ -152,12 +154,19 @@ class OmniApiClient:
     # -- models & topics ----------------------------------------------------
 
     def get_models(self) -> list[OmniModel]:
-        """List the shared semantic-layer models in the instance."""
-        # Keep the server-side param and the client-side guard in sync by
-        # deriving both from SEMANTIC_MODEL_KINDS.
-        model_kind = ",".join(sorted(SEMANTIC_MODEL_KINDS))
+        """List the shared semantic-layer models in the instance.
+
+        The Omni API's ``modelKind`` query param is single-valued, so we issue one
+        paginated request per semantic model kind rather than joining the set into
+        an invalid CSV value (which the API does not accept for this param).
+        """
+        # Keep the server-side param and the client-side guard in sync by deriving
+        # both from SEMANTIC_MODEL_KINDS.
+        requested_kinds = sorted(SEMANTIC_MODEL_KINDS)
+        models: list[OmniModel] = []
         try:
-            models = list(self._paginate("/models", ModelsResponse, params={"modelKind": model_kind}))
+            for kind in requested_kinds:
+                models.extend(self._paginate("/models", ModelsResponse, params={"modelKind": kind}))
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error("Error fetching Omni models: %s", exc)
@@ -165,9 +174,9 @@ class OmniApiClient:
         semantic_models = [model for model in models if model.modelKind in SEMANTIC_MODEL_KINDS]
         if len(semantic_models) != len(models):
             logger.debug(
-                "Filtered %d non-semantic models client-side (server did not honor modelKind=%s)",
+                "Filtered %d non-semantic models client-side (server did not honor modelKind of %s)",
                 len(models) - len(semantic_models),
-                model_kind,
+                ", ".join(requested_kinds),
             )
         return semantic_models
 

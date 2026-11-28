@@ -996,3 +996,187 @@ def test_documents_response_reads_has_app():
 
     page = {"records": [{"identifier": "doc-4", "hasDashboard": False, "hasApp": True}], "pageInfo": {}}
     assert DocumentsResponse.model_validate(page).records[0].hasApp is True
+
+
+# ---------------------------------------------------------------------------
+# get_models() -- semantic-layer model kind contract (SHARED + SHARED_EXTENSION)
+# ---------------------------------------------------------------------------
+
+
+def _omni_api_client():
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    client = OmniApiClient(OmniConnectionConfig(hostPort="https://acme.omniapp.co", token="t"))
+    client.client = MagicMock()
+    return client
+
+
+def _models_page(*records):
+    return {"records": list(records), "pageInfo": {"hasNextPage": False}}
+
+
+def test_get_models_requests_each_semantic_kind_as_a_single_valued_param():
+    """The Omni API's `modelKind` is single-valued, so `get_models` issues one
+    paginated request per semantic kind rather than joining the set into an
+    invalid CSV value. Both SHARED and SHARED_EXTENSION models are returned."""
+    from metadata.ingestion.source.dashboard.omni.client import SEMANTIC_MODEL_KINDS
+
+    client = _omni_api_client()
+    assert {"SHARED", "SHARED_EXTENSION"} == SEMANTIC_MODEL_KINDS
+    client.client.get.side_effect = [
+        _models_page({"id": "m-shared", "name": "shared", "modelKind": "SHARED"}),
+        _models_page({"id": "m-ext", "name": "ext", "modelKind": "SHARED_EXTENSION"}),
+    ]
+
+    models = client.get_models()
+
+    assert sorted(m.modelKind for m in models) == ["SHARED", "SHARED_EXTENSION"]
+    # One paginated call per kind, in sorted order (SHARED before SHARED_EXTENSION).
+    assert client.client.get.call_count == 2
+    kinds = [call.kwargs["data"]["modelKind"] for call in client.client.get.call_args_list]
+    assert kinds == ["SHARED", "SHARED_EXTENSION"]
+    # The param is single-valued for each call -- no CSV-joined value on the wire.
+    assert all("," not in kind for kind in kinds)
+
+
+def test_get_models_paginates_each_kind_to_completion():
+    """Each per-kind request must page through every page, not stop at the first
+    page -- extension models split across pages must all be fetched."""
+    client = _omni_api_client()
+    client.client.get.side_effect = [
+        # SHARED: two pages.
+        {
+            "records": [{"id": "m-shared-1", "name": "shared1", "modelKind": "SHARED"}],
+            "pageInfo": {"hasNextPage": True, "nextCursor": "c1"},
+        },
+        {
+            "records": [{"id": "m-shared-2", "name": "shared2", "modelKind": "SHARED"}],
+            "pageInfo": {"hasNextPage": False},
+        },
+        # SHARED_EXTENSION: two pages.
+        {
+            "records": [{"id": "m-ext-1", "name": "ext1", "modelKind": "SHARED_EXTENSION"}],
+            "pageInfo": {"hasNextPage": True, "nextCursor": "c2"},
+        },
+        {
+            "records": [{"id": "m-ext-2", "name": "ext2", "modelKind": "SHARED_EXTENSION"}],
+            "pageInfo": {"hasNextPage": False},
+        },
+    ]
+
+    models = client.get_models()
+
+    assert [m.id for m in models] == ["m-shared-1", "m-shared-2", "m-ext-1", "m-ext-2"]
+    # The cursor advances per kind; subsequent kinds start fresh, no carried cursor.
+    calls = client.client.get.call_args_list
+    assert [c.kwargs["data"].get("cursor") for c in calls] == [None, "c1", None, "c2"]
+    assert [c.kwargs["data"]["modelKind"] for c in calls] == [
+        "SHARED",
+        "SHARED",
+        "SHARED_EXTENSION",
+        "SHARED_EXTENSION",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: SHARED_EXTENSION models are ingested and their tiles resolve
+# ---------------------------------------------------------------------------
+
+
+def test_prepare_ingests_extension_model_topics_and_resolves_extension_tiles(omni_source):
+    """Fix for SHARED_EXTENSION ingestion: an extension model's topics are
+    indexed in `prepare()` and a tile referencing a view defined only in the
+    extension resolves to its data model and emits dashboard <- data-model
+    lineage (rather than silently dropping it, as before the fix)."""
+    shared_model = OmniModel(id="m-shared", name="sales", modelKind="SHARED")
+    ext_model = OmniModel(id="m-ext", name="sales_ext", modelKind="SHARED_EXTENSION")
+    extension_only_topic = OmniTopic(
+        model_id="m-ext",
+        model_name="sales_ext",
+        name="extension_orders",
+        base_view="extension_orders",
+        base_schema="ANALYTICS",
+        base_table="EXT_ORDERS",
+        fields=[OmniField(name="amount", label="Amount", data_type="number", field_type="measure")],
+    )
+    omni_source.client.get_models = lambda *_: [shared_model, ext_model]
+    omni_source.client.get_model_topics = lambda model: [extension_only_topic] if model.id == "m-ext" else []
+    omni_source.prepare()
+
+    # The extension's topic is part of the bulk data-model list...
+    assert [t.name for t in omni_source.topics] == ["extension_orders"]
+    # ...and a tile referencing it resolves to the extension's data model.
+    assert omni_source._resolve_topic("extension_orders") is extension_only_topic
+    assert omni_source._resolve_topic("ANALYTICS.extension_orders") is extension_only_topic
+    assert omni_source._resolve_topic("analytics__extension_orders") is extension_only_topic
+    # The data model is qualified by the extension model's name.
+    assert omni_source._datamodel_name(extension_only_topic) == "sales_ext.extension_orders"
+
+    datamodel_entity = DashboardDataModel(
+        id="550e8400-e29b-41d4-a716-446655440070",
+        name="sales_ext.extension_orders",
+        dataModelType="OmniDataModel",
+        columns=[],
+    )
+    dashboard_entity = Dashboard(
+        id="550e8400-e29b-41d4-a716-446655440071",
+        name="doc-1",
+        service=EntityReference(id="550e8400-e29b-41d4-a716-446655440072", type="dashboardService"),
+    )
+    omni_source._get_datamodel_entity = lambda topic: datamodel_entity if topic.model_id == "m-ext" else None
+    omni_source.metadata.get_by_name = MagicMock(return_value=dashboard_entity)
+
+    details = OmniDashboardDetails(
+        document=MOCK_DOCUMENT,
+        dashboard=OmniDashboardDocument(
+            identifier="doc-1",
+            queryPresentations=[
+                QueryPresentation(name="Tile", query=OmniQuery(table="extension_orders", fields=[])),
+            ],
+        ),
+    )
+
+    edges = [
+        r for r in _rights(omni_source.yield_dashboard_lineage_details(details)) if isinstance(r, AddLineageRequest)
+    ]
+    assert len(edges) == 1
+    assert (edges[0].edge.fromEntity.type, edges[0].edge.toEntity.type) == ("dashboardDataModel", "dashboard")
+    assert edges[0].edge.fromEntity.id == datamodel_entity.id
+
+
+def test_extension_topic_collides_with_parent_shared_model_topic_stays_ambiguous(omni_source, caplog):
+    """When an extension overrides a topic of the same name as the parent SHARED
+    model, both data models are ingested and the resolution treats the name as
+    ambiguous -- the same cross-model behaviour as for two SHARED models sharing
+    a topic name. The extension is not silently preferred over the parent."""
+    shared_model = OmniModel(id="m-shared", name="sales", modelKind="SHARED")
+    ext_model = OmniModel(id="m-ext", name="sales_ext", modelKind="SHARED_EXTENSION")
+    shared_topic = OmniTopic(
+        model_id="m-shared",
+        model_name="sales",
+        name="orders",
+        base_view="orders",
+        base_schema="ANALYTICS",
+        base_table="ORDERS",
+    )
+    ext_topic = OmniTopic(
+        model_id="m-ext",
+        model_name="sales_ext",
+        name="orders",
+        base_view="orders",
+        base_schema="ANALYTICS",
+        base_table="EXT_ORDERS",
+    )
+    omni_source.client.get_models = lambda *_: [shared_model, ext_model]
+    omni_source.client.get_model_topics = lambda model: [ext_topic] if model.id == "m-ext" else [shared_topic]
+    omni_source.prepare()
+
+    with caplog.at_level(logging.WARNING):
+        assert omni_source._resolve_topic("orders") is None
+    warnings = [record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING]
+    assert warnings == [
+        "Ambiguous tile reference 'orders' matches data models sales.orders, sales_ext.orders; skipping lineage"
+    ]
