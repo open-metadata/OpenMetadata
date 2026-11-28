@@ -127,10 +127,11 @@ class ProfilerSource(ProfilerSourceInterface):
         """Make a copy of the service config and update the database name
 
         Args:
-            database (_type_): a database entity
+            config (OpenMetadataWorkflowConfig): the workflow config
+            database (Database): a database entity
 
         Returns:
-            DatabaseService.__config__
+            DatabaseConnection
         """
         config_copy = deepcopy(
             config.source.serviceConnection.root.config  # type: ignore
