@@ -996,3 +996,316 @@ def test_documents_response_reads_has_app():
 
     page = {"records": [{"identifier": "doc-4", "hasDashboard": False, "hasApp": True}], "pageInfo": {}}
     assert DocumentsResponse.model_validate(page).records[0].hasApp is True
+
+
+SEMANTIC_VIEW_TOPIC = """
+semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS
+label: Orders
+description: Orders semantic view
+views:
+  semantic_views__sv_orders__dim_customers:
+    label: Dim Customers
+    schema: INFO_GENERAL
+    table_name: DIM_CUSTOMERS
+    dimensions:
+      customer_id:
+        type: string
+    measures: {}
+  semantic_views__sv_orders__fact_orders:
+    label: Fact Orders
+    schema: BIZ_GENERAL
+    table_name: FACT_ORDERS_ENRICHED
+    dimensions:
+      order_id:
+        type: string
+    measures:
+      amount:
+        type: number
+"""
+
+
+def _parse(files):
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    return {t.name: t for t in OmniApiClient._parse_model_yaml(OmniModel(id="m1", name="sales"), files)}
+
+
+def test_parse_model_yaml_semantic_view_topic():
+    """A semantic-view topic resolves to the semantic view, and each inline view is a
+    data model backed by its own table."""
+    parsed = _parse({"Sales/semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC})
+
+    assert set(parsed) == {
+        "semantic_views__sv_orders",
+        "semantic_views__sv_orders__dim_customers",
+        "semantic_views__sv_orders__fact_orders",
+    }
+    topic = parsed["semantic_views__sv_orders"]
+    assert (topic.base_database, topic.base_schema, topic.base_table) == ("MY_DB", "SEMANTIC_VIEWS", "SV_ORDERS")
+    assert [f.name for f in topic.fields] == [
+        "semantic_views__sv_orders__dim_customers.customer_id",
+        "semantic_views__sv_orders__fact_orders.order_id",
+        "semantic_views__sv_orders__fact_orders.amount",
+    ]
+
+    customers = parsed["semantic_views__sv_orders__dim_customers"]
+    assert (customers.label, customers.base_schema, customers.base_table) == (
+        "Dim Customers",
+        "INFO_GENERAL",
+        "DIM_CUSTOMERS",
+    )
+    assert [f.name for f in customers.fields] == ["customer_id"]
+    orders = parsed["semantic_views__sv_orders__fact_orders"]
+    assert (orders.base_schema, orders.base_table) == ("BIZ_GENERAL", "FACT_ORDERS_ENRICHED")
+    assert [(f.name, f.field_type) for f in orders.fields] == [("order_id", "dimension"), ("amount", "measure")]
+
+
+def test_parse_model_yaml_semantic_view_topic_leaves_ordinary_topics_and_views_alone():
+    files = {
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+        "ANALYTICS/orders.view": "schema: ANALYTICS\ntable_name: ORDERS\ndimensions:\n  id: {}\n",
+        "order_summary.topic": "base_view: analytics__orders\nlabel: Order Summary\n",
+        "monthly_orders.view": "sql: select 1 as n\ndimensions:\n  n: {}\n",
+    }
+    parsed = _parse(files)
+
+    summary = parsed["order_summary"]
+    assert (summary.base_schema, summary.base_table, [f.name for f in summary.fields]) == (
+        "ANALYTICS",
+        "ORDERS",
+        ["id"],
+    )
+    assert summary.base_database is None
+    assert (parsed["orders"].base_table, parsed["orders"].base_database) == ("ORDERS", None)
+    query_view = parsed["monthly_orders"]
+    assert (query_view.base_table, [f.name for f in query_view.fields]) == (None, ["n"])
+    assert len(parsed) == 6
+
+
+def test_parse_model_yaml_standalone_view_wins_over_inline_view():
+    """An inline view never replaces the model's own view file of the same name."""
+    files = {
+        "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\ndimensions:\n  id: {}\n",
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+    }
+    parsed = _parse(files)
+
+    assert "semantic_views__sv_orders__fact_orders" not in parsed
+    standalone = parsed["sv_orders__fact_orders"]
+    assert (standalone.base_table, [f.name for f in standalone.fields]) == ("FACT_ORDERS", ["id"])
+    assert "semantic_views__sv_orders__dim_customers" in parsed
+
+
+def test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file(omni_source):
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\n",
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+        "order_summary.topic": "base_view: semantic_views__sv_orders__fact_orders\n",
+    }
+    model = OmniModel(id="m1", name="sales")
+    omni_source.client.get_models = lambda *_: [model]
+    omni_source.client.get_model_topics = lambda *_: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    tile = QueryPresentation(
+        name="Orders",
+        query=OmniQuery(
+            table="semantic_views__sv_orders",
+            fields=["semantic_views__sv_orders__fact_orders.amount"],
+        ),
+    )
+    assert [t.name for t in omni_source._tile_topics(tile)] == [
+        "semantic_views__sv_orders",
+        "sv_orders__fact_orders",
+    ]
+
+
+def test_tile_reference_to_a_replaced_inline_view_resolves_to_a_topic_of_the_same_name(omni_source):
+    """A curated topic that takes the view file's name also takes the inline name it answered to."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\n",
+        "sv_orders__fact_orders.topic": "base_view: sv_orders__fact_orders\nlabel: Fact Orders\n",
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+    }
+    model = OmniModel(id="m1", name="sales")
+    omni_source.client.get_models = lambda *_: [model]
+    omni_source.client.get_model_topics = lambda *_: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    tile = QueryPresentation(
+        name="Orders",
+        query=OmniQuery(
+            table="semantic_views__sv_orders",
+            fields=["semantic_views__sv_orders__fact_orders.amount"],
+        ),
+    )
+    resolved = list(omni_source._tile_topics(tile))
+    assert [(t.name, t.label) for t in resolved] == [
+        ("semantic_views__sv_orders", "Orders"),
+        ("sv_orders__fact_orders", "Fact Orders"),
+    ]
+
+
+def test_parse_model_yaml_replaced_inline_view_name_does_not_pass_to_another_view():
+    """Two view files share a leaf name; the inline name of one never lands on the other."""
+    files = {
+        "A/orders.view": "schema: A\ntable_name: ORDERS\n",
+        "B/orders.view": "schema: B\ntable_name: ORDERS\n",
+        "sv_orders.topic": (
+            "semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\n"
+            "views:\n  B__orders:\n    schema: B\n    table_name: ORDERS\n"
+        ),
+    }
+    parsed = _parse(files)
+
+    assert set(parsed) == {"sv_orders", "orders"}
+    assert (parsed["orders"].base_schema, parsed["orders"].alias) == ("A", None)
+
+
+@pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}", "label: {text: Orders}"])
+def test_parse_model_yaml_malformed_inline_view_is_skipped_alone(broken):
+    """One inline view that cannot be parsed does not cost the model its other views."""
+    indented = "\n".join(f"    {line}" for line in broken.splitlines())
+    files = {
+        "ANALYTICS/orders.view": "schema: ANALYTICS\ntable_name: ORDERS\n",
+        "order_summary.topic": f"base_view: analytics__orders\nviews:\n  analytics__orders:\n{indented}\n",
+        "sv_orders.topic": (
+            "semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\n"
+            "views:\n"
+            f"  sv_orders__broken:\n    schema: BIZ_GENERAL\n    table_name: BROKEN\n{indented}\n"
+            "  sv_orders__dim_customers:\n    schema: INFO_GENERAL\n    table_name: DIM_CUSTOMERS\n"
+        ),
+    }
+    parsed = _parse(files)
+
+    assert set(parsed) == {"order_summary", "orders", "sv_orders", "sv_orders__dim_customers"}
+    assert parsed["order_summary"].base_table == "ORDERS"
+    assert parsed["sv_orders__dim_customers"].base_table == "DIM_CUSTOMERS"
+
+
+def test_parse_model_yaml_inline_override_without_table_is_not_a_data_model():
+    """An ordinary topic's inline entry that only overrides fields of a view neither
+    becomes a data model nor changes the view it overrides."""
+    files = {
+        "ANALYTICS/orders.view": "schema: ANALYTICS\ntable_name: ORDERS\ndimensions:\n  id: {}\n  total: {}\n",
+        "order_summary.topic": (
+            "base_view: analytics__orders\n"
+            "views:\n"
+            "  analytics__orders:\n    dimensions:\n      total:\n        hidden: true\n"
+            "  customers:\n    label: Customers\n"
+        ),
+    }
+    parsed = _parse(files)
+
+    assert set(parsed) == {"order_summary", "orders"}
+    assert (parsed["orders"].base_table, [f.name for f in parsed["orders"].fields]) == ("ORDERS", ["id", "total"])
+    assert parsed["order_summary"].base_table == "ORDERS"
+
+
+@pytest.mark.parametrize(
+    ("topic_yaml", "expected"),
+    [
+        ("semantic_view: ''\nviews: not-a-mapping\n", (None, None, None)),
+        ("semantic_view: SV_ORDERS\nviews:\n  - a\n", (None, None, "SV_ORDERS")),
+        ("semantic_view: SEMANTIC_VIEWS.SV_ORDERS\nviews:\n  broken: 3\n", (None, "SEMANTIC_VIEWS", "SV_ORDERS")),
+        ("semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\nviews: {}\n", ("MY_DB", "SEMANTIC_VIEWS", "SV_ORDERS")),
+        ('semantic_view: MY_DB."MY.SCHEMA"."SV.ORDERS"\n', ("MY_DB", '"MY.SCHEMA"', '"SV.ORDERS"')),
+    ],
+)
+def test_parse_model_yaml_semantic_view_topic_with_malformed_input(topic_yaml, expected):
+    parsed = _parse({"sv_orders.topic": topic_yaml})
+
+    assert list(parsed) == ["sv_orders"]
+    topic = parsed["sv_orders"]
+    assert (topic.base_database, topic.base_schema, topic.base_table) == expected
+    assert topic.fields == []
+
+
+def test_semantic_view_topic_lineage(omni_source):
+    """The topic's upstream is the semantic view, each inline view's upstream is its
+    own table, and a tile reading an inline view's fields links that view."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {"Sales/semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC}
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    tables = {
+        "MY_DB.SEMANTIC_VIEWS.SV_ORDERS": "550e8400-e29b-41d4-a716-446655440041",
+        "INFO_GENERAL.DIM_CUSTOMERS": "550e8400-e29b-41d4-a716-446655440042",
+        "BIZ_GENERAL.FACT_ORDERS_ENRICHED": "550e8400-e29b-41d4-a716-446655440043",
+    }
+    searches = []
+
+    def search_in_any_service(entity_type, fqn_search_string):
+        searches.append(fqn_search_string)
+        for suffix, table_id in tables.items():
+            if fqn_search_string.endswith(suffix) and fqn_search_string.count(".") == 3:
+                return Table(id=table_id, name=suffix.split(".")[-1], columns=[])
+        return None
+
+    datamodel_ids = {
+        "sales.semantic_views__sv_orders": "550e8400-e29b-41d4-a716-446655440051",
+        "sales.semantic_views__sv_orders__dim_customers": "550e8400-e29b-41d4-a716-446655440052",
+        "sales.semantic_views__sv_orders__fact_orders": "550e8400-e29b-41d4-a716-446655440053",
+    }
+    omni_source.metadata.search_in_any_service = search_in_any_service
+    omni_source._get_datamodel_entity = lambda topic: DashboardDataModel(
+        id=datamodel_ids[omni_source._datamodel_name(topic)],
+        name=omni_source._datamodel_name(topic),
+        dataModelType="OmniDataModel",
+        columns=[],
+    )
+
+    results = _rights(omni_source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+    edges = {
+        (str(r.lineage_request.edge.fromEntity.id.root), str(r.lineage_request.edge.toEntity.id.root))
+        for r in results
+        if isinstance(r, OMetaLineageRequest)
+    }
+    assert edges == {
+        (tables["MY_DB.SEMANTIC_VIEWS.SV_ORDERS"], datamodel_ids["sales.semantic_views__sv_orders"]),
+        (tables["INFO_GENERAL.DIM_CUSTOMERS"], datamodel_ids["sales.semantic_views__sv_orders__dim_customers"]),
+        (tables["BIZ_GENERAL.FACT_ORDERS_ENRICHED"], datamodel_ids["sales.semantic_views__sv_orders__fact_orders"]),
+    }
+    assert "*.MY_DB.SEMANTIC_VIEWS.SV_ORDERS" in searches
+
+    dashboard_entity = Dashboard(
+        id="550e8400-e29b-41d4-a716-446655440054",
+        name="doc-1",
+        service=EntityReference(id="550e8400-e29b-41d4-a716-446655440055", type="dashboardService"),
+    )
+    omni_source.metadata.get_by_name = MagicMock(return_value=dashboard_entity)
+    tile = QueryPresentation(
+        name="Revenue",
+        query=OmniQuery(
+            table="semantic_views__sv_orders",
+            fields=["semantic_views__sv_orders__fact_orders.amount"],
+        ),
+    )
+    details = OmniDashboardDetails(
+        document=MOCK_DOCUMENT, dashboard=OmniDashboardDocument(identifier="doc-1", queryPresentations=[tile])
+    )
+    dashboard_edges = {
+        str(r.edge.fromEntity.id.root)
+        for r in _rights(omni_source.yield_dashboard_lineage_details(details))
+        if isinstance(r, AddLineageRequest)
+    }
+    assert dashboard_edges == {
+        datamodel_ids["sales.semantic_views__sv_orders"],
+        datamodel_ids["sales.semantic_views__sv_orders__fact_orders"],
+    }
+
+
+def test_parse_model_yaml_inline_view_shared_by_two_topics_is_one_data_model():
+    other = SEMANTIC_VIEW_TOPIC.replace("SV_ORDERS", "SV_RETURNS").replace("FACT_ORDERS_ENRICHED", "FACT_RETURNS")
+    parsed = _parse({"a.topic": SEMANTIC_VIEW_TOPIC, "b.topic": other})
+
+    assert len(parsed) == 4
+    assert parsed["semantic_views__sv_orders__fact_orders"].base_table == "FACT_ORDERS_ENRICHED"
+    assert parsed["b"].base_table == "SV_RETURNS"

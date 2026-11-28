@@ -42,6 +42,7 @@ from metadata.ingestion.source.dashboard.omni.models import (
     QueryPresentation,
     UsersResponse,
 )
+from metadata.utils import fqn
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -241,14 +242,64 @@ class OmniApiClient:
             "fields": cls._extract_fields(content),
         }
 
+    @staticmethod
+    def _semantic_view_parts(topic_def: dict) -> list[str | None]:
+        """Split a topic's ``semantic_view`` (``DB.SCHEMA.NAME``) into database, schema and name."""
+        parts = [part or None for part in fqn.split_raw_name(str(topic_def.get("semantic_view") or ""))[-3:]]
+        return [None] * (3 - len(parts)) + parts
+
+    @classmethod
+    def _inline_views(cls, topic_name: str, topic_def: dict) -> list[tuple[str, dict]]:
+        """Parse the view definitions a topic carries in its ``views`` map."""
+        views = topic_def.get("views") or {}
+        if not isinstance(views, dict):
+            logger.warning("Ignoring views of topic %s: expected a mapping", topic_name)
+            return []
+        parsed = []
+        for view_name, view_def in views.items():
+            try:
+                view = cls._parse_view(view_def)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning("Ignoring malformed view %s of topic %s: %s", view_name, topic_name, exc)
+                continue
+            if all(isinstance(view[key], (str, type(None))) for key in ("label", "schema", "table")):
+                parsed.append((str(view_name), view))
+            else:
+                logger.warning(
+                    "Ignoring view %s of topic %s: label, schema or table is not text", view_name, topic_name
+                )
+        return parsed
+
+    @staticmethod
+    def _new_views(inline_views: list[tuple[str, dict]], view_lookup: dict, leaf_seen: set) -> list[tuple[str, dict]]:
+        """The inline views that define a table no ``.view`` file already defines."""
+        new_views = []
+        for name, inline in inline_views:
+            # An inline entry without a table only overrides fields of an existing view.
+            if not inline["table"]:
+                continue
+            standalone = view_lookup.get(canonical_ref(name))
+            if standalone is not None:
+                standalone.setdefault("reference", name)
+            elif canonical_ref(name) not in leaf_seen:
+                new_views.append((name, inline))
+        return new_views
+
+    @staticmethod
+    def _pass_reference(topics: list[OmniTopic], name: str, reference: str | None) -> None:
+        """Give the curated topic that took a skipped view's name the inline name that view answered to."""
+        for topic in topics:
+            if reference and topic.name == name and not topic.alias:
+                topic.alias = reference
+
     @classmethod
     def _parse_model_yaml(cls, model: OmniModel, files: dict) -> list[OmniTopic]:
         """
         Build normalized data models from the model's YAML files.
 
-        Each ``.view`` file -> a data model backed by a physical warehouse table
-        (schema + table_name + fields). Each ``.topic`` file -> a curated data
-        model that references a base view (for warehouse-table lineage).
+        Each ``.view`` file, and each inline view with a table of its own, -> a data
+        model backed by a physical warehouse table. Each ``.topic`` file -> a curated
+        data model over its base view, or over its ``semantic_view`` when it has one.
         """
         # ``view_lookup`` maps every reference form (full path, dotted-qualified and
         # the bare leaf when unambiguous) to a parsed view, so a schema-qualified
@@ -309,6 +360,16 @@ class OmniApiClient:
             # reference cannot bind to an unrelated view -- it is left unresolved
             # instead.
             view = view_lookup.get(canonical_ref(base_view)) or {}
+            inline_views = cls._inline_views(topic_name, topic_def)
+            view_records.extend(cls._new_views(inline_views, view_lookup, leaf_seen))
+            database, schema, table = cls._semantic_view_parts(topic_def)
+            if table:
+                fields = [
+                    field.model_copy(update={"name": f"{name}.{field.name}"})
+                    for name, inline in inline_views
+                    for field in inline["fields"]
+                ]
+                view = {"schema": schema, "table": table, "fields": fields}
             topics.append(
                 OmniTopic(
                     model_id=model.id,
@@ -317,6 +378,7 @@ class OmniApiClient:
                     label=topic_def.get("label"),
                     description=topic_def.get("description"),
                     base_view=base_view,
+                    base_database=database,
                     base_schema=view.get("schema"),
                     base_table=view.get("table"),
                     fields=view.get("fields") or [],
@@ -324,8 +386,10 @@ class OmniApiClient:
             )
         # Views: one data model per physical table, with its columns. Skip any whose
         # name was already taken by a topic (or another view).
+        curated_topics = list(topics)
         for view_name, view in view_records:
             if view_name in seen_names:
+                cls._pass_reference(curated_topics, view_name, view.get("reference"))
                 logger.debug(
                     "Skipping view %r: name already used by a topic/view in model %s",
                     view_name,
@@ -339,6 +403,7 @@ class OmniApiClient:
                     model_name=model.name,
                     name=view_name,
                     label=view.get("label"),
+                    alias=view.get("reference"),
                     base_view=view_name,
                     base_schema=view.get("schema"),
                     base_table=view.get("table"),
