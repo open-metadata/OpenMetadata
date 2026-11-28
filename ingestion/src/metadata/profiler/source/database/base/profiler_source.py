@@ -173,6 +173,7 @@ class ProfilerSource(ProfilerSourceInterface):
         config: TableConfig | None,
         schema_entity: DatabaseSchema,
         database_entity: Database,
+        timeout_seconds: int | None = None,
         profiler_resolver: Inject[type[ProfilerResolver]] = None,
     ) -> ProfilerInterface:
         """Create the appropriate profiler interface based on processing engine."""
@@ -231,6 +232,7 @@ class ProfilerSource(ProfilerSourceInterface):
             service_connection_config=self.service_conn_config,
             sampler=sampler_interface,
             ometa_client=self.ometa_client,
+            timeout_seconds=timeout_seconds,
         )  # type: ignore
 
         self.interface = profiler_interface
@@ -252,9 +254,22 @@ class ProfilerSource(ProfilerSourceInterface):
                 "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
             )
 
+        timeout_seconds = (
+            profiler_config.profiler.timeout_seconds
+            if profiler_config and profiler_config.profiler and profiler_config.profiler.timeout_seconds is not None
+            else None
+        )
         table_config = get_config_for_table(entity, profiler_config)
         schema_entity, database_entity, db_service = get_context_entities(entity=entity, metadata=self.ometa_client)
-        profiler_interface = self.create_profiler_interface(entity, table_config, schema_entity, database_entity)
+        profiler_interface = self.create_profiler_interface(
+            entity,
+            table_config,
+            schema_entity,
+            database_entity,
+            timeout_seconds=timeout_seconds,
+        )
+        if timeout_seconds is not None:
+            profiler_interface.timeout_seconds = timeout_seconds
 
         if self.source_config and self.source_config.metrics:
             source_metrics = [m.value for m in self.source_config.metrics]

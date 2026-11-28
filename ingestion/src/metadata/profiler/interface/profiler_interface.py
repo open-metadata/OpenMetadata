@@ -119,6 +119,7 @@ class ProfilerInterface(Root, ABC):
         service_connection_config,
         sampler: SamplerInterface,
         ometa_client: OpenMetadata | None,
+        timeout_seconds: int | None = None,
         **kwargs,
     ) -> "ProfilerInterface":
         """create class method is used to build the profiler interface
@@ -130,12 +131,17 @@ class ProfilerInterface(Root, ABC):
             service_connection_config (_type_): connection for the service
             sampler (SamplerInterface): sampler object
             ometa_client (Optional[OpenMetadata]): ometa client object
+            timeout_seconds (Optional[int]): per-query or execution timeout in seconds
 
         Returns:
             ProfilerInterface
         """
-        thread_count = source_config.threadCount
-        timeout_seconds = source_config.timeoutSeconds
+        thread_count = kwargs.get("thread_count") or (source_config.threadCount if source_config else None)
+        resolved_timeout = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else (kwargs.get("timeout_seconds") or (source_config.timeoutSeconds if source_config else 43200))
+        )
 
         return cls(
             service_connection_config=service_connection_config,
@@ -144,7 +150,7 @@ class ProfilerInterface(Root, ABC):
             source_config=source_config,
             sampler=sampler,
             thread_count=thread_count,
-            timeout_seconds=timeout_seconds,
+            timeout_seconds=resolved_timeout,
             **kwargs,
         )
 
