@@ -1393,6 +1393,20 @@ public interface CoreRelationshipDAOs {
         @Bind("afterId") String afterId,
         @Bind("limit") int limit);
 
+    // No deleted filter: soft-deleted contracts remain searchable with deleted=true and must
+    // stay scoped to their governed entity's current domains.
+    @SqlQuery(
+        "SELECT DISTINCT toId FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType AND toEntity = 'dataContract' "
+            + "AND relation = :relation AND toId > :afterId "
+            + "ORDER BY toId LIMIT :limit")
+    List<String> findDataContractIdsForEntityAfter(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation,
+        @Bind("afterId") String afterId,
+        @Bind("limit") int limit);
+
     @SqlQuery(
         "SELECT COUNT(*) FROM entity_relationship "
             + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation")

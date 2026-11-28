@@ -1669,56 +1669,57 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot update asset domain FQNs.");
-      return;
-    }
+    } else {
+      try {
+        final List<String> targetIndices =
+            Entity.getSearchRepository().getDomainAssetWriteFanoutTargets();
+        LOG.info(
+            "Updating asset domain FQNs by prefix in search indices: indices={}, oldFqn={}, newFqn={}",
+            targetIndices,
+            oldFqn,
+            newFqn);
 
-    try {
-      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
-      LOG.info(
-          "Updating asset domain FQNs by prefix in search index: index={}, oldFqn={}, newFqn={}",
-          indexName,
-          oldFqn,
-          newFqn);
+        Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
 
-      Query matchingDomainQuery = buildDomainFqnPrefixQuery(oldFqn);
+        Map<String, JsonData> params =
+            Map.of(
+                "oldFqn", JsonData.of(oldFqn),
+                "newFqn", JsonData.of(newFqn));
 
-      Map<String, JsonData> params =
-          Map.of(
-              "oldFqn", JsonData.of(oldFqn),
-              "newFqn", JsonData.of(newFqn));
+        UpdateByQueryRequest request =
+            UpdateByQueryRequest.of(
+                req ->
+                    req.index(targetIndices)
+                        .query(matchingDomainQuery)
+                        .conflicts(Conflicts.Proceed)
+                        .script(
+                            s ->
+                                s.inline(
+                                    i ->
+                                        i.lang(
+                                                l ->
+                                                    l.builtin(
+                                                        os.org.opensearch.client.opensearch._types
+                                                            .BuiltinScriptLanguage.Painless))
+                                            .source(
+                                                SearchClient
+                                                    .UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT)
+                                            .params(params)))
+                        .refresh(Refresh.True));
 
-      UpdateByQueryRequest request =
-          UpdateByQueryRequest.of(
-              req ->
-                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
-                      .query(matchingDomainQuery)
-                      .conflicts(Conflicts.Proceed)
-                      .script(
-                          s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(
-                                              l ->
-                                                  l.builtin(
-                                                      os.org.opensearch.client.opensearch._types
-                                                          .BuiltinScriptLanguage.Painless))
-                                          .source(
-                                              SearchClient.UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT)
-                                          .params(params)))
-                      .refresh(Refresh.True));
+        UpdateByQueryOutcome outcome =
+            runReconciled(
+                "updateAssetDomainFqnByPrefix",
+                request,
+                UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
 
-      UpdateByQueryOutcome outcome =
-          runReconciled(
-              "updateAssetDomainFqnByPrefix",
-              request,
-              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
+        LOG.info("Updated asset domain FQNs in search: updated={}", outcome.updatedDocuments());
 
-      LOG.info("Updated asset domain FQNs in search: updated={}", outcome.updatedDocuments());
-
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
-      LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
+      } catch (Exception e) {
+        SearchIndexRetryQueue.enqueue(
+            null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
+        LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
+      }
     }
   }
 

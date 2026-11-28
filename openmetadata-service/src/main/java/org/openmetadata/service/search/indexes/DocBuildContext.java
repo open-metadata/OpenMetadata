@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.EntityReference;
 
 /**
  * Optional pre-fetched data threaded into {@link SearchIndex#buildSearchIndexDoc(DocBuildContext)}
@@ -34,16 +35,26 @@ import org.openmetadata.schema.entity.type.Style;
  * monotonic revision (including zero for no relationship changes yet) when the caller loaded it in
  * bulk.
  *
+ * <p>{@code prefetchedDomains} semantics:
+ *
+ * <ul>
+ *   <li>{@code null} — no domain prefetch was attempted (or the target was missing); callers fall
+ *       back to per-entity lookups.
+ *   <li>empty list — prefetch ran and the entity has no domains.
+ *   <li>non-empty list — prefetched domains to apply directly.
+ * </ul>
+ *
  * The context is passed by value down the doc-build call chain; nothing is stored in thread-local
  * state, so callers and mixins see the dependency in their method signatures.
  */
 public record DocBuildContext(
     List<EsLineageData> prefetchedUpstreamLineage,
     ServiceStylePrefetch serviceStylePrefetch,
-    Long relationshipRevision) {
+    Long relationshipRevision,
+    List<EntityReference> prefetchedDomains) {
 
   private static final DocBuildContext EMPTY =
-      new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null);
+      new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null, null);
 
   public DocBuildContext {
     serviceStylePrefetch =
@@ -52,7 +63,14 @@ public record DocBuildContext(
 
   public DocBuildContext(
       List<EsLineageData> prefetchedUpstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
-    this(prefetchedUpstreamLineage, serviceStylePrefetch, null);
+    this(prefetchedUpstreamLineage, serviceStylePrefetch, null, null);
+  }
+
+  public DocBuildContext(
+      List<EsLineageData> prefetchedUpstreamLineage,
+      ServiceStylePrefetch serviceStylePrefetch,
+      Long relationshipRevision) {
+    this(prefetchedUpstreamLineage, serviceStylePrefetch, relationshipRevision, null);
   }
 
   public static DocBuildContext empty() {
@@ -60,23 +78,37 @@ public record DocBuildContext(
   }
 
   public static DocBuildContext withUpstreamLineage(List<EsLineageData> upstreamLineage) {
-    return new DocBuildContext(upstreamLineage, ServiceStylePrefetch.notPrefetched(), null);
+    return new DocBuildContext(upstreamLineage, ServiceStylePrefetch.notPrefetched(), null, null);
   }
 
   public static DocBuildContext withRelationshipRevision(long relationshipRevision) {
-    return new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), relationshipRevision);
+    return new DocBuildContext(
+        null, ServiceStylePrefetch.notPrefetched(), relationshipRevision, null);
+  }
+
+  public static DocBuildContext withDomains(List<EntityReference> prefetchedDomains) {
+    return new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null, prefetchedDomains);
   }
 
   public static DocBuildContext of(
       List<EsLineageData> upstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
-    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, null);
+    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, null, null);
   }
 
   public static DocBuildContext of(
       List<EsLineageData> upstreamLineage,
       ServiceStylePrefetch serviceStylePrefetch,
       Long relationshipRevision) {
-    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, relationshipRevision);
+    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, relationshipRevision, null);
+  }
+
+  public static DocBuildContext of(
+      List<EsLineageData> upstreamLineage,
+      ServiceStylePrefetch serviceStylePrefetch,
+      Long relationshipRevision,
+      List<EntityReference> prefetchedDomains) {
+    return new DocBuildContext(
+        upstreamLineage, serviceStylePrefetch, relationshipRevision, prefetchedDomains);
   }
 
   public record ServiceStylePrefetch(boolean prefetched, Optional<Style> style) {

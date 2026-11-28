@@ -287,6 +287,15 @@ public interface GovernanceDAOs {
         connectionType = POSTGRES)
     String getContractByEntityId(
         @Bind("entityId") String entityId, @Bind("entityType") String entityType);
+
+    // No deleted filter: soft-deleted contracts remain searchable with deleted=true and must
+    // follow ancestor domain changes.
+    @SqlQuery(
+        "SELECT id FROM data_contract_entity "
+            + "WHERE fqnHash LIKE :prefix AND id > :afterId "
+            + "ORDER BY id LIMIT :limit")
+    List<String> findContractIdsByFqnPrefixAfter(
+        @Bind("prefix") String prefix, @Bind("afterId") String afterId, @Bind("limit") int limit);
   }
 
   interface ChangeRequestDAO {

@@ -183,6 +183,22 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
     verify(indices).refresh(any(Function.class));
   }
 
+  @Test
+  void updateAssetDomainFqnByPrefixTargetsGlobalAliasAndDataContractIndex() throws Exception {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    List<String> targets = List.of("all", "data_contract_search_index", "data_contract_staged");
+    when(searchRepository.getDomainAssetWriteFanoutTargets()).thenReturn(targets);
+    UpdateByQueryResponse clean = response(2, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(clean);
+
+    new ElasticSearchEntityManager(client).updateAssetDomainFqnByPrefix("old.domain", "new.domain");
+
+    ArgumentCaptor<UpdateByQueryRequest> request =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    verify(client).updateByQuery(request.capture());
+    assertEquals(targets, request.getValue().index());
+  }
+
   private void indicesHoldingMatches(String... names) throws Exception {
     matchingIndicesSearch(0, names);
   }

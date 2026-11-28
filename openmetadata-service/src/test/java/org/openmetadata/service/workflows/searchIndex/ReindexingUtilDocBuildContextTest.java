@@ -25,13 +25,16 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 
@@ -236,6 +239,44 @@ class ReindexingUtilDocBuildContextTest {
       assertSame(style, stored.get(id1).serviceStylePrefetch().style().orElseThrow());
       assertTrue(stored.get(id2).serviceStylePrefetch().prefetched());
       assertTrue(stored.get(id2).serviceStylePrefetch().style().isEmpty());
+    }
+  }
+
+  @Test
+  void populateDocBuildContextPrefetchesGovernedEntityDomainsForDataContracts() {
+    Map<String, Object> contextData = new HashMap<>();
+    UUID foundContractId = UUID.randomUUID();
+    UUID missingTargetContractId = UUID.randomUUID();
+    DataContract foundContract = new DataContract().withId(foundContractId);
+    DataContract missingTargetContract = new DataContract().withId(missingTargetContractId);
+    List<EntityReference> domains =
+        List.of(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.DOMAIN)
+                .withName("finance"));
+
+    try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class);
+        MockedStatic<DataContractIndex> contractIndexMock = mockStatic(DataContractIndex.class)) {
+      indexMock
+          .when(() -> SearchIndex.prefetchLineageIfSupported(eq(Entity.DATA_CONTRACT), any()))
+          .thenReturn(null);
+      indexMock
+          .when(() -> SearchIndex.prefetchServiceStylesIfSupported(eq(Entity.DATA_CONTRACT), any()))
+          .thenReturn(null);
+      contractIndexMock
+          .when(() -> DataContractIndex.prefetchGovernedEntityDomains(any()))
+          .thenReturn(Map.of(foundContractId, domains));
+
+      ReindexingUtil.populateDocBuildContext(
+          contextData, Entity.DATA_CONTRACT, List.of(foundContract, missingTargetContract));
+
+      @SuppressWarnings("unchecked")
+      Map<UUID, DocBuildContext> stored =
+          (Map<UUID, DocBuildContext>) contextData.get(BulkSink.DOC_BUILD_CONTEXT_KEY);
+      assertNotNull(stored);
+      assertSame(domains, stored.get(foundContractId).prefetchedDomains());
+      assertFalse(stored.containsKey(missingTargetContractId));
     }
   }
 }

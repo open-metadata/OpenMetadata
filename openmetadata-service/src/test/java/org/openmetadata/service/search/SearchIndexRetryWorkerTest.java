@@ -20,8 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -319,6 +321,64 @@ class SearchIndexRetryWorkerTest {
         "Old Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getOldValue());
     assertEquals(
         "New Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getNewValue());
+  }
+
+  @Test
+  void processRecord_replaysDeletedDomainDataContractStripAndSurvivesRetry() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO retryQueueDAO = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, searchRepository);
+    String domainId = UUID.randomUUID().toString();
+    SearchIndexRetryRecord firstAttempt =
+        new SearchIndexRetryRecord(
+            "",
+            domainId,
+            "removeDomainFromDataContractIndex: Search client unavailable",
+            STATUS_IN_PROGRESS,
+            Entity.DATA_CONTRACT,
+            0,
+            null,
+            "claim-1");
+    doThrow(new IOException("cluster unavailable"))
+        .doNothing()
+        .when(searchRepository)
+        .stripDeletedDomainFromDataContractIndex(domainId);
+    when(retryQueueDAO.updateFailureAndRetryCount(
+            eq(""), eq(domainId), anyString(), eq(STATUS_PENDING_RETRY_1), eq("claim-1")))
+        .thenReturn(1);
+    when(retryQueueDAO.deleteClaimed("", domainId, "claim-2")).thenReturn(1);
+
+    retryWorker.processRecord(firstAttempt);
+
+    ArgumentCaptor<String> rewrittenReason = ArgumentCaptor.forClass(String.class);
+    verify(retryQueueDAO)
+        .updateFailureAndRetryCount(
+            eq(""),
+            eq(domainId),
+            rewrittenReason.capture(),
+            eq(STATUS_PENDING_RETRY_1),
+            eq("claim-1"));
+    verify(retryQueueDAO, never()).deleteClaimed("", domainId, "claim-1");
+
+    // Second attempt carries the rewritten retryFailed reason and must still dispatch to the strip.
+    SearchIndexRetryRecord secondAttempt =
+        new SearchIndexRetryRecord(
+            "",
+            domainId,
+            rewrittenReason.getValue(),
+            STATUS_IN_PROGRESS,
+            Entity.DATA_CONTRACT,
+            1,
+            null,
+            "claim-2");
+
+    retryWorker.processRecord(secondAttempt);
+
+    verify(searchRepository, times(2)).stripDeletedDomainFromDataContractIndex(domainId);
+    verify(retryQueueDAO).deleteClaimed("", domainId, "claim-2");
   }
 
   private SearchIndexRetryRecord retryRecordWithClaimToken(String claimToken) {

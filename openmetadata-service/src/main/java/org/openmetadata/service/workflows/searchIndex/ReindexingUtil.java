@@ -50,6 +50,7 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -80,9 +81,13 @@ public class ReindexingUtil {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
     Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
     Map<UUID, Long> prefetchedRelationshipRevisions = null;
+    Map<UUID, List<EntityReference>> prefetchedDomains = null;
     try {
       prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
       prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
+      if (Entity.DATA_CONTRACT.equals(entityType)) {
+        prefetchedDomains = DataContractIndex.prefetchGovernedEntityDomains(entities);
+      }
       if (Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType)) {
         List<UUID> revisionedEntityIds =
             entities.stream()
@@ -126,13 +131,18 @@ public class ReindexingUtil {
     }
     if (prefetchedLineage != null
         || prefetchedServiceStyles != null
-        || prefetchedRelationshipRevisions != null) {
+        || prefetchedRelationshipRevisions != null
+        || prefetchedDomains != null) {
       int contextSize =
           Math.max(
               Math.max(
                   prefetchedLineage != null ? prefetchedLineage.size() : 0,
                   prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0),
-              prefetchedRelationshipRevisions != null ? prefetchedRelationshipRevisions.size() : 0);
+              Math.max(
+                  prefetchedRelationshipRevisions != null
+                      ? prefetchedRelationshipRevisions.size()
+                      : 0,
+                  prefetchedDomains != null ? prefetchedDomains.size() : 0));
       Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
       for (EntityInterface<?> entity : entities) {
         UUID entityId = entity.getId();
@@ -147,8 +157,10 @@ public class ReindexingUtil {
             prefetchedRelationshipRevisions != null
                 ? prefetchedRelationshipRevisions.get(entityId)
                 : null;
+        List<EntityReference> domains =
+            prefetchedDomains != null ? prefetchedDomains.get(entityId) : null;
         // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
-        if (lineage == null && !hasStyle && relationshipRevision == null) {
+        if (lineage == null && !hasStyle && relationshipRevision == null && domains == null) {
           continue;
         }
         DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
@@ -157,7 +169,8 @@ public class ReindexingUtil {
                     prefetchedServiceStyles.get(entityId))
                 : DocBuildContext.ServiceStylePrefetch.notPrefetched();
         docBuildContexts.put(
-            entityId, DocBuildContext.of(lineage, serviceStylePrefetch, relationshipRevision));
+            entityId,
+            DocBuildContext.of(lineage, serviceStylePrefetch, relationshipRevision, domains));
       }
       contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
     }

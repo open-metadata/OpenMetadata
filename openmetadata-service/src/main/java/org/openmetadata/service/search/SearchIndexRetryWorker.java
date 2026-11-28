@@ -176,38 +176,50 @@ public class SearchIndexRetryWorker implements Managed {
   // Record processing
   // ---------------------------------------------------------------------------
 
-  private void processRecord(SearchIndexRetryRecord record) {
+  void processRecord(SearchIndexRetryRecord record) {
     try {
       final var type = normalize(record.getEntityType());
       final var id = normalize(record.getEntityId());
+      final var fqn = normalize(record.getEntityFqn());
       if (OntologyTermSearch.isTerm(type) && !id.isEmpty()) {
         searchRepository.reindexOntologyTerm(
             new EntityReference().withType(type).withId(UUID.fromString(id)));
         completeClaim(record);
-        return;
-      }
-      EntityReference root = resolveEntityReference(record);
-      if (root != null) {
-        EntityInterface<?> rootEntity = reindexEntityCascade(root);
-        propagateAfterRetry(rootEntity, record.getFailureReason());
+      } else if (isDeletedDomainContractStrip(id, type, fqn)) {
+        searchRepository.stripDeletedDomainFromDataContractIndex(fqn);
         completeClaim(record);
-        return;
+      } else {
+        processEntityRetryRecord(record);
       }
-
-      String entityId = normalize(record.getEntityId());
-      if (!entityId.isEmpty()) {
-        removeStaleEntityById(entityId, record.getEntityType());
-        completeClaim(record);
-        return;
-      }
-
-      recordRetryFailure(
-          record,
-          "Unable to resolve entity for retry from entityId/entityFqn",
-          nextRetryStatus(record.getRetryCount()));
     } catch (Exception e) {
       handleProcessingError(record, e);
     }
+  }
+
+  private void processEntityRetryRecord(SearchIndexRetryRecord record) throws Exception {
+    final EntityReference root = resolveEntityReference(record);
+    if (root != null) {
+      final EntityInterface<?> rootEntity = reindexEntityCascade(root);
+      propagateAfterRetry(rootEntity, record.getFailureReason());
+      completeClaim(record);
+    } else {
+      final String entityId = normalize(record.getEntityId());
+      if (!entityId.isEmpty()) {
+        removeStaleEntityById(entityId, record.getEntityType());
+        completeClaim(record);
+      } else {
+        recordRetryFailure(
+            record,
+            "Unable to resolve entity for retry from entityId/entityFqn",
+            nextRetryStatus(record.getRetryCount()));
+      }
+    }
+  }
+
+  private static boolean isDeletedDomainContractStrip(String id, String type, String fqn) {
+    // Domain hard-delete enqueues (entityId="", entityFqn=<domainId>, entityType=dataContract);
+    // live data contract FQNs always carry ".dataContract_<name>", never a bare UUID.
+    return id.isEmpty() && Entity.DATA_CONTRACT.equals(type) && SearchIndexRetryQueue.isUuid(fqn);
   }
 
   private void handleProcessingError(SearchIndexRetryRecord record, Exception e) {
