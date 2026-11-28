@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { EntityType } from '../../../enums/entity.enum';
 import { TagSource } from '../../../generated/entity/data/container';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  TermRelation,
+} from '../../../generated/entity/data/glossaryTerm';
 import {
   CustomProperty,
   EntityReference,
@@ -103,23 +107,50 @@ export const getGlossaryTermFormValues = (
   };
 };
 
-// Create takes FQNs; edit takes ids, which a picked term carries as its entity.
+// On edit, carry the existing `TermRelation` metadata (relationType, provenance,
+// status, edge id, createdBy, createdAt) through so the server's strict matcher
+// preserves the stored edge instead of delete-and-recreating it as a plain
+// `relatedTo`. Newly picked terms have no existing edge to preserve. On create,
+// the server resolves related terms by FQN, so each entry carries only the FQN.
 export const resolveRelatedTerms = (
   editMode: boolean,
   relatedTerms: GlossaryPickerValue[],
   glossaryTerm: GlossaryTerm | undefined
-): string[] =>
-  editMode
-    ? relatedTerms
-        .map(
-          (term) =>
-            term.entity?.id ??
-            glossaryTerm?.relatedTerms?.find(
-              (related) => related.term.fullyQualifiedName === term.tagFQN
-            )?.term.id
-        )
-        .filter((id): id is string => Boolean(id))
-    : relatedTerms.map((term) => term.tagFQN);
+): TermRelation[] => {
+  if (editMode) {
+    return relatedTerms
+      .map((picker) => {
+        const source = glossaryTerm?.relatedTerms?.find(
+          (rel) =>
+            rel.term?.fullyQualifiedName === picker.tagFQN ||
+            (picker.entity?.id !== undefined &&
+              rel.term?.id === picker.entity.id)
+        );
+        if (source) {
+          return { ...source };
+        }
+        const id = picker.entity?.id;
+        if (!id) {
+          return undefined;
+        }
+
+        return {
+          term: { id, type: EntityType.GLOSSARY_TERM } as EntityReference,
+        } as TermRelation;
+      })
+      .filter((rel): rel is TermRelation => rel !== undefined);
+  }
+
+  return relatedTerms.map(
+    (picker) =>
+      ({
+        term: {
+          fullyQualifiedName: picker.tagFQN,
+          type: EntityType.GLOSSARY_TERM,
+        } as EntityReference,
+      } as TermRelation)
+  );
+};
 
 export const buildGlossaryTermExtension = serializeIntakeFormExtension;
 

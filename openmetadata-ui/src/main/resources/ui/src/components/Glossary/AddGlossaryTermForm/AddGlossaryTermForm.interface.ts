@@ -17,6 +17,7 @@ import {
   GlossaryTerm,
   TagLabel,
   TermReference,
+  TermRelation,
 } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityLineage';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
@@ -55,7 +56,7 @@ export interface GlossaryTermForm {
   description: string;
   extension?: Record<string, unknown>;
   reviewers: EntityReference[];
-  relatedTerms: string[] | undefined;
+  relatedTerms: TermRelation[] | undefined;
   references: TermReference[] | undefined;
   synonyms: string[];
   mutuallyExclusive: boolean;

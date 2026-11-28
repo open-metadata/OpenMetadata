@@ -309,8 +309,14 @@ const GlossaryV1 = ({
   );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
+    // Create resolves related terms by FQN; the form carries them as TermRelation
+    // edges (see resolveRelatedTerms), so flatten back to FQNs for the API.
+    const relatedTermFqns = formData.relatedTerms
+      ?.map((relation) => relation.term?.fullyQualifiedName)
+      .filter((fqn): fqn is string => Boolean(fqn));
     const term = await addGlossaryTerm({
       ...formData,
+      relatedTerms: relatedTermFqns,
       glossary:
         activeGlossaryTerm?.glossary?.name ||
         (selectedData.fullyQualifiedName ?? ''),
@@ -348,9 +354,11 @@ const GlossaryV1 = ({
         newTermData.reviewers = reviewers;
         newTermData.owners = owners;
         newTermData.references = references;
-        newTermData.relatedTerms = relatedTerms?.map((term) => ({
-          term: { id: term, type: 'glossaryTerm' },
-        }));
+        // The form preserves the existing TermRelation metadata (relationType,
+        // provenance, status, edge id) for relations the user did not change, so
+        // assigning the array as-is keeps typed edges instead of downgrading them
+        // to plain `relatedTo` on the server.
+        newTermData.relatedTerms = relatedTerms;
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
