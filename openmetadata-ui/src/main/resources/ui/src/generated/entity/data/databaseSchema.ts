@@ -671,6 +671,7 @@ export enum DatabaseServiceType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Clickzetta = "Clickzetta",
+    Cloudberry = "Cloudberry",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",

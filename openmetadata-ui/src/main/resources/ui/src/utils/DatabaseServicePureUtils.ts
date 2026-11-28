@@ -36,6 +36,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/clickhouseConnection.json'),
   [DatabaseServiceType.Clickzetta]: () =>
     loadConnectionSchema('connections/database/clickzettaConnection.json'),
+  [DatabaseServiceType.Cloudberry]: () =>
+    loadConnectionSchema('connections/database/cloudberryConnection.json'),
   [DatabaseServiceType.Cockroach]: () =>
     loadConnectionSchema('connections/database/cockroachConnection.json'),
   [DatabaseServiceType.Databend]: () =>

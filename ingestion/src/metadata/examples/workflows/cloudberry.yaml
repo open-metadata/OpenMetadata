@@ -1,0 +1,24 @@
+source:
+  type: cloudberry
+  serviceName: local_cloudberry
+  serviceConnection:
+    config:
+      type: Cloudberry
+      hostPort: "${CLOUDBERRY_HOST_PORT}"
+      database: "${CLOUDBERRY_DATABASE}"
+      username: "${CLOUDBERRY_USERNAME}"
+      authType:
+        password: "${CLOUDBERRY_PASSWORD}"
+      sslMode: prefer
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "${OPENMETADATA_API_URL}"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "${OPENMETADATA_JWT_TOKEN}"

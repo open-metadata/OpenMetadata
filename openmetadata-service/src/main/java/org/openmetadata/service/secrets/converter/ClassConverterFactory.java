@@ -57,6 +57,7 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.ClickzettaConnection;
+import org.openmetadata.schema.services.connections.database.CloudberryConnection;
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
@@ -175,6 +176,11 @@ public final class ClassConverterFactory {
                   Map.of(
                       "authType", List.of(BasicAuth.class, ApiAccessTokenAuth.class),
                       "sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              CloudberryConnection.class,
+              new NestedConfigClassConverter(
+                  CloudberryConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               DatabricksPipelineConnection.class,
               new NestedConfigClassConverter(

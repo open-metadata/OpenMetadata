@@ -9023,6 +9023,12 @@ clickzetta = [
     { name = "clickzetta-connector" },
     { name = "clickzetta-sqlalchemy" },
 ]
+cloudberry = [
+    { name = "geoalchemy2" },
+    { name = "packaging" },
+    { name = "psycopg2-binary" },
+    { name = "pymysql" },
+]
 cockroach = [
     { name = "psycopg2-binary" },
     { name = "sqlalchemy-cockroachdb" },
@@ -10250,6 +10256,7 @@ requires-dist = [
     { name = "gcsfs", marker = "extra == 'test'", specifier = "~=2026.3" },
     { name = "geoalchemy2", marker = "extra == 'all'", specifier = "~=0.12" },
     { name = "geoalchemy2", marker = "extra == 'all-dev-env'", specifier = "~=0.12" },
+    { name = "geoalchemy2", marker = "extra == 'cloudberry'", specifier = "~=0.12" },
     { name = "geoalchemy2", marker = "extra == 'dagster'", specifier = "~=0.12" },
     { name = "geoalchemy2", marker = "extra == 'greenplum'", specifier = "~=0.12" },
     { name = "geoalchemy2", marker = "extra == 'playwright'", specifier = "~=0.12" },
@@ -10496,6 +10503,7 @@ requires-dist = [
     { name = "packaging" },
     { name = "packaging", marker = "extra == 'all'" },
     { name = "packaging", marker = "extra == 'all-dev-env'" },
+    { name = "packaging", marker = "extra == 'cloudberry'" },
     { name = "packaging", marker = "extra == 'greenplum'" },
     { name = "packaging", marker = "extra == 'playwright'" },
     { name = "packaging", marker = "extra == 'postgres'" },
@@ -10562,6 +10570,7 @@ requires-dist = [
     { name = "protobuf", marker = "extra == 'test'", specifier = ">=5.29.6" },
     { name = "psycopg2-binary", marker = "extra == 'all'" },
     { name = "psycopg2-binary", marker = "extra == 'all-dev-env'" },
+    { name = "psycopg2-binary", marker = "extra == 'cloudberry'" },
     { name = "psycopg2-binary", marker = "extra == 'cockroach'" },
     { name = "psycopg2-binary", marker = "extra == 'dagster'" },
     { name = "psycopg2-binary", marker = "extra == 'greenplum'" },
@@ -10666,6 +10675,7 @@ requires-dist = [
     { name = "pymysql", specifier = "~=1.0" },
     { name = "pymysql", marker = "extra == 'all'", specifier = "~=1.0" },
     { name = "pymysql", marker = "extra == 'all-dev-env'", specifier = "~=1.0" },
+    { name = "pymysql", marker = "extra == 'cloudberry'", specifier = "~=1.0" },
     { name = "pymysql", marker = "extra == 'dagster'", specifier = "~=1.0" },
     { name = "pymysql", marker = "extra == 'greenplum'", specifier = "~=1.0" },
     { name = "pymysql", marker = "extra == 'mysql'", specifier = "~=1.0" },
@@ -10904,7 +10914,7 @@ requires-dist = [
     { name = "werkzeug", marker = "extra == 'airflow'", specifier = ">=3.0.6" },
     { name = "werkzeug", marker = "extra == 'playwright'", specifier = ">=3.0.6" },
 ]
-provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
+provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "cloudberry", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
 
 [package.metadata.requires-dev]
 bootstrap = [

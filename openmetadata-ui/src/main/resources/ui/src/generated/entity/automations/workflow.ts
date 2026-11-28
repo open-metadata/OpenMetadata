@@ -941,6 +941,8 @@ export interface RequestConnection {
  *
  * Neo4j Connection Config
  *
+ * Apache Cloudberry Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -1327,6 +1329,8 @@ export interface AirflowConnectionObject {
      * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
      * 7687.
      *
+     * Host and port of the Cloudberry coordinator (default port 5432).
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -1596,6 +1600,9 @@ export interface AirflowConnectionObject {
      *
      * Ingest data from all databases in Informix. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Cloudberry. You can use databaseFilterPattern on top of
+     * this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -1804,6 +1811,9 @@ export interface AirflowConnectionObject {
      * Username to connect to Neo4j. The user needs read access to the graph schema of the
      * database.
      *
+     * Username to connect to Cloudberry. This user should have privileges to read all the
+     * metadata in Cloudberry.
+     *
      * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
@@ -1878,6 +1888,8 @@ export interface AirflowConnectionObject {
      *
      * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
      * Fabric SQL endpoint.
+     *
+     * Password authentication for Cloudberry.
      *
      * Types of methods used to authenticate to the tableau instance
      *
@@ -3392,6 +3404,8 @@ export enum AuthMechanismEnum {
  *
  * Common Database Connection Config
  *
+ * Password authentication for Cloudberry.
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -4800,6 +4814,8 @@ export interface MWAAConfiguration {
  *
  * Common Database Connection Config
  *
+ * Password authentication for Cloudberry.
+ *
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
@@ -5938,6 +5954,7 @@ export enum AirflowConnectionType {
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Clickzetta = "Clickzetta",
+    Cloudberry = "Cloudberry",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",

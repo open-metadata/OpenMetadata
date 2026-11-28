@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseType,
 )
+from metadata.generated.schema.entity.services.connections.database.cloudberryConnection import (
+    CloudberryType,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksType,
 )
@@ -156,6 +159,7 @@ MAP_CONNECTION_TYPE_DIALECT: dict[str, Dialect] = {
     str(TrinoType.Trino.value): Dialect.TRINO,
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
+    str(CloudberryType.Cloudberry.value): Dialect.POSTGRES,
     str(DorisType.Doris.value): Dialect.MYSQL,
     str(StarrocksType.StarRocks.value): Dialect.STARROCKS,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,

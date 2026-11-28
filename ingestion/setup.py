@@ -367,6 +367,7 @@ plugins: dict[str, set[str]] = {
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "cloudberry": {*COMMONS["postgres"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],

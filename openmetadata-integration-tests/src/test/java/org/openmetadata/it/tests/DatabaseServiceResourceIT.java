@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.services.connections.database.CloudberryConnection;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -206,6 +207,36 @@ public class DatabaseServiceResourceIT
   // ===================================================================
   // DATABASE SERVICE-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void cloudberryConnectionMasksPasswordOnRead(TestNamespace ns) {
+    String password = "cloudberry-" + UUID.randomUUID();
+    CloudberryConnection connection =
+        new CloudberryConnection()
+            .withHostPort("localhost:5432")
+            .withUsername("catalog")
+            .withDatabase("analytics")
+            .withAuthType(new basicAuth().withPassword(password));
+    DatabaseService service =
+        ns.trackRoot(
+            getEntityType(),
+            createEntity(
+                createMinimalRequest(ns)
+                    .withServiceType(DatabaseServiceType.Cloudberry)
+                    .withConnection(new DatabaseConnection().withConfig(connection))));
+    assertEquals("Cloudberry", service.getServiceType().value());
+    assertEquals(
+        PASSWORD_MASK,
+        JsonUtils.valueToTree(getEntity(service.getId().toString()))
+            .at("/connection/config/authType/password")
+            .asText());
+    assertEquals(
+        password,
+        JsonUtils.valueToTree(
+                SdkClients.botClient().databaseServices().get(service.getId().toString()))
+            .at("/connection/config/authType/password")
+            .asText());
+  }
 
   @Test
   void csvImportAuditLogOmitsConnectionSecretsForNonAdmin(TestNamespace ns)
