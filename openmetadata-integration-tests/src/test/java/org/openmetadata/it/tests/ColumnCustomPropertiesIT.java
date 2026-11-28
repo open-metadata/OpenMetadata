@@ -38,6 +38,7 @@ import org.openmetadata.it.util.UriTestUtils;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -50,9 +51,12 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -157,6 +161,92 @@ public class ColumnCustomPropertiesIT {
       Map<String, Object> resultExt = (Map<String, Object>) updated.getExtension();
       assertEquals("test-string-value", resultExt.get(propName));
 
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_bulkRetypePreservesColumnMetadata(TestNamespace ns) throws Exception {
+    final String propName = ns.prefix("retypeProp");
+    final String retainedName = "retained";
+    final String removedName = "removed";
+    final Map<String, String> extension = Map.of(propName, "column annotation");
+    final OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+      final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      final CreateTable sourceRequest =
+          new CreateTable()
+              .withName(ns.prefix("retypeSource"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(retainedName)
+                          .withDataType(ColumnDataType.STRING)
+                          .withExtension(extension),
+                      new Column().withName(removedName).withDataType(ColumnDataType.STRING)));
+      final Table source = client.tables().create(sourceRequest);
+      final Table target =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.prefix("retypeTarget"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("result")
+                                  .withDataType(ColumnDataType.STRING))));
+      final String retainedFqn = source.getFullyQualifiedName() + "." + retainedName;
+      final String removedFqn = source.getFullyQualifiedName() + "." + removedName;
+      client
+          .lineage()
+          .addLineage(
+              new AddLineage()
+                  .withEdge(
+                      new EntitiesEdge()
+                          .withFromEntity(source.getEntityReference())
+                          .withToEntity(target.getEntityReference())
+                          .withLineageDetails(
+                              new LineageDetails()
+                                  .withColumnsLineage(
+                                      List.of(
+                                          new ColumnLineage()
+                                              .withFromColumns(List.of(retainedFqn, removedFqn))
+                                              .withToColumn(
+                                                  target
+                                                      .getColumns()
+                                                      .getFirst()
+                                                      .getFullyQualifiedName()))))));
+
+      final String targetId = target.getId().toString();
+      final String initialLineage =
+          client.lineage().getEntityLineage(Entity.TABLE, targetId, "1", "0");
+      assertTrue(initialLineage.contains(retainedFqn));
+      assertTrue(initialLineage.contains(removedFqn));
+
+      sourceRequest.setColumns(
+          List.of(new Column().withName(retainedName).withDataType(ColumnDataType.INT)));
+      final BulkOperationResult result =
+          BulkApi.upsert("tables", List.of(sourceRequest), false, BulkApi.botToken());
+      assertEquals(1, result.getNumberOfRowsPassed());
+
+      final Table reloaded = client.tables().get(source.getId().toString(), "columns,extension");
+      assertEquals(source.getVersion() + 1.0, reloaded.getVersion(), 0.0001);
+      assertEquals(1, reloaded.getColumns().size());
+      final Column retained = reloaded.getColumns().getFirst();
+      assertEquals(retainedFqn, retained.getFullyQualifiedName());
+      assertEquals(ColumnDataType.INT, retained.getDataType());
+      assertEquals(extension, retained.getExtension());
+
+      final String lineage = client.lineage().getEntityLineage(Entity.TABLE, targetId, "1", "0");
+      assertTrue(lineage.contains(retainedFqn));
+      assertFalse(lineage.contains(removedFqn));
     } finally {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
     }
