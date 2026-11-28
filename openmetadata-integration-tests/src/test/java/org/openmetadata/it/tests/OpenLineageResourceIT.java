@@ -530,6 +530,30 @@ public class OpenLineageResourceIT {
     }
   }
 
+  @Test
+  void testEventTimeWithUtcOffsetAndMicroseconds(TestNamespace ns) throws Exception {
+    String namespace = ns.prefix("offset_micros_ns");
+    List<String> eventTimes =
+        List.of(
+            "2026-09-08T08:29:49.711594+00:00",
+            "2026-09-08T08:29:49.711594Z",
+            "2026-09-08T08:29:49+00:00",
+            "2026-09-08T13:59:49.711594+05:30");
+
+    for (int i = 0; i < eventTimes.size(); i++) {
+      String response =
+          OpenLineage.event()
+              .withEventType("START")
+              .withEventTime(eventTimes.get(i))
+              .withJob(ns.prefix("offset_job_" + i), namespace)
+              .withRun(UUID.randomUUID().toString())
+              .send();
+      assertNotNull(response);
+      JsonNode json = MAPPER.readTree(response);
+      assertEquals("success", json.get("status").asText(), response);
+    }
+  }
+
   private Map<String, Object> createSchemaFacet() {
     Map<String, Object> facet = new HashMap<>();
     facet.put("_producer", "https://github.com/OpenLineage/OpenLineage/test");
