@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -95,6 +96,7 @@ import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -111,6 +113,54 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
   public static final String RESULT_EXTENSION_KEY = "id";
+  public static final int DOMAIN_REINDEX_BATCH_SIZE = 100;
+  private static final String INITIAL_CONTRACT_ID_CURSOR = "";
+
+  private static final Set<String> SUPPORTED_ENTITY_TYPES =
+      Set.of(
+          Entity.TABLE,
+          Entity.STORED_PROCEDURE,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA,
+          Entity.DASHBOARD,
+          Entity.CHART,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.PIPELINE,
+          Entity.TOPIC,
+          Entity.SEARCH_INDEX,
+          Entity.API_COLLECTION,
+          Entity.API_ENDPOINT,
+          Entity.API,
+          Entity.API_SERVICE,
+          Entity.METRIC,
+          Entity.MLMODEL,
+          Entity.CONTAINER,
+          Entity.DIRECTORY,
+          Entity.FILE,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET,
+          Entity.DATA_PRODUCT);
+
+  private static final Set<String> ANCESTOR_DOMAIN_SOURCE_TYPES =
+      Set.of(
+          Entity.DATABASE_SERVICE,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA,
+          Entity.DASHBOARD_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.API_SERVICE,
+          Entity.API_COLLECTION,
+          Entity.STORAGE_SERVICE,
+          Entity.DRIVE_SERVICE,
+          Entity.DIRECTORY,
+          Entity.SPREADSHEET);
+
+  private static final Set<String> DOMAIN_REINDEX_SOURCE_TYPES =
+      Stream.concat(SUPPORTED_ENTITY_TYPES.stream(), ANCESTOR_DOMAIN_SOURCE_TYPES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   /** Prefix of the error raised when a contract's columns do not match its entity. */
   public static final String SCHEMA_VALIDATION_FAILED = "Schema validation failed.";
@@ -823,30 +873,113 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * Checks if the given entity type is supported for data contracts.
    */
   public boolean isEntityTypeSupported(String entityType) {
-    return Set.of(
-            Entity.TABLE,
-            Entity.STORED_PROCEDURE,
-            Entity.DATABASE,
-            Entity.DATABASE_SCHEMA,
-            Entity.DASHBOARD,
-            Entity.CHART,
-            Entity.DASHBOARD_DATA_MODEL,
-            Entity.PIPELINE,
-            Entity.TOPIC,
-            Entity.SEARCH_INDEX,
-            Entity.API_COLLECTION,
-            Entity.API_ENDPOINT,
-            Entity.API,
-            Entity.API_SERVICE,
-            Entity.METRIC,
-            Entity.MLMODEL,
-            Entity.CONTAINER,
-            Entity.DIRECTORY,
-            Entity.FILE,
-            Entity.SPREADSHEET,
-            Entity.WORKSHEET,
-            Entity.DATA_PRODUCT)
-        .contains(entityType);
+    return entityType != null && SUPPORTED_ENTITY_TYPES.contains(entityType);
+  }
+
+  public static boolean isDomainReindexSource(String entityType) {
+    return entityType != null && DOMAIN_REINDEX_SOURCE_TYPES.contains(entityType);
+  }
+
+  public void forEachDataContractBatchForDomainSource(
+      String sourceType,
+      UUID sourceId,
+      String sourceFqn,
+      Consumer<List<EntityReference>> batchConsumer) {
+    final Set<String> emittedDirectIds =
+        emitDirectContractsForDomainSource(sourceType, sourceId, batchConsumer);
+    emitDescendantContractsForDomainSource(
+        sourceType, sourceId, sourceFqn, emittedDirectIds, batchConsumer);
+  }
+
+  private Set<String> emitDirectContractsForDomainSource(
+      String sourceType, UUID sourceId, Consumer<List<EntityReference>> batchConsumer) {
+    final Set<String> emittedIds = new HashSet<>();
+    if (sourceType != null && SUPPORTED_ENTITY_TYPES.contains(sourceType) && sourceId != null) {
+      String afterId = INITIAL_CONTRACT_ID_CURSOR;
+      List<String> contractIds = findDirectContractIds(sourceId, sourceType, afterId);
+      while (!contractIds.isEmpty()) {
+        emittedIds.addAll(contractIds);
+        batchConsumer.accept(toDataContractReferences(contractIds));
+        afterId = contractIds.getLast();
+        contractIds =
+            contractIds.size() == DOMAIN_REINDEX_BATCH_SIZE
+                ? findDirectContractIds(sourceId, sourceType, afterId)
+                : List.of();
+      }
+    }
+    return emittedIds;
+  }
+
+  private void emitDescendantContractsForDomainSource(
+      String sourceType,
+      UUID sourceId,
+      String sourceFqn,
+      Set<String> emittedDirectIds,
+      Consumer<List<EntityReference>> batchConsumer) {
+    if (sourceType != null && ANCESTOR_DOMAIN_SOURCE_TYPES.contains(sourceType)) {
+      final String resolvedFqn = resolveSourceFqn(sourceType, sourceId, sourceFqn);
+      if (!nullOrEmpty(resolvedFqn)) {
+        emitDescendantContractPages(
+            FullyQualifiedName.buildHash(resolvedFqn) + ".%", emittedDirectIds, batchConsumer);
+      }
+    }
+  }
+
+  private void emitDescendantContractPages(
+      String prefix, Set<String> emittedDirectIds, Consumer<List<EntityReference>> batchConsumer) {
+    String afterId = INITIAL_CONTRACT_ID_CURSOR;
+    List<String> contractIds = findDescendantContractIds(prefix, afterId);
+    while (!contractIds.isEmpty()) {
+      final List<String> unemitted =
+          contractIds.stream().filter(id -> !emittedDirectIds.contains(id)).toList();
+      if (!unemitted.isEmpty()) {
+        batchConsumer.accept(toDataContractReferences(unemitted));
+      }
+      afterId = contractIds.getLast();
+      contractIds =
+          contractIds.size() == DOMAIN_REINDEX_BATCH_SIZE
+              ? findDescendantContractIds(prefix, afterId)
+              : List.of();
+    }
+  }
+
+  private static String resolveSourceFqn(String sourceType, UUID sourceId, String sourceFqn) {
+    String resolved = sourceFqn;
+    if (nullOrEmpty(resolved) && sourceId != null && Entity.hasEntityRepository(sourceType)) {
+      try {
+        final EntityReference ref =
+            Entity.getEntityReferenceById(sourceType, sourceId, Include.ALL);
+        resolved = ref != null ? ref.getFullyQualifiedName() : null;
+      } catch (EntityNotFoundException ex) {
+        LOG.debug(
+            "Skipping descendant data contract reindex for missing {} {}", sourceType, sourceId);
+      }
+    }
+    return resolved;
+  }
+
+  private List<String> findDirectContractIds(UUID entityId, String entityType, String afterId) {
+    return daoCollection
+        .relationshipDAO()
+        .findDataContractIdsForEntityAfter(
+            entityId,
+            entityType,
+            Relationship.CONTAINS.ordinal(),
+            afterId,
+            DOMAIN_REINDEX_BATCH_SIZE);
+  }
+
+  private List<String> findDescendantContractIds(String fqnHashPrefix, String afterId) {
+    return daoCollection
+        .dataContractDAO()
+        .findContractIdsByFqnPrefixAfter(fqnHashPrefix, afterId, DOMAIN_REINDEX_BATCH_SIZE);
+  }
+
+  private static List<EntityReference> toDataContractReferences(List<String> contractIds) {
+    return contractIds.stream()
+        .map(UUID::fromString)
+        .map(id -> new EntityReference().withId(id).withType(Entity.DATA_CONTRACT))
+        .toList();
   }
 
   /**

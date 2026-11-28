@@ -9,9 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
 
 class DocBuildContextTest {
 
@@ -84,5 +87,38 @@ class DocBuildContextTest {
     assertEquals(43L, ctx.relationshipRevision());
     assertNull(ctx.prefetchedUpstreamLineage());
     assertFalse(ctx.serviceStylePrefetch().prefetched());
+    assertNull(ctx.prefetchedDomains());
+  }
+
+  @Test
+  void withDomainsCarriesPrefetchedDomainsWithoutSettingOtherFields() {
+    List<EntityReference> domains =
+        List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN));
+
+    DocBuildContext ctx = DocBuildContext.withDomains(domains);
+
+    assertSame(domains, ctx.prefetchedDomains());
+    assertNull(ctx.prefetchedUpstreamLineage());
+    assertNull(ctx.relationshipRevision());
+    assertFalse(ctx.serviceStylePrefetch().prefetched());
+  }
+
+  @Test
+  void fourArgFactoryCarriesAllPrefetchedFields() {
+    List<EsLineageData> edges = List.of(new EsLineageData());
+    Style style = new Style().withColor("#abcdef");
+    List<EntityReference> domains = List.of();
+
+    DocBuildContext ctx =
+        DocBuildContext.of(
+            edges,
+            DocBuildContext.ServiceStylePrefetch.prefetched(Optional.of(style)),
+            7L,
+            domains);
+
+    assertSame(edges, ctx.prefetchedUpstreamLineage());
+    assertSame(style, ctx.serviceStylePrefetch().style().orElseThrow());
+    assertEquals(7L, ctx.relationshipRevision());
+    assertSame(domains, ctx.prefetchedDomains());
   }
 }

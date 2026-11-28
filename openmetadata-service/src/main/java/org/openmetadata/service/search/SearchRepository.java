@@ -161,6 +161,7 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences;
+import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -2442,29 +2443,30 @@ public class SearchRepository {
    * untouched.
    */
   public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
-    if (deferSearchWrite(
+    if (!deferSearchWrite(
         new DeferredSearchWrite(
             () -> updateEntityAndPropagateInheritedDomainsToChildren(entityReference),
             "updateEntityAndPropagateInheritedDomainsToChildren",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
             entityReference.getType()))) {
-      return;
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+      String fields =
+          String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+      EntityInterface<?> entity =
+          entityRepository.get(
+              null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+      clearChangeDescriptions(entity);
+      updateEntityIndex(entity);
+      propagateInheritedDomainsForType(
+          entityReference.getType(),
+          List.of(entityReference.getId()),
+          listOrEmpty(entity.getDomains()));
+      reindexQueriesForDomainSource(
+          entityReference.getType(), entityReference.getId(), entity.getFullyQualifiedName());
+      reindexDataContractsForDomainSource(
+          entityReference.getType(), entityReference.getId(), entity.getFullyQualifiedName());
     }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
-    String fields =
-        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
-    EntityInterface<?> entity =
-        entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
-    clearChangeDescriptions(entity);
-    updateEntityIndex(entity);
-    propagateInheritedDomainsForType(
-        entityReference.getType(),
-        List.of(entityReference.getId()),
-        listOrEmpty(entity.getDomains()));
-    reindexQueriesForDomainSource(
-        entityReference.getType(), entityReference.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -2476,39 +2478,50 @@ public class SearchRepository {
    * in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
    */
   public void updateEntitiesByReference(List<EntityReference> references) {
-    if (nullOrEmpty(references)) {
-      return;
+    updateEntitiesByReferenceInternal(references, Include.NON_DELETED);
+  }
+
+  public void updateEntitiesByReference(List<EntityReference> references, Include include) {
+    updateEntitiesByReferenceInternal(references, include);
+  }
+
+  private void updateEntitiesByReferenceInternal(
+      List<EntityReference> references, Include include) {
+    if (!nullOrEmpty(references)) {
+      final Map<String, List<UUID>> idsByType = groupUniqueIdsByType(references);
+      idsByType.forEach((entityType, ids) -> reindexEntityIdChunks(entityType, ids, include));
     }
+  }
+
+  private static Map<String, List<UUID>> groupUniqueIdsByType(List<EntityReference> references) {
     final Set<String> seen = new HashSet<>();
     final Map<String, List<UUID>> idsByType = new LinkedHashMap<>();
     for (EntityReference reference : references) {
-      if (reference == null
-          || reference.getId() == null
-          || reference.getType() == null
-          || !seen.add(reference.getType() + ":" + reference.getId())) {
-        continue;
+      if (reference != null
+          && reference.getId() != null
+          && reference.getType() != null
+          && seen.add(reference.getType() + ":" + reference.getId())) {
+        idsByType
+            .computeIfAbsent(reference.getType(), ignored -> new ArrayList<>())
+            .add(reference.getId());
       }
-      idsByType
-          .computeIfAbsent(reference.getType(), ignored -> new ArrayList<>())
-          .add(reference.getId());
     }
+    return idsByType;
+  }
 
-    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
-      final EntityRepository<?> entityRepository = Entity.getEntityRepository(entry.getKey());
-      final String fieldNames =
-          String.join(",", searchIndexFactory.getReindexFieldsFor(entry.getKey()));
-      final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
-      final List<UUID> ids = entry.getValue();
-      for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
-        final List<UUID> chunk =
-            List.copyOf(
-                ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
-        final List<? extends EntityInterface<?>> entities =
-            entityRepository.get(null, chunk, fields, Include.NON_DELETED);
-        entities.forEach(SearchRepository::clearChangeDescriptions);
-        if (!entities.isEmpty()) {
-          updateEntitiesIndex(entities);
-        }
+  private void reindexEntityIdChunks(String entityType, List<UUID> ids, Include include) {
+    final EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    final String fieldNames = String.join(",", searchIndexFactory.getReindexFieldsFor(entityType));
+    final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
+    for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
+      final List<UUID> chunk =
+          List.copyOf(
+              ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
+      final List<? extends EntityInterface<?>> entities =
+          entityRepository.get(null, chunk, fields, include);
+      entities.forEach(SearchRepository::clearChangeDescriptions);
+      if (!entities.isEmpty()) {
+        updateEntitiesIndex(entities);
       }
     }
   }
@@ -3469,6 +3482,7 @@ public class SearchRepository {
       assetIdsByType.forEach(
           (entityType, assetIds) ->
               propagateInheritedDomainsForType(entityType, assetIds, newDomains));
+      reindexDataContractsForDomainSources(assets);
     }
   }
 
@@ -3814,6 +3828,7 @@ public class SearchRepository {
       EntityInterface<?> entity) {
 
     reindexQueriesForDomainChange(entityType, changeDescription, entity);
+    reindexDataContractsForDomainChange(entityType, changeDescription, entity);
     relabelReferenceCopies(entityType, changeDescription, entity);
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
@@ -3924,6 +3939,74 @@ public class SearchRepository {
           entityFqn,
           entityType);
     }
+  }
+
+  private void reindexDataContractsForDomainChange(
+      String entityType, ChangeDescription changeDescription, EntityInterface<?> entity) {
+    if (hasFieldChange(changeDescription, FIELD_DOMAINS)) {
+      reindexDataContractsForDomainSource(
+          entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void reindexDataContractsForDomainSource(
+      String entityType, UUID entityId, String entityFqn) {
+    if (DataContractRepository.isDomainReindexSource(entityType)
+        && Entity.hasEntityRepository(Entity.DATA_CONTRACT)) {
+      deferIfFlushScopeActive(
+          () -> reindexDataContractsForSource(entityType, entityId, entityFqn),
+          "reindexDataContractsForDomainChange",
+          entityId != null ? entityId.toString() : null,
+          entityFqn,
+          entityType);
+    }
+  }
+
+  public void reindexDataContractsForDomainSources(List<EntityReference> sources) {
+    final List<EntityReference> uniqueSources = deduplicateDataContractDomainSources(sources);
+    if (!uniqueSources.isEmpty() && Entity.hasEntityRepository(Entity.DATA_CONTRACT)) {
+      uniqueSources.forEach(
+          source ->
+              reindexDataContractsForDomainSource(
+                  source.getType(), source.getId(), source.getFullyQualifiedName()));
+    }
+  }
+
+  private void reindexDataContractsForSource(String entityType, UUID entityId, String entityFqn) {
+    try {
+      if (Entity.getEntityRepository(Entity.DATA_CONTRACT)
+          instanceof DataContractRepository repository) {
+        repository.forEachDataContractBatchForDomainSource(
+            entityType,
+            entityId,
+            entityFqn,
+            batch -> updateEntitiesByReference(batch, Include.ALL));
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to reindex data contracts for {} {} after domain change; enqueuing retry",
+          entityType,
+          entityId,
+          e);
+      SearchIndexRetryQueue.enqueue(
+          entityId != null ? entityId.toString() : null,
+          entityFqn,
+          entityType,
+          SearchIndexRetryQueue.failureReason("reindexDataContractsForDomainChange", e));
+    }
+  }
+
+  private static List<EntityReference> deduplicateDataContractDomainSources(
+      List<EntityReference> sources) {
+    final Map<String, EntityReference> unique = new LinkedHashMap<>();
+    for (EntityReference source : listOrEmpty(sources)) {
+      if (source != null
+          && source.getId() != null
+          && DataContractRepository.isDomainReindexSource(source.getType())) {
+        unique.putIfAbsent(source.getType() + ":" + source.getId(), source);
+      }
+    }
+    return List.copyOf(unique.values());
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
@@ -4532,15 +4615,31 @@ public class SearchRepository {
   }
 
   /**
+   * The global alias plus {@code data_contract_search_index}, each with its staged index, so
+   * domain-FQN rewrites reach data contract documents whose domains come from their governed
+   * entity.
+   */
+  public List<String> getDomainAssetWriteFanoutTargets() {
+    return globalAliasAndIndexesOutsideIt(Entity.DATA_CONTRACT::equals);
+  }
+
+  /**
    * The global alias, plus the indexes outside it whose entities have one of {@code fields} (user
-   * and team documents hold domains, teams and owners), each with its staged index.
+   * and team documents hold domains, teams and owners; data contracts hold their governed entity's
+   * domains), each with its staged index.
    */
   private List<String> referenceCopyTargets(List<String> fields) {
     return globalAliasAndIndexesOutsideIt(
         entityType ->
             Entity.hasEntityRepository(entityType)
                 && !Entity.isTimeSeriesEntity(entityType)
-                && fields.stream().anyMatch(field -> Entity.entityHasField(entityType, field)));
+                && fields.stream()
+                    .anyMatch(field -> entitySearchDocHasReferenceField(entityType, field)));
+  }
+
+  private static boolean entitySearchDocHasReferenceField(String entityType, String field) {
+    return Entity.entityHasField(entityType, field)
+        || (Entity.DATA_CONTRACT.equals(entityType) && FIELD_DOMAINS.equals(field));
   }
 
   private List<String> globalAliasAndIndexesOutsideIt(Predicate<String> entityTypeFilter) {
@@ -4575,6 +4674,34 @@ public class SearchRepository {
     return values;
   }
 
+  void stripDeletedDomainFromDataContractIndex(String domainId) throws IOException {
+    final IndexMapping dataContractMapping = entityIndexMap.get(Entity.DATA_CONTRACT);
+    if (dataContractMapping != null) {
+      if (!searchClient.isClientAvailable()) {
+        throw new IOException("Search client unavailable");
+      }
+      searchClient.updateChildren(
+          getWriteFanoutTargets(dataContractMapping.getIndexName(clusterAlias)),
+          "domains.id",
+          List.of(domainId),
+          new ImmutablePair<>(
+              REMOVE_DOMAINS_CHILDREN_SCRIPT, Collections.singletonMap("id", domainId)));
+    }
+  }
+
+  private void removeDomainFromDataContractIndex(String domainId) {
+    try {
+      stripDeletedDomainFromDataContractIndex(domainId);
+    } catch (Exception e) {
+      LOG.error("Failed to strip deleted domain [{}] from data contract search index", domainId, e);
+      SearchIndexRetryQueue.enqueue(
+          null,
+          domainId,
+          Entity.DATA_CONTRACT,
+          SearchIndexRetryQueue.failureReason("removeDomainFromDataContractIndex", e));
+    }
+  }
+
   public void deleteOrUpdateChildren(EntityInterface<?> entity, IndexMapping indexMapping)
       throws IOException {
     String docId = entity.getId().toString();
@@ -4589,6 +4716,10 @@ public class SearchRepository {
             new ImmutablePair<>("domains.id", docId),
             new ImmutablePair<>(
                 REMOVE_DOMAINS_CHILDREN_SCRIPT, Collections.singletonMap("id", docId)));
+        // Run before deleteEntityByFields: this helper isolates its own errors via retry queue so
+        // neither a data_contract_search_index failure nor a data_product_search_index failure can
+        // prevent the other cleanup from running.
+        removeDomainFromDataContractIndex(docId);
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(

@@ -4710,7 +4710,43 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         });
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
+    reindexDataContractsMovedInBatch(originals, updatedEntities);
     return updatedEntities;
+  }
+
+  void reindexDataContractsMovedInBatch(List<T> originals, List<T> updatedEntities) {
+    if (supportsDomains
+        && searchRepository != null
+        && DataContractRepository.isDomainReindexSource(entityType)) {
+      final List<EntityReference> movedSources =
+          collectDomainChangedReferences(originals, updatedEntities);
+      if (!movedSources.isEmpty()) {
+        searchRepository.reindexDataContractsForDomainSources(movedSources);
+      }
+    }
+  }
+
+  private List<EntityReference> collectDomainChangedReferences(
+      List<T> originals, List<T> updatedEntities) {
+    final List<EntityReference> changed = new ArrayList<>();
+    for (int i = 0; i < originals.size(); i++) {
+      if (!domainIdsOf(originals.get(i)).equals(domainIdsOf(updatedEntities.get(i)))) {
+        final T updated = updatedEntities.get(i);
+        changed.add(
+            new EntityReference()
+                .withId(updated.getId())
+                .withType(entityType)
+                .withFullyQualifiedName(updated.getFullyQualifiedName()));
+      }
+    }
+    return changed;
+  }
+
+  private static Set<UUID> domainIdsOf(EntityInterface<?> entity) {
+    return listOrEmpty(entity.getDomains()).stream()
+        .map(EntityReference::getId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
   }
 
   /**
