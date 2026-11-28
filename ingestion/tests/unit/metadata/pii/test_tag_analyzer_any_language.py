@@ -15,6 +15,7 @@ Unit tests for TagAnalyzer "any language" mode.
 from unittest.mock import MagicMock
 
 import pytest
+import spacy
 from dirty_equals import Contains, HasAttributes, IsDict
 from presidio_analyzer import Pattern, PatternRecognizer
 
@@ -27,6 +28,7 @@ from _openmetadata_testutils.factories.metadata.generated.schema.entity.classifi
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
     PatternRecognizerFactory,
+    PredefinedRecognizerFactory,
     RecognizerFactory,
 )
 from metadata.generated.schema.entity.classification.classification import (
@@ -38,6 +40,8 @@ from metadata.generated.schema.type import recognizer
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.predefinedRecognizer import Name
+from metadata.pii.algorithms import presidio_utils
 from metadata.pii.tag_analyzer import TagAnalyzer
 
 
@@ -483,25 +487,72 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
         assert result.score > 0
 
 
+@pytest.mark.parametrize(
+    ("recognizer_language", "expected_match"),
+    [(ClassificationLanguage.any, True), (ClassificationLanguage.en, False)],
+)
+def test_any_language_recognition_uses_the_matching_local_model(
+    pii_classification, column, tmp_path, monkeypatch, recognizer_language, expected_match
+):
+    samples = ["Tarin Vosson", "Serel Merrow"]
+    any_model_path = tmp_path / "any_model"
+    any_model = spacy.blank("en")
+    ruler = any_model.add_pipe("entity_ruler")
+    ruler.add_patterns([{"label": "PERSON", "pattern": sample} for sample in samples])
+    any_model.to_disk(any_model_path)
+    en_model_path = tmp_path / "en_model"
+    spacy.blank("en").to_disk(en_model_path)
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_ANY", str(any_model_path))
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", str(en_model_path))
+    download = MagicMock(side_effect=AssertionError("Configured models must be loaded locally"))
+    monkeypatch.setattr(presidio_utils, "download", download)
+    monkeypatch.setattr(spacy.cli, "download", download)
+
+    tag = TagFactory.create(
+        tag_name="Person",
+        tag_classification=pii_classification,
+        autoClassificationEnabled=True,
+        recognizers=[
+            RecognizerFactory.create(
+                name="SpacyRecognizer",
+                recognizerConfig=PredefinedRecognizerFactory.create(
+                    name=Name.SpacyRecognizer,
+                    supportedLanguage=recognizer_language,
+                ),
+                target=recognizer.Target.content,
+            )
+        ],
+    )
+    analyzer = TagAnalyzer(
+        tag=tag,
+        column=column,
+        nlp_engine=presidio_utils.load_nlp_engine_for_language(ClassificationLanguage.any),
+        language=ClassificationLanguage.any,
+    )
+
+    assert (analyzer.analyze(str_values=samples).score > 0) is expected_match
+    download.assert_not_called()
+
+
 def test_secondary_language_model_failure_propagates_after_healthy_language(
     pii_classification,
     column,
     monkeypatch,
 ):
     from metadata.pii import tag_analyzer
-    from metadata.pii.algorithms.presidio_utils import load_nlp_engine
+    from metadata.pii.algorithms.presidio_utils import load_nlp_engine, load_nlp_engine_for_language
     from metadata.pii.model_loading import ClassificationModelLoadError
 
     languages = []
     failure = ClassificationModelLoadError("fr_core_news_md", "fr", "fr", "local_load")
 
-    def load_language(*, classification_language):
+    def load_language(classification_language):
         languages.append(classification_language)
         if classification_language == ClassificationLanguage.fr:
             raise failure
-        return load_nlp_engine(classification_language=classification_language)
+        return load_nlp_engine_for_language(classification_language)
 
-    monkeypatch.setattr(tag_analyzer, "load_nlp_engine", load_language)
+    monkeypatch.setattr(tag_analyzer, "load_nlp_engine_for_language", load_language)
     analyzer = TagAnalyzer(
         tag=_make_en_tag(pii_classification),
         column=column,

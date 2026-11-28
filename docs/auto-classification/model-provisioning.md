@@ -67,3 +67,15 @@ Provisioning downloads exact upstream wheel URLs. Build or install while connect
 At runtime, OpenMetadata still attempts spaCy's download when a model is missing locally. If a model cannot load, classification is disabled for the rest of that run. Sampling and configured sample writes continue, then the workflow reports failure. Tags already saved and existing manual tags remain; pending tags for the interrupted entity are discarded. The failure identifies the model and repair command. Repair or provision the model in the runner's Python environment, then rerun the workflow to retry classification.
 
 The status file and pipeline state report failure even when the CLI's explicit `workflowConfig.raiseOnError: false` setting suppresses the final exception.
+
+## Use a preinstalled custom NER model
+
+To use a custom spaCy NER model for one classification language, set `OM_PII_SPACY_MODEL_<LANG>` in the environment of the ingestion runner. `<LANG>` is the uppercase workflow language identifier. For example:
+
+```bash
+export OM_PII_SPACY_MODEL_EN=/opt/models/company_en_ner
+```
+
+The value can be the name of an installed spaCy package or a local spaCy model path. For a workflow set to `any`, recognizers configured for `any` use `OM_PII_SPACY_MODEL_ANY` if set and otherwise follow English model selection. Recognizers configured for a specific language use their own language override, such as `OM_PII_SPACY_MODEL_ES`.
+
+Overrides affect runtime loading only. `metadata install-classification-models` and `AUTO_CLASSIFICATION_LANGUAGES` continue to provision the release-pinned OpenMetadata models, not arbitrary override values. OpenMetadata never downloads an override at runtime: install or mount the selected model in the same Python environment and as the same user that runs ingestion, then restart the runner after changing the environment. If the override cannot load, classification follows the normal failure behavior and reports that the configured local model must be installed.

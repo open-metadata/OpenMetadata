@@ -26,13 +26,19 @@ class ClassificationModelLoadError(Exception):
         self.effective_language = effective_language
         self.phase = phase
         language = requested_language or effective_language
-        guidance = (
-            f"Run `metadata install-classification-models --languages {language}` in the ingestion runner's "
-            "Python environment, then rerun the workflow."
-            if language
-            else "Repair this model in the ingestion runner's Python environment, then rerun the workflow. "
-            "See `metadata install-classification-models --help`."
-        )
+        if phase == "configured_model_load":
+            guidance = (
+                "Install the configured local model in the ingestion runner's Python environment, then rerun "
+                "the workflow. Configured model overrides are not downloaded automatically."
+            )
+        else:
+            guidance = (
+                f"Run `metadata install-classification-models --languages {language}` in the ingestion runner's "
+                "Python environment, then rerun the workflow."
+                if language
+                else "Repair this model in the ingestion runner's Python environment, then rerun the workflow. "
+                "See `metadata install-classification-models --help`."
+            )
         super().__init__(
             f"Classification model '{model_name}' is unavailable during {phase} "
             f"(requested language: {requested_language or 'default'}, "

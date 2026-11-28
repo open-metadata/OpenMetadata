@@ -149,10 +149,10 @@ class TestAnalyzerEngine:
     @patch("metadata.pii.algorithms.presidio_utils.AnalyzerEngine")
     @patch("metadata.pii.algorithms.presidio_utils.RecognizerRegistry")
     @patch("metadata.pii.algorithms.presidio_utils._get_all_pattern_recognizers")
-    @patch("metadata.pii.algorithms.presidio_utils.load_nlp_engine")
+    @patch("metadata.pii.algorithms.presidio_utils.load_nlp_engine_for_language")
     def test_build_analyzer_engine(
         self,
-        mock_load_nlp,
+        mock_load_nlp_for_language,
         mock_get_recognizers,
         mock_recognizer_registry_cls,
         mock_engine_cls,
@@ -160,7 +160,8 @@ class TestAnalyzerEngine:
         """Test building analyzer engine"""
         # Mock NLP engine
         mock_nlp_engine = Mock(spec=SpacyNlpEngine)
-        mock_load_nlp.return_value = mock_nlp_engine
+        mock_nlp_engine.get_supported_languages.return_value = [SUPPORTED_LANG]
+        mock_load_nlp_for_language.return_value = mock_nlp_engine
 
         mock_registry = Mock(spec=RecognizerRegistry)
         mock_recognizer_registry_cls.return_value = mock_registry
@@ -171,11 +172,7 @@ class TestAnalyzerEngine:
         result = build_analyzer_engine(ClassificationLanguage.en)
 
         # Verify NLP engine was loaded
-        mock_load_nlp.assert_called_once_with(
-            model_name="en_core_web_md",
-            supported_language=SUPPORTED_LANG,
-            classification_language=ClassificationLanguage.en,
-        )
+        mock_load_nlp_for_language.assert_called_once_with(ClassificationLanguage.en)
 
         # Verify analyzer engine was created
         mock_engine_cls.assert_called_once_with(
@@ -187,11 +184,12 @@ class TestAnalyzerEngine:
         assert result == mock_engine
 
     @patch("metadata.pii.algorithms.presidio_utils._get_all_pattern_recognizers")
-    @patch("metadata.pii.algorithms.presidio_utils.load_nlp_engine")
-    def test_build_analyzer_engine_default_model(self, mock_load_nlp, mock_get_recognizers):
+    @patch("metadata.pii.algorithms.presidio_utils.load_nlp_engine_for_language")
+    def test_build_analyzer_engine_default_model(self, mock_load_nlp_for_language, mock_get_recognizers):
         """Test building analyzer engine with default model"""
         mock_nlp_engine = Mock(spec=SpacyNlpEngine)
-        mock_load_nlp.return_value = mock_nlp_engine
+        mock_nlp_engine.get_supported_languages.return_value = [SUPPORTED_LANG]
+        mock_load_nlp_for_language.return_value = mock_nlp_engine
         mock_get_recognizers.return_value = []
 
         with patch("metadata.pii.algorithms.presidio_utils.AnalyzerEngine") as mock_engine_cls:
@@ -201,8 +199,4 @@ class TestAnalyzerEngine:
 
             result = build_analyzer_engine()  # noqa: F841
 
-            mock_load_nlp.assert_called_once_with(
-                model_name=SPACY_EN_MODEL,
-                supported_language=SUPPORTED_LANG,
-                classification_language=ClassificationLanguage.en,
-            )
+            mock_load_nlp_for_language.assert_called_once_with(ClassificationLanguage.en)

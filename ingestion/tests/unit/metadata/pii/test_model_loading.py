@@ -158,3 +158,70 @@ def test_real_missing_model_with_unavailable_download_is_typed(tmp_path, monkeyp
     assert failure.value.phase == "download"
     assert failure.value.model_name == model_path
     assert isinstance(failure.value.__cause__, ConnectionError)
+
+
+@pytest.mark.parametrize("language", [ClassificationLanguage.en, ClassificationLanguage.any])
+def test_configured_model_override_loads_a_local_spacy_model_without_download(tmp_path, monkeypatch, language):
+    import spacy
+
+    model_path = tmp_path / "company_en_ner"
+    model = spacy.blank("en")
+    model.add_pipe("ner")
+    model.to_disk(model_path)
+    monkeypatch.delenv("OM_PII_SPACY_MODEL_ANY", raising=False)
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", str(model_path))
+    monkeypatch.setattr(presidio_utils, "download", Mock(side_effect=AssertionError("must stay local")))
+    monkeypatch.setattr(SpacyNlpEngine, "_download_spacy_model_if_needed", staticmethod(lambda _: None))
+
+    engine = presidio_utils.load_nlp_engine_for_language(language)
+
+    assert engine.is_loaded()
+    assert engine.get_supported_languages() == ["en"]
+    assert engine.get_nlp("en").lang == "en"
+    presidio_utils.download.assert_not_called()
+
+
+def test_missing_configured_model_override_never_downloads(monkeypatch):
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", "company_en_ner")
+    monkeypatch.setattr(presidio_utils.spacy, "load", Mock(side_effect=OSError("missing")))
+    monkeypatch.setattr(presidio_utils, "download", Mock(side_effect=AssertionError("must stay local")))
+
+    with pytest.raises(ClassificationModelLoadError) as failure:
+        presidio_utils.load_nlp_engine_for_language(ClassificationLanguage.en)
+
+    error = failure.value
+    assert error.model_name == "company_en_ner"
+    assert error.requested_language == "en"
+    assert error.phase == "configured_model_load"
+    assert "not downloaded automatically" in str(error)
+    assert "install-classification-models" not in str(error)
+    presidio_utils.download.assert_not_called()
+
+
+def test_invalid_configured_model_override_uses_local_model_guidance(monkeypatch):
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", "company_en_ner")
+    monkeypatch.setattr(presidio_utils.spacy, "load", Mock(side_effect=ValueError("invalid model config")))
+
+    with pytest.raises(ClassificationModelLoadError) as failure:
+        presidio_utils.load_nlp_engine_for_language(ClassificationLanguage.en)
+
+    error = failure.value
+    assert error.phase == "configured_model_load"
+    assert "not downloaded automatically" in str(error)
+    assert "install-classification-models" not in str(error)
+
+
+def test_configured_model_engine_failure_uses_local_model_guidance(monkeypatch):
+    monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", "company_en_ner")
+    monkeypatch.setattr(presidio_utils, "_load_spacy_model", lambda *_args, **_kwargs: None)
+    engine = Mock(spec=SpacyNlpEngine)
+    engine.load.side_effect = ValueError("invalid engine config")
+    monkeypatch.setattr(presidio_utils, "SpacyNlpEngine", lambda **_kwargs: engine)
+
+    with pytest.raises(ClassificationModelLoadError) as failure:
+        presidio_utils.load_nlp_engine_for_language(ClassificationLanguage.en)
+
+    error = failure.value
+    assert error.phase == "configured_model_load"
+    assert "not downloaded automatically" in str(error)
+    assert "install-classification-models" not in str(error)

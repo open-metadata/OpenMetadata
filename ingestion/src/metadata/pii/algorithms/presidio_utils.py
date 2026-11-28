@@ -75,7 +75,11 @@ from metadata.pii.constants import (
     SUPPORTED_LANG,
 )
 from metadata.pii.model_loading import ClassificationModelLoadError
-from metadata.pii.model_registry import example_language_for_model, get_model_for_language
+from metadata.pii.model_registry import (
+    example_language_for_model,
+    get_model_for_language,
+    get_model_override_for_language,
+)
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -137,15 +141,22 @@ def load_nlp_engine(
     model_name: str | None = None,
     supported_language: str | None = None,
     classification_language: ClassificationLanguage | None = None,
+    allow_model_download: bool = True,
 ) -> SpacyNlpEngine:
     if classification_language:
-        model_name = get_model_for_language(classification_language)
-        supported_language = classification_language.value
+        if model_name is None:
+            override = get_model_override_for_language(classification_language)
+            model_name = override or get_model_for_language(classification_language)
+            allow_model_download = allow_model_download and override is None
+        supported_language = supported_language or classification_language.value
     else:
         model_name = model_name or SPACY_EN_MODEL
         supported_language = supported_language or SUPPORTED_LANG
 
-    _load_spacy_model(model_name, classification_language)
+    if allow_model_download:
+        _load_spacy_model(model_name, classification_language)
+    else:
+        _load_spacy_model(model_name, classification_language, allow_model_download=False)
     model = {
         "lang_code": supported_language,
         "model_name": model_name,
@@ -160,7 +171,7 @@ def load_nlp_engine(
             model_name,
             classification_language.value if classification_language else None,
             supported_language,
-            "engine_load",
+            "engine_load" if allow_model_download else "configured_model_load",
         ) from exc
     return nlp_engine
 
@@ -171,24 +182,34 @@ def build_analyzer_engine(
     """
     Build a Presidio analyzer engine for the language and tailored to our use case.
 
-    If the model is not found locally, it will be downloaded.
+    Release-pinned models are downloaded when absent. Configured overrides must already be local.
     """
-    model_name = get_model_for_language(language)
-    supported_language = language.value
-
-    nlp_engine = load_nlp_engine(
-        model_name=model_name,
-        supported_language=supported_language,
-        classification_language=language,
-    )
+    nlp_engine = load_nlp_engine_for_language(language)
+    supported_languages = nlp_engine.get_supported_languages()
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
-        supported_languages=[supported_language],
+        supported_languages=supported_languages,
     )
     return AnalyzerEngine(
         nlp_engine=nlp_engine,
-        supported_languages=[supported_language],
+        supported_languages=supported_languages,
         registry=recognizer_registry,
+    )
+
+
+def load_nlp_engine_for_language(language: ClassificationLanguage) -> SpacyNlpEngine:
+    """Load a language model while keeping local overrides out of provisioning and download paths."""
+    # Presidio needs a concrete language code even for language-independent recognizers.
+    supported_language = ClassificationLanguage.en if language is ClassificationLanguage.any else language
+    override = get_model_override_for_language(language)
+    if override is None and language is ClassificationLanguage.any:
+        language = supported_language
+        override = get_model_override_for_language(language)
+    return load_nlp_engine(
+        model_name=override or get_model_for_language(language),
+        supported_language=supported_language.value,
+        classification_language=language,
+        allow_model_download=override is None,
     )
 
 
@@ -202,10 +223,12 @@ def set_presidio_logger_level(log_level: int | str = logging.ERROR) -> None:
 def _load_spacy_model(
     model_name: str,
     classification_language: ClassificationLanguage | None = None,
+    allow_model_download: bool = True,
 ) -> None:
     """
     Load the spaCy model for the given language.
-    If the model is not found locally, it will be downloaded.
+    If a release-pinned model is not found locally, it will be downloaded.
+    Configured runtime overrides must already be installed or available by local path.
     """
 
     requested_language = classification_language.value if classification_language else None
@@ -214,10 +237,22 @@ def _load_spacy_model(
         _ = spacy.load(model_name)
     except MemoryError:
         raise
-    except OSError:
+    except OSError as exc:
+        if not allow_model_download:
+            raise ClassificationModelLoadError(
+                model_name,
+                requested_language,
+                language,
+                "configured_model_load",
+            ) from exc
         _download_spacy_model(model_name, requested_language, language)
     except Exception as exc:
-        raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
+        raise ClassificationModelLoadError(
+            model_name,
+            requested_language,
+            language,
+            "local_load" if allow_model_download else "configured_model_load",
+        ) from exc
     else:
         return
 

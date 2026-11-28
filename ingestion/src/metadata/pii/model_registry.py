@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Release-pinned spaCy model selection for auto classification."""
 
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -20,6 +21,7 @@ from metadata.pii.constants import LANGUAGE_MODEL_MAPPING, SPACY_MULTILANG_MODEL
 
 MODEL_VERSION = "3.8.0"
 MODEL_SPACY_VERSION = ">=3.8.0,<3.9.0"
+PII_SPACY_MODEL_ENV_PREFIX = "OM_PII_SPACY_MODEL_"
 
 
 class ClassificationLanguageSelectionError(ValueError):
@@ -92,8 +94,14 @@ def parse_classification_languages(value: str) -> list[ClassificationLanguage]:
 
 
 def get_model_for_language(language: ClassificationLanguage) -> str:
-    """Return the existing configured model or the multilingual fallback."""
+    """Return the release-pinned provisioning model or multilingual fallback."""
     return LANGUAGE_MODEL_MAPPING.get(language, SPACY_MULTILANG_MODEL)
+
+
+def get_model_override_for_language(language: ClassificationLanguage) -> str | None:
+    """Return a locally installed runtime override for a classification language."""
+    value = os.getenv(f"{PII_SPACY_MODEL_ENV_PREFIX}{language.value.upper()}", "").strip()
+    return value or None
 
 
 def get_model_specification(model_name: str) -> ModelSpecification:
