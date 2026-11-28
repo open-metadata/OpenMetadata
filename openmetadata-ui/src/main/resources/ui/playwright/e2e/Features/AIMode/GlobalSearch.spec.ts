@@ -68,8 +68,9 @@ test.describe(
       test.setTimeout(120_000);
       const token = uuid();
       table = new TableClass();
-      // One token, so the search matches only this table and it stays on page one after sorting.
-      table.entity.displayName = `pwgstable${token}`;
+      // Explore's search is fuzzy and also matches other `pw table <uuid>` tables. A leading
+      // digit sorts this name ahead of them by name ascending, so it stays on page one.
+      table.entity.displayName = `0pwgstable${token}`;
       glossary = new Glossary();
       glossaryTerm = new GlossaryTerm(glossary, undefined, `pwgsterm${token}`);
       domain = new Domain({
