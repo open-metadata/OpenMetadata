@@ -319,6 +319,91 @@ describe('LineageNodeLabelV1', () => {
       ).not.toBeInTheDocument();
     });
 
+    describe('lineageMapChildrenCount precedence', () => {
+      it('should prefer the scene full count over the truncated local count', () => {
+        // Simulates a Field-band scene node: the backend ships a 10-item
+        // (server-trimmed to FIELD_ENDPOINTS_PER_NODE) columns array while the
+        // scene graph supplies the true total via lineageMapChildrenCount.
+        const truncatedNode = {
+          ...mockBasicNode,
+          columns: Array.from({ length: 10 }, (_, i) => ({
+            name: `col${i + 1}`,
+            dataType: DataType.Varchar,
+            fullyQualifiedName: `col${i + 1}`,
+          })),
+          lineageMapChildrenCount: 30,
+        } satisfies LineageNodeType;
+
+        render(
+          <LineageNodeLabelV1
+            isChildrenListExpanded={false}
+            node={truncatedNode}
+          />
+        );
+
+        expect(
+          screen.getByTestId('children-info-dropdown-btn')
+        ).toHaveTextContent('30 Columns');
+      });
+
+      it('should fall back to the local count when lineageMapChildrenCount is undefined', () => {
+        // Non-scene (regular lineage) nodes never set lineageMapChildrenCount,
+        // so the local columns.length must drive the footer.
+        const localOnlyNode = {
+          ...mockBasicNode,
+          lineageMapChildrenCount: undefined,
+        } satisfies LineageNodeType;
+
+        render(
+          <LineageNodeLabelV1
+            isChildrenListExpanded={false}
+            node={localOnlyNode}
+          />
+        );
+
+        expect(
+          screen.getByTestId('children-info-dropdown-btn')
+        ).toHaveTextContent('3 Columns');
+      });
+
+      it('should show the scene count when the local field list is empty (Asset band)', () => {
+        // On the scene's Asset band the backend strips the field list entirely,
+        // so the local count is 0 while lineageMapChildrenCount holds the total.
+        const assetBandNode = {
+          ...mockBasicNode,
+          columns: [],
+          lineageMapChildrenCount: 12,
+        } satisfies LineageNodeType;
+
+        render(
+          <LineageNodeLabelV1
+            isChildrenListExpanded={false}
+            node={assetBandNode}
+          />
+        );
+
+        expect(
+          screen.getByTestId('children-info-dropdown-btn')
+        ).toHaveTextContent('12 Columns');
+      });
+
+      it('should render no footer when both scene and local counts are zero', () => {
+        const emptyNode = {
+          ...mockBasicNode,
+          columns: [],
+          lineageMapChildrenCount: 0,
+        } satisfies LineageNodeType;
+
+        render(
+          <LineageNodeLabelV1 isChildrenListExpanded={false} node={emptyNode} />
+        );
+
+        expect(
+          screen.queryByTestId('children-info-dropdown-btn')
+        ).not.toBeInTheDocument();
+      });
+    });
+
     it('should render entity type chip', () => {
       render(
         <LineageNodeLabelV1

@@ -68,8 +68,7 @@ interface LineageNodeLabelProps {
 }
 
 const getFooterChildrenCount = (node: LineageNodeType) =>
-  getEntityChildrenAndLabel(node).childrenCount ||
-  (node.lineageMapChildrenCount ?? 0);
+  node.lineageMapChildrenCount ?? getEntityChildrenAndLabel(node).childrenCount;
 
 const NodeCountBadge = ({
   count,
