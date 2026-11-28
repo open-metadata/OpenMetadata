@@ -114,7 +114,9 @@ export const getStatusBadgeClassName = (status?: StatusType) => {
   }
 };
 
-export const getStatusBadgeIcon = (status?: StatusType) => {
+export const getStatusBadgeIcon = (
+  status?: StatusType
+): React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number }> => {
   switch (status) {
     case StatusType.Successful:
       return CheckCircle02;

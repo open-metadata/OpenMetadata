@@ -718,7 +718,9 @@ export const buildDataQualityDashboardFilters = (data: {
   return mustFilter;
 };
 
-export const getDimensionIcon = (dimension: DataQualityDimensions) => {
+export const getDimensionIcon = (
+  dimension: DataQualityDimensions
+): SvgComponent => {
   switch (dimension) {
     case DataQualityDimensions.Accuracy:
       return Accuracy;

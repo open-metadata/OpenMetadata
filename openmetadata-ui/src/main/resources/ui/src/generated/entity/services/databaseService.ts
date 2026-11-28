@@ -317,6 +317,8 @@ export interface DatabaseConnection {
  * SAP BW/4HANA Database Connection Config
  *
  * Neo4j Connection Config
+ *
+ * Amazon Neptune property graph or RDF connection configuration
  */
 export interface Connection {
     /**
@@ -431,6 +433,10 @@ export interface Connection {
      *
      * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
      * 7687.
+     *
+     * Neptune cluster or instance endpoint, e.g.
+     * `my-cluster.cluster-abc.us-east-1.neptune.amazonaws.com:8182`. The port can be omitted to
+     * use 8182.
      */
     hostPort?: string;
     /**
@@ -526,7 +532,13 @@ export interface Connection {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
-    awsConfig?:     AWSCredentials;
+    /**
+     * AWS credentials used to sign (SigV4) requests to Neptune. Leave the keys blank to use the
+     * standard AWS credential provider chain, e.g. an IAM role. The identity needs
+     * `neptune-db:ReadDataViaQuery`; RDF also needs `neptune-db:GetGraphSummary`.
+     * Property-graph schema computation additionally needs `neptune-db:WriteDataViaQuery`.
+     */
+    awsConfig?: AWSCredentials;
     /**
      * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
      * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
@@ -546,7 +558,10 @@ export interface Connection {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      *
-     * Neo4j database to extract metadata from. If left blank, the user's home database is used.
+     * Neo4j database to extract metadata from. If left blank, the user's home database is
+     * used.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, `default` is used.
      */
     databaseName?: string;
     /**
@@ -1447,13 +1462,55 @@ export interface Connection {
     /**
      * Also ingest relationship types as tables in the `relationships` schema, with their
      * properties as columns.
+     *
+     * Also ingest edge labels as tables in the `relationships` schema, with their properties as
+     * columns.
      */
     includeRelationships?: boolean;
     /**
      * Regex to only include/exclude node and relationship properties (columns) that match the
      * pattern, e.g. properties written back by graph algorithms.
+     *
+     * Regex to only include/exclude node and edge properties (columns) that match the pattern.
      */
     propertyFilterPattern?: FilterPattern;
+    /**
+     * For property graphs, when Neptune has no computed schema, start `CALL
+     * neptune.graph.pg_schema.compute()` and wait for it to finish. This requires
+     * `neptune-db:WriteDataViaQuery`. Ignored for RDF, which uses the read-only graph summary
+     * API.
+     */
+    computeSchemaIfMissing?: boolean;
+    /**
+     * Choose the Neptune graph model. Existing configurations default to openCypher property
+     * graphs.
+     */
+    graphModel?: GraphModel;
+    /**
+     * Maximum number of RDF classes to ingest as tables. Classes are selected deterministically
+     * by IRI; truncation is reported in the ingestion status.
+     */
+    rdfMaxClasses?: number;
+    /**
+     * Maximum number of predicates to ingest as columns for each RDF class. Truncation is
+     * reported in the ingestion status.
+     */
+    rdfMaxPredicatesPerClass?: number;
+    /**
+     * Per-query timeout for the bounded SPARQL class-discovery queries. Neptune requires this
+     * to be lower than the neptune_query_timeout database parameter.
+     */
+    rdfQueryTimeoutSeconds?: number;
+    /**
+     * Maximum number of subjects sampled per RDF class when discovering predicates and value
+     * types.
+     */
+    rdfSampleSize?: number;
+    /**
+     * Maximum time to wait for Neptune to finish computing the property graph schema before
+     * failing.
+     */
+    schemaComputeTimeoutSeconds?: number;
     [property: string]: any;
 }
 
@@ -1640,6 +1697,11 @@ export interface AuthenticationType {
 
 /**
  * AWS credentials configs.
+ *
+ * AWS credentials used to sign (SigV4) requests to Neptune. Leave the keys blank to use the
+ * standard AWS credential provider chain, e.g. an IAM role. The identity needs
+ * `neptune-db:ReadDataViaQuery`; RDF also needs `neptune-db:GetGraphSummary`.
+ * Property-graph schema computation additionally needs `neptune-db:WriteDataViaQuery`.
  */
 export interface AWSCredentials {
     /**
@@ -2006,6 +2068,11 @@ export interface DataLakeConfigurationSource {
  * GCP credentials to use. If not provided, Application Default Credentials will be used.
  *
  * AWS credentials configs.
+ *
+ * AWS credentials used to sign (SigV4) requests to Neptune. Leave the keys blank to use the
+ * standard AWS credential provider chain, e.g. an IAM role. The identity needs
+ * `neptune-db:ReadDataViaQuery`; RDF also needs `neptune-db:GetGraphSummary`.
+ * Property-graph schema computation additionally needs `neptune-db:WriteDataViaQuery`.
  */
 export interface Credentials {
     /**
@@ -2214,6 +2281,8 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include/exclude node and relationship properties (columns) that match the
  * pattern, e.g. properties written back by graph algorithms.
+ *
+ * Regex to only include/exclude node and edge properties (columns) that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2242,6 +2311,17 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
+}
+
+/**
+ * Choose the Neptune graph model. Existing configurations default to openCypher property
+ * graphs.
+ *
+ * Neptune graph model and query language.
+ */
+export enum GraphModel {
+    PropertyGraph = "propertyGraph",
+    RDF = "rdf",
 }
 
 /**
@@ -2607,6 +2687,7 @@ export enum ConfigType {
     Mssql = "Mssql",
     Mysql = "Mysql",
     Neo4J = "Neo4j",
+    Neptune = "Neptune",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",
@@ -2788,6 +2869,7 @@ export enum DatabaseServiceType {
     Mssql = "Mssql",
     Mysql = "Mysql",
     Neo4J = "Neo4j",
+    Neptune = "Neptune",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",

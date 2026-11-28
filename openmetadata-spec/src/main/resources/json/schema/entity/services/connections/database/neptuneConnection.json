@@ -1,0 +1,123 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/neptuneConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NeptuneConnection",
+  "description": "Amazon Neptune property graph or RDF connection configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.NeptuneConnection",
+  "definitions": {
+    "neptuneType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Neptune"],
+      "default": "Neptune"
+    },
+    "graphModel": {
+      "description": "Neptune graph model and query language.",
+      "type": "string",
+      "enum": ["propertyGraph", "rdf"],
+      "default": "propertyGraph"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/neptuneType",
+      "default": "Neptune"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "description": "AWS credentials used to sign (SigV4) requests to Neptune. Leave the keys blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity needs `neptune-db:ReadDataViaQuery`; RDF also needs `neptune-db:GetGraphSummary`. Property-graph schema computation additionally needs `neptune-db:WriteDataViaQuery`.",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "graphModel": {
+      "title": "Graph Model",
+      "description": "Choose the Neptune graph model. Existing configurations default to openCypher property graphs.",
+      "$ref": "#/definitions/graphModel",
+      "default": "propertyGraph"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Neptune cluster or instance endpoint, e.g. `my-cluster.cluster-abc.us-east-1.neptune.amazonaws.com:8182`. The port can be omitted to use 8182.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, `default` is used.",
+      "type": "string"
+    },
+    "includeRelationships": {
+      "title": "Include Relationships",
+      "description": "Also ingest edge labels as tables in the `relationships` schema, with their properties as columns.",
+      "type": "boolean",
+      "default": true
+    },
+    "computeSchemaIfMissing": {
+      "title": "Compute Schema If Missing",
+      "description": "For property graphs, when Neptune has no computed schema, start `CALL neptune.graph.pg_schema.compute()` and wait for it to finish. This requires `neptune-db:WriteDataViaQuery`. Ignored for RDF, which uses the read-only graph summary API.",
+      "type": "boolean",
+      "default": true
+    },
+    "schemaComputeTimeoutSeconds": {
+      "title": "Schema Compute Timeout (seconds)",
+      "description": "Maximum time to wait for Neptune to finish computing the property graph schema before failing.",
+      "type": "integer",
+      "default": 900,
+      "minimum": 1
+    },
+    "rdfMaxClasses": {
+      "title": "Maximum RDF Classes",
+      "description": "Maximum number of RDF classes to ingest as tables. Classes are selected deterministically by IRI; truncation is reported in the ingestion status.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "rdfMaxPredicatesPerClass": {
+      "title": "Maximum RDF Predicates Per Class",
+      "description": "Maximum number of predicates to ingest as columns for each RDF class. Truncation is reported in the ingestion status.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "rdfSampleSize": {
+      "title": "RDF Subject Sample Size",
+      "description": "Maximum number of subjects sampled per RDF class when discovering predicates and value types.",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "rdfQueryTimeoutSeconds": {
+      "title": "RDF Query Timeout (seconds)",
+      "description": "Per-query timeout for the bounded SPARQL class-discovery queries. Neptune requires this to be lower than the neptune_query_timeout database parameter.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 300
+    },
+    "propertyFilterPattern": {
+      "title": "Property Filter Pattern",
+      "description": "Regex to only include/exclude node and edge properties (columns) that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["awsConfig", "hostPort"]
+}

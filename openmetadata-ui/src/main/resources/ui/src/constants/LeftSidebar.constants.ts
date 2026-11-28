@@ -265,7 +265,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   },
 ];
 
-export const SETTING_ITEM = {
+export const SETTING_ITEM: LeftSidebarItem = {
   key: ROUTES.SETTINGS,
   title: 'label.setting-plural',
   redirect_url: ROUTES.SETTINGS,
@@ -273,7 +273,7 @@ export const SETTING_ITEM = {
   dataTestId: `app-bar-item-${SidebarItem.SETTINGS}`,
 };
 
-export const LOGOUT_ITEM = {
+export const LOGOUT_ITEM: LeftSidebarItem = {
   key: SidebarItem.LOGOUT,
   title: 'label.logout',
   icon: LogOut01,

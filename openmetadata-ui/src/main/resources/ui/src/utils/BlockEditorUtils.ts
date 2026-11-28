@@ -217,7 +217,7 @@ export const getFileTypeFromMimeType = (mimeType: string) => {
   return FileType.FILE;
 };
 
-export const getFileIcon = (fileType: FileType) => {
+export const getFileIcon = (fileType: FileType): SvgComponent => {
   switch (fileType) {
     case FileType.IMAGE:
       return Image01;
