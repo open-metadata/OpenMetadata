@@ -109,6 +109,11 @@ class SkipResourceTypeEnum(Enum):
     TEST = "test"
 
 
+# Node types that dbt writes to the manifest but the artifacts parser does not model, so a
+# manifest that holds one fails to parse. OpenMetadata does not ingest them.
+UNPARSED_NODE_RESOURCE_TYPES = {"check"}
+
+
 class CompiledQueriesEnum(Enum):
     """
     Enum for Compiled Queries

@@ -4254,6 +4254,21 @@ class TestRemoveManifestNonRequiredKeys(TestCase):
         assert manifest_dict["child_map"] == {}
         assert manifest_dict["group_map"] == []
 
+    def test_check_nodes_are_dropped_so_the_manifest_parses(self):
+        """
+        dbt 2 writes Checks as nodes with resource_type "check", which the
+        artifacts parser does not model; parsing a manifest that holds one fails.
+        """
+        manifest_path = Path(__file__).parent / MOCK_SAMPLE_MANIFEST_SNAPSHOT
+        manifest_dict = json.loads(manifest_path.read_text())
+        model_id, model = next(iter(manifest_dict["nodes"].items()))
+        check_id = "check.dbt_project_evaluator.fct_marts_or_intermediate_dependent_on_source"
+        manifest_dict["nodes"][check_id] = {**model, "unique_id": check_id, "resource_type": "check"}
+
+        self._make_source().remove_manifest_non_required_keys(manifest_dict)
+
+        assert list(parse_manifest(manifest_dict).nodes) == [model_id]
+
 
 class TestDbtLineageUnresolvedUpstream:
     """create_dbt_lineage / create_dbt_exposures_lineage must report dropped edges."""
