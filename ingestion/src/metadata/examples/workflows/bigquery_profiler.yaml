@@ -4,6 +4,12 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      usageLocation: us
+      # Optional. Include only projects that run DML in usageLocation.
+      # systemMetricsJobProjectIds:
+      #   - orchestration-project
+      # UTC calendar dates to scan. The default of 2 includes today and yesterday.
+      # systemMetricsLookbackDays: 7
       credentials:
         gcpConfig:
           type: service_account

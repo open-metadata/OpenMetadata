@@ -77,7 +77,8 @@ const customFields: RegistryFieldsType = {
 
 const renderConnectionSchema = async (
   connectorType: string,
-  serviceCategory = ServiceCategory.DATABASE_SERVICES
+  serviceCategory = ServiceCategory.DATABASE_SERVICES,
+  formData: Record<string, unknown> = {}
 ) => {
   const connSch = await loadConnectionSchema(serviceCategory, connectorType);
   const connectionSchema = getSchemaWithSynthesizedAuthType(
@@ -103,7 +104,7 @@ const renderConnectionSchema = async (
       noHtml5Validate
       fields={customFields}
       formContext={{ handleFocus: jest.fn() }}
-      formData={{}}
+      formData={formData}
       idSeparator="/"
       schema={schemaWithoutDefaultFilterPatternFields}
       showErrorList={false}
@@ -189,6 +190,43 @@ const expectAwsCredentialLayout = (
 };
 
 describe('ConnectionConfigForm schema rendering', () => {
+  it('round-trips the BigQuery system metrics projects and lookback', async () => {
+    const projects = ['orchestration-project', 'analytics-project'];
+    const { container, onChange } = await renderConnectionSchema(
+      'BigQuery',
+      ServiceCategory.DATABASE_SERVICES,
+      {
+        systemMetricsJobProjectIds: projects,
+        systemMetricsLookbackDays: 7,
+      }
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label.scope-and-option-plural/ })
+    );
+
+    const projectsField = screen.getByTestId(
+      'workflow-array-field-root/systemMetricsJobProjectIds'
+    );
+    for (const project of projects) {
+      expect(within(projectsField).getByText(project)).toBeInTheDocument();
+    }
+
+    const lookback = getRequiredElement(
+      container,
+      '[id="root/systemMetricsLookbackDays"]'
+    );
+
+    expect(lookback).toHaveValue(7);
+
+    fireEvent.change(lookback, { target: { value: '14' } });
+
+    expect(onChange.mock.lastCall?.[0].formData).toMatchObject({
+      systemMetricsJobProjectIds: projects,
+      systemMetricsLookbackDays: 14,
+    });
+  });
+
   it('preserves an empty CSV escape character when the Datalake field is cleared', async () => {
     const { container, onChange } = await renderConnectionSchema('Datalake');
 

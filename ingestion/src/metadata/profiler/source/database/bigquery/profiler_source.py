@@ -13,19 +13,29 @@
 Bigquery Profiler source
 """
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import BigQueryProfilerInterface
 from metadata.profiler.source.database.base.profiler_source import ProfilerSource
 from metadata.utils.bigquery_utils import copy_service_config
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
+    from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+    from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
 
 class BigQueryProfilerSource(ProfilerSource):
     """override the base profiler source to handle BigQuery specific connection configs"""
+
+    @ProfilerSource.interface.setter
+    def interface(self, interface: ProfilerInterface | None) -> None:
+        if isinstance(interface, BigQueryProfilerInterface):
+            interface.run_started_at = self.run_started_at
+        self._interface = interface
 
     def _copy_service_config(self, config: OpenMetadataWorkflowConfig, database: Database) -> BigQueryConnection:
         """Make a copy of the database connection config. If MultiProjectId is used, replace it

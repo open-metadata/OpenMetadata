@@ -64,6 +64,17 @@ export interface BigQueryConnection {
     supportsSystemProfile?:                 boolean;
     supportsUsageExtraction?:               boolean;
     /**
+     * Additional projects to query for BigQuery DML job history when collecting profiler system
+     * metrics. The billing project, or the profiled table's project when no billing project is
+     * configured, is always included.
+     */
+    systemMetricsJobProjectIds?: string[];
+    /**
+     * Number of UTC calendar dates of BigQuery DML job history to collect for profiler system
+     * metrics, including the date the profiler run starts.
+     */
+    systemMetricsLookbackDays?: number;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
@@ -80,9 +91,8 @@ export interface BigQueryConnection {
      */
     type?: BigqueryType;
     /**
-     * Location used to query INFORMATION_SCHEMA.JOBS_BY_PROJECT to fetch usage data. You can
-     * pass multi-regions, such as `us` or `eu`, or you specific region. Australia and Asia
-     * multi-regions are not yet in GA.
+     * BigQuery location used for usage and profiler system metrics. Enter a multi-region such
+     * as `us` or `eu`, or the name of a single region.
      */
     usageLocation?: string;
 }

@@ -183,9 +183,27 @@ $$
 $$section
 ### Usage Location $(id="usageLocation")
 
-Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or your specific region such as `us-east1`.
+Location used to query job history for usage and profiler system metrics. Enter a multi-region such as `us` or `eu`, or a single region such as `us-east1`. The profiler executes the history query in this location and reads the selected projects' views in the same location.
+$$
 
-Australia and Asia multi-regions are not yet supported.
+$$section
+### System Metrics Jobs Project IDs $(id="systemMetricsJobProjectIds")
+
+Add up to 10 projects that submit DML to tables profiled by this service. The billing project is always queried, or the table's project when no billing project is set. An empty list keeps this default. Duplicate projects are queried once. Jobs submitted in other regions are outside this scope.
+
+The profiler identity needs `bigquery.jobs.listAll` in every project it reads and `bigquery.jobs.create` in the project where it runs the query. The configured billing project and service account impersonation continue to control query execution. [BigQuery JOBS view permissions](https://cloud.google.com/bigquery/docs/information-schema-jobs#required_permissions)
+$$
+
+$$section
+### System Metrics Lookback Days $(id="systemMetricsLookbackDays")
+
+Select 1–30 UTC calendar dates based on when jobs started. The default of 2 includes the UTC date the workflow starts and the preceding date. Use a longer window for less frequent profiling runs. The scan also reads two earlier creation-date partitions to account for jobs that waited in a queue.
+
+System profiles count the row effects reported by successful `INSERT`, `UPDATE`, `DELETE`, and `MERGE` statements. A successful statement inside an explicit transaction can appear even if the transaction rolls back. A scan that fails or exceeds the per-table limit of 50,000 job records or 10,000 timestamp-and-operation buckets omits that table's system metrics for the run. Ordinary profiler metrics can still be published.
+
+System profile writes replace matching timestamp-and-operation buckets. Use the same jobs projects and region for all writers profiling a table. To roll back to a smaller scope, pause system metrics for affected tables until the smaller scope's earliest eligible job start is later than the latest expanded-scope bucket. You can continue ordinary profiling with a nonempty `metrics` list that omits `system`. Replays that overlap existing expanded-scope buckets need the expanded scope.
+
+Upgrade the server before saving the new settings, then upgrade the canary ingestion agent. Before expanding the canary, compare query count, `total_bytes_billed`, and profiler duration for the default and expanded scopes. Each table submits one query, and that query scans each selected project's view.
 $$
 
 $$section

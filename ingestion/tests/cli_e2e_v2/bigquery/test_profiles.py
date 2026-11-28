@@ -11,18 +11,22 @@
 """Persisted BigQuery profiler metrics, DML system metrics and default partition profiling."""
 
 import time
+from collections import Counter
 
 import pytest
 
+from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
-from metadata.generated.schema.entity.data.table import DmlOperationType
+from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile, TableProfile
+from metadata.generated.schema.type.basic import Timestamp
+from metadata.utils.time_utils import datetime_to_timestamp
 
 from ..features.database.entities import entity_exists
 from ..features.database.pipelines import MetadataPipeline, ProfilerPipeline
 from ..features.database.profiles import column_has_metrics, table_has_row_count
 from ..runtime import expect
-from .checks import partition_query, system_profile_matches, system_profile_query, table_is_day_partitioned
-from .source import wait_for_jobs_visible
+from .checks import partition_query, system_profile_query, table_is_day_partitioned
+from .source import wait_for_dml_jobs_visible
 
 _ALL_PROFILER_METRICS = [
     MetricType.rowCount,
@@ -97,35 +101,68 @@ def test_profiler_metrics(cli, bigquery):
 
 @pytest.mark.e2e_contract("profile.system")
 def test_system_profile_attributes_dml_to_its_table(cli, bigquery, bigquery_profile_table):
-    """v1 checked INSERT/UPDATE system metrics; this also requires sibling-table DML to stay out.
-
-    The connector reads INFORMATION_SCHEMA.JOBS of the billing project, so the DML runs there,
-    exactly as it did through the v1 workflow engine.
-    """
+    """Opt in to jobs from another project and replay the full history into the same keys."""
     table = bigquery_profile_table
     filters = _only(table)
     cli.run(bigquery.invocation(MetadataPipeline(includeStoredProcedures=False), filters=filters))
-    expect.poll(bigquery.table_query(table)).satisfies(entity_exists)
+    entity = expect.poll(bigquery.table_query(table)).satisfies(entity_exists)
 
     billing = bigquery.instance.secondary
+    primary = bigquery.instance.primary
     since_ms = int(time.time() * 1000) - 60_000
     qualified = bigquery.source.qualified
-    jobs = [
-        bigquery.source.run(
-            f"INSERT INTO {qualified}.{table} (id, score) VALUES (1, 10), (2, 20), (3, 20), (4, NULL)",
-            client=billing.client,
-        ),
-        bigquery.source.run(f"UPDATE {qualified}.{table} SET score = 30 WHERE id = 2", client=billing.client),
-        bigquery.source.run(f"UPDATE {qualified}.customers SET credit_score = 700 WHERE id = 1", client=billing.client),
-    ]
-    assert [job.num_dml_affected_rows for job in jobs] == [4, 1, 1]
-    wait_for_jobs_visible(billing, bigquery.instance.location, [job.job_id for job in jobs])
-
-    cli.run(bigquery.invocation(profiler_options([MetricType.rowCount, MetricType.system]), filters=filters))
-    expect.poll(bigquery.profile_query(table)).satisfies(table_has_row_count(4))
-    expect.poll(system_profile_query(bigquery.om, bigquery.table_fqn(table), since_ms=since_ms)).satisfies(
-        system_profile_matches([(DmlOperationType.INSERT, 4), (DmlOperationType.UPDATE, 1)])
+    inserted = bigquery.source.run(
+        f"INSERT INTO {qualified}.{table} (id, score) VALUES (1, 10), (2, 20), (3, 20), (4, NULL)",
+        client=billing.client,
     )
+    updated = bigquery.source.run(
+        f"UPDATE {qualified}.{table} SET score = 30 WHERE id = 2",
+        client=primary.client,
+    )
+    sibling = f"{table}_archive"
+    bigquery.source.run(f"CREATE TABLE {qualified}.{sibling} (id INT64)")
+    sibling_insert = bigquery.source.run(
+        f"INSERT INTO {qualified}.{sibling} (id) VALUES (1), (2)", client=primary.client
+    )
+    assert [job.num_dml_affected_rows for job in (inserted, updated, sibling_insert)] == [4, 1, 2]
+    wait_for_dml_jobs_visible(billing, bigquery.instance.location, [inserted.job_id])
+    wait_for_dml_jobs_visible(primary, bigquery.instance.location, [updated.job_id, sibling_insert.job_id])
+
+    existing_ts = Timestamp(since_ms + 1)
+    bigquery.om.ingest_profile_data(
+        entity,
+        CreateTableProfileRequest(
+            tableProfile=TableProfile(timestamp=existing_ts, rowCount=0),
+            systemProfile=[SystemProfile(timestamp=existing_ts, operation=DmlOperationType.WRITE, rowsAffected=9)],
+        ),
+    )
+
+    def matches_events(*events):
+        def check(profiles):
+            actual = Counter((profile.timestamp.root, profile.operation, profile.rowsAffected) for profile in profiles)
+            assert actual == Counter(events)
+
+        return check
+
+    read_profiles = system_profile_query(bigquery.om, bigquery.table_fqn(table), since_ms=since_ms)
+    original = [
+        (existing_ts.root, DmlOperationType.WRITE, 9),
+        (datetime_to_timestamp(inserted.started, milliseconds=True), DmlOperationType.INSERT, 4),
+    ]
+    options = profiler_options([MetricType.rowCount, MetricType.system])
+    cli.run(bigquery.invocation(options, filters=filters))
+    expect.poll(bigquery.profile_query(table)).satisfies(table_has_row_count(4))
+    expect.poll(read_profiles).satisfies(matches_events(*original))
+
+    expanded = bigquery.invocation(options, filters=filters)
+    expanded.config["source"]["serviceConnection"]["config"]["systemMetricsJobProjectIds"] = [primary.project_id]
+    expected = matches_events(
+        *original,
+        (datetime_to_timestamp(updated.started, milliseconds=True), DmlOperationType.UPDATE, 1),
+    )
+    for _ in range(2):
+        cli.run(expanded)
+        expect.poll(read_profiles).satisfies(expected)
 
 
 @pytest.mark.e2e_contract("profile.partition.default")

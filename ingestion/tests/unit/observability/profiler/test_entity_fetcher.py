@@ -14,6 +14,7 @@ Validate entity fetcher filtering strategies
 """
 
 import uuid
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -837,6 +838,24 @@ class TestGetTableEntities:
 
 class TestFetch:
     """Validate end-to-end fetch() pipeline across multiple databases"""
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.datetime")
+    def test_fetch_reuses_the_run_start_across_databases(self, clock, factory):
+        before_midnight = datetime(2026, 1, 1, 23, 59, tzinfo=timezone.utc)
+        after_midnight = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        clock.now.side_effect = [before_midnight, after_midnight]
+        factory.create.side_effect = [MagicMock(spec=ProfilerSourceInterface), MagicMock(spec=ProfilerSourceInterface)]
+        fetcher = _make_fetcher({})
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([PROD_DB, STAGING_DB]),
+            iter([ORDERS_TABLE]),
+            iter([CUSTOMERS_TABLE]),
+        ]
+
+        results = [result.right for result in fetcher.fetch()]
+
+        assert [result.profiler_source.run_started_at for result in results] == [before_midnight, before_midnight]
 
     @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
     def test_fetch_iterates_databases_and_tables_with_correct_params(self, mock_factory):
