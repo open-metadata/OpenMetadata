@@ -241,10 +241,12 @@ public class PermissionsResource {
       @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID"))
           @QueryParam("ids")
           List<UUID> ids) {
-    // User must have read access to policies
-    OperationContext operationContext =
-        new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
+    // User must have read access to each policy. OperationContext is stateful - it drops
+    // operations as they are satisfied - so each decision needs its own, matching the pattern
+    // documented in ViewPermissionFilter.
     for (UUID id : ids) {
+      OperationContext operationContext =
+          new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
       ResourceContext<?> resourceContext = new ResourceContext(Entity.POLICY, id, null);
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
