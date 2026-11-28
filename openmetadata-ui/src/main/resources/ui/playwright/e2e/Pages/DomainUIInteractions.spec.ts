@@ -21,7 +21,12 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  NAME_VALIDATION_ERROR,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import {
   checkAssetsCount,
   clearDomainFromNavbar,
@@ -625,11 +630,7 @@ test.describe('Domain Form Validation', () => {
 
     await page.getByRole('button', { name: 'Save' }).click();
 
-    await expect(
-      page.getByText(
-        'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
-      )
-    ).toBeVisible();
+    await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
   });
 
   test('Domain name validation - max length', async ({ page }) => {

@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} può contenere al massimo {{max}} caratteri",
     "entity-moved-successfully": "{{entity}} spostato con successo",
     "entity-name-example": "un nome di {{entity}}",
-    "entity-name-validation": "Il nome può contenere solo lettere, numeri, trattini bassi, trattini, punti, parentesi e e commerciali.",
+    "entity-name-validation": "Il nome non può contenere doppi due punti (::), il segno di maggiore (>), virgolette doppie (\") o caratteri di controllo.",
     "entity-not-contain-whitespace": "{{entity}} non deve contenere spazi",
     "entity-not-found-in-current-page": "{{entity}} non si trova in questa pagina dei risultati. Rimuovi eventuali filtri o vai direttamente alla sua pagina.",
     "entity-owned-by-name": "Il proprietario di questa entità è {{entityOwner}}",

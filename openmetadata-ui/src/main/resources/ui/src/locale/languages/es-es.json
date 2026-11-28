@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} puede tener como máximo {{max}} caracteres",
     "entity-moved-successfully": "{{entity}} movido exitosamente",
     "entity-name-example": "un nombre de {{entity}}",
-    "entity-name-validation": "El nombre solo puede contener letras, números, guiones bajos, guiones, puntos, paréntesis y ampersands.",
+    "entity-name-validation": "El nombre no puede contener dos puntos dobles (::), el signo mayor que (>), comillas dobles (\") ni caracteres de control.",
     "entity-not-contain-whitespace": "{{entity}} no debe contener espacios en blanco",
     "entity-not-found-in-current-page": "{{entity}} no está en esta página de resultados. Borra los filtros o accede directamente.",
     "entity-owned-by-name": "Esta entidad es propiedad de {{entityOwner}}",

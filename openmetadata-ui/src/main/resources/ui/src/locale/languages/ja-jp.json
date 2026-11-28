@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} は最大 {{max}} 文字までです",
     "entity-moved-successfully": "{{entity}} が正常に移動されました",
     "entity-name-example": "{{entity}}名",
-    "entity-name-validation": "名前は英数字、アンダースコア（_）、ハイフン（-）、ピリオド（.）、括弧（()）、アンパサンド（&）のみ使用可能です。",
+    "entity-name-validation": "名前に二重コロン（::）、大なり記号（>）、二重引用符（\"）、または制御文字を含めることはできません。",
     "entity-not-contain-whitespace": "{{entity}} に空白は含められません",
     "entity-not-found-in-current-page": "{{entity}}はこの結果ページにありません。フィルターを解除するか、直接開いてください。",
     "entity-owned-by-name": "このエンティティは {{entityOwner}} が所有しています",

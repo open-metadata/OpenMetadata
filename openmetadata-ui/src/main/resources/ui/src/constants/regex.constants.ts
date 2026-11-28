@@ -48,7 +48,15 @@ export const CUSTOM_PROPERTY_NAME_REGEX =
  */
 export const TEST_CASE_NAME_REGEX = ENTITY_NAME_REGEX;
 
-export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
+/**
+ * Validates tag and classification names. Matches the backend's `entityName`
+ * schema pattern (`basic.json#/definitions/entityName`, non-empty; blocks `::`,
+ * `>`, `"`, and ASCII control characters).
+ * ADR:2026-11-19-tag-and-classification-names-follow-the-entity-name-schema
+ */
+// eslint-disable-next-line no-control-regex -- Matches backend entityName control-char exclusion
+export const TAG_NAME_REGEX = /^((?!::)[^>"\u0000-\u001f])+$/;
+// Exported for openmetadata-collate callers; see the ADR above before removing it.
 export const NAME_LENGTH_REGEX = /^.{2,64}$/;
 
 // Mirrors Passay 1.6.6 `EnglishCharacterData.Special`, enforced by the server's

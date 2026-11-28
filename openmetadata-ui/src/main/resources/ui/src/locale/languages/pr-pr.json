@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} می‌تواند حداکثر {{max}} کاراکتر باشد.",
     "entity-moved-successfully": "{{entity}} movido exitosamente",
     "entity-name-example": "um nome de {{entity}}",
-    "entity-name-validation": "نام باید فقط شامل حروف، اعداد، زیرخط‌ها، خط تیره‌ها، نقاط، پرانتزها و آمپرسندها باشد.",
+    "entity-name-validation": "نام نمی‌تواند شامل دو نقطه دوتایی (::)، علامت بزرگ‌تر (>)، گیومه دوتایی (\") یا نویسه‌های کنترلی باشد.",
     "entity-not-contain-whitespace": "{{entity}} نباید شامل فاصله باشد.",
     "entity-not-found-in-current-page": "{{entity}} در این صفحهٔ نتایج نیست. فیلترها را پاک کنید یا آن را مستقیماً باز کنید.",
     "entity-owned-by-name": "این موجودیت متعلق به {{entityOwner}} است.",

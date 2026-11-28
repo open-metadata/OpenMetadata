@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} kan vara högst {{max}} tecken",
     "entity-moved-successfully": "{{entity}} flyttades",
     "entity-name-example": "ett {{entity}}-namn",
-    "entity-name-validation": "Namnet får endast innehålla bokstäver, siffror, understreck, bindestreck, punkter, parenteser och et-tecken.",
+    "entity-name-validation": "Namnet får inte innehålla dubbla kolon (::), större än-tecken (>), dubbla citattecken (\") eller kontrolltecken.",
     "entity-not-contain-whitespace": "{{entity}} får inte innehålla blanksteg",
     "entity-not-found-in-current-page": "{{entity}} finns inte på den här resultatsidan. Rensa filtren eller öppna objektet direkt.",
     "entity-owned-by-name": "Denna entitet ägs av {{entityOwner}}",

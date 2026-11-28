@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} สามารถมีความยาวสูงสุด {{max}} ตัวอักษร",
     "entity-moved-successfully": "{{entity}} ย้ายสำเร็จแล้ว",
     "entity-name-example": "ชื่อ {{entity}}",
-    "entity-name-validation": "ชื่อจะต้องประกอบด้วยตัวอักษร, ตัวเลข, ขีดล่าง, ขีดกลาง, จุด, วงเล็บ และลาเบล (&)",
+    "entity-name-validation": "ชื่อต้องไม่มีทวิภาคคู่ (::), เครื่องหมายมากกว่า (>), อัญประกาศคู่ (\") หรืออักขระควบคุม",
     "entity-not-contain-whitespace": "{{entity}} ไม่ควรมีช่องว่าง",
     "entity-not-found-in-current-page": "{{entity}} ไม่อยู่ในหน้าผลลัพธ์นี้ ล้างตัวกรองหรือเปิดโดยตรง",
     "entity-owned-by-name": "เอนทิตีนี้เป็นของ {{entityOwner}}",

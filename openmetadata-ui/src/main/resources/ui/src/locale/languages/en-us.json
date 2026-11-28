@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} can be a maximum of {{max}} characters",
     "entity-moved-successfully": "{{entity}} moved successfully",
     "entity-name-example": "a {{entity}} name",
-    "entity-name-validation": "Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.",
+    "entity-name-validation": "Name cannot contain double colons (::), greater-than (>), double quotes (\"), or control characters.",
     "entity-not-contain-whitespace": "{{entity}} should not contain white space",
     "entity-not-found-in-current-page": "{{entity}} is not on this page of results. Clear any filters or page to it directly.",
     "entity-owned-by-name": "This entity is owned by {{entityOwner}}",

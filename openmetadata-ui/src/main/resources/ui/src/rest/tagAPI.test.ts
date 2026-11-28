@@ -12,13 +12,23 @@
  */
 
 import { Classification } from '../generated/entity/classification/classification';
+import APIClient from './axiosClient';
 import {
+  addAssetsToTags,
   createClassification,
   createTag,
   deleteClassification,
   deleteTag,
+  exportClassificationInCSVFormat,
+  getAllClassifications,
   getClassificationByName,
+  getClassificationVersionData,
+  getClassificationVersionsList,
+  getTagByFqn,
   getTags,
+  patchClassification,
+  patchTag,
+  removeAssetsFromTags,
   updateTag,
 } from './tagAPI';
 
@@ -33,6 +43,11 @@ jest.mock('./axiosClient', () => ({
     .mockImplementation((url) =>
       Promise.resolve({ data: `delete_request${url}` })
     ),
+  patch: jest.fn().mockImplementation((url, data) =>
+    Promise.resolve({
+      data: { url: `patch_request${url}`, data },
+    })
+  ),
   post: jest.fn().mockImplementation((url, data) =>
     Promise.resolve({
       data: { url: `post_request${url}`, data },
@@ -109,6 +124,83 @@ describe('API functions should work properly', () => {
     expect(result).toEqual({
       url: `put_request/tags`,
       data: mockUpdateData,
+    });
+  });
+
+  it('getTagByFqn encodes reserved URI characters (:, /, ?, #, %, $) and forwards params', async () => {
+    const fqn = 'Gov/Domain:1.PII/Email#1?v=2%ok$1';
+    const params = { fields: 'owners,domains' };
+    const result = await getTagByFqn(fqn, params);
+
+    expect(result).toBe(
+      'get_request/tags/name/Gov%2FDomain%3A1.PII%2FEmail%231%3Fv%3D2%25ok%241'
+    );
+    expect(APIClient.get).toHaveBeenLastCalledWith(
+      '/tags/name/Gov%2FDomain%3A1.PII%2FEmail%231%3Fv%3D2%25ok%241',
+      { params }
+    );
+  });
+
+  it('getClassificationByName and exportClassificationInCSVFormat encode reserved URI characters', async () => {
+    const classificationName = 'Gov/Domain:1#2?v=3%ok$1';
+    const [byName, exported] = await Promise.all([
+      getClassificationByName(classificationName),
+      exportClassificationInCSVFormat(classificationName),
+    ]);
+
+    expect(byName).toBe(
+      'get_request/classifications/name/Gov%2FDomain%3A1%232%3Fv%3D3%25ok%241'
+    );
+    expect(exported).toBe(
+      'get_request/classifications/name/Gov%2FDomain%3A1%232%3Fv%3D3%25ok%241/exportAsync'
+    );
+  });
+
+  it('supports classification list, version history, patches, and tag asset mutations', async () => {
+    const patchOps = [
+      { op: 'replace' as const, path: '/description', value: 'x' },
+    ];
+    const assets = [{ id: 't1', type: 'table' }];
+
+    const [
+      defaultList,
+      pagedList,
+      versionsList,
+      versionData,
+      patchedClassification,
+      patchedTag,
+      addedAssets,
+      removedAssets,
+    ] = await Promise.all([
+      getAllClassifications(),
+      getAllClassifications({ limit: 25 }),
+      getClassificationVersionsList('cls-1'),
+      getClassificationVersionData('cls-1', '0.2'),
+      patchClassification('cls-1', patchOps),
+      patchTag('tag-1', patchOps),
+      addAssetsToTags('tag-1', assets),
+      removeAssetsFromTags('tag-1', assets),
+    ]);
+
+    expect(defaultList).toBe('get_request/classifications');
+    expect(pagedList).toBe('get_request/classifications');
+    expect(versionsList).toBe('get_request/classifications/cls-1/versions');
+    expect(versionData).toBe('get_request/classifications/cls-1/versions/0.2');
+    expect(patchedClassification).toEqual({
+      url: 'patch_request/classifications/cls-1',
+      data: patchOps,
+    });
+    expect(patchedTag).toEqual({
+      url: 'patch_request/tags/tag-1',
+      data: patchOps,
+    });
+    expect(addedAssets).toEqual({
+      url: 'put_request/tags/tag-1/assets/add',
+      data: { assets, dryRun: false },
+    });
+    expect(removedAssets).toEqual({
+      url: 'put_request/tags/tag-1/assets/remove',
+      data: { assets, dryRun: false },
     });
   });
 });

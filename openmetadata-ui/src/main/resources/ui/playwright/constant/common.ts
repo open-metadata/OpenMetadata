@@ -20,9 +20,9 @@ export const LONG_ACTION_TIMEOUT = 120_000;
 export const EXTENDED_TEST_TIMEOUT = 120_000;
 
 export const TAG_INVALID_NAMES = {
-  MIN_LENGTH: 'c',
-  MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  MIN_LENGTH: '   ',
+  MAX_LENGTH: 'a'.repeat(257),
+  WITH_SPECIAL_CHARS: 'ABC::DEF',
 };
 
 export const INVALID_NAMES = {
@@ -32,10 +32,10 @@ export const INVALID_NAMES = {
 };
 
 export const NAME_VALIDATION_ERROR =
-  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+  'Name cannot contain double colons (::), greater-than (>), double quotes ("), or control characters.';
 
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
-  'Name size must be between 2 and 64';
+  'Name size must be between 1 and 256';
 
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 1 and 128';

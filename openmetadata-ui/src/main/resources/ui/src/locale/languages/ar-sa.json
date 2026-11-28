@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "يمكن أن يكون الحد الأقصى لحجم {{entity}} {{max}} حرفًا",
     "entity-moved-successfully": "تم نقل {{entity}} بنجاح",
     "entity-name-example": "اسم {{entity}}",
-    "entity-name-validation": "يجب أن يحتوي الاسم على أحرف وأرقام وشرطات سفلية وواصلات ونقاط وأقواس وعلامات العطف فقط.",
+    "entity-name-validation": "لا يمكن أن يحتوي الاسم على نقطتين مزدوجتين (::)، أو علامة أكبر من (>)، أو علامات اقتباس مزدوجة (\")، أو أحرف تحكم.",
     "entity-not-contain-whitespace": "يجب ألا يحتوي {{entity}} على مسافة بيضاء",
     "entity-not-found-in-current-page": "{{entity}} غير موجود في صفحة النتائج هذه. امسح عوامل التصفية أو انتقل إليه مباشرةً.",
     "entity-owned-by-name": "هذا الكيان مملوك لـ {{entityOwner}}",

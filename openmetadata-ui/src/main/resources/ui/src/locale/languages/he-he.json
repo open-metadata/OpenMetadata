@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} יכול להכיל לכל היותר {{max}} תווים",
     "entity-moved-successfully": "{{entity}} הועבר בהצלחה",
     "entity-name-example": "שם {{entity}}",
-    "entity-name-validation": "שם חייב להכיל רק אותיות, מספרים, קו תחתון, מקפים, נקודות, סוגריים ו-אמפרסנדים.",
+    "entity-name-validation": "השם אינו יכול להכיל נקודתיים כפולות (::), סימן גדול מ- (>), מירכאות כפולות (\") או תווי בקרה.",
     "entity-not-contain-whitespace": "{{entity}} לא יכול להכיל רווח לבן",
     "entity-not-found-in-current-page": "{{entity}} אינו מופיע בדף התוצאות הזה. נקה את המסננים או פתח אותו ישירות.",
     "entity-owned-by-name": "ישות זו שייכת ל-{{entityOwner}}",

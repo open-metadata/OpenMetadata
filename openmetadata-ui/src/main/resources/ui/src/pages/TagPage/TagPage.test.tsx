@@ -536,5 +536,29 @@ describe('TagPage', () => {
         );
       });
     });
+
+    it('configures EntityNameModal rename length bounds to 1..256 matching entityName schema', async () => {
+      const EntityNameModalMock = jest.requireMock(
+        '../../components/Modals/EntityNameModal/EntityNameModal.component'
+      ) as jest.Mock;
+
+      setMockTagPermissions({ EditAll: true });
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(EntityNameModalMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            allowRename: true,
+            nameValidationRules: [
+              expect.objectContaining({
+                min: 1,
+                max: 256,
+              }),
+            ],
+          }),
+          expect.anything()
+        );
+      });
+    });
   });
 });

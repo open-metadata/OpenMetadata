@@ -142,10 +142,10 @@ export const INVALID_NAMES = {
 };
 
 export const NAME_VALIDATION_ERROR =
-  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+  'Name cannot contain double colons (::), greater-than (>), double quotes ("), or control characters.';
 
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
-  'Name size must be between 2 and 64';
+  'Name size must be between 1 and 256';
 
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';

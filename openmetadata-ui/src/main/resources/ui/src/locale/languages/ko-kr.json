@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}}은(는) 최대 {{max}}자까지 가능합니다",
     "entity-moved-successfully": "{{entity}}이(가) 성공적으로 이동되었습니다",
     "entity-name-example": "{{entity}} 이름",
-    "entity-name-validation": "이름은 문자, 숫자, 밑줄, 하이픈, 마침표, 괄호 및 앰퍼샌드만 포함해야 합니다.",
+    "entity-name-validation": "이름에는 이중 콜론(::), 보다 큼 기호(>), 큰따옴표(\") 또는 제어 문자를 포함할 수 없습니다.",
     "entity-not-contain-whitespace": "{{entity}}에는 공백이 포함되어서는 안 됩니다",
     "entity-not-found-in-current-page": "{{entity}}이(가) 현재 결과 페이지에 없습니다. 필터를 지우거나 직접 여세요.",
     "entity-owned-by-name": "이 엔티티는 {{entityOwner}}이(가) 소유하고 있습니다",

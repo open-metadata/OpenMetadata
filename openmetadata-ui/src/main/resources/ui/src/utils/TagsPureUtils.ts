@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import {
+  CERTIFICATION_CATEGORY,
+  MAX_NAME_LENGTH,
+  TIER_CATEGORY,
+} from '../constants/constants';
 import { type UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -95,6 +100,18 @@ export const getUsageCountLink = (tagFQN: string) => {
     isPersistFilters: false,
   });
 };
+
+export const getTagRenameRules = (t: TFunction) => [
+  {
+    min: 1,
+    max: MAX_NAME_LENGTH,
+    message: t('message.entity-size-in-between', {
+      entity: t('label.name'),
+      min: 1,
+      max: MAX_NAME_LENGTH,
+    }) as string,
+  },
+];
 
 export const getTagPlaceholder = (isGlossaryType: boolean): string =>
   isGlossaryType

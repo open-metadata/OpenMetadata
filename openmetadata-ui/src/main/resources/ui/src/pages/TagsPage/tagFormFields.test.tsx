@@ -54,6 +54,38 @@ describe('tagFormFields', () => {
   });
 
   describe('getNameField', () => {
+    const mockTWithParams = jest.fn(
+      (key: string, params?: Record<string, unknown>) =>
+        params ? `${key}:${JSON.stringify(params)}` : key
+    ) as unknown as TFunction;
+
+    const getValidators = (disabled = false) => {
+      const field = getNameField(disabled, mockTWithParams);
+      const validate = field.rules?.validate as Record<
+        string,
+        (value: string) => true | string
+      >;
+
+      return {
+        field,
+        runAll: (value: string): true | string => {
+          if (value.length === 0 && typeof field.rules?.required === 'string') {
+            return field.rules.required;
+          }
+
+          for (const validator of Object.values(validate)) {
+            const res = validator(value);
+            if (res !== true) {
+              return res;
+            }
+          }
+
+          return true;
+        },
+        validate,
+      };
+    };
+
     it('should return TEXT type with data-testid', () => {
       const result = getNameField(false, mockT);
 
@@ -66,6 +98,49 @@ describe('tagFormFields', () => {
     it('should forward disabled prop', () => {
       expect(getNameField(true, mockT).props?.isDisabled).toBe(true);
       expect(getNameField(false, mockT).props?.isDisabled).toBe(false);
+    });
+
+    it.each([
+      ['1-character tag name', 'C'],
+      ['single-colon hierarchical tag name', 'ABC:DEF:SC:C'],
+      ['dots and colons combined', 'Domain.Sub:Level:1'],
+      ['slash and plus characters', 'PII/Email+1'],
+      ['256-character max-length name', 'a'.repeat(256)],
+    ])('should accept valid %s', (_, validName) => {
+      const { runAll } = getValidators();
+
+      expect(runAll(validName)).toBe(true);
+    });
+
+    it('should reject empty string as required', () => {
+      const { runAll } = getValidators();
+
+      expect(runAll('')).toBe('label.field-required:{"field":"label.name"}');
+    });
+
+    it('should reject whitespace-only string as required', () => {
+      const { runAll } = getValidators();
+
+      expect(runAll('   ')).toBe('label.field-required:{"field":"label.name"}');
+    });
+
+    it('should reject names exceeding 256 characters with 1..256 bounds message', () => {
+      const { runAll } = getValidators();
+
+      expect(runAll('a'.repeat(257))).toBe(
+        'message.entity-size-in-between:{"entity":"label.name","max":256,"min":1}'
+      );
+    });
+
+    it.each([
+      ['double colon', 'ABC::DEF'],
+      ['greater-than', 'tag>bad'],
+      ['double quote', 'tag"bad'],
+      ['tab control char', 'tag\tbad'],
+    ])('should reject %s with entity-name-validation message', (_, badName) => {
+      const { runAll } = getValidators();
+
+      expect(runAll(badName)).toBe('message.entity-name-validation');
     });
   });
 
@@ -99,14 +174,16 @@ describe('tagFormFields', () => {
       expect(result.props?.options).toBe(options);
       expect(result.props?.onFocus).toBe(noopFn);
       expect(result.props?.onSearchChange).toBe(noopFn);
+      expect(result.props?.filterOption?.(options[0], '')).toBe(true);
     });
   });
 
   describe('getDomainField', () => {
     it('should return DOMAIN_SELECT with multiple flag from canAddMultipleDomains', () => {
+      const options = [{ id: 'd1', label: 'Engineering', value: 'eng' }];
       const result = getDomainField({
         canAddMultipleDomains: true,
-        options: [],
+        options,
         onFocus: noopFn,
         onSearchChange: noopFn,
       });
@@ -114,6 +191,7 @@ describe('tagFormFields', () => {
       expect(result.type).toBe(FieldTypes.DOMAIN_SELECT);
       expect(result.name).toBe('domains');
       expect(result.props?.multiple).toBe(true);
+      expect(result.props?.filterOption?.(options[0], '')).toBe(true);
     });
 
     it('should set multiple to false when canAddMultipleDomains is false', () => {

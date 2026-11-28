@@ -122,6 +122,7 @@ import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
+  getTagRenameRules,
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -983,17 +984,7 @@ const TagPage = () => {
       <EntityNameModal
         allowRename
         entity={tagItem}
-        nameValidationRules={[
-          {
-            min: 1,
-            max: 128,
-            message: t('message.entity-size-in-between', {
-              entity: t('label.name'),
-              min: 1,
-              max: 128,
-            }),
-          },
-        ]}
+        nameValidationRules={getTagRenameRules(t)}
         title={t('label.edit-entity', {
           entity: t('label.name'),
         })}

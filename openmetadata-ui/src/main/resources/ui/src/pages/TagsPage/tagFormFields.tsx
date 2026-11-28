@@ -17,10 +17,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
-import {
-  NAME_LENGTH_REGEX,
-  TAG_NAME_REGEX,
-} from '../../constants/regex.constants';
+import { MAX_NAME_LENGTH } from '../../constants/constants';
+import { TAG_NAME_REGEX } from '../../constants/regex.constants';
 import { TagFormSelectItem } from './TagsPage.interface';
 
 export const getIconField = (
@@ -71,12 +69,17 @@ export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
       field: t('label.name'),
     }) as string,
     validate: {
+      notBlank: (value: string) =>
+        value.trim().length > 0 ||
+        (t('label.field-required', {
+          field: t('label.name'),
+        }) as string),
       length: (value: string) =>
-        NAME_LENGTH_REGEX.test(value) ||
+        (value.length >= 1 && value.length <= MAX_NAME_LENGTH) ||
         (t('message.entity-size-in-between', {
           entity: t('label.name'),
-          max: 64,
-          min: 2,
+          max: MAX_NAME_LENGTH,
+          min: 1,
         }) as string),
       pattern: (value: string) =>
         TAG_NAME_REGEX.test(value) ||

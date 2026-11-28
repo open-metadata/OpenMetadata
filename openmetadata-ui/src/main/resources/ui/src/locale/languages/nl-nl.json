@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} kan maximaal {{max}} tekens bevatten",
     "entity-moved-successfully": "{{entity}} succesvol verplaatst",
     "entity-name-example": "een {{entity}}-naam",
-    "entity-name-validation": "Naam mag alleen letters, cijfers, underscores, streepjes, punten, haakjes en ampersands bevatten.",
+    "entity-name-validation": "Naam mag geen dubbele dubbele punten (::), groter-dan-tekens (>), dubbele aanhalingstekens (\") of besturingstekens bevatten.",
     "entity-not-contain-whitespace": "{{entity}} mag geen spaties bevatten",
     "entity-not-found-in-current-page": "{{entity}} staat niet op deze resultatenpagina. Wis de filters of open het rechtstreeks.",
     "entity-owned-by-name": "Dit entiteit is eigendom van {{entityOwner}}",

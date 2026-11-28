@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} en fazla {{max}} karakter olabilir",
     "entity-moved-successfully": "{{entity}} başarıyla taşındı",
     "entity-name-example": "bir {{entity}} adı",
-    "entity-name-validation": "Ad yalnızca harf, rakam, alt çizgi, kısa çizgi, nokta, parantez ve ve işareti içerebilir.",
+    "entity-name-validation": "Ad çift iki nokta üst üste (::), büyüktür işareti (>), çift tırnak (\") veya kontrol karakterleri içeremez.",
     "entity-not-contain-whitespace": "{{entity}} boşluk içermemelidir",
     "entity-not-found-in-current-page": "{{entity}} bu sonuç sayfasında değil. Filtreleri temizleyin veya doğrudan açın.",
     "entity-owned-by-name": "Bu varlık {{entityOwner}} adlı kullanıcıya aittir",

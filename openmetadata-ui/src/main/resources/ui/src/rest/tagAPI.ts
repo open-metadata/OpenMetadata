@@ -133,9 +133,12 @@ export const patchClassification = async (id: string, data: Operation[]) => {
 };
 
 export const getTagByFqn = async (fqn: string, params?: ListParams) => {
-  const response = await APIClient.get<Tag>(`tags/name/${fqn}`, {
-    params,
-  });
+  const response = await APIClient.get<Tag>(
+    `/tags/name/${getEncodedFqn(fqn)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };

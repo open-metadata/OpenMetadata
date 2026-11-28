@@ -5216,7 +5216,7 @@
     "entity-maximum-size": "{{entity}} 最多可為 {{max}} 個字元",
     "entity-moved-successfully": "{{entity}} 移動成功",
     "entity-name-example": "{{entity}} 名稱",
-    "entity-name-validation": "名稱只能包含字母、數字、底線、連字號、句點、括號和 & 符號。",
+    "entity-name-validation": "名稱不能包含雙冒號 (::)、大於號 (>)、雙引號 (\") 或控制字元。",
     "entity-not-contain-whitespace": "{{entity}} 不應包含空白字元",
     "entity-not-found-in-current-page": "{{entity}}不在目前的結果頁中。請清除篩選條件或直接開啟它。",
     "entity-owned-by-name": "此實體由 {{entityOwner}} 擁有",
