@@ -1,0 +1,393 @@
+#  Copyright 2026 OpenMetadata
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Informix source module.
+"""
+
+import traceback
+from collections import Counter, OrderedDict
+from collections.abc import Iterable
+from typing import NamedTuple
+
+from sqlalchemy import BLOB, CLOB, TEXT, Interval, LargeBinary, text
+
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedure,
+    StoredProcedureCode,
+    StoredProcedureType,
+)
+from metadata.generated.schema.entity.services.connections.database.informixConnection import (
+    InformixConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.informix.queries import (
+    INFORMIX_GET_COLUMN_TYPES,
+    INFORMIX_GET_DATABASE_NAMES,
+    INFORMIX_GET_STORED_PROCEDURE_DEFINITION,
+    INFORMIX_GET_STORED_PROCEDURES,
+)
+from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_stored_procedure
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+COLTYPE_CHAR = 0
+COLTYPE_BYTE = 11
+COLTYPE_TEXT = 12
+COLTYPE_VARCHAR = 13
+COLTYPE_INTERVAL = 14
+COLTYPE_NCHAR = 15
+COLTYPE_NVARCHAR = 16
+COLTYPE_LVARCHAR = 40
+COLTYPE_OPAQUE = 41
+
+# VARCHAR and NVARCHAR pack an optional reserved minimum into collength's high
+# byte; the other three are the plain width and are the only ones that may
+# exceed 255, so masking them would silently truncate a CHAR(300) to 44.
+MASKED_LENGTH_COLTYPES = frozenset({COLTYPE_VARCHAR, COLTYPE_NVARCHAR})
+PLAIN_LENGTH_COLTYPES = frozenset({COLTYPE_CHAR, COLTYPE_NCHAR, COLTYPE_LVARCHAR})
+
+# The SQLAlchemy type here is what ColumnTypeParser converts into an OM DataType:
+# LargeBinary -> BYTES, TEXT -> TEXT, CLOB -> CLOB, BLOB -> BLOB. Those are exactly
+# the types is_blob() recognises, which is how the profiler learns to skip them.
+# The second element becomes dataTypeDisplay, so the UI shows the native name.
+LOB_TYPES_BY_COLTYPE = {
+    COLTYPE_BYTE: (LargeBinary, "BYTE"),
+    COLTYPE_TEXT: (TEXT, "TEXT"),
+}
+LOB_TYPES_BY_SUBTYPE = {
+    "clob": (CLOB, "CLOB"),
+    "blob": (BLOB, "BLOB"),
+}
+
+# collength packs an INTERVAL's qualifier into its low byte, one nibble per end.
+INTERVAL_UNITS = {0: "YEAR", 2: "MONTH", 4: "DAY", 6: "HOUR", 8: "MINUTE", 10: "SECOND"}
+
+
+def interval_display(collength: int) -> str:
+    """Name an INTERVAL column's type the way its DDL did, e.g. INTERVAL HOUR TO MINUTE."""
+
+    def unit(code: int) -> str:
+        return INTERVAL_UNITS.get(code) or f"FRACTION({code - 10})"
+
+    return f"INTERVAL {unit(collength // 16 % 16)} TO {unit(collength % 16)}"
+
+
+class InformixStoredProcedure(NamedTuple):
+    """A routine a user wrote, as sysprocedures reports it."""
+
+    name: str
+    proc_id: int
+    is_function: bool
+
+
+class ColumnOverride(NamedTuple):
+    """What the catalogue knows that the JDBC driver did not report.
+
+    Either a replacement type (large objects) or a declared width (strings);
+    never both, since the large-object types carry no meaningful width.
+    """
+
+    sqa_type: type | None
+    display_name: str | None
+    length: int | None
+
+
+# One entry per (database, schema), bounded so a server with many databases
+# cannot grow it without limit.
+MAX_CACHED_SCHEMAS = 64
+
+
+class InformixSource(CommonDbSourceService, MultiDBSource):
+    """
+    Implements the necessary methods to extract Database metadata from Informix.
+
+    Table, view, column and stored-procedure reflection all come from the JDBC
+    DatabaseMetaData API via the dialect, so this class only has to supply what
+    is genuinely Informix-shaped: enumerating the databases on the server.
+    """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
+        super().__init__(config, metadata)
+        self._column_overrides_cache: OrderedDict[tuple[str, str], dict[tuple[str, str], ColumnOverride]] = (
+            OrderedDict()
+        )
+
+    @classmethod
+    def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        service_conn = config.serviceConnection
+        connection = service_conn.root.config if service_conn is not None else None
+        if not isinstance(connection, InformixConnection):
+            raise InvalidSourceException(f"Expected InformixConnection, but got {connection}")
+        return cls(config, metadata)
+
+    def get_configured_database(self) -> str | None:
+        return self.service_connection.database
+
+    def get_database_names_raw(self) -> Iterable[str]:
+        yield from self._execute_database_query(INFORMIX_GET_DATABASE_NAMES)
+
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Yield the databases to ingest, re-pointing the inspector at each one.
+
+        An Informix JDBC connection is bound to a single database, so crossing to
+        another means rebuilding the engine -- which is what set_inspector does.
+        """
+        if not self.service_connection.ingestAllDatabases:
+            configured_db = self.service_connection.database
+            self.set_inspector(database_name=configured_db)
+            yield configured_db
+            return
+
+        for new_database in self.get_database_names_raw():
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=new_database,
+            )
+
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                (database_fqn if self.source_config.useFqnForFiltering else new_database),  # pyright: ignore[reportArgumentType]
+            ):
+                self.status.filter(database_fqn, "Database Filtered Out")
+                continue
+
+            try:
+                self.set_inspector(database_name=new_database)
+                yield new_database
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error("Error trying to connect to database %s: %s", new_database, exc)
+
+    @staticmethod
+    def _declared_length(basetype: int, collength: int | None) -> int | None:
+        """The width the DDL declared, or None if this type does not carry one."""
+        if collength is None:
+            return None
+        if basetype in MASKED_LENGTH_COLTYPES:
+            return collength % 256
+        if basetype in PLAIN_LENGTH_COLTYPES:
+            return collength
+        return None
+
+    @classmethod
+    def _override_for(cls, basetype: int, collength: int | None, xtype: str | None) -> ColumnOverride | None:
+        """What to correct on one syscolumns row, or None if the driver got it right."""
+        mapped = LOB_TYPES_BY_COLTYPE.get(basetype)
+        if mapped is None and basetype == COLTYPE_OPAQUE:
+            # 41 is also BOOLEAN and every other opaque type; only the named
+            # smart large objects belong here.
+            mapped = LOB_TYPES_BY_SUBTYPE.get((xtype or "").lower())
+        if mapped is None and basetype == COLTYPE_INTERVAL and collength is not None:
+            # The driver reports INTERVAL as CHAR, and LENGTH() -- which the
+            # profiler then sends -- is ambiguous on an INTERVAL.
+            mapped = (Interval, interval_display(collength))
+        if mapped:
+            return ColumnOverride(mapped[0], mapped[1], None)
+        length = cls._declared_length(basetype, collength)
+        return ColumnOverride(None, None, length) if length is not None else None
+
+    def _column_overrides(self, db_name: str, schema_name: str) -> dict[tuple[str, str], ColumnOverride]:
+        """Map (table, column) to what the JDBC driver got wrong, for one schema.
+
+        Queried per schema rather than per table: a wide catalogue costs one
+        round trip per schema instead of one per table.
+
+        Keyed by database as well, because the schema name alone does not
+        identify one: nearly every Informix database owns its tables as
+        "informix", so ingesting a server-full of them would otherwise answer
+        every database with the first one's columns.
+        """
+        cache_key = (db_name, schema_name)
+        cached = self._column_overrides_cache.get(cache_key)
+        if cached is not None:
+            self._column_overrides_cache.move_to_end(cache_key)
+            return cached
+
+        found: dict[tuple[str, str], ColumnOverride] = {}
+        try:
+            rows = self.connection.execute(text(INFORMIX_GET_COLUMN_TYPES), {"owner": schema_name}).fetchall()
+        except Exception as exc:
+            # Reflection still works without this; the columns just keep the
+            # VARCHAR the driver reported, so degrade rather than fail the run.
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read column types for schema %s: %s", schema_name, exc)
+            rows = []
+
+        for tabname, colname, basetype, collength, xtype in rows:
+            override = self._override_for(basetype, collength, xtype)
+            if override is not None:
+                found[(tabname, colname)] = override
+
+        self._column_overrides_cache[cache_key] = found
+        while len(self._column_overrides_cache) > MAX_CACHED_SCHEMAS:
+            self._column_overrides_cache.popitem(last=False)
+        return found
+
+    def get_stored_procedures(self) -> Iterable[InformixStoredProcedure]:
+        """The routines someone actually wrote.
+
+        A stock Informix database carries roughly 560 built-in routines in
+        sysprocedures, so an unfiltered listing buries the handful that belong to
+        the user. Case in the mode column separates them -- user routines are
+        upper case, Informix's own are lower.
+        """
+        if not self.source_config.includeStoredProcedures:
+            return
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(INFORMIX_GET_STORED_PROCEDURES), {"owner": schema_name}).fetchall()
+        # Informix allows overloading, so procname alone can collide. The first
+        # overload (lowest procid, so the oldest) keeps the bare name -- the FQN the
+        # routine had before any overload existed, which its descriptions, tags and
+        # owners hang off -- and only the later ones carry their signature.
+        # ADR:2026-11-26-informix-overloads-keep-the-oldest-bare-name-and-ssl-modes-map-to-one-driver-switch
+        overloaded = {name for name, count in Counter(row[0] for row in rows).items() if count > 1}
+        # Named before filtering, so excluding one overload never renames another.
+        first_overload = {}
+        for name, _, proc_id, _ in rows:
+            first_overload.setdefault(name, proc_id)
+        for name, is_proc, proc_id, param_types in rows:
+            signature = f"{name}({param_types or ''})"
+            if self._is_routine_filtered(name, *([signature] if name in overloaded else [])):
+                continue
+            published_name = name if first_overload[name] == proc_id else signature
+            yield InformixStoredProcedure(name=published_name, proc_id=proc_id, is_function=is_proc != "t")
+
+    def _is_routine_filtered(self, *names: str) -> bool:
+        """Whether storedProcedureFilterPattern drops a routine known by any of names.
+
+        An overload answers to its bare name and to its signature, so a pattern can
+        name the routine or one overload of it: the routine is kept if an include
+        matches either name and dropped if an exclude matches either.
+        """
+        pattern = self.source_config.storedProcedureFilterPattern  # pyright: ignore[reportAttributeAccessIssue]
+        if not pattern:
+            return False
+        keys = [self._filter_key(name) for name in names]
+        includes, excludes = FilterPattern(includes=pattern.includes), FilterPattern(excludes=pattern.excludes)
+        return all(filter_by_stored_procedure(includes, key) for key in keys) or any(
+            filter_by_stored_procedure(excludes, key) for key in keys
+        )
+
+    def _filter_key(self, procedure_name: str) -> str:
+        if not self.source_config.useFqnForFiltering:  # pyright: ignore[reportAttributeAccessIssue]
+            return procedure_name
+        return (
+            fqn.build(
+                self.metadata,
+                entity_type=StoredProcedure,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                procedure_name=procedure_name,
+            )
+            or procedure_name
+        )
+
+    def _stored_procedure_code(self, proc_id: int) -> str | None:
+        """Reassemble a routine's text, which sysprocbody stores in fragments."""
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execute(text(INFORMIX_GET_STORED_PROCEDURE_DEFINITION), {"proc_id": proc_id}).fetchall()
+            return "".join(row[0] for row in rows if row[0]) or None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read the body of stored procedure %s: %s", proc_id, exc)
+            return None
+
+    def yield_stored_procedure(
+        self, stored_procedure: InformixStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload."""
+        try:
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=self._stored_procedure_code(stored_procedure.proc_id),
+                ),
+                storedProcedureType=(
+                    StoredProcedureType.Function
+                    if stored_procedure.is_function
+                    else StoredProcedureType.StoredProcedure
+                ),
+                databaseSchema=fqn.build(  # pyright: ignore[reportArgumentType]
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                ),
+            )
+            yield Either(right=stored_procedure_request)  # pyright: ignore[reportCallIssue]
+            self.register_record_stored_proc_request(stored_procedure_request)
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector,
+        table_type=None,
+    ):
+        """Restore what the JDBC driver drops: large-object and INTERVAL types, and string widths.
+
+        Informix reports BYTE, TEXT, CLOB and BLOB all as VARCHAR(2147483647), so
+        a column of scanned documents is otherwise catalogued as ordinary text and
+        the profiler then tries to aggregate over it and is rejected. The driver
+        also reports no length for CHAR/VARCHAR/LVARCHAR, which OpenMetadata reads
+        as 1 -- every string column in the catalogue claiming to hold one byte.
+        """
+        columns = super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
+        overrides = self._column_overrides(db_name, schema_name)
+        for column in columns:
+            override = overrides.get((table_name, column["name"]))
+            if override is None:
+                continue
+            if override.sqa_type is not None:
+                column["type"] = override.sqa_type()
+                column["system_data_type"] = override.display_name  # pyright: ignore[reportGeneralTypeIssues]
+                logger.debug("%s.%s corrected to %s", table_name, column["name"], override.display_name)
+            elif override.length is not None:
+                # Mutated rather than rebuilt so the reflected type keeps whatever
+                # else it carries (collation, charset).
+                column["type"].length = override.length  # pyright: ignore[reportAttributeAccessIssue]
+
+        return columns
