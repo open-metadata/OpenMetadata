@@ -314,8 +314,8 @@
                 },
                 {
                     "name": "column_values_to_be_between",
-                    "description": "test the number of column in table is between x and y",
-                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "description": "test that shop IDs are within the expected range",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>",
                     "testDefinitionName": "columnValuesToBeBetween",
                     "parameterValues": [],
                     "useDynamicAssertion": true,
@@ -396,7 +396,7 @@
                 {
                     "name": "column_values_to_be_between_with_sample_rows",
                     "description": "example of failing test with sample rows",
-                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>",
                     "testDefinitionName": "columnValuesToBeBetween",
                     "parameterValues": [
                         {

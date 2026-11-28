@@ -1042,7 +1042,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     if quality_expectations:
                         contract_data["qualityExpectations"] = [
                             {
-                                "id": self.metadata.get_by_name(entity=TestCase, fqn=expectation, fields=["*"]).id.root,
+                                "id": self.metadata.get_by_name(
+                                    entity=TestCase, fqn=expectation, fields=["testSuite", "testDefinition"]
+                                ).id.root,
                                 "type": "testCase",
                             }
                             for expectation in quality_expectations
