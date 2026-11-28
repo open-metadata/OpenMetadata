@@ -591,14 +591,24 @@ export default function EntitySummaryPanel({
     <T,>(
       result: Partial<EntityData>,
       entityLabel: string,
-      returnValue?: T
+      returnValue?: T,
+      notifyPartial?: Partial<EntityData>
     ): T | undefined => {
       const newData = {
         ...(entityData || entityDetails.details),
         ...result,
       } as EntityData;
       setEntityData(newData);
-      afterEntityUpdate?.(newData);
+      // Keep the panel's own entityData in sync regardless of onEntityUpdate
+      // being wired up (e.g. the Lineage drawer), and notify the parent host
+      // with the focused, id-free partial (the server-canonical value) so the
+      // Lineage graph node — matched by its scene id, not its entity id —
+      // updates correctly. See updateEntityData for the same contract.
+      if (onEntityUpdate) {
+        onEntityUpdate(notifyPartial ?? result);
+      } else {
+        afterEntityUpdate?.(newData);
+      }
 
       showSuccessToast(
         t('server.update-entity-success', {
@@ -608,17 +618,11 @@ export default function EntitySummaryPanel({
 
       return returnValue;
     },
-    [entityData, entityDetails.details, afterEntityUpdate, t]
+    [entityData, entityDetails.details, onEntityUpdate, afterEntityUpdate, t]
   );
 
   const handleOwnerUpdate = useCallback(
     async (owners: EntityReference[]) => {
-      if (onEntityUpdate) {
-        onEntityUpdate({ owners });
-
-        return;
-      }
-
       const baseData = entityData ?? entityDetails.details;
       const jsonPatch = compare(baseData, { ...baseData, owners });
 
@@ -627,19 +631,22 @@ export default function EntitySummaryPanel({
       }
 
       try {
+        let res: Partial<EntityData> = {};
         const apiFunc =
           entityUpdateMap[entityType] ??
           entityUtilClassBase.getEntityPatchAPI(entityType);
         if (apiFunc && id) {
-          const res = await apiFunc(id, jsonPatch);
-          handleEntityUpdate(res, 'label.owner-plural');
+          res = await apiFunc(id, jsonPatch);
+
+          handleEntityUpdate(res, 'label.owner-plural', undefined, {
+            owners: res.owners ?? owners,
+          });
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
     [
-      onEntityUpdate,
       entityData,
       entityDetails.details,
       entityType,
@@ -658,12 +665,6 @@ export default function EntitySummaryPanel({
 
   const handleTagsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      if (onEntityUpdate) {
-        onEntityUpdate({ tags: updatedTags });
-
-        return updatedTags;
-      }
-
       const baseData = entityData ?? entityDetails.details;
       const jsonPatch = compare(baseData, {
         ...baseData,
@@ -681,7 +682,9 @@ export default function EntitySummaryPanel({
             tags: updatedTags,
           });
 
-          return handleEntityUpdate(res, 'label.tag-plural', res.tags);
+          return handleEntityUpdate(res, 'label.tag-plural', res.tags, {
+            tags: res.tags ?? updatedTags,
+          });
         } else {
           const apiFunc =
             entityUpdateMap[entityType] ??
@@ -689,7 +692,9 @@ export default function EntitySummaryPanel({
           if (apiFunc && id) {
             res = await apiFunc(id, jsonPatch);
 
-            return handleEntityUpdate(res, 'label.tag-plural', res.tags);
+            return handleEntityUpdate(res, 'label.tag-plural', res.tags, {
+              tags: res.tags ?? updatedTags,
+            });
           }
 
           return updatedTags;
@@ -701,7 +706,6 @@ export default function EntitySummaryPanel({
       }
     },
     [
-      onEntityUpdate,
       entityData,
       entityDetails.details,
       entityType,
@@ -736,12 +740,6 @@ export default function EntitySummaryPanel({
 
   const handleGlossaryTermsUpdate = useCallback(
     async (updatedTags: TagLabel[]) => {
-      if (onEntityUpdate) {
-        onEntityUpdate({ tags: updatedTags });
-
-        return updatedTags;
-      }
-
       const baseData = entityData ?? entityDetails.details;
       const jsonPatch = compare(baseData, {
         ...baseData,
@@ -762,7 +760,8 @@ export default function EntitySummaryPanel({
           return handleEntityUpdate(
             res,
             'label.glossary-term-plural',
-            res.tags
+            res.tags,
+            { tags: res.tags ?? updatedTags }
           );
         } else {
           const apiFunc =
@@ -774,7 +773,8 @@ export default function EntitySummaryPanel({
             return handleEntityUpdate(
               res,
               'label.glossary-term-plural',
-              res.tags
+              res.tags,
+              { tags: res.tags ?? updatedTags }
             );
           }
 
@@ -787,7 +787,6 @@ export default function EntitySummaryPanel({
       }
     },
     [
-      onEntityUpdate,
       entityData,
       entityDetails.details,
       entityType,
@@ -815,55 +814,51 @@ export default function EntitySummaryPanel({
 
   const handleExtensionUpdate = useCallback(
     async (updatedExtension: Record<string, unknown> | undefined) => {
-      if (onEntityUpdate) {
-        onEntityUpdate({ extension: updatedExtension });
-      } else {
-        try {
-          let res: Partial<EntityData> = {};
-          // TableColumn entity has a different API endpoint for updating extension field, so handle it separately
-          if (entityType === EntityType.TABLE_COLUMN) {
-            res = await updateTableColumn(fqn, {
-              extension: {
-                ...(Object.fromEntries(
-                  Object.entries(updatedExtension || {}).map(([key, value]) => [
-                    key,
-                    value ?? null,
-                  ])
-                ) as Record<string, unknown>),
-              },
-            });
+      try {
+        let res: Partial<EntityData> = {};
+        // TableColumn entity has a different API endpoint for updating extension field, so handle it separately
+        if (entityType === EntityType.TABLE_COLUMN) {
+          res = await updateTableColumn(fqn, {
+            extension: {
+              ...(Object.fromEntries(
+                Object.entries(updatedExtension || {}).map(([key, value]) => [
+                  key,
+                  value ?? null,
+                ])
+              ) as Record<string, unknown>),
+            },
+          });
+        } else {
+          const baseData = entityData ?? entityDetails.details;
+          const jsonPatch = compare(baseData, {
+            ...baseData,
+            extension: updatedExtension,
+          });
 
-            handleEntityUpdate(res, 'label.extension');
-          } else {
-            const baseData = entityData ?? entityDetails.details;
-            const jsonPatch = compare(baseData, {
-              ...baseData,
-              extension: updatedExtension,
-            });
-
-            if (isEmpty(jsonPatch) || isUndefined(entityType)) {
-              return;
-            }
-
-            const apiFunc =
-              entityUpdateMap[entityType] ??
-              entityUtilClassBase.getEntityPatchAPI(entityType);
-            if (apiFunc && id) {
-              res = await apiFunc(id, jsonPatch);
-
-              handleEntityUpdate(res, 'label.extension');
-            }
+          if (isEmpty(jsonPatch) || isUndefined(entityType)) {
+            return;
           }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
 
-          throw error;
+          const apiFunc =
+            entityUpdateMap[entityType] ??
+            entityUtilClassBase.getEntityPatchAPI(entityType);
+          if (!apiFunc || !id) {
+            return;
+          }
+          res = await apiFunc(id, jsonPatch);
         }
+
+        handleEntityUpdate(res, 'label.extension', undefined, {
+          extension: res.extension ?? updatedExtension,
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        throw error;
       }
     },
     [
       entityDetails.details,
-      onEntityUpdate,
       entityType,
       id,
       entityUpdateMap,
