@@ -117,24 +117,11 @@ public class GlossaryCollection implements Iterable<Glossary> {
     if (!hasMore) {
       return false;
     }
-
-    try {
-      ListParams pageParams = params.copy();
-      if (nextPageToken != null) {
-        pageParams.setAfter(nextPageToken);
-        pageParams.setBefore(null);
-      }
-
-      ListResponse<Glossary> response = client.glossaries().list(pageParams);
-
-      currentPage = response.getData();
-      nextPageToken = response.getPaging() != null ? response.getPaging().getAfter() : null;
-      hasMore = nextPageToken != null && !currentPage.isEmpty();
-
-      return true;
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to load next page", e);
-    }
+    PageResult page = fetchPage(nextPageToken);
+    currentPage = page.data;
+    nextPageToken = page.nextCursor;
+    hasMore = page.hasMore;
+    return true;
   }
 
   /**
@@ -196,10 +183,45 @@ public class GlossaryCollection implements Iterable<Glossary> {
   }
 
   /**
+   * Fetch a single page from the server using the given cursor.
+   *
+   * <p>When {@code cursor} is {@code null} the request preserves the user's own start cursor
+   * ({@code params.getAfter()} / {@code params.getBefore()}); when {@code cursor} is non-null it
+   * overrides {@code after} and clears {@code before} so the server never sees both cursors. This
+   * method never reads or writes collection cursor state, so it is safe to call from multiple
+   * independent iterators without them interfering with each other or with the manual-pagination
+   * API.
+   */
+  private PageResult fetchPage(String cursor) {
+    try {
+      ListParams pageParams = params.copy();
+      if (cursor != null) {
+        pageParams.setAfter(cursor);
+        pageParams.setBefore(null);
+      }
+      ListResponse<Glossary> response = client.glossaries().list(pageParams);
+      List<Glossary> data = response.getData();
+      String nextCursor = response.getPaging() != null ? response.getPaging().getAfter() : null;
+      boolean more = nextCursor != null && !data.isEmpty();
+      return new PageResult(data, nextCursor, more);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to load next page", e);
+    }
+  }
+
+  /**
    * Iterator that automatically fetches new pages as needed.
+   *
+   * <p>Each iterator owns its own cursor state, so multiple iterators created from the same
+   * collection — including interleaved or nested traversals, and {@code stream()} / {@code
+   * all()} calls opened while another traversal is in progress — advance independently and never
+   * clobber each other's position. The collection-level cursor is left exclusively to the
+   * manual-pagination API.
    */
   private class AutoPaginatingIterator implements Iterator<Glossary> {
-    private Iterator<Glossary> currentIterator;
+    private Iterator<Glossary> currentIterator = List.<Glossary>of().iterator();
+    private String nextPageToken = null;
+    private boolean hasMore = true;
     private boolean initialized = false;
 
     @Override
@@ -207,17 +229,13 @@ public class GlossaryCollection implements Iterable<Glossary> {
       if (!initialized) {
         initialize();
       }
-
       if (currentIterator.hasNext()) {
         return true;
       }
-
-      // Try to load next page
-      if (hasMore && loadNextPage()) {
-        currentIterator = currentPage.iterator();
+      if (hasMore) {
+        fetchNextPage();
         return currentIterator.hasNext();
       }
-
       return false;
     }
 
@@ -231,14 +249,29 @@ public class GlossaryCollection implements Iterable<Glossary> {
 
     private void initialize() {
       if (!initialized) {
-        reset();
-        if (loadNextPage()) {
-          currentIterator = currentPage.iterator();
-        } else {
-          currentIterator = new ArrayList<Glossary>().iterator();
-        }
+        fetchNextPage();
         initialized = true;
       }
+    }
+
+    private void fetchNextPage() {
+      PageResult page = fetchPage(nextPageToken);
+      currentIterator = page.data.iterator();
+      nextPageToken = page.nextCursor;
+      hasMore = page.hasMore;
+    }
+  }
+
+  /** Holder for the data, next-page cursor and hasMore flag of a single fetched page. */
+  private static final class PageResult {
+    final List<Glossary> data;
+    final String nextCursor;
+    final boolean hasMore;
+
+    PageResult(List<Glossary> data, String nextCursor, boolean hasMore) {
+      this.data = data;
+      this.nextCursor = nextCursor;
+      this.hasMore = hasMore;
     }
   }
 }
