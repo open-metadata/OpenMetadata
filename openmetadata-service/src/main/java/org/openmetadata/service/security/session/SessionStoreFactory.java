@@ -36,24 +36,44 @@ public final class SessionStoreFactory {
   private SessionStoreFactory() {}
 
   public static SessionStore create() {
-    CacheProvider provider = CacheBundle.getCacheProvider();
-    CacheConfig config = CacheBundle.getCacheConfig();
-    if (config != null && config.provider == CacheConfig.Provider.redis && config.redis != null) {
-      if (provider instanceof RedisCacheProvider redisProvider && provider.available()) {
-        RedisCommands<String, String> commands = redisProvider.getSyncCommands();
-        if (commands != null) {
-          LOG.info(
-              "SessionStore backend: Redis (keyspace={})",
-              config.redis.keyspace == null ? "om" : config.redis.keyspace);
-          return new RedisSessionStore(commands, config.redis.keyspace);
-        }
-      }
-      throw new IllegalStateException(
-          "Redis cache is configured for this node, but Redis is not available. Refusing to "
-              + "fall back to JDBC session storage because that would split sessions across "
-              + "different backends in a multi-node deployment.");
+    return create(CacheBundle.getCacheProvider(), CacheBundle.getCacheConfig());
+  }
+
+  static SessionStore create(final CacheProvider provider, final CacheConfig config) {
+    final CacheConfig.SessionStoreMode mode =
+        config != null && config.sessionStore != null
+            ? config.sessionStore
+            : CacheConfig.SessionStoreMode.auto;
+    if (mode == CacheConfig.SessionStoreMode.jdbc) {
+      LOG.info("SessionStore backend: JDBC (explicitly configured via cache.sessionStore=jdbc)");
+      return new JdbcSessionStore();
+    }
+    final boolean useRedis =
+        mode == CacheConfig.SessionStoreMode.redis
+            || (config != null && config.provider == CacheConfig.Provider.redis);
+    if (useRedis) {
+      return createRedisStore(provider, config);
     }
     LOG.info("SessionStore backend: JDBC (user_session table)");
     return new JdbcSessionStore();
+  }
+
+  private static SessionStore createRedisStore(
+      final CacheProvider provider, final CacheConfig config) {
+    if (config != null
+        && config.redis != null
+        && provider instanceof RedisCacheProvider redisProvider
+        && provider.available()) {
+      final RedisCommands<String, String> commands = redisProvider.getSyncCommands();
+      if (commands != null) {
+        final String keyspace = config.redis.keyspace == null ? "om" : config.redis.keyspace;
+        LOG.info("SessionStore backend: Redis (keyspace={})", keyspace);
+        return new RedisSessionStore(commands, config.redis.keyspace);
+      }
+    }
+    throw new IllegalStateException(
+        "Redis session storage is required for this node, but Redis is not available. Refusing to "
+            + "fall back to JDBC session storage because that would split sessions across "
+            + "different backends in a multi-node deployment.");
   }
 }

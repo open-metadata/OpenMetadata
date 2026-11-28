@@ -45,9 +45,22 @@ public final class CacheKeys {
     return ns + ":ctags:" + type + ":" + id.toString() + ":" + colFqnHash;
   }
 
+  /**
+   * Legacy full-JSON by-name key kept for invalidation during rolling upgrades from pods that
+   * stored entity JSON directly under {@code :en:}. New writes use {@link #entityIdByName}.
+   */
   public String entityByName(String type, String fqn) {
     String fqnHash = FullyQualifiedName.buildHash(fqn);
     return ns + ":en:" + type + ":" + fqnHash;
+  }
+
+  /**
+   * FQN-to-UUID pointer key for name-based entity lookups. Stores only the 36-char entity UUID
+   * instead of duplicating the full entity JSON stored under {@link #entity(String, UUID)}.
+   */
+  public String entityIdByName(String type, String fqn) {
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+    return ns + ":enid:" + type + ":" + fqnHash;
   }
 
   public String refByName(String type, String fqn) {

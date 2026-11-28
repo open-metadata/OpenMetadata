@@ -50,6 +50,37 @@ public class CachedReadBundle {
     public boolean certificationLoaded;
   }
 
+  public boolean isTagCachingEnabled() {
+    return config.tagTtlSeconds > 0;
+  }
+
+  private Dto sanitizeForRead(Dto dto) {
+    if (dto != null && !isTagCachingEnabled() && dto.tagsLoaded) {
+      dto.tags = null;
+      dto.tagsLoaded = false;
+    }
+    return dto;
+  }
+
+  private Dto sanitizeForWrite(Dto dto) {
+    if (isTagCachingEnabled() || !dto.tagsLoaded) {
+      return dto;
+    }
+    Dto copy = new Dto();
+    copy.relations = dto.relations;
+    copy.certification = dto.certification;
+    copy.certificationLoaded = dto.certificationLoaded;
+    return copy;
+  }
+
+  private int ttlSecondsFor(Dto dto) {
+    int ttlSeconds = config.entityTtlSeconds;
+    if (dto.tagsLoaded && config.tagTtlSeconds > 0 && config.tagTtlSeconds < ttlSeconds) {
+      ttlSeconds = config.tagTtlSeconds;
+    }
+    return ttlSeconds;
+  }
+
   /**
    * Batch fetch — pipelined Redis GETs aligned 1:1 with the input ids. Useful for prefetch
    * scenarios where a caller knows it's about to touch a list of entities and wants one
@@ -93,7 +124,8 @@ public class CachedReadBundle {
         continue;
       }
       try {
-        out.add(JsonUtils.readValue(json.get(), Dto.class));
+        out.add(
+            sanitizeForRead(JsonUtils.readValue(CacheValueCodec.decode(json.get()), Dto.class)));
         if (m != null) m.recordLayerHit(layerType);
       } catch (Exception e) {
         // Bad cache entry — evict and treat as miss for this position.
@@ -122,7 +154,7 @@ public class CachedReadBundle {
         if (m != null) m.recordLayerMiss(layerType);
         return null;
       }
-      Dto dto = JsonUtils.readValue(json.get(), Dto.class);
+      Dto dto = sanitizeForRead(JsonUtils.readValue(CacheValueCodec.decode(json.get()), Dto.class));
       if (m != null) m.recordLayerHit(layerType);
       return dto;
     } catch (Exception e) {
@@ -134,13 +166,29 @@ public class CachedReadBundle {
   }
 
   public void put(String entityType, UUID entityId, Dto dto) {
-    if (dto == null || EntityCacheBypass.isSkipped()) {
+    if (dto == null || EntityCacheBypass.isPopulateSkipped()) {
+      return;
+    }
+    Dto effective = sanitizeForWrite(dto);
+    if ((effective.relations == null || effective.relations.isEmpty())
+        && !effective.tagsLoaded
+        && !effective.certificationLoaded) {
       return;
     }
     String key = keys.bundle(entityType, entityId);
     try {
-      String json = JsonUtils.pojoToJson(dto);
-      cache.set(key, json, Duration.ofSeconds(config.entityTtlSeconds));
+      String json = JsonUtils.pojoToJson(effective);
+      String encoded = CacheValueCodec.encode(json, config.compressionThresholdBytes);
+      if (CacheValueCodec.exceedsMaxEntrySize(encoded, config.maxEntrySizeBytes)) {
+        LOG.debug(
+            "Skipping oversized read bundle: {} {} encodedBytes={} maxEntrySizeBytes={}",
+            entityType,
+            entityId,
+            CacheValueCodec.encodedByteSize(encoded),
+            config.maxEntrySizeBytes);
+        return;
+      }
+      cache.set(key, encoded, Duration.ofSeconds(ttlSecondsFor(effective)));
       CacheMetrics m = CacheMetrics.getInstance();
       if (m != null) m.recordLayerWrite(bundleType(entityType));
     } catch (Exception e) {

@@ -1031,7 +1031,8 @@ public class DomainRepository extends EntityRepository<Domain> {
         Entity.getEntityReferencesByIds(DOMAIN, parentIds, ALL).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
-    CachedRelationshipDao containerCache = CacheBundle.getCachedRelationshipDao();
+    CachedRelationshipDao containerCache =
+        isCacheableEntityType(DOMAIN) ? CacheBundle.getCachedRelationshipDao() : null;
     records.forEach(
         record -> {
           var parentRef = parentRefsById.get(UUID.fromString(record.getFromId()));

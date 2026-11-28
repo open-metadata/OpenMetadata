@@ -88,16 +88,43 @@ public class BundleWarmupBatcher {
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final boolean warmRelationships;
+  private final int compressionThresholdBytes;
+  private final int maxEntrySizeBytes;
+  private final Integer tagTtlSeconds;
 
   public BundleWarmupBatcher(
       final CollectionDAO dao,
       final CacheProvider cache,
       final CacheKeys keys,
       final boolean warmRelationships) {
+    this(dao, cache, keys, warmRelationships, 0, 0, null);
+  }
+
+  public BundleWarmupBatcher(
+      final CollectionDAO dao,
+      final CacheProvider cache,
+      final CacheKeys keys,
+      final boolean warmRelationships,
+      final int compressionThresholdBytes,
+      final int maxEntrySizeBytes) {
+    this(dao, cache, keys, warmRelationships, compressionThresholdBytes, maxEntrySizeBytes, null);
+  }
+
+  public BundleWarmupBatcher(
+      final CollectionDAO dao,
+      final CacheProvider cache,
+      final CacheKeys keys,
+      final boolean warmRelationships,
+      final int compressionThresholdBytes,
+      final int maxEntrySizeBytes,
+      final Integer tagTtlSeconds) {
     this.dao = dao;
     this.cache = cache;
     this.keys = keys;
     this.warmRelationships = warmRelationships;
+    this.compressionThresholdBytes = compressionThresholdBytes;
+    this.maxEntrySizeBytes = maxEntrySizeBytes;
+    this.tagTtlSeconds = tagTtlSeconds;
   }
 
   /** Outcome of a batch warmup — caller uses for stats reporting. */
@@ -105,7 +132,8 @@ public class BundleWarmupBatcher {
 
   public BatchResult warmupBatch(
       final String entityType, final List<? extends EntityInterface> entities, final Duration ttl) {
-    if (entities == null || entities.isEmpty()) {
+    final boolean warmTags = tagTtlSeconds == null || tagTtlSeconds > 0;
+    if (entities == null || entities.isEmpty() || (!warmTags && !warmRelationships)) {
       return new BatchResult(0, 0);
     }
     final Map<String, EntityInterface> entitiesByFqnHash = new HashMap<>(entities.size() * 2);
@@ -123,11 +151,15 @@ public class BundleWarmupBatcher {
     }
 
     final Map<String, List<TagLabel>> tagsByFqnHash;
-    try {
-      tagsByFqnHash = dao.tagUsageDAO().getTagsByTargetFQNHashes(fqnHashes);
-    } catch (final Exception e) {
-      LOG.warn("Bundle warmup: tag batch fetch failed for type={}", entityType, e);
-      return new BatchResult(0, entities.size());
+    if (warmTags) {
+      try {
+        tagsByFqnHash = dao.tagUsageDAO().getTagsByTargetFQNHashes(fqnHashes);
+      } catch (final Exception e) {
+        LOG.warn("Bundle warmup: tag batch fetch failed for type={}", entityType, e);
+        return new BatchResult(0, entities.size());
+      }
+    } else {
+      tagsByFqnHash = Collections.emptyMap();
     }
 
     final Map<UUID, Map<String, List<EntityReference>>> relationsByEntity;
@@ -150,11 +182,17 @@ public class BundleWarmupBatcher {
             warmRelationships
                 ? (warmedRelations == null ? emptyRelationshipMap() : warmedRelations)
                 : null;
-        dto.tags = tagsByFqnHash.getOrDefault(entry.getKey(), Collections.emptyList());
-        dto.tagsLoaded = true;
+        if (warmTags) {
+          dto.tags = tagsByFqnHash.getOrDefault(entry.getKey(), Collections.emptyList());
+          dto.tagsLoaded = true;
+        }
         dto.certification = entity.getCertification();
         dto.certificationLoaded = true;
-        bundleKeyValues.put(keys.bundle(entityType, entity.getId()), JsonUtils.pojoToJson(dto));
+        final String encoded =
+            CacheValueCodec.encode(JsonUtils.pojoToJson(dto), compressionThresholdBytes);
+        if (!CacheValueCodec.exceedsMaxEntrySize(encoded, maxEntrySizeBytes)) {
+          bundleKeyValues.put(keys.bundle(entityType, entity.getId()), encoded);
+        }
       } catch (final Exception e) {
         failed++;
         LOG.debug("Bundle warmup row failed: type={} id={}", entityType, entity.getId(), e);
@@ -163,8 +201,15 @@ public class BundleWarmupBatcher {
     if (bundleKeyValues.isEmpty()) {
       return new BatchResult(0, failed);
     }
+    Duration effectiveTtl = ttl;
+    if (warmTags && tagTtlSeconds != null) {
+      Duration tagTtl = Duration.ofSeconds(tagTtlSeconds);
+      if (tagTtl.compareTo(effectiveTtl) < 0) {
+        effectiveTtl = tagTtl;
+      }
+    }
     try {
-      cache.pipelineSet(bundleKeyValues, ttl);
+      cache.pipelineSet(bundleKeyValues, effectiveTtl);
     } catch (final RuntimeException e) {
       LOG.warn("Bundle warmup: pipelined write failed for type={}", entityType, e);
       return new BatchResult(0, bundleKeyValues.size() + failed);

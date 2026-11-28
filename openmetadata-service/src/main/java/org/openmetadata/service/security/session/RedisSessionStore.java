@@ -85,6 +85,39 @@ public class RedisSessionStore implements SessionStore {
           + "redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])\n"
           + "return 1\n";
 
+  // Single-key Lua script that records a session in its user ZSET index and ensures newly created
+  // or finite-TTL indexes carry a TTL at least as long as the session's TTL. Reads TTL before ZADD
+  // so a new key (-2) is distinguished from a pre-upgrade persistent index (-1), preventing a short
+  // session from prematurely expiring a legacy index that still tracks longer live sessions.
+  // Touches only KEYS[1] so it stays in a single Redis Cluster hash slot.
+  //
+  //   KEYS[1] = user index ZSET key
+  //   ARGV[1] = score (lastAccessedAt)
+  //   ARGV[2] = member (session ID)
+  //   ARGV[3] = TTL seconds (never below MIN_TTL_SECONDS)
+  private static final String ZADD_WITH_MAX_TTL_LUA =
+      "local prior = redis.call('TTL', KEYS[1])\n"
+          + "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2])\n"
+          + "local target = tonumber(ARGV[3])\n"
+          + "if prior == -2 or (prior >= 0 and prior < target) then\n"
+          + "  redis.call('EXPIRE', KEYS[1], target)\n"
+          + "end\n"
+          + "return 1\n";
+
+  // Single-key Lua script used after a full user-index scan to transition a pre-upgrade persistent
+  // index (TTL == -1) — or extend a shorter finite TTL — to the max remaining horizon of all
+  // surviving live sessions. Preserves any existing longer finite TTL.
+  //
+  //   KEYS[1] = user index ZSET key
+  //   ARGV[1] = max remaining TTL seconds across surviving live sessions
+  private static final String EXPIRE_IF_UNBOUNDED_OR_SHORTER_LUA =
+      "local ttl = redis.call('TTL', KEYS[1])\n"
+          + "local target = tonumber(ARGV[1])\n"
+          + "if ttl == -1 or (ttl >= 0 and ttl < target) then\n"
+          + "  redis.call('EXPIRE', KEYS[1], target)\n"
+          + "end\n"
+          + "return 1\n";
+
   private final RedisCommands<String, String> commands;
   private final String keyspace;
 
@@ -149,16 +182,19 @@ public class RedisSessionStore implements SessionStore {
     String indexKey = userIndexKey(userId, status);
     // Oversample so lazy cleanup of stale index entries doesn't shrink the result below
     // the requested limit for a user whose oldest entries are TTL-expired.
-    long stop = (long) limit * USER_INDEX_OVERSAMPLE - 1;
-    List<String> ids = commands.zrange(indexKey, 0, stop);
+    long oversample = (long) limit * USER_INDEX_OVERSAMPLE;
+    List<String> ids = commands.zrange(indexKey, 0, oversample - 1);
     if (ids == null || ids.isEmpty()) {
       return Collections.emptyList();
     }
     List<UserSession> sessions = new ArrayList<>(limit);
     List<String> stale = new ArrayList<>();
     long now = System.currentTimeMillis();
+    long maxLiveTtl = 0L;
+    boolean truncated = false;
     for (String id : ids) {
       if (sessions.size() >= limit) {
+        truncated = true;
         break;
       }
       String json = commands.get(sessionKey(id));
@@ -169,15 +205,27 @@ public class RedisSessionStore implements SessionStore {
       UserSession session = JsonUtils.readValue(json, UserSession.class);
       if (session.getStatus() == status && !session.isExpired(now)) {
         sessions.add(session);
+        maxLiveTtl = Math.max(maxLiveTtl, ttlSecondsFor(session));
       } else if (isTerminal(session.getStatus()) || session.isExpired(now)) {
         // Redis keeps the row until its minimum TTL lapses. An entry for a session live in the
         // other status sharing this index is kept: this GET may predate a concurrent update, and
         // removing the entry would hide a live session.
         stale.add(id);
+      } else {
+        // Live session in the other status sharing this index (e.g. REFRESHING in ACTIVE index).
+        maxLiveTtl = Math.max(maxLiveTtl, ttlSecondsFor(session));
       }
     }
     if (!stale.isEmpty()) {
       commands.zrem(indexKey, stale.toArray(new String[0]));
+    }
+    boolean fullScan = ids.size() < oversample && !truncated;
+    if (fullScan && maxLiveTtl > 0L) {
+      commands.eval(
+          EXPIRE_IF_UNBOUNDED_OR_SHORTER_LUA,
+          ScriptOutputType.INTEGER,
+          new String[] {indexKey},
+          Long.toString(maxLiveTtl));
     }
     return sessions;
   }
@@ -200,20 +248,17 @@ public class RedisSessionStore implements SessionStore {
     long ttl = ttlSecondsFor(session);
     commands.set(sessionKey(session.getId()), json, SetArgs.Builder.ex(ttl));
     if (isIndexed(session)) {
-      double score = scoreFor(session);
-      commands.zadd(userIndexKey(session.getUserId(), session.getStatus()), score, session.getId());
+      addToUserIndex(session, ttl);
     }
   }
 
   @Override
   public boolean updateIfVersion(UserSession session, long expectedVersion) {
+    long ttl = ttlSecondsFor(session);
     if (isIndexed(session)) {
       // Before the CAS, so a crash between the two commands cannot leave a live session out of
       // its index.
-      commands.zadd(
-          userIndexKey(session.getUserId(), session.getStatus()),
-          scoreFor(session),
-          session.getId());
+      addToUserIndex(session, ttl);
     }
     Long result =
         commands.eval(
@@ -222,12 +267,22 @@ public class RedisSessionStore implements SessionStore {
             new String[] {sessionKey(session.getId())},
             Long.toString(expectedVersion),
             JsonUtils.pojoToJson(session),
-            Long.toString(ttlSecondsFor(session)));
+            Long.toString(ttl));
     boolean updated = result != null && result > 0L;
     if (updated && isTerminal(session.getStatus())) {
       removeFromAllUserIndexes(session);
     }
     return updated;
+  }
+
+  private void addToUserIndex(final UserSession session, final long ttlSeconds) {
+    commands.eval(
+        ZADD_WITH_MAX_TTL_LUA,
+        ScriptOutputType.INTEGER,
+        new String[] {userIndexKey(session.getUserId(), session.getStatus())},
+        Double.toString(scoreFor(session)),
+        session.getId(),
+        Long.toString(ttlSeconds));
   }
 
   private double scoreFor(UserSession session) {
