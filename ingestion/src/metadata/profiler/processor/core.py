@@ -92,9 +92,10 @@ class Profiler(Generic[TMetric]):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
         :param profiler_interface: Where to run the queries
-        :param table: type containing table info
-        :param ignore_cols: List of columns to ignore when computing the profile
-        :param profile_sample: % of rows to use for sampling column metrics
+        :param include_columns: Column profiler configs restricting which columns to profile
+        and which metrics to compute for them
+        :param exclude_columns: Names of columns to skip when computing the profile
+        :param global_profiler_configuration: Global profiler settings used to filter metrics
         """
         self.global_profiler_configuration: ProfilerConfiguration | None = (
             cast(ProfilerConfiguration, global_profiler_configuration.config_value)  # noqa: TC006
