@@ -51,6 +51,8 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
@@ -60,6 +62,8 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.type.OntologyRelationship;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -569,6 +573,157 @@ public class OntologyChangeSetIT {
           deletedFields.contains("reviewers"),
           "UPSERT_MAPPING must not record a fieldDeleted for reviewers: " + deletedFields);
     }
+  }
+
+  @Test
+  void applyingDeleteRelationshipRemovesTheNamedTypedEdge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = createTerm(client, glossary, ns.prefix("deleteRelFrom"));
+    GlossaryTerm termB = createTerm(client, glossary, ns.prefix("deleteRelTo"));
+    // addRelation returns the updated source term (bumped version + relatedTerms), avoiding an
+    // extra GET whose window can race other parallel ITs in the lane.
+    GlossaryTerm termACurrent =
+        client.glossaryTerms().addRelation(termA.getId(), termB.getId(), "synonym");
+    assertFalse(
+        listOrEmpty(termACurrent.getRelatedTerms()).isEmpty(),
+        "the relation must exist before the change set deletes it");
+
+    OntologyChangeOperation deleteRel =
+        deleteRelationshipOperation(termACurrent, termB, "synonym", "admin");
+    OntologyChangeSet changeSet =
+        createChangeSetWithOperations(client, glossary, List.of(deleteRel), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("deleteRelEditor"));
+
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(1, applied.getApplicationResult().getOperationsApplied());
+    GlossaryTerm after = client.glossaryTerms().get(termA.getId().toString(), "relatedTerms");
+    assertFalse(
+        listOrEmpty(after.getRelatedTerms()).stream()
+            .anyMatch(relation -> relation.getTerm().getId().equals(termB.getId())),
+        "the deleted typed relation must be gone after the change set applies");
+  }
+
+  @Test
+  void applyingDeleteRelationshipWithAnUnregisteredTypeFailsAndKeepsTheEdge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = createTerm(client, glossary, ns.prefix("keepFrom"));
+    GlossaryTerm termB = createTerm(client, glossary, ns.prefix("keepTo"));
+    // addRelation returns the updated source term with the bumped version the optimistic guard
+    // needs.
+    GlossaryTerm termACurrent =
+        client.glossaryTerms().addRelation(termA.getId(), termB.getId(), "synonym");
+
+    OntologyChangeOperation deleteRel =
+        deleteRelationshipOperation(termACurrent, termB, "notARegisteredType", "admin");
+    OntologyChangeSet changeSet =
+        createChangeSetWithOperations(client, glossary, List.of(deleteRel), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("invalidTypeEditor"));
+
+    OntologyChangeSet failed =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(0, failed.getApplicationResult().getOperationsApplied());
+    assertEquals(1, failed.getApplicationResult().getOperationsFailed());
+    assertEquals(
+        OntologyChangeOperationResultStatus.FAILED,
+        failed.getApplicationResult().getResults().getFirst().getStatus());
+    GlossaryTerm after = client.glossaryTerms().get(termA.getId().toString(), "relatedTerms");
+    assertTrue(
+        listOrEmpty(after.getRelatedTerms()).stream()
+            .anyMatch(
+                relation ->
+                    relation.getTerm().getId().equals(termB.getId())
+                        && "synonym".equals(relation.getRelationType())),
+        "the relation must stay in place when the named type does not resolve");
+  }
+
+  @Test
+  void applyingDeleteRelationshipRejectsANullRelationTypeNameInsteadOfDeletingEveryType(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = createTerm(client, glossary, ns.prefix("nullNameFrom"));
+    GlossaryTerm termB = createTerm(client, glossary, ns.prefix("nullNameTo"));
+    // Add TWO typed relations to termA so we can prove the null-name variant deletes none of them.
+    client.glossaryTerms().addRelation(termA.getId(), termB.getId(), "synonym");
+    // The second addRelation returns the source term with the version bumped twice (0.1 -> 0.2 ->
+    // 0.3); use that as the optimistic-guard baseVersion for the change set.
+    GlossaryTerm termACurrent =
+        client.glossaryTerms().addRelation(termA.getId(), termB.getId(), "broader");
+
+    // Omit the optional EntityReference.name so the executor receives null and must reject it
+    // (instead of falling through to the repository's null-means-all wildcard matching).
+    OntologyChangeOperation deleteRel =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.DELETE_RELATIONSHIP)
+            .withTargetId(termA.getId())
+            .withBaseVersion(termACurrent.getVersion())
+            .withState(OntologyChangeOperationState.ACTIVE)
+            .withRelationship(
+                new OntologyRelationship()
+                    .withId(UUID.randomUUID())
+                    .withFromTerm(termA.getEntityReference())
+                    .withToTerm(termB.getEntityReference())
+                    .withRelationshipType(
+                        new EntityReference()
+                            .withId(UUID.randomUUID())
+                            .withType("relationshipType")) // no name -> null at the executor
+                    .withProvenance(RelationProvenance.MANUAL)
+                    .withStatus(EntityStatus.APPROVED)
+                    .withCreatedBy("admin")
+                    .withCreatedAt(0L));
+    OntologyChangeSet changeSet =
+        createChangeSetWithOperations(client, glossary, List.of(deleteRel), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("nullNameEditor"));
+
+    OntologyChangeSet failed =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(1, failed.getApplicationResult().getOperationsFailed());
+    GlossaryTerm after = client.glossaryTerms().get(termA.getId().toString(), "relatedTerms");
+    List<org.openmetadata.schema.type.TermRelation> remaining =
+        listOrEmpty(after.getRelatedTerms()).stream()
+            .filter(relation -> relation.getTerm().getId().equals(termB.getId()))
+            .toList();
+    assertEquals(2, remaining.size(), "a null name must NOT delete every type of relation");
+  }
+
+  private static OntologyChangeOperation deleteRelationshipOperation(
+      GlossaryTerm from, GlossaryTerm to, String relationType, String user) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.DELETE_RELATIONSHIP)
+        .withTargetId(from.getId())
+        .withBaseVersion(from.getVersion())
+        .withState(OntologyChangeOperationState.ACTIVE)
+        .withRelationship(
+            new OntologyRelationship()
+                .withId(UUID.randomUUID())
+                .withFromTerm(from.getEntityReference())
+                .withToTerm(to.getEntityReference())
+                .withRelationshipType(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("relationshipType")
+                        .withName(relationType))
+                .withProvenance(RelationProvenance.MANUAL)
+                .withStatus(EntityStatus.APPROVED)
+                .withCreatedBy(user)
+                .withCreatedAt(0L));
   }
 
   private static Set<UUID> listedIds(OpenMetadataClient client, String query) {

@@ -865,6 +865,31 @@ public class GlossaryTermRelationEdgeCasesIT {
     }
   }
 
+  @Test
+  void testRemoveTermRelationFailsWhenNoMatchingRelationExists(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = GlossaryTermTestFactory.createWithName(ns, glossary, "noRelA");
+    GlossaryTerm termB = GlossaryTermTestFactory.createWithName(ns, glossary, "noRelB");
+
+    // A typed delete that names a relation that does not exist must fail explicitly instead of
+    // returning a silent success that hides the no-op from a reviewer.
+    HttpResponse<String> typedResponse =
+        removeTermRelationRaw(termA.getId().toString(), termB.getId().toString(), "synonym");
+    assertEquals(
+        404,
+        typedResponse.statusCode(),
+        "removing a non-existent typed relation must return 404, not a silent 200");
+
+    // The untyped "remove all types" form must also surface a missing relation rather than a no-op
+    // success, while keeping its "remove all matching relations" behavior when matches exist.
+    HttpResponse<String> untypedResponse =
+        removeTermRelationWithoutTypeRaw(termA.getId().toString(), termB.getId().toString());
+    assertEquals(
+        404,
+        untypedResponse.statusCode(),
+        "removing with no type when no relation exists must return 404, not a silent 200");
+  }
+
   // ==================== PRIORITY 10: BULK CREATION ====================
 
   @Test
@@ -1033,6 +1058,46 @@ public class GlossaryTermRelationEdgeCasesIT {
             .build();
 
     HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> removeTermRelationRaw(
+      String fromTermId, String toTermId, String relationType) throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    String url =
+        String.format(
+            "%s/v1/glossaryTerms/%s/relations/%s?relationType=%s",
+            baseUrl, fromTermId, toTermId, relationType);
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(30))
+            .DELETE()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> removeTermRelationWithoutTypeRaw(String fromTermId, String toTermId)
+      throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    String url =
+        String.format("%s/v1/glossaryTerms/%s/relations/%s", baseUrl, fromTermId, toTermId);
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(30))
+            .DELETE()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private GlossaryTerm getGlossaryTerm(String termId) throws Exception {

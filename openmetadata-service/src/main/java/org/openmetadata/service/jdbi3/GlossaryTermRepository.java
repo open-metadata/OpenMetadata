@@ -1323,6 +1323,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         listOrEmpty(original.getRelatedTerms()).stream()
             .filter(relation -> matchesRelation(relation, toTermId, relationType))
             .toList();
+    // A change-set DELETE_RELATIONSHIP names a single typed edge; a silent no-op when nothing
+    // matches would let a reviewer approve a deletion that never happened. Surface the missing
+    // relation instead, matching the wording updateTermRelation already uses. Callers that rely
+    // on the direct REST route's "remove all types if not specified" contract still succeed when a
+    // matching relation exists; only the previously-silent no-match case now fails.
+    if (matches.isEmpty()) {
+      throw new EntityNotFoundException(
+          relationType == null
+              ? String.format(
+                  "No relation found between glossary terms '%s' and '%s'", id, toTermId)
+              : String.format(
+                  "No relation found between glossary terms '%s' and '%s' of type '%s'",
+                  id, toTermId, relationType));
+    }
     matches.forEach(TermRelationMutator::requireMutable);
     List<TermRelation> updatedRelations = new ArrayList<>(listOrEmpty(original.getRelatedTerms()));
     updatedRelations.removeAll(matches);
