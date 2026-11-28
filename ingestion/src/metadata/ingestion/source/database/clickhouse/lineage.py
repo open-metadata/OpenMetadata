@@ -13,6 +13,7 @@ Clickhouse lineage module
 """
 
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
+    get_distributed_table_lineage,
     get_mv_target_lineage,
     get_view_lineage_parser,
 )
@@ -44,6 +45,19 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     database_field = ""
 
     schema_field = "databases"
+
+    def yield_view_lineage(self):
+        """
+        Distributed tables are linked to their local tables along with the views: like a view,
+        a Distributed table holds no data and reads it from the table its definition names
+        """
+        yield from super().yield_view_lineage()
+        yield from get_distributed_table_lineage(
+            metadata=self.metadata,
+            engine=self.engine,  # pyright: ignore[reportArgumentType]
+            service_name=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+            source_config=self.source_config,  # pyright: ignore[reportArgumentType]
+        )
 
     def get_view_lineage_extension(self) -> ViewLineageExtension | None:
         """

@@ -46,6 +46,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_graph,
     get_lineage_by_procedure_graph,
 )
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageRequest
 from metadata.ingestion.models.topology import Queue as TopologyQueue
 from metadata.ingestion.source.database.lineage_processors import (
     process_chunk_in_subprocess,
@@ -68,6 +69,8 @@ QUERY_PROCESSING_TIMEOUT = 300
 PROCESS_TIMEOUT = CHUNK_SIZE * QUERY_PROCESSING_TIMEOUT
 
 MAX_ACTIVE_TIMED_OUT_THREADS = 10
+
+LineageSourceRecord = Either[AddLineageRequest | CreateQueryRequest] | Either[OMetaDeleteLineageRequest]
 
 
 class LineageSource(QueryParserSource, ABC):
@@ -455,7 +458,7 @@ class LineageSource(QueryParserSource, ABC):
         """Optional module-level parser factory, picklable for view lineage workers."""
         return None
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest] | Either[OMetaDeleteLineageRequest]]:
         logger.info("Processing View Lineage")
         producer_fn = self.view_lineage_producer
         processor_fn = view_lineage_processor
@@ -535,7 +538,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
+    def _iter(self, *_, **__) -> Iterable[LineageSourceRecord]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

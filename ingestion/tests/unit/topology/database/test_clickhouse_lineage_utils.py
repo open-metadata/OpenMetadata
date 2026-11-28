@@ -10,16 +10,25 @@
 #  limitations under the License.
 """Tests for the Clickhouse materialized view `TO` clause lineage."""
 
+import json
 import pickle
 import uuid
 from unittest import TestCase
 from unittest.mock import MagicMock
 
 import pytest
+from clickhouse_sqlalchemy.exceptions import DatabaseException
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.pool import StaticPool
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -29,16 +38,27 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Uuid,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_cache
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageRequest
+from metadata.ingestion.sink.file import FileSink, FileSinkConfig
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.clickhouse.lineage import ClickhouseLineageSource
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
+    expand_macros,
+    get_distributed_local_table,
+    get_distributed_table_lineage,
     get_materialized_view_target_table,
     get_mv_target_lineage,
     get_view_lineage_parser,
 )
+from metadata.ingestion.source.database.lineage_source import LineageSource as BaseLineageSource
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 
 
@@ -416,3 +436,941 @@ def test_clickhouse_view_parser_retains_native_graph_if_normalized_parse_fails(m
         str(table) for table in original.intermediate_tables
     ]
     assert parser.masked_query == original.masked_query
+
+
+class TestDistributedLocalTable:
+    """The samples are shaped like `system.tables.engine_full` results."""
+
+    @pytest.mark.parametrize(
+        "engine_full,expected",
+        [
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'events_local', rand())",
+                ("my_cluster", "default", "events_local"),
+                id="sharding-key",
+            ),
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'events_local')",
+                ("my_cluster", "default", "events_local"),
+                id="no-sharding-key",
+            ),
+            pytest.param(
+                "Distributed('{cluster}', 'other_db', 'events_local', cityHash64(user_id, ','), 'default') "
+                "SETTINGS fsync_after_insert = 0",
+                ("{cluster}", "other_db", "events_local"),
+                id="macro-cluster-policy-and-settings",
+            ),
+            pytest.param(
+                "Distributed(my_cluster, default, events_local)",
+                ("my_cluster", "default", "events_local"),
+                id="bare-identifiers",
+            ),
+            pytest.param(
+                "Distributed(`my_cluster`, `other db`, `events.local`)",
+                ("my_cluster", "other db", "events.local"),
+                id="backquoted-identifiers",
+            ),
+            pytest.param(
+                "Distributed('my_cluster', 'default', 'event\\'s_local')",
+                ("my_cluster", "default", "event's_local"),
+                id="escaped-quote",
+            ),
+        ],
+    )
+    def test_local_table_is_extracted(self, engine_full, expected):
+        assert get_distributed_local_table(engine_full) == expected
+
+    @pytest.mark.parametrize(
+        "engine_full",
+        [
+            pytest.param("Distributed('', 'default', 'events_local')", id="empty-cluster"),
+            pytest.param("Distributed('my_cluster', '', 'events_local')", id="empty-database"),
+            pytest.param("Distributed('my_cluster', currentDatabase(), 'events_local')", id="unevaluated-database"),
+            pytest.param("Distributed()", id="no-arguments"),
+            pytest.param("Distributed('my_cluster', 'default')", id="missing-table"),
+            pytest.param("Distributed('my_cluster', 'default', '')", id="empty-table"),
+            pytest.param("Distributed('my_cluster', 'default', concat('events', '_local'))", id="table-expression"),
+            pytest.param("MergeTree ORDER BY id", id="other-engine"),
+            pytest.param(
+                "ReplicatedMergeTree('/clickhouse/tables/{shard}/events', '{replica}', version) ORDER BY id",
+                id="other-engine-with-arguments",
+            ),
+            pytest.param("", id="empty"),
+            pytest.param(None, id="none"),
+        ],
+    )
+    def test_no_local_table(self, engine_full):
+        assert get_distributed_local_table(engine_full) is None
+
+
+MACROS = {
+    "cluster": "main",
+    "layer": "eu",
+    "nested": "{layer}_main",
+    "loop": "{loop}",
+    # `{level_0}` takes ten substitutions to settle, `{level_x}` eleven
+    **{f"level_{level}": f"{{level_{level + 1}}}" for level in range(9)},
+    "level_9": "deep",
+    "level_x": "{level_0}",
+}
+
+
+class TestExpandMacros:
+    @pytest.mark.parametrize(
+        "name,expected",
+        [
+            pytest.param("main", "main", id="no-macro"),
+            pytest.param("{cluster}", "main", id="macro"),
+            pytest.param("{layer}_{cluster}", "eu_main", id="several-macros"),
+            pytest.param("{nested}", "eu_main", id="macro-in-substitution"),
+            pytest.param("{missing}", None, id="undefined-macro"),
+            pytest.param("{cluster}_{missing}", None, id="one-undefined-macro"),
+            pytest.param("{loop}", None, id="expansion-does-not-settle"),
+            pytest.param("{level_0}", "deep", id="ten-substitutions"),
+            pytest.param("{level_x}", None, id="eleven-substitutions"),
+        ],
+    )
+    def test_cluster_name_is_expanded(self, name, expected):
+        assert expand_macros(name, MACROS) == expected
+
+
+class TestDistributedTableLineage:
+    """
+    A Distributed table reads from and writes into a local table on each shard, so the local
+    table is its upstream.
+    """
+
+    SERVICE_NAME = "clickhouse_service"
+
+    @pytest.fixture(autouse=True)
+    def _clear_search_cache(self):
+        search_cache.clear()
+
+    @pytest.fixture
+    def tables(self) -> dict:
+        return {}
+
+    @pytest.fixture
+    def lineage(self) -> list:
+        """Lineage edges stored by the server, shaped like the lineage API returns them"""
+        return []
+
+    @pytest.fixture
+    def metadata(self, tables, lineage):
+        def es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
+            """Like the index, which normalizes `fullyQualifiedName` to lower case"""
+            if entity_type is not Table:
+                return []
+            *_, schema, name = (fqn.unquote_name(part).lower() for part in fqn.split(fqn_search_string))
+            return [
+                table
+                for key, found in tables.items()
+                if len(key) == 2 and (key[0].lower(), key[1].lower()) == (schema, name)
+                for table in found
+            ]
+
+        def get_by_id(entity, entity_id, fields=None, **kwargs):
+            """Like the API, the definition comes back only when it is asked for"""
+            if entity is not Table:
+                return None
+            table = next(
+                (table for found in tables.values() for table in found if str(table.id.root) == str(entity_id)),
+                None,
+            )
+            if table is None or "schemaDefinition" in (fields or []):
+                return table
+            return table.model_copy(update={"schemaDefinition": None})
+
+        def get_lineage_by_id(entity, entity_id, up_depth=1, down_depth=1):
+            return {"upstreamEdges": [edge for edge in lineage if edge["toEntity"] == str(entity_id)]}
+
+        def delete_lineage_edge(edge):
+            from_id, to_id = str(edge.fromEntity.id.root), str(edge.toEntity.id.root)
+            lineage[:] = [
+                stored for stored in lineage if (stored["fromEntity"], stored["toEntity"]) != (from_id, to_id)
+            ]
+
+        metadata = MagicMock()
+        metadata.es_search_from_fqn = es_search_from_fqn
+        metadata.get_by_name.return_value = None
+        metadata.get_by_id.side_effect = get_by_id
+        metadata.get_lineage_by_id.side_effect = get_lineage_by_id
+        metadata.delete_lineage_edge.side_effect = delete_lineage_edge
+        return metadata
+
+    @pytest.fixture
+    def system_tables(self):
+        """
+        An in-memory stand-in for `system.tables`, `system.clusters` and `system.macros`, queried
+        with the connector's SQL. This server holds a replica of clusters `c` and `my_cluster`, and
+        its `cluster` macro names `my_cluster`.
+        """
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        with engine.begin() as conn:
+            conn.execute(text("ATTACH DATABASE ':memory:' AS system"))
+            conn.execute(text("CREATE TABLE system.tables (database TEXT, name TEXT, engine TEXT, engine_full TEXT)"))
+            conn.execute(text("CREATE TABLE system.clusters (cluster TEXT, shard_num INTEGER, is_local INTEGER)"))
+            conn.execute(text("CREATE TABLE system.macros (macro TEXT, substitution TEXT)"))
+        for cluster in ("c", "my_cluster"):
+            self._add_cluster(engine, cluster, shard_num=1, is_local=True)
+            self._add_cluster(engine, cluster, shard_num=2, is_local=False)
+        self._add_macro(engine, "cluster", "my_cluster")
+        return engine
+
+    def _add_table(
+        self,
+        tables: dict,
+        schema: str,
+        name: str,
+        table_type: TableType = TableType.Regular,
+        service_name: str = SERVICE_NAME,
+        schema_definition: str | None = None,
+    ) -> Table:
+        table = Table(
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root=name),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root=".".join(fqn.quote_name(part) for part in (service_name, "default", schema, name))
+            ),
+            tableType=table_type,
+            schemaDefinition=schema_definition,
+            serviceType=DatabaseServiceType.Clickhouse,
+            columns=[],
+        )
+        if service_name == self.SERVICE_NAME:
+            tables.setdefault((schema, name), []).append(table)
+        else:
+            tables.setdefault((service_name, schema, name), []).append(table)
+        return table
+
+    @staticmethod
+    def _add_cluster(engine, cluster: str, shard_num: int, is_local: bool):
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO system.clusters VALUES (:cluster, :shard_num, :is_local)"),
+                {"cluster": cluster, "shard_num": shard_num, "is_local": int(is_local)},
+            )
+
+    @staticmethod
+    def _add_macro(engine, macro: str, substitution: str):
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO system.macros VALUES (:macro, :substitution)"),
+                {"macro": macro, "substitution": substitution},
+            )
+
+    @staticmethod
+    def _edge(lineage: list, from_table: Table, to_table: Table, source: LineageSource):
+        lineage.append(
+            {
+                "fromEntity": str(from_table.id.root),
+                "toEntity": str(to_table.id.root),
+                "lineageDetails": {"source": source.value},
+            }
+        )
+
+    @staticmethod
+    def _upstream(lineage: list, table: Table) -> set:
+        return {edge["fromEntity"] for edge in lineage if edge["toEntity"] == str(table.id.root)}
+
+    @staticmethod
+    def _add_row(engine, schema: str, name: str, engine_name: str, engine_full: str):
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO system.tables VALUES (:schema, :name, :engine, :engine_full)"),
+                {"schema": schema, "name": name, "engine": engine_name, "engine_full": engine_full},
+            )
+
+    def _run(self, metadata, engine, source_config=None) -> list:
+        results = list(
+            get_distributed_table_lineage(
+                metadata=metadata,
+                engine=engine,
+                service_name=self.SERVICE_NAME,
+                source_config=source_config or DatabaseServiceQueryLineagePipeline(),
+            )
+        )
+        assert all(result.left is None for result in results)
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+        for result in results:
+            if isinstance(result.right, OMetaDeleteLineageRequest):
+                assert sink.run(result.right) is not None
+        return [result.right for result in results if isinstance(result.right, AddLineageRequest)]
+
+    def test_local_table_is_linked_to_the_distributed_table(self, metadata, tables, system_tables, caplog):
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events_local", "MergeTree", "MergeTree ORDER BY id")
+        self._add_row(
+            system_tables,
+            "default",
+            "events",
+            "Distributed",
+            "Distributed('my_cluster', 'default', 'events_local', rand())",
+        )
+
+        with caplog.at_level("WARNING"):
+            (request,) = self._run(metadata, system_tables)
+
+        assert "Cannot read the local table" not in caplog.text
+        assert isinstance(request, AddLineageRequest)
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+        assert request.edge.fromEntity.fullyQualifiedName == local.fullyQualifiedName.root
+        assert request.edge.toEntity.fullyQualifiedName == distributed.fullyQualifiedName.root
+        assert request.edge.lineageDetails.source == LineageSource.ViewLineage
+
+    def test_local_table_in_another_database(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events_local")
+        local = self._add_table(tables, "other db", "events.local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed(`c`, `other db`, `events.local`)")
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+
+    def test_local_table_not_ingested_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.events_local] of Distributed table [default.events] not found" in caplog.text
+
+    def test_distributed_table_not_ingested_is_skipped(self, metadata, tables, system_tables):
+        self._add_table(tables, "default", "events_local")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+        metadata.get_lineage_by_id.assert_not_called()
+
+    def test_unknown_local_database_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', '', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Cannot read the local table of Distributed table [default.events]" in caplog.text
+
+    def test_ambiguous_local_table_is_skipped_with_one_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert [record.getMessage() for record in caplog.records if record.levelname == "WARNING"] == [
+            "Local table [default.events_local] of Distributed table [default.events] matches 2 tables in "
+            "service [clickhouse_service], skipping its lineage"
+        ]
+
+    def test_distributed_table_naming_itself_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Distributed table [default.events] names itself" in caplog.text
+
+    def test_local_table_named_like_the_distributed_table_in_another_case_is_not_found(
+        self, metadata, tables, system_tables, caplog
+    ):
+        """The search ignores case, so it returns the Distributed table itself for `Events`"""
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.Events] of Distributed table [default.events] not found" in caplog.text
+
+    def test_local_table_named_in_another_case_is_not_linked(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events_Local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.Events_Local] of Distributed table [default.events] not found" in caplog.text
+
+    def test_exact_name_wins_over_names_in_another_case(self, metadata, tables, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "Events_Local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+
+    def test_distributed_table_not_ingested_is_not_matched_in_another_case(
+        self, metadata, tables, lineage, system_tables
+    ):
+        """`Events` is not ingested: the search returns its local table `events`, which is no Distributed table"""
+        events = self._add_table(tables, "default", "events")
+        mv = self._add_table(
+            tables,
+            "default",
+            "events_mv",
+            TableType.MaterializedView,
+            schema_definition="CREATE MATERIALIZED VIEW default.events_mv TO default.events AS SELECT 1",
+        )
+        self._add_row(system_tables, "default", "Events", "Distributed", "Distributed('c', 'default', 'events')")
+        self._edge(lineage, mv, events, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, events) == {str(mv.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
+
+    def test_ambiguous_distributed_table_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Distributed table [default.events] matches 2 tables in service [clickhouse_service]" in caplog.text
+
+    @pytest.mark.parametrize(
+        "source_config",
+        [
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(
+                    databaseFilterPattern=FilterPattern(excludes=["default"]), overrideViewLineage=True
+                ),
+                id="database",
+            ),
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(
+                    schemaFilterPattern=FilterPattern(includes=["other_db"]), overrideViewLineage=True
+                ),
+                id="schema",
+            ),
+            pytest.param(
+                DatabaseServiceQueryLineagePipeline(
+                    tableFilterPattern=FilterPattern(excludes=["^events$"]), overrideViewLineage=True
+                ),
+                id="table",
+            ),
+        ],
+    )
+    def test_filtered_distributed_table_is_skipped(self, metadata, tables, system_tables, source_config):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        assert self._run(metadata, system_tables, source_config) == []
+        metadata.get_lineage_by_id.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            pytest.param(DatabaseException("Code: 159. DB::Exception: TIMEOUT_EXCEEDED"), id="http-driver"),
+            pytest.param(OperationalError("SELECT", {}, Exception("connection refused")), id="sqlalchemy"),
+        ],
+    )
+    def test_failed_system_tables_query_is_reported(self, metadata, error):
+        engine = MagicMock()
+        engine.connect.side_effect = error
+
+        (result,) = get_distributed_table_lineage(
+            metadata=metadata,
+            engine=engine,
+            service_name=self.SERVICE_NAME,
+            source_config=DatabaseServiceQueryLineagePipeline(),
+        )
+
+        assert result.right is None
+        assert "Failed to fetch the Clickhouse Distributed tables" in result.left.error
+
+    @pytest.mark.parametrize(
+        "missing_table",
+        [pytest.param("clusters", id="system-clusters"), pytest.param("macros", id="system-macros")],
+    )
+    def test_failed_cluster_query_is_reported(self, metadata, tables, system_tables, missing_table):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        with system_tables.begin() as conn:
+            conn.execute(text(f"DROP TABLE system.{missing_table}"))
+
+        (result,) = get_distributed_table_lineage(
+            metadata=metadata,
+            engine=system_tables,
+            service_name=self.SERVICE_NAME,
+            source_config=DatabaseServiceQueryLineagePipeline(),
+        )
+
+        assert result.right is None
+        assert "Failed to fetch the Clickhouse Distributed tables and clusters" in result.left.error
+
+    @pytest.mark.parametrize(
+        "cluster",
+        [
+            pytest.param("remote_only", id="cluster-without-a-local-replica"),
+        ],
+    )
+    def test_cluster_without_a_local_replica_is_skipped_with_a_warning(
+        self, metadata, tables, system_tables, caplog, cluster
+    ):
+        """A same-named table on this server is not a shard of a cluster this server is not part of"""
+        self._add_cluster(system_tables, "remote_only", shard_num=1, is_local=False)
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", f"Distributed('{cluster}', 'default', 'events_local')"
+        )
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert f"This server holds no replica of cluster [{cluster}] of Distributed table [default.events]" in (
+            caplog.text
+        )
+
+    def test_cluster_missing_from_system_clusters_is_skipped_with_a_warning(
+        self, metadata, tables, system_tables, caplog
+    ):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('unknown', 'default', 'events_local')"
+        )
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Cluster [unknown] of Distributed table [default.events] is not in system.clusters" in caplog.text
+
+    def test_cluster_macro_is_expanded(self, metadata, tables, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('{cluster}', 'default', 'events_local')"
+        )
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+
+    def test_cluster_macro_naming_a_remote_cluster_is_skipped(self, metadata, tables, system_tables, caplog):
+        self._add_cluster(system_tables, "remote_only", shard_num=1, is_local=False)
+        self._add_macro(system_tables, "remote", "remote_only")
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('{remote}', 'default', 'events_local')"
+        )
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "This server holds no replica of cluster [remote_only]" in caplog.text
+
+    def test_undefined_cluster_macro_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('{missing}', 'default', 'events_local')"
+        )
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Cannot expand the macros of cluster [{missing}] of Distributed table [default.events]" in caplog.text
+
+    def _replaced_lineage(self, tables, lineage, system_tables) -> dict:
+        """
+        `events` was recreated over `events_local_v2`, a materialized view writes `TO` it, and an
+        edge was added to it by hand
+        """
+        entities = {
+            "old_local": self._add_table(tables, "default", "events_local"),
+            "local": self._add_table(tables, "default", "events_local_v2"),
+            "distributed": self._add_table(tables, "default", "events"),
+            "mv": self._add_table(
+                tables,
+                "default",
+                "events_mv",
+                TableType.MaterializedView,
+                schema_definition="CREATE MATERIALIZED VIEW default.events_mv TO default.events "
+                "AS SELECT id FROM default.raw_events",
+            ),
+            "manual": self._add_table(tables, "default", "events_backfill"),
+        }
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local_v2')"
+        )
+        self._edge(lineage, entities["old_local"], entities["distributed"], LineageSource.ViewLineage)
+        self._edge(lineage, entities["mv"], entities["distributed"], LineageSource.ViewLineage)
+        self._edge(lineage, entities["manual"], entities["distributed"], LineageSource.Manual)
+        return entities
+
+    def test_override_removes_the_replaced_edge(self, metadata, tables, lineage, system_tables):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+        self._edge(lineage, entities["local"], entities["distributed"], LineageSource.ViewLineage)
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == entities["local"].id
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("local", "mv", "manual")
+        }
+
+    def test_file_sink_keeps_stored_lineage(self, metadata, tables, lineage, system_tables, tmp_path):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+        stored = list(lineage)
+        output = tmp_path / "lineage.json"
+        sink = FileSink(FileSinkConfig(filename=str(output)))
+
+        try:
+            for result in get_distributed_table_lineage(
+                metadata=metadata,
+                engine=system_tables,
+                service_name=self.SERVICE_NAME,
+                source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
+            ):
+                assert result.left is None
+                sink.run(result.right)
+        finally:
+            sink.close()
+
+        assert lineage == stored
+        exported = json.loads(output.read_text())
+        assert any(record["edge"]["fromEntity"]["id"] == str(entities["local"].id.root) for record in exported)
+        assert [record["edge"]["fromEntity"]["id"] for record in exported if record.get("operation") == "delete"] == [
+            str(entities["old_local"].id.root)
+        ]
+
+    def test_metadata_rest_sink_replaces_stored_lineage(self, metadata, tables, lineage, system_tables):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+
+        def add_lineage(request, **_):
+            lineage.append(
+                {
+                    "fromEntity": str(request.edge.fromEntity.id.root),
+                    "toEntity": str(request.edge.toEntity.id.root),
+                    "lineageDetails": {"source": request.edge.lineageDetails.source.value},
+                }
+            )
+            return {"entity": {"fullyQualifiedName": request.edge.fromEntity.fullyQualifiedName}}
+
+        metadata.add_lineage.side_effect = add_lineage
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+        records = list(
+            get_distributed_table_lineage(
+                metadata=metadata,
+                engine=system_tables,
+                service_name=self.SERVICE_NAME,
+                source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
+            )
+        )
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("old_local", "mv", "manual")
+        }
+
+        for result in records:
+            assert result.left is None
+            assert sink.run(result.right) is not None
+
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("local", "mv", "manual")
+        }
+
+    def test_replaced_edge_is_kept_without_override(self, metadata, tables, lineage, system_tables):
+        entities = self._replaced_lineage(tables, lineage, system_tables)
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == entities["local"].id
+        assert self._upstream(lineage, entities["distributed"]) == {
+            str(entities[name].id.root) for name in ("old_local", "mv", "manual")
+        }
+        metadata.get_lineage_by_id.assert_not_called()
+        metadata.delete_lineage_edge.assert_not_called()
+
+    def test_override_removes_the_edge_of_a_skipped_distributed_table(self, metadata, tables, lineage, system_tables):
+        """The table now spreads over a cluster without a replica here: the earlier edge no longer holds"""
+        self._add_cluster(system_tables, "remote_only", shard_num=1, is_local=False)
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        mv = self._add_table(tables, "default", "events_mv", TableType.MaterializedView)
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('remote_only', 'default', 'events_local')"
+        )
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, mv, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(mv.id.root)}
+
+    def test_override_keeps_edges_it_does_not_build(self, metadata, tables, lineage, system_tables):
+        """Edges from another service, from entities that are not tables, or of another source stay"""
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        other_service = self._add_table(tables, "default", "events_local_v1", service_name="other_service")
+        query_source = self._add_table(tables, "default", "raw_events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, other_service, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, query_source, distributed, LineageSource.QueryLineage)
+        lineage.append(
+            {
+                "fromEntity": str(uuid.uuid4()),
+                "toEntity": str(distributed.id.root),
+                "lineageDetails": {"source": LineageSource.ViewLineage.value},
+            }
+        )
+        stored = list(lineage)
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == local.id
+        assert lineage == stored
+        metadata.delete_lineage_edge.assert_not_called()
+
+    def test_override_ignores_edges_into_other_entities(self, metadata, tables, lineage, system_tables):
+        distributed = self._add_table(tables, "default", "events")
+        self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        metadata.get_lineage_by_id.side_effect = lambda *args, **kwargs: {
+            "upstreamEdges": [
+                {
+                    "fromEntity": str(old_local.id.root),
+                    "toEntity": str(uuid.uuid4()),
+                    "lineageDetails": {"source": LineageSource.ViewLineage.value},
+                },
+                {"toEntity": str(distributed.id.root), "lineageDetails": {"source": "ViewLineage"}},
+            ]
+        }
+
+        self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        metadata.get_lineage_by_id.assert_called_once_with(Table, str(distributed.id.root), up_depth=1, down_depth=0)
+        metadata.delete_lineage_edge.assert_not_called()
+
+    def test_override_without_stored_lineage(self, metadata, tables, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        metadata.get_lineage_by_id.side_effect = None
+        metadata.get_lineage_by_id.return_value = None
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == local.id
+        metadata.delete_lineage_edge.assert_not_called()
+
+    def test_failed_edge_selection_is_reported_and_the_edge_still_added(self, metadata, tables, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        metadata.get_lineage_by_id.side_effect = ConnectionError("connection reset")
+
+        error, edge = get_distributed_table_lineage(
+            metadata=metadata,
+            engine=system_tables,
+            service_name=self.SERVICE_NAME,
+            source_config=DatabaseServiceQueryLineagePipeline(overrideViewLineage=True),
+        )
+
+        assert "Failed to find the replaced lineage of Distributed table [default.events]" in error.left.error
+        assert edge.right.edge.fromEntity.id == local.id
+
+    def test_override_keeps_the_edge_of_a_local_table_the_lookup_misses(self, metadata, tables, lineage, system_tables):
+        """The search does not tell a failed lookup from a missing table: only the name decides"""
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+        es_search = metadata.es_search_from_fqn
+
+        def failing_search(entity_type, fqn_search_string, **kwargs):
+            if fqn_search_string.endswith("events_local"):
+                raise ConnectionError("search unavailable")
+            return es_search(entity_type, fqn_search_string, **kwargs)
+
+        metadata.es_search_from_fqn = failing_search
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(local.id.root)}
+
+    def test_override_keeps_the_edges_of_an_ambiguous_local_table(self, metadata, tables, lineage, system_tables):
+        first = self._add_table(tables, "default", "events_local")
+        second = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        for upstream in (first, second, old_local):
+            self._edge(lineage, upstream, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(first.id.root), str(second.id.root)}
+
+    def test_override_removes_the_edge_of_a_namesake_in_another_case(self, metadata, tables, lineage, system_tables):
+        """Clickhouse names are case-sensitive: `events_local` is not the `Events_Local` the definition names"""
+        namesake = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events_Local')")
+        self._edge(lineage, namesake, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == set()
+
+    def test_override_removes_nothing_for_a_cluster_missing_from_system_clusters(
+        self, metadata, tables, lineage, system_tables
+    ):
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('unknown', 'default', 'events_local')"
+        )
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(local.id.root), str(old_local.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "engine_full",
+        [
+            pytest.param("Distributed('{missing}', 'default', 'events_local')", id="undefined-macro"),
+            pytest.param("Distributed('c', '', 'events_local')", id="empty-database"),
+            pytest.param("Distributed('c', currentDatabase(), 'events_local')", id="unreadable-arguments"),
+        ],
+    )
+    def test_override_removes_nothing_when_the_definition_cannot_be_read(
+        self, metadata, tables, lineage, system_tables, engine_full
+    ):
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", engine_full)
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(local.id.root), str(old_local.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
+
+    def test_override_removes_the_edges_of_a_distributed_table_naming_itself(
+        self, metadata, tables, lineage, system_tables
+    ):
+        old_local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events')")
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == set()
+
+    @pytest.mark.parametrize(
+        "schema_definition,kept",
+        [
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg (`id` UInt64) ENGINE = MergeTree ORDER BY id "
+                "AS SELECT id FROM default.raw_events",
+                False,
+                id="storage-backed-view-the-table-read-from",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO default.events_totals "
+                "AS SELECT id FROM default.raw_events",
+                False,
+                id="view-writing-into-another-table",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO events AS SELECT id FROM default.raw_events",
+                True,
+                id="view-writing-into-the-distributed-table",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO other_db.events AS SELECT id FROM default.raw_events",
+                False,
+                id="view-writing-into-a-namesake-in-another-database",
+            ),
+            pytest.param(None, True, id="view-without-a-definition"),
+            pytest.param("", True, id="view-with-a-blank-definition"),
+            pytest.param("  \n ", True, id="view-with-a-whitespace-definition"),
+            pytest.param("SELECT id FROM default.raw_events", True, id="view-with-a-definition-without-create"),
+        ],
+    )
+    def test_override_keeps_materialized_views_writing_into_the_distributed_table(
+        self, metadata, tables, lineage, system_tables, schema_definition, kept
+    ):
+        """A materialized view without `TO` holds its own rows, and a Distributed table may read from it"""
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        view = self._add_table(
+            tables, "default", "events_agg", TableType.MaterializedView, schema_definition=schema_definition
+        )
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, view, distributed, LineageSource.ViewLineage)
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == local.id
+        assert (str(view.id.root) in self._upstream(lineage, distributed)) is kept
+
+    @pytest.mark.parametrize(
+        "schema_definition",
+        [
+            pytest.param("CREATE VIEW default.events_view AS SELECT id FROM default.raw_events", id="definition"),
+            pytest.param(None, id="no-definition"),
+        ],
+    )
+    def test_override_removes_the_edge_of_a_plain_view_the_table_read_from(
+        self, metadata, tables, lineage, system_tables, schema_definition
+    ):
+        """A plain view writes into no table, so its edge into a Distributed table is one this module built"""
+        self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        view = self._add_table(tables, "default", "events_view", TableType.View, schema_definition=schema_definition)
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, view, distributed, LineageSource.ViewLineage)
+
+        self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert str(view.id.root) not in self._upstream(lineage, distributed)
+
+
+def test_distributed_table_lineage_follows_the_view_lineage(monkeypatch):
+    view_edge = Either(right=MagicMock())
+    distributed_edge = Either(right=MagicMock())
+    calls = {}
+
+    def distributed_lineage(**kwargs):
+        calls.update(kwargs)
+        yield distributed_edge
+
+    monkeypatch.setattr(BaseLineageSource, "yield_view_lineage", lambda _self: iter([view_edge]))
+    monkeypatch.setattr(
+        "metadata.ingestion.source.database.clickhouse.lineage.get_distributed_table_lineage", distributed_lineage
+    )
+    source = ClickhouseLineageSource.__new__(ClickhouseLineageSource)
+    source.metadata = MagicMock()
+    source.engine = MagicMock()
+    source.config = MagicMock(serviceName="clickhouse_service")
+    source.source_config = DatabaseServiceQueryLineagePipeline()
+
+    assert list(source.yield_view_lineage()) == [view_edge, distributed_edge]
+    assert calls == {
+        "metadata": source.metadata,
+        "engine": source.engine,
+        "service_name": "clickhouse_service",
+        "source_config": source.source_config,
+    }
