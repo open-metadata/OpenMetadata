@@ -1172,6 +1172,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       compareAndUpdate(
           UPDATE_FIELDS,
           () -> {
+            // CreateTestSuite has no tests, so a PUT leaves them null and the membership unchanged
+            if (operation.isPut() && updated.getTests() == null) {
+              return;
+            }
             List<EntityReference> origTests = listOrEmpty(original.getTests());
             List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
             recordChange(UPDATE_FIELDS, origTests, updatedTests);
