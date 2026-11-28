@@ -98,10 +98,13 @@ class Metric(ABC):
     """
     Parent class metric
 
-    We have 3 types of Metrics:
+    We have the following types of Metrics:
     - StaticMetric
-    - TimeMetric
+    - QueryMetric
+    - HybridMetric
     - CustomMetric
+    - SystemMetric
+    - ComposedMetric
 
     Table Metrics do not require a column.
     If not specified, it is a Table metric.
