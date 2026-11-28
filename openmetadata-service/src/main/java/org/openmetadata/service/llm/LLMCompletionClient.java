@@ -43,6 +43,10 @@ public abstract class LLMCompletionClient {
           "o4-mini",
           "gpt-5.6",
           "gpt-6");
+  // OpenAI o-series and gpt-5+ models reject `max_tokens` and require `max_completion_tokens`.
+  // ADR:2026-11-28-openai-max-completion-tokens-decided-by-model-id
+  private static final List<String> MAX_COMPLETION_TOKENS_MODELS =
+      List.of("o1", "o3", "o4", "gpt-5", "gpt-6");
   private static final Pattern MODEL_ID_SEPARATOR = Pattern.compile("[^a-z0-9]+");
 
   private final Semaphore concurrencyLimiter;
@@ -130,19 +134,27 @@ public abstract class LLMCompletionClient {
   }
 
   static boolean supportsTemperature(String modelId) {
-    boolean supported = true;
+    return !matchesModelPattern(modelId, SAMPLING_PARAM_REJECTORS);
+  }
+
+  static boolean usesMaxCompletionTokens(String modelId) {
+    return matchesModelPattern(modelId, MAX_COMPLETION_TOKENS_MODELS);
+  }
+
+  private static boolean matchesModelPattern(String modelId, List<String> patterns) {
+    boolean matched = false;
     if (modelId != null) {
       String id = modelId.toLowerCase(Locale.ROOT);
       List<String> segments = List.of(MODEL_ID_SEPARATOR.split(id));
-      supported =
-          SAMPLING_PARAM_REJECTORS.stream()
-              .noneMatch(
-                  rejector ->
-                      rejector.indexOf('-') >= 0
-                          ? id.contains(rejector)
-                          : segments.contains(rejector));
+      matched =
+          patterns.stream()
+              .anyMatch(
+                  pattern ->
+                      pattern.indexOf('-') >= 0
+                          ? id.contains(pattern)
+                          : segments.contains(pattern));
     }
-    return supported;
+    return matched;
   }
 
   protected static int resolveMaxConcurrent(LLMConfiguration config) {

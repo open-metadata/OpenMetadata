@@ -19,6 +19,8 @@ import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 public final class OpenAICompletionClient extends LLMCompletionClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+  private static final String MAX_TOKENS_FIELD = "max_tokens";
+  private static final String MAX_COMPLETION_TOKENS_FIELD = "max_completion_tokens";
 
   private final HttpClient httpClient;
   private final String apiKey;
@@ -115,7 +117,9 @@ public final class OpenAICompletionClient extends LLMCompletionClient {
       if (supportsTemperature(model)) {
         payload.put("temperature", temperature);
       }
-      payload.put("max_tokens", maxTokens);
+      String maxTokensField =
+          usesMaxCompletionTokens(model) ? MAX_COMPLETION_TOKENS_FIELD : MAX_TOKENS_FIELD;
+      payload.put(maxTokensField, maxTokens);
       ArrayNode messages = payload.putArray("messages");
       messages.addObject().put("role", "system").put("content", systemPrompt);
       messages.addObject().put("role", "user").put("content", userPrompt);
