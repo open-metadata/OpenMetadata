@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Null Count Metric definition
+Null Missing Count Metric definition
 """
 # pylint: disable=duplicate-code
 
@@ -103,7 +103,7 @@ class NullMissingCount(StaticMetric):
         """
         Returns the name of the metric.
         """
-        return MetricType.nullCount.value
+        return MetricType.nullMissingCount.value
 
     @property
     def metric_type(self):

@@ -33,7 +33,7 @@ i18next
 // A top-level `import` (or even a dynamic `await import(...)`) from
 // `@openmetadata/ui-core-components` inside LocalUtil.tsx drags the library's
 // `dist/index.*.js` into Playwright's `--list` module graph — the CI
-// `plan-playwright` job runs `yarn --ignore-scripts`, so `dist/` isn't built
+// `plan-playwright` job runs `yarn install --mode=skip-build`, so `dist/` isn't built
 // and the resolution fails. Keeping the initializer out of this file's
 // import surface prevents that.
 

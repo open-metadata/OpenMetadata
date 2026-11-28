@@ -46,10 +46,12 @@ public class TeamsAdaptiveCardRenderer extends BaseMarkdownChannelRenderer<Teams
     cardBody.addAll(visitor.getBodyItems());
 
     // 5. Build the final Adaptive Card
+    // Table/TableRow/TableCell elements require Adaptive Cards schema 1.5; Teams supports
+    // 1.6 and earlier, so declaring 1.5 keeps the failed-rows table from being silently dropped.
     TeamsMessage.AdaptiveCardContent adaptiveCard =
         TeamsMessage.AdaptiveCardContent.builder()
             .type("AdaptiveCard")
-            .version("1.4")
+            .version("1.5")
             .body(cardBody)
             .build();
 

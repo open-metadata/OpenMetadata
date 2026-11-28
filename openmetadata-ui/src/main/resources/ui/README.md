@@ -7,11 +7,11 @@
 Before proceeding, ensure that you have installed the node and yarn with the versions given below.
 
 ```
-"node": ">=18.19.0",
-"yarn": "^1.22.0"
+"node": ">=22.23.5",
+"yarn": "^4.18.1"
 ```
 
-Install [Node](https://nodejs.org/en/download/) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/).<br />
+Install [Node](https://nodejs.org/en/download/) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/) 1.22 or later. Inside this repo it hands off to the Yarn 4 release pinned in the root `.yarnrc.yml`.<br />
 
 Install ANTLR using our recipes via
 

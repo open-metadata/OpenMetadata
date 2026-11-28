@@ -358,17 +358,17 @@ jobs:
       # restore-only mode; nothing on main writes that key family, so every
       # PR missed and saved its own copy (3 x 1.4 GB measured 2026-09-29,
       # 43% of the 10 GB budget) and evicted the warmer's fixtures. The
-      # yarn-pkg-cache-* key is written under main by
+      # yarn4-pkg-cache-* key is written under main by
       # populate-playwright-caches.yml, so this hits on every event.
       - name: Restore yarn package cache
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/cache/restore@v6
         with:
-          path: ~/.cache/yarn
-          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            yarn-pkg-cache-${{ runner.os }}-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install report dependencies
         id: install-report-dependencies
@@ -378,7 +378,7 @@ jobs:
         run: |
           corepack enable
           timeout --foreground --signal=TERM --kill-after=30s 5m \
-            yarn --ignore-scripts --frozen-lockfile
+            yarn install --mode=skip-build --immutable
 
       - name: Mark report generation start
         id: mark-report-start

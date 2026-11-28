@@ -51,12 +51,12 @@ jobs:
           cd openmetadata-ui/src/main/resources/ui
           # parseSchemas.js needs the UI package's own dependencies
           # (@apidevtools/json-schema-ref-parser, fs-extra).
-          # --frozen-lockfile pins the versions a contributor resolves locally, so the
-          # committed output is byte-identical whoever regenerates it; --ignore-scripts
+          # --immutable pins the versions a contributor resolves locally, so the
+          # committed output is byte-identical whoever regenerates it; --mode=skip-build
           # skips preinstall (core-components build) and postinstall (js-antlr), neither
           # of which parseSchemas.js needs.
           for attempt in 1 2 3; do
-            yarn install --frozen-lockfile --ignore-scripts --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --immutable --mode=skip-build && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1
