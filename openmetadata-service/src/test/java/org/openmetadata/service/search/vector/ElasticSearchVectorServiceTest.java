@@ -719,8 +719,13 @@ class ElasticSearchVectorServiceTest {
     assertTrue(
         VectorDocBuilder.fromEntity(table, mockEmbeddingClient).size() > 1,
         "the entity spans several chunks");
-    Response ok = response(200, "{\"errors\":false,\"items\":[]}");
+    Response ok =
+        response(
+            200,
+            "{\"errors\":false,\"items\":[{\"index\":{\"status\":201,\"_seq_no\":1,"
+                + "\"_primary_term\":1}}]}");
     Response noAlias = response(404, "{\"status\":404}");
+    Response nothingStored = nothingStored();
     Response rejected =
         response(
             200,
@@ -731,6 +736,9 @@ class ElasticSearchVectorServiceTest {
             invocation -> {
               Request request = invocation.getArgument(0);
               Response answer = request.getEndpoint().endsWith("/_alias") ? noAlias : ok;
+              if (request.getEndpoint().endsWith(MGET)) {
+                answer = nothingStored;
+              }
               if ("/_bulk".equals(request.getEndpoint())
                   && bodyText(request).contains("\"_id\":\"" + parentId + "_1\"")) {
                 answer = rejected;
@@ -748,15 +756,18 @@ class ElasticSearchVectorServiceTest {
         bulks.add(bodyText(request));
       }
     }
-    assertEquals(2, bulks.size(), "the reservation, then the rejected bulk that stops the write");
+    assertEquals(
+        5, bulks.size(), "the reservation, then the rejected bulk, tried four times, stops it");
     assertTrue(bulks.getFirst().contains("\"_id\":\"" + parentId + "_0\""), bulks::toString);
     assertFalse(
         bulks.getFirst().contains("\"fingerprint\""),
         "the reservation raises the count without marking the set current");
-    assertTrue(bulks.get(1).contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
-    assertFalse(
-        bulks.get(1).contains("\"_id\":\"" + parentId + "_0\""),
-        "the header is not written beside the rejected chunk");
+    for (String rejectedBulk : bulks.subList(1, bulks.size())) {
+      assertTrue(rejectedBulk.contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
+      assertFalse(
+          rejectedBulk.contains("\"_id\":\"" + parentId + "_0\""),
+          "the header is not written beside the rejected chunk");
+    }
   }
 
   @Test
@@ -785,7 +796,7 @@ class ElasticSearchVectorServiceTest {
   void aProviderFailureWithNoLiveChunksStillPromotes() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenThrow(new IllegalStateException("429"));
-    answerByEndpointContaining(freshInstallRules(LIVE_DOC, response(404, "{}")));
+    answerByEndpointContaining(freshInstallRules(LIVE_READ, nothingStored()));
     String staged = vectorService.beginStagedChunkRecreate();
 
     boolean written = vectorService.backfillEntityChunks(orders(), staged);
@@ -801,7 +812,7 @@ class ElasticSearchVectorServiceTest {
     when(mockEmbeddingClient.isAvailable()).thenReturn(false);
     String staged = vectorService.getChunkIndexName() + "_g1";
     vectorService.latchParticipantStagedTarget(staged);
-    answerByEndpointContaining(rules(LIVE_DOC, response(404, "{}")));
+    answerByEndpointContaining(rules(LIVE_READ, nothingStored()));
 
     boolean written = vectorService.backfillEntityChunks(orders(), staged);
 
@@ -813,11 +824,15 @@ class ElasticSearchVectorServiceTest {
   void aFailedDeleteBlocksPromotionAndSavesItsFlagOnce() throws Exception {
     answerByEndpointContaining(
         freshInstallRules(
-            "/_bulk", response(503, "{\"error\":\"unavailable\"}"), "/_doc/", chunkHeader()));
+            "/_bulk", response(503, "{\"error\":\"unavailable\"}"), MGET, chunkHeader()));
     String staged = vectorService.beginStagedChunkRecreate();
 
     for (int i = 0; i < 3; i++) {
-      vectorService.deleteEntityChunks(UUID.randomUUID().toString());
+      String parentId = UUID.randomUUID().toString();
+      assertThrows(
+          IllegalStateException.class,
+          () -> vectorService.deleteEntityChunks(parentId),
+          "the delete from the live index failed too, and its caller is told");
     }
     promoteEveryEntityIndex(staged);
 
@@ -839,10 +854,11 @@ class ElasticSearchVectorServiceTest {
             response(503, "{\"error\":\"unavailable\"}"),
             "/" + staged + "/_mapping",
             response(503, "{\"error\":\"unavailable\"}"),
-            "/_doc/",
+            MGET,
             chunkHeader()));
 
-    vectorService.deleteEntityChunks(orders().getId().toString());
+    String parentId = orders().getId().toString();
+    assertThrows(IllegalStateException.class, () -> vectorService.deleteEntityChunks(parentId));
 
     assertThrows(IllegalStateException.class, vectorService::requireStagedChunkFailuresRecorded);
 
@@ -850,6 +866,57 @@ class ElasticSearchVectorServiceTest {
     assertDoesNotThrow(vectorService::requireStagedChunkFailuresRecorded);
     JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
     assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+  }
+
+  /**
+   * A participant that leaves its run has no partition left to fail, so it tries once more to save
+   * the flag of a delete it missed, and logs an error when it still cannot.
+   */
+  @Test
+  void aParticipantLeavingItsRunRetriesTheFlagOfAMissedDelete() throws Exception {
+    String staged = vectorService.getChunkIndexName() + "_g1";
+    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
+    vectorService.latchParticipantStagedTarget(staged);
+    answerByEndpointContaining(
+        rules(
+            LIVE_READ,
+            missingIndex(),
+            MGET,
+            chunkHeader(),
+            "/_bulk",
+            unavailable,
+            "/" + staged + "/_mapping",
+            unavailable));
+    vectorService.deleteEntityChunks(orders().getId().toString());
+
+    clearInvocations(mockRestClient);
+    answerByEndpointContaining(rules());
+    vectorService.clearParticipantStagedTarget();
+
+    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
+    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+  }
+
+  @Test
+  void aParticipantLeavingItsRunLogsAMissedDeleteItStillCannotRecord() throws Exception {
+    String staged = vectorService.getChunkIndexName() + "_g1";
+    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
+    vectorService.latchParticipantStagedTarget(staged);
+    answerByEndpointContaining(
+        rules(
+            LIVE_READ,
+            missingIndex(),
+            MGET,
+            chunkHeader(),
+            "/_bulk",
+            unavailable,
+            "/" + staged + "/_mapping",
+            unavailable));
+    vectorService.deleteEntityChunks(orders().getId().toString());
+
+    vectorService.clearParticipantStagedTarget();
+
+    assertTrue(logged(Level.ERROR, "could not record it"));
   }
 
   @Test
@@ -896,7 +963,8 @@ class ElasticSearchVectorServiceTest {
     assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
   }
 
-  private static final String LIVE_DOC = "/data_asset_embeddings_chunks/_doc/";
+  private static final String MGET = "/_mget";
+  private static final String LIVE_READ = "/data_asset_embeddings_chunks/_mget";
 
   private void promoteEveryEntityIndex(String staged) {
     EmbeddedEntityTypes.ALL.forEach(
@@ -921,7 +989,21 @@ class ElasticSearchVectorServiceTest {
   }
 
   private static Response chunkHeader() throws Exception {
-    return response(200, "{\"found\":true,\"_source\":{\"fingerprint\":\"fp\",\"chunkCount\":1}}");
+    return response(
+        200,
+        "{\"docs\":[{\"found\":true,\"_source\":{\"fingerprint\":\"fp\",\"chunkCount\":1}},"
+            + "{\"found\":false}]}");
+  }
+
+  /** A realtime read of a chunk index that does not exist yet. */
+  private static Response missingIndex() throws Exception {
+    String missing = "{\"error\":{\"type\":\"index_not_found_exception\"}}";
+    return response(200, "{\"docs\":[" + missing + "," + missing + "]}");
+  }
+
+  /** A realtime read of a chunk set an index does not store. */
+  private static Response nothingStored() throws Exception {
+    return response(200, "{\"docs\":[{\"found\":false},{\"found\":false}]}");
   }
 
   private long sentCount(String method, String endpoint) throws Exception {
@@ -936,6 +1018,7 @@ class ElasticSearchVectorServiceTest {
   /** Answers a request from the first rule its endpoint contains, and any other with 200 and {}. */
   private void answerByEndpointContaining(Map<String, Response> rules) throws Exception {
     Response ok = response(200, "{}");
+    Response nothingStored = nothingStored();
     when(mockRestClient.performRequest(any(Request.class)))
         .thenAnswer(
             invocation -> {
@@ -944,7 +1027,7 @@ class ElasticSearchVectorServiceTest {
                   .filter(rule -> endpoint.contains(rule.getKey()))
                   .map(Map.Entry::getValue)
                   .findFirst()
-                  .orElse(ok);
+                  .orElse(endpoint.endsWith(MGET) ? nothingStored : ok);
             });
   }
 
@@ -971,6 +1054,7 @@ class ElasticSearchVectorServiceTest {
   /** Answers a request from the rule its endpoint ends with, and any other with 200 and {}. */
   private void answerByEndpointSuffix(Map<String, Response> responsesBySuffix) throws Exception {
     Response ok = response(200, "{}");
+    Response nothingStored = nothingStored();
     when(mockRestClient.performRequest(any(Request.class)))
         .thenAnswer(
             invocation -> {
@@ -979,7 +1063,7 @@ class ElasticSearchVectorServiceTest {
                   .filter(rule -> endpoint.endsWith(rule.getKey()))
                   .map(Map.Entry::getValue)
                   .findFirst()
-                  .orElse(ok);
+                  .orElse(endpoint.endsWith(MGET) ? nothingStored : ok);
             });
   }
 

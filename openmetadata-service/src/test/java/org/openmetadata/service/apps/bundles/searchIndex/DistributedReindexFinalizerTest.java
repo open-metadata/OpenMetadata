@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.Entity;
@@ -22,6 +24,22 @@ class DistributedReindexFinalizerTest {
 
   private static final RatioPromotionPolicy DEFAULT_POLICY =
       RatioPromotionPolicy.withDefaultThreshold();
+  private static final BooleanSupplier NO_LOST_DELETE = () -> false;
+
+  @Test
+  void aTypeFinalizedAtTheEndOfTheJobCarriesAStagedChunkDeleteANodeCouldNotRecord() {
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    DistributedReindexFinalizer finalizer =
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedContext(Entity.TABLE), DEFAULT_POLICY, () -> true);
+
+    finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, successfulStats()), true);
+
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    verify(indexPromotionHandler).finalizeReindex(contextCaptor.capture(), any(Boolean.class));
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
+  }
 
   @Test
   void finalizeRemainingEntitiesPromotesColumnOnceWhenTableAndColumnRemain() {
@@ -29,7 +47,8 @@ class DistributedReindexFinalizerTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE, Entity.TABLE_COLUMN);
 
     DistributedReindexFinalizer finalizer =
-        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY, NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, successfulStats()), true);
 
     ArgumentCaptor<EntityReindexContext> contextCaptor =
@@ -54,7 +73,8 @@ class DistributedReindexFinalizerTest {
     ReindexContext stagedIndexContext = stagedContext("vectorEmbedding");
 
     DistributedReindexFinalizer finalizer =
-        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY, NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(), true);
 
     ArgumentCaptor<EntityReindexContext> contextCaptor =
@@ -73,7 +93,8 @@ class DistributedReindexFinalizerTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE, Entity.TABLE_COLUMN);
 
     DistributedReindexFinalizer finalizer =
-        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
+        new DistributedReindexFinalizer(
+            indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY, NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(
         Set.of(Entity.TABLE_COLUMN), Map.of(Entity.TABLE, successfulStats()), true);
 
@@ -102,7 +123,10 @@ class DistributedReindexFinalizerTest {
 
     DistributedReindexFinalizer finalizer =
         new DistributedReindexFinalizer(
-            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+            indexPromotionHandler,
+            stagedIndexContext,
+            new RatioPromotionPolicy(0.95),
+            NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, partial), false);
 
     ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
@@ -128,7 +152,10 @@ class DistributedReindexFinalizerTest {
 
     DistributedReindexFinalizer finalizer =
         new DistributedReindexFinalizer(
-            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+            indexPromotionHandler,
+            stagedIndexContext,
+            new RatioPromotionPolicy(0.95),
+            NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, lowSuccess), false);
 
     ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
@@ -155,7 +182,10 @@ class DistributedReindexFinalizerTest {
 
     DistributedReindexFinalizer finalizer =
         new DistributedReindexFinalizer(
-            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(0.95));
+            indexPromotionHandler,
+            stagedIndexContext,
+            new RatioPromotionPolicy(0.95),
+            NO_LOST_DELETE);
     finalizer.finalizeRemainingEntities(Set.of(), Map.of(Entity.TABLE, zeroSuccess), false);
 
     ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);

@@ -700,6 +700,32 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
+  void aStagedChunkDeleteRecordedOnAPartitionOfAnotherTypeKeepsTheLiveChunksToo() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    ReindexContext stagedIndexContext = mock(ReindexContext.class);
+    DefaultRecreateHandler defaultHandler = mock(DefaultRecreateHandler.class);
+    when(stagedIndexContext.getStagedIndex("table")).thenReturn(Optional.of("staged_table"));
+    when(coordinator.getPartitions(jobId, PartitionStatus.FAILED))
+        .thenReturn(
+            List.of(
+                SearchIndexPartition.builder()
+                    .entityType("user")
+                    .lastError(VectorIndexService.UNRECORDED_STAGED_DELETE + ": staged g1")
+                    .build()));
+    setField("currentJob", SearchIndexJob.builder().id(jobId).build());
+    setField("stagedIndexContext", stagedIndexContext);
+    setField("indexPromotionHandler", defaultHandler);
+
+    invokePrivate(
+        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
+
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(true));
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
+  }
+
+  @Test
   void promoteEntityIndexReturnsWithoutContextAndSwallowsHandlerFailures() throws Exception {
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);

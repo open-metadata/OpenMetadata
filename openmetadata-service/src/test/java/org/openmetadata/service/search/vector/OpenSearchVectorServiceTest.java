@@ -192,7 +192,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         new Table()
@@ -212,7 +212,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
     setField("stagedChunkIndex", "staged_chunk_generation");
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -249,7 +249,7 @@ class OpenSearchVectorServiceTest {
     // Stale null discovery cache, fresh within TTL — must NOT win over the latch.
     setField("cachedSinkTarget", null);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -278,7 +278,7 @@ class OpenSearchVectorServiceTest {
     // A discovery cache holding a different value that would win if the latch weren't first.
     setField("cachedSinkTarget", "discovered_gen");
     setField("cachedSinkTargetAt", System.currentTimeMillis());
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -307,7 +307,7 @@ class OpenSearchVectorServiceTest {
     // discovery cache holding a stale null within TTL — the exact window the bug lives in.
     setField("cachedSinkTarget", null);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -334,7 +334,7 @@ class OpenSearchVectorServiceTest {
     vectorService.clearParticipantStagedTarget();
     setField("cachedSinkTarget", null);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -357,7 +357,7 @@ class OpenSearchVectorServiceTest {
     setField("chunkIndexEnsured", true);
     setField("stagedChunkIndex", "coordinator_gen");
     vectorService.latchParticipantStagedTarget("participant_gen");
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     vectorService.updateEntityEmbeddings(
         refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
@@ -387,7 +387,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
-    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    mockOpenSearchResponse(NOTHING_STORED);
 
     Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -475,7 +475,7 @@ class OpenSearchVectorServiceTest {
             .withEntityStatus(ContextMemoryStatus.APPROVED);
     String fingerprint = VectorDocBuilder.computeFingerprintForEntity(memory);
     mockOpenSearchResponse(
-        "{\"found\":true,\"_source\":{\"fingerprint\":\""
+        "{\"docs\":[{\"found\":true,\"_source\":{\"fingerprint\":\""
             + fingerprint
             + "\",\"chunkCount\":1,\"docVersion\":"
             + VectorDocBuilder.CHUNK_DOC_VERSION
@@ -484,27 +484,35 @@ class OpenSearchVectorServiceTest {
             + jsonString(ContextMemoryIndex.memoryScopeValue(memory))
             + ",\"memoryType\":"
             + jsonString(ContextMemoryIndex.memoryTypeValue(memory))
-            + ",\"pinned\":false}}");
+            + ",\"pinned\":false}},{\"found\":false}]}");
 
     vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
 
-    // One GET and nothing else: a header matching the memory's status, anchor and kind is current.
+    // One read and nothing else: a header matching the memory's status, anchor and kind is current.
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
         ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
     verify(mockGenericClient).execute(captor.capture());
+    assertEquals("/chunkIndex/_mget", captor.getValue().getEndpoint());
+    JsonNode docs = MAPPER.readTree(bodyOf(captor.getValue())).path("docs");
+    assertEquals(memory.getId() + "_0", docs.path(0).path("_id").asText());
     assertEquals(
-        "/chunkIndex/_doc/"
-            + memory.getId()
-            + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
-            + String.join(
-                ",",
-                ContextMemoryIndex.FIELD_STATUS,
-                ContextMemoryIndex.FIELD_ANCHOR_ID,
-                ContextMemoryIndex.FIELD_MEMORY_SCOPE,
-                ContextMemoryIndex.FIELD_MEMORY_TYPE,
-                ContextMemoryIndex.FIELD_PINNED),
-        captor.getValue().getEndpoint());
+        List.of(
+            "fingerprint",
+            "chunkCount",
+            "docVersion",
+            ContextMemoryIndex.FIELD_STATUS,
+            ContextMemoryIndex.FIELD_ANCHOR_ID,
+            ContextMemoryIndex.FIELD_MEMORY_SCOPE,
+            ContextMemoryIndex.FIELD_MEMORY_TYPE,
+            ContextMemoryIndex.FIELD_PINNED),
+        MAPPER.convertValue(docs.path(0).path("_source").path("includes"), List.class));
+    assertEquals(1, docs.size(), "only chunk 0 is read");
   }
+
+  /** Answers every request, the chunk read among them, as an index storing nothing does. */
+  private static final String NOTHING_STORED =
+      "{\"docs\":[{\"found\":false},{\"found\":false}],\"found\":false,"
+          + "\"hits\":{\"hits\":[]},\"errors\":false}";
 
   private OpenSearchVectorService vectorService;
   private OpenSearchClient mockClient;
@@ -1049,9 +1057,11 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method m =
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     m.setAccessible(true);
-    String body = (String) m.invoke(vectorService);
+    String body = (String) m.invoke(vectorService, MAPPER.createObjectNode());
 
     // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
     // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
@@ -1083,9 +1093,12 @@ class OpenSearchVectorServiceTest {
   @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
     Method method =
-        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     method.setAccessible(true);
-    JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
+    JsonNode body =
+        new ObjectMapper()
+            .readTree((String) method.invoke(vectorService, MAPPER.createObjectNode()));
 
     assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
@@ -1103,7 +1116,8 @@ class OpenSearchVectorServiceTest {
     // existing
     // chunks must be preserved rather than deleted by replaceChunks().
     mockOpenSearchResponse(
-        "{\"found\": true, \"_source\": {\"fingerprint\": \"STALE_FP\", \"chunkCount\": 3, \"docVersion\": 1}}");
+        "{\"docs\": [{\"found\": true, \"_source\": {\"fingerprint\": \"STALE_FP\","
+            + " \"chunkCount\": 3, \"docVersion\": 1}}, {\"found\": true}]}");
 
     Table entity =
         new Table()

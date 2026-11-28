@@ -1,8 +1,10 @@
 package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
@@ -52,8 +54,23 @@ public interface VectorIndexService {
     updateEntityEmbeddings(entity, indexName);
   }
 
-  /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
+  /**
+   * Remove all chunk documents for the given parent entity (hard/soft delete cleanup). Throws when
+   * the live index could not be cleared, so the caller can retry the delete.
+   */
   void deleteEntityChunks(String parentId);
+
+  /**
+   * Removes, once per chunk index, the chunk documents no chunk header counts, which chunk sets
+   * written before the header was a conditional write can hold, and records on the index that it
+   * holds none. Returns what was removed, or empty when the index already carried the record or
+   * does not exist. Throws when the pass could not finish, and the record stays unset. {@link
+   * ChunkSetHealRunner} runs it at startup until it succeeds.
+   */
+  Optional<ChunkSetsBounded> removeChunksNoHeaderCounts() throws IOException;
+
+  /** What one heal pass removed from {@code index}. */
+  record ChunkSetsBounded(String index, int parents, int chunks) {}
 
   /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial
@@ -114,6 +131,13 @@ public interface VectorIndexService {
    * generation, or null when nothing was staged and the run reindexes in place.
    */
   String beginStagedChunkRecreate();
+
+  /**
+   * Waits until every node's cached lookup of the staged generation, see {@link
+   * #beginStagedChunkRecreate}, has expired, so a node outside the run can no longer miss {@code
+   * generation}. The run calls it before it reads its first entity.
+   */
+  void awaitStagedGenerationDiscovery(String generation);
 
   /** Forgets {@code generation} as this node's staged recreate, without touching the index. */
   void clearStagedChunkState(String generation);

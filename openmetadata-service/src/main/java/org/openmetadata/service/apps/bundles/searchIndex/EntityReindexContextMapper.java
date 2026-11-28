@@ -22,8 +22,13 @@ import org.openmetadata.service.search.ReindexContext;
 public final class EntityReindexContextMapper {
   private EntityReindexContextMapper() {}
 
+  /**
+   * {@code stagedChunkDeleteUnrecorded} is whether a node failed a partition of the run because it
+   * missed a delete from the run's chunk generation and could not record it. Every caller that
+   * finalizes a type must say, or the generation could go live with a deleted entity's chunks.
+   */
   public static EntityReindexContext fromStagedContext(
-      ReindexContext stagedIndexContext, String entityType) {
+      ReindexContext stagedIndexContext, String entityType, boolean stagedChunkDeleteUnrecorded) {
     String originalIndex = stagedIndexContext.getOriginalIndex(entityType).orElse(null);
 
     return EntityReindexContext.builder()
@@ -33,6 +38,7 @@ public final class EntityReindexContextMapper {
         .activeIndex(originalIndex)
         .stagedIndex(stagedIndexContext.getStagedIndex(entityType).orElse(null))
         .stagedChunkIndex(stagedIndexContext.getStagedChunkIndex().orElse(null))
+        .stagedChunkDeleteUnrecorded(stagedChunkDeleteUnrecorded)
         .canonicalAliases(stagedIndexContext.getCanonicalAlias(entityType).orElse(null))
         .existingAliases(stagedIndexContext.getExistingAliases(entityType))
         .parentAliases(new HashSet<>(listOrEmpty(stagedIndexContext.getParentAliases(entityType))))

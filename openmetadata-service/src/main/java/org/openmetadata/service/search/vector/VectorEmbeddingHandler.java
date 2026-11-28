@@ -11,12 +11,14 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   private static final Set<String> LIFECYCLE_TYPES = Set.copyOf(EmbeddedEntityTypes.DATA_ASSETS);
+  private static final String DELETE_CHUNKS_OPERATION = "deleteEntityChunks";
   private final VectorIndexService vectorService;
 
   @Override
@@ -121,12 +123,21 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     }
   }
 
+  /**
+   * A delete the cluster still refuses after the request retries goes to the search retry queue,
+   * whose worker removes the chunks of an entity that is gone, soft-deleted or no longer
+   * embeddable. Otherwise the deleted entity's chunks would stay searchable.
+   */
   private void deleteChunks(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
       try {
         vectorService.deleteEntityChunks(entity.getId().toString());
-      } catch (Exception e) {
-        LOG.error("Failed to delete chunks for entity {}: {}", entity.getId(), e.getMessage(), e);
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Could not delete the chunks of {}; queued for the search retry worker: {}",
+            entity.getId(),
+            e.getMessage());
+        SearchIndexRetryQueue.enqueue(entity, DELETE_CHUNKS_OPERATION, e);
       }
     }
   }

@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -940,11 +942,14 @@ class PartitionWorkerTest {
     verify(coordinator).completePartition(partition.getId(), 0L, 1L, 0L);
   }
 
-  @Test
-  void aPartitionThatCannotRecordAMissedStagedChunkDeleteFailsWithoutARetry() {
+  // The missed delete belongs to the run's chunk generation, not to the type that happens to be
+  // finishing on this node, so a partition of a type with no embeddings carries it too.
+  @ParameterizedTest(name = "a {0} partition")
+  @ValueSource(strings = {"table", "user"})
+  void aPartitionThatCannotRecordAMissedStagedChunkDeleteFailsWithoutARetry(String entityType) {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
-    SearchIndexPartition partition = buildPartition("table", 0, 2);
+    SearchIndexPartition partition = buildPartition(entityType, 0, 2);
     ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
     SearchRepository searchRepository = mock(SearchRepository.class);
