@@ -762,20 +762,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Override
   public Response createOrUpdate(
       UriInfo uriInfo, SecurityContext securityContext, DataContract dataContract) {
-    if (hasSupportedTarget(dataContract.getEntity())) {
+    if (DataContractRepository.isSupportedTarget(dataContract.getEntity())) {
       repository.setFullyQualifiedName(dataContract);
       ResourceContext<DataContract> stored =
           getResourceContextByName(dataContract.getFullyQualifiedName());
       authorizeContractWrite(securityContext, dataContract, (DataContract) stored.getEntity());
     }
     return super.createOrUpdate(uriInfo, securityContext, dataContract);
-  }
-
-  private boolean hasSupportedTarget(EntityReference target) {
-    return target != null
-        && target.getId() != null
-        && target.getType() != null
-        && repository.isEntityTypeSupported(target.getType());
   }
 
   private DataContract getDataContract(CreateDataContract create, String user) {

@@ -15,12 +15,14 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -419,12 +421,18 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
   @Override
   public List<EntityReference> getDomains() {
     resolveEntity();
+    String entityType = entityRepository.getEntityType();
+    List<EntityReference> domains;
     if (entity == null) {
-      return null;
-    } else if (Entity.DOMAIN.equals(entityRepository.getEntityType())) {
-      return List.of(entity.getEntityReference()); // Domain for a domain is same as the domain
+      domains = null;
+    } else if (Entity.DOMAIN.equals(entityType)) {
+      domains = List.of(entity.getEntityReference()); // Domain for a domain is same as the domain
+    } else if (Entity.DATA_CONTRACT.equals(entityType)) {
+      domains = DataContractRepository.getGovernedEntityDomains((DataContract) entity);
+    } else {
+      domains = entity.getDomains();
     }
-    return entity.getDomains();
+    return domains;
   }
 
   private EntityInterface<?> resolveEntity() {
