@@ -1840,6 +1840,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1852,6 +1853,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                             .command(List.of(PYTHON_MAIN_PY, RUN_AUTOMATION_PY))
                                             .env(envVars)
+                                            .securityContext(buildContainerSecurityContext())
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
@@ -1883,6 +1885,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1899,6 +1902,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                     APPLICATIONS_RUNNER,
                                                     APPLICATIONS_RUNNER_MODULE))
                                             .env(envVars)
+                                            .securityContext(buildContainerSecurityContext())
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
