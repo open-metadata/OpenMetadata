@@ -16,7 +16,7 @@ JSON workflows to the profiler
 
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field
 
 from metadata.profiler.registry import MetricRegistry
 from metadata.utils.dependency_injector.dependency_injector import (
@@ -51,6 +51,11 @@ class ProfilerDef(BaseModel):
     JSON workflow
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str  # Profiler name
-    timeout_seconds: int | None = None  # Stop running a query after X seconds and continue
+    timeout_seconds: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("timeout_seconds", "timeoutSeconds"),
+    )  # Stop running a query after X seconds and continue
     metrics: list[ValidMetric] | None = None

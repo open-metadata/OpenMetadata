@@ -473,6 +473,62 @@ def test_profile_def(mock_context_entities, mocked_method, *_):  # pylint: disab
 
     assert profiler_processor_step.profiler_config.profiler
     assert config_metrics_label == profiler_obj_metrics
+    assert profiler_runner.profiler_interface.timeout_seconds == 43200
+
+
+@patch.object(ProfilerWorkflow, "test_connection")
+@patch.object(
+    base,
+    "get_orm_database",
+    return_value="db",
+)
+@patch.object(
+    base,
+    "get_orm_schema",
+    return_value="schema",
+)
+@patch.object(
+    SQAProfilerInterface,
+    "table",
+    new_callable=lambda: User,
+)
+@patch.object(
+    OpenMetadataSource,
+    "_validate_service_name",
+    return_value=True,
+)
+@patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
+def test_profile_def_timeout_seconds(mock_context_entities, mocked_method, *_):
+    """
+    Validate that timeout_seconds configured in ProfilerDef is consumed by profiler_interface
+    """
+    mock_context_entities.return_value = (None, None, None)
+
+    profile_config = deepcopy(config)
+    profile_config["processor"]["config"]["profiler"] = {
+        "name": "my_profiler",
+        "metrics": ["rowCount"],
+        "timeout_seconds": 1800,
+    }
+
+    profile_workflow = ProfilerWorkflow.create(profile_config)
+    mocked_method.assert_called()
+
+    profiler_processor_step = profile_workflow.steps[0]
+    profiler_source = ProfilerSource(
+        profile_workflow.config,
+        Database(
+            id=uuid.uuid4(),
+            name="myDataBaseService",
+            service=EntityReference(id=uuid.uuid4(), name="my_service", type="databaseService"),
+        ),
+        profile_workflow.metadata,
+        None,
+    )
+    profiler_runner = profiler_source.get_profiler_runner(TABLE, profiler_processor_step.profiler_config)
+
+    assert profiler_processor_step.profiler_config.profiler.timeout_seconds == 1800
+    assert profiler_runner.profiler_interface.timeout_seconds == 1800
 
 
 @patch.object(ProfilerWorkflow, "test_connection")
