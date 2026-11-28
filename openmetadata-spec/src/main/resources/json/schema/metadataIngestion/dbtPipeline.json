@@ -71,6 +71,12 @@
       "type": "boolean",
       "default": false
     },
+    "includeSchemaMetadata": {
+      "title": "Include dbt Source Schema Metadata",
+      "description": "Apply metadata explicitly declared on dbt sources to existing database schemas.",
+      "type": "boolean",
+      "default": false
+    },
     "includeTags": {
       "title": "Include Tags",
       "description": "Optional configuration to toggle the tags ingestion.",

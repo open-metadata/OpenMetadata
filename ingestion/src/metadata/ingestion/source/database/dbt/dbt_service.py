@@ -26,6 +26,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -85,6 +86,7 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_exposures",
             "process_dbt_metrics",
         ],
+        post_process=["apply_dbt_schema_metadata"],
     )
     process_dbt_data_model: Annotated[TopologyNode, Field(description="Process dbt data models")] = TopologyNode(
         producer="get_dbt_objects",
@@ -99,6 +101,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="yield_data_models",
                 nullable=True,
                 consumer=["validate_dbt_files"],
+            ),
+            NodeStage(
+                type_=DatabaseSchema,
+                processor="collect_dbt_schema_metadata",
+                nullable=True,
             ),
         ],
     )

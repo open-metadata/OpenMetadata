@@ -6467,6 +6467,10 @@ export interface Pipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
+     * Apply metadata explicitly declared on dbt sources to existing database schemas.
+     */
+    includeSchemaMetadata?: boolean;
+    /**
      * Optional configuration to search across databases for tables or not
      */
     searchAcrossDatabases?: boolean;

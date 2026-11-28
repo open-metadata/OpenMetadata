@@ -47,6 +47,10 @@ export interface DbtPipeline {
      */
     includeMetrics?: boolean;
     /**
+     * Apply metadata explicitly declared on dbt sources to existing database schemas.
+     */
+    includeSchemaMetadata?: boolean;
+    /**
      * Optional configuration to toggle the tags ingestion.
      */
     includeTags?: boolean;
