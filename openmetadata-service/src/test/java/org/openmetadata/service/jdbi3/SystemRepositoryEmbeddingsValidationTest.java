@@ -2,10 +2,15 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,14 +31,18 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 class SystemRepositoryEmbeddingsValidationTest {
 
   private MockedStatic<Entity> entityMock;
   private MockedStatic<MigrationValidationClient> migrationMock;
   private SearchRepository searchRepository;
+  private final AtomicBoolean rebuilt = new AtomicBoolean();
+  private VectorFieldHealth vectorFieldHealth;
   private OpenMetadataApplicationConfig appConfig;
   private SystemRepository systemRepository;
 
@@ -52,6 +61,17 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     searchRepository = mock(SearchRepository.class);
     entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    vectorFieldHealth =
+        new VectorFieldHealth(
+            name -> {
+              if (rebuilt.get()) {
+                vectorFieldHealth.forget(name);
+              }
+            });
+    lenient().when(searchRepository.getVectorFieldHealth()).thenReturn(vectorFieldHealth);
+    lenient()
+        .when(searchRepository.getEmbeddingModel())
+        .thenReturn(Optional.of(new EmbeddingModel("model-b", 2)));
 
     appConfig = mock(OpenMetadataApplicationConfig.class);
     ElasticSearchConfiguration esConfig = mock(ElasticSearchConfiguration.class);
@@ -196,5 +216,56 @@ class SystemRepositoryEmbeddingsValidationTest {
     assertTrue(result.getMessage().startsWith("Embeddings are working correctly."));
     assertFalse(
         result.getMessage().contains("pipeline"), "no engine has a search pipeline to report on");
+  }
+
+  private void embeddingsWork() {
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(embeddingClient.embed("OpenMetadata embedding validation test"))
+        .thenReturn(new float[] {0.1f, 0.2f});
+    when(embeddingClient.getDimension()).thenReturn(2);
+  }
+
+  @Test
+  void testAnIndexThatCannotHoldTheModelsVectorsFailsTheStepWithTheWayOut() {
+    embeddingsWork();
+    vectorFieldHealth.recordCannotHold(
+        "table_search_index",
+        Set.of("table_search_index_rebuild_1"),
+        "table_search_index_rebuild_1 holds vectors of model model-a");
+
+    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+
+    assertFalse(result.getPassed());
+    String message = result.getMessage();
+    assertTrue(message.contains("Semantic search needs a rebuild of 1 search index"), message);
+    assertTrue(message.contains("model-b (2 dimensions)"), message);
+    assertTrue(message.contains("holds vectors of model model-a"), message);
+    assertTrue(message.contains("Search Indexing for all entities"), message);
+    assertTrue(message.contains("openmetadata-ops.sh reindex"), message);
+  }
+
+  @Test
+  void testAFinishedRebuildClearsTheStepWithoutARestart() {
+    embeddingsWork();
+    vectorFieldHealth.recordCannotHold(
+        "table_search_index", Set.of(), "table_search_index has dense_vector of 384 dimensions");
+    rebuilt.set(true);
+
+    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+
+    assertTrue(result.getPassed(), result.getMessage());
+    assertTrue(vectorFieldHealth.mismatches().isEmpty());
+  }
+
+  @Test
+  void testALateVectorServiceStartAlsoReconcilesTheVectorFields() {
+    when(searchRepository.getVectorIndexService()).thenReturn(null);
+
+    systemRepository.getEmbeddingsValidation(appConfig);
+
+    verify(searchRepository).startVectorSearch();
   }
 }

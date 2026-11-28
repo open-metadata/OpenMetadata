@@ -4,18 +4,25 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
+import org.openmetadata.service.search.LiveEmbeddingField;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
+import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.generic.Response;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
@@ -40,6 +47,8 @@ import os.org.opensearch.client.transport.endpoints.BooleanResponse;
  */
 @Slf4j
 public class OpenSearchIndexManager implements IndexManagementClient {
+  private static final String RECORDED_MODEL_FILTER =
+      "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
   private final OpenSearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -92,34 +101,102 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
-              ? OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent)
+              ? OsUtils.enrichIndexMappingForOpenSearchUpdate(
+                  indexMappingContent, () -> readEmbeddingField(indexName))
               : indexMappingContent;
 
-      PutMappingRequest request =
-          PutMappingRequest.of(
-              builder -> {
-                builder.index(indexName);
-                if (transformedContent != null && !transformedContent.isEmpty()) {
-                  try {
-                    JsonNode rootNode = JsonUtils.readTree(transformedContent);
-                    JsonNode mappingsNode = rootNode.get("mappings");
-
-                    if (mappingsNode != null && !mappingsNode.isNull()) {
-                      // Parse the mappings JSON into TypeMapping
-                      TypeMapping typeMapping = parseTypeMapping(mappingsNode);
-                      builder.properties(typeMapping.properties());
-                    }
-                  } catch (Exception e) {
-                    LOG.warn("Failed to parse mapping content, skipping mapping update", e);
-                  }
-                }
-                return builder;
-              });
-
-      client.indices().putMapping(request);
+      putMapping(indexName, transformedContent);
       LOG.info("Successfully updated mapping for index: {}", indexName);
     } catch (Exception e) {
-      LOG.error("Failed to Update Open Search index {}", indexMapping.getIndexName(clusterAlias));
+      LOG.error(
+          "Failed to Update Open Search index {}", indexMapping.getIndexName(clusterAlias), e);
+    }
+  }
+
+  @Override
+  public LiveEmbeddingField readEmbeddingField(String name) {
+    LiveEmbeddingField live;
+    try {
+      LiveEmbeddingField mapped =
+          LiveEmbeddingField.fromFieldMapping(
+                  name,
+                  getJson("/" + name + "/_mapping/field/" + LiveEmbeddingField.FIELD, Map.of()),
+                  OsUtils.KNN_VECTOR,
+                  OsUtils.KNN_VECTOR_DIMENSION)
+              .withRecordedModels(
+                  getJson("/" + name + "/_mapping", Map.of("filter_path", RECORDED_MODEL_FILTER)));
+      live = mapped.mapped() ? mapped : mapped.withVectorSupportOnlyIn(knnIndexes(name));
+    } catch (IOException | RuntimeException e) {
+      live = LiveEmbeddingField.unreadable(name, e.getMessage());
+    }
+    return live;
+  }
+
+  @Override
+  public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
+    putMapping(name, "{\"mappings\":" + OsUtils.embeddingFieldDeclaration(model) + "}");
+    LOG.info(
+        "Declared the embedding field of index {} for the embedding model {} ({} dimensions)",
+        name,
+        model.id(),
+        model.dimension());
+  }
+
+  /**
+   * Sends the {@code mappings.properties} of {@code content} as a {@code PUT _mapping}, and its
+   * {@code _meta} when it has one.
+   */
+  private void putMapping(String indexName, String content) throws IOException {
+    PutMappingRequest request =
+        PutMappingRequest.of(
+            builder -> {
+              builder.index(indexName);
+              if (content != null && !content.isEmpty()) {
+                try {
+                  JsonNode rootNode = JsonUtils.readTree(content);
+                  JsonNode mappingsNode = rootNode.get("mappings");
+
+                  if (mappingsNode != null && !mappingsNode.isNull()) {
+                    // Parse the mappings JSON into TypeMapping
+                    TypeMapping typeMapping = parseTypeMapping(mappingsNode);
+                    builder.properties(typeMapping.properties());
+                    if (!typeMapping.meta().isEmpty()) {
+                      builder.meta(typeMapping.meta());
+                    }
+                  }
+                } catch (Exception e) {
+                  LOG.warn("Failed to parse mapping content, skipping mapping update", e);
+                }
+              }
+              return builder;
+            });
+    client.indices().putMapping(request);
+  }
+
+  /** The indexes behind the name created with {@code index.knn}, a setting fixed at creation. */
+  private Set<String> knnIndexes(String indexName) throws IOException {
+    return getJson("/" + indexName + "/_settings/index.knn", Map.of()).properties().stream()
+        .filter(index -> index.getValue().path("settings").path("index").path("knn").asBoolean())
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
+  }
+
+  /** One read as raw JSON, so that no mapping detail the client model does not know can fail it. */
+  private JsonNode getJson(String endpoint, Map<String, String> query) throws IOException {
+    try (Response response =
+        client
+            .generic()
+            .execute(Requests.builder().endpoint(endpoint).query(query).method("GET").build())) {
+      String body =
+          response
+              .getBody()
+              .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
+              .orElse("");
+      if (response.getStatus() != 200) {
+        throw new IOException(
+            String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
+      }
+      return JsonUtils.readTree(body);
     }
   }
 

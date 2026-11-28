@@ -68,8 +68,11 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   generation is promoted when all their staged entity indexes were. A type whose entity index kept
   its live index (it received no documents, or its swap failed) keeps the live chunks for the
   whole catalog, so a type never loses its chunks while its old entities are still served. An
-  empty generation never replaces a live index that holds chunks, and a count that cannot be read
-  keeps the live index. A run whose embedding pre-flight call fails stages no generation, so the
+  empty generation never replaces a live index that serves chunks, and a count that cannot be read
+  keeps the live index; a live index that cannot hold the model's vectors serves none, so an empty
+  generation replaces it. A run that fails after staging forgets its generation, and a node taking
+  part in a run mirrors live edits and deletes to that run's generation, never to one a dead run of
+  its own left. A run whose embedding pre-flight call fails stages no generation, so the
   live chunks stay: an entity edited while the provider was out keeps its old chunks live, and its
   entity document has no embedding until a provider call works again, on the retry at the end of
   its partition or on a later run.

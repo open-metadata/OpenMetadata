@@ -22,19 +22,36 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   public ReindexContext reCreateIndexes(Set<String> entities) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     searchRepository.initializeVectorSearchService();
-    String stagedChunkIndex = recreateChunkIndexIfFullRun(entities);
+    String stagedChunkIndex = null;
+    String stagedOntologyChunks = null;
     ReindexContext context;
     try {
+      stagedChunkIndex = recreateChunkIndexIfFullRun(entities);
+      stagedOntologyChunks = rebuildOntologyChunkIndexIfItCannotHoldVectors(entities);
       context = super.reCreateIndexes(entities);
     } catch (RuntimeException e) {
       // The run dies before any type can finalize — clear the JVM's staged state so a later,
       // unrelated run's callbacks can never complete and promote this dead generation. The bare
       // generation index itself is swept by the next staged recreate.
       clearStagedChunkStateQuietly(stagedChunkIndex);
+      clearStagedChunkStateQuietly(stagedOntologyChunks);
       throw e;
     }
     context.setStagedChunkIndex(stagedChunkIndex);
+    context.setStagedOntologyChunkIndex(stagedOntologyChunks);
     return context;
+  }
+
+  /**
+   * Forgets the chunk generations this run staged on this JVM when the run fails after its indexes
+   * were recreated, so live edits stop going to them and no later run can promote them.
+   */
+  @Override
+  public void abandonReindex(ReindexContext context) {
+    if (context != null) {
+      clearStagedChunkStateQuietly(context.getStagedChunkIndex().orElse(null));
+      clearStagedChunkStateQuietly(context.getStagedOntologyChunkIndex().orElse(null));
+    }
   }
 
   private static VectorIndexService vectorService() {
@@ -77,6 +94,28 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       }
     }
     return stagedGeneration;
+  }
+
+  /**
+   * A job-driven recreate of both ontology term types rebuilds the ontology chunk index when the
+   * live one cannot hold the embedding model's vectors, since every term chunk write to it is then
+   * refused. The rebuild is staged like the data-asset chunk generation, and the generation goes
+   * live once both term types are promoted; otherwise ontology reindexes write it in place
+   * (ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes).
+   */
+  private String rebuildOntologyChunkIndexIfItCannotHoldVectors(Set<String> entities) {
+    VectorIndexService vectorService = vectorService();
+    boolean recreatesEveryTermType =
+        vectorService != null
+            && getJobData() != null
+            && entities != null
+            && coversAllOntologyTermTypes(entities);
+    return recreatesEveryTermType ? vectorService.beginStagedOntologyChunkRecreate() : null;
+  }
+
+  static boolean coversAllOntologyTermTypes(Set<String> entities) {
+    return OntologyTermSearch.TERM_TYPES.stream()
+        .allMatch(type -> entities.stream().anyMatch(type::equalsIgnoreCase));
   }
 
   /**
@@ -129,6 +168,16 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   @Override
   protected void onStagedIndexPromoted(EntityReindexContext context) {
     promotedEntityTypes.add(context.getEntityType());
+    refreshVectorField(context.getCanonicalIndex());
+  }
+
+  // The rebuilt index was created for the configured model, so this node lets vectors back in now
+  // rather than at its next periodic read.
+  private static void refreshVectorField(String canonicalIndex) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null && canonicalIndex != null) {
+      searchRepository.getVectorFieldHealth().refresh(canonicalIndex);
+    }
   }
 
   @Override
@@ -163,6 +212,13 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
     }
   }
 
+  /** The staged generation of the chunk index the type writes to, for its run. */
+  private static String runGeneration(EntityReindexContext context) {
+    return OntologyTermSearch.isTerm(context.getEntityType())
+        ? context.getStagedOntologyChunkIndex()
+        : context.getStagedChunkIndex();
+  }
+
   /**
    * Feeds the staged chunk recreate with whether the type's staged entity index replaced its live
    * one: the staged generation goes live once every vector-indexable type has finalized with its
@@ -181,7 +237,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       VectorIndexService vectorService = vectorService();
       if (vectorService != null) {
         vectorService.markEntityTypeReindexed(
-            context.getEntityType(), entityIndexPromoted, context.getStagedChunkIndex());
+            context.getEntityType(), entityIndexPromoted, runGeneration(context));
       }
     } catch (RuntimeException markFailure) {
       if (superFailure == null) {

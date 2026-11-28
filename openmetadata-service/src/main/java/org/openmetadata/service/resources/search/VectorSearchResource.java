@@ -24,10 +24,12 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchUnavailableException;
 import org.openmetadata.service.search.vector.utils.DTOs.FingerprintResponse;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchRequest;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -108,6 +110,10 @@ public class VectorSearchResource {
         response.hits = viewableHits(securityContext, response.hits);
       }
       return Response.ok(response).build();
+    } catch (VectorSearchUnavailableException e) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(JsonUtils.pojoToJson(Map.of("error", e.getMessage())))
+          .build();
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

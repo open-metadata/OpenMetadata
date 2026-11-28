@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
@@ -14,27 +13,32 @@ import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
 import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
-import es.co.elastic.clients.elasticsearch.indices.GetMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
+import es.co.elastic.clients.transport.ElasticsearchTransport;
 import es.co.elastic.clients.transport.endpoints.BooleanResponse;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
+import org.openmetadata.service.search.LiveEmbeddingField;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 /**
  * ElasticSearch implementation of index management operations.
@@ -43,6 +47,8 @@ import org.openmetadata.service.search.IndexManagementClient;
 @Slf4j
 public class ElasticSearchIndexManager implements IndexManagementClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String RECORDED_MODEL_FILTER =
+      "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -103,26 +109,15 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
               ? EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                  indexMappingContent, () -> readLiveEmbeddingField(indexName))
+                  indexMappingContent, () -> readEmbeddingField(indexName))
               : indexMappingContent;
-      String mappingsJson = extractMappingsJson(transformedContent);
-      PutMappingRequest request =
-          PutMappingRequest.of(
-              builder -> {
-                builder.index(indexName);
-                if (mappingsJson != null) {
-                  builder.withJson(new StringReader(mappingsJson));
-                }
-                return builder;
-              });
-
-      client.indices().putMapping(request);
+      putMapping(indexName, extractMappingsJson(transformedContent));
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
     } catch (IllegalStateException e) {
-      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
-      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
-      // same contract as createIndex.
+      // A mapping content that disagrees with the embedding model is a broken mapping, so it
+      // surfaces, the same contract as createIndex. A live index that cannot hold the model's
+      // vectors does not throw: VectorFieldHealth reports it and the rest of the update applies.
       throw e;
     } catch (Exception e) {
       LOG.error(
@@ -132,32 +127,71 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
   }
 
-  /**
-   * The {@code embedding} field the live index maps now. The name may be an alias over several
-   * indexes after a recreate, so every index behind it is read.
-   */
-  private LiveEmbeddingField readLiveEmbeddingField(String indexName) {
+  @Override
+  public LiveEmbeddingField readEmbeddingField(String name) {
+    LiveEmbeddingField live;
     try {
-      GetMappingRequest request = GetMappingRequest.of(builder -> builder.index(indexName));
-      List<Property> embeddingFields =
-          client.indices().getMapping(request).mappings().values().stream()
-              .map(record -> record.mappings().properties().get(EsUtils.EMBEDDING_FIELD))
-              .filter(Objects::nonNull)
-              .toList();
-      return new LiveEmbeddingField(
-          !embeddingFields.isEmpty(), declaredDimensions(embeddingFields));
-    } catch (IOException e) {
-      throw new UncheckedIOException(
-          String.format("Failed to read the live mapping of index %s", indexName), e);
+      live =
+          LiveEmbeddingField.fromFieldMapping(
+                  name,
+                  getJson(
+                      new Request(
+                          "GET", "/" + name + "/_mapping/field/" + LiveEmbeddingField.FIELD)),
+                  EsUtils.DENSE_VECTOR,
+                  EsUtils.DENSE_VECTOR_DIMENSIONS)
+              .withRecordedModels(getJson(recordedModelRequest(name)));
+    } catch (IOException | ParseException | RuntimeException e) {
+      live = LiveEmbeddingField.unreadable(name, e.getMessage());
     }
+    return live;
   }
 
-  private static Set<Integer> declaredDimensions(List<Property> embeddingFields) {
-    return embeddingFields.stream()
-        .filter(Property::isDenseVector)
-        .map(field -> field.denseVector().dims())
-        .filter(Objects::nonNull)
-        .collect(Collectors.toUnmodifiableSet());
+  @Override
+  public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
+    putMapping(name, EsUtils.embeddingFieldDeclaration(model));
+    LOG.info(
+        "Declared the embedding field of index {} for the embedding model {} ({} dimensions)",
+        name,
+        model.id(),
+        model.dimension());
+  }
+
+  private void putMapping(String indexName, String mappingsJson) throws IOException {
+    PutMappingRequest request =
+        PutMappingRequest.of(
+            builder -> {
+              builder.index(indexName);
+              if (mappingsJson != null) {
+                builder.withJson(new StringReader(mappingsJson));
+              }
+              return builder;
+            });
+    client.indices().putMapping(request);
+  }
+
+  /**
+   * One read as raw JSON, so that no mapping detail the client model does not know, such as an
+   * Elasticsearch 9.3 {@code bfloat16} vector, can fail it.
+   */
+  private JsonNode getJson(Request request) throws IOException, ParseException {
+    Response response = lowLevelClient().performRequest(request);
+    return MAPPER.readTree(
+        response.getEntity() == null ? "{}" : EntityUtils.toString(response.getEntity()));
+  }
+
+  private static Request recordedModelRequest(String name) {
+    Request request = new Request("GET", "/" + name + "/_mapping");
+    request.addParameter("filter_path", RECORDED_MODEL_FILTER);
+    return request;
+  }
+
+  private Rest5Client lowLevelClient() {
+    ElasticsearchTransport transport = MeteredElasticsearchTransport.unwrap(client._transport());
+    if (!(transport instanceof Rest5ClientTransport rest5)) {
+      throw new IllegalStateException(
+          "Reading the live mapping needs a Rest5ClientTransport, got " + transport);
+    }
+    return rest5.restClient();
   }
 
   @Override

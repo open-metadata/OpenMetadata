@@ -12,6 +12,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
@@ -35,6 +38,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
+import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class IndexMappingVersionTrackerTest {
@@ -489,6 +493,71 @@ class IndexMappingVersionTrackerTest {
       assertEquals(IndexMappingVersionTracker.MappingDriftState.CURRENT, drift.get("table"));
       assertEquals(IndexMappingVersionTracker.MappingDriftState.STALE, drift.get("glossaryTerm"));
       assertEquals(IndexMappingVersionTracker.MappingDriftState.UNTRACKED, drift.get("domain"));
+    }
+  }
+
+  @Test
+  void anIndexThatCannotHoldTheModelsVectorsIsRebuiltThoughItsMappingIsCurrent()
+      throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+      IndexMappingVersionTracker stamping =
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester");
+      stamping.updateMappingVersions();
+      verify(indexMappingVersionDAO, times(2))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              hashCaptor.capture(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyString());
+      List<IndexMappingVersionDAO.IndexMappingVersion> current = new ArrayList<>();
+      for (int i = 0; i < entityTypeCaptor.getAllValues().size(); i++) {
+        current.add(
+            new IndexMappingVersionDAO.IndexMappingVersion(
+                entityTypeCaptor.getAllValues().get(i), hashCaptor.getAllValues().get(i)));
+      }
+      when(indexMappingVersionDAO.getAllMappingVersions()).thenReturn(current);
+      Map<String, Set<String>> vectorIndexRebuilds =
+          new HashMap<>(Map.of("table_search_index", Set.of("table")));
+      IndexMappingVersionTracker tracker =
+          new IndexMappingVersionTracker(
+              collectionDAO, "1.2.3", "tester", () -> Map.copyOf(vectorIndexRebuilds));
+
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.CANNOT_HOLD_VECTORS,
+          tracker.computeDrift().get("table"));
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.CURRENT,
+          tracker.computeDrift().get("domain"));
+      Logger trackerLog = (Logger) LoggerFactory.getLogger(IndexMappingVersionTracker.class);
+      ListAppender<ILoggingEvent> logged = new ListAppender<>();
+      logged.start();
+      trackerLog.addAppender(logged);
+      try {
+        assertEquals(List.of("table"), tracker.getChangedMappings());
+      } finally {
+        trackerLog.detachAppender(logged);
+      }
+      assertEquals(
+          List.of(
+              "Index table_search_index cannot hold the embedding model's vectors; rebuilding "
+                  + "entity types [table] to replace it"),
+          logged.list.stream()
+              .map(ILoggingEvent::getFormattedMessage)
+              .filter(message -> message.contains("cannot hold"))
+              .toList());
+      assertTrue(
+          stamping.getChangedMappings().isEmpty(), "the mapping hashes alone see nothing to do");
+
+      vectorIndexRebuilds.clear();
+      assertTrue(tracker.getChangedMappings().isEmpty(), "rebuilt, it reads current");
     }
   }
 

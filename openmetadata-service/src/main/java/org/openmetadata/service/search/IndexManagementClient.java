@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 /**
  * Interface for managing search index operations.
@@ -35,6 +36,21 @@ public interface IndexManagementClient {
    * @param indexMappingContent the JSON content for index mapping
    */
   void updateIndex(IndexMapping indexMapping, String indexMappingContent);
+
+  /**
+   * What every index behind {@code name} maps as its {@code embedding} field, and the embedding
+   * model each records. A failed read is returned as such, never thrown.
+   *
+   * @param name an existing index or alias
+   */
+  LiveEmbeddingField readEmbeddingField(String name);
+
+  /**
+   * Declares the {@code embedding} field for {@code model} on {@code name}, an existing index or
+   * alias whose indexes map none and can take one ({@link EmbeddingFieldUpdate#DECLARE}), and
+   * records the model in {@code _meta}. Changes nothing else.
+   */
+  void declareEmbeddingField(String name, EmbeddingModel model) throws IOException;
 
   /**
    * Delete an index.

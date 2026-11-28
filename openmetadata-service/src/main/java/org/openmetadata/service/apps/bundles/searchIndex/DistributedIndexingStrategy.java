@@ -50,6 +50,8 @@ public class DistributedIndexingStrategy {
   private volatile DistributedSearchIndexExecutor distributedExecutor;
   private volatile BulkSink searchIndexSink;
   private volatile ReindexingConfiguration config;
+  private volatile RecreateIndexHandler recreateHandler;
+  private volatile ReindexContext recreatedContext;
 
   public DistributedIndexingStrategy(
       CollectionDAO collectionDAO,
@@ -79,6 +81,7 @@ public class DistributedIndexingStrategy {
       return doExecute(config, context, startTime);
     } catch (Exception e) {
       LOG.error("Distributed reindexing failed", e);
+      abandonRecreatedIndexes();
       if (searchIndexSink != null) {
         try {
           searchIndexSink.close();
@@ -89,6 +92,18 @@ public class DistributedIndexingStrategy {
       }
       Stats stats = currentStats.get();
       return ExecutionResult.fromStats(stats, ExecutionResult.Status.FAILED, startTime);
+    }
+  }
+
+  // A run that fails after its indexes were recreated never finalizes, so what it staged on this
+  // JVM is released here rather than left for live edits and later runs to find.
+  private void abandonRecreatedIndexes() {
+    if (recreateHandler != null && recreatedContext != null) {
+      try {
+        recreateHandler.abandonReindex(recreatedContext);
+      } catch (RuntimeException abandonFailure) {
+        LOG.error("Could not release the staged state of the failed reindex", abandonFailure);
+      }
     }
   }
 
@@ -129,6 +144,8 @@ public class DistributedIndexingStrategy {
       defaultHandler.withJobData(jobData);
     }
     ReindexContext stagedIndexContext = stagedIndexHandler.reCreateIndexes(entityTypes);
+    recreateHandler = stagedIndexHandler;
+    recreatedContext = stagedIndexContext;
     if (stagedIndexContext == null || stagedIndexContext.isEmpty()) {
       throw new IllegalStateException(
           "Staged index preparation did not produce any target indexes");

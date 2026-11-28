@@ -117,7 +117,8 @@ final class EmbeddingEnricher {
     String enriched = json;
     try {
       VectorIndexService vectorService = searchRepository.getVectorIndexService();
-      Optional<ObjectNode> doc = embeddableDoc(entity, json, vectorService);
+      Optional<ObjectNode> doc =
+          canHoldVectors(targets) ? embeddableDoc(entity, json, vectorService) : Optional.empty();
       if (doc.isPresent()) {
         JsonNode stored = reusableById.get(entity.getId().toString());
         Embedded embedded =
@@ -131,6 +132,16 @@ final class EmbeddingEnricher {
       count(failed, tracker, StatsResult.FAILED);
     }
     return enriched;
+  }
+
+  /**
+   * An in-place run writes to the live index, which may not hold the embedding model's vectors; a
+   * document carrying them would then be refused whole, so it goes in without them.
+   */
+  private boolean canHoldVectors(EmbeddingTargets targets) {
+    return targets == null
+        || targets.entityIndex() == null
+        || searchRepository.getVectorFieldHealth().canHold(targets.entityIndex());
   }
 
   /** The search document as a tree, or empty when this entity gets no embedding. */

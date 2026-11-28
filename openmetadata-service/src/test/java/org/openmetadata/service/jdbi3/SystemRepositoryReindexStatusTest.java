@@ -76,9 +76,67 @@ class SystemRepositoryReindexStatusTest {
   }
 
   @Test
+  void anIndexThatCannotHoldTheModelsVectorsNeedsAReindex() {
+    Map<String, MappingDriftState> drift =
+        Map.of(
+            "table", MappingDriftState.CANNOT_HOLD_VECTORS,
+            "dashboard", MappingDriftState.STALE,
+            "topic", MappingDriftState.CANNOT_HOLD_VECTORS);
+    ReindexStatus classified =
+        SystemRepository.classifyReindexStatus(drift, Set.of("table", "dashboard", "topic"));
+    assertEquals(List.of("table", "topic"), classified.cannotHoldVectors());
+    assertEquals(List.of("dashboard"), classified.stalePending());
+
+    SearchReindexStatus status =
+        new SearchReindexStatus(
+            List.of(),
+            classified.cannotHoldVectors(),
+            List.of("table_search_index", "topic_search_index"),
+            0,
+            List.of(),
+            List.of(),
+            true,
+            true);
+    StepValidation step = SystemRepository.buildReindexStepValidation(status);
+
+    assertFalse(step.getPassed());
+    assertTrue(
+        step.getMessage()
+            .contains(
+                "Indexes [table_search_index, topic_search_index] cannot hold the vectors of the "
+                    + "configured embedding model; the reindex rebuilds 2 entity type(s) to "
+                    + "replace them: [table, topic]."),
+        step.getMessage());
+  }
+
+  @Test
+  void aChunkIndexThatCannotHoldTheModelsVectorsIsNamedWithTheTypesThatRebuildIt() {
+    SearchReindexStatus status =
+        new SearchReindexStatus(
+            List.of(),
+            List.of("chart", "dashboard", "table"),
+            List.of("data_asset_embeddings_chunks"),
+            0,
+            List.of(),
+            List.of(),
+            true,
+            true);
+
+    String message = SystemRepository.buildReindexStatusMessage(status);
+
+    assertTrue(
+        message.contains(
+            "Index data_asset_embeddings_chunks cannot hold the vectors of the configured "
+                + "embedding model; the reindex rebuilds 3 entity type(s) to replace it: "
+                + "[chart, dashboard, table]."),
+        message);
+  }
+
+  @Test
   void reindexMessageCleanStateMentionsNoOrphansAndHealthyCluster() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 0, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(
         message.contains("All deployed indexes were built from the current index mappings."));
@@ -90,7 +148,14 @@ class SystemRepositoryReindexStatusTest {
   void reindexMessageReportsStaleMissingOrphanAndDegradedCluster() {
     SearchReindexStatus status =
         new SearchReindexStatus(
-            List.of("dashboard"), 0, List.of("glossary"), List.of("topic_rebuild_1"), false, true);
+            List.of("dashboard"),
+            List.of(),
+            List.of(),
+            0,
+            List.of("glossary"),
+            List.of("topic_rebuild_1"),
+            false,
+            true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("reindex is required"));
     assertTrue(message.contains("dashboard"));
@@ -103,7 +168,8 @@ class SystemRepositoryReindexStatusTest {
   @Test
   void reindexMessageMentionsUntrackedNoteWhenClean() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 3, List.of(), List.of(), true, true);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 3, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.contains("3"));
     assertTrue(message.toLowerCase().contains("version-tracked"));
@@ -112,7 +178,8 @@ class SystemRepositoryReindexStatusTest {
   @Test
   void degradedClusterFailsStepEvenWhenNoReindexNeeded() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), false, true);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 0, List.of(), List.of(), false, true);
     StepValidation step = SystemRepository.buildReindexStepValidation(status);
     assertFalse(step.getPassed());
     assertTrue(step.getMessage().toLowerCase().contains("degraded"));
@@ -121,7 +188,8 @@ class SystemRepositoryReindexStatusTest {
   @Test
   void cleanUpToDateHealthyClusterPassesStep() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 0, List.of(), List.of(), true, true);
     StepValidation step = SystemRepository.buildReindexStepValidation(status);
     assertTrue(step.getPassed());
   }
@@ -129,21 +197,24 @@ class SystemRepositoryReindexStatusTest {
   @Test
   void reindexNeededFailsStepEvenWhenClusterHealthy() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of("dashboard"), 0, List.of(), List.of(), true, true);
+        new SearchReindexStatus(
+            List.of("dashboard"), List.of(), List.of(), 0, List.of(), List.of(), true, true);
     assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
   }
 
   @Test
   void driftComputeFailureFailsStepEvenWhenClusterHealthy() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 0, List.of(), List.of(), true, false);
     assertFalse(SystemRepository.buildReindexStepValidation(status).getPassed());
   }
 
   @Test
   void driftComputeFailureIsNotReportedAsUpToDate() {
     SearchReindexStatus status =
-        new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, false);
+        new SearchReindexStatus(
+            List.of(), List.of(), List.of(), 0, List.of(), List.of(), true, false);
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.toLowerCase().contains("could not determine reindex status"));
     assertFalse(

@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -33,11 +34,16 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.OntologyChunkIndex;
 import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
@@ -154,11 +160,40 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
-    if (embeddingClient.isAvailable()) {
+    if (!canHoldVectors(entityIndexName)) {
+      LOG.debug(
+          "{} cannot hold the model's vectors; skipping entity {}",
+          entityIndexName,
+          entity.getId());
+    } else if (embeddingClient.isAvailable()) {
       refreshEntityEmbedding(entity, entityIndexName);
     } else {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
     }
+  }
+
+  /**
+   * Whether the embedding model's vectors may be written to, or searched in, {@code index}: not
+   * when its live vector field cannot hold them, which would fail every write and every kNN on it
+   * (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+   */
+  protected static boolean canHoldVectors(String index) {
+    return vectorFieldHealth().map(health -> health.canHold(index)).orElse(true);
+  }
+
+  private static Optional<VectorFieldHealth> vectorFieldHealth() {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    return Optional.ofNullable(
+        searchRepository == null ? null : searchRepository.getVectorFieldHealth());
+  }
+
+  @Override
+  public List<String> chunkIndexNames() {
+    List<String> names = new ArrayList<>(List.of(getChunkIndexName()));
+    if (chunksOntologyTerms()) {
+      names.add(OntologyChunkIndex.name());
+    }
+    return names;
   }
 
   private void refreshEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
@@ -182,6 +217,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
   private static final String INCOMPLETE_CHUNK_WRITES = "incompleteChunkWrites";
+  private static final String CHUNK_DOC_VERSION = "chunkDocVersion";
   private volatile boolean chunkIndexEnsured = false;
   private volatile boolean ontologyChunkIndexEnsured;
 
@@ -190,6 +226,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * {@code dataAssetEmbeddings} alias is attached to it so the vector read path sees chunk docs
    * together with legacy entity-doc embeddings during migration.
    */
+  @Override
   public String getChunkIndexName() {
     String clusterAlias = null;
     try {
@@ -229,7 +266,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       written =
           stagedChunkTarget == null || OntologyTermSearch.isTerm(entityType)
               ? writeChunksIfStale(entity, chunkWriteTarget(entityType, null))
-              : backfillStagedChunks(entity, stagedChunkTarget);
+              : backfillStagedChunks(entity, requireVectorsFit(stagedChunkTarget));
     } catch (IOException | RuntimeException e) {
       LOG.debug("Failed to backfill chunks for {}: {}", entity.getId(), e.getMessage());
       written = false;
@@ -250,18 +287,34 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   private String dataAssetChunkWriteTarget(String stagedChunkTarget) {
-    return stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+    return stagedChunkTarget == null
+        ? liveChunkWriteTarget()
+        : requireVectorsFit(stagedChunkTarget);
+  }
+
+  private static String requireVectorsFit(String chunkIndex) {
+    if (!canHoldVectors(chunkIndex)) {
+      throw new IllegalStateException(chunkIndex + " cannot hold the embedding model's vectors");
+    }
+    return chunkIndex;
   }
 
   /**
-   * Created on the first write without the data-asset read alias, since ontology terms are read
-   * through their own index. Like the data-asset chunk index, it is only marked ensured once its
-   * mapping is current, and a write is refused while it is not.
+   * The ontology chunk index term chunks go to: the generation a run staged to rebuild it while
+   * that run lasts, and otherwise the live one, created on the first write without the data-asset
+   * read alias, since ontology terms are read through their own index. Like the data-asset chunk
+   * index, the live one is only marked ensured once its mapping is current, and a write is refused
+   * while it is not.
    */
   private String ontologyChunkWriteTarget() {
     if (!chunksOntologyTerms()) {
       throw new IllegalStateException(engineName() + " keeps no ontology chunk index");
     }
+    return requireVectorsFit(
+        stagedOntologyChunkTarget().orElseGet(this::ensuredLiveOntologyChunkIndex));
+  }
+
+  private String ensuredLiveOntologyChunkIndex() {
     String index = OntologyChunkIndex.name();
     if (!ontologyChunkIndexEnsured) {
       synchronized (this) {
@@ -359,11 +412,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           entity.getId());
     } else if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
+    } else if (term && !ontologyTargetsCanHoldVectors(entityIndexName)) {
+      LOG.debug("An ontology index cannot hold the model's vectors; skipping {}", entity.getId());
     } else if (term) {
       refreshOntologyEmbeddings(entity, entityIndexName, ontologyBody);
     } else {
       refreshEntityEmbeddings(entity, entityIndexName);
     }
+  }
+
+  private boolean ontologyTargetsCanHoldVectors(String entityIndexName) {
+    return canHoldVectors(entityIndexName)
+        && (!chunksOntologyTerms()
+            || canHoldVectors(stagedOntologyChunkTarget().orElseGet(OntologyChunkIndex::name)));
   }
 
   private void refreshOntologyEmbeddings(
@@ -444,13 +505,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
       boolean chunkIndexWritable = isChunkIndexWritable();
       boolean entityDocStale =
-          !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
+          canHoldVectors(entityIndexName)
+              && !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       if (chunkIndexWritable) {
         refreshChunksAndEntityDoc(entity, entityIndexName, currentFingerprint, entityDocStale);
       } else if (entityDocStale) {
-        LOG.warn(
-            "Vector chunk index unavailable; refreshing only the entity embedding for {}",
-            parentId);
+        logChunkIndexUnwritable(parentId);
         refreshEntityDocOnly(entity, entityIndexName);
       }
     } catch (EmbeddingUnavailableException unavailable) {
@@ -485,6 +545,16 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
             parentId,
             VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
       }
+    }
+  }
+
+  // A chunk index that cannot hold the model's vectors is reported once, by VectorFieldHealth.
+  private void logChunkIndexUnwritable(String parentId) {
+    if (chunkIndexEnsured) {
+      LOG.debug("The chunk index cannot hold the model's vectors; refreshing {} only", parentId);
+    } else {
+      LOG.warn(
+          "Vector chunk index unavailable; refreshing only the entity embedding for {}", parentId);
     }
   }
 
@@ -586,24 +656,34 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   public List<String> searchChunksByParent(
       String parentId, String query, int k, SubjectContext subjectContext) {
     List<String> passages = new ArrayList<>();
-    try {
-      ensureChunkIndex();
-      float[] vector = embeddingClient.embedQuery(query);
-      Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
-      VectorSearchParameters parameters =
-          new VectorSearchParameters(null, filters, k, 0, k, 0.0, null, subjectContext, null);
-      String queryJson = buildKnnSearch(vector, parameters, Set.of());
-      String response =
-          executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
-      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
-      for (JsonNode hit : hits) {
-        String text = hit.path("_source").path("textToLLMContext").asText(null);
-        if (text != null && !text.isBlank()) {
-          passages.add(text);
-        }
+    if (canHoldVectors(getChunkIndexName())) {
+      try {
+        ensureChunkIndex();
+        passages.addAll(searchChunkPassages(parentId, query, k, subjectContext));
+      } catch (Exception e) {
+        LOG.warn("Chunk retrieval failed for parent {}: {}", parentId, e.getMessage());
       }
-    } catch (Exception e) {
-      LOG.warn("Chunk retrieval failed for parent {}: {}", parentId, e.getMessage());
+    } else {
+      LOG.debug("The chunk index cannot hold the model's vectors; no passages for {}", parentId);
+    }
+    return passages;
+  }
+
+  private List<String> searchChunkPassages(
+      String parentId, String query, int k, SubjectContext subjectContext) throws IOException {
+    float[] vector = embeddingClient.embedQuery(query);
+    Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(null, filters, k, 0, k, 0.0, null, subjectContext, null);
+    String queryJson = buildKnnSearch(vector, parameters, Set.of());
+    String response =
+        executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
+    List<String> passages = new ArrayList<>();
+    for (JsonNode hit : MAPPER.readTree(response).path("hits").path("hits")) {
+      String text = hit.path("_source").path("textToLLMContext").asText(null);
+      if (text != null && !text.isBlank()) {
+        passages.add(text);
+      }
     }
     return passages;
   }
@@ -689,11 +769,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String liveTarget = resolved.name();
       deleteOrphanChunkGenerations(base, liveTarget);
       generation = nextChunkGenerationName(base);
-      try {
-        executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to create staged chunk index " + generation, e);
-      }
+      createStagedGeneration(generation);
       stagedChunkIndex = generation;
       stagedExpectedTypes = DATA_ASSET_TYPES_LOWERCASE;
       stagedFinalizedTypes.clear();
@@ -707,6 +783,16 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           liveTarget);
     }
     return generation;
+  }
+
+  // Created bare, for the configured model: attaching an alias before promotion would make the
+  // half-built generation readable.
+  private void createStagedGeneration(String generation) {
+    try {
+      executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create staged chunk index " + generation, e);
+    }
   }
 
   /** {@code name} is null on a fresh install; {@code known} is false when resolution failed. */
@@ -745,6 +831,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
             generation);
       }
     }
+    clearStagedOntologyChunkState(generation);
   }
 
   /**
@@ -775,6 +862,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void markEntityTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      markOntologyTypeReindexed(entityType, entityIndexPromoted, runGeneration);
+    } else {
+      markDataAssetTypeReindexed(entityType, entityIndexPromoted, runGeneration);
+    }
+  }
+
+  private void markDataAssetTypeReindexed(
       String entityType, boolean entityIndexPromoted, String runGeneration) {
     String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
     String generation = stagedChunkIndex;
@@ -846,15 +942,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } else if (stagedDeleteMissed || isStagedGenerationIncomplete(generation)) {
       reason = "a delete of a removed entity's chunks failed";
     } else if (!stagedCanReplaceLive(generation, liveTarget)) {
-      reason = "it holds no chunks while the live index does, or a count could not be read";
+      reason = "it holds no chunks while the live index serves some, or a count could not be read";
     }
     return Optional.ofNullable(reason);
   }
 
-  /** An empty generation replaces only an empty live index; an unknown count keeps the live one. */
+  /**
+   * An empty generation replaces only a live index that serves no chunks: an empty one, or one that
+   * cannot hold the model's vectors. An unknown count keeps the live one.
+   */
   private boolean stagedCanReplaceLive(String generation, String liveTarget) {
     long staged = chunkDocCount(generation);
-    long live = liveTarget == null ? 0 : chunkDocCount(liveTarget);
+    boolean liveServesChunks = liveTarget != null && canHoldVectors(liveTarget);
+    long live = liveServesChunks ? chunkDocCount(liveTarget) : 0;
     return staged > 0 || (staged == 0 && live == 0);
   }
 
@@ -880,6 +980,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
     }
     chunkIndexEnsured = true;
+    vectorFieldHealth().ifPresent(health -> health.refresh(base));
     LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
   }
 
@@ -954,7 +1055,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void requireStagedChunkFailuresRecorded() {
-    String generation = stagedChunkIndex != null ? stagedChunkIndex : participantStagedTarget;
+    String generation = runStagedChunkIndex();
     if (generation != null && unflaggedGenerations.contains(generation)) {
       saveMissedDeleteFlagOnce(generation);
       if (unflaggedGenerations.contains(generation)) {
@@ -972,14 +1073,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * and delete ({@link #deleteEntityChunks}) paths. Resolution order:
    *
    * <ol>
+   *   <li>{@link #participantStagedTarget}: the generation of the run this node is taking part in,
+   *       latched from its {@code ReindexContext} by {@link #latchParticipantStagedTarget}.
+   *       Authoritative for the run, so mirroring and deletes never depend on best-effort
+   *       discovery, the gap that lost live edits when discovery cached a stale {@code null} on a
+   *       participant JVM (see fd054753fa). A server never joins a job it coordinates, so it wins
+   *       over coordinator state a dead run of this node may have left.
    *   <li>{@link #stagedChunkIndex} — the coordinator's own run-scoped generation, set by {@link
    *       #beginStagedChunkRecreate}. Coordinator-only; also gates promotion in {@link
    *       #markEntityTypeReindexed}, so it must never be set on a participant.
-   *   <li>{@link #participantStagedTarget} — a non-coordinator participant's run-scoped
-   *       generation, latched from its {@code ReindexContext} by {@link
-   *       #latchParticipantStagedTarget}. Authoritative for the run, so mirroring and deletes
-   *       never depend on best-effort discovery — the gap that lost live edits when discovery
-   *       cached a stale {@code null} on a participant JVM (see fd054753fa).
    *   <li>Best-effort cluster-state probe ({@link #findActiveStagedGeneration}) with a short
    *       JVM-local cache that may hold {@code null} (no un-promoted {@code *_g*} index exists
    *       yet, or a transient probe failure). Reached only before a participant latches (startup
@@ -991,10 +1093,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * helper: they receive the run-scoped target explicitly via {@code ReindexContext}.
    */
   private String resolveChunkSinkTarget() {
-    String target = stagedChunkIndex; // coordinator-only fast path (also gates promotion)
-    if (target == null) {
-      target = participantStagedTarget; // participant latch from ReindexContext
-    }
+    String target = runStagedChunkIndex();
     if (target == null) {
       long now = System.currentTimeMillis();
       if (now - cachedSinkTargetAt > SINK_TARGET_CACHE_MS) {
@@ -1004,6 +1103,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       target = cachedSinkTarget;
     }
     return target;
+  }
+
+  // The latch of the run this node takes part in wins over leftover coordinator state.
+  private String runStagedChunkIndex() {
+    String latched = participantStagedTarget;
+    return latched != null ? latched : stagedChunkIndex;
   }
 
   /**
@@ -1024,6 +1129,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void latchParticipantStagedTarget(String staged) {
+    if (staged != null) {
+      vectorFieldHealth().ifPresent(health -> health.check(staged));
+    }
     participantStagedTarget = staged;
   }
 
@@ -1035,8 +1143,158 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void clearParticipantStagedTarget() {
     participantStagedTarget = null;
+    participantOntologyChunks = null;
     flaggedGenerations.clear();
     unflaggedGenerations.clear();
+  }
+
+  // The ontology chunk index is written in place by every ontology reindex. Only a staged
+  // generation replaces one that cannot hold the model's vectors, so a recreate of both term types
+  // then writes every term chunk into a bare generation built for the model, which goes live in
+  // one atomic alias swap once both types are promoted. Until then the live index stays as it is
+  // (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+  private static final Set<String> ONTOLOGY_TERM_TYPES =
+      OntologyTermSearch.TERM_TYPES.stream()
+          .map(type -> type.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toUnmodifiableSet());
+  private final Object stagedOntologyLock = new Object();
+  private volatile String stagedOntologyChunks;
+  private volatile String participantOntologyChunks;
+  private final Set<String> ontologyFinalizedTypes = ConcurrentHashMap.newKeySet();
+  private final Set<String> ontologyKeptLiveTypes = ConcurrentHashMap.newKeySet();
+
+  @Override
+  public String beginStagedOntologyChunkRecreate() {
+    String generation = null;
+    if (chunksOntologyTerms() && liveOntologyChunksCannotHoldVectors() && isEmbeddingAvailable()) {
+      synchronized (stagedOntologyLock) {
+        generation = stageOntologyChunkGeneration();
+      }
+    }
+    return generation;
+  }
+
+  // Read now, so the run decides on the live index as it is rather than as it was last checked.
+  private static boolean liveOntologyChunksCannotHoldVectors() {
+    String index = OntologyChunkIndex.name();
+    vectorFieldHealth().ifPresent(health -> health.check(index));
+    return !canHoldVectors(index);
+  }
+
+  private String stageOntologyChunkGeneration() {
+    String base = OntologyChunkIndex.name();
+    ResolvedLiveTarget live = tryResolveLiveChunkTarget(base);
+    String generation = null;
+    if (live.known() && live.name() != null) {
+      deleteOrphanChunkGenerations(base, live.name());
+      generation = nextChunkGenerationName(base);
+      createStagedGeneration(generation);
+      stagedOntologyChunks = generation;
+      ontologyFinalizedTypes.clear();
+      ontologyKeptLiveTypes.clear();
+      LOG.info(
+          "Staged ontology chunk index {} for the embedding model; {} stays live until both "
+              + "ontology term types are promoted",
+          generation,
+          live.name());
+    }
+    return generation;
+  }
+
+  @Override
+  public Optional<String> stagedOntologyChunkTarget() {
+    String latched = participantOntologyChunks;
+    return Optional.ofNullable(latched != null ? latched : stagedOntologyChunks);
+  }
+
+  @Override
+  public void latchParticipantStagedOntologyTarget(String staged) {
+    participantOntologyChunks = staged;
+  }
+
+  private void clearStagedOntologyChunkState(String generation) {
+    synchronized (stagedOntologyLock) {
+      if (generation.equals(stagedOntologyChunks)) {
+        stagedOntologyChunks = null;
+        LOG.warn(
+            "Cleared staged ontology chunk state for {}; its run died before finalization and the "
+                + "next staged recreate sweeps it",
+            generation);
+      }
+    }
+  }
+
+  private void markOntologyTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration) {
+    synchronized (stagedOntologyLock) {
+      String generation = stagedOntologyChunks;
+      if (generation != null && generation.equals(runGeneration)) {
+        recordOntologyTypeOutcome(entityType.toLowerCase(Locale.ROOT), entityIndexPromoted);
+      } else if (generation != null) {
+        LOG.warn(
+            "Ignoring the ontology chunk mark for {} of run generation {} while {} is staged",
+            entityType,
+            runGeneration,
+            generation);
+      }
+    }
+  }
+
+  // The run ends here either way, so its state never outlives the last type.
+  private void recordOntologyTypeOutcome(String entityType, boolean entityIndexPromoted) {
+    if (!entityIndexPromoted) {
+      ontologyKeptLiveTypes.add(entityType);
+    }
+    ontologyFinalizedTypes.add(entityType);
+    if (ontologyFinalizedTypes.containsAll(ONTOLOGY_TERM_TYPES)) {
+      String generation = stagedOntologyChunks;
+      try {
+        promoteStagedOntologyChunks(generation);
+      } finally {
+        stagedOntologyChunks = null;
+      }
+    }
+  }
+
+  private void promoteStagedOntologyChunks(String generation) {
+    String base = OntologyChunkIndex.name();
+    String liveTarget = requireResolvedLiveChunkTarget(base);
+    Optional<String> keepLive = reasonToKeepLiveOntologyChunks(generation, liveTarget);
+    if (keepLive.isPresent()) {
+      LOG.warn(
+          "Staged ontology chunk index {} is not promoted because {}; the live index stays and "
+              + "the next staged recreate sweeps it",
+          generation,
+          keepLive.get());
+    } else {
+      swapInOntologyChunkGeneration(generation, base, liveTarget);
+    }
+  }
+
+  private Optional<String> reasonToKeepLiveOntologyChunks(String generation, String liveTarget) {
+    String reason = null;
+    if (!ontologyKeptLiveTypes.isEmpty()) {
+      reason =
+          "the entity indexes of "
+              + new TreeSet<>(ontologyKeptLiveTypes)
+              + " kept their live index";
+    } else if (!stagedCanReplaceLive(generation, liveTarget)) {
+      reason = "it holds no chunks while the live index serves some, or a count could not be read";
+    }
+    return Optional.ofNullable(reason);
+  }
+
+  private void swapInOntologyChunkGeneration(String generation, String base, String oldTarget) {
+    try {
+      executeGenericRequest(
+          "POST", "/_aliases", buildChunkPromoteActions(generation, List.of(base), oldTarget));
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed to promote staged ontology chunk index " + generation, e);
+    }
+    ontologyChunkIndexEnsured = true;
+    vectorFieldHealth().ifPresent(health -> health.refresh(base));
+    LOG.info(
+        "Promoted staged ontology chunk index {} (previous target: {})", generation, oldTarget);
   }
 
   /** Newest generation index not yet holding the read alias, or null when none exists. */
@@ -1069,18 +1327,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   static String buildChunkPromoteActions(
       String generation, String readAlias, String searchAlias, String oldTarget) {
-    var actions = MAPPER.createArrayNode();
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add", MAPPER.createObjectNode().put("index", generation).put("alias", readAlias)));
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add",
-                MAPPER.createObjectNode().put("index", generation).put("alias", searchAlias)));
+    return buildChunkPromoteActions(generation, List.of(readAlias, searchAlias), oldTarget);
+  }
+
+  /** As above, attaching {@code aliases} only. */
+  static String buildChunkPromoteActions(
+      String generation, List<String> aliases, String oldTarget) {
+    ArrayNode actions = MAPPER.createArrayNode();
+    aliases.forEach(
+        alias ->
+            actions.add(
+                MAPPER
+                    .createObjectNode()
+                    .set(
+                        "add",
+                        MAPPER.createObjectNode().put("index", generation).put("alias", alias))));
     if (oldTarget != null && !oldTarget.equals(generation)) {
       actions.add(
           MAPPER
@@ -1212,11 +1473,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           "Vector chunk index unavailable (create/upgrade failed); refusing chunk write that "
               + "would auto-create it with a non-knn mapping");
     }
+    requireVectorsFit(getChunkIndexName());
   }
 
   private boolean isChunkIndexWritable() {
     ensureChunkIndex();
-    return chunkIndexEnsured;
+    return chunkIndexEnsured && canHoldVectors(getChunkIndexName());
   }
 
   private void ensureChunkIndex() {
@@ -1275,9 +1537,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     try {
       String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
       JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
-      int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
+      int existingVersion = mappings.path(LiveEmbeddingField.META).path(CHUNK_DOC_VERSION).asInt(0);
       if (existingVersion < VectorDocBuilder.CHUNK_DOC_VERSION) {
-        executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
+        executeGenericRequest(
+            "PUT",
+            "/" + indexName + "/_mapping",
+            buildChunkMappingUpgradeBody(mappings.path(LiveEmbeddingField.META)));
         LOG.info(
             "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields "
                 + "backfill on next Search Reindex)",
@@ -1321,7 +1586,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
    * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
    * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
-   * (unchanged keyword/text/integer).
+   * (unchanged keyword/text/integer). {@code _meta} is the live one with the bumped version, since a
+   * {@code PUT _mapping} replaces the whole {@code _meta}: the model it records is the one the
+   * vectors there were built with, whatever model is configured now.
    *
    * <p>Absent-on-old-docs fields are inert for anything that merely scores or widens on them, so
    * those upgrades carry no regression before the backfill runs. That is <b>not</b> true of a field a
@@ -1334,17 +1601,25 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * the backfill such a query loses those memories' vector hits and never gains a wrong one. Weigh
    * that before making any future field a filter depends on.
    */
-  private String buildChunkMappingUpgradeBody() {
+  private String buildChunkMappingUpgradeBody(JsonNode liveMeta) {
     ObjectNode properties = buildChunkProperties();
     properties.remove("embedding");
+    ObjectNode meta =
+        liveMeta instanceof ObjectNode live ? live.deepCopy() : MAPPER.createObjectNode();
     var body = MAPPER.createObjectNode();
     body.set("properties", properties);
-    body.set("_meta", chunkMeta());
+    body.set(
+        LiveEmbeddingField.META, meta.put(CHUNK_DOC_VERSION, VectorDocBuilder.CHUNK_DOC_VERSION));
     return body.toString();
   }
 
+  /** The {@code _meta} of a new chunk index: its document version and the embedding model. */
   private ObjectNode chunkMeta() {
-    return MAPPER.createObjectNode().put("chunkDocVersion", VectorDocBuilder.CHUNK_DOC_VERSION);
+    ObjectNode mappings = MAPPER.createObjectNode();
+    mappings
+        .putObject(LiveEmbeddingField.META)
+        .put(CHUNK_DOC_VERSION, VectorDocBuilder.CHUNK_DOC_VERSION);
+    return EmbeddingFieldUpdate.recordModel(mappings, EmbeddingModel.of(embeddingClient));
   }
 
   private ObjectNode buildChunkProperties() {
@@ -1666,6 +1941,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String staged = resolveChunkSinkTarget();
     if (staged == null) {
       LOG.debug("No staged chunk generation to mirror the live update for {}", parentId);
+    } else if (!canHoldVectors(staged)) {
+      LOG.debug("Staged chunk index {} cannot hold the model's vectors; not mirroring", staged);
     } else {
       try {
         replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
@@ -1976,78 +2253,128 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(VectorSearchParameters parameters) {
-    String query = parameters.query();
-    int size = parameters.size();
-    int from = parameters.from();
-    int k = parameters.k();
-    double threshold = parameters.threshold();
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embedQuery(query);
-      LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
-      int rawOffset = 0;
-      long totalHits = -1L;
-      boolean exhausted = false;
-      int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
-      int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
-      if (knnReturnsAtMostK(threshold)) {
-        overFetchSize = Math.min(overFetchSize, k);
-      }
-
-      String aliasName = vectorSearchTarget(parameters.filters());
-      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
-      while (!exhausted && byParent.size() < requestedParents) {
-        String queryJson =
-            buildKnnSearch(
-                queryVector,
-                parameters.withPagination(overFetchSize, rawOffset),
-                readableAnchorIds);
-        String endpoint =
-            SearchUtils.appendPreferenceParam(
-                "/" + aliasName + "/_search", parameters.preference());
-        if (aliasName.contains(OntologyChunkIndex.name())) {
-          // The ontology chunk index is created only by the first ontology embedding write.
-          endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
-        }
-        String responseBody = executeGenericRequest("POST", endpoint, queryJson);
-
-        JsonNode root = MAPPER.readTree(responseBody);
-        JsonNode hitsNode = root.path("hits").path("hits");
-        totalHits = extractTotalHits(root);
-
-        int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
-        if (pageHitCount == 0) {
-          exhausted = true;
-          break;
-        }
-
-        rawOffset += pageHitCount;
-        exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      int parentCount = 0;
-      int skipped = 0;
-      for (List<Map<String, Object>> chunks : byParent.values()) {
-        if (skipped < from) {
-          skipped++;
-          continue;
-        }
-        if (parentCount >= size) {
-          break;
-        }
-        results.addAll(chunks);
-        parentCount++;
-      }
-
-      boolean hasMore = byParent.size() > (from + parentCount);
-      long tookMillis = System.currentTimeMillis() - start;
-      return new VectorSearchResponse(
-          tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
+      String target = vectorSearchTarget(parameters.filters());
+      Optional<String> searchable = searchableIndexes(target);
+      return searchable.isPresent()
+          ? searchIn(target, searchable.get(), parameters, start)
+          : new VectorSearchResponse(System.currentTimeMillis() - start, List.of(), 0L, false);
+    } catch (VectorSearchUnavailableException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  /** The kNN over {@code aliasName}, the indexes behind {@code target} the search may read. */
+  private VectorSearchResponse searchIn(
+      String target, String aliasName, VectorSearchParameters parameters, long start)
+      throws IOException {
+    int size = parameters.size();
+    int from = parameters.from();
+    int k = parameters.k();
+    double threshold = parameters.threshold();
+    float[] queryVector = embeddingClient.embedQuery(parameters.query());
+    LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
+    int rawOffset = 0;
+    long totalHits = -1L;
+    boolean exhausted = false;
+    int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
+    int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
+    if (knnReturnsAtMostK(threshold)) {
+      overFetchSize = Math.min(overFetchSize, k);
+    }
+
+    Set<String> readableAnchorIds = readableAnchors.apply(parameters);
+    while (!exhausted && byParent.size() < requestedParents) {
+      String queryJson =
+          buildKnnSearch(
+              queryVector, parameters.withPagination(overFetchSize, rawOffset), readableAnchorIds);
+      String endpoint =
+          SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", parameters.preference());
+      if (target.contains(OntologyChunkIndex.name())) {
+        // The ontology chunk index is created only by the first ontology embedding write.
+        endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
+      }
+      String responseBody = executeGenericRequest("POST", endpoint, queryJson);
+
+      JsonNode root = MAPPER.readTree(responseBody);
+      JsonNode hitsNode = root.path("hits").path("hits");
+      totalHits = extractTotalHits(root);
+
+      int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
+      if (pageHitCount == 0) {
+        exhausted = true;
+        break;
+      }
+
+      rawOffset += pageHitCount;
+      exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+    int parentCount = 0;
+    int skipped = 0;
+    for (List<Map<String, Object>> chunks : byParent.values()) {
+      if (skipped < from) {
+        skipped++;
+        continue;
+      }
+      if (parentCount >= size) {
+        break;
+      }
+      results.addAll(chunks);
+      parentCount++;
+    }
+
+    boolean hasMore = byParent.size() > (from + parentCount);
+    long tookMillis = System.currentTimeMillis() - start;
+    return new VectorSearchResponse(
+        tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
+  }
+
+  /**
+   * What a vector search over {@code target} reads, decided before the query is embedded: {@code
+   * target} itself while every vector index can hold the embedding model's vectors, and otherwise
+   * the indexes behind it that can, since a kNN on one that cannot fails the whole search and an
+   * index behind an alias cannot be left out with a {@code -name} exclusion on either engine. Empty
+   * when no index exists behind it, as for ontology terms before their chunk index is created.
+   *
+   * @throws VectorSearchUnavailableException when indexes exist behind it but none can hold them
+   */
+  private Optional<String> searchableIndexes(String target) throws IOException {
+    Set<String> unusable =
+        vectorFieldHealth().map(VectorFieldHealth::unusableIndexes).orElse(Set.of());
+    return unusable.isEmpty() ? Optional.of(target) : usableIndexesBehind(target);
+  }
+
+  private Optional<String> usableIndexesBehind(String target) throws IOException {
+    List<String> behind = indexesBehind(target);
+    List<String> usable =
+        behind.stream().filter(AbstractVectorIndexService::canHoldVectors).sorted().toList();
+    if (usable.isEmpty() && !behind.isEmpty()) {
+      throw new VectorSearchUnavailableException(unavailableReason());
+    }
+    return usable.isEmpty() ? Optional.empty() : Optional.of(String.join(",", usable));
+  }
+
+  private List<String> indexesBehind(String target) throws IOException {
+    String endpoint = "/" + target + "/_alias?ignore_unavailable=true";
+    List<String> indexes = new ArrayList<>();
+    MAPPER
+        .readTree(executeGenericRequest("GET", endpoint, null))
+        .fieldNames()
+        .forEachRemaining(indexes::add);
+    return indexes;
+  }
+
+  private String unavailableReason() {
+    EmbeddingModel model = EmbeddingModel.of(embeddingClient);
+    return vectorFieldHealth()
+        .flatMap(health -> health.report(model))
+        .orElse("No search index can hold the vectors of the embedding model " + model.id());
   }
 
   /**
@@ -2285,11 +2612,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   public void partialUpdateEntity(
       String indexName, String entityId, Map<String, Object> embeddingFields) {
-    try {
-      sendEmbeddingUpdate(indexName, entityId, embeddingFields);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
+    if (canHoldVectors(indexName)) {
+      try {
+        sendEmbeddingUpdate(indexName, entityId, embeddingFields);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
+      }
+    } else {
+      LOG.debug("{} cannot hold the model's vectors; skipping entity {}", indexName, entityId);
     }
   }
 
@@ -2298,6 +2629,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String entityIndexName, String entityId, Map<String, Object> embeddingFields) {
     boolean written;
     try {
+      requireVectorsFit(entityIndexName);
       sendEmbeddingUpdate(entityIndexName, entityId, embeddingFields);
       written = true;
     } catch (JsonProcessingException | RuntimeException e) {

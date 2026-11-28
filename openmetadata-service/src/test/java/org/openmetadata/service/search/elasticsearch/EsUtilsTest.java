@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
@@ -29,7 +28,9 @@ import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,9 +42,11 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
-import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 @ExtendWith(MockitoExtension.class)
 class EsUtilsTest {
@@ -584,17 +587,10 @@ class EsUtilsTest {
     String mapping =
         "{\"mappings\":{\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}}}";
 
-    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
-        org.mockito.Mockito.mock(
-            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
-    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(768);
-    org.mockito.Mockito.when(mockEmbeddingClient.getModelId()).thenReturn("test-model");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
-          .thenReturn(mockEmbeddingClient);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("test-model", 768)));
 
       String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
 
@@ -610,26 +606,18 @@ class EsUtilsTest {
 
   @Test
   void enrichIndexMappingThrowsWhenMetaDimensionMismatchesClient() {
-    // dense_vector.dims is immutable on an existing ES index. If the embedding
-    // client reports a different dimension than what the index was built with,
-    // silently rewriting dims would either be rejected by ES (putMapping) or
-    // produce a mapping that disagrees with stored vectors. Must hard-fail.
+    // Mapping content built for another model is a broken mapping, not a live index to
+    // reconcile, so it hard-fails.
     String mapping =
         "{\"mappings\":{"
             + "\"_meta\":{\"embedding_model\":\"old-model\",\"embedding_dimension\":384},"
             + "\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}"
             + "}}";
 
-    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
-        org.mockito.Mockito.mock(
-            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
-    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(1536);
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
-          .thenReturn(mockEmbeddingClient);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("new-model", 1536)));
 
       IllegalStateException ex =
           assertThrows(
@@ -638,17 +626,12 @@ class EsUtilsTest {
       assertTrue(
           ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
           "Exception message must include both old and new dimensions");
-      assertTrue(
-          ex.getMessage().toLowerCase().contains("reindex"),
-          "Exception message must direct the operator to reindex");
     }
   }
 
   @Test
   void enrichIndexMappingThrowsWhenExistingEmbeddingDimsDiffersFromClient() {
-    // Index already has properties.embedding with dims=384 but no _meta block.
-    // dense_vector.dims is immutable, so we must hard-fail rather than rewrite
-    // (which would either be rejected by ES putMapping or corrupt search).
+    // The mapping content declares properties.embedding with dims=384 but no _meta block.
     String mapping =
         "{\"mappings\":{"
             + "\"properties\":{"
@@ -658,16 +641,10 @@ class EsUtilsTest {
             + "}"
             + "}}";
 
-    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
-        org.mockito.Mockito.mock(
-            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
-    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(1536);
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
-          .thenReturn(mockEmbeddingClient);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("new-model", 1536)));
 
       IllegalStateException ex =
           assertThrows(
@@ -676,9 +653,6 @@ class EsUtilsTest {
       assertTrue(
           ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
           "Exception message must include both old and new dimensions");
-      assertTrue(
-          ex.getMessage().toLowerCase().contains("reindex"),
-          "Exception message must direct the operator to reindex");
     }
   }
 
@@ -696,17 +670,10 @@ class EsUtilsTest {
             + "\"properties\":{\"name\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"}}"
             + "}}";
 
-    org.openmetadata.service.search.vector.client.EmbeddingClient mockEmbeddingClient =
-        org.mockito.Mockito.mock(
-            org.openmetadata.service.search.vector.client.EmbeddingClient.class);
-    org.mockito.Mockito.when(mockEmbeddingClient.getDimension()).thenReturn(384);
-    org.mockito.Mockito.when(mockEmbeddingClient.getModelId()).thenReturn("new-model");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      org.mockito.Mockito.when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-      org.mockito.Mockito.when(searchRepository.getEmbeddingClient())
-          .thenReturn(mockEmbeddingClient);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("new-model", 384)));
 
       String result = EsUtils.enrichIndexMappingForElasticsearch(mapping);
 
@@ -751,12 +718,12 @@ class EsUtilsTest {
     return JsonUtils.readTree(mapping).path("mappings").path("properties").path("embedding");
   }
 
-  private void withEmbeddingClient(Runnable test) {
-    EmbeddingClient embeddings = mock(EmbeddingClient.class);
-    when(embeddings.getDimension()).thenReturn(8);
-    lenient().when(embeddings.getModelId()).thenReturn("test-model");
-    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    when(searchRepository.getEmbeddingClient()).thenReturn(embeddings);
+  private final VectorFieldHealth health = new VectorFieldHealth(name -> {});
+
+  private void withEmbeddingModel(Runnable test) {
+    when(searchRepository.getEmbeddingModel())
+        .thenReturn(Optional.of(new EmbeddingModel("test-model", 8)));
+    lenient().when(searchRepository.getVectorFieldHealth()).thenReturn(health);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       test.run();
@@ -765,7 +732,7 @@ class EsUtilsTest {
 
   @Test
   void aNewEmbeddingField_getsThePinnedHnswOptions() {
-    withEmbeddingClient(
+    withEmbeddingModel(
         () -> {
           JsonNode options =
               embeddingOf(EsUtils.enrichIndexMappingForElasticsearch(VECTOR_MAPPING))
@@ -782,7 +749,7 @@ class EsUtilsTest {
         "{\"mappings\":{\"properties\":{\"fingerprint\":{\"type\":\"keyword\"},"
             + "\"embedding\":{\"type\":\"dense_vector\",\"dims\":8,"
             + "\"index_options\":{\"type\":\"int8_hnsw\"}}}}}";
-    withEmbeddingClient(
+    withEmbeddingModel(
         () ->
             assertEquals(
                 "int8_hnsw",
@@ -792,49 +759,117 @@ class EsUtilsTest {
                     .asText()));
   }
 
+  private static final String META_AND_VECTOR_MAPPING =
+      "{\"mappings\":{\"_meta\":{\"embedding_model\":\"test-model\",\"embedding_dimension\":8},"
+          + "\"properties\":{\"fingerprint\":{\"type\":\"keyword\"}}}}";
+
+  private static LiveEmbeddingField liveVector(int dimensions) {
+    return liveVector(dimensions, "test-model");
+  }
+
+  private static LiveEmbeddingField liveVector(int dimensions, String recordedModel) {
+    return new LiveEmbeddingField(
+        "table_search_index",
+        Set.of("table_search_index"),
+        Map.of("table_search_index", new LiveEmbeddingField.Declared("dense_vector", dimensions)),
+        Map.of("table_search_index", recordedModel),
+        Set.of(),
+        null);
+  }
+
+  private static JsonNode updatedMappings(Supplier<LiveEmbeddingField> live) {
+    return JsonUtils.readTree(
+            EsUtils.enrichIndexMappingForElasticsearchUpdate(META_AND_VECTOR_MAPPING, live))
+        .path("mappings");
+  }
+
   @Test
-  void aMappingUpdate_leavesOutAnEmbeddingTheLiveIndexAlreadyMaps() {
-    withEmbeddingClient(
+  void aMappingUpdate_leavesOutAnEmbeddingTheLiveIndexAlreadyMapsAndClaimsNoModel() {
+    withEmbeddingModel(
+        () -> {
+          JsonNode mappings = updatedMappings(() -> liveVector(8));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertTrue(mappings.path("_meta").isMissingNode(), "the live _meta must stay as it is");
+          assertTrue(health.mismatches().isEmpty());
+        });
+  }
+
+  @Test
+  void aMappingUpdate_addsThePinnedEmbeddingAndTheModelWhenTheLiveIndexHasNone() {
+    withEmbeddingModel(
         () -> {
           JsonNode mappings =
               JsonUtils.readTree(
                       EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                          VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(8))))
+                          VECTOR_MAPPING, () -> LiveEmbeddingField.notMapped("table_search_index")))
                   .path("mappings");
-          assertFalse(mappings.path("properties").has("embedding"));
-          assertTrue(mappings.path("properties").has("fingerprint"));
-          assertEquals(8, mappings.path("_meta").path("embedding_dimension").asInt());
-        });
-  }
-
-  @Test
-  void aMappingUpdate_addsThePinnedEmbeddingWhenTheLiveIndexHasNone() {
-    withEmbeddingClient(
-        () -> {
-          JsonNode embedding =
-              embeddingOf(
-                  EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                      VECTOR_MAPPING, () -> LiveEmbeddingField.NOT_MAPPED));
+          JsonNode embedding = mappings.path("properties").path("embedding");
           assertEquals(8, embedding.path("dims").asInt());
           assertEquals("hnsw", embedding.path("index_options").path("type").asText());
           assertEquals(48, embedding.path("index_options").path("m").asInt());
+          assertEquals("test-model", mappings.path("_meta").path("embedding_model").asText());
         });
   }
 
   @Test
-  void aMappingUpdate_failsWhenTheLiveEmbeddingHasAnotherDimension() {
-    withEmbeddingClient(
-        () ->
-            assertThrows(
-                IllegalStateException.class,
-                () ->
-                    EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                        VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(384)))));
+  void aMappingUpdate_leavesOutTheEmbeddingAndItsMetaWhenTheLiveFieldHasAnotherDimension() {
+    withEmbeddingModel(
+        () -> {
+          JsonNode mappings = updatedMappings(() -> liveVector(384));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertTrue(mappings.path("_meta").isMissingNode(), "the live _meta must stay as it is");
+          assertEquals("table_search_index", health.mismatches().getFirst().name());
+        });
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheEmbeddingAndItsMetaWhenTheLiveFieldHoldsAnotherModel() {
+    withEmbeddingModel(
+        () -> {
+          JsonNode mappings = updatedMappings(() -> liveVector(8, "previous-model"));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("_meta").isMissingNode(), "the live _meta must stay as it is");
+          assertTrue(health.mismatches().getFirst().reason().contains("previous-model"));
+        });
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheEmbeddingAndItsMetaWhenTheLiveFieldCannotBeRead() {
+    withEmbeddingModel(
+        () -> {
+          JsonNode mappings =
+              updatedMappings(
+                  () -> LiveEmbeddingField.unreadable("table_search_index", "503 Unavailable"));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertTrue(mappings.path("_meta").isMissingNode());
+        });
+  }
+
+  @Test
+  void aMappingUpdate_keepsOtherMetaEntriesWhenItLeavesTheEmbeddingMetaOut() {
+    String mapping =
+        "{\"mappings\":{\"_meta\":{\"owner\":\"platform\",\"embedding_dimension\":8},"
+            + "\"properties\":{\"fingerprint\":{\"type\":\"keyword\"}}}}";
+    withEmbeddingModel(
+        () -> {
+          JsonNode meta =
+              JsonUtils.readTree(
+                      EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                          mapping, () -> liveVector(384)))
+                  .path("mappings")
+                  .path("_meta");
+          assertEquals("platform", meta.path("owner").asText());
+          assertFalse(meta.has("embedding_dimension"));
+          assertFalse(meta.has("embedding_model"));
+        });
   }
 
   @Test
   void aMappingUpdate_withoutEmbeddings_neverReadsTheLiveIndex() {
-    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+    when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       String updated =
@@ -845,5 +880,17 @@ class EsUtilsTest {
               });
       assertFalse(embeddingOf(updated).isObject());
     }
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_carriesOnlyThePinnedFieldAndTheModel() {
+    JsonNode mappings =
+        JsonUtils.readTree(EsUtils.embeddingFieldDeclaration(new EmbeddingModel("model-a", 8)));
+    assertEquals(1, mappings.path("properties").size());
+    JsonNode embedding = mappings.path("properties").path("embedding");
+    assertEquals(8, embedding.path("dims").asInt());
+    assertEquals("hnsw", embedding.path("index_options").path("type").asText());
+    assertEquals("model-a", mappings.path("_meta").path("embedding_model").asText());
+    assertEquals(8, mappings.path("_meta").path("embedding_dimension").asInt());
   }
 }

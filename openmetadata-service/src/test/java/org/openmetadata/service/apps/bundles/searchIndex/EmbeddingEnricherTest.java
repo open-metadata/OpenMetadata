@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -45,6 +46,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -58,6 +60,7 @@ class EmbeddingEnricherTest {
   private static final String ENTITY_JSON = "{\"name\":\"orders\"}";
 
   private final SearchRepository searchRepository = mock(SearchRepository.class);
+  private final VectorFieldHealth vectorFieldHealth = new VectorFieldHealth(name -> {});
   private final VectorIndexService vectorService = mock(VectorIndexService.class);
   private final StageStatsTracker tracker = mock(StageStatsTracker.class);
   private final ThreeDimensionalEmbeddings embeddings = new ThreeDimensionalEmbeddings();
@@ -93,6 +96,7 @@ class EmbeddingEnricherTest {
   @BeforeEach
   void semanticSearchIsOn() {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    lenient().when(searchRepository.getVectorFieldHealth()).thenReturn(vectorFieldHealth);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(searchRepository.getIndexMapping(Entity.TABLE))
         .thenReturn(IndexMapping.builder().indexName(INDEX).build());
@@ -179,6 +183,30 @@ class EmbeddingEnricherTest {
     assertEquals(tableId, chunk.get("parentId"));
     verify(vectorService, never()).backfillEntityChunks(any(), any());
     assertVectorStats(1, 0);
+  }
+
+  @Test
+  void anInPlaceRunWritesNoVectorsToALiveIndexThatCannotHoldTheModel() throws Exception {
+    vectorFieldHealth.recordCannotHold(
+        INDEX, Set.of(INDEX + "_rebuild_1"), INDEX + "_rebuild_1 holds vectors of model model-a");
+
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, liveRun());
+
+    assertEquals(ENTITY_JSON, enriched, "the document goes in whole, without vectors");
+    verify(vectorService, never()).writeEntityChunks(any(), any(), any());
+    assertEquals(0, embeddings.calls.get(), "no provider call for vectors nowhere can hold");
+  }
+
+  @Test
+  void aRecreateRunEmbedsIntoTheStagedIndexWhileTheLiveOneCannotHoldTheModel() throws Exception {
+    vectorFieldHealth.recordCannotHold(
+        INDEX, Set.of(ORIGINAL_INDEX), ORIGINAL_INDEX + " has knn_vector of 384 dimensions");
+
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+
+    assertEquals("[0.1,0.2,0.3]", JsonUtils.readTree(enriched).path("embedding").toString());
+    assertEquals(1, chunksWrittenTo(STAGED_CHUNKS).size());
+    assertFalse(vectorFieldHealth.canHold(INDEX), "the live index stays out until it is replaced");
   }
 
   @Test

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
@@ -27,6 +28,20 @@ public interface VectorIndexService {
   String UNRECORDED_STAGED_DELETE = "Unrecorded staged chunk delete";
 
   EmbeddingClient getEmbeddingClient();
+
+  /**
+   * The chunk indexes whose {@code embedding} field has to hold the embedding model's vectors, as
+   * the entity indexes' does. Each may be an alias over a staged generation, or not exist yet.
+   */
+  default List<String> chunkIndexNames() {
+    return List.of();
+  }
+
+  /**
+   * The data-asset chunk index: an alias over the generation that a recreate of every data-asset
+   * type replaces.
+   */
+  String getChunkIndexName();
 
   /**
    * The engine's kNN clause over the embedding field, for use inside a {@code bool} or {@code
@@ -115,19 +130,44 @@ public interface VectorIndexService {
    */
   String beginStagedChunkRecreate();
 
-  /** Forgets {@code generation} as this node's staged recreate, without touching the index. */
+  /**
+   * Begins a staged recreate of the ontology chunk index for a run that recreates every ontology
+   * term type, when the live one cannot hold the embedding model's vectors, and returns the staged
+   * generation. Null when nothing was staged: the live index can hold them, or the engine keeps no
+   * ontology chunks (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+   */
+  default String beginStagedOntologyChunkRecreate() {
+    return null;
+  }
+
+  /**
+   * The ontology chunk generation this node writes term chunks to instead of the live ontology
+   * chunk index, while a run that staged it lasts.
+   */
+  default Optional<String> stagedOntologyChunkTarget() {
+    return Optional.empty();
+  }
+
+  /**
+   * Forgets {@code generation} as this node's staged recreate, of either chunk index, without
+   * touching the index.
+   */
   void clearStagedChunkState(String generation);
 
   /**
    * Records whether one entity type's staged entity index replaced its live index, for the run
-   * that staged {@code runGeneration}. Once every expected type has finalized, the staged chunk
-   * generation is promoted when all their entity indexes were.
+   * that staged {@code runGeneration}: the data-asset chunk generation for a data-asset type, the
+   * ontology chunk generation for an ontology term type. Once every expected type has finalized,
+   * the staged generation is promoted when all their entity indexes were.
    */
   void markEntityTypeReindexed(
       String entityType, boolean entityIndexPromoted, String runGeneration);
 
   /** Routes this participant node's live chunk writes to the run's staged generation as well. */
   void latchParticipantStagedTarget(String staged);
+
+  /** Routes this participant node's ontology chunk writes to the run's staged generation. */
+  default void latchParticipantStagedOntologyTarget(String staged) {}
 
   void clearParticipantStagedTarget();
 

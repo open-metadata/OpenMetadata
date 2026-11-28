@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -19,6 +22,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -26,10 +30,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -40,6 +46,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -266,7 +274,7 @@ class OpenSearchVectorServiceTest {
    * The participant latch shadows the stale-null discovery cache: when both the latch and a
    * different cached discovery value are present, the latch wins. Without the latch being
    * consulted first, "discovered_gen" would have been used; confirming the latch wins proves
-   * resolveChunkSinkTarget's resolution order (stagedChunkIndex, then participant latch, then
+   * resolveChunkSinkTarget's resolution order (participant latch, then stagedChunkIndex, then
    * discovery).
    */
   @Test
@@ -346,17 +354,18 @@ class OpenSearchVectorServiceTest {
   }
 
   /**
-   * The coordinator's stagedChunkIndex takes precedence over the participant latch, so a node
-   * that is both coordinating and would carry a participant latch still mirrors into its own
-   * run-scoped generation (and promotion gating stays anchored on stagedChunkIndex).
+   * A server never joins a job it coordinates, so a participant latch on a node that still holds
+   * coordinator state belongs to the run in progress, and the coordinator state to a dead run of
+   * this node. The latch wins, so live edits reach the generation that run promotes (promotion
+   * gating stays anchored on stagedChunkIndex).
    */
   @Test
-  void coordinatorStagedChunkIndexTakesPrecedenceOverTheParticipantLatch() throws Exception {
+  void theParticipantLatchWinsOverCoordinatorStateADeadRunLeft() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
-    setField("stagedChunkIndex", "coordinator_gen");
-    vectorService.latchParticipantStagedTarget("participant_gen");
+    setField("stagedChunkIndex", "dead_run_gen");
+    vectorService.latchParticipantStagedTarget("current_run_gen");
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
     vectorService.updateEntityEmbeddings(
@@ -364,11 +373,11 @@ class OpenSearchVectorServiceTest {
 
     List<String> bulkTargets = capturedBulkTargets();
     assertTrue(
-        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"coordinator_gen\"")),
-        "coordinator's stagedChunkIndex wins");
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"current_run_gen\"")),
+        "the generation of the run in progress gets the mirror");
     assertFalse(
-        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"participant_gen\"")),
-        "participant latch must not override the coordinator");
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"dead_run_gen\"")),
+        "a dead run's generation never does");
   }
 
   private static ContextMemory refreshableMemory() {
@@ -1049,9 +1058,11 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method m =
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     m.setAccessible(true);
-    String body = (String) m.invoke(vectorService);
+    String body = (String) m.invoke(vectorService, MissingNode.getInstance());
 
     // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
     // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
@@ -1083,9 +1094,12 @@ class OpenSearchVectorServiceTest {
   @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
     Method method =
-        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     method.setAccessible(true);
-    JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
+    JsonNode body =
+        new ObjectMapper()
+            .readTree((String) method.invoke(vectorService, MissingNode.getInstance()));
 
     assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
@@ -1123,5 +1137,193 @@ class OpenSearchVectorServiceTest {
     assertFalse(
         issuedBulk,
         "must not issue a chunk-delete bulk while the embedding provider is unavailable");
+  }
+
+  // --- An index that cannot hold the embedding model's vectors is left out ---
+
+  private final VectorFieldHealth vectorFieldHealth = new VectorFieldHealth(name -> {});
+
+  private MockedStatic<Entity> withVectorFieldHealth() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(vectorFieldHealth);
+    MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    return entity;
+  }
+
+  private void tableIndexHoldsAnotherModel() {
+    vectorFieldHealth.recordCannotHold(
+        "table_search_index",
+        Set.of("table_search_index_rebuild_1"),
+        "table_search_index_rebuild_1 has knn_vector of 384 dimensions");
+  }
+
+  private List<String> requestedEndpoints() throws IOException {
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    return captor.getAllValues().stream().map(Request::getEndpoint).toList();
+  }
+
+  @Test
+  void vectorSearchReadsOnlyTheIndexesThatCanHoldTheModel() throws IOException {
+    tableIndexHoldsAnotherModel();
+    mockOpenSearchResponses(
+        """
+        {"table_search_index_rebuild_1": {"aliases": {"dataAssetEmbeddings": {}}},
+         "data_asset_embeddings_chunks": {"aliases": {"dataAssetEmbeddings": {}}},
+         "glossary_term_search_index": {"aliases": {"dataAssetEmbeddings": {}}}}
+        """,
+        """
+        {"hits": {"total": {"value": 1}, "hits": [
+          {"_id": "c1", "_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}}]}}
+        """);
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      DTOs.VectorSearchResponse results = vectorService.search("churn", Map.of(), 3, 0, 10, 0.0);
+      assertEquals(1, results.hits.size());
+    }
+
+    List<String> endpoints = requestedEndpoints();
+    assertEquals("/dataAssetEmbeddings/_alias?ignore_unavailable=true", endpoints.get(0));
+    assertEquals(
+        "/data_asset_embeddings_chunks,glossary_term_search_index/_search", endpoints.get(1));
+  }
+
+  @Test
+  void vectorSearchIsUnavailableWhenNoIndexCanHoldTheModel() throws IOException {
+    tableIndexHoldsAnotherModel();
+    when(mockEmbeddingClient.getModelId()).thenReturn("model-b");
+    when(mockEmbeddingClient.getDimension()).thenReturn(768);
+    mockOpenSearchResponses(
+        "{\"table_search_index_rebuild_1\": {\"aliases\": {\"dataAssetEmbeddings\": {}}}}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      VectorSearchUnavailableException unavailable =
+          assertThrows(
+              VectorSearchUnavailableException.class,
+              () -> vectorService.search("churn", Map.of(), 3, 0, 10, 0.0));
+      assertTrue(unavailable.getMessage().contains("needs a rebuild"), unavailable.getMessage());
+      assertTrue(unavailable.getMessage().contains("model-b (768 dimensions)"));
+    }
+    assertEquals(1, requestedEndpoints().size(), "no kNN is sent");
+  }
+
+  @Test
+  void aSearchNoIndexCanServeNeverEmbedsTheQuery() throws IOException {
+    tableIndexHoldsAnotherModel();
+    when(mockEmbeddingClient.getModelId()).thenReturn("model-b");
+    when(mockEmbeddingClient.getDimension()).thenReturn(768);
+    mockOpenSearchResponses(
+        "{\"table_search_index_rebuild_1\": {\"aliases\": {\"dataAssetEmbeddings\": {}}}}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      assertThrows(
+          VectorSearchUnavailableException.class,
+          () -> vectorService.search("churn", Map.of(), 3, 0, 10, 0.0));
+    }
+
+    verify(mockEmbeddingClient, never()).embedQuery(any(String.class));
+  }
+
+  @Test
+  void anOntologySearchBeforeTheOntologyChunkIndexExistsFindsNothing() throws IOException {
+    tableIndexHoldsAnotherModel();
+    mockOpenSearchResponses("{}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      DTOs.VectorSearchResponse results =
+          vectorService.search(
+              "churn", Map.of("entityType", List.of(Entity.ONTOLOGY_CONCEPT)), 3, 0, 10, 0.0);
+      assertTrue(results.hits.isEmpty());
+    }
+
+    assertEquals(
+        List.of("/ontology_embeddings_chunks/_alias?ignore_unavailable=true"),
+        requestedEndpoints(),
+        "nothing to search, so no kNN is sent");
+    verify(mockEmbeddingClient, never()).embedQuery(any(String.class));
+  }
+
+  @Test
+  void vectorSearchTargetsTheAliasWhileEveryIndexCanHoldTheModel() throws IOException {
+    mockOpenSearchResponses("{\"hits\": {\"total\": {\"value\": 0}, \"hits\": []}}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      vectorService.search("churn", Map.of(), 3, 0, 10, 0.0);
+    }
+
+    assertEquals(List.of("/dataAssetEmbeddings/_search"), requestedEndpoints());
+  }
+
+  @Test
+  void noEntityEmbeddingIsWrittenToAnIndexThatCannotHoldTheModel() throws IOException {
+    tableIndexHoldsAnotherModel();
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      vectorService.partialUpdateEntity(
+          "table_search_index", "id-1", Map.of("embedding", List.of()));
+      assertFalse(
+          vectorService.writeEntityEmbedding(
+              "table_search_index_rebuild_1", "id-1", Map.of("embedding", List.of())));
+    }
+
+    verify(mockGenericClient, never()).execute(any());
+  }
+
+  @Test
+  void noChunkIsWrittenToAStagedGenerationThatCannotHoldTheModel() throws IOException {
+    vectorFieldHealth.recordCannotHold(
+        "data_asset_embeddings_chunks_g1",
+        Set.of(),
+        "data_asset_embeddings_chunks_g1 holds vectors of model model-a");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      assertFalse(
+          vectorService.writeEntityChunks(
+              "p1",
+              List.of(Map.of("entityType", "table", "chunkIndex", 0)),
+              "data_asset_embeddings_chunks_g1"));
+    }
+
+    verify(mockGenericClient, never()).execute(any());
+  }
+
+  @Test
+  void aNewChunkIndexRecordsTheModelItsVectorsAreBuiltWith() throws Exception {
+    when(mockEmbeddingClient.getModelId()).thenReturn("model-b");
+    when(mockEmbeddingClient.getDimension()).thenReturn(768);
+    Method build =
+        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkIndexMapping", boolean.class);
+    build.setAccessible(true);
+
+    JsonNode meta =
+        MAPPER.readTree((String) build.invoke(vectorService, false)).path("mappings").path("_meta");
+
+    assertEquals("model-b", meta.path("embedding_model").asText());
+    assertEquals(768, meta.path("embedding_dimension").asInt());
+    assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, meta.path("chunkDocVersion").asInt());
+  }
+
+  @Test
+  void aChunkMappingUpgradeKeepsTheModelTheLiveIndexRecords() throws Exception {
+    when(mockEmbeddingClient.getModelId()).thenReturn("model-b");
+    Method upgrade =
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
+    upgrade.setAccessible(true);
+    JsonNode liveMeta =
+        MAPPER.readTree(
+            "{\"chunkDocVersion\": 1, \"embedding_model\": \"model-a\", \"embedding_dimension\": 384}");
+
+    JsonNode meta = MAPPER.readTree((String) upgrade.invoke(vectorService, liveMeta)).path("_meta");
+
+    assertEquals("model-a", meta.path("embedding_model").asText());
+    assertEquals(384, meta.path("embedding_dimension").asInt());
+    assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, meta.path("chunkDocVersion").asInt());
+  }
+
+  @Test
+  void theChunkIndexesAreCheckedAgainstTheModelAsTheEntityIndexesAre() {
+    assertTrue(vectorService.chunkIndexNames().contains("data_asset_embeddings_chunks"));
   }
 }

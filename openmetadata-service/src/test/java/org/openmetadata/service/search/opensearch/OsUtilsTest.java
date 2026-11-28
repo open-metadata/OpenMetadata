@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,11 +32,14 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
-import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
@@ -51,7 +55,6 @@ class OsUtilsTest {
   @Mock private HitsMetadata<JsonData> hitsMetadata;
   @Mock private Hit<JsonData> firstHit;
   @Mock private Hit<JsonData> secondHit;
-  @Mock private EmbeddingClient embeddingClient;
 
   @Test
   void testParseJsonQuery_withOuterQueryWrapper() throws JsonProcessingException {
@@ -764,7 +767,7 @@ class OsUtilsTest {
   void testEnrichIndexMappingForOpenSearchTransformsStemmerAndFieldTypes() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(false);
 
       String enriched =
           OsUtils.enrichIndexMappingForOpenSearch(
@@ -863,9 +866,9 @@ class OsUtilsTest {
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-      when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
-      when(embeddingClient.getDimension()).thenReturn(1536);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("model-a", 1536)));
 
       OsUtils.addKnnVectorSettings(root);
 
@@ -899,6 +902,39 @@ class OsUtilsTest {
   }
 
   @Test
+  void aVectorIndexForAModelNotLoadedYetGetsKnnAndNoField() {
+    JsonNode root = JsonUtils.readTree(OPENSEARCH_VECTOR_MAPPING);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+      when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
+
+      OsUtils.addKnnVectorSettings(root);
+    }
+
+    assertTrue(
+        root.path("settings").path("index").path("knn").asBoolean(),
+        "index.knn is taken only at creation, so the field can be declared at server start");
+    assertTrue(root.path("mappings").path("properties").path("embedding").isMissingNode());
+    assertTrue(root.path("mappings").path("_meta").isMissingNode());
+  }
+
+  @Test
+  void aVectorIndexGetsNoKnnWhileNoVectorsAreBuilt() {
+    JsonNode root = JsonUtils.readTree(OPENSEARCH_VECTOR_MAPPING);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(false);
+
+      OsUtils.addKnnVectorSettings(root);
+    }
+
+    assertTrue(root.path("settings").path("index").path("knn").isMissingNode());
+  }
+
+  @Test
   void transformsFlattenedToFlatObjectAndStripsEsOnlyParams() {
     JsonNode mappings =
         org.openmetadata.schema.utils.JsonUtils.readTree(
@@ -911,5 +947,113 @@ class OsUtilsTest {
     assertEquals("flat_object", extension.path("type").asText());
     assertFalse(extension.has("ignore_above"), "flat_object must not carry ignore_above");
     assertFalse(extension.has("depth_limit"), "flat_object must not carry depth_limit");
+  }
+
+  private static final String OPENSEARCH_VECTOR_MAPPING =
+      "{\"settings\":{\"index\":{}},\"mappings\":{\"properties\":{"
+          + "\"fingerprint\":{\"type\":\"keyword\"},\"added\":{\"type\":\"keyword\"}}}}";
+
+  private final VectorFieldHealth health = new VectorFieldHealth(name -> {});
+
+  private JsonNode updatedMappings(LiveEmbeddingField live) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+      when(searchRepository.getEmbeddingModel())
+          .thenReturn(Optional.of(new EmbeddingModel("model-a", 384)));
+      when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+      return JsonUtils.readTree(
+              OsUtils.enrichIndexMappingForOpenSearchUpdate(OPENSEARCH_VECTOR_MAPPING, () -> live))
+          .path("mappings");
+    }
+  }
+
+  private JsonNode updatedProperties(LiveEmbeddingField live) {
+    return updatedMappings(live).path("properties");
+  }
+
+  private static LiveEmbeddingField liveKnnVector(int dimension, String recordedModel) {
+    return new LiveEmbeddingField(
+        "table_search_index",
+        Set.of("table_search_index"),
+        Map.of("table_search_index", new LiveEmbeddingField.Declared("knn_vector", dimension)),
+        Map.of("table_search_index", recordedModel),
+        Set.of(),
+        null);
+  }
+
+  private static final LiveEmbeddingField WITHOUT_KNN =
+      new LiveEmbeddingField(
+          "table_search_index",
+          Set.of("table_search_index"),
+          Map.of(),
+          Map.of(),
+          Set.of("table_search_index"),
+          null);
+
+  @Test
+  void aMappingUpdate_leavesOutAVectorFieldTheLiveIndexAlreadyMaps() {
+    JsonNode mappings = updatedMappings(liveKnnVector(384, "model-a"));
+
+    assertTrue(mappings.path("properties").path("embedding").isMissingNode());
+    assertTrue(mappings.path("properties").has("added"));
+    assertTrue(mappings.path("_meta").isMissingNode(), "the live _meta must stay as it is");
+    assertTrue(health.mismatches().isEmpty());
+  }
+
+  @Test
+  void aMappingUpdate_declaresTheVectorFieldAndTheModelWhenNoIndexMapsIt() {
+    JsonNode mappings = updatedMappings(LiveEmbeddingField.notMapped("table_search_index"));
+    JsonNode embedding = mappings.path("properties").path("embedding");
+
+    assertEquals("knn_vector", embedding.path("type").asText());
+    assertEquals(384, embedding.path("dimension").asInt());
+    assertEquals(48, embedding.path("method").path("parameters").path("m").asInt());
+    assertEquals("model-a", mappings.path("_meta").path("embedding_model").asText());
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutAVectorFieldOfAnotherDimension() {
+    JsonNode properties = updatedProperties(liveKnnVector(768, "model-a"));
+
+    assertTrue(properties.path("embedding").isMissingNode());
+    assertTrue(properties.has("added"));
+    assertEquals(1, health.mismatches().size());
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutAVectorFieldOfAnotherModel() {
+    JsonNode mappings = updatedMappings(liveKnnVector(384, "previous-model"));
+
+    assertTrue(mappings.path("properties").path("embedding").isMissingNode());
+    assertTrue(mappings.path("_meta").isMissingNode());
+    assertTrue(health.mismatches().getFirst().reason().contains("previous-model"));
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheVectorFieldOnAnIndexCreatedWithoutKnn() {
+    assertTrue(updatedProperties(WITHOUT_KNN).path("embedding").isMissingNode());
+    assertTrue(health.mismatches().getFirst().reason().contains("without vector support"));
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheVectorFieldWhenTheLiveFieldCannotBeRead() {
+    JsonNode properties =
+        updatedProperties(LiveEmbeddingField.unreadable("table_search_index", "503"));
+
+    assertTrue(properties.path("embedding").isMissingNode());
+    assertTrue(properties.has("added"));
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_carriesOnlyTheKnnVectorFieldAndTheModel() {
+    JsonNode mappings =
+        JsonUtils.readTree(OsUtils.embeddingFieldDeclaration(new EmbeddingModel("model-a", 384)));
+    JsonNode properties = mappings.path("properties");
+
+    assertEquals(1, properties.size());
+    assertEquals("knn_vector", properties.path("embedding").path("type").asText());
+    assertEquals(384, properties.path("embedding").path("dimension").asInt());
+    assertEquals("model-a", mappings.path("_meta").path("embedding_model").asText());
   }
 }

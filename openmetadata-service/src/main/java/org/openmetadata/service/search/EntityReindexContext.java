@@ -20,6 +20,9 @@ public class EntityReindexContext {
    * callbacks must never complete or promote a stale staged generation). */
   String stagedChunkIndex;
 
+  /** The same, for the staged ontology chunk generation of the run. */
+  String stagedOntologyChunkIndex;
+
   /** A node could not record a delete it missed in {@link #stagedChunkIndex} and failed one of
    * this type's partitions instead, so the run's chunk generation must keep its live chunks. */
   boolean stagedChunkDeleteUnrecorded;
