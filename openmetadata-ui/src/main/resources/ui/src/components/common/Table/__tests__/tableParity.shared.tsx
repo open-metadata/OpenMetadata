@@ -706,6 +706,88 @@ export const runTableParitySuite = (
 
       expect(onChange.mock.calls[0][0]).toEqual(['charlie', 'alpha', 'bravo']);
     });
+
+    // AntD's `useSelection` builds the header select-all set as
+    // `recordKeys = flattedData.map(getRowKey).filter(key =>
+    // !checkboxPropsMap.get(key).disabled)`, and react-stately's own read-side
+    // materialisation of `'all'` rejects `disabledKeys` through `canSelectItem`.
+    // A select-all here that fell back to "every rendered row" would report the
+    // getCheckboxProps-disabled row as selected — the contract both reference
+    // implementations refuse to honour.
+    it('excludes getCheckboxProps-disabled rows from the select-all report', () => {
+      const onChange = jest.fn();
+      renderTable({
+        rowSelection: {
+          getCheckboxProps: (record: ParityRow) => ({
+            disabled: record.name === 'alpha',
+          }),
+          onChange,
+        },
+      });
+      const selectAll = adapter.getSelectAllControl();
+      fireEvent.click(selectAll as HTMLElement);
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      // alpha is disabled — it must not be in the reported keys or records.
+      expect(onChange.mock.calls[0][0]).toEqual(['charlie', 'bravo']);
+      expect(onChange.mock.calls[0][1]).toEqual([
+        PARITY_ROWS[0],
+        PARITY_ROWS[2],
+      ]);
+      expect(onChange.mock.calls[0][2]).toEqual({ type: 'multiple' });
+    });
+
+    it('excludes every getCheckboxProps-disabled row when several are off', () => {
+      const onChange = jest.fn();
+      renderTable({
+        rowSelection: {
+          getCheckboxProps: (record: ParityRow) => ({
+            disabled: record.name === 'alpha' || record.name === 'bravo',
+          }),
+          onChange,
+        },
+      });
+      fireEvent.click(adapter.getSelectAllControl() as HTMLElement);
+
+      expect(onChange.mock.calls[0][0]).toEqual(['charlie']);
+      expect(onChange.mock.calls[0][1]).toEqual([PARITY_ROWS[0]]);
+    });
+
+    it('still selects every row from select-all when nothing is disabled', () => {
+      const onChange = jest.fn();
+      renderTable({
+        rowSelection: {
+          getCheckboxProps: () => ({}),
+          onChange,
+        },
+      });
+      fireEvent.click(adapter.getSelectAllControl() as HTMLElement);
+
+      expect(onChange.mock.calls[0][0]).toEqual(['charlie', 'alpha', 'bravo']);
+    });
+
+    it('does not leak disabled rows into the records of a per-row pick', () => {
+      // The Set branch of the resolver filters disabled rows out too — a
+      // controlled echo through preserveSelectedRowKeys could otherwise hand
+      // one back in. Selecting an enabled row must report just that row.
+      const onChange = jest.fn();
+      renderTable({
+        rowSelection: {
+          getCheckboxProps: (record: ParityRow) => ({
+            disabled: record.name === 'alpha',
+          }),
+          onChange,
+        },
+      });
+      const charlieRow = screen
+        .getAllByRole('row')
+        .find((row) => within(row).queryByText('charlie')) as HTMLElement;
+
+      fireEvent.click(within(charlieRow).getByRole('checkbox'));
+
+      expect(onChange.mock.calls[0][0]).toEqual(['charlie']);
+      expect(onChange.mock.calls[0][1]).toEqual([PARITY_ROWS[0]]);
+    });
   });
 
   describe(`${suiteName} — expandable`, () => {

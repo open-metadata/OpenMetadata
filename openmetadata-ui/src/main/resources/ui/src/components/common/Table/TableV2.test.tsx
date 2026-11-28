@@ -301,6 +301,114 @@ describe('TableV2 tree regressions', () => {
   });
 });
 
+/**
+ * Regression for the select-all + getCheckboxProps interaction (introduced in
+ * commit 2e08857). When the user clicks select-all, React Aria delivers the
+ * literal `'all'` sentinel; TableV2 must materialise it against the same
+ * `disabledRowKeys` set it wired into `disabledKeys`, mirroring both AntD's
+ * `useSelection` (which filters disabled rows out of `recordKeys`) and
+ * react-stately's own `SelectionManager.selectedKeys` (which gates every key
+ * through `canSelectItem`). Otherwise `getCheckboxProps`-disabled rows are
+ * reported to `rowSelection.onChange` as selected — and once a controlled
+ * `selectedRowKeys` echoes them back, react-aria renders them as checked and
+ * stuck (with `disabledBehavior="selection"` they cannot be unchecked).
+ *
+ * The shared parity suite covers the real-header path; this block covers the
+ * edge cases it does not — an expanded tree, a Set containing a disabled id,
+ * and the `preserveSelectedRowKeys` re-merge — through the same
+ * `onSelectionChange` mock plumbing the rest of this file relies on.
+ */
+describe('TableV2 select-all excludes getCheckboxProps-disabled rows', () => {
+  it('excludes disabled rows even with a tree expanded', () => {
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[parent, sibling]}
+        expandable={{}}
+        pagination={false}
+        rowKey="id"
+        rowSelection={{
+          getCheckboxProps: (record: TreeRow) => ({
+            disabled: record.id === 'child',
+          }),
+          onChange,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getAllByTestId('expand-icon')[0]);
+    fireEvent.click(screen.getByTestId('select-all-visible-rows'));
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      ['parent', 'sibling'],
+      [
+        expect.objectContaining({ id: 'parent' }),
+        expect.objectContaining({ id: 'sibling' }),
+      ],
+      { type: 'multiple' }
+    );
+  });
+
+  it('filters a Set selection that contains a disabled id', () => {
+    // react-stately never surfaces a disabled id in the Set branch under real
+    // interaction, but the wrapper resolves the Set through the same path, so
+    // an echo through `preserveSelectedRowKeys` (or any future caller driving
+    // onSelectionChange directly) must still drop disabled rows here.
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[parent, sibling]}
+        pagination={false}
+        rowKey="id"
+        rowSelection={{
+          getCheckboxProps: (record: TreeRow) => ({
+            disabled: record.id === 'parent',
+          }),
+          onChange,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('select-row-parent'));
+
+    expect(onChange).toHaveBeenLastCalledWith([], [], { type: 'multiple' });
+  });
+
+  it('preserveSelectedRowKeys does not re-add the disabled rows on the current page', () => {
+    // The disabled row's key is on the current page, so the re-merge's
+    // `!currentPageKeys.has(...)` filter drops it from `preservedKeys`; with
+    // the resolve-side filter also dropping it from current-page selection,
+    // the disabled row cannot survive a select-all under either path.
+    const onChange = jest.fn();
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[parent, sibling]}
+        pagination={false}
+        rowKey="id"
+        rowSelection={{
+          getCheckboxProps: (record: TreeRow) => ({
+            disabled: record.id === 'parent',
+          }),
+          onChange,
+          preserveSelectedRowKeys: true,
+          selectedRowKeys: ['parent'],
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('select-all-visible-rows'));
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      ['sibling'],
+      [expect.objectContaining({ id: 'sibling' })],
+      { type: 'multiple' }
+    );
+  });
+});
+
 describe('TableV2 extension props', () => {
   it('hands the customize control to a custom toolbar instead of the default row', () => {
     render(
