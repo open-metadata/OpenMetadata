@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Nested;
@@ -33,16 +35,19 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.ApiAssertions;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.CustomPropertyValueContract;
 import org.openmetadata.it.util.EntityValidation;
+import org.openmetadata.it.util.LineageCsvExport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.governance.EntityLifecycleStages;
 import org.openmetadata.schema.api.governance.EntityTypeLifecycle;
@@ -52,6 +57,7 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -65,6 +71,7 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -4092,12 +4099,99 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
             new AddLineage().withEdge(new EntitiesEdge().withFromEntity(from).withToEntity(to)));
 
     assertLineageEdgeVisibleFromBothEnds(from, to);
-    SdkClients.adminClient()
-        .lineage()
-        .deleteLineage(from.getType() + ":" + from.getId(), to.getType() + ":" + to.getId());
+    deleteLineageEdge(from, to);
     assertFalse(
         hasLineageEdge(fetchEntityLineage(from, "0", "1").getDownstreamEdges(), from, to),
         "Deleted lineage edge must not be returned");
+  }
+
+  /**
+   * Test: an edge between two entities of this type carries a pipeline, the lineage CSV export
+   * (the async export the lineage page runs) lists it with the pipeline and both ends' services,
+   * and deleting the edge removes it.
+   */
+  @Test
+  void testLineagePipelineExportAndRemoval(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsLineage, getEntityType() + " does not run lineage tests");
+    T upstream = createEntity(createRequest(ns.prefix("pipelineEdgeUpstream"), ns));
+    T downstream = createEntity(createMinimalRequest(ns));
+    EntityReference from = lineageReference(upstream);
+    EntityReference to = lineageReference(downstream);
+    Pipeline pipeline = createLineagePipeline(ns);
+
+    SdkClients.adminClient()
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from)
+                        .withToEntity(to)
+                        .withLineageDetails(
+                            new LineageDetails().withPipeline(pipeline.getEntityReference()))));
+
+    assertEquals(pipeline.getId(), storedEdgePipelineId(from, to));
+    assertExportedPipelineRow(upstream, downstream, pipeline);
+    deleteLineageEdge(from, to);
+    assertFalse(
+        hasLineageEdge(fetchEntityLineage(from, "0", "1").getDownstreamEdges(), from, to),
+        "Deleted lineage edge must not be returned");
+  }
+
+  private Pipeline createLineagePipeline(TestNamespace ns) {
+    return SdkClients.adminClient()
+        .pipelines()
+        .create(
+            new CreatePipeline()
+                .withName(ns.prefix("lineageEdgePipeline"))
+                .withService(PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
+  }
+
+  private UUID storedEdgePipelineId(EntityReference from, EntityReference to) {
+    return fetchEntityLineage(from, "0", "1").getDownstreamEdges().stream()
+        .filter(edge -> to.getId().equals(edge.getToEntity()))
+        .findFirst()
+        .map(edge -> edge.getLineageDetails().getPipeline().getId())
+        .orElse(null);
+  }
+
+  private void assertExportedPipelineRow(T upstream, T downstream, Pipeline pipeline) {
+    CSVRecord row =
+        // Polls until search has indexed the edge, so the export lists it. Longer than one
+        // LineageCsvExport call, which re-runs only an export whose result the server released
+        // (404); a failed job or any other status fails the test instead of being retried here.
+        Awaitility.await("lineage export lists the " + getEntityType() + " edge")
+            .atMost(Duration.ofMinutes(5))
+            .pollInterval(Duration.ofSeconds(3))
+            .until(
+                () ->
+                    LineageCsvExport.edgeRows(
+                        getEntityType(),
+                        upstream.getFullyQualifiedName(),
+                        downstream.getFullyQualifiedName()),
+                rows -> !rows.isEmpty())
+            .getFirst();
+    assertAll(
+        () -> assertEquals(pipeline.getName(), row.get("pipelineName")),
+        () -> assertEquals(lineageServiceName(upstream), row.get("fromServiceName")),
+        () -> assertEquals(lineageServiceType(upstream), row.get("fromServiceType")),
+        () -> assertEquals(lineageServiceName(downstream), row.get("toServiceName")),
+        () -> assertEquals(lineageServiceType(downstream), row.get("toServiceType")));
+  }
+
+  /** The export writes an empty cell for an entity without a service, such as a metric. */
+  private static String lineageServiceName(EntityInterface<?> entity) {
+    return Optional.ofNullable(entity.getService()).map(EntityReference::getName).orElse("");
+  }
+
+  private static String lineageServiceType(EntityInterface<?> entity) {
+    return JsonUtils.valueToTree(entity).path("serviceType").asText("");
+  }
+
+  private static void deleteLineageEdge(EntityReference from, EntityReference to) {
+    SdkClients.adminClient()
+        .lineage()
+        .deleteLineage(from.getType() + ":" + from.getId(), to.getType() + ":" + to.getId());
   }
 
   private EntityReference lineageReference(T entity) {

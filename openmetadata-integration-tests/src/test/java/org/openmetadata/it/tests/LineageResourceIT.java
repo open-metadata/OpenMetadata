@@ -42,7 +42,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
-import org.openmetadata.it.util.CsvJobClient;
+import org.openmetadata.it.util.LineageCsvExport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateContainer;
@@ -4476,20 +4476,10 @@ public class LineageResourceIT {
   }
 
   private CSVRecord exportedAsyncRow(Table from, Table to) throws Exception {
-    CsvJobClient jobs = CsvJobClient.onDefaultServer();
-    String jobId =
-        jobs.startExport(
-            LINEAGE_PATH
-                + "/exportAsync?type=table&upstreamDepth=0&downstreamDepth=1&fqn="
-                + URLEncoder.encode(from.getFullyQualifiedName(), StandardCharsets.UTF_8));
-    jobs.awaitJobStatus(jobId, "COMPLETED");
-    List<CSVRecord> rows = parseCsvRows(jobs.downloadResult(jobId).body());
-    return rows.stream()
-        .filter(
-            row ->
-                from.getFullyQualifiedName().equals(row.get("fromEntityFQN"))
-                    && to.getFullyQualifiedName().equals(row.get("toEntityFQN")))
+    return LineageCsvExport.edgeRows(
+            Entity.TABLE, from.getFullyQualifiedName(), to.getFullyQualifiedName())
+        .stream()
         .findFirst()
-        .orElseThrow(() -> new AssertionError("Exported CSV has no row for the edge: " + rows));
+        .orElseThrow(() -> new AssertionError("Exported CSV has no row for the edge"));
   }
 }

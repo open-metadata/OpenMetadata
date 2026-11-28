@@ -50,8 +50,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
 /**
- * The lineage page filters (Service, Service Type, Database, Schema, Column, Owner, Data Product,
- * Glossary Term) and the Impact Analysis counts, run against the two endpoints the UI calls.
+ * The lineage page filters (Service, Service Type, Database, Schema, Column, Domains, Owner, Tag,
+ * Tier, Data Product, Glossary Term) and the Impact Analysis counts, run against the two endpoints
+ * the UI calls.
  *
  * <p>The canvas calls {@code /getLineage}, which keeps the root and every node on the path to a
  * match (preserve_paths defaults to true). Impact Analysis calls {@code getLineageByEntityCount},
@@ -59,8 +60,9 @@ import org.openmetadata.sdk.network.RequestOptions;
  *
  * <pre>
  *   root (postgres table) ─→ mid (postgres table, column mid_only)
- *                               ├─→ snowLeaf  (snowflake table, column snow_only, with an owner,
- *                               │              data product and glossary term nothing else has)
+ *                               ├─→ snowLeaf  (snowflake table, column snow_only, with a domain,
+ *                               │              owner, data product, glossary term, tag and tier
+ *                               │              nothing else has)
  *                               ├─→ pgLeaf    (postgres table)
  *                               └─→ topicLeaf (kafka topic)
  * </pre>
@@ -75,6 +77,8 @@ public class LineageFilterIT {
   private static final String SNOW_ONLY_COLUMN = "snow_only";
   private static final String DOWNSTREAM = "Downstream";
   private static final String UPSTREAM = "Upstream";
+  private static final String SNOW_TAG = "PII.Sensitive";
+  private static final String SNOW_TIER = "Tier.Tier1";
 
   private final OpenMetadataClient client = SdkClients.adminClient();
   private Table root;
@@ -107,7 +111,11 @@ public class LineageFilterIT {
                     .withOwners(List.of(snowOwner.getEntityReference()))
                     .withDomains(List.of(snowDomain.getFullyQualifiedName()))
                     .withDataProducts(List.of(snowProduct.getFullyQualifiedName()))
-                    .withTags(List.of(glossaryLabel(snowTerm))));
+                    .withTags(
+                        List.of(
+                            glossaryLabel(snowTerm),
+                            classificationLabel(SNOW_TAG),
+                            classificationLabel(SNOW_TIER))));
     pgLeaf = createTable(ns, DatabaseServiceTestFactory.createPostgres(ns), "pg", "id");
     topicLeaf = TopicTestFactory.createSimple(ns);
     addEdge(root, mid);
@@ -186,8 +194,44 @@ public class LineageFilterIT {
     assertEquals(Map.of(), depthCounts(topicLeaf, DOWNSTREAM));
   }
 
+  @Test
+  void getLineage_metadataFilters_keepsPathToMatch() {
+    Set<String> expected = fqns(root, mid, snowLeaf);
+    assertAll(
+        metadataFilters().entrySet().stream()
+            .map(f -> () -> assertEquals(expected, canvasNodes(f.getValue()), f.getKey())));
+  }
+
+  @Test
+  void impactAnalysis_metadataFilters_returnOnlyMatches() {
+    Set<String> expected = fqns(snowLeaf);
+    assertAll(
+        metadataFilters().entrySet().stream()
+            .map(
+                f ->
+                    () ->
+                        assertEquals(
+                            expected, impactAnalysisNodes(root, f.getValue()), f.getKey())));
+  }
+
   /**
-   * The lineage page's Database, Schema, Column, Owner, Data Product and Glossary Term filters,
+   * The lineage page's Domains, Owners, Tag and Tier filters (the "Verify metadata filters" group),
+   * each matching snowLeaf and nothing on the path to it, keyed by the UI's filter label.
+   */
+  private Map<String, String> metadataFilters() {
+    return Map.of(
+        "Domains filter",
+        termFilter("domains.displayName.keyword", snowDomain.getDisplayName()),
+        "Owners filter",
+        termFilter("ownerDisplayName", displayNameOrName(snowOwner)),
+        "Tag filter",
+        termFilter("tags.tagFQN", SNOW_TAG),
+        "Tier filter",
+        termFilter("tier.tagFQN", SNOW_TIER));
+  }
+
+  /**
+   * The lineage page's Database, Schema, Column, Data Product and Glossary Term filters,
    * each matching snowLeaf and nothing on the path to it, keyed by the UI's filter label.
    */
   private Map<String, String> leafOnlyFilters() {
@@ -198,8 +242,6 @@ public class LineageFilterIT {
         termFilter("databaseSchema.displayName.keyword", snowLeaf.getDatabaseSchema().getName()),
         "Column filter",
         termFilter("columns.name.keyword", SNOW_ONLY_COLUMN),
-        "Owner filter",
-        termFilter("ownerDisplayName", displayNameOrName(snowOwner)),
         "Data Product filter",
         termFilter("dataProducts.displayName.keyword", snowProduct.getDisplayName()),
         "Glossary Term filter",
@@ -212,6 +254,7 @@ public class LineageFilterIT {
         .create(
             new CreateDomain()
                 .withName(ns.shortPrefix("lineage_dom"))
+                .withDisplayName(ns.shortPrefix("Lineage Domain"))
                 .withDomainType(DomainType.AGGREGATE)
                 .withDescription("Lineage filter"));
   }
@@ -237,6 +280,14 @@ public class LineageFilterIT {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static TagLabel classificationLabel(String tagFqn) {
+    return new TagLabel()
+        .withTagFQN(tagFqn)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
         .withLabelType(TagLabel.LabelType.MANUAL)
         .withState(TagLabel.State.CONFIRMED);
   }

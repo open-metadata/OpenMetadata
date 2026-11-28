@@ -251,13 +251,14 @@ test.describe('Data asset lineage', () => {
 
     test(
       `verify pipeline, export and removal for entity - ${startCase(key)}`,
-      // The edge drawer works the same for every type; only Table is tagged here.
+      // The edge drawer works the same for every type, so only Table has a
+      // browser half; every type's API outcome runs in its entity IT.
       key === 'table'
         ? migratedTo.split(
             CANVAS_TEST,
             'LineageResourceIT#testExportLineageIncludesPipelineAndServiceColumns'
           )
-        : {},
+        : migratedTo.javaIT('BaseEntityIT#testLineagePipelineExportAndRemoval'),
       async ({ page }) => {
         // Matches the create-lineage sibling above. Five minutes was not enough:
         // the Table variant ran 5.2m, and deleteEdge now verifies the toolbar
@@ -371,13 +372,16 @@ test.describe('Column Level Lineage', () => {
       test(
         `Column lineage for ${key} -> ${targetKey}`,
         // Table -> table goes through the column menu, table -> dashboard is
-        // drawn from the stored lineage; the other pairs' UI is the same.
+        // drawn from the stored lineage; the other pairs' UI is the same, so
+        // only their API outcome is left, in the column matrix IT.
         COLUMN_LINEAGE_ITS[`${key}->${targetKey}`]
           ? migratedTo.split(
               CANVAS_TEST,
               COLUMN_LINEAGE_ITS[`${key}->${targetKey}`]
             )
-          : {},
+          : migratedTo.javaIT(
+              'LineageColumnMatrixIT#columnLineage_everySourceTargetPair'
+            ),
         async ({ page }) => {
           test.slow();
           const sourceEntity = new EntityClassSource();
