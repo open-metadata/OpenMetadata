@@ -135,9 +135,6 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@fontsource/inter": "^5.2.8",
-    "@svgr/core": "^8.1.0",
-    "@svgr/plugin-jsx": "^8.1.0",
-    "svgo": "^3.3.2",
     "@internationalized/date": "^3.11.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",
@@ -148,6 +145,8 @@
     "@storybook/react": "^8.6.19",
     "@storybook/react-vite": "^8.6.19",
     "@storybook/test": "^8.6.19",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/dom": "^10.4.0",
@@ -178,6 +177,7 @@
     "react-hook-form": "^7.78.0",
     "react-i18next": "^15.5.3",
     "storybook": "^8.6.19",
+    "svgo": "^3.3.2",
     "sync-i18n": "^0.0.20",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18",
@@ -193,9 +193,9 @@
     "vitest": "^4.1.12"
   },
   "resolutions": {
-    "**/@microsoft/api-extractor/minimatch": "11.0.9",
-    "**/@vue/language-core/minimatch": "11.0.9",
-    "**/@joshwooding/vite-plugin-react-docgen-typescript/glob": "14.0.6",
+    "@microsoft/api-extractor/minimatch": "11.0.9",
+    "@vue/language-core/minimatch": "11.0.9",
+    "@joshwooding/vite-plugin-react-docgen-typescript/glob": "14.0.6",
     "postcss-selector-parser": "7.1.7",
     "uuid": "^14.0.0"
   },
@@ -205,6 +205,6 @@
   },
   "engines": {
     "node": ">=22.23.5",
-    "yarn": ">=1.22.0"
+    "yarn": "^4.18.1"
   }
 }

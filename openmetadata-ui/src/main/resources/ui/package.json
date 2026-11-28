@@ -4,7 +4,7 @@
   "private": true,
   "engines": {
     "node": ">=22.23.5",
-    "yarn": "^1.22.0"
+    "yarn": "^4.18.1"
   },
   "repository": {
     "type": "git",
@@ -22,7 +22,7 @@
     "compress:brotli": "node scripts/compress-brotli.mjs",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
-    "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
+    "preinstall": "cd ../../../../../openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
     "test": "node --test scripts/sso-dev-server.test.mjs && jest",
     "test:eslint-rules": "node --test eslint-rules/*.test.mjs 'playwright/eslint-rules/tests/**/*.test.mjs'",
     "test:watch": "jest --watch",
@@ -313,10 +313,18 @@
     "vitest": "4.1.12",
     "vitest-browser-react": "2.3.0"
   },
+  "dependenciesMeta": {
+    "tree-sitter@0.21.1": {
+      "built": false
+    },
+    "tree-sitter-json": {
+      "built": false
+    }
+  },
   "resolutions": {
-    "**/broadcast-channel/@babel/runtime": "7.29.14",
-    "**/@swagger-api/apidom-reference/minimatch": "11.0.9",
-    "**/eslint-plugin-sonarjs/minimatch": "11.0.9",
+    "broadcast-channel/@babel/runtime": "7.29.14",
+    "@swagger-api/apidom-reference/minimatch": "11.0.9",
+    "eslint-plugin-sonarjs/minimatch": "11.0.9",
     "@types/react": "^18.2.55",
     "prosemirror-model": "1.25.12",
     "prosemirror-state": "1.4.4",

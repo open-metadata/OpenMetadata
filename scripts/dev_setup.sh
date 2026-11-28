@@ -617,8 +617,10 @@ ensure_yarn() {
     local v
     v="$("$selected_yarn" --version 2>/dev/null)"
     case "$v" in
-      1.*) ok "Yarn $v ($selected_yarn)" ; return 0 ;;
-      *) warn "Yarn $v found; this repo pins Yarn Classic (^1.22). Run: npm i -g yarn@1.22.22" ; return 1 ;;
+      # Run from the repo root, any Yarn >= 1.22 reports the Yarn 4 release .yarnrc.yml pins; a 1.x
+      # answer means a Yarn too old to hand off.
+      4.*) ok "Yarn $v ($selected_yarn)" ; return 0 ;;
+      *) warn "Yarn $v found; this repo needs Yarn >= 1.22 to start its pinned Yarn 4. Run: npm i -g yarn@1.22.22" ; return 1 ;;
     esac
   fi
   if [ "$DO_TOOLS" -eq 0 ] || [ "$CHECK_ONLY" -eq 1 ]; then
@@ -1048,7 +1050,7 @@ fi
 step "Java $JAVA_VERSION";      ensure_java   || true
 step "Maven";                   ensure_maven  || true
 step "Node $NODE_VERSION";      ensure_node   || true
-step "Yarn (classic)";          ensure_yarn   || true
+step "Yarn";                    ensure_yarn   || true
 step "Python >= $PYTHON_MIN";   ensure_python || true
 step "ANTLR $ANTLR_VERSION";    ensure_antlr  || true
 step "Docker";                  ensure_docker || true

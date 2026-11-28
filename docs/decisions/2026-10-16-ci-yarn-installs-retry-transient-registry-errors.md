@@ -1,7 +1,7 @@
 # CI yarn installs retry transient registry errors
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-11-25 (Yarn 4: loops kept, timeout set by env)
 - **Deciders:** Chirag Madlani
 - **Guard:** reviewer
 - **Related:** #35556; RDF Playwright run 38749383300 attempt 1
@@ -27,3 +27,10 @@ A registry blip costs up to ~45s of waiting instead of a red job. A real outage 
 attempts, at most about three install durations plus the waits. A new workflow that runs
 `yarn install` copies the same block. Revisit when the UI moves to yarn ≥2, which retries network
 errors itself, at which point the loops can go.
+
+## Amendment
+
+v2 2026-11-25: the UI moved to Yarn 4 (ADR:2026-10-29-ui-yarn-4-registry-from-config). Yarn 4
+retries each failed request itself (`httpRetry`), but a registry that stays down for longer than
+those retries still fails the install, so the job-level loops stay. `--network-timeout 100000`,
+which Yarn 4 silently ignores, becomes `YARN_HTTP_TIMEOUT=100000` on the same command.

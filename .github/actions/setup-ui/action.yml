@@ -30,7 +30,7 @@ runs:
       id: keys
       shell: bash
       run: |
-        echo "deps=ui-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/.nvmrc', 'openmetadata-ui/src/main/resources/ui/package.json', 'openmetadata-ui/src/main/resources/ui/yarn.lock', 'openmetadata-ui-core-components/src/main/resources/ui/package.json', 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock') }}" >> "$GITHUB_OUTPUT"
+        echo "deps=ui-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.yarnrc.yml', 'openmetadata-ui/src/main/resources/ui/.nvmrc', 'openmetadata-ui/src/main/resources/ui/package.json', 'openmetadata-ui/src/main/resources/ui/yarn.lock', 'openmetadata-ui-core-components/src/main/resources/ui/package.json', 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock') }}" >> "$GITHUB_OUTPUT"
         echo "dist=ui-core-dist-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/.nvmrc', 'openmetadata-ui-core-components/src/main/resources/ui/package.json', 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock', 'openmetadata-ui-core-components/src/main/resources/ui/src/**', 'openmetadata-ui-core-components/src/main/resources/ui/*.ts', 'openmetadata-ui-core-components/src/main/resources/ui/*.json') }}" >> "$GITHUB_OUTPUT"
     - name: Restore installed UI dependencies
       id: deps
@@ -38,16 +38,18 @@ runs:
       with:
         path: |
           openmetadata-ui/src/main/resources/ui/node_modules
+          openmetadata-ui/src/main/resources/ui/.yarn/install-state.gz
           openmetadata-ui-core-components/src/main/resources/ui/node_modules
+          openmetadata-ui-core-components/src/main/resources/ui/.yarn/install-state.gz
         key: ${{ steps.keys.outputs.deps }}
     - name: Restore Yarn dependencies
       if: steps.deps.outputs.cache-hit != 'true'
       uses: actions/cache/restore@v6
       with:
-        path: ~/.cache/yarn
-        key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+        path: ~/.yarn/berry/cache
+        key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
         restore-keys: |
-          yarn-pkg-cache-${{ runner.os }}-
+          yarn4-pkg-cache-${{ runner.os }}-
     # The UI's postinstall needs the antlr4 CLI. `make install_antlr_cli` tries
     # apt first, which took ~10 min on slow runners; use the Makefile's pinned
     # jar (same version and checksum) from a cache instead.
@@ -93,7 +95,7 @@ runs:
       # The registry occasionally answers 502; retry rather than fail the job.
       run: |
         for attempt in 1 2 3; do
-          yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+          YARN_HTTP_TIMEOUT=120000 yarn install --immutable && exit 0
           echo "yarn install failed (attempt $attempt), retrying"
           sleep 15
         done
@@ -125,7 +127,9 @@ runs:
       with:
         path: |
           openmetadata-ui/src/main/resources/ui/node_modules
+          openmetadata-ui/src/main/resources/ui/.yarn/install-state.gz
           openmetadata-ui-core-components/src/main/resources/ui/node_modules
+          openmetadata-ui-core-components/src/main/resources/ui/.yarn/install-state.gz
         key: ${{ steps.keys.outputs.deps }}
     - name: Save core components dist
       if: steps.dist.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
