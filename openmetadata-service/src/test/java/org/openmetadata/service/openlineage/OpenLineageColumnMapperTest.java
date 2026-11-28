@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -103,6 +105,16 @@ class OpenLineageColumnMapperTest {
   @Test
   void rawTypeIsKeptAsTheDisplayType() {
     assertEquals("decimal(10,2)", column("decimal(10,2)").getDataTypeDisplay());
+  }
+
+  /** The OpenLineage spec requires only a field's name; dbt-ol sends untyped columns. */
+  @Test
+  void fieldWithoutTypeIsAccepted() {
+    SchemaField untyped = new SchemaField().withName("c");
+
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      assertTrue(factory.getValidator().validate(untyped).isEmpty());
+    }
   }
 
   @Test
