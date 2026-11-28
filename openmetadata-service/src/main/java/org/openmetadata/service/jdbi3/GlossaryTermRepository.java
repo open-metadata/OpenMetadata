@@ -62,6 +62,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -146,6 +148,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAs
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -179,6 +182,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
+  private static final String REFRESH_RELATED_TERM_SEARCH_DOCS = "refreshRelatedTermSearchDocs";
   private static final Comparator<TermRelation> TERM_RELATION_ORDER =
       Comparator.comparing((TermRelation relation) -> relation.getTerm().getFullyQualifiedName())
           .thenComparing(TermRelation::getRelationType);
@@ -1229,14 +1233,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     UUID targetTermId = relation.getTerm().getId();
     String authoredType = relationTypeOrDefault(relation);
     String storedType = computeCanonicalRelationType(sourceTermId, targetTermId, authoredType);
-    RelationshipType relationshipType = relationshipTypeResolver.require(storedType);
+    RelationshipType storedRelationshipType = relationshipTypeResolver.require(storedType);
     TermRelationMetadata metadata =
-        storedMetadata(relation, relationshipType, sourceTermId, updatedBy);
+        storedMetadata(relation, storedRelationshipType, sourceTermId, updatedBy);
     OntologyRelationshipRow row =
-        relationshipRow(sourceTermId, targetTermId, relationshipType, metadata);
+        relationshipRow(sourceTermId, targetTermId, storedRelationshipType, metadata);
     daoCollection.relationshipDAO().insertOntologyRelationship(row);
+    RelationshipType authoredRelationshipType =
+        authoredType.equals(storedType)
+            ? storedRelationshipType
+            : relationshipTypeResolver.require(authoredType);
+    applyPersistedMetadata(relation, authoredRelationshipType, metadata);
     RdfUpdater.addGlossaryTermRelation(sourceTermId, targetTermId, authoredType);
     invalidateTermRelationCache(sourceTermId, targetTermId);
+  }
+
+  private static void applyPersistedMetadata(
+      TermRelation relation,
+      RelationshipType authoredRelationshipType,
+      TermRelationMetadata metadata) {
+    relation.setId(metadata.getId());
+    relation.setRelationType(authoredRelationshipType.getName());
+    relation.setRelationshipType(authoredRelationshipType.getEntityReference());
+    relation.setProvenance(metadata.getProvenance());
+    relation.setStatus(metadata.getStatus());
+    relation.setCreatedBy(metadata.getCreatedBy());
+    relation.setCreatedAt(metadata.getCreatedAt());
   }
 
   private TermRelationMetadata storedMetadata(
@@ -1428,7 +1450,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       GlossaryTerm original,
       List<TermRelation> updatedRelations) {
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
-    updated.setRelatedTerms(updatedRelations.isEmpty() ? null : updatedRelations);
+    updated.setRelatedTerms(updatedRelations);
     String user =
         nullOrEmpty(updatedBy)
             ? (nullOrEmpty(original.getUpdatedBy())
@@ -2231,6 +2253,29 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postCreate(GlossaryTerm entity) {
     super.postCreate(entity);
+    refreshRelatedTermSearchDocs(relatedTermPeers(entity.getRelatedTerms(), entity.getId()));
+  }
+
+  @Override
+  protected void postCreate(List<GlossaryTerm> entities) {
+    super.postCreate(entities);
+    refreshRelatedTermSearchDocs(relatedTermPeers(entities));
+  }
+
+  @Override
+  protected Runnable preparePostDeleteCleanup(List<GlossaryTerm> entities) {
+    Set<UUID> termIds =
+        listOrEmpty(entities).stream()
+            .map(GlossaryTerm::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    List<EntityReference> peerRefs = findExternalRelatedTermPeers(termIds);
+    return () -> refreshRelatedTermSearchDocs(peerRefs);
+  }
+
+  @Override
+  protected void postBulkSoftDelete(List<GlossaryTerm> entities) {
+    refreshRelatedTermSearchDocs(relatedTermPeers(entities));
   }
 
   /**
@@ -2249,6 +2294,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         GlossaryTermPendingLabels.dropRejected(updated);
       }
     }
+    List<EntityReference> peers = new ArrayList<>(changedRelatedTermPeers(original, updated));
+    if (targetIdentityChanged(original, updated)) {
+      peers.addAll(relatedTermPeers(getRelatedTerms(updated), updated.getId()));
+    }
+    refreshRelatedTermSearchDocs(deduplicatePeers(peers, updated.getId()));
   }
 
   // Edits by one user within a session are consolidated into one version, and `original` is then
@@ -2275,7 +2325,156 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         condition ->
             PolicyConditionUpdater.removeFromCondition(
                 condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    if (!hardDelete && !isInHardDeleteCascade()) {
+      refreshRelatedTermSearchDocs(relatedTermPeers(getRelatedTerms(entity), entity.getId()));
+    }
   }
+
+  @Override
+  protected void postRestore(GlossaryTerm entity) {
+    super.postRestore(entity);
+    refreshRelatedTermSearchDocs(relatedTermPeers(getRelatedTerms(entity), entity.getId()));
+  }
+
+  private void refreshRelatedTermSearchDocs(List<EntityReference> peerRefs) {
+    if (nullOrEmpty(peerRefs) || searchRepository == null) {
+      return;
+    }
+    // The batch reload queues each peer by ID if a failure happens before indexing starts.
+    searchRepository.deferIfFlushScopeActive(
+        () -> updateRelatedTermSearchDocs(peerRefs),
+        REFRESH_RELATED_TERM_SEARCH_DOCS,
+        null,
+        null,
+        GLOSSARY_TERM);
+  }
+
+  private void updateRelatedTermSearchDocs(List<EntityReference> peerRefs) {
+    try {
+      searchRepository.updateEntitiesByReference(peerRefs);
+    } catch (RuntimeException failure) {
+      LOG.warn("Failed to refresh search documents for {} related terms", peerRefs.size(), failure);
+      String reason =
+          SearchIndexRetryQueue.failureReason(REFRESH_RELATED_TERM_SEARCH_DOCS, failure);
+      peerRefs.forEach(
+          peer ->
+              SearchIndexRetryQueue.enqueue(peer.getId().toString(), null, GLOSSARY_TERM, reason));
+    }
+  }
+
+  void refreshRenamedDescendantPeers(List<EntityDAO.EntityIdFqnPair> descendants) {
+    Set<UUID> termIds = descendants.stream().map(term -> term.id).collect(Collectors.toSet());
+    refreshRelatedTermSearchDocs(findExternalRelatedTermPeers(termIds));
+  }
+
+  private List<EntityReference> findExternalRelatedTermPeers(Set<UUID> termIds) {
+    if (termIds.isEmpty()) {
+      return List.of();
+    }
+    Set<String> idStrings = termIds.stream().map(UUID::toString).collect(Collectors.toSet());
+    Set<UUID> peerIds = new LinkedHashSet<>();
+    for (CollectionDAO.EntityRelationshipObject rec :
+        findFromRecordsBatch(idStrings, GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM)) {
+      addExternalPeer(peerIds, rec.getFromId(), termIds);
+    }
+    for (CollectionDAO.EntityRelationshipObject rec :
+        findToRecordsBatch(idStrings, GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM)) {
+      addExternalPeer(peerIds, rec.getToId(), termIds);
+    }
+    return peerIds.stream()
+        .map(id -> new EntityReference().withId(id).withType(GLOSSARY_TERM))
+        .toList();
+  }
+
+  private static void addExternalPeer(Set<UUID> peerIds, String peerId, Set<UUID> termIds) {
+    UUID id = UUID.fromString(peerId);
+    if (!termIds.contains(id)) {
+      peerIds.add(id);
+    }
+  }
+
+  private static boolean targetIdentityChanged(GlossaryTerm original, GlossaryTerm updated) {
+    return !Objects.equals(original.getName(), updated.getName())
+        || !Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
+        || !Objects.equals(original.getDisplayName(), updated.getDisplayName());
+  }
+
+  static List<EntityReference> relatedTermPeers(List<TermRelation> relations, UUID excludeTermId) {
+    List<EntityReference> peers = new ArrayList<>();
+    for (TermRelation relation : listOrEmpty(relations)) {
+      if (relation != null && relation.getTerm() != null && relation.getTerm().getId() != null) {
+        peers.add(new EntityReference().withId(relation.getTerm().getId()).withType(GLOSSARY_TERM));
+      }
+    }
+    return deduplicatePeers(peers, excludeTermId);
+  }
+
+  static List<EntityReference> relatedTermPeers(List<GlossaryTerm> entities) {
+    Map<UUID, EntityReference> peersById = new LinkedHashMap<>();
+    for (GlossaryTerm entity : listOrEmpty(entities)) {
+      if (entity == null) {
+        continue;
+      }
+      for (EntityReference peer : relatedTermPeers(entity.getRelatedTerms(), entity.getId())) {
+        peersById.putIfAbsent(peer.getId(), peer);
+      }
+    }
+    return List.copyOf(peersById.values());
+  }
+
+  static List<EntityReference> changedRelatedTermPeers(
+      GlossaryTerm original, GlossaryTerm updated) {
+    if (updated == null || updated.getRelatedTerms() == null) {
+      return List.of();
+    }
+    Set<TermRelationKey> before =
+        relationKeys(original == null ? null : original.getRelatedTerms());
+    Set<TermRelationKey> after = relationKeys(updated.getRelatedTerms());
+    UUID selfId = updated.getId();
+    List<EntityReference> changed = new ArrayList<>();
+    for (TermRelationKey key : before) {
+      if (!after.contains(key)) {
+        changed.add(new EntityReference().withId(key.targetTermId()).withType(GLOSSARY_TERM));
+      }
+    }
+    for (TermRelationKey key : after) {
+      if (!before.contains(key)) {
+        changed.add(new EntityReference().withId(key.targetTermId()).withType(GLOSSARY_TERM));
+      }
+    }
+    return deduplicatePeers(changed, selfId);
+  }
+
+  private static Set<TermRelationKey> relationKeys(List<TermRelation> relations) {
+    Set<TermRelationKey> keys = new LinkedHashSet<>();
+    for (TermRelation relation : listOrEmpty(relations)) {
+      if (relation == null || relation.getTerm() == null || relation.getTerm().getId() == null) {
+        continue;
+      }
+      keys.add(
+          new TermRelationKey(
+              relation.getTerm().getId(),
+              Objects.requireNonNullElse(
+                  relation.getRelationType(), TermRelationMetadataCodec.DEFAULT_RELATION_TYPE),
+              Objects.requireNonNullElse(relation.getProvenance(), RelationProvenance.MANUAL),
+              Objects.requireNonNullElse(relation.getStatus(), EntityStatus.UNPROCESSED)));
+    }
+    return keys;
+  }
+
+  private static List<EntityReference> deduplicatePeers(
+      List<EntityReference> peers, UUID excludeTermId) {
+    Map<UUID, EntityReference> unique = new LinkedHashMap<>();
+    for (EntityReference peer : listOrEmpty(peers)) {
+      if (peer != null && peer.getId() != null && !peer.getId().equals(excludeTermId)) {
+        unique.putIfAbsent(peer.getId(), peer);
+      }
+    }
+    return List.copyOf(unique.values());
+  }
+
+  private record TermRelationKey(
+      UUID targetTermId, String relationType, RelationProvenance provenance, EntityStatus status) {}
 
   @Override
   protected EntityReference getParentReference(GlossaryTerm entity) {
@@ -2523,12 +2722,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       relations.sort(TERM_RELATION_ORDER);
     }
 
-    if (!relatedTermsMap.isEmpty()) {
-      for (GlossaryTerm term : entities) {
-        List<TermRelation> relatedTerms =
-            relatedTermsMap.getOrDefault(term.getId(), Collections.emptyList());
-        term.setRelatedTerms(relatedTerms);
-      }
+    for (GlossaryTerm term : entities) {
+      List<TermRelation> relatedTerms =
+          relatedTermsMap.getOrDefault(term.getId(), Collections.emptyList());
+      term.setRelatedTerms(relatedTerms);
     }
   }
 
@@ -2889,7 +3086,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         storeTermRelation(origTerm.getId(), termRelation, updatedTerm.getUpdatedBy());
       }
 
-      updatedTerm.setRelatedTerms(updatedRelated.isEmpty() ? null : updatedRelated);
+      updatedTerm.setRelatedTerms(updatedRelated);
     }
 
     /**
@@ -2985,6 +3182,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
       reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
+      refreshRenamedDescendantPeers(renamedTerms);
     }
 
     /**
@@ -3052,6 +3250,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
       reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
+      refreshRenamedDescendantPeers(renamedTerms);
     }
 
     private void validateParent() {
@@ -3163,6 +3362,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             GLOSSARY_TERM,
             Relationship.RELATED_TO.ordinal(),
             canonicalType);
+    invalidateTermRelationCache(termA, termB);
   }
 
   private void deleteAllBidirectionalRelatedTo(UUID termA, UUID termB) {

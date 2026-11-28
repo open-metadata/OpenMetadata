@@ -217,6 +217,33 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void glossaryTermRelatedTermsMustBeNestedWithTypedFieldsInAllLanguages() {
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      String entity = "glossaryTerm[" + language + "]";
+      JsonNode mapping = allMappings.get(entity);
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      JsonNode relatedTerms = properties == null ? null : properties.get("relatedTerms");
+      if (relatedTerms == null || !"nested".equals(relatedTerms.path("type").asText())) {
+        violations.add(entity + " (relatedTerms is not type=nested)");
+        continue;
+      }
+      JsonNode nestedProps = relatedTerms.path("properties");
+      for (String field : List.of("relationType", "provenance", "status", "term")) {
+        if (!nestedProps.has(field)) {
+          violations.add(entity + " missing relatedTerms." + field);
+        }
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "glossaryTerm.relatedTerms must be mapped as nested with typed relation fields in all "
+            + "languages (ADR:2026-11-23-glossary-related-terms-are-indexed-as-nested-typed-edges). "
+            + "Violations: "
+            + violations);
+  }
+
+  @Test
   void auditReportIndexFieldsMustBeMappedExplicitly() {
     List<String> violations = new ArrayList<>();
     for (String language : LANGUAGES) {

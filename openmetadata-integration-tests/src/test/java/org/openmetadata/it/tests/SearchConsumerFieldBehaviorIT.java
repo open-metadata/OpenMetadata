@@ -119,6 +119,13 @@ class SearchConsumerFieldBehaviorIT {
   private static final String FAILURE_COMMENT_TERM = "flakyupstream";
   private static final String FAILURE_COMMENT =
       "closed after the " + FAILURE_COMMENT_TERM + " feed was backfilled";
+  private static final String GLOSSARY_TERM_PENDING_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+  private static final String GLOSSARY_TERM_MIXED_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+  private static final String GLOSSARY_TERM_LEGACY_ID = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+  private static final String RELATED_TARGET_A_ID = "12121212-1212-1212-1212-121212121212";
+  private static final String RELATED_TARGET_B_ID = "34343434-3434-3434-3434-343434343434";
+  private static final String RELATED_TARGET_A_FQN = "Finance.GrossRevenue";
+  private static final String RELATED_TARGET_B_FQN = "Finance.NetRevenue";
   private static final String DOMAIN_ROOT = "Finance";
   private static final String DOMAIN_CHILD_NAME = "Sales.Region";
   private static final String DOMAIN_LEAF_NAME = "매출销售東京";
@@ -195,6 +202,15 @@ class SearchConsumerFieldBehaviorIT {
           "/elasticsearch/" + language + "/test_case_resolution_status_index_mapping.json");
       indexDocument(resolutionIndex(language), RESOLUTION_ID, resolutionStatusDocument());
       indexDocument(resolutionIndex(language), RESOLVED_ID, resolvedStatusDocument());
+      createIndex(
+          glossaryTermIndex(language),
+          "/elasticsearch/" + language + "/glossary_term_index_mapping.json");
+      indexDocument(
+          glossaryTermIndex(language), GLOSSARY_TERM_PENDING_ID, glossaryTermPendingDocument());
+      indexDocument(
+          glossaryTermIndex(language), GLOSSARY_TERM_MIXED_ID, glossaryTermMixedDocument());
+      indexDocument(
+          glossaryTermIndex(language), GLOSSARY_TERM_LEGACY_ID, glossaryTermWithoutRelationsDoc());
       createIndex(
           domainIndex(language), "/elasticsearch/" + language + "/domain_index_mapping.json");
       createIndex(
@@ -486,6 +502,64 @@ class SearchConsumerFieldBehaviorIT {
   }
 
   @Test
+  void glossaryTermRelatedTermsFilterMatchesRelationTypeInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "GlossaryTerm typed relationType nested filter",
+        language ->
+            hits(
+                    glossaryTermIndex(language),
+                    nestedTermQuery("relatedTerms", "relatedTerms.relationType", "broader"))
+                == 2);
+  }
+
+  @Test
+  void glossaryTermRelatedTermsNestedConjunctionPreventsCrossEdgeFalsePositivesInAllLanguages()
+      throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "GlossaryTerm pending AiSuggested nested conjunction (provenance + status on same edge)",
+        language -> {
+          List<String> matchedIds =
+              hitIds(
+                  glossaryTermIndex(language),
+                  nestedBoolMustTermsQuery(
+                      "relatedTerms",
+                      Map.of(
+                          "relatedTerms.provenance", "AiSuggested",
+                          "relatedTerms.status", "Draft")));
+          return matchedIds.equals(List.of(GLOSSARY_TERM_PENDING_ID));
+        });
+  }
+
+  @Test
+  void glossaryTermRelatedTermsTargetFqnAndNestedAggregationsWorkInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "GlossaryTerm relatedTerms target FQN filter and nested keyword aggregations",
+        language ->
+            hits(
+                        glossaryTermIndex(language),
+                        nestedBoolMustTermsQuery(
+                            "relatedTerms",
+                            Map.of(
+                                "relatedTerms.relationType",
+                                "synonym",
+                                "relatedTerms.term.fullyQualifiedName",
+                                RELATED_TARGET_B_FQN)))
+                    == 2
+                && nestedAggregationExactBucketKeys(
+                        glossaryTermIndex(language),
+                        "relatedTerms",
+                        "byProvenance",
+                        "relatedTerms.provenance")
+                    .containsAll(List.of("AiSuggested", "Manual"))
+                && nestedAggregationExactBucketKeys(
+                        glossaryTermIndex(language),
+                        "relatedTerms",
+                        "byStatus",
+                        "relatedTerms.status")
+                    .containsAll(List.of("Draft", "Approved")));
+  }
+
+  @Test
   void analysisPluginsInstalled() throws Exception {
     try (var response =
         openSearchClient
@@ -547,6 +621,38 @@ class SearchConsumerFieldBehaviorIT {
 
   private int hits(String index, String queryBody) throws Exception {
     return runSearch(index, queryBody).path("hits").path("hits").size();
+  }
+
+  private List<String> hitIds(String index, String queryBody) throws Exception {
+    List<String> ids = new ArrayList<>();
+    for (JsonNode hit : runSearch(index, queryBody).path("hits").path("hits")) {
+      ids.add(hit.path("_id").asText());
+    }
+    return ids;
+  }
+
+  private List<String> nestedAggregationExactBucketKeys(
+      String index, String nestedPath, String aggName, String field) throws Exception {
+    String body =
+        mapper.writeValueAsString(
+            Map.of(
+                "size",
+                0,
+                "aggs",
+                Map.of(
+                    "edges",
+                    Map.of(
+                        "nested",
+                        Map.of("path", nestedPath),
+                        "aggs",
+                        Map.of(aggName, Map.of("terms", Map.of("field", field)))))));
+    List<String> keys = new ArrayList<>();
+    JsonNode buckets =
+        runSearch(index, body).path("aggregations").path("edges").path(aggName).path("buckets");
+    for (JsonNode bucket : buckets) {
+      keys.add(bucket.path("key").asText());
+    }
+    return keys;
   }
 
   /**
@@ -878,6 +984,132 @@ class SearchConsumerFieldBehaviorIT {
             Map.of("nested", Map.of("path", path, "query", Map.of("term", Map.of(field, value))))));
   }
 
+  private String nestedBoolMustTermsQuery(String path, Map<String, String> fieldValues)
+      throws Exception {
+    List<Map<String, Object>> must =
+        fieldValues.entrySet().stream()
+            .map(entry -> Map.<String, Object>of("term", Map.of(entry.getKey(), entry.getValue())))
+            .toList();
+    return mapper.writeValueAsString(
+        Map.of(
+            "query",
+            Map.of("nested", Map.of("path", path, "query", Map.of("bool", Map.of("must", must))))));
+  }
+
+  private String glossaryTermPendingDocument() throws Exception {
+    Map<String, Object> document =
+        Map.ofEntries(
+            Map.entry("id", GLOSSARY_TERM_PENDING_ID),
+            Map.entry("name", "PendingRevenue"),
+            Map.entry("displayName", "Pending Revenue"),
+            Map.entry("fullyQualifiedName", "Finance.PendingRevenue"),
+            Map.entry("deleted", false),
+            Map.entry("entityType", "glossaryTerm"),
+            Map.entry(
+                "relatedTerms",
+                List.of(
+                    termRelationDoc(
+                        "broader",
+                        "Manual",
+                        "Approved",
+                        RELATED_TARGET_A_ID,
+                        "GrossRevenue",
+                        RELATED_TARGET_A_FQN),
+                    termRelationDoc(
+                        "synonym",
+                        "AiSuggested",
+                        "Draft",
+                        RELATED_TARGET_B_ID,
+                        "NetRevenue",
+                        RELATED_TARGET_B_FQN))));
+    return mapper.writeValueAsString(document);
+  }
+
+  private String glossaryTermMixedDocument() throws Exception {
+    Map<String, Object> document =
+        Map.ofEntries(
+            Map.entry("id", GLOSSARY_TERM_MIXED_ID),
+            Map.entry("name", "MixedRevenue"),
+            Map.entry("displayName", "Mixed Revenue"),
+            Map.entry("fullyQualifiedName", "Finance.MixedRevenue"),
+            Map.entry("deleted", false),
+            Map.entry("entityType", "glossaryTerm"),
+            Map.entry(
+                "relatedTerms",
+                List.of(
+                    termRelationDoc(
+                        "broader",
+                        "Manual",
+                        "Draft",
+                        RELATED_TARGET_A_ID,
+                        "GrossRevenue",
+                        RELATED_TARGET_A_FQN),
+                    termRelationDoc(
+                        "synonym",
+                        "AiSuggested",
+                        "Approved",
+                        RELATED_TARGET_B_ID,
+                        "NetRevenue",
+                        RELATED_TARGET_B_FQN))));
+    return mapper.writeValueAsString(document);
+  }
+
+  private String glossaryTermWithoutRelationsDoc() throws Exception {
+    Map<String, Object> document =
+        Map.ofEntries(
+            Map.entry("id", GLOSSARY_TERM_LEGACY_ID),
+            Map.entry("name", "StandaloneRevenue"),
+            Map.entry("displayName", "Standalone Revenue"),
+            Map.entry("fullyQualifiedName", "Finance.StandaloneRevenue"),
+            Map.entry("deleted", false),
+            Map.entry("entityType", "glossaryTerm"));
+    return mapper.writeValueAsString(document);
+  }
+
+  private Map<String, Object> termRelationDoc(
+      String relationType,
+      String provenance,
+      String status,
+      String targetId,
+      String targetName,
+      String targetFqn) {
+    return Map.of(
+        "id",
+        "99999999-1111-2222-3333-" + targetId.substring(24),
+        "relationType",
+        relationType,
+        "provenance",
+        provenance,
+        "status",
+        status,
+        "createdBy",
+        "agent",
+        "createdAt",
+        1700000000000L,
+        "relationshipType",
+        Map.of(
+            "id",
+            "88888888-1111-2222-3333-444444444444",
+            "type",
+            "relationshipType",
+            "name",
+            relationType,
+            "fullyQualifiedName",
+            relationType),
+        "term",
+        Map.of(
+            "id",
+            targetId,
+            "type",
+            "glossaryTerm",
+            "name",
+            targetName,
+            "fullyQualifiedName",
+            targetFqn,
+            "deleted",
+            false));
+  }
+
   private String termsAggregation(String aggName, String field) throws Exception {
     return mapper.writeValueAsString(
         Map.of("size", 0, "aggs", Map.of(aggName, Map.of("terms", Map.of("field", field)))));
@@ -893,6 +1125,10 @@ class SearchConsumerFieldBehaviorIT {
 
   private String resolutionIndex(String language) {
     return "behavior_resolution_" + language;
+  }
+
+  private String glossaryTermIndex(String language) {
+    return "behavior_glossary_term_" + language;
   }
 
   private String domainIndex(String language) {

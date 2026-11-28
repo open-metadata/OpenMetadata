@@ -8955,10 +8955,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             e -> e.setDeleted(true));
     List<EntityUpdater> changed = filterChanged(updaters);
     if (!changed.isEmpty()) {
-      persistBulkUpdaters(changed, "bulkSoftDelete");
+      List<T> changedEntities = persistBulkUpdaters(changed, "bulkSoftDelete");
       ListCountCache.invalidate(entityType);
+      postBulkSoftDelete(changedEntities);
     }
   }
+
+  /** Runs after the changed entities at this level are stored and hydrated for search. */
+  protected void postBulkSoftDelete(List<T> entities) {}
 
   private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {
     for (T entity : entities) {
@@ -9409,7 +9413,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
    * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
-  private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
+  private List<T> persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
     List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
     try (var ignored = phase(phasePrefix + "UpdateMany")) {
@@ -9427,6 +9431,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+    return changedEntities;
   }
 
   /**
