@@ -584,14 +584,30 @@
       },
       "metricGroup": {
         "properties": {
-          "id": { "type": "keyword" },
-          "type": { "type": "keyword" },
-          "name": { "type": "keyword" },
-          "displayName": { "type": "keyword" },
-          "fullyQualifiedName": { "type": "keyword" },
-          "description": { "type": "text" },
-          "deleted": { "type": "boolean" },
-          "href": { "type": "text" }
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          },
+          "displayName": {
+            "type": "keyword"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
         }
       },
       "childrenCount": {
@@ -764,6 +780,12 @@
                     "ignore_above": 512
                   }
                 }
+              },
+              "transformationType": {
+                "type": "keyword"
+              },
+              "transformationSubtype": {
+                "type": "keyword"
               }
             }
           },
@@ -798,6 +820,31 @@
           },
           "docUniqueId": {
             "type": "keyword"
+          },
+          "dependencyType": {
+            "type": "keyword"
+          },
+          "indirectColumns": {
+            "properties": {
+              "fromColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "transformationType": {
+                "type": "keyword"
+              },
+              "transformationSubtype": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              }
+            }
           }
         }
       },

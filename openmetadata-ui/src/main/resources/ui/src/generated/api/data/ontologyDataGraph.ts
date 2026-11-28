@@ -233,9 +233,19 @@ export interface LineageDetails {
      */
     createdBy?: string;
     /**
+     * Whether this lineage edge represents a DIRECT data-flow dependency or an INDIRECT
+     * dependency. Unset/null is treated as DIRECT for backward compatibility.
+     */
+    dependencyType?: DependencyType;
+    /**
      * description of lineage
      */
     description?: string;
+    /**
+     * Dataset-level upstream columns that indirectly influence the downstream entity without
+     * targeting a single output column.
+     */
+    indirectColumns?: IndirectColumn[];
     /**
      * Pipeline where the sqlQuery is periodically run.
      */
@@ -281,6 +291,55 @@ export interface ColumnLineage {
      * transformation of source columns.
      */
     toColumn?: string;
+    /**
+     * Structured transformation subtype (e.g., IDENTITY, TRANSFORMATION, AGGREGATION, FILTER,
+     * JOIN, GROUP_BY, SORT, WINDOW, CONDITIONAL).
+     */
+    transformationSubtype?: string;
+    /**
+     * Structured transformation type (e.g., DIRECT, INDIRECT).
+     */
+    transformationType?: string;
+    [property: string]: any;
+}
+
+/**
+ * Whether this lineage edge represents a DIRECT data-flow dependency or an INDIRECT
+ * dependency. Unset/null is treated as DIRECT for backward compatibility.
+ *
+ * Whether the upstream entity contributes values directly to the downstream entity or only
+ * influences it indirectly (e.g., via JOIN, WHERE/FILTER, GROUP BY, ORDER BY, QUALIFY, or
+ * WINDOW).
+ */
+export enum DependencyType {
+    Direct = "DIRECT",
+    Indirect = "INDIRECT",
+}
+
+/**
+ * An upstream column that influences the downstream dataset indirectly (e.g., via
+ * WHERE/FILTER, JOIN, GROUP BY, ORDER BY, QUALIFY, or WINDOW) without targeting a single
+ * output column.
+ */
+export interface IndirectColumn {
+    /**
+     * Optional human-readable description of the indirect column dependency.
+     */
+    description?: string;
+    /**
+     * Source column identified by fully qualified column name that indirectly influences the
+     * downstream entity.
+     */
+    fromColumn: string;
+    /**
+     * Structured indirect transformation subtype (e.g., FILTER, JOIN, GROUP_BY, SORT, WINDOW,
+     * CONDITIONAL).
+     */
+    transformationSubtype?: string;
+    /**
+     * Structured transformation type (e.g., INDIRECT).
+     */
+    transformationType?: string;
     [property: string]: any;
 }
 

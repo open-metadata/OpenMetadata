@@ -270,6 +270,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "dependencyType": {
+          "description": "Whether this lineage edge represents a DIRECT or INDIRECT dependency. Unset/null is treated as DIRECT.",
+          "$ref": "../../type/entityLineage.json#/definitions/dependencyType"
         }
       },
       "required": ["id", "from", "to", "band"],

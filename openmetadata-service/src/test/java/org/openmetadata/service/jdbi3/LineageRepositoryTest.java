@@ -44,6 +44,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.data.Table;
@@ -1881,5 +1882,141 @@ class LineageRepositoryTest {
     mockedEntity
         .when(() -> Entity.getEntity(eq(Entity.TABLE), eq(tableRef.getId()), any(), any()))
         .thenReturn(table);
+  }
+
+  @Test
+  void testBuildEntityLineageData_PropagatesDependencyTypeAndIndirectColumns() {
+    IndirectColumn indirectColumn =
+        new IndirectColumn()
+            .withFromColumn("database.schema.fromTable.status")
+            .withTransformationType("INDIRECT")
+            .withTransformationSubtype("FILTER")
+            .withDescription("WHERE status = 'ACTIVE'");
+    LineageDetails details =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withDependencyType(DependencyType.INDIRECT)
+            .withIndirectColumns(List.of(indirectColumn));
+
+    EsLineageData esData = LineageRepository.buildEntityLineageData(fromEntity, toEntity, details);
+
+    assertEquals(DependencyType.INDIRECT, esData.getDependencyType());
+    assertEquals(List.of(indirectColumn), esData.getIndirectColumns());
+  }
+
+  @Test
+  void testMergeDependencyType_DirectBeatsIndirectConservatively() {
+    LineageDetails direct = new LineageDetails().withDependencyType(DependencyType.DIRECT);
+    LineageDetails indirect = new LineageDetails().withDependencyType(DependencyType.INDIRECT);
+    LineageDetails unsetNoFacet = new LineageDetails().withColumnsLineage(null);
+    LineageDetails unsetWithDirectColumn =
+        new LineageDetails()
+            .withColumnsLineage(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of("db.s.a.id"))
+                        .withToColumn("db.s.b.id")));
+
+    assertEquals(DependencyType.DIRECT, LineageRepository.mergeDependencyType(direct, indirect));
+    assertEquals(DependencyType.DIRECT, LineageRepository.mergeDependencyType(indirect, direct));
+    assertEquals(
+        DependencyType.INDIRECT, LineageRepository.mergeDependencyType(indirect, indirect));
+    assertEquals(
+        DependencyType.DIRECT, LineageRepository.mergeDependencyType(unsetNoFacet, indirect));
+    assertEquals(
+        DependencyType.INDIRECT, LineageRepository.mergeDependencyType(indirect, unsetNoFacet));
+    assertEquals(
+        DependencyType.DIRECT,
+        LineageRepository.mergeDependencyType(indirect, unsetWithDirectColumn));
+    assertNull(LineageRepository.mergeDependencyType(unsetNoFacet, unsetNoFacet));
+  }
+
+  @Test
+  void testPreserveAssetEdges_UnionsIndirectColumnsWithoutDuplicatesAndCopiesStructuredFields() {
+    IndirectColumn filterCol =
+        new IndirectColumn()
+            .withFromColumn("database.schema.fromTable.status")
+            .withTransformationType("INDIRECT")
+            .withTransformationSubtype("FILTER");
+    IndirectColumn joinCol =
+        new IndirectColumn()
+            .withFromColumn("database.schema.fromTable.team_id")
+            .withTransformationType("INDIRECT")
+            .withTransformationSubtype("JOIN");
+    ColumnLineage storedCol =
+        new ColumnLineage()
+            .withFromColumns(new ArrayList<>(List.of("database.schema.fromTable.amount")))
+            .withToColumn("database.schema.toTable.amount")
+            .withFunction("DIRECT/AGGREGATION")
+            .withTransformationType("DIRECT")
+            .withTransformationSubtype("AGGREGATION");
+
+    LineageDetails prior =
+        new LineageDetails()
+            .withDependencyType(DependencyType.DIRECT)
+            .withColumnsLineage(List.of(storedCol))
+            .withIndirectColumns(List.of(filterCol));
+    LineageDetails incoming =
+        new LineageDetails()
+            .withDependencyType(DependencyType.INDIRECT)
+            .withColumnsLineage(null)
+            .withIndirectColumns(List.of(filterCol, joinCol));
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertEquals(DependencyType.DIRECT, incoming.getDependencyType());
+    assertEquals(List.of(filterCol, joinCol), incoming.getIndirectColumns());
+    assertEquals(1, incoming.getColumnsLineage().size());
+    assertEquals("DIRECT", incoming.getColumnsLineage().get(0).getTransformationType());
+    assertEquals("AGGREGATION", incoming.getColumnsLineage().get(0).getTransformationSubtype());
+  }
+
+  @Test
+  void testValidateLineageDetails_ValidatesIndirectColumnsAgainstFromEntity() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    final EntityReference target = entityReference(Entity.TABLE, "db.schema.summary");
+    mockSalesTable(table);
+    mockTableForLineage(target, "total");
+
+    IndirectColumn validIndirect =
+        new IndirectColumn()
+            .withFromColumn("db.schema.sales.amount")
+            .withTransformationType("INDIRECT")
+            .withTransformationSubtype("FILTER");
+    IndirectColumn invalidIndirect =
+        new IndirectColumn()
+            .withFromColumn("db.schema.sales.missing_col")
+            .withTransformationType("INDIRECT")
+            .withTransformationSubtype("JOIN");
+    LineageDetails details =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withDependencyType(DependencyType.INDIRECT)
+            .withIndirectColumns(List.of(validIndirect, invalidIndirect));
+
+    LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(table, target, details), LineageDetails.class);
+
+    assertEquals(DependencyType.INDIRECT, saved.getDependencyType());
+    assertEquals(List.of(validIndirect), saved.getIndirectColumns());
+  }
+
+  @Test
+  void testLineageSettings_DefaultsShowIndirectEdgesToTrueWhenAbsentInJson() {
+    String legacyJson =
+        """
+        {
+          "upstreamDepth": 2,
+          "downstreamDepth": 2,
+          "lineageLayer": "EntityLineage",
+          "pipelineViewMode": "Node"
+        }
+        """;
+
+    LineageSettings settings = JsonUtils.readValue(legacyJson, LineageSettings.class);
+
+    assertEquals(Boolean.TRUE, settings.getShowIndirectEdges());
   }
 }

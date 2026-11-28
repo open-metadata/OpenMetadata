@@ -60,7 +60,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlFunction
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
+    DependencyType,
     EntitiesEdge,
+    IndirectColumn,
     LineageDetails,
     Source,
 )
@@ -894,52 +896,94 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _column_function(input_field: dict, field_spec: dict) -> str | None:
-        def text(value: object) -> str:
-            return value.strip() if isinstance(value, str) else ""
+    def _clean_text(value: object) -> str:
+        return value.strip() if isinstance(value, str) else ""
 
+    @classmethod
+    def _column_transformation(cls, input_field: dict, field_spec: dict) -> tuple[str | None, str | None, str | None]:
         transformations = input_field.get("transformations")
-        functions = []
+        usable: list[dict] = []
+        functions: list[str] = []
         if isinstance(transformations, list):
             for transformation in transformations:
                 if not isinstance(transformation, dict):
                     continue
-                label = text(transformation.get("type"))
+                label = cls._clean_text(transformation.get("type"))
                 if not label:
                     continue
-                if subtype := text(transformation.get("subtype")):
+                usable.append(transformation)
+                if subtype := cls._clean_text(transformation.get("subtype")):
                     label += f"/{subtype}"
-                if description := text(transformation.get("description")):
+                if description := cls._clean_text(transformation.get("description")):
                     label += f" ({description})"
                 if transformation.get("masking") is True:
                     label += " [masked]"
                 functions.append(label)
 
+        function: str | None = None
         if functions:
-            return ", ".join(functions)
-        for field in ("transformationDescription", "transformationType"):
-            value = field_spec.get(field)
-            if isinstance(value, str) and value.strip():
-                return value
-        return None
+            function = ", ".join(functions)
+        else:
+            for field in ("transformationDescription", "transformationType"):
+                value = field_spec.get(field)
+                if isinstance(value, str) and value.strip():
+                    function = value
+                    break
+
+        transformation_type: str | None = None
+        transformation_subtype: str | None = None
+        if usable:
+            primary = next(
+                (t for t in usable if cls._clean_text(t.get("type")).upper() == DependencyType.DIRECT.value),
+                usable[0],
+            )
+            transformation_type = cls._clean_text(primary.get("type")) or None
+            transformation_subtype = cls._clean_text(primary.get("subtype")) or None
+        else:
+            legacy_type = cls._clean_text(field_spec.get("transformationType")).upper()
+            if legacy_type in {DependencyType.DIRECT.value, DependencyType.INDIRECT.value}:
+                transformation_type = legacy_type
+
+        return function, transformation_type, transformation_subtype
+
+    @classmethod
+    def _column_function(cls, input_field: dict, field_spec: dict) -> str | None:
+        function, _, _ = cls._column_transformation(input_field, field_spec)
+        return function
+
+    @staticmethod
+    def _get_column_lineage_facet(table: dict) -> dict | None:
+        output_facets = table.get("outputFacets") if isinstance(table.get("outputFacets"), dict) else None
+        column_lineage_facet = output_facets.get("columnLineage") if isinstance(output_facets, dict) else None
+        if not isinstance(column_lineage_facet, dict):
+            facets = table.get("facets") if isinstance(table.get("facets"), dict) else None
+            column_lineage_facet = facets.get("columnLineage") if isinstance(facets, dict) else None
+        return column_lineage_facet if isinstance(column_lineage_facet, dict) else None
 
     @staticmethod
     def _create_output_lineage_dict(
-        columns_by_function: dict[tuple[str, str, str, str | None], list[str]],
+        columns_by_function: dict[tuple[Any, ...], list[str]],
     ) -> dict[str, dict[str, list[ColumnLineage]]]:
         result = defaultdict(lambda: defaultdict(list))
-        for (output_table, input_table, output_column, function), input_columns in columns_by_function.items():
+        for key, input_columns in columns_by_function.items():
+            output_table, input_table, output_column, function, *rest = key
+            transformation_type = rest[0] if len(rest) > 0 else None
+            transformation_subtype = rest[1] if len(rest) > 1 else None
             result[output_table][input_table].append(
                 ColumnLineage(
                     toColumn=FullyQualifiedEntityName(output_column),
                     fromColumns=[FullyQualifiedEntityName(column) for column in input_columns],
                     function=SqlFunction(function) if function else None,
+                    transformationType=transformation_type,
+                    transformationSubtype=transformation_subtype,
                 )
             )
         return result
 
     def _get_column_lineage(self, inputs: list, outputs: list) -> dict[str, dict[str, list[ColumnLineage]]]:
-        columns_by_function: dict[tuple[str, str, str, str | None], list[str]] = defaultdict(list)
+        columns_by_function: dict[tuple[str, str, str, str | None, str | None, str | None], list[str]] = defaultdict(
+            list
+        )
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
@@ -956,8 +1000,7 @@ class OpenlineageSource(PipelineServiceSource):
             # Tolerate a missing, null, or wrongly typed facets/columnLineage/
             # fields field at any level, mirroring the symlinks-facet
             # defensiveness so a single malformed event never aborts the run.
-            facets = table.get("facets") if isinstance(table.get("facets"), dict) else None
-            column_lineage_facet = facets.get("columnLineage") if isinstance(facets, dict) else None
+            column_lineage_facet = self._get_column_lineage_facet(table)
             fields = column_lineage_facet.get("fields") if isinstance(column_lineage_facet, dict) else None
             if not isinstance(fields, dict):
                 fields = {}
@@ -981,12 +1024,109 @@ class OpenlineageSource(PipelineServiceSource):
                     )
                     if not output_column or not input_column:
                         continue
-                    function = self._column_function(input_field, field_spec)
-                    columns_by_function[(output_table_fqn, input_table_fqn, output_column, function)].append(
-                        input_column
+                    function, transformation_type, transformation_subtype = self._column_transformation(
+                        input_field, field_spec
                     )
+                    columns_by_function[
+                        (
+                            output_table_fqn,
+                            input_table_fqn,
+                            output_column,
+                            function,
+                            transformation_type,
+                            transformation_subtype,
+                        )
+                    ].append(input_column)
 
         return self._create_output_lineage_dict(columns_by_function)
+
+    def _get_indirect_columns(self, inputs: list, outputs: list) -> dict[str, dict[str, list[IndirectColumn]]]:
+        result: dict[str, dict[str, list[IndirectColumn]]] = defaultdict(lambda: defaultdict(list))
+        seen: dict[tuple[str, str], set[tuple[str, str | None, str | None, str | None]]] = defaultdict(set)
+        ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
+
+        for table in outputs:
+            if self._get_entity_details(table).entity_type != "table":
+                continue
+            resolved = self._resolve_table(table)
+            if not resolved:
+                continue
+            output_table_fqn = resolved.fqn
+            column_lineage_facet = self._get_column_lineage_facet(table)
+            dataset_fields = column_lineage_facet.get("dataset") if isinstance(column_lineage_facet, dict) else None
+            if not isinstance(dataset_fields, list):
+                continue
+            for input_field in dataset_fields:
+                if not isinstance(input_field, dict):
+                    continue
+                input_table_ol_name = OpenlineageSource._get_ol_table_name(input_field)
+                input_table_fqn = ol_name_to_fqn_map.get(input_table_ol_name)
+                if not input_table_fqn:
+                    continue
+                input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
+                input_column = self._match_column_fqn(input_table_entity, input_table_fqn, input_field.get("field", ""))
+                if not input_column:
+                    continue
+                for indirect_col in self._extract_dataset_indirect_entries(input_column, input_field):
+                    dedup_key = (
+                        model_str(indirect_col.fromColumn),
+                        indirect_col.transformationType,
+                        indirect_col.transformationSubtype,
+                        indirect_col.description,
+                    )
+                    edge_key = (output_table_fqn, input_table_fqn)
+                    if dedup_key not in seen[edge_key]:
+                        seen[edge_key].add(dedup_key)
+                        result[output_table_fqn][input_table_fqn].append(indirect_col)
+
+        return result
+
+    @classmethod
+    def _extract_dataset_indirect_entries(cls, input_column: str, input_field: dict) -> list[IndirectColumn]:
+        transformations = input_field.get("transformations")
+        entries: list[IndirectColumn] = []
+        if isinstance(transformations, list):
+            for transformation in transformations:
+                if not isinstance(transformation, dict):
+                    continue
+                t_type = cls._clean_text(transformation.get("type"))
+                t_subtype = cls._clean_text(transformation.get("subtype")) or None
+                t_desc = cls._clean_text(transformation.get("description")) or None
+                if not (t_type or t_subtype or t_desc):
+                    continue
+                entries.append(
+                    IndirectColumn(
+                        fromColumn=FullyQualifiedEntityName(input_column),
+                        transformationType=t_type or DependencyType.INDIRECT.value,
+                        transformationSubtype=t_subtype,
+                        description=t_desc,
+                    )
+                )
+        if not entries:
+            entries.append(
+                IndirectColumn(
+                    fromColumn=FullyQualifiedEntityName(input_column),
+                    transformationType=DependencyType.INDIRECT.value,
+                )
+            )
+        return entries
+
+    @staticmethod
+    def _compute_dependency_type(
+        columns_lineage: list[ColumnLineage],
+        indirect_columns: list[IndirectColumn],
+    ) -> DependencyType | None:
+        if not columns_lineage and not indirect_columns:
+            return None
+        has_direct_column = any(
+            not column.transformationType or column.transformationType.upper() != DependencyType.INDIRECT.value
+            for column in columns_lineage
+        )
+        has_direct_dataset = any(
+            bool(indirect.transformationType) and indirect.transformationType.upper() != DependencyType.INDIRECT.value
+            for indirect in indirect_columns
+        )
+        return DependencyType.DIRECT if (has_direct_column or has_direct_dataset) else DependencyType.INDIRECT
 
     def _resolve_pipeline_service(self, pipeline_details: OpenLineageEvent) -> str:
         """
@@ -1319,6 +1459,7 @@ class OpenlineageSource(PipelineServiceSource):
                         )
 
         column_lineage = self._get_column_lineage(inputs, outputs)
+        indirect_columns = self._get_indirect_columns(inputs, outputs)
 
         edges = [LineageEdge(from_node=n[0], to_node=n[1]) for n in product(input_edges, output_edges)]
 
@@ -1391,6 +1532,9 @@ class OpenlineageSource(PipelineServiceSource):
 
         for edge in edges:
             is_pipeline_endpoint = edge.from_node.node_type == "pipeline" or edge.to_node.node_type == "pipeline"
+            edge_columns = column_lineage.get(edge.to_node.fqn.value, {}).get(edge.from_node.fqn.value, [])
+            edge_indirect = indirect_columns.get(edge.to_node.fqn.value, {}).get(edge.from_node.fqn.value, [])
+            dependency_type = self._compute_dependency_type(edge_columns, edge_indirect)
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
@@ -1407,9 +1551,9 @@ class OpenlineageSource(PipelineServiceSource):
                             ),
                             description=f"Lineage extracted from OpenLineage job: {pipeline_details.job['name']}",
                             source=Source.OpenLineage,
-                            columnsLineage=column_lineage.get(edge.to_node.fqn.value, {}).get(
-                                edge.from_node.fqn.value, []
-                            ),
+                            columnsLineage=edge_columns,
+                            indirectColumns=edge_indirect or None,
+                            dependencyType=dependency_type,
                         ),
                     ),
                 )

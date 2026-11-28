@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -75,6 +76,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -82,6 +84,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.IndirectColumn;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -589,6 +592,9 @@ public class LineageRepository {
       if (!childRelationExists) {
         lineageDetails.withAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), 0) + 1);
       }
+      lineageDetails.setDependencyType(
+          mergeContainerDependencyType(
+              lineageDetails.getDependencyType(), entityLineageDetails.getDependencyType()));
       return lineageDetails;
     }
 
@@ -599,6 +605,7 @@ public class LineageRepository {
         .withUpdatedBy(entityLineageDetails.getUpdatedBy())
         .withSource(LineageDetails.Source.CHILD_ASSETS)
         .withPipeline(entityLineageDetails.getPipeline())
+        .withDependencyType(entityLineageDetails.getDependencyType())
         .withAssetEdges(1);
   }
 
@@ -697,6 +704,9 @@ public class LineageRepository {
       lineageData.setAssetEdges(nullOrDefault(lineageDetails.getAssetEdges(), null));
       lineageData.setTempLineageTables(
           collectionOrDefault(lineageDetails.getTempLineageTables(), null));
+      lineageData.setDependencyType(lineageDetails.getDependencyType());
+      lineageData.setIndirectColumns(
+          collectionOrDefault(lineageDetails.getIndirectColumns(), null));
     }
     return lineageData;
   }
@@ -826,41 +836,74 @@ public class LineageRepository {
   }
 
   String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
-    if (details == null) {
-      return null;
+    String serialized = null;
+    if (details != null) {
+      final List<ColumnLineage> columnsLineage = details.getColumnsLineage();
+      final List<IndirectColumn> indirectColumns = details.getIndirectColumns();
+      Set<String> fromColumns = null;
+      if (!nullOrEmpty(columnsLineage) || !nullOrEmpty(indirectColumns)) {
+        fromColumns = getChildrenNames(from);
+      }
+      if (!nullOrEmpty(columnsLineage)) {
+        details.setColumnsLineage(
+            filterValidColumnsLineage(from, to, columnsLineage, fromColumns, getChildrenNames(to)));
+      }
+      if (!nullOrEmpty(indirectColumns)) {
+        details.setIndirectColumns(filterValidIndirectColumns(from, indirectColumns, fromColumns));
+      }
+      serialized = JsonUtils.pojoToJson(details);
     }
-    final List<ColumnLineage> columnsLineage = details.getColumnsLineage();
+    return serialized;
+  }
 
-    if (columnsLineage != null && !columnsLineage.isEmpty()) {
-      final Set<String> fromColumns = getChildrenNames(from);
-      final Set<String> toColumns = getChildrenNames(to);
-      final List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
-      for (final ColumnLineage columnLineage : columnsLineage) {
-        if (!toColumns.contains(
-            columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
-          LOG.debug("Invalid toColumn: {}", columnLineage.getToColumn());
+  private static List<ColumnLineage> filterValidColumnsLineage(
+      EntityReference from,
+      EntityReference to,
+      List<ColumnLineage> columnsLineage,
+      Set<String> fromColumns,
+      Set<String> toColumns) {
+    final List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
+    for (final ColumnLineage columnLineage : columnsLineage) {
+      if (!toColumns.contains(
+          columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
+        LOG.debug("Invalid toColumn: {}", columnLineage.getToColumn());
+        continue;
+      }
+      List<String> filteredFromColumns = new ArrayList<>();
+      boolean updateFromColumns = false;
+      for (String fromColumn : columnLineage.getFromColumns()) {
+        if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
+          LOG.debug("Invalid fromColumn: {}", fromColumn);
+          updateFromColumns = true;
           continue;
         }
-        List<String> filteredFromColumns = new ArrayList<>();
-        boolean updateFromColumns = false;
-        for (String fromColumn : columnLineage.getFromColumns()) {
-          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
-            LOG.debug("Invalid fromColumn: {}", fromColumn);
-            updateFromColumns = true;
-            continue;
-          }
-          filteredFromColumns.add(fromColumn);
-        }
-        if (updateFromColumns) {
-          columnLineage.setFromColumns(filteredFromColumns);
-        }
-        if (!filteredFromColumns.isEmpty()) {
-          filteredColumnLineage.add(columnLineage);
-        }
+        filteredFromColumns.add(fromColumn);
       }
-      details.setColumnsLineage(filteredColumnLineage);
+      if (updateFromColumns) {
+        columnLineage.setFromColumns(filteredFromColumns);
+      }
+      if (!filteredFromColumns.isEmpty()) {
+        filteredColumnLineage.add(columnLineage);
+      }
     }
-    return JsonUtils.pojoToJson(details);
+    return filteredColumnLineage;
+  }
+
+  private static List<IndirectColumn> filterValidIndirectColumns(
+      EntityReference from, List<IndirectColumn> indirectColumns, Set<String> fromColumns) {
+    final List<IndirectColumn> filtered = new ArrayList<>();
+    final String prefix = from.getFullyQualifiedName() + ".";
+    for (final IndirectColumn indirectColumn : indirectColumns) {
+      if (indirectColumn == null || nullOrEmpty(indirectColumn.getFromColumn())) {
+        continue;
+      }
+      if (fromColumns.contains(indirectColumn.getFromColumn().replace(prefix, ""))) {
+        filtered.add(indirectColumn);
+      } else {
+        LOG.debug("Invalid indirect fromColumn: {}", indirectColumn.getFromColumn());
+      }
+    }
+    return filtered;
   }
 
   public final String exportCsv(
@@ -1939,47 +1982,81 @@ public class LineageRepository {
 
   private boolean rewriteColumnMappings(
       LineageDetails details, Map<String, String> renameMap, Set<String> deletedFqns) {
-    if (details == null || details.getColumnsLineage() == null) {
-      return false;
-    }
-
     boolean modified = false;
+    if (details != null) {
+      modified = rewriteDirectColumnMappings(details.getColumnsLineage(), renameMap, deletedFqns);
+      modified |=
+          rewriteIndirectColumnMappings(details.getIndirectColumns(), renameMap, deletedFqns);
+    }
+    return modified;
+  }
 
-    for (Iterator<ColumnLineage> mappingIter = details.getColumnsLineage().iterator();
-        mappingIter.hasNext(); ) {
-      ColumnLineage mapping = mappingIter.next();
+  private static boolean rewriteDirectColumnMappings(
+      List<ColumnLineage> columnsLineage, Map<String, String> renameMap, Set<String> deletedFqns) {
+    boolean modified = false;
+    if (columnsLineage != null) {
+      for (Iterator<ColumnLineage> mappingIter = columnsLineage.iterator();
+          mappingIter.hasNext(); ) {
+        ColumnLineage mapping = mappingIter.next();
 
-      if (mapping.getToColumn() != null) {
-        String renamed = renameMap.get(mapping.getToColumn());
-        if (renamed != null) {
-          mapping.setToColumn(renamed);
-          modified = true;
-        } else if (deletedFqns.contains(mapping.getToColumn())) {
-          mappingIter.remove();
-          modified = true;
-          continue; // No need to touch upstream side now
+        if (mapping.getToColumn() != null) {
+          String renamed = renameMap.get(mapping.getToColumn());
+          if (renamed != null) {
+            mapping.setToColumn(renamed);
+            modified = true;
+          } else if (deletedFqns.contains(mapping.getToColumn())) {
+            mappingIter.remove();
+            modified = true;
+            continue; // No need to touch upstream side now
+          }
+        }
+
+        if (mapping.getFromColumns() != null) {
+          ListIterator<String> fromIter = mapping.getFromColumns().listIterator();
+          while (fromIter.hasNext()) {
+            String upstream = fromIter.next();
+
+            if (deletedFqns.contains(upstream)) {
+              fromIter.remove();
+              modified = true;
+            } else {
+              String renamed = renameMap.get(upstream);
+              if (renamed != null) {
+                fromIter.set(renamed);
+                modified = true;
+              }
+            }
+          }
+          // If nothing left on upstream side, drop the whole mapping
+          if (mapping.getFromColumns().isEmpty()) {
+            mappingIter.remove();
+          }
         }
       }
+    }
+    return modified;
+  }
 
-      if (mapping.getFromColumns() != null) {
-        ListIterator<String> fromIter = mapping.getFromColumns().listIterator();
-        while (fromIter.hasNext()) {
-          String upstream = fromIter.next();
-
-          if (deletedFqns.contains(upstream)) {
-            fromIter.remove();
+  private static boolean rewriteIndirectColumnMappings(
+      List<IndirectColumn> indirectColumns,
+      Map<String, String> renameMap,
+      Set<String> deletedFqns) {
+    boolean modified = false;
+    if (indirectColumns != null) {
+      for (Iterator<IndirectColumn> iter = indirectColumns.iterator(); iter.hasNext(); ) {
+        IndirectColumn indirectColumn = iter.next();
+        String fromColumn = indirectColumn == null ? null : indirectColumn.getFromColumn();
+        if (fromColumn != null) {
+          if (deletedFqns.contains(fromColumn)) {
+            iter.remove();
             modified = true;
           } else {
-            String renamed = renameMap.get(upstream);
+            String renamed = renameMap.get(fromColumn);
             if (renamed != null) {
-              fromIter.set(renamed);
+              indirectColumn.setFromColumn(renamed);
               modified = true;
             }
           }
-        }
-        // If nothing left on upstream side, drop the whole mapping
-        if (mapping.getFromColumns().isEmpty()) {
-          mappingIter.remove();
         }
       }
     }
@@ -2158,6 +2235,9 @@ public class LineageRepository {
   static void preserveAssetEdges(LineageDetails incoming, LineageDetails prior) {
     if (prior != null) {
       incoming.setAssetEdges(prior.getAssetEdges());
+      incoming.setDependencyType(mergeDependencyType(prior, incoming));
+      incoming.setIndirectColumns(
+          mergeIndirectColumns(prior.getIndirectColumns(), incoming.getIndirectColumns()));
       if (incoming.getColumnsLineage() == null && prior.getColumnsLineage() != null) {
         incoming.setColumnsLineage(copyColumnsLineage(prior.getColumnsLineage()));
       }
@@ -2165,11 +2245,91 @@ public class LineageRepository {
   }
 
   /**
+   * Merges {@code dependencyType} conservatively so {@code DIRECT} always beats {@code INDIRECT}.
+   * An existing edge with unset {@code dependencyType} is treated as non-indirect ({@code DIRECT})
+   * when combined with an incoming {@code INDIRECT} signal; legacy edges where both sides leave
+   * {@code dependencyType} unset remain {@code null}.
+   */
+  static DependencyType mergeDependencyType(LineageDetails prior, LineageDetails incoming) {
+    DependencyType resolved;
+    DependencyType priorType = prior.getDependencyType();
+    DependencyType incomingType = incoming.getDependencyType();
+    if (priorType == null && incomingType == null) {
+      resolved = null;
+    } else if (priorType == DependencyType.DIRECT || incomingType == DependencyType.DIRECT) {
+      resolved = DependencyType.DIRECT;
+    } else if (priorType == DependencyType.INDIRECT && incomingType == DependencyType.INDIRECT) {
+      resolved = hasDirectColumnLineage(incoming) ? DependencyType.DIRECT : DependencyType.INDIRECT;
+    } else if (priorType == DependencyType.INDIRECT) {
+      resolved =
+          incoming.getColumnsLineage() == null ? DependencyType.INDIRECT : DependencyType.DIRECT;
+    } else {
+      resolved = DependencyType.DIRECT;
+    }
+    return resolved;
+  }
+
+  private static DependencyType mergeContainerDependencyType(
+      DependencyType existingType, DependencyType childType) {
+    DependencyType resolved;
+    if (existingType == null && childType == null) {
+      resolved = null;
+    } else if (existingType == DependencyType.INDIRECT && childType == DependencyType.INDIRECT) {
+      resolved = DependencyType.INDIRECT;
+    } else {
+      resolved = DependencyType.DIRECT;
+    }
+    return resolved;
+  }
+
+  private static boolean hasDirectColumnLineage(LineageDetails details) {
+    return !nullOrEmpty(details.getColumnsLineage())
+        && details.getColumnsLineage().stream()
+            .anyMatch(
+                column ->
+                    !DependencyType.INDIRECT
+                        .value()
+                        .equalsIgnoreCase(column.getTransformationType()));
+  }
+
+  static List<IndirectColumn> mergeIndirectColumns(
+      List<IndirectColumn> prior, List<IndirectColumn> incoming) {
+    List<IndirectColumn> merged;
+    if (incoming == null) {
+      merged = prior == null ? null : copyIndirectColumns(prior);
+    } else if (incoming.isEmpty()) {
+      merged = incoming;
+    } else {
+      Set<IndirectColumn> combined = new LinkedHashSet<>();
+      if (!nullOrEmpty(prior)) {
+        combined.addAll(copyIndirectColumns(prior));
+      }
+      combined.addAll(copyIndirectColumns(incoming));
+      merged = new ArrayList<>(combined);
+    }
+    return merged;
+  }
+
+  private static List<IndirectColumn> copyIndirectColumns(List<IndirectColumn> source) {
+    List<IndirectColumn> copy = new ArrayList<>(source.size());
+    for (IndirectColumn entry : source) {
+      copy.add(
+          new IndirectColumn()
+              .withFromColumn(entry.getFromColumn())
+              .withTransformationType(entry.getTransformationType())
+              .withTransformationSubtype(entry.getTransformationSubtype())
+              .withDescription(entry.getDescription()));
+    }
+    return copy;
+  }
+
+  /**
    * Deep-copies a {@link ColumnLineage} list so mutations performed by {@code
    * validateLineageDetails} on the incoming copy never reach the prior edge objects, which would
    * otherwise make {@code payloadChanged} compare two already-mutated references and miss a real
-   * change. Carries over {@link ColumnLineage#getFunction()} so a transformation description
-   * attached to a facet-carrying write survives a subsequent no-facet event.
+   * change. Carries over {@link ColumnLineage#getFunction()} and structured transformation fields
+   * so transformation metadata attached to a facet-carrying write survives a subsequent no-facet
+   * event.
    */
   private static List<ColumnLineage> copyColumnsLineage(List<ColumnLineage> source) {
     List<ColumnLineage> copy = new ArrayList<>(source.size());
@@ -2179,7 +2339,9 @@ public class LineageRepository {
               .withFromColumns(
                   entry.getFromColumns() == null ? null : new ArrayList<>(entry.getFromColumns()))
               .withToColumn(entry.getToColumn())
-              .withFunction(entry.getFunction()));
+              .withFunction(entry.getFunction())
+              .withTransformationType(entry.getTransformationType())
+              .withTransformationSubtype(entry.getTransformationSubtype()));
     }
     return copy;
   }
@@ -2247,7 +2409,9 @@ public class LineageRepository {
             || !Objects.equals(prior.getSource(), incoming.getSource())
             || !Objects.equals(priorPipelineId, incomingPipelineId)
             || !Objects.equals(prior.getColumnsLineage(), incoming.getColumnsLineage())
-            || !Objects.equals(prior.getTempLineageTables(), incoming.getTempLineageTables());
+            || !Objects.equals(prior.getTempLineageTables(), incoming.getTempLineageTables())
+            || !Objects.equals(prior.getDependencyType(), incoming.getDependencyType())
+            || !Objects.equals(prior.getIndirectColumns(), incoming.getIndirectColumns());
     return changed;
   }
 

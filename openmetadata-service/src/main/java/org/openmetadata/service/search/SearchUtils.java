@@ -395,7 +395,9 @@ public final class SearchUtils {
         .withColumns(data.getColumns())
         .withDescription(data.getDescription())
         .withSource(data.getSource())
-        .withPipelineEntityType(data.getPipelineEntityType());
+        .withPipelineEntityType(data.getPipelineEntityType())
+        .withDependencyType(data.getDependencyType())
+        .withIndirectColumns(data.getIndirectColumns());
   }
 
   public static Set<String> getLineageDirection(

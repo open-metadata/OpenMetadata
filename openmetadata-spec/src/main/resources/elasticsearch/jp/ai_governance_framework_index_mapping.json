@@ -194,7 +194,34 @@
         "type": "text"
       },
       "upstreamLineage": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "dependencyType": {
+            "type": "keyword"
+          },
+          "indirectColumns": {
+            "properties": {
+              "fromColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "transformationType": {
+                "type": "keyword"
+              },
+              "transformationSubtype": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              }
+            }
+          }
+        }
       },
       "dataProducts": {
         "properties": {
