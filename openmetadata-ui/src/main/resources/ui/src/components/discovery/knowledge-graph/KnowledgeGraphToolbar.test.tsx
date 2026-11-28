@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TreeSelect } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
 import { useEffect } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
-import { TreeSelect } from '@openmetadata/ui-core-components';
 import type { GraphFilterOptions } from '../../../types/knowledgeGraph.types';
-import KnowledgeGraphToolbar from './KnowledgeGraphToolbar';
 import type { KnowledgeGraphToolbarProps } from './KnowledgeGraph.interface';
+import KnowledgeGraphToolbar from './KnowledgeGraphToolbar';
 
 /**
  * The shared core `TreeSelect` caches its fetched tree for the lifetime of the
