@@ -14,6 +14,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { EntityReference } from '../../../generated/entity/type';
+import { ClassificationTagIdentity } from '../../../interface/governance/classification/Classification.types';
 import { DeleteTagsType } from '../../../pages/TagsPage/TagsPage.interface';
 
 export interface ClassificationDetailsProps {
@@ -24,9 +25,11 @@ export interface ClassificationDetailsProps {
   deleteTags?: DeleteTagsType;
   isAddingTag?: boolean;
   disableEditButton?: boolean;
+  selectedTagParent?: ClassificationTagIdentity;
   handleAfterDeleteAction?: () => void;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
+  handleAddChildTagClick?: (parent: Tag) => void;
   handleAddNewTagClick?: () => void;
   handleUpdateClassification?: (
     updatedClassification: Classification
@@ -39,5 +42,8 @@ export interface ClassificationDetailsProps {
   handleEditClassificationClick?: () => void;
 }
 export interface ClassificationDetailsRef {
-  refreshClassificationTags: () => void;
+  refreshClassificationTags: (
+    classification: ClassificationTagIdentity
+  ) => void;
+  hasTagParentChanged: (parent: ClassificationTagIdentity) => boolean;
 }

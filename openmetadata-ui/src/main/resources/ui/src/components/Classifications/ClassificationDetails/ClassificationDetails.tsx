@@ -64,6 +64,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { ClassificationTagIdentity } from '../../../interface/governance/classification/Classification.types';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
@@ -83,10 +84,10 @@ import {
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -102,7 +103,10 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import './classification-details.less';
-import { ClassificationDetailsProps } from './ClassificationDetails.interface';
+import {
+  ClassificationDetailsProps,
+  ClassificationDetailsRef,
+} from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
 
 function computeEditDescriptionPermission(
@@ -156,7 +160,7 @@ function computeClassificationPermissionFlags(
       flags
     ),
     createPermission: computeCreatePermission(
-      isVersionView,
+      isVersionView || isClassificationDeleted,
       permissions,
       flags
     ),
@@ -167,7 +171,10 @@ function computeClassificationPermissionFlags(
   };
 }
 
-const ClassificationDetails = forwardRef(
+const ClassificationDetails = forwardRef<
+  ClassificationDetailsRef,
+  ClassificationDetailsProps
+>(
   (
     {
       currentClassification,
@@ -179,12 +186,14 @@ const ClassificationDetails = forwardRef(
       deleteTags,
       isAddingTag,
       handleActionDeleteTag,
+      handleAddChildTagClick,
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
       isClassificationLoading = false,
       handleToggleDisable,
       handleEditClassificationClick,
+      selectedTagParent,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -198,9 +207,16 @@ const ClassificationDetails = forwardRef(
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const [tagsError, setTagsError] = useState<string>();
+    const changedTagParent = useRef<ClassificationTagIdentity>();
     const isLoading = isTagsLoading || isClassificationLoading;
-    const previousClassificationRef = useRef<string | undefined>();
-    const isClassificationChangingRef = useRef(false);
+    const classificationId = currentClassification?.id;
+    const classificationFqn = currentClassification?.fullyQualifiedName;
+    const previousClassification = useRef<{
+      id: string;
+      fqn: string;
+    }>();
+    const tagListRequestId = useRef(0);
     const {
       currentPage,
       paging,
@@ -219,33 +235,46 @@ const ClassificationDetails = forwardRef(
       !isVersionView
     );
 
-    const fetchClassificationChildren = async (
-      currentClassificationName: string,
-      paging?: Partial<Paging>
-    ) => {
-      setIsTagsLoading(true);
-      setTags([]);
-      try {
-        const { data, paging: tagPaging } = await getTags({
-          fields: `${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
-          parent: currentClassificationName,
-          after: paging?.after,
-          before: paging?.before,
-          limit: pageSize,
-        });
-        setTags(data);
-        handlePagingChange(tagPaging);
-      } catch (error) {
-        const errMsg = getErrorText(
-          error as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.tag-plural') })
-        );
-        showErrorToast(errMsg);
+    const fetchClassificationChildren = useCallback(
+      async (
+        classificationFqn: string,
+        cursor?: Pick<Paging, 'after' | 'before'>
+      ) => {
+        const requestId = ++tagListRequestId.current;
+        setIsTagsLoading(true);
+        setTagsError(undefined);
         setTags([]);
-      } finally {
-        setIsTagsLoading(false);
-      }
-    };
+        try {
+          const { data, paging: tagPaging } = await getTags({
+            fields: `${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
+            parent: classificationFqn,
+            after: cursor?.after,
+            before: cursor?.before,
+            limit: pageSize,
+          });
+          if (tagListRequestId.current === requestId) {
+            setTags(data);
+            handlePagingChange(tagPaging);
+          }
+        } catch (error) {
+          if (tagListRequestId.current === requestId) {
+            setTagsError(
+              getErrorText(
+                error as AxiosError,
+                t('server.entity-fetch-error', {
+                  entity: t('label.tag-plural'),
+                })
+              )
+            );
+          }
+        } finally {
+          if (tagListRequestId.current === requestId) {
+            setIsTagsLoading(false);
+          }
+        }
+      },
+      [handlePagingChange, pageSize, t]
+    );
 
     const handleTagsPageChange: NextPreviousProps['pagingHandler'] = ({
       currentPage,
@@ -454,24 +483,33 @@ const ClassificationDetails = forwardRef(
     const tableColumn: ColumnsType<Tag> = useMemo(
       () =>
         getTagsTableColumn({
+          classificationFqn,
           isClassificationDisabled,
           classificationPermissions,
           deleteTags,
           disableEditButton,
           handleEditTagClick,
           handleActionDeleteTag,
+          handleAddChildTagClick:
+            createPermission && !isClassificationLoading
+              ? handleAddChildTagClick
+              : undefined,
           isVersionView,
           handleToggleDisable,
           usageCounts,
           isUsageCountsLoading,
         }),
       [
+        classificationFqn,
+        createPermission,
         isClassificationDisabled,
+        isClassificationLoading,
         classificationPermissions,
         deleteTags,
         disableEditButton,
         handleEditTagClick,
         handleActionDeleteTag,
+        handleAddChildTagClick,
         isVersionView,
         handleToggleDisable,
         usageCounts,
@@ -542,50 +580,98 @@ const ClassificationDetails = forwardRef(
       Number(pagingCursor.currentPage) !== 1 ||
       Boolean(pagingCursor.cursorType || pagingCursor.cursorValue);
 
-    useEffect(() => {
-      if (currentClassification?.fullyQualifiedName && !isAddingTag) {
-        const classificationChanged =
-          previousClassificationRef.current !== undefined &&
-          previousClassificationRef.current !==
-            currentClassification.fullyQualifiedName;
+    const invalidateTagListRequest = useCallback(() => {
+      tagListRequestId.current++;
+    }, []);
 
-        previousClassificationRef.current =
-          currentClassification.fullyQualifiedName;
+    const resetTagPaging = useCallback(() => {
+      invalidateTagListRequest();
+      setTags([]);
+      setTagsError(undefined);
+      setIsTagsLoading(true);
+      handlePageChange(1, { cursorType: null });
+    }, [handlePageChange, invalidateTagListRequest]);
 
-        if (classificationChanged) {
-          isClassificationChangingRef.current = isPagedPastFirstPage;
-          handlePageChange(1, { cursorType: null, cursorValue: undefined });
-          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+    const loadCurrentTagPage = useCallback(() => {
+      if (classificationFqn) {
+        const { cursorType, cursorValue } = pagingCursor;
 
-          return;
-        }
-
-        if (isClassificationChangingRef.current) {
-          isClassificationChangingRef.current = false;
-
-          return;
-        }
-
-        const { cursorType, cursorValue } = pagingCursor ?? {};
-
-        if (cursorType && cursorValue) {
-          fetchClassificationChildren(
-            currentClassification.fullyQualifiedName,
-            {
-              [cursorType]: cursorValue,
-            }
-          );
-        } else {
-          fetchClassificationChildren(currentClassification.fullyQualifiedName);
-        }
+        void fetchClassificationChildren(
+          classificationFqn,
+          cursorType && cursorValue ? { [cursorType]: cursorValue } : undefined
+        );
       }
-    }, [currentClassification?.fullyQualifiedName, pageSize, pagingCursor]);
+    }, [classificationFqn, fetchClassificationChildren, pagingCursor]);
+
+    useEffect(() => {
+      if (!classificationId || !classificationFqn || isAddingTag) {
+        return;
+      }
+
+      const previous = previousClassification.current;
+      previousClassification.current = {
+        id: classificationId,
+        fqn: classificationFqn,
+      };
+      const classificationChanged =
+        previous &&
+        (previous.id !== classificationId ||
+          previous.fqn !== classificationFqn);
+
+      if (classificationChanged && isPagedPastFirstPage) {
+        resetTagPaging();
+      } else {
+        loadCurrentTagPage();
+      }
+
+      return invalidateTagListRequest;
+    }, [
+      classificationFqn,
+      classificationId,
+      isAddingTag,
+      invalidateTagListRequest,
+      isPagedPastFirstPage,
+      loadCurrentTagPage,
+      resetTagPaging,
+    ]);
+
+    const hasConflictingTag = useCallback(
+      ({ id, fullyQualifiedName }: ClassificationTagIdentity) =>
+        tags.some((tag) => {
+          const sameId = tag.id === id;
+          const sameFqn = tag.fullyQualifiedName === fullyQualifiedName;
+          const conflictingIdentity = tag.deleted || !sameId || !sameFqn;
+
+          return (sameId || sameFqn) && conflictingIdentity;
+        }),
+      [tags]
+    );
+
+    useEffect(() => {
+      if (!selectedTagParent) {
+        changedTagParent.current = undefined;
+      } else if (hasConflictingTag(selectedTagParent)) {
+        changedTagParent.current = selectedTagParent;
+      }
+    }, [hasConflictingTag, selectedTagParent]);
 
     useImperativeHandle(ref, () => ({
-      refreshClassificationTags() {
-        if (currentClassification?.fullyQualifiedName) {
-          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+      refreshClassificationTags(classification) {
+        if (
+          classification.id === classificationId &&
+          classification.fullyQualifiedName === classificationFqn
+        ) {
+          if (isPagedPastFirstPage) {
+            resetTagPaging();
+          } else {
+            void fetchClassificationChildren(classificationFqn);
+          }
         }
+      },
+      hasTagParentChanged(parent) {
+        // A refreshed cursor page may omit the parent. Only a conflicting row
+        // proves that its identity changed, and the POST still validates existence.
+        return changedTagParent.current === parent || hasConflictingTag(parent);
       },
     }));
 
@@ -725,6 +811,17 @@ const ClassificationDetails = forwardRef(
     }
 
     function renderTagsPanel() {
+      if (tagsError) {
+        return (
+          <Box className="tw:relative tw:min-h-60">
+            <SomethingWentWrongPlaceholder
+              title={tagsError}
+              onReload={loadCurrentTagPage}
+            />
+          </Box>
+        );
+      }
+
       return isEmpty(tags) &&
         (!isLoading || currentClassification?.termCount === 0) ? (
         <Box className="tw:relative tw:min-h-[360px]">

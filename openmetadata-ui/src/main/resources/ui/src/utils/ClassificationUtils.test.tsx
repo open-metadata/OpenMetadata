@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
 import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
 import { ChangeDescription } from '../generated/entity/type';
 import { getClassificationInfo } from './ClassificationPureUtils';
 import { getTagsTableColumn } from './ClassificationUtils';
@@ -406,5 +408,63 @@ describe('getTagsTableColumn', () => {
     );
 
     expect(keys).not.toContain('usageCount');
+  });
+
+  const parentTag: Tag = {
+    id: 'parent-id',
+    name: 'Personal.Data',
+    description: 'A parent tag',
+    fullyQualifiedName: 'Sensitivity."Personal.Data"',
+  };
+  const withChildCreation = {
+    ...baseArgs,
+    classificationFqn: 'Sensitivity',
+    handleAddChildTagClick: jest.fn(),
+  };
+
+  it('exposes an accessible child action under a valid quoted parent', () => {
+    const actionColumn = getTagsTableColumn(withChildCreation).find(
+      ({ key }) => key === 'actions'
+    );
+    render(<>{actionColumn?.render?.(undefined, parentTag, 0)}</>);
+
+    expect(
+      screen.getByRole('button', { name: 'label.add-child-tag' })
+    ).toBeEnabled();
+  });
+
+  it.each([
+    { ...parentTag, deleted: true },
+    { ...parentTag, fullyQualifiedName: 'SensitivityOther.Personal' },
+    { ...parentTag, fullyQualifiedName: 'Sensitivity.' },
+  ])(
+    'omits the child action for an ineligible row $fullyQualifiedName',
+    (tag) => {
+      const actionColumn = getTagsTableColumn(withChildCreation).find(
+        ({ key }) => key === 'actions'
+      );
+      render(<>{actionColumn?.render?.(undefined, tag, 0)}</>);
+
+      expect(
+        screen.queryByTestId('add-child-tag-button')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  it('omits the row action on a disabled or versioned classification', () => {
+    const disabledAction = getTagsTableColumn({
+      ...withChildCreation,
+      isClassificationDisabled: true,
+    }).find(({ key }) => key === 'actions');
+    const versionedAction = getTagsTableColumn({
+      ...withChildCreation,
+      isVersionView: true,
+    }).find(({ key }) => key === 'actions');
+    render(<>{disabledAction?.render?.(undefined, parentTag, 0)}</>);
+
+    expect(
+      screen.queryByTestId('add-child-tag-button')
+    ).not.toBeInTheDocument();
+    expect(versionedAction).toBeUndefined();
   });
 });

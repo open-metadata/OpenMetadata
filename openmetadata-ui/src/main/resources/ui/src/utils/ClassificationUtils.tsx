@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Toggle,
   Tooltip as UTTooltip,
@@ -19,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Edit01, TagOff } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus, TagOff } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
 import { TagUsageCount } from '../components/Classifications/TagUsageCount/TagUsageCount.component';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -28,7 +29,10 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
-import { getDeleteButtonData } from './ClassificationPureUtils';
+import {
+  getDeleteButtonData,
+  isTagInClassification,
+} from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
@@ -87,7 +91,7 @@ export const getCommonColumns = (options?: {
       key: 'name',
       width: 200,
       render: (_, record) => (
-        <div className="d-flex items-center gap-2">
+        <Box align="center" gap={2} wrap="wrap">
           <Icon
             className="tw:shrink-0"
             iconValue={record.style?.iconURL}
@@ -100,7 +104,16 @@ export const getCommonColumns = (options?: {
             to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
             {record.name}
           </Link>
-        </div>
+          {record.parent?.fullyQualifiedName && (
+            <Typography
+              className="tw:basis-full tw:break-all"
+              color="secondary"
+              size="text-xs"
+              translate="no">
+              {record.parent.fullyQualifiedName}
+            </Typography>
+          )}
+        </Box>
       ),
     },
     {
@@ -119,23 +132,27 @@ export const getCommonColumns = (options?: {
 };
 
 export const getTagsTableColumn = ({
+  classificationFqn,
   isClassificationDisabled,
   classificationPermissions,
   deleteTags,
   handleEditTagClick,
   handleActionDeleteTag,
+  handleAddChildTagClick,
   isVersionView,
   disableEditButton,
   handleToggleDisable,
   usageCounts,
   isUsageCountsLoading,
 }: {
+  classificationFqn?: string;
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
   isVersionView: boolean;
   deleteTags?: DeleteTagsType;
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
+  handleAddChildTagClick?: (parent: Tag) => void;
   disableEditButton?: boolean;
   handleToggleDisable?: (tag: Tag) => void;
   usageCounts?: Record<string, number>;
@@ -173,7 +190,7 @@ export const getTagsTableColumn = ({
       title: t('label.action-plural'),
       dataIndex: 'actions',
       key: 'actions',
-      width: 120,
+      width: handleAddChildTagClick ? 160 : 120,
       align: 'center',
       fixed: 'right',
       render: (_, record: Tag) => {
@@ -190,8 +207,24 @@ export const getTagsTableColumn = ({
             : t('message.no-permission-for-action');
         }
 
+        const isLiveRow =
+          !isClassificationDisabled && !record.deleted && Boolean(record.id);
+        const canCreateChild =
+          handleAddChildTagClick &&
+          isLiveRow &&
+          isTagInClassification(record, classificationFqn);
+
         return (
-          <div className="tw:flex tw:items-center tw:justify-center tw:gap-2">
+          <Box align="center" gap={2} justify="center">
+            {canCreateChild && (
+              <ButtonUtility
+                data-testid="add-child-tag-button"
+                icon={Plus}
+                size="lg"
+                tooltip={t('label.add-child-tag')}
+                onPress={() => handleAddChildTagClick?.(record)}
+              />
+            )}
             {/* The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled. */}
             <UTTooltip
               isDisabled={!editDisabledMessage}
@@ -222,7 +255,7 @@ export const getTagsTableColumn = ({
                 onClick={() => handleActionDeleteTag?.(record)}
               />
             </UTTooltip>
-          </div>
+          </Box>
         );
       },
     });

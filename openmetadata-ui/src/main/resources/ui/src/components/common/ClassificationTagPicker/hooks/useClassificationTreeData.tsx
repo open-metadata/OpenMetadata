@@ -17,8 +17,10 @@ import {
 import { Tag01 as TagIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import Fqn from '../../../../utils/Fqn';
 import tagClassBase from '../../../../utils/TagClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
@@ -27,41 +29,57 @@ import {
   RawTagResult,
 } from '../../../Tag/TagSelector/TagSelector.utils';
 
-// Flat fetcher — classification tags have no hierarchy, every node is a leaf.
 export const useClassificationTreeData =
   (): TreeSelectDataFetcher<TagLabel> => {
-    return useCallback(async ({ searchTerm, after }) => {
-      // The search API pages by number, so the cursor is the next page number.
-      const page = Number(after ?? 1);
-      try {
-        const response = await tagClassBase.getTags(searchTerm ?? '', page);
-        const results: RawTagResult[] = response?.data ?? [];
-        const total = response?.paging?.total ?? 0;
-        const hasMore = (page - 1) * PAGE_SIZE + results.length < total;
+    const { t } = useTranslation();
 
-        const nodes: TreeSelectNode<TagLabel>[] = results.map((result) => ({
-          id: result.value,
-          label: getTagDisplayLabel(result),
-          value: result.value,
-          data: buildTagLabelFromResult(result),
-          isLeaf: true,
-          allowSelection: true,
-          icon: <TagIcon size={16} />,
-        }));
+    return useCallback(
+      async ({ searchTerm, after }) => {
+        // The search API pages by number, so the cursor is the next page number.
+        const page = Number(after ?? 1);
+        try {
+          const response = await tagClassBase.getTags(searchTerm ?? '', page);
+          const results: RawTagResult[] = response?.data ?? [];
+          const total = response?.paging?.total ?? 0;
+          const hasMore = (page - 1) * PAGE_SIZE + results.length < total;
 
-        return {
-          nodes,
-          hasMore,
-          total,
-          nextCursor: hasMore ? String(page + 1) : undefined,
-        };
-      } catch (error) {
-        if (axios.isCancel(error)) {
-          throw error;
+          const nodes: TreeSelectNode<TagLabel>[] = results.map((result) => {
+            const name = getTagDisplayLabel(result);
+            const segments = result.value ? Fqn.split(result.value) : [];
+            const label =
+              segments.length > 2
+                ? t('label.tag-name-with-parent', {
+                    name,
+                    parentFqn: Fqn.build(...segments.slice(0, -1)),
+                  })
+                : name;
+
+            return {
+              id: result.value,
+              label,
+              value: result.value,
+              data: buildTagLabelFromResult(result),
+              isLeaf: true,
+              allowSelection: true,
+              icon: <TagIcon size={16} />,
+            };
+          });
+
+          return {
+            nodes,
+            hasMore,
+            total,
+            nextCursor: hasMore ? String(page + 1) : undefined,
+          };
+        } catch (error) {
+          if (axios.isCancel(error)) {
+            throw error;
+          }
+          showErrorToast(error as AxiosError);
+
+          return { nodes: [] };
         }
-        showErrorToast(error as AxiosError);
-
-        return { nodes: [] };
-      }
-    }, []);
+      },
+      [t]
+    );
   };

@@ -17,7 +17,23 @@ import type { Classification } from '../generated/entity/classification/classifi
 import type { Tag } from '../generated/entity/classification/tag';
 import type { ChangeDescription } from '../generated/entity/type';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
+import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
+
+export const isTagInClassification = (tag: Tag, classificationFqn?: string) => {
+  const fqn = tag.fullyQualifiedName;
+  if (!classificationFqn || !fqn || !fqn.startsWith(`${classificationFqn}.`)) {
+    return false;
+  }
+
+  const parts = Fqn.split(fqn);
+
+  return (
+    parts.length > 1 &&
+    parts[0] === classificationFqn &&
+    Fqn.build(...parts) === fqn
+  );
+};
 
 export const getDeleteButtonData = (
   record: Tag,

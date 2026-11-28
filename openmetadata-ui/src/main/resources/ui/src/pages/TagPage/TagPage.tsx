@@ -174,6 +174,8 @@ const TagPage = () => {
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isTagDeleting, setIsTagDeleting] = useState(false);
+  const tagDeleteInFlight = useRef(false);
   const [showActions, setShowActions] = useState(false);
   const [assetCount, setAssetCount] = useState<number>(0);
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -452,15 +454,24 @@ const TagPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.delete-entity-error', {
-          entity: t('label.glossary'),
+          entity: t('label.tag-lowercase'),
         })
       );
     }
   };
 
   const handleDelete = async () => {
-    if (tagItem?.id) {
+    if (!tagItem?.id || tagDeleteInFlight.current) {
+      return;
+    }
+
+    tagDeleteInFlight.current = true;
+    setIsTagDeleting(true);
+    try {
       await handleTagDelete(tagItem.id);
+    } finally {
+      tagDeleteInFlight.current = false;
+      setIsTagDeleting(false);
       setIsDelete(false);
     }
   };
@@ -974,9 +985,16 @@ const TagPage = () => {
     <>
       <DeleteModal
         entityTitle={tagItem.name}
-        message={t('message.delete-entity-message', { entity: tagItem.name })}
+        isDeleting={isTagDeleting}
+        message={t('message.delete-tag-with-descendants', {
+          entity: tagItem.name,
+        })}
         open={isDelete}
-        onCancel={() => setIsDelete(false)}
+        onCancel={() => {
+          if (!tagDeleteInFlight.current) {
+            setIsDelete(false);
+          }
+        }}
         onDelete={handleDelete}
       />
 

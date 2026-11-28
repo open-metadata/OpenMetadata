@@ -175,7 +175,6 @@ const TagsForm = ({
     []
   );
   const [domainOptions, setDomainOptions] = useState<TagFormSelectItem[]>([]);
-  const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
 
   const selectedColor = useWatch({
     control: form.control,
@@ -214,12 +213,6 @@ const TagsForm = ({
     }
     previousOwnersRef.current = resetOwners;
   }, [initialValues, form]);
-
-  useEffect(() => {
-    if (form.formState.isSubmitSuccessful) {
-      setDescriptionEditorKey((prev) => prev + 1);
-    }
-  }, [form.formState.isSubmitSuccessful]);
 
   const disableNameField = useMemo(
     () => isEditing && isSystemTag,
@@ -583,7 +576,6 @@ const TagsForm = ({
                 <RichTextEditor
                   className="description-text-area new-form-style"
                   initialValue={initialValues?.description ?? ''}
-                  key={descriptionEditorKey}
                   readonly={disableDescriptionField}
                   onTextChange={field.onChange}
                 />

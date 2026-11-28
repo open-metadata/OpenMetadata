@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { UseFormReturn } from 'react-hook-form';
 import TagFormDrawer from './TagFormDrawer';
 import { TagFormValues } from './TagsPage.interface';
@@ -21,6 +21,7 @@ jest.mock('./TagsForm', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SlideoutMenu: Object.assign(
     ({
       isOpen,
@@ -165,6 +166,17 @@ describe('TagFormDrawer', () => {
     render(<TagFormDrawer {...defaultProps} />);
 
     expect(screen.getByTestId('tags-form')).toBeInTheDocument();
+  });
+
+  it('displays the exact parent FQN as read-only context for a child', () => {
+    render(
+      <TagFormDrawer {...defaultProps} parentFqn='Sensitivity."Private.Data"' />
+    );
+
+    const parent = screen.getByTestId('parent-tag');
+
+    expect(parent).toHaveTextContent('Sensitivity."Private.Data"');
+    expect(within(parent).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   it('should apply disabled attribute to save button when isLoading is true', () => {
