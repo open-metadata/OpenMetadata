@@ -240,6 +240,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
       int compressionThreshold = cacheConfig != null ? cacheConfig.compressionThresholdBytes : 0;
       int maxEntrySize = cacheConfig != null ? cacheConfig.maxEntrySizeBytes : 0;
+      Integer tagTtlSeconds = cacheConfig != null ? cacheConfig.tagTtlSeconds : null;
       bundleBatcher =
           new BundleWarmupBatcher(
               collectionDAO,
@@ -247,7 +248,8 @@ public class CacheWarmupApp extends AbstractNativeApplication {
               keys,
               warmRelationshipsEnabled(),
               compressionThreshold,
-              maxEntrySize);
+              maxEntrySize,
+              tagTtlSeconds);
     }
   }
 

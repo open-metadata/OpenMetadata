@@ -406,6 +406,56 @@ class BundleWarmupBatcherTest {
     assertTrue(cappedCache.get(keys.bundle("table", largeTable.getId())).isEmpty());
   }
 
+  @Test
+  void skipsTagWarmupWhenTagTtlDisabledAndCapsTtlWhenShorterThanEntityTtl() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders");
+
+    // Disabled tags + no relationships: short-circuits with zero DB/Redis calls.
+    BundleWarmupBatcher disabledNoRel = new BundleWarmupBatcher(dao, cache, keys, false, 0, 0, 0);
+    BundleWarmupBatcher.BatchResult emptyResult =
+        disabledNoRel.warmupBatch("table", List.of(table), Duration.ofSeconds(3600));
+    assertEquals(0, emptyResult.success());
+    assertEquals(0, emptyResult.failed());
+    verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(any());
+    verify(cache, never()).pipelineSet(any(), any());
+
+    // Disabled tags + relationships enabled: skips tag query and writes relations without
+    // tagsLoaded.
+    when(relationshipDAO.findFromBatchWithRelations(any(), eq("table"), any(), eq(NON_DELETED)))
+        .thenReturn(Collections.emptyList());
+    when(relationshipDAO.findToBatchWithRelations(any(), eq("table"), any(), eq(NON_DELETED)))
+        .thenReturn(Collections.emptyList());
+    BundleWarmupBatcher disabledWithRel = new BundleWarmupBatcher(dao, cache, keys, true, 0, 0, 0);
+    BundleWarmupBatcher.BatchResult relOnlyResult =
+        disabledWithRel.warmupBatch("table", List.of(table), Duration.ofSeconds(3600));
+    assertEquals(1, relOnlyResult.success());
+    verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(any());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> relCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
+    verify(cache).pipelineSet(relCaptor.capture(), ttlCaptor.capture());
+    assertEquals(Duration.ofSeconds(3600), ttlCaptor.getValue());
+    CachedReadBundle.Dto relOnlyDto =
+        JsonUtils.readValue(
+            relCaptor.getValue().get(keys.bundle("table", table.getId())),
+            CachedReadBundle.Dto.class);
+    assertFalse(relOnlyDto.tagsLoaded);
+    assertNull(relOnlyDto.tags);
+
+    // Shorter positive tagTtlSeconds caps the warmed bundle TTL.
+    when(tagUsageDAO.getTagsByTargetFQNHashes(any())).thenReturn(Collections.emptyMap());
+    BundleWarmupBatcher shorterTagTtl = new BundleWarmupBatcher(dao, cache, keys, false, 0, 0, 120);
+    BundleWarmupBatcher.BatchResult shortResult =
+        shorterTagTtl.warmupBatch("table", List.of(table), Duration.ofSeconds(3600));
+    assertEquals(1, shortResult.success());
+    verify(cache).pipelineSet(any(), eq(Duration.ofSeconds(120)));
+  }
+
   private static void assertContainsTagFqn(List<TagLabel> tags, String tagFqn) {
     assertTrue(
         tags.stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())),

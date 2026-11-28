@@ -38,20 +38,24 @@ Production deployments running large ingestion workloads against Redis filled an
    than the raw UTF-8 byte length. Readers decode both plain JSON and `om:gz1:` payloads and evict
    corrupted entries.
 3. **Configurable cache guards:** `CacheConfig` adds `excludedEntityTypes` (YAML list or
-   comma-separated env var, extending `UNCACHED_ENTITY_TYPES` across entity JSON, read bundles,
-   tags, owners, domains, CONTAINS parent lookups, and `CacheWarmupApp`), `maxEntrySizeBytes`
-   (post-compression UTF-8 byte cap; default `0` unlimited; skipped entries do not write `:enid:`
-   pointers), and wires `tagTtlSeconds` in `CachedTagUsageDao` (`<= 0` disables).
-4. **Read-only cache on upsert lookups:** `EntityCacheBypass.skipPopulate()` allows reads to hit
-   warm Redis entries while suppressing miss write-backs. `createOrUpdate`,
-   `createOrUpdateForImport`, and `createOrUpdateBatchForImport` wrap their original lookup with
-   `skipPopulate()` unless `cache.populateOnUpsert` is `true` (default `false`).
+   comma-separated env var, extending `UNCACHED_ENTITY_TYPES` across entity JSON, container
+   references, read bundles, tags, owners, domains, CONTAINS parent lookups, and `CacheWarmupApp`),
+   `maxEntrySizeBytes` (post-compression UTF-8 byte cap; default `0` unlimited; skipped entries do
+   not write `:enid:` pointers), and wires `tagTtlSeconds` across `CachedTagUsageDao`,
+   `CachedReadBundle`, and `BundleWarmupBatcher` (`<= 0` disables tag caching; shorter positive
+   values cap tag-bearing read-bundle TTLs).
+4. **Read-only cache on upsert paths:** `EntityCacheBypass.skipPopulate()` allows reads to hit
+   warm Redis entries while suppressing miss write-backs. `EntityResource.createOrUpdate`,
+   `EntityRepository.createOrUpdate`, `createOrUpdateForImport`, `createOrUpdateBatchForImport`,
+   and `GlossaryTermRepository.createOrUpdateForImport` scope `skipPopulate()` across both pre-write
+   lookups and update field hydration unless `cache.populateOnUpsert` is `true` (default `false`).
 5. **Session store isolation and bounded ZSET TTL:** `cache.sessionStore` supports `auto`
    (default), `jdbc` (keep sessions in SQL even with Redis cache enabled), and `redis`.
    `RedisSessionStore` updates per-user ZSET indexes via a single-key Lua script that checks `TTL`
    before `ZADD` so newly created keys (`-2`) receive a bounded TTL and finite TTLs extend
-   monotonically, while pre-upgrade persistent indexes (`-1`) are not shortened to a single short
-   session's TTL.
+   monotonically without shortening pre-upgrade persistent indexes (`-1`); on full
+   `findByUserIdAndStatus` scans, a second single-key Lua script transitions pre-upgrade `-1`
+   indexes to the maximum remaining TTL of all surviving live sessions.
 
 ## Consequences
 

@@ -104,6 +104,20 @@ public class RedisSessionStore implements SessionStore {
           + "end\n"
           + "return 1\n";
 
+  // Single-key Lua script used after a full user-index scan to transition a pre-upgrade persistent
+  // index (TTL == -1) — or extend a shorter finite TTL — to the max remaining horizon of all
+  // surviving live sessions. Preserves any existing longer finite TTL.
+  //
+  //   KEYS[1] = user index ZSET key
+  //   ARGV[1] = max remaining TTL seconds across surviving live sessions
+  private static final String EXPIRE_IF_UNBOUNDED_OR_SHORTER_LUA =
+      "local ttl = redis.call('TTL', KEYS[1])\n"
+          + "local target = tonumber(ARGV[1])\n"
+          + "if ttl == -1 or (ttl >= 0 and ttl < target) then\n"
+          + "  redis.call('EXPIRE', KEYS[1], target)\n"
+          + "end\n"
+          + "return 1\n";
+
   private final RedisCommands<String, String> commands;
   private final String keyspace;
 
@@ -168,16 +182,19 @@ public class RedisSessionStore implements SessionStore {
     String indexKey = userIndexKey(userId, status);
     // Oversample so lazy cleanup of stale index entries doesn't shrink the result below
     // the requested limit for a user whose oldest entries are TTL-expired.
-    long stop = (long) limit * USER_INDEX_OVERSAMPLE - 1;
-    List<String> ids = commands.zrange(indexKey, 0, stop);
+    long oversample = (long) limit * USER_INDEX_OVERSAMPLE;
+    List<String> ids = commands.zrange(indexKey, 0, oversample - 1);
     if (ids == null || ids.isEmpty()) {
       return Collections.emptyList();
     }
     List<UserSession> sessions = new ArrayList<>(limit);
     List<String> stale = new ArrayList<>();
     long now = System.currentTimeMillis();
+    long maxLiveTtl = 0L;
+    boolean truncated = false;
     for (String id : ids) {
       if (sessions.size() >= limit) {
+        truncated = true;
         break;
       }
       String json = commands.get(sessionKey(id));
@@ -188,15 +205,27 @@ public class RedisSessionStore implements SessionStore {
       UserSession session = JsonUtils.readValue(json, UserSession.class);
       if (session.getStatus() == status && !session.isExpired(now)) {
         sessions.add(session);
+        maxLiveTtl = Math.max(maxLiveTtl, ttlSecondsFor(session));
       } else if (isTerminal(session.getStatus()) || session.isExpired(now)) {
         // Redis keeps the row until its minimum TTL lapses. An entry for a session live in the
         // other status sharing this index is kept: this GET may predate a concurrent update, and
         // removing the entry would hide a live session.
         stale.add(id);
+      } else {
+        // Live session in the other status sharing this index (e.g. REFRESHING in ACTIVE index).
+        maxLiveTtl = Math.max(maxLiveTtl, ttlSecondsFor(session));
       }
     }
     if (!stale.isEmpty()) {
       commands.zrem(indexKey, stale.toArray(new String[0]));
+    }
+    boolean fullScan = ids.size() < oversample && !truncated;
+    if (fullScan && maxLiveTtl > 0L) {
+      commands.eval(
+          EXPIRE_IF_UNBOUNDED_OR_SHORTER_LUA,
+          ScriptOutputType.INTEGER,
+          new String[] {indexKey},
+          Long.toString(maxLiveTtl));
     }
     return sessions;
   }
