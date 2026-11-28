@@ -67,6 +67,7 @@ def _view_lineage_source() -> LookerSource:
     source._explores_cache = {}
     source._views_cache = {}
     source._parsed_views = {}
+    source._unparsed_views = {}
     source._lookml_constants_map = {}
     source._view_data_model = _view_data_model(LookMlView(name="table_details"))
     source._added_lineage = {}
@@ -75,14 +76,21 @@ def _view_lineage_source() -> LookerSource:
 
 
 class Catalog:
-    def __init__(self, prefixes, available):
+    def __init__(self, prefixes, available, columns: Sequence[str] = ()):
         self.services = {name: DatabaseService(id=uuid.uuid4(), name=name, serviceType="Trino") for name in prefixes}
         self.tables = (
             {
                 name: Table(
                     id=uuid.uuid4(),
                     name="table_name",
-                    columns=[],
+                    columns=[
+                        Column(
+                            name=column,
+                            dataType=DataType.STRING,
+                            fullyQualifiedName=f"{name}.demo_db.schema_prod.table_name.{column}",
+                        )
+                        for column in columns
+                    ],
                     fullyQualifiedName=f"{name}.demo_db.schema_prod.table_name",
                 )
                 for name in prefixes
@@ -114,8 +122,9 @@ def _stubbed_db_services(
     source: LookerSource,
     available: bool = True,
     prefixes: Sequence[str] = ("trino_service",),
+    columns: Sequence[str] = (),
 ) -> Iterator[Catalog]:
-    source.metadata = Catalog(prefixes, available)
+    source.metadata = Catalog(prefixes, available, columns)
     with (
         patch.object(source, "get_db_service_prefixes", return_value=list(prefixes)),
         patch.object(source, "_get_db_dialect", return_value=Dialect.ANSI),
@@ -228,10 +237,10 @@ view: cycle_b {{
 """
 
 
-@pytest.fixture
-def referencing_project(tmp_path) -> Iterator[BulkLkmlParser]:
-    """The views above parsed from a LookML project, as `LookerSource.parser` serves them."""
-    (tmp_path / "usage.view.lkml").write_text(REFERENCING_VIEWS)
+@contextmanager
+def _lookml_project(tmp_path, views: str) -> Iterator[BulkLkmlParser]:
+    """`views` parsed from a LookML project, as `LookerSource.parser` serves them."""
+    (tmp_path / "project.view.lkml").write_text(views)
     # BulkLkmlParser is a singleton: drop any instance another test left, and ours afterwards.
     Singleton.clear_all()
     parser = BulkLkmlParser(reader=LocalReader(base_path=tmp_path))
@@ -240,6 +249,12 @@ def referencing_project(tmp_path) -> Iterator[BulkLkmlParser]:
             yield parser
     finally:
         Singleton.clear_all()
+
+
+@pytest.fixture
+def referencing_project(tmp_path) -> Iterator[BulkLkmlParser]:
+    with _lookml_project(tmp_path, REFERENCING_VIEWS) as parser:
+        yield parser
 
 
 def _explore_lineage(source: LookerSource, view: LookMlView, model_name: str = "finance_reports") -> list:
@@ -408,3 +423,181 @@ def test_dimension_group_column_lineage_reaches_the_data_model_column() -> None:
     assert [([model_str(column) for column in edge.fromColumns], model_str(edge.toColumn)) for edge in edges] == [
         (["trino.db.public.orders.created_at"], "looker.orders_view.created")
     ]
+
+
+TABLE_FQN = "trino_service.demo_db.schema_prod.table_name"
+VIEW_FQN = "looker.orders_view"
+ORDERS_COLUMNS = ("id", "status", "first_name", "last_name", "created_at", "amount", "order_number", "number")
+
+
+def _derived_view(sql: str, fields: str) -> LookMlView:
+    lookml = "view: orders { derived_table: { sql: " + sql + " ;; } " + fields + " }"
+    return LkmlFile.model_validate(lkml.load(lookml)).views[0]
+
+
+def _column_pairs(results) -> set[tuple[str, str]]:
+    return {
+        (model_str(from_column), model_str(column.toColumn))
+        for result in results
+        for column in result.right.edge.lineageDetails.columnsLineage or []
+        for from_column in column.fromColumns
+    }
+
+
+def _qualified(pairs: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    return {(f"{TABLE_FQN}.{column}", f"{VIEW_FQN}.{field}") for column, field in pairs}
+
+
+def _derived_lineage(view: LookMlView) -> list:
+    source = _view_lineage_source()
+    source._view_data_model = _view_data_model(view)
+    with _stubbed_db_services(source, columns=ORDERS_COLUMNS):
+        return _explore_lineage(source, view)
+
+
+@pytest.mark.parametrize(
+    ("sql", "fields", "expected"),
+    [
+        pytest.param(
+            "SELECT id",
+            "dimension: order_id { sql: ${TABLE}.id ;; }",
+            {("id", "order_id")},
+            id="renamed_field",
+        ),
+        pytest.param(
+            "SELECT id, status",
+            "dimension: id { sql: ${TABLE}.id ;; } dimension: status {}",
+            {("id", "id"), ("status", "status")},
+            id="same_name_and_no_sql",
+        ),
+        pytest.param(
+            "SELECT id",
+            "dimension: order_id { sql: ${TABLE}.id ;; } "
+            "dimension: order_key { sql: CAST(${TABLE}.id AS VARCHAR) ;; } "
+            "measure: order_count { type: count_distinct sql: ${TABLE}.id ;; }",
+            {("id", "order_id"), ("id", "order_key"), ("id", "order_count")},
+            id="one_column_many_fields",
+        ),
+        pytest.param(
+            "SELECT first_name, last_name",
+            "dimension: full_name { sql: ${TABLE}.first_name || ' ' || ${TABLE}.last_name ;; }",
+            {("first_name", "full_name"), ("last_name", "full_name")},
+            id="one_field_many_columns",
+        ),
+        pytest.param(
+            "SELECT id",
+            "dimension: order_id { sql: ${TABLE}.id ;; } dimension: order_label { sql: CONCAT('#', ${order_id}) ;; }",
+            {("id", "order_id"), ("id", "order_label")},
+            id="field_reading_another_field",
+        ),
+        pytest.param(
+            "SELECT created_at",
+            "dimension_group: created { type: time timeframes: [date, month] sql: ${TABLE}.created_at ;; }",
+            {("created_at", "created")},
+            id="dimension_group",
+        ),
+        pytest.param(
+            "SELECT amount",
+            "measure: total_amount { type: sum sql: ${TABLE}.amount ;; }",
+            {("amount", "total_amount")},
+            id="measure",
+        ),
+        pytest.param(
+            "SELECT ID",
+            "dimension: order_id { sql: ${TABLE}.id ;; }",
+            {("id", "order_id")},
+            id="case_differs",
+        ),
+        pytest.param(
+            "SELECT id, order_number",
+            "dimension: id { sql: ${TABLE}.order_number ;; }",
+            {("order_number", "id")},
+            id="name_shared_with_another_column",
+        ),
+        pytest.param(
+            "SELECT id, number",
+            'dimension: order_number { label: "id" sql: ${TABLE}.number ;; }',
+            {("number", "order_number")},
+            id="label_shared_with_another_column",
+        ),
+    ],
+)
+def test_derived_view_column_lineage_lands_on_the_fields_reading_each_column(sql, fields, expected) -> None:
+    """The data model's columns are the view's fields, so each SQL output column has to be carried
+    to the fields reading it (#38583). A field's declared column wins over a name or label that
+    happens to match another output column."""
+    results = _derived_lineage(_derived_view(f"{sql} FROM schema_prod.table_name", fields))
+
+    assert len(results) == 1 and results[0].left is None
+    assert _column_pairs(results) == _qualified(expected)
+
+
+@pytest.mark.parametrize(
+    ("sql", "fields"),
+    [
+        pytest.param("SELECT *", "dimension: order_id { sql: ${TABLE}.id ;; }", id="select_star"),
+        pytest.param("SELECT id", "dimension: order_status { sql: ${TABLE}.status ;; }", id="column_not_selected"),
+    ],
+)
+def test_derived_view_keeps_the_table_edge_when_no_field_column_resolves(sql, fields) -> None:
+    """Without an output column a field reads, there is nothing to link, so no column is guessed."""
+    results = _derived_lineage(_derived_view(f"{sql} FROM schema_prod.table_name", fields))
+
+    assert len(results) == 1 and results[0].left is None
+    assert results[0].right.edge.fromEntity.fullyQualifiedName == TABLE_FQN
+    assert _column_pairs(results) == set()
+
+
+RENAMING_VIEWS = """
+view: orders_derived {
+  derived_table: { sql: SELECT id FROM schema_prod.table_name ;; }
+  dimension: order_id { sql: ${TABLE}.id ;; }
+}
+
+view: order_usage {
+  sql_table_name: ${orders_derived.SQL_TABLE_NAME} ;;
+  dimension: usage_order_id { sql: ${TABLE}.id ;; }
+}
+
+view: order_summary {
+  derived_table: { sql: SELECT id FROM ${orders_derived.SQL_TABLE_NAME} ;; }
+  dimension: summary_order_id { sql: ${TABLE}.id ;; }
+}
+"""
+
+
+@pytest.fixture
+def renaming_project(tmp_path) -> Iterator[BulkLkmlParser]:
+    with _lookml_project(tmp_path, RENAMING_VIEWS) as parser:
+        yield parser
+
+
+@pytest.mark.parametrize("path", ["explore", "standalone"])
+def test_view_reading_a_derived_views_table_maps_columns_to_its_own_fields(renaming_project, path) -> None:
+    """`order_usage` reads `orders_derived`'s SQL, but the data model is `order_usage`'s, so the
+    SQL columns land on `order_usage`'s fields, not on `orders_derived`'s."""
+    view = renaming_project.find_view("order_usage")
+    source = _view_lineage_source()
+    source._view_data_model = _view_data_model(view)
+    with _stubbed_db_services(source, columns=ORDERS_COLUMNS):
+        results = (
+            _explore_lineage(source, view)
+            if path == "explore"
+            else list(source._add_standalone_view_lineage(view, "finance_project", "finance_reports"))
+        )
+
+    assert len(results) == 1 and results[0].left is None
+    assert _column_pairs(results) == _qualified({("id", "usage_order_id")})
+
+
+def test_chained_derived_view_maps_the_upstream_sql_columns_to_its_own_fields(renaming_project) -> None:
+    """The upstream view is inlined as a subquery, so only the downstream view's fields apply."""
+    view = renaming_project.find_view("order_summary")
+    source = _view_lineage_source()
+    source._view_data_model = _view_data_model(view)
+    source._parsed_views["orders_derived"] = "SELECT id FROM schema_prod.table_name"
+    with _stubbed_db_services(source, columns=ORDERS_COLUMNS):
+        results = _explore_lineage(source, view)
+
+    assert len(results) == 1 and results[0].left is None
+    assert _column_pairs(results) == _qualified({("id", "summary_order_id")})

@@ -24,7 +24,7 @@ import copy
 import os
 import re
 import traceback
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import (
@@ -240,6 +240,20 @@ def find_derived_references(sql_query: str) -> list[str]:
         return []
     matches = re.findall(DERIVED_REFERENCES, sql_query)
     return matches  # noqa: RET504
+
+
+def compose_with_view_fields(
+    column_lineage: Iterable[tuple[str, str]], fields_by_column: Mapping[str, set[str]]
+) -> list[tuple[str, str]]:
+    """Turn `(source column, SQL output column)` pairs into `(source column, field)` pairs,
+    one for every LookML field reading that output column."""
+    return list(
+        dict.fromkeys(
+            (source_column, field_name)
+            for source_column, output_column in column_lineage
+            for field_name in sorted(fields_by_column.get(str(output_column).lower(), ()))
+        )
+    )
 
 
 class LookerSource(DashboardServiceSource):
@@ -1409,7 +1423,7 @@ class LookerSource(DashboardServiceSource):
                     view.name, sql_table_name, project_name, model_name
                 )
                 if derived_sql is not None:
-                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                    yield from self._build_lineage_for_view(view.name, derived_sql, view)
                 if sql_table_name is None:
                     return
 
@@ -1443,7 +1457,7 @@ class LookerSource(DashboardServiceSource):
                         )
                         return
                 logger.debug(f"Processing standalone view [{view.name}] with SQL: \n[{sql_query}]")
-                yield from self._build_lineage_for_view(view.name, sql_query)
+                yield from self._build_lineage_for_view(view.name, sql_query, view)
                 if self._unparsed_views:
                     self.build_lineage_for_unparsed_views()
 
@@ -1548,7 +1562,7 @@ class LookerSource(DashboardServiceSource):
                     explore.name,
                 )
                 if derived_sql is not None:
-                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                    yield from self._build_lineage_for_view(view.name, derived_sql, view)
                 if sql_table_name is None:
                     return
 
@@ -1582,7 +1596,7 @@ class LookerSource(DashboardServiceSource):
                         logger.warning(f"Not all references are replaced for view [{view.name}]. Parsing it later.")
                         return
                 logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
-                yield from self._build_lineage_for_view(view.name, sql_query)
+                yield from self._build_lineage_for_view(view.name, sql_query, view)
                 if self._unparsed_views:
                     self.build_lineage_for_unparsed_views()
 
@@ -1595,10 +1609,34 @@ class LookerSource(DashboardServiceSource):
                 )
             )
 
-    def _build_lineage_for_view(self, view_name: str, sql_query: str) -> Iterable[Either[AddLineageRequest]]:
+    def _fields_by_table_column(self, view: LookMlView) -> dict[str, set[str]]:
+        """Map each column of the view's table, lower-cased, to the LookML fields reading it.
+
+        The data model's columns are the view's fields, so a table column reaches the data model
+        only through the fields reading it. A field whose SQL names no column keeps the match on
+        its own name: Looker reads a field without `sql` as `${TABLE}.<field>`.
+        ADR:2026-11-27-looker-view-column-lineage-reaches-the-fields-reading-each-column"""
+        column_lineage = self._extract_column_lineage(view)
+        mapped_fields = {field_name for _, field_name in column_lineage}
+        fields_by_column: dict[str, set[str]] = {}
+        for table_column, field_name in column_lineage:
+            fields_by_column.setdefault(table_column.lower(), set()).add(field_name)
+        for field in (*view.dimensions, *view.dimension_groups, *view.measures):
+            if field.name not in mapped_fields:
+                fields_by_column.setdefault(field.name.lower(), set()).add(field.name)
+        return fields_by_column
+
+    def _build_lineage_for_view(
+        self, view_name: str, sql_query: str, view: LookMlView | None = None
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse the SQL query and build lineage for the view.
+
+        The SQL names the columns it outputs, but the data model is named after the LookML fields
+        of `view`, so each output column is carried to the fields reading it.
         """
+        # The field mapping only depends on the view definition, so resolve it once
+        fields_by_column = self._fields_by_table_column(view) if view is not None else None
         for db_service_prefix in self.get_db_service_prefixes() or []:
             db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
             lineage_parser = LineageParser(
@@ -1632,6 +1670,8 @@ class LookerSource(DashboardServiceSource):
                                     ),
                                 )
                             )
+                    if fields_by_column is not None:
+                        column_lineage = compose_with_view_fields(column_lineage, fields_by_column)
                     yield from self.build_lineage_requests(
                         source=str(from_table_name),
                         db_service_prefix=db_service_prefix,
