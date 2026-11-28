@@ -116,5 +116,5 @@ These files match the actual sample_data tables in OpenMetadata. Use when testin
 | `schema` | `schema` |
 | `slaProperties` | `sla` |
 | `quality` | Mapped to test cases |
-| `team` | `owners` / `stakeholders` |
+| `team` | `owners` / `reviewers` |
 | `roles` | `roles` |

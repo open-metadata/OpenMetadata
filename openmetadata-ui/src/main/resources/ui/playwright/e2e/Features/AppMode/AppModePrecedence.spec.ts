@@ -40,7 +40,7 @@ import {
   AppModeExpectation,
   assertAppMode,
   stubTenantDefaultAppMode,
-  switchToAiModeViaProfileToggle,
+  switchToAiModeViaSidebarSwitcher,
 } from '../../Utils/appMode';
 
 type DefaultAppMode = 'ai' | 'classic' | null;
@@ -330,7 +330,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         // Classic; the manual switch overrides for this tab.
         await signInThroughForm(page, user);
         await waitForAllLoadersToDisappear(page);
-        await switchToAiModeViaProfileToggle(page);
+        await switchToAiModeViaSidebarSwitcher(page);
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
         await waitForAppMode(page, 'ai');
 

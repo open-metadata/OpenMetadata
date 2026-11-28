@@ -1597,12 +1597,16 @@ public class LineageRepository {
     boolean hasField =
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
-    if (!hasField) return;
-
-    for (EntityReference fromRef : getter.apply(fromEntity)) {
-      for (EntityReference toRef : getter.apply(toEntity)) {
-        processExtendedLineageCleanup(fromRef, toRef);
-      }
+    if (hasField) {
+      // The deleted edge counted once in each pair of its ends' products; drawn edges stay.
+      // ADR:2026-11-26-data-product-lineage-rollups-move-by-exact-deltas-and-drawn-edges-stay
+      List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
+      List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
+      fromRefs.forEach(
+          from ->
+              toRefs.forEach(
+                  to -> LineageUtil.adjustDataProductLineage(from.getId(), to.getId(), -1)));
+      fromRefs.forEach(from -> toRefs.forEach(to -> invalidateLineageCacheForEdge(from, to)));
     }
   }
 
@@ -1661,7 +1665,29 @@ public class LineageRepository {
       EntityReference from = resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId());
       EntityReference to = resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId());
       deleteLineageFromSearch(from, to, lineageDetails);
+      releaseDataProductLineage(from, to);
       emitLineageChangeEvent(EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
+    }
+  }
+
+  // A delete by source runs before an override run adds the edges back, which adds one again.
+  private void releaseDataProductLineage(EntityReference from, EntityReference to) {
+    boolean holdsDataProducts =
+        from.getType() != null
+            && to.getType() != null
+            && hasField(from, FIELD_DATA_PRODUCTS)
+            && hasField(to, FIELD_DATA_PRODUCTS);
+    EntityInterface<?> fromEntity =
+        holdsDataProducts
+            ? Entity.getEntityOrNull(from.getType(), from.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    EntityInterface<?> toEntity =
+        fromEntity != null
+            ? Entity.getEntityOrNull(to.getType(), to.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    if (toEntity != null) {
+      cleanUpLineageForDataProducts(
+          fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface<?>::getDataProducts);
     }
   }
 

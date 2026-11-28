@@ -301,6 +301,8 @@ public class VectorDocBuilder {
     int chunkCount = ctx.chunks().size();
     String semanticChunk = semanticChunkFor(ctx.chunks(), ctx.semanticChunks(), index);
     String textToEmbed = joinSemanticParts(ctx.semanticMetaLight(), semanticChunk);
+    // PageBodyTextContributor uses this footer and the metadata separator to locate article text.
+    // ADR:2026-11-26-mcp-article-passages-match-indexed-chunks
     String textToLLMContext =
         String.format(
             "%s%s | chunk %d/%d", ctx.metaLight(), ctx.chunks().get(index), index + 1, chunkCount);
@@ -796,6 +798,8 @@ public class VectorDocBuilder {
 
     parts.add("customProperties: " + customPropertiesText(entity.getExtension()));
 
+    // The article reader matches this separator as part of the stored chunk suffix.
+    // ADR:2026-11-26-mcp-article-passages-match-indexed-chunks
     return String.join("; ", parts) + " | ";
   }
 

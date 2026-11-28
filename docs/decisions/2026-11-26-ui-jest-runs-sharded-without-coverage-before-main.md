@@ -1,9 +1,9 @@
 # UI Jest runs sharded without coverage on pull requests and in the merge queue
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-26 (initial)
+- **Revisions:** v1 2026-11-26 (initial); v2 2026-11-26 (Jest runs from the `ui-unit` composite, gated by `ui-tests-status`)
 - **Deciders:** Chirag Madlani
-- **Guard:** reviewer; `yarn-coverage.yml` (the required `ui-coverage` job fails unless every shard succeeds or the run is skipped)
+- **Guard:** reviewer; `.github/actions/ui-unit` (a failed shard fails the `ui` job, so `ui-tests-status` fails; see the v2 amendment)
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
   ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue,
   ADR:2026-11-25-ui-sonar-coverage-is-jest-plus-the-browser-suite-from-one-nightly-run
@@ -35,3 +35,10 @@ coverage gate back means collecting coverage per shard, merging it, and comparin
 Report it in the job summary and fail the check; PR jobs post no comments
 (ADR:2026-11-10-pr-jobs-never-receive-credentials). If main's locale files ever drift, only the
 next PR that touches a locale file or `yarn.lock` reports it.
+
+## Amendment v2 (2026-11-26)
+`yarn-coverage.yml` is gone. The `unit` job of `ui-ci.yml`, called as the `ui` job of `ci-pr.yml`
+and `ci-merge-queue.yml`, runs the same four shards through the `.github/actions/ui-unit` composite, under
+ADR:2026-11-26-ui-ci-runs-from-the-event-entrypoints-behind-one-required-check, and its result
+feeds `ui-tests-status` instead of `ui-coverage`. The checkstyle steps, including the i18n rule,
+moved to `.github/actions/ui-checkstyle`. Coverage, `--silent` and the nightly are unchanged.

@@ -21,7 +21,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGING_URL_PARAMS,
+} from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataQualityPageTabs } from '../../../enums/DataQuality.enum';
@@ -58,16 +61,6 @@ export interface UseTestCaseListProps {
   handlePagingChange: UsePagingInterface['handlePagingChange'];
   showPagination: boolean;
 }
-
-// usePaging keeps these in the query string that `params` is parsed from. A paging action sets
-// the page in state first and in the URL in a later (transition) render, so the fetch reads the
-// page from `currentPage` and `pageSize` and must not refetch again when the URL catches up.
-const PAGING_URL_PARAMS = [
-  'currentPage',
-  'pageSize',
-  'cursorType',
-  'cursorValue',
-];
 
 /**
  * Owns the DATA concern: the test-case rows, their loading flag, the sort

@@ -461,13 +461,14 @@ class AIContextMcpIT extends McpTestBase {
   }
 
   @Test
-  void getEntityDetails_contentIncludeStripsInlineBase64Images() throws Exception {
+  void getEntityDetails_stripsInlineImagesBeforeReadingAndBudgetingArticles() throws Exception {
+    Table linkedTable = createServiceDatabaseSchemaTable("aicontext_image_anchor_" + suffix);
     String base64Payload = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(4_000) + "ErkJggg==";
     String htmlBody =
-        "<p>Architecture summary for revenue reporting.</p>"
-            + "<p><img src=\"data:image/png;base64,"
+        "<p><img src=\"data:image/png;base64,"
             + base64Payload
-            + "\" alt=\"Architecture\"></p>"
+            + "\" alt=\"Architecture\"></p>\n\n"
+            + "<p>Architecture summary for revenue reporting.</p>"
             + "<p>Keep x &gt;&#61; 1 and label &#39;a&#39;.</p>";
     Map<String, Object> createPage =
         Map.of(
@@ -480,7 +481,9 @@ class AIContextMcpIT extends McpTestBase {
             "pageType",
             "Article",
             "page",
-            Map.of());
+            Map.of(),
+            "relatedEntities",
+            List.of(Map.of("id", linkedTable.getId().toString(), "type", "table")));
     JsonNode page = post("contextCenter/pages", createPage, JsonNode.class);
     String imageArticleFqn = page.get("fullyQualifiedName").asText();
 
@@ -509,6 +512,31 @@ class AIContextMcpIT extends McpTestBase {
           .doesNotContain(base64Payload);
       assertThat(content.length()).isLessThan(500);
     }
+
+    Map<String, Object> contextCall =
+        McpTestUtils.createToolCallRequest(
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                linkedTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
+                "format",
+                "json"));
+    JsonNode response = executeMcpRequest(contextCall);
+    JsonNode context =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
+    JsonNode linkedArticle = findArticle(context.path("articles"), imageArticleFqn);
+    assertThat(linkedArticle).isNotNull();
+    assertThat(linkedArticle.path("contentTruncated").asBoolean()).isFalse();
+    assertThat(linkedArticle.path("content").asText())
+        .startsWith("<p>Architecture summary for revenue reporting.</p>")
+        .contains("Keep x >= 1 and label 'a'.")
+        .doesNotContain("base64", "<img", base64Payload);
   }
 
   private static JsonNode findArticle(JsonNode articles, String fqn) {

@@ -18,6 +18,8 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v212.DataProductLineageRebuild;
+import org.openmetadata.service.migration.utils.v212.DataProductLineageSelfLoopRepair;
 import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild;
 import org.openmetadata.service.migration.utils.v212.LogicalTestSuitePipelineMigration;
 
@@ -42,5 +44,16 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DomainLineageRebuild.STEP_NAME,
         () -> DomainLineageRebuild.rebuild(collectionDAO));
+    // Released versions wrote data product lineage edges from a product to itself.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductLineageSelfLoopRepair.STEP_NAME,
+        () -> DataProductLineageSelfLoopRepair.deleteAll(handle));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductLineageRebuild.STEP_NAME,
+        () -> DataProductLineageRebuild.rebuildAll(handle, MYSQL));
   }
 }

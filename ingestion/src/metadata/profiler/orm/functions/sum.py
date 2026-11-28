@@ -17,7 +17,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import CustomTypes, Dialects
 
 
 class SumFn(GenericFunction):
@@ -63,6 +63,8 @@ def _(element, compiler, **kw):
     https://dev.mysql.com/doc/refman/8.0/en/cast-functions.html
     """
     proc = compiler.process(element.clauses, **kw)
+    if isinstance(element.type, CustomTypes.LARGEINT.value):
+        return f"SUM({proc})"
     return f"SUM(CAST({proc} AS UNSIGNED INTEGER))"
 
 
@@ -74,9 +76,16 @@ def _(element, compiler, **kw):
     return f"SUM({proc})"
 
 
+@compiles(SumFn, Dialects.Doris)
+def _(element, compiler, **kw):
+    """Doris widens integer sums natively; casting to BIGINT overflows 128-bit LARGEINT values."""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM({proc})"
+
+
 @compiles(SumFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    """These database types have all int types as alias for int64 so don't need a cast"""
+    """MSSQL SUM on an int column overflows past int range, so cast to decimal"""
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS decimal))"
 
