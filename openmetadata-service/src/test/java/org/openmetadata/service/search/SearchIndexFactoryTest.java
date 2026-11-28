@@ -392,6 +392,24 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void dashboardDataModelReindexFieldsIncludeColumns() {
+    // Regression: DashboardDataModelRepository.setFieldsInBulk only hydrates column-level
+    // tags (fetchAndSetColumnTags → bulkPopulateEntityFieldTags / inheritEntityTermsOnFields)
+    // and merges reference-typed column custom properties back from custom_property_reference
+    // (applyColumnReferences) when "columns" is in the field set. DashboardDataModelRepository
+    // .clearFields is a no-op, so the stored columns survive the reindex read and non-reference
+    // column custom properties + columnNames still index — the regression is partial and easy
+    // to miss: reindex-built dashboard_data_model_search_index docs lose fresh column tags
+    // (Explore tag facet) and reference-typed column custom properties
+    // (columns.customPropertiesTyped ref values), until each data model is edited again.
+    // Same field-gating pattern as WorksheetIndex / FileIndex / TableIndex.
+    Set<String> dataModelFields = factory.getReindexFieldsFor(Entity.DASHBOARD_DATA_MODEL);
+    assertTrue(
+        dataModelFields.contains("columns"),
+        () -> "DashboardDataModel reindex fields must include 'columns'; got " + dataModelFields);
+  }
+
+  @Test
   void domainReindexFieldsIncludeParent() {
     Set<String> domainFields = factory.getReindexFieldsFor(Entity.DOMAIN);
     assertTrue(

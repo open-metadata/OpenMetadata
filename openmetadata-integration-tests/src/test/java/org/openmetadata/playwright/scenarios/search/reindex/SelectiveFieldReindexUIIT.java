@@ -26,12 +26,14 @@ import org.openmetadata.playwright.ui.pages.ExplorePage;
 import org.openmetadata.playwright.ui.pages.ExplorePage.Tab;
 import org.openmetadata.playwright.ui.pages.SearchIndexAppPage;
 import org.openmetadata.playwright.ui.pages.TablePage;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateWorksheet;
+import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.CreateDriveService;
@@ -42,8 +44,10 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.tests.TestCase;
@@ -51,6 +55,8 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DailyCount;
+import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityUsage;
@@ -180,6 +186,7 @@ class SelectiveFieldReindexUIIT {
     assertTableSearchableByColumnName(ui, fixtures, phase);
     assertQueryRendersOnTableQueriesTab(ui, fixtures, phase);
     assertWorksheetSearchableByColumnName(ui, fixtures, phase);
+    assertDataModelSearchableByColumnName(ui, fixtures, phase);
     assertTestCaseSearchable(ui, fixtures, phase);
     assertTestSuiteSearchable(ui, fixtures, phase);
     assertTableUsageSummaryInSource(ui, fixtures, phase);
@@ -242,6 +249,32 @@ class SelectiveFieldReindexUIIT {
           // Presence of the seeded worksheet, not an == 1 global fuzzy count — see the rationale in
           // assertTableSearchableByColumnName.
           PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.worksheetName))
+              .isVisible(
+                  new LocatorAssertions.IsVisibleOptions()
+                      .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
+        });
+  }
+
+  private static void assertDataModelSearchableByColumnName(
+      final UiSession ui, final SeededFixtures fixtures, final String phase) {
+    final String description =
+        "DashboardDataModelIndex.columns → Explore[Dashboard Data Models] search by '"
+            + fixtures.dataModelColumnMarker
+            + "' — "
+            + phase;
+    LOG.info("Asserting {}", description);
+    pollUiAssertion(
+        description,
+        () -> {
+          final ExplorePage explore =
+              ExplorePage.openWithSearch(
+                  ui, Tab.DASHBOARD_DATA_MODELS, fixtures.dataModelColumnMarker);
+          // Presence of the seeded data model, not an == 1 global fuzzy count — see the
+          // rationale in assertTableSearchableByColumnName. Fails after reindex if
+          // DashboardDataModelIndex.getRequiredReindexFields() omits "columns": columnNames /
+          // columnNamesFuzzy are dropped from dashboard_data_model_search_index and Explore →
+          // Data Models column-name search returns "No result found".
+          PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.dataModelName))
               .isVisible(
                   new LocatorAssertions.IsVisibleOptions()
                       .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
@@ -379,12 +412,26 @@ class SelectiveFieldReindexUIIT {
         createWorksheetWithColumnMarker(
             shortId, driveService.getFullyQualifiedName(), worksheetColumnMarker);
 
+    // DashboardDataModel column — the DashboardDataModelIndex.getRequiredReindexFields() guard.
+    // Without "columns" in the reindex field set, columnNames / columnNamesFuzzy are dropped from
+    // dashboard_data_model_search_index on reindex, and Explore → Data Models column-name search
+    // returns "No result found" for any data model after a reindex (same shape as the Worksheet
+    // regression). The Looker service is tracked as a third cleanup root.
+    final DashboardService dashboardService =
+        ns.trackRoot(Entity.DASHBOARD_SERVICE, createShortLookerService(shortId));
+    final String dataModelColumnMarker = "dcol" + shortId;
+    final String dataModelName =
+        createDataModelWithColumnMarker(
+            shortId, dashboardService.getFullyQualifiedName(), dataModelColumnMarker);
+
     return new SeededFixtures(
         table.getFullyQualifiedName(),
         table.getName(),
         tableColumnMarker,
         worksheetColumnMarker,
         worksheetName,
+        dataModelColumnMarker,
+        dataModelName,
         testCaseSeed.testCaseName,
         testCaseSeed.testSuiteName);
   }
@@ -534,12 +581,41 @@ class SelectiveFieldReindexUIIT {
     return SdkClients.adminClient().worksheets().create(request).getName();
   }
 
+  private static DashboardService createShortLookerService(final String shortId) {
+    final LookerConnection looker =
+        new LookerConnection()
+            .withHostPort(java.net.URI.create("http://localhost:9999"))
+            .withClientId("test-client");
+    final CreateDashboardService request =
+        new CreateDashboardService()
+            .withName("looker_" + shortId)
+            .withServiceType(CreateDashboardDataModel.DashboardServiceType.Looker)
+            .withConnection(new DashboardConnection().withConfig(looker))
+            .withDescription("Selective-field reindex seed");
+    return SdkClients.adminClient().dashboardServices().create(request);
+  }
+
+  private static String createDataModelWithColumnMarker(
+      final String shortId, final String dashboardServiceFqn, final String columnMarker) {
+    final Column markerColumn =
+        new Column().withName(columnMarker).withDataType(ColumnDataType.STRING);
+    final CreateDashboardDataModel request =
+        new CreateDashboardDataModel()
+            .withName("dm_" + shortId)
+            .withService(dashboardServiceFqn)
+            .withDataModelType(DataModelType.LookMlView)
+            .withColumns(List.of(markerColumn));
+    return SdkClients.adminClient().dashboardDataModels().create(request).getName();
+  }
+
   private record SeededFixtures(
       String tableFqn,
       String tableName,
       String tableColumnMarker,
       String worksheetColumnMarker,
       String worksheetName,
+      String dataModelColumnMarker,
+      String dataModelName,
       String testCaseName,
       String testSuiteName) {}
 
