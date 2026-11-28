@@ -88,10 +88,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         sql_expression = cast(str, sql_expression)  # satisfy mypy  # noqa: TC006
         threshold = cast(float, threshold)  # satisfy mypy  # noqa: TC006
 
-        row_count = None
+        row_count: int | None = None
         try:
             rows = self._run_results(sql_expression, strategy)
-            if is_percentage:
+            if is_percentage or self.test_case.computePassedFailedRowCount:
                 row_count = self._get_total_row_count_if_needed()
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -119,8 +119,6 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         status = TestCaseStatus.Success if test_passed else TestCaseStatus.Failed
 
         if self.test_case.computePassedFailedRowCount:
-            if row_count is None:
-                row_count = self._get_total_row_count_if_needed()
             passed_rows, failed_rows = self._calculate_passed_failed_rows(
                 test_passed, operator, threshold_rows, len_rows, row_count
             )
@@ -182,23 +180,23 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self):
-        """Compute row count for the given column
+    def compute_row_count(self) -> int | None:
+        """Compute row count for the given table
 
         Raises:
             NotImplementedError:
         """
         raise NotImplementedError
 
-    def get_row_count(self) -> int:
+    def get_row_count(self) -> int | None:
         """Get row count
 
         Returns:
-            Tuple[int, int]:
+            int | None: Total row count, or None when unavailable
         """
         return self.compute_row_count()
 
-    def _get_total_row_count_if_needed(self) -> int:
+    def _get_total_row_count_if_needed(self) -> int | None:
         """Get total row count if computePassedFailedRowCount is enabled"""
         return self.get_row_count()
 
@@ -208,7 +206,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         operator: str,
         threshold: int,
         len_rows: int,
-        row_count: int,
+        row_count: int | None,
     ) -> tuple[int, int]:
         """Calculate passed and failed rows based on test result and operator
 
@@ -226,17 +224,17 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             return self._calculate_passed_rows_success(operator, len_rows, row_count)
         return self._calculate_passed_rows_failure(operator, threshold, len_rows, row_count)
 
-    def _calculate_passed_rows_success(self, operator: str, len_rows: int, row_count: int) -> tuple[int, int]:
+    def _calculate_passed_rows_success(self, operator: str, len_rows: int, row_count: int | None) -> tuple[int, int]:
         """Calculate passed/failed rows when test passed"""
         if operator in (">", ">="):
             passed_rows = len_rows
-            failed_rows = (row_count - len_rows) if row_count else 0
+            failed_rows = (row_count - len_rows) if row_count is not None else 0
         elif operator in ("<", "<="):
-            passed_rows = (row_count - len_rows) if row_count else 0
+            passed_rows = (row_count - len_rows) if row_count is not None else 0
             failed_rows = len_rows
         elif operator == "==":
             passed_rows = len_rows
-            failed_rows = (row_count - len_rows) if row_count else 0
+            failed_rows = (row_count - len_rows) if row_count is not None else 0
         else:
             passed_rows = len_rows
             failed_rows = 0
@@ -244,7 +242,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         return max(0, passed_rows), max(0, failed_rows)
 
     def _calculate_passed_rows_failure(
-        self, operator: str, threshold: int, len_rows: int, row_count: int
+        self, operator: str, threshold: int, len_rows: int, row_count: int | None
     ) -> tuple[int, int]:
         """Calculate passed/failed rows when test failed"""
         if operator in (">", ">="):
@@ -254,25 +252,25 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         if operator == "==":
             return self._calculate_equal_failure(threshold, len_rows, row_count)
 
-        failed_rows = row_count if row_count else len_rows
+        failed_rows = row_count if row_count is not None else len_rows
         return 0, max(0, failed_rows)
 
-    def _calculate_greater_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
+    def _calculate_greater_than_failure(self, len_rows: int, row_count: int | None) -> tuple[int, int]:
         """Calculate rows for > or >= operator failure (expected more rows)"""
         passed_rows = len_rows
-        failed_rows = (row_count - len_rows) if row_count else 0
+        failed_rows = (row_count - len_rows) if row_count is not None else 0
         return max(0, passed_rows), max(0, failed_rows)
 
-    def _calculate_less_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
+    def _calculate_less_than_failure(self, len_rows: int, row_count: int | None) -> tuple[int, int]:
         """Calculate rows for < or <= operator failure (expected fewer rows)"""
         failed_rows = len_rows
-        passed_rows = (row_count - failed_rows) if row_count else 0
+        passed_rows = (row_count - failed_rows) if row_count is not None else 0
 
         return max(0, passed_rows), max(0, failed_rows)
 
-    def _calculate_equal_failure(self, threshold: int, len_rows: int, row_count: int) -> tuple[int, int]:
+    def _calculate_equal_failure(self, threshold: int, len_rows: int, row_count: int | None) -> tuple[int, int]:
         """Calculate rows for == operator failure (expected exact count)"""
-        if row_count:
+        if row_count is not None:
             if len_rows > threshold:
                 failed_rows = len_rows - threshold
                 passed_rows = row_count - failed_rows

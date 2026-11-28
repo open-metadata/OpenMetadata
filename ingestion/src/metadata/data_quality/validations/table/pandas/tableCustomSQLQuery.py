@@ -29,26 +29,25 @@ logger = test_suite_logger()
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
+    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS) -> int:
         """compute result of the test case"""
         if not is_safe_pandas_query(sql_expression):
             raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
-        return sum(  # pylint: disable=consider-using-generator
-            [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
-        )
+        return sum(len(dataframe.query(sql_expression)) for dataframe in self.runner if dataframe is not None)
 
     def compute_row_count(self) -> int | None:
-        """Compute row count for the given column
+        """Compute row count across all dataframes, preserving 0 for empty datasets.
 
         Returns:
-            Optional[int]: Total number of rows across all dataframes
+            int | None: Total number of rows across all dataframes, or None when unavailable
         """
         if not self.runner:
             return None
 
         total_rows = 0
+        has_dataframe = False
         partition_expression = next(
-            (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
+            (param.value for param in (self.test_case.parameterValues or []) if param.name == "partitionExpression"),
             None,
         )
         # An empty partition expression means "no filter", as before the gate
@@ -56,6 +55,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             raise RuntimeError(f"Unsafe pandas query expression\n\n{partition_expression}")
         for dataframe in self.runner:
             if dataframe is not None:
+                has_dataframe = True
                 if partition_expression:
                     try:
                         total_rows += len(dataframe.query(partition_expression))
@@ -68,4 +68,4 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
                 else:
                     total_rows += len(dataframe.index)
 
-        return total_rows
+        return total_rows if has_dataframe else None
