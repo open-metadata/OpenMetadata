@@ -1,10 +1,10 @@
 # The German UI calls a data asset "Daten-Asset" and an asset "Asset"
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung") · v3 2026-11-26 (domain is "Domäne") · v4 2026-11-27 (service is "Dienst")
+- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-26 (ingestion is "Erfassung") · v3 2026-11-26 (domain is "Domäne") · v4 2026-11-27 (service is "Dienst") · v5 2026-11-28 (owner is "Eigentümer")
 - **Deciders:** Sascha Halm (proposal), the reviewers of the linked PR
 - **Guard:** reviewer
-- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843, open-metadata/OpenMetadata#38869, open-metadata/OpenMetadata#38934
+- **Related:** open-metadata/OpenMetadata#38630, open-metadata/OpenMetadata#37334, open-metadata/OpenMetadata#37335, open-metadata/OpenMetadata#38843, open-metadata/OpenMetadata#38869, open-metadata/OpenMetadata#38934, open-metadata/OpenMetadata#39199
 
 ## Context
 `de-de.json` rendered the English "data asset" with seven different words: "Daten-Asset",
@@ -74,3 +74,25 @@ said "Service" ("Servicename", "Servicetyp", "Quellservices").
 - Not affected: fixed terms and component names keep their own words — "Terms of Service"
   ("Nutzungsbedingungen"), "Service Level Agreement" (SLA), the "Pipeline Service Client" /
   "Platform Service Client" component and the SPARQL `SERVICE` keyword.
+
+## Amendment — 2026-11-28: owner is "Eigentümer"
+
+Fifth term from the glossary in #38630, tracked in #39199. `de-de` mixed "Eigentümer" and
+"Besitzer" for the English "owner" — the navigation label `label.owner` said "Besitzer", while
+`label.assign-an-owner` said "Eigentümer zuweisen" — and rendered "ownership" as "Eigentum",
+"Eigentümerschaft" or "Besitz". In German, "Besitz" (possession) and "Eigentum" (property) are
+different legal concepts, and *Dateneigentümer* is the established role name in German data
+governance.
+
+- English "owner" is "Eigentümer", masculine, the same in singular and plural ("die Eigentümer",
+  dative plural "Eigentümern"). With a simple German word the compound is closed, as for "Dienst"
+  ("Eigentümerabdeckung"). It is hyphenated after a word that is itself a compound, for readability
+  ("Testfall-Eigentümer"), and with an English word or abbreviation ("Pipeline-Eigentümer",
+  "Eigentümer-KPI").
+- English "ownership" is "Eigentümerschaft" (the role relation), not "Eigentum" (the thing owned).
+- The verb "own" is rendered through the role, not with "besitzen": "Assets, deren Eigentümer Sie
+  sind", "Im Eigentum von" (owned by), "Ist Eigentümer von" (owns). The "Owned" pill of the
+  "Yours and followed" widget is "Eigene", next to the existing "Eigene Assets".
+- Not affected: "Kontoinhaber" for the owner of a GitHub account (`message.git-sink-signing-key-hint`)
+  and "Verantwortung übernehmen" for "take ownership" in general prose
+  (`message.create-new-domain-guide`).
