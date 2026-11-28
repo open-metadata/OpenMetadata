@@ -163,7 +163,14 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
     """
     SELECT
       c.relname as name,
-      c.relkind
+      -- Redshift stores a materialized view as relkind 'v', like a plain view. Only its
+      -- definition tells them apart, and reading it needs no more than seeing the view.
+      CASE
+        WHEN c.relkind = 'v'
+          AND LOWER(LTRIM(pg_catalog.pg_get_viewdef(c.oid))) LIKE 'create materialized view%'
+        THEN 'm'
+        ELSE c.relkind
+      END AS relkind
     FROM pg_catalog.pg_class c
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE (c.relkind IN ('r', 'S', 'f') {view_filter})
@@ -617,13 +624,28 @@ ORDER BY end_time DESC
 """
 
 
+# stl_insert and stl_delete hold one row per slice. Joining them row by row multiplies an
+# UPDATE's count by the number of slices it deleted from, so each side is summed per
+# query and table first.
 REDSHIFT_SYSTEM_METRICS_QUERY = """
-with data as (
+with inserted as (
+    select query, tbl, SUM("rows") AS "rows", MIN(starttime) AS starttime
+    from pg_catalog.stl_insert
+    where DATE(starttime) >= CURRENT_DATE - 1
+    group by query, tbl
+),
+deleted as (
+    select query, tbl, SUM("rows") AS "rows", MIN(starttime) AS starttime
+    from pg_catalog.stl_delete
+    where DATE(starttime) >= CURRENT_DATE - 1
+    group by query, tbl
+),
+data as (
     select
         {alias}.*
     from
-        pg_catalog.stl_insert si
-        {join_type} join pg_catalog.stl_delete sd on si.query = sd.query
+        inserted si
+        {join_type} join deleted sd on si.query = sd.query and si.tbl = sd.tbl
     where
         {condition}
 )

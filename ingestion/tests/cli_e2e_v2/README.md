@@ -1,7 +1,7 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)), Oracle is the first source whose schemas are database users (see [Oracle](#oracle)), Snowflake reads its lagging ACCOUNT_USAGE views through an owned real-time shim (see [Snowflake](#snowflake)), and MSSQL owns one database and a least-privilege login inside a disposable SQL Server (see [MSSQL](#mssql)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)), Oracle is the first source whose schemas are database users (see [Oracle](#oracle)), Snowflake reads its lagging ACCOUNT_USAGE views through an owned real-time shim (see [Snowflake](#snowflake)), MSSQL owns one database and a least-privilege login inside a disposable SQL Server (see [MSSQL](#mssql)), and Redshift owns one schema per test in a shared cluster (see [Redshift](#redshift)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
 
 | Connector | Source ownership | v1 path it replaces |
 |---|---|---|
@@ -11,6 +11,7 @@ MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is th
 | `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 | `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
 | `mssql` | disposable testcontainers SQL Server + restricted login, one owned database, fresh schema per test | `cli_e2e/test_cli_mssql.py` |
+| `redshift` | fresh schema per test in one database of a shared real cluster | `cli_e2e/test_cli_redshift.py` |
 
 ## Run
 
@@ -68,6 +69,7 @@ cli_e2e_v2/
   oracle/              owned container and one Oracle user per test, same layout as mysql/
   snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
   mssql/               owned SQL Server database and one schema per test, same layout as postgres/
+  redshift/            owned schemas in one database of a shared Redshift cluster, same layout as mssql/
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -448,3 +450,71 @@ runs when it is dispatched rather than on every PR; the command above still runs
 
 Remove the v1 MSSQL test and its `ci-nightly.yml` default connector entry only after this suite has passed
 for the agreed stability window.
+
+## Redshift
+
+Redshift cannot run in a container, so `redshift/` owns one fresh schema per test (`e2e_rs_<uuid>`,
+comment `owner=cli-e2e-v2`) in the configured database and drops it with `CASCADE` on success and
+failure. The cluster is shared with the v1 Redshift and dbt suites, so the suite creates no database
+users and touches nothing outside its own schemas: every workflow carries an anchored
+`schemaFilterPattern` for the owned schemas, and the invocation helper rejects a filter naming any
+other. One identity seeds and ingests, as in v1. Missing credentials are errors, not skips.
+
+```bash
+export E2E_REDSHIFT_HOST_PORT=... E2E_REDSHIFT_USERNAME=... E2E_REDSHIFT_PASSWORD=...
+export E2E_REDSHIFT_DB=...          # database the identity may create schemas in
+python -m pytest ingestion/tests/cli_e2e_v2/redshift --e2e-contract-check -n 4 -v
+```
+
+The identity needs `CREATE` on the database. CI logs in with the v1 identity, which has `CREATE` on
+the cluster's `dev` database but not on v1's `e2e_cli_tests`, so the v2 step sets `E2E_REDSHIFT_DB: dev`
+and v1 keeps its own database untouched. The system-metrics scenario runs its DML and the
+profiler as the same identity, and every user sees its own rows in `STL_INSERT` and `STL_DELETE`, so
+it waits for those statements to appear there before profiling and needs no wider log access.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records (and exactly 3 warnings) | `catalog.metadata` (complete inventory, native types, keys, descriptions, views, materialized view, procedure) |
+| schema include / exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include / exclude / mix filters (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.mix`, `filter.table.regex-exclude-wins`, `filter.table.exclude-wins` |
+| create table + profiler | `profile.metrics` |
+| system profile, one INSERT of 6 rows | `profile.system` — INSERT, UPDATE and DELETE, exact counts, against a same-named table in a second schema |
+| auto-classification, 50 sample rows from a pre-existing table | `sample.limit`, `sample.values.original`, `sample.values.updated`, `sample.values.replacement`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` (the dependent view too) |
+| view lineage, 9 column edges on a pre-existing view | `lineage.view` — the table edge and every native column |
+| profiler time partition (skipped: "Redshift instance issue") | `profile.partition.time-unit` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`, `table.dist-sort-keys` (DISTKEY
+and SORTKEY land as table constraints) and `view.late-binding` (a `WITH NO SCHEMA BINDING` view keeps
+its columns, loses the clause from its stored definition, and has column lineage). v1 relied on tables
+someone had loaded into the cluster by hand (`listing`, `customer`); this suite creates everything it reads.
+
+v1's `test_usage` has an empty body and Redshift declares no data-quality table, so neither is claimed.
+Query-log and stored-procedure lineage read STL query history the shared cluster fills with every
+other suite's queries, so they stay out of scope, as for the other SQL suites. The serverless
+system-metrics query is not exercised: the E2E cluster is provisioned.
+
+`error.containment` is declared `unsupported` in the inventory with its reason: Redshift refuses to
+drop a plain view's dependencies without `CASCADE`, and a late-binding view that outlives its table
+is ingested with zero columns, because `get_redshift_columns` logs that miss and returns no columns
+on purpose, so no induction fails exactly one record.
+
+Fixed while migrating, each found by a strict assertion here:
+
+- An UPDATE's system metric was multiplied by the number of slices it deleted from: `stl_insert` and
+  `stl_delete` hold one row per slice and were joined row by row. Both sides are now summed per query
+  and table before the join.
+- A materialized view was ingested as a plain `View`. Redshift stores both as relkind `v`, so the
+  connector's `m` → `MaterializedView` mapping never fired; the view definition now tells them apart.
+- `TIMETZ` (`time with time zone`) was stored as `TIMESTAMP`; it is a time of day, `TIME`, as for Postgres.
+- Every table with a primary key but no unique key got an empty `UNIQUE` constraint, filtered with a
+  warning. v1 asserted exactly 3 such filtering warnings and attributed them to materialized views.
+- Sampling any table with a `VARBYTE` column failed the whole table: psycopg2 returns VARBYTE as hex
+  text, which the bytes-only binary type rejected. Redshift binary columns now decode the hex first.
+
+**Wired into CI.** `redshift` is in `py-cli-e2e-tests-v2.yml`'s dispatch default and runs in its own
+`Run Redshift CLI E2E v2 tests` step, which receives the v1 job's existing `E2E_REDSHIFT_*` secrets and
+no others, with four workers. Remove the v1 Redshift test and its `ci-nightly.yml` default connector
+entry only after this suite has passed for the agreed stability window.

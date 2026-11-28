@@ -188,7 +188,7 @@ jobs:
           E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
-        if: inputs.test-suite == 'v2' && matrix.e2e-test != 'bigquery' && matrix.e2e-test != 'snowflake'
+        if: inputs.test-suite == 'v2' && matrix.e2e-test != 'bigquery' && matrix.e2e-test != 'snowflake' && matrix.e2e-test != 'redshift'
         shell: bash
         run: *run-cli-e2e
         env:
@@ -221,6 +221,19 @@ jobs:
           E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
+      - name: Run Redshift CLI E2E v2 tests
+        id: e2e-v2-redshift-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test == 'redshift'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+          E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+          E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+          # v1's database (secrets.E2E_REDSHIFT_DB) does not let this identity create schemas; dev does.
+          E2E_REDSHIFT_DB: dev
       - name: Upload connector coverage
         if: ${{ inputs.collect-coverage && !cancelled() }}
         continue-on-error: true

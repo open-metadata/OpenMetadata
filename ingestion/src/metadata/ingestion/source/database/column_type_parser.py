@@ -186,7 +186,7 @@ class ColumnTypeParser:
         "TIMESTAMP_NTZ": "TIMESTAMP",
         "TIMESTAMP_LTZ": "TIMESTAMP",
         "TIMESTAMP_TZ": "TIMESTAMP",
-        "TIMETZ": "TIMESTAMP",
+        "TIMETZ": "TIME",
         "TINYINT": "TINYINT",
         "UNION": "UNION",
         "UROWID": "VARCHAR",

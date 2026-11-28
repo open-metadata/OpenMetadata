@@ -21,6 +21,10 @@ from sqlalchemy.sql.sqltypes import TypeEngine
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services import databaseService
 from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.types.custom_hex_byte_string import HexTextByteString
+from metadata.profiler.orm.types.redshift_super import RedshiftSuper
+
+_BINARY_TYPES = frozenset({DataType.BINARY, DataType.VARBINARY})
 
 
 class RedshiftMapTypes(CommonMapTypes):
@@ -32,6 +36,11 @@ class RedshiftMapTypes(CommonMapTypes):
             from sqlalchemy_redshift.dialect import GEOMETRY
 
             return GEOMETRY
+        if table_service_type == databaseService.DatabaseServiceType.Redshift and col.dataType in _BINARY_TYPES:
+            # VARBYTE values reach psycopg2 as hexadecimal text, not bytes.
+            return HexTextByteString
+        if table_service_type == databaseService.DatabaseServiceType.Redshift and col.dataType == DataType.SUPER:
+            return RedshiftSuper
         return super().return_custom_type(col, table_service_type)
 
     @staticmethod
@@ -43,4 +52,5 @@ class RedshiftMapTypes(CommonMapTypes):
         return {
             **CommonMapTypes.map_sqa_to_om_types(),
             cast("TypeEngine", GEOMETRY): {DataType.GEOMETRY},
+            cast("TypeEngine", RedshiftSuper): {DataType.SUPER},
         }
