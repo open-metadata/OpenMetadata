@@ -270,12 +270,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         *args,
         **kwargs,
     ):
-        """Given a list of metrics, compute the given results
-        and returns the values
+        """Given a single metric, compute the result
+        and return the value
 
         Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            column: the column to compute the metric against
+            metric: the metric to compute
         Returns:
             dictionnary of results
         """
