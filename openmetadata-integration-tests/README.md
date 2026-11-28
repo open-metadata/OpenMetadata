@@ -201,7 +201,9 @@ All containers are started **once** per test run and shared across all tests.
 
 ## Running in CI
 
-These tests run in the merge queue (and on pushes to `main`), not on PRs:
+These tests run in the merge queue (and on pushes to `main`), not on PRs, as
+lanes in the unified Backend CI workflow
+(`.github/workflows/openmetadata-service-unit-tests.yml`):
 
-- `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
-- `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
+- `integration-tests-mysql-elasticsearch` - MySQL + Elasticsearch
+- `integration-tests-postgres-opensearch` - PostgreSQL + OpenSearch
