@@ -43,12 +43,13 @@ logger = profiler_logger()
 # pylint: disable=too-many-locals
 class Histogram(HybridMetric):
     """
-    AVG Metric
+    Histogram Metric
 
-    Given a column, return the Histogram value.
+    Given a quantifiable column, return its histogram as a dict of
+    bin boundaries and frequencies.
 
-    - For a quantifiable value, return the usual AVG
-    - For a concatenable (str, text...) return the AVG length
+    The bins are computed with the Freedman-Diaconis rule, falling back
+    to Sturges' rule (and capped at 100 bins) when needed.
     """
 
     schema_metric_type = MetricType.histogram
