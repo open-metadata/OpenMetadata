@@ -265,7 +265,8 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
             OpenMetadataException.class,
             () -> vote(SdkClients.user1Client(), task, TaskResolutionType.Approved, "Again"));
 
-    assertEquals(403, again.getStatusCode());
+    assertEquals(409, again.getStatusCode(), again.getMessage());
+    assertTrue(again.getMessage().contains("has already voted"), again.getMessage());
     assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
     List<TaskReviewVote> votes = taskVotes(task);
     assertEquals(1, votes.size());

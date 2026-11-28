@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -204,6 +205,8 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
@@ -221,6 +224,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14575,93 +14579,8 @@ public class WorkflowDefinitionResourceIT {
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("name").withDataType(ColumnDataType.STRING)));
 
-    String workflowJson =
-        """
-            {
-              "name": "%s",
-              "displayName": "Threshold Approval Workflow",
-              "description": "Workflow that requires two approvals before closing the task",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["table"],
-                  "events": ["Created"],
-                  "filter": {}
-                },
-                "output": ["relatedEntity"]
-              },
-              "nodes": [
-                {
-                  "name": "start",
-                  "displayName": "Start",
-                  "type": "startEvent",
-                  "subType": "startEvent"
-                },
-                {
-                  "name": "ApproveTable",
-                  "displayName": "Approve Table",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {
-                      "addReviewers": false,
-                      "addOwners": false,
-                      "candidates": [
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        },
-                        {
-                          "id": "%s",
-                          "type": "user",
-                          "fullyQualifiedName": "%s",
-                          "name": "%s"
-                        }
-                      ]
-                    },
-                    "approvalThreshold": 2,
-                    "rejectionThreshold": 1
-                  },
-                  "input": ["relatedEntity"],
-                  "inputNamespaceMap": {
-                    "relatedEntity": "global"
-                  },
-                  "output": ["result"],
-                  "branches": ["true", "false"]
-                },
-                {
-                  "name": "endApproved",
-                  "displayName": "End Approved",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                },
-                {
-                  "name": "endRejected",
-                  "displayName": "End Rejected",
-                  "type": "endEvent",
-                  "subType": "endEvent"
-                }
-              ],
-              "edges": [
-                {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
-              ]
-            }
-            """
-            .formatted(
-                workflowName,
-                candidate1.getId(),
-                candidate1.getFullyQualifiedName(),
-                candidate1.getName(),
-                candidate2.getId(),
-                candidate2.getFullyQualifiedName(),
-                candidate2.getName());
-
     CreateWorkflowDefinition thresholdWorkflow =
-        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+        thresholdApprovalWorkflow(workflowName, 2, 1, candidate1, candidate2);
 
     String workflowResponse =
         client
@@ -14771,6 +14690,220 @@ public class WorkflowDefinitionResourceIT {
     client.databaseServices().delete(dbService.getId().toString(), params);
     client.users().delete(candidate1.getId().toString(), params);
     client.users().delete(candidate2.getId().toString(), params);
+  }
+
+  @Test
+  void test_WorkflowApprovalThresholdRefusesRepeatVote(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+    User directVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatvoter1_" + suffix));
+    User finalVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatvoter2_" + suffix));
+    // The runtime threshold is capped by the eligible voters when the task is created.
+    final User spareVoter = ns.trackRoot(Entity.USER, createVoter(client, "repeatspare_" + suffix));
+    User teamApprover = ns.trackRoot(Entity.USER, createVoter(client, "repeatmember1_" + suffix));
+    User teamRejecter = ns.trackRoot(Entity.USER, createVoter(client, "repeatmember2_" + suffix));
+    Team team =
+        ns.trackRoot(
+            Entity.TEAM,
+            client
+                .teams()
+                .create(
+                    new CreateTeam()
+                        .withName("repeat_vote_team_" + suffix)
+                        .withTeamType(CreateTeam.TeamType.GROUP)
+                        .withUsers(List.of(teamApprover.getId(), teamRejecter.getId()))));
+    String workflowName = "RepeatVoteWorkflow_" + suffix;
+    trackWorkflowFromJson(
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                thresholdApprovalWorkflow(
+                    workflowName, 3, 2, directVoter, finalVoter, spareVoter))));
+    waitForWorkflowDeployment(client, workflowName);
+
+    Table table = untouchedTable(client, ns, "repeat_vote");
+    Task task =
+        awaitApprovalTaskWithAssignees(
+            client,
+            table.getFullyQualifiedName(),
+            Stream.of(directVoter, finalVoter, spareVoter).map(User::getName).sorted().toList());
+    // Workflow candidates are expanded to their users. A team keeps its own assignee entry only
+    // when the task is assigned to it, and that entry is what lets a member reach the vote again.
+    addTeamAssignee(client, task, team);
+    String taskId = task.getId().toString();
+
+    voteAs(teamApprover, taskId, TaskResolutionType.Approved, "Team approval");
+    Task admittedTask = client.tasks().get(taskId);
+    voteAs(teamRejecter, taskId, TaskResolutionType.Rejected, "First rejection");
+    voteAs(directVoter, taskId, TaskResolutionType.Approved, "Direct approval");
+    String processId =
+        WorkflowHandler.getInstance().approvalTaskContext(task.getId()).processInstanceId();
+
+    assertAll(
+        () -> assertRepeatVoteRefused(teamApprover, taskId, TaskResolutionType.Approved),
+        () -> assertRepeatVoteRefused(teamApprover, taskId, TaskResolutionType.Rejected),
+        () -> assertRepeatVoteRefused(teamRejecter, taskId, TaskResolutionType.Rejected),
+        () -> assertRepeatVoteRefused(directVoter, taskId, TaskResolutionType.Approved),
+        () -> assertAdmittedRepeatRejectionRefused(admittedTask, teamRejecter),
+        () -> assertEquals("First rejection", rejectionComment(processId)));
+    Task stillOpen = client.tasks().get(taskId);
+    assertEquals(TaskEntityStatus.Open, stillOpen.getStatus());
+    assertEquals(sortedIds(teamApprover, teamRejecter, directVoter), voterIds(stillOpen));
+
+    Task approved = voteAs(finalVoter, taskId, TaskResolutionType.Approved, "Final approval");
+    assertEquals(TaskEntityStatus.Approved, approved.getStatus());
+    assertEquals(
+        sortedIds(teamApprover, teamRejecter, directVoter, finalVoter), voterIds(approved));
+  }
+
+  private static CreateWorkflowDefinition thresholdApprovalWorkflow(
+      final String workflowName,
+      final int approvalThreshold,
+      final int rejectionThreshold,
+      final User... voters) {
+    final List<EntityReference> candidates =
+        Stream.of(voters).map(User::getEntityReference).toList();
+    final String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Threshold Approval Workflow",
+              "description": "Workflow that closes the task once its vote thresholds are met",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["table"],
+                  "events": ["Created"],
+                  "filter": {}
+                },
+                "output": ["relatedEntity"]
+              },
+              "nodes": [
+                {
+                  "name": "start",
+                  "displayName": "Start",
+                  "type": "startEvent",
+                  "subType": "startEvent"
+                },
+                {
+                  "name": "ApproveTable",
+                  "displayName": "Approve Table",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": %s
+                    },
+                    "approvalThreshold": %d,
+                    "rejectionThreshold": %d
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {
+                    "relatedEntity": "global"
+                  },
+                  "output": ["result"],
+                  "branches": ["true", "false"]
+                },
+                {
+                  "name": "endApproved",
+                  "displayName": "End Approved",
+                  "type": "endEvent",
+                  "subType": "endEvent"
+                },
+                {
+                  "name": "endRejected",
+                  "displayName": "End Rejected",
+                  "type": "endEvent",
+                  "subType": "endEvent"
+                }
+              ],
+              "edges": [
+                {"from": "start", "to": "ApproveTable"},
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
+              ]
+            }
+            """
+            .formatted(
+                workflowName,
+                JsonUtils.pojoToJson(candidates),
+                approvalThreshold,
+                rejectionThreshold);
+    return JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+  }
+
+  private static User createVoter(OpenMetadataClient client, String name) {
+    return client.users().create(new CreateUser().withName(name).withEmail(name + "@example.com"));
+  }
+
+  private static void addTeamAssignee(OpenMetadataClient client, Task task, Team team) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            "[{\"op\":\"add\",\"path\":\"/assignees/-\",\"value\":{\"id\":\"%s\",\"type\":\"team\"}}]"
+                .formatted(team.getId()),
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+  }
+
+  private static Task voteAs(
+      User voter, String taskId, TaskResolutionType decision, String comment) {
+    return SdkClients.createClient(voter.getName(), voter.getEmail(), new String[] {})
+        .tasks()
+        .resolve(taskId, new ResolveTask().withResolutionType(decision).withComment(comment));
+  }
+
+  private static void assertRepeatVoteRefused(
+      User voter, String taskId, TaskResolutionType decision) {
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> voteAs(voter, taskId, decision, "Repeat vote"),
+            voter.getName() + " voted a second time");
+    assertEquals(409, refused.getStatusCode(), refused.getMessage());
+    assertTrue(refused.getMessage().contains("has already voted"), refused.getMessage());
+  }
+
+  private static Object rejectionComment(String processInstanceId) {
+    return WorkflowHandler.getInstance()
+        .getRuntimeService()
+        .getVariable(
+            processInstanceId,
+            WorkflowVariableHandler.getNamespacedVariableName(
+                Workflow.GLOBAL_NAMESPACE, Workflow.REJECTION_COMMENT_VARIABLE));
+  }
+
+  private static void assertAdmittedRepeatRejectionRefused(final Task task, final User voter) {
+    // The second request passed the REST vote check before the first rejection committed.
+    final TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class,
+            () ->
+                TaskWorkflowHandler.getInstance()
+                    .resolveTask(
+                        task,
+                        null,
+                        TaskResolutionType.Rejected,
+                        null,
+                        null,
+                        "Repeat vote",
+                        voter.getName()));
+    assertEquals(
+        CatalogExceptionMessage.alreadyVoted(voter.getName(), task.getId()), refused.getMessage());
+  }
+
+  private static List<UUID> sortedIds(User... users) {
+    return Stream.of(users).map(User::getId).sorted().toList();
+  }
+
+  private static List<UUID> voterIds(Task task) {
+    return task.getReviewVotes().stream().map(vote -> vote.getVoter().getId()).sorted().toList();
   }
 
   @RetryingTest(2)
