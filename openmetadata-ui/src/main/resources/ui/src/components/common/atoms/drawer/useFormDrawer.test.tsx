@@ -13,7 +13,11 @@
 import { useFieldDoc } from '@openmetadata/ui-core-components';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { FormDrawerHintConfig, useFormDrawerWithHook } from './useFormDrawer';
+import {
+  FormDrawerHintConfig,
+  useFormDrawer,
+  useFormDrawerWithHook,
+} from './useFormDrawer';
 
 jest.mock('../../RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn(({ markdown }: { markdown: string }) => <div>{markdown}</div>)
@@ -159,5 +163,119 @@ describe('useFormDrawerWithHook', () => {
     });
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useFormDrawer close paths run onCancel', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const FormDrawerHarness = ({
+    onCancel,
+    defaultOpen = true,
+  }: {
+    onCancel?: () => void;
+    defaultOpen?: boolean;
+  }) => {
+    const { formDrawer, openDrawer } = useFormDrawer({
+      title: 'Edit',
+      testId: 'form-drawer',
+      defaultOpen,
+      form: <div data-testid="form-body" />,
+      onSubmit: jest.fn(),
+      onCancel,
+    });
+
+    return (
+      <>
+        <button data-testid="open-btn" onClick={openDrawer} />
+        {formDrawer}
+      </>
+    );
+  };
+
+  const closeIcon = () => screen.getByRole('button', { name: /close/i });
+
+  it('calls onCancel when the header close button is clicked', () => {
+    const onCancel = jest.fn();
+    render(<FormDrawerHarness onCancel={onCancel} />);
+
+    fireEvent.click(closeIcon());
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onCancel when the Cancel button is clicked', () => {
+    const onCancel = jest.fn();
+    render(<FormDrawerHarness onCancel={onCancel} />);
+
+    fireEvent.click(screen.getByTestId('cancel-btn'));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onCancel when Escape dismisses the drawer', () => {
+    const onCancel = jest.fn();
+    render(<FormDrawerHarness onCancel={onCancel} />);
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onCancel when opening the drawer', () => {
+    const onCancel = jest.fn();
+    render(<FormDrawerHarness defaultOpen={false} onCancel={onCancel} />);
+
+    fireEvent.click(screen.getByTestId('open-btn'));
+
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+});
+
+describe('useFormDrawerWithHook resets the form on every close', () => {
+  let formRef: ReturnType<typeof useForm<{ name: string }>>;
+
+  afterEach(() => jest.restoreAllMocks());
+
+  const ResetSpyHarness = ({ onCancel }: { onCancel?: () => void }) => {
+    const form = useForm<{ name: string }>();
+    formRef = form;
+    const { formDrawer } = useFormDrawerWithHook({
+      title: 'Add',
+      testId: 'reset-drawer',
+      hookForm: form,
+      form: <DocumentedField />,
+      open: true,
+      onCancel,
+      onSubmit: jest.fn(),
+    });
+
+    return formDrawer;
+  };
+
+  it('resets hookForm and calls onCancel on Escape dismissal', async () => {
+    const onCancel = jest.fn();
+    render(<ResetSpyHarness onCancel={onCancel} />);
+    await screen.findByTestId('reset-drawer');
+    const resetSpy = jest.spyOn(formRef, 'reset');
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets hookForm and calls onCancel on Cancel button (no double-fire)', async () => {
+    const onCancel = jest.fn();
+    render(<ResetSpyHarness onCancel={onCancel} />);
+    await screen.findByTestId('reset-drawer');
+    const resetSpy = jest.spyOn(formRef, 'reset');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('cancel-btn'));
+    });
+
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
