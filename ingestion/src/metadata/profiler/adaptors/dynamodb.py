@@ -35,5 +35,10 @@ class DynamoDB(NoSQLAdaptor):
 
     def scan(self, table: Table, columns: list[Column], limit: int) -> list[dict[str, any]]:
         table = self.client.Table(table.name.root)
-        response = table.scan(Limit=limit)
+        scan_kwargs = {"Limit": limit}
+        if columns:
+            attribute_names = {f"#c{i}": column.name.root for i, column in enumerate(columns)}
+            scan_kwargs["ProjectionExpression"] = ", ".join(attribute_names)
+            scan_kwargs["ExpressionAttributeNames"] = attribute_names
+        response = table.scan(**scan_kwargs)
         return response["Items"]
