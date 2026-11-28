@@ -87,7 +87,7 @@ def _(element, compiler, **kw):
 
 @compiles(ModuloFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    """Azure SQL modulo function"""
+    """MSSQL modulo function"""
     value, base = validate_and_compile(element, compiler, **kw)
     if compiler.dialect.driver != "pytds":
         # pyodbc & pymssql compiles to c++ code.
