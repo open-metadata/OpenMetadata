@@ -52,6 +52,10 @@ export interface PowerBIConnection {
      */
     hostPort?: string;
     /**
+     * Ingest tables, columns and measures that are marked as hidden in Power BI.
+     */
+    includeHiddenFields?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
