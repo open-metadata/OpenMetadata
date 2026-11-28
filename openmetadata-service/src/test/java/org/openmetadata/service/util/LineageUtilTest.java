@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -637,6 +638,46 @@ class LineageUtilTest {
               Entity.DOMAIN,
               Relationship.UPSTREAM.ordinal());
     }
+  }
+
+  /**
+   * Two rollup writers' syncs interleaved: this one read the row (two asset edges) before the other
+   * writer deleted it. Reading the row again after its write, it removes the edge it just wrote.
+   */
+  @Test
+  void syncLineageEdgeToSearchWritesAgainWhenTheRowChangedAfterItsWrite() throws Exception {
+    EntityReference from = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.from");
+    EntityReference to = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.to");
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(LineageDomainRollups.newRollupDetails(2)))
+                .build())
+        .thenReturn(null);
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getIndexMapping(Entity.DOMAIN))
+        .thenReturn(IndexMapping.builder().indexName("domain_search").build());
+    when(searchRepository.getWriteIndexName(any(IndexMapping.class))).thenReturn("domain_search");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+      LineageUtil.syncLineageEdgeToSearch(from, to);
+    }
+
+    verify(searchClient).updateLineage(eq("domain_search"), any(), any(EsLineageData.class));
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("domain_search")), eq("upstreamLineage.docUniqueId"), any(), any());
+    verify(relationshipDAO, times(3))
+        .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
   }
 
   private static EntityReference entityRef(String type, UUID id, String fqn) {

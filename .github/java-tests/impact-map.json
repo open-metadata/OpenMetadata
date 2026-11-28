@@ -510,6 +510,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Lineage*",
         "openmetadata-service/src/main/java/org/openmetadata/service/openlineage/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/Lineage*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/DomainLineage*",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/lineage/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/*Lineage*",
         "openmetadata-service/src/main/resources/json/data/lineage/**",

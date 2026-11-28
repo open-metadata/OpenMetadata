@@ -159,6 +159,7 @@ import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.EssentialSeedsStatus;
 import org.openmetadata.service.seeding.RequiredSeedRows;
 import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
+import org.openmetadata.service.util.DomainLineageRecovery;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
@@ -180,6 +181,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
   private static final String SYSTEM_BOTS_VALIDATION_KEY = "System Bots";
   private static final String LLM_PROVIDER_VALIDATION_KEY = "LLM Provider";
+  private static final String DOMAIN_LINEAGE_VALIDATION_KEY = "Domain Lineage";
+  private static final String DOMAIN_LINEAGE_DESCRIPTION =
+      "Domain lineage edges count the lineage between the assets of each pair of domains";
   private static final String LLM_PROVIDER_DESCRIPTION =
       "LLM Provider is used to power Context Center memory extraction and Ontology AI";
   private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
@@ -1169,9 +1173,30 @@ public class SystemRepository implements DeploymentSettingPreparer {
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
     validation.setAdditionalProperty(
         SYSTEM_BOTS_VALIDATION_KEY, getSystemBotsValidation(applicationConfig, jwtFilter));
+    validation.setAdditionalProperty(DOMAIN_LINEAGE_VALIDATION_KEY, getDomainLineageValidation());
 
     addExtraValidations(applicationConfig, validation);
 
+    return validation;
+  }
+
+  /**
+   * Fails while a domain write left domain lineage rollups for the rebuild, or the domain view has
+   * not been reindexed since the rebuild, with the commands that clear it.
+   */
+  static StepValidation getDomainLineageValidation() {
+    StepValidation validation = new StepValidation().withDescription(DOMAIN_LINEAGE_DESCRIPTION);
+    try {
+      DomainLineageRecovery.State state = DomainLineageRecovery.read();
+      validation
+          .withPassed(state.status() == DomainLineageRecovery.Status.HEALTHY)
+          .withMessage(DomainLineageRecovery.describe(state));
+    } catch (RuntimeException e) {
+      LOG.warn("Could not read the domain lineage rebuild state", e);
+      validation
+          .withPassed(false)
+          .withMessage("Could not read the domain lineage rebuild state: " + e.getMessage());
+    }
     return validation;
   }
 

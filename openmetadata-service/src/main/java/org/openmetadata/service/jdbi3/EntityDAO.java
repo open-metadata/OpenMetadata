@@ -41,6 +41,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -262,6 +263,40 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     }
     String prefixPattern = FullyQualifiedName.buildHash(oldPrefix) + ".%";
     return listIdFqnByPrefixHash(getTableName(), getNameHashColumn(), prefixPattern);
+  }
+
+  @SqlQuery(
+      "SELECT e.id FROM <table> e WHERE e.<nameHashColumn> LIKE :prefix AND ("
+          + "EXISTS (SELECT 1 FROM entity_relationship r "
+          + "WHERE r.fromId = e.id AND r.relation = :relation) "
+          + "OR EXISTS (SELECT 1 FROM entity_relationship r "
+          + "WHERE r.toId = e.id AND r.relation = :relation)) "
+          + "LIMIT :limit")
+  List<String> listIdsInRelationByPrefixHash(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("prefix") String prefix,
+      @Bind("relation") int relation,
+      @Bind("limit") int limit);
+
+  /**
+   * Ids of up to {@code limit} descendants of {@code fqn} that are an end of a lineage edge, deleted
+   * ones included as lineage keeps them. Empty for a type whose name-hash column is not {@code
+   * fqnHash}: such a type has no FQN parent.
+   */
+  default List<UUID> listDescendantIdsWithLineage(String fqn, int limit) {
+    if (!getNameHashColumn().equals("fqnHash")) {
+      return List.of();
+    }
+    return listIdsInRelationByPrefixHash(
+            getTableName(),
+            getNameHashColumn(),
+            FullyQualifiedName.buildHash(fqn) + ".%",
+            Relationship.UPSTREAM.ordinal(),
+            limit)
+        .stream()
+        .map(UUID::fromString)
+        .toList();
   }
 
   /**
