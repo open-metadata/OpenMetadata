@@ -274,17 +274,41 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
     def test_equal_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
-        """Test == operator when test passes"""
+        """Test == operator when test passes: the query matches count as failed rows, as for <="""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 10
-        mock_compute_row_count.return_value = 1000
+        mock_compute_row_count.return_value = 20
         mock_get_runtime_params.return_value = Mock()
 
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
         self.assertEqual(result.passedRows, 10)
-        self.assertEqual(result.failedRows, 990)
+        self.assertEqual(result.failedRows, 10)
+
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
+    )
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator._run_results"
+    )
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
+    )
+    def test_edge_case_zero_threshold_equal_success(
+        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
+    ):
+        """Test == 0 passing (#38561): a query that returns no row must not fail the whole table"""
+        self.mock_test_case.parameterValues = self._create_mock_param_values("==", 0)
+        mock_run_results.return_value = 0
+        mock_compute_row_count.return_value = 1000
+        mock_get_runtime_params.return_value = Mock()
+
+        result = self.validator.run_validation()
+
+        self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
+        self.assertEqual(result.passedRows, 1000)
+        self.assertEqual(result.failedRows, 0)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -318,7 +342,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
     def test_equal_operator_failure_fewer_rows(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
-        """Test == operator when test fails with fewer rows than expected"""
+        """Test == operator when test fails with fewer rows than expected: the 7 missing rows failed"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 3
         mock_compute_row_count.return_value = 1000
@@ -327,8 +351,30 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Failed)
-        self.assertEqual(result.passedRows, 3)
-        self.assertEqual(result.failedRows, 997)
+        self.assertEqual(result.passedRows, 993)
+        self.assertEqual(result.failedRows, 7)
+
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
+    )
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator._run_results"
+    )
+    @patch(
+        "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
+    )
+    def test_equal_operator_failure_capped_at_row_count(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
+        """Test == operator expecting more rows than the table has: failed rows never exceed the table"""
+        self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
+        mock_run_results.return_value = 3
+        mock_compute_row_count.return_value = 5
+        mock_get_runtime_params.return_value = Mock()
+
+        result = self.validator.run_validation()
+
+        self.assertEqual(result.testCaseStatus, TestCaseStatus.Failed)
+        self.assertEqual(result.passedRows, 0)
+        self.assertEqual(result.failedRows, 5)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
