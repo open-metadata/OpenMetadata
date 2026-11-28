@@ -41,8 +41,10 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.source.dashboard.powerbi.models import (
     ConnectionFile,
     DataModelSchema,
+    DatasetExpression,
     PowerBiTable,
 )
+from metadata.ingestion.source.dashboard.powerbi.tmdl_parser import parse_tmdl_directory
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.readers.file.local import LocalReader
 from metadata.utils.credentials import (
@@ -73,6 +75,15 @@ def _ensure_extract_dir(path: str | None) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
+SUPPORTED_FILE_EXTENSIONS = (".pbit", ".tmdl")
+SUPPORTED_EXACT_FILENAMES = frozenset({".platform", "definition.pbism", "definition.pbir"})
+
+
+def _is_supported_blob(filename: str) -> bool:
+    lower_name = filename.lower()
+    return lower_name.endswith(SUPPORTED_FILE_EXTENSIONS) or lower_name in SUPPORTED_EXACT_FILENAMES
+
+
 def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
@@ -81,7 +92,7 @@ def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     for blob in blobs or []:
         subdirectory = blob.rsplit("/", 1)[0] if "/" in blob else ""
         blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
-        if blob_file_name.lower().endswith(".pbit"):
+        if _is_supported_blob(blob_file_name):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
@@ -97,7 +108,7 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
     """
     base = Path(extract_dir).resolve()
     target = (base / blob).resolve()
-    if not target.is_relative_to(base):
+    if target == base or not target.is_relative_to(base):
         raise PowerBIFileConfigException(f"Skipping .pbit object key that escapes the extract directory: {blob}")
     return str(target)
 
@@ -164,9 +175,11 @@ def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
             datamodel_schema_file = connection_file.replace("Connections", "DataModelSchema")
             with open(datamodel_schema_file, "rb") as file:  # noqa: PTH123
                 data_model_schema_json_file = json.load(file)
-                datamodel_schema.tables = [
-                    PowerBiTable(**table) for table in data_model_schema_json_file.get("model")["tables"] or []
-                ]
+                model_dict = data_model_schema_json_file.get("model") or {}
+                datamodel_schema.tables = [PowerBiTable(**table) for table in model_dict.get("tables") or []]
+                raw_expressions = model_dict.get("expressions") or []
+                if raw_expressions:
+                    datamodel_schema.expressions = [DatasetExpression(**expr) for expr in raw_expressions]
             if datamodel_schema.tables and datamodel_schema.connectionFile:
                 datamodel_schema_list.append(datamodel_schema)
         except Exception as exc:
@@ -175,9 +188,72 @@ def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     return datamodel_schema_list
 
 
+def _dir_has_tmdl(directory: Path) -> bool:
+    if not directory.is_dir():
+        return False
+    for entry in directory.iterdir():
+        if entry.is_file() and entry.name.lower().endswith(".tmdl"):
+            return True
+    tables_dir = directory / "tables"
+    if tables_dir.is_dir():
+        for entry in tables_dir.iterdir():
+            if entry.is_file() and entry.name.lower().endswith(".tmdl"):
+                return True
+    return False
+
+
+def _discover_tmdl_roots(base_path: Path) -> list[Path]:
+    """Discover TMDL semantic model roots under `base_path` without double-counting."""
+    if not base_path.is_dir():
+        return []
+
+    roots: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(base_path):
+        current = Path(dirpath)
+        dirnames.sort()
+        filenames.sort()
+
+        if current == base_path and "extracted" in dirnames:
+            dirnames.remove("extracted")
+
+        lower_files = {f.lower() for f in filenames}
+        is_semantic_model_dir = current.name.lower().endswith(".semanticmodel") or "definition.pbism" in lower_files
+        if is_semantic_model_dir and _dir_has_tmdl(current / "definition"):
+            roots.append(current)
+            dirnames.clear()
+            continue
+
+        if current.name.lower() == "definition" and _dir_has_tmdl(current):
+            roots.append(current)
+            dirnames.clear()
+            continue
+
+        has_top_marker = "model.tmdl" in lower_files or "database.tmdl" in lower_files
+        has_tables_tmdl = "tables" in dirnames and _dir_has_tmdl(current / "tables")
+        if has_top_marker or has_tables_tmdl:
+            roots.append(current)
+            dirnames.clear()
+
+    return roots
+
+
+def _get_tmdl_datamodel_schemas(path: str) -> list[DataModelSchema]:
+    """Discover and parse all TMDL semantic model directories under `path`."""
+    schemas: list[DataModelSchema] = []
+    for tmdl_root in _discover_tmdl_roots(Path(path)):
+        try:
+            schema = parse_tmdl_directory(tmdl_root)
+            if schema is not None:
+                schemas.append(schema)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Skipping TMDL directory %s: %s", tmdl_root, exc)
+    return schemas
+
+
 def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | None:
     """
-    Method to unzip the locally saved pbit files and get the schema files
+    Method to unzip the locally saved pbit files and parse TMDL directories to get the schema files
     """
     try:
         reader = LocalReader(path)
@@ -195,7 +271,9 @@ def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | N
                 logger.debug(traceback.format_exc())
                 logger.warning("Skipping .pbit file %s: %s", file_path, exc)
 
-        return _get_datamodel_schema_list(path)
+        pbit_schemas = _get_datamodel_schema_list(path) or []
+        tmdl_schemas = _get_tmdl_datamodel_schemas(path)
+        return pbit_schemas + tmdl_schemas
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -359,6 +437,28 @@ class PowerBiFileClient:
         """
         source = self.config.pbitFilesSource
         extract_dir = source.pbitFilesExtractDir if source is not None else None
-        if extract_dir is not None:
-            with suppress(FileNotFoundError):
-                shutil.rmtree(extract_dir)
+        if extract_dir is None:
+            return
+        if isinstance(source, LocalConfig):
+            extract_path = Path(extract_dir).resolve()
+            if source.path:
+                local_path = Path(source.path).resolve()
+                if (
+                    local_path == extract_path
+                    or local_path.is_relative_to(extract_path)
+                    or extract_path.is_relative_to(local_path)
+                ):
+                    logger.debug(
+                        "Skipping deletion of %s because it overlaps with local source path %s",
+                        extract_dir,
+                        source.path,
+                    )
+                    return
+            if extract_path.is_dir() and _discover_tmdl_roots(extract_path):
+                logger.debug(
+                    "Skipping deletion of %s because it contains local TMDL files",
+                    extract_dir,
+                )
+                return
+        with suppress(FileNotFoundError):
+            shutil.rmtree(extract_dir)

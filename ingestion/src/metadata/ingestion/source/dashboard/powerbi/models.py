@@ -196,7 +196,10 @@ class PowerBiTable(BaseModel):
             if values.get("source") is None and values.get("partitions"):
                 partitions = values.get("partitions", [])
                 if partitions and len(partitions) > 0:
-                    partition_source = partitions[0].get("source")
+                    first = partitions[0]
+                    partition_source = (
+                        first.get("source") if isinstance(first, dict) else getattr(first, "source", None)
+                    )
                     if partition_source:
                         values["source"] = [partition_source]
 
@@ -354,7 +357,7 @@ class RemoteArtifacts(BaseModel):
     """
 
     DatasetId: str
-    ReportId: str
+    ReportId: str | None = None
 
 
 class ConnectionFile(BaseModel):
@@ -365,6 +368,20 @@ class ConnectionFile(BaseModel):
     RemoteArtifacts: Annotated[list[RemoteArtifacts] | None, Field(None, description="Remote Artifacts")]
 
 
+class PowerBiRelationship(BaseModel):
+    """
+    PowerBI Semantic Model Relationship (TMDL / BIM)
+    """
+
+    name: str | None = None
+    fromColumn: str | None = None  # noqa: N815
+    toColumn: str | None = None  # noqa: N815
+    fromCardinality: str | None = None  # noqa: N815
+    toCardinality: str | None = None  # noqa: N815
+    crossFilteringBehavior: str | None = None  # noqa: N815
+    isActive: bool | None = True  # noqa: N815
+
+
 class DataModelSchema(BaseModel):
     """
     PowerBi Data Model Schema Model
@@ -372,6 +389,10 @@ class DataModelSchema(BaseModel):
 
     tables: list[PowerBiTable] | None = None
     connectionFile: ConnectionFile | None = None  # noqa: N815
+    modelName: str | None = None  # noqa: N815
+    logicalId: str | None = None  # noqa: N815
+    expressions: list[DatasetExpression] | None = None
+    relationships: list[PowerBiRelationship] | None = None
 
 
 class ReportPage(BaseModel):
