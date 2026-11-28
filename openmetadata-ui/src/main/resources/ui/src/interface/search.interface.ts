@@ -472,6 +472,14 @@ export interface SearchResponse<
 > {
   took?: number;
   timed_out?: boolean;
+  partial_results?: boolean;
+  _shards?: {
+    total?: number;
+    successful?: number;
+    skipped?: number;
+    failed?: number;
+    failures?: unknown[];
+  };
   hits: {
     total: {
       value: number;

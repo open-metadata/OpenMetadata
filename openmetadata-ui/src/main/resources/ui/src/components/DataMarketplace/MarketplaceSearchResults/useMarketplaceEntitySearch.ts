@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { useCallback, useRef, useState } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -18,6 +20,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useSearchStore } from '../../../hooks/useSearchStore';
 import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 const PAGE_SIZE = 5;
 
@@ -108,9 +111,15 @@ export const useMarketplaceEntitySearch = () => {
       if (!isStale()) {
         apply(buckets);
       }
-    } catch {
+    } catch (error) {
       if (!isStale()) {
         apply(EMPTY);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.search-result-plural'),
+          })
+        );
       }
     } finally {
       if (!isStale()) {

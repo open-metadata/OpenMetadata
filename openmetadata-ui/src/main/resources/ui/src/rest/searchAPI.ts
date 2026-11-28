@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { t } from 'i18next';
 import { isArray, isNil } from 'lodash';
 import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -365,6 +366,19 @@ export const nlqSearch = async <
       query_filter: JSON.stringify(queryFilter),
     },
   });
+
+  // A 200 may contain only surviving shards. Do not render it as a complete or empty catalog.
+  if (
+    response.data.timed_out ||
+    response.data.partial_results ||
+    (response.data._shards?.failed ?? 0) > 0
+  ) {
+    throw new Error(
+      t('server.entity-fetch-error', {
+        entity: t('label.search-result-plural'),
+      })
+    );
+  }
 
   return formatSearchQueryResponse<SI, TIncludeFields>(response.data);
 };
