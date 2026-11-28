@@ -153,13 +153,23 @@ const EntityTypePicker = ({
   );
   // TreeSelect fetches once on mount and does not re-call fetchData when its
   // identity changes (eslint-disabled dep on `useTreeSelectData`). The scene
-  // aggregation that populates filterOptions is async, so on first paint
-  // roots is empty — remount the picker once real data arrives.
+  // aggregation that populates filterOptions is async AND depth-scoped — the
+  // option list (ids + counts) differs per graph level — so a level change
+  // replaces filterOptions in place without passing through empty. Remount
+  // the picker whenever the option content changes, not just on first paint,
+  // so the dropdown re-fetches the new tree.
   const rootsRef = useRef(roots);
   rootsRef.current = roots;
   const fetchData = useCallback(
     async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
     []
+  );
+  const optionsSignature = useMemo(
+    () =>
+      (filterOptions?.entityTypes ?? [])
+        .map((choice) => `${choice.id}:${choice.count}`)
+        .join(','),
+    [filterOptions?.entityTypes]
   );
 
   return (
@@ -172,7 +182,7 @@ const EntityTypePicker = ({
       data-testid="graph-entity-type-filter"
       disabled={roots.length === 0}
       fetchData={fetchData}
-      key={roots.length === 0 ? 'empty' : 'ready'}
+      key={optionsSignature}
       label={t('label.entity-type')}
       triggerVariant="button"
       value={value}
@@ -208,12 +218,20 @@ const RelationshipTypePicker = ({
         .filter((node): node is TreeSelectNode => node !== undefined),
     [filters.relationshipTypes, leafById]
   );
-  // Same mount-once caveat as the Entity Type picker; see the comment there.
+  // Same mount-once caveat + depth-scoped remount as the Entity Type picker;
+  // see the comment there.
   const rootsRef = useRef(roots);
   rootsRef.current = roots;
   const fetchData = useCallback(
     async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
     []
+  );
+  const optionsSignature = useMemo(
+    () =>
+      (filterOptions?.relationshipTypes ?? [])
+        .map((choice) => `${choice.id}:${choice.count}`)
+        .join(','),
+    [filterOptions?.relationshipTypes]
   );
 
   return (
@@ -226,7 +244,7 @@ const RelationshipTypePicker = ({
       data-testid="graph-relationship-type-filter"
       disabled={roots.length === 0}
       fetchData={fetchData}
-      key={roots.length === 0 ? 'empty' : 'ready'}
+      key={optionsSignature}
       label={t('label.relationship-type')}
       triggerVariant="button"
       value={value}
