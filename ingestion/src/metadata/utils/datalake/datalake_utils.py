@@ -17,12 +17,14 @@ from different auths and different file systems.
 import ast
 import json
 import random
+import re
 import traceback
 from collections import Counter
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.readers.dataframe.models import (
     DatalakeColumnWrapper,
@@ -798,6 +800,20 @@ class ParquetDataFrameColumnParser:
         return data_type
 
 
+# Iceberg/Delta/Spark primitive type names to map explicitly before consulting
+# ``ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE``. Spark ``StructType`` JSON serializes
+# ``ShortType``/``ByteType`` as ``short``/``byte`` (Iceberg/Delta do not use these names),
+# and ``variant`` must map to ``VARIANT`` rather than the shared map's ``JSON``.
+_ICEBERG_DELTA_TYPE_OVERLAY: dict[str, str] = {
+    "SHORT": "SMALLINT",
+    "BYTE": "TINYINT",
+    "VARIANT": "VARIANT",
+}
+
+# Iceberg ``fixed[L]`` is a fixed-length binary of length L.
+_ICEBERG_FIXED_RE = re.compile(r"^fixed\[(\d+)\]$", re.IGNORECASE)
+
+
 class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
     """Given a dataframe object generated from a json file, parse the columns and return a list of Column objects."""
 
@@ -843,33 +859,24 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             try:
                 column_name = field.get("name", "")
                 column_type = field.get("type", "string")
-
-                # Get the type string from dict if needed
-                type_str = column_type
-                if isinstance(column_type, dict):
-                    type_str = column_type.get("type", "string")
-
-                # Use DataType enum directly - it will handle the conversion
-                try:
-                    data_type = DataType(type_str.upper()) if isinstance(type_str, str) else DataType.STRING
-                except (ValueError, AttributeError) as exc:
-                    # If the type is not recognized, default to STRING
-                    logger.debug(
-                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. Defaulting to STRING."
-                    )
-                    data_type = DataType.STRING
+                attrs = self._iceberg_delta_type_to_om(column_type)
 
                 column = Column(
                     name=truncate_column_name(column_name),
                     displayName=column_name,
-                    dataType=data_type,
-                    dataTypeDisplay=(column_type if isinstance(column_type, str) else str(column_type)),
+                    dataType=attrs["dataType"],
+                    dataTypeDisplay=attrs.get("dataTypeDisplay", str(column_type)),
                 )
-
-                # Handle nested struct types
-                if isinstance(column_type, dict) and column_type.get("type") == "struct":
-                    column.children = self._parse_struct_fields(column_type.get("fields", []))
-                    column.dataType = DataType.STRUCT
+                if attrs.get("arrayDataType") is not None:
+                    column.arrayDataType = attrs["arrayDataType"]
+                if attrs.get("precision") is not None:
+                    column.precision = attrs["precision"]
+                if attrs.get("scale") is not None:
+                    column.scale = attrs["scale"]
+                if attrs.get("dataLength") is not None:
+                    column.dataLength = attrs["dataLength"]
+                if attrs.get("children") is not None:
+                    column.children = attrs["children"]
 
                 columns.append(column)
             except Exception as exc:
@@ -877,6 +884,133 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 logger.debug(traceback.format_exc())
 
         return columns
+
+    def _iceberg_delta_type_to_om(self, column_type: Any) -> dict[str, Any]:
+        """Map an Iceberg/Delta/Spark field ``type`` to OpenMetadata column attributes.
+
+        Primitive string types are routed through ``ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE``
+        and ``_FIXED_DECIMAL`` so names that are not exact ``DataType`` enum members
+        (``integer``→``INT``, ``timestamptz``/``timestamp_ntz``→``TIMESTAMP``, ``byte``→``TINYINT``,
+        ``decimal(10,2)``→``DECIMAL`` with precision/scale) are normalized instead of silently
+        falling back to ``STRING``. Dict-shaped complex types (``struct``, ``list``/``array``,
+        ``map``) are handled so element/key/value types are preserved rather than discarded.
+
+        Returns a dict with keys: ``dataType`` (DataType), ``dataTypeDisplay`` (str), and
+        optionally ``arrayDataType``, ``precision``, ``scale``, ``dataLength``, ``children``.
+        """
+        type_name = str(column_type.get("type", "string")) if isinstance(column_type, dict) else str(column_type)
+
+        # Complex types expressed as dicts (Iceberg/Spark schema JSON)
+        if isinstance(column_type, dict):
+            if type_name == "struct":
+                children = self._parse_struct_fields(column_type.get("fields", []))
+                inner = ", ".join(f"{c.get('displayName', '')}:{c.get('dataTypeDisplay', '')}" for c in children)
+                return {
+                    "dataType": DataType.STRUCT,
+                    "dataTypeDisplay": f"struct<{inner or 'unknown'}>",
+                    "children": children,
+                }
+            if type_name in ("list", "array"):
+                element = column_type.get("element") or column_type.get("elementType") or "string"
+                element_attrs = self._iceberg_delta_type_to_om(element)
+                result: dict[str, Any] = {
+                    "dataType": DataType.ARRAY,
+                    "dataTypeDisplay": f"array<{element_attrs.get('dataTypeDisplay', element)}>",
+                    "arrayDataType": element_attrs["dataType"],
+                }
+                # Preserve the element's nested detail (struct/map children) on the array
+                # so nested collections reach the catalog with complete types.
+                if element_attrs.get("children") is not None:
+                    result["children"] = element_attrs["children"]
+                return result
+            if type_name == "map":
+                key_type = column_type.get("key") or column_type.get("keyType") or "string"
+                value_type = column_type.get("value") or column_type.get("valueType") or "string"
+                key_attrs = self._iceberg_delta_type_to_om(key_type)
+                value_attrs = self._iceberg_delta_type_to_om(value_type)
+                return {
+                    "dataType": DataType.MAP,
+                    "dataTypeDisplay": f"map<{key_attrs.get('dataTypeDisplay', key_type)},{value_attrs.get('dataTypeDisplay', value_type)}>",
+                    "children": [
+                        self._complex_child("key", "key", key_attrs, key_type),
+                        self._complex_child("value", "value", value_attrs, value_type),
+                    ],
+                }
+
+        # Primitive / string-typed types
+        upper = type_name.upper()
+
+        # decimal(p,s) — preserve precision and scale
+        decimal_match = ColumnTypeParser._FIXED_DECIMAL.match(type_name)
+        if decimal_match:
+            om_name = ColumnTypeParser.get_column_type(decimal_match.group(0)) or "DECIMAL"
+            result = {
+                "dataType": DataType(om_name),
+                "dataTypeDisplay": type_name,
+            }
+            if decimal_match.group(3) is not None:
+                result["precision"] = int(decimal_match.group(3))
+            if decimal_match.group(4) is not None:
+                result["scale"] = int(decimal_match.group(4))
+            return result
+
+        # Iceberg fixed[L] — fixed-length binary
+        fixed_match = _ICEBERG_FIXED_RE.match(type_name)
+        if fixed_match:
+            return {
+                "dataType": DataType.FIXED,
+                "dataTypeDisplay": type_name,
+                "dataLength": int(fixed_match.group(1)),
+            }
+
+        # Normalize via the shared source-type map (INTEGER→INT, TIMESTAMPTZ→TIMESTAMP, ...).
+        # The Iceberg/Spark overlay is checked first so Spark `byte`→`TINYINT` wins over the
+        # generic teradata `byte`→`BINARY` that teradatasqlalchemy may inject at import time.
+        om_name = _ICEBERG_DELTA_TYPE_OVERLAY.get(upper)
+        if om_name is None:
+            om_name = ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get(upper)
+        if om_name is not None:
+            return {"dataType": DataType(om_name), "dataTypeDisplay": type_name}
+
+        # Last resort: direct enum member (LONG, FIXED, NULL, ...) or STRING
+        try:
+            return {"dataType": DataType(upper), "dataTypeDisplay": type_name}
+        except ValueError:
+            logger.debug(
+                "Unrecognized Iceberg/Delta/Spark data type '%s'. Defaulting to STRING.",
+                type_name,
+            )
+            return {"dataType": DataType.STRING, "dataTypeDisplay": type_name}
+
+    def _complex_child(
+        self,
+        name: str,
+        display_name: str,
+        attrs: dict[str, Any],
+        raw_type: Any,
+    ) -> dict[str, Any]:
+        """Build a child column dict carrying the recursive attributes
+        (``arrayDataType``, ``precision``, ``scale``, ``dataLength``, ``children``) so
+        nested collections and decimals keep their detail instead of collapsing to
+        ``dataType``/``dataTypeDisplay``.
+        """
+        child = {
+            "name": name,
+            "displayName": display_name,
+            "dataType": attrs["dataType"].value,
+            "dataTypeDisplay": attrs.get("dataTypeDisplay", str(raw_type)),
+        }
+        if attrs.get("arrayDataType") is not None:
+            child["arrayDataType"] = attrs["arrayDataType"].value
+        if attrs.get("precision") is not None:
+            child["precision"] = attrs["precision"]
+        if attrs.get("scale") is not None:
+            child["scale"] = attrs["scale"]
+        if attrs.get("dataLength") is not None:
+            child["dataLength"] = attrs["dataLength"]
+        if attrs.get("children") is not None:
+            child["children"] = attrs["children"]
+        return child
 
     def _parse_struct_fields(self, fields: list) -> list[dict]:
         """
@@ -887,32 +1021,9 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             try:
                 child_name = field.get("name", "")
                 child_type = field.get("type", "string")
+                attrs = self._iceberg_delta_type_to_om(child_type)
 
-                # Get the type string from dict if needed
-                type_str = child_type
-                if isinstance(child_type, dict):
-                    type_str = child_type.get("type", "string")
-
-                # Use DataType enum directly
-                try:
-                    data_type = DataType(type_str.upper()) if isinstance(type_str, str) else DataType.STRING
-                except (ValueError, AttributeError) as exc:
-                    logger.debug(
-                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "
-                        f"Defaulting to STRING."
-                    )
-                    data_type = DataType.STRING
-
-                child = {
-                    "name": truncate_column_name(child_name),
-                    "displayName": child_name,
-                    "dataType": data_type.value,
-                    "dataTypeDisplay": (child_type if isinstance(child_type, str) else str(child_type)),
-                }
-
-                # Recursively handle nested structs
-                if isinstance(child_type, dict) and child_type.get("type") == "struct":
-                    child["children"] = self._parse_struct_fields(child_type.get("fields", []))
+                child = self._complex_child(truncate_column_name(child_name), child_name, attrs, child_type)
 
                 children.append(child)
             except Exception as exc:

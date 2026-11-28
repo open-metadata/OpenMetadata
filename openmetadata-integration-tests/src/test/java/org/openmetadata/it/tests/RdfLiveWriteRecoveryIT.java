@@ -50,6 +50,7 @@ import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageUnsupportedException;
 import org.testcontainers.containers.GenericContainer;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
@@ -333,6 +334,36 @@ public class RdfLiveWriteRecoveryIT {
       assertEquals(2, fixture.other.pendingWrites());
       assertTrue(fixture.lastError().contains("JsonParsingException"));
       assertTrue(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aStoreThatCannotServeTheWriteDeadLettersItAtOnceAndDeliversTheNext(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue("refused");
+      fixture.primary.enqueue(insert(1));
+      assertTrue(
+          fixture.primary.processNext(
+              payload -> {
+                if ("refused".equals(payload)) {
+                  throw new RdfStorageUnsupportedException("no Graph Store extension");
+                }
+                fixture.apply(payload);
+              }),
+          "A write the store can never accept must not hold the queue");
+      assertEquals(1, fixture.deadLetters());
+      assertTrue(fixture.other.isDegraded());
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertTrue(
+          fixture
+              .storage
+              .executeSparqlQuery(
+                  "ASK { GRAPH <" + GRAPH + "> { <urn:queued:1> <" + NAME + "> \"value\" } }",
+                  "json")
+              .contains("true"));
     }
   }
 

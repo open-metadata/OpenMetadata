@@ -132,6 +132,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftSt
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
@@ -1550,21 +1551,25 @@ public class SystemRepository implements DeploymentSettingPreparer {
     String message = "OpenAI provider selected but openai configuration block is missing";
     if (embeddings.getOpenai() != null) {
       LLMOpenAIConfig openaiCreds = llmConfig.getOpenai();
-      String openaiEndpoint =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
-              ? "api.openai.com"
-              : openaiCreds.getEndpoint();
-      String deploymentInfo =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getDeploymentName())
-              ? ""
-              : String.format(", deploymentName: %s", openaiCreds.getDeploymentName());
-      message =
-          String.format(
-              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
-              openaiEndpoint,
-              embeddings.getOpenai().getEmbeddingModelId(),
-              embeddings.getOpenai().getEmbeddingDimension(),
-              deploymentInfo);
+      try {
+        String deploymentName =
+            OpenAIEmbeddingClient.azureDeploymentName(openaiCreds, embeddings.getOpenai());
+        String openaiEndpoint =
+            openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
+                ? "api.openai.com"
+                : openaiCreds.getEndpoint();
+        String deploymentInfo =
+            deploymentName == null ? "" : String.format(", deploymentName: %s", deploymentName);
+        message =
+            String.format(
+                "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
+                openaiEndpoint,
+                embeddings.getOpenai().getEmbeddingModelId(),
+                embeddings.getOpenai().getEmbeddingDimension(),
+                deploymentInfo);
+      } catch (IllegalArgumentException invalidConfiguration) {
+        message = invalidConfiguration.getMessage();
+      }
     }
     return message;
   }

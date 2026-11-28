@@ -25,7 +25,7 @@ The main change contains native entities and publishing; it does not extend `Tag
 | Native authoring and release publishing | Governed, versioned organizational ontologies | Structure and supported OWL 2 DL profile checked; logical consistency is `NOT_RUN` |
 | Metadata concept annotations (follow-up) | Link business meaning to catalog entities and nested fields | Metadata association, not warehouse-row identity or executable source mappings |
 | Active RDF projection | Query the asserted active ontology in Fuseki | Asynchronous outbox delivery; no claim of complete OWL inference |
-| Future Jena CHECK and reasoning | Consistency, classification and explained entailments | Remains in the [Fuseki reasoning plan](2026-10-07-fuseki-native-reasoning.md) |
+| Future CHECK and reasoning | Consistency, classification and explained entailments | Runs in a reasoning provider, which OSS does not ship (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena) |
 | Future source mappings | Map properties, keys and relationships to source records | Needs a separate connector/execution design |
 
 ## Glossary boundary (2026-10-17)
@@ -92,7 +92,7 @@ Capture accepts `expectedWorkingRevision`, locks the state and freezes the compl
 Authorize every definition before storing the release. Validate structure and the supported OWL 2 DL
 profile against the complete frozen model. Runtime validation uses existing validators and a
 release-scoped `OwlProfileGuard`; OWLAPI remains test-scoped and checks projected models in tests.
-Logical consistency is explicitly `NOT_RUN` until Jena CHECK is available.
+Logical consistency is explicitly `NOT_RUN` until a reasoning provider answers CHECK.
 
 Bound members to 1 MiB, releases to 50,000 members and total payloads to 256 MiB (10,000 and
 64 MiB until 2026-11-06; see ADR:2026-10-14-ontology-releases-seal-canonical-sql-members). Capture checks a
@@ -154,7 +154,7 @@ converting glossary terms into native definitions. The formal axiom editor selec
 | Capability | Native ontology support | Follow-up |
 |---|---|---|
 | Working definitions | Ontology/reviewer editing; concept/property/axiom create, edit and delete; derived hierarchy | Direct graph mutation shortcuts |
-| Publishing | Capture, whole-release workflow review, baseline diff, activation and rollback | Consistency checking through Jena CHECK |
+| Publishing | Capture, whole-release workflow review, baseline diff, activation and rollback | Consistency checking through a reasoning provider's CHECK |
 | Memory proposals | Typed concept/property/axiom change sets; source-memory links; existing review panel and change-set lease; atomic working-state application; next capture includes the changes | Automatic native AI proposal generation and native selection in Context Center's proposal action |
 | Edit leases | Existing glossary and change-set leases retained; native memory review uses the same lease | Native ontology/definition editor leases; version guards and working-state lock protect concurrent writes now |
 | Library | Existing vocabulary import retained; glossary ontology installation metadata removed | Import a library pack into a native working model |

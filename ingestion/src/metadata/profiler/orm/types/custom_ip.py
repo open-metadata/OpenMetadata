@@ -24,7 +24,7 @@ logger = profiler_logger()
 
 class CustomIP(TypeDecorator):
     """
-    Convert RowVersion
+    Map IP address columns to String
     """
 
     impl = String

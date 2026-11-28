@@ -85,7 +85,7 @@ def _(element, compiler, **kw):
 
 @compiles(SumFn, Dialects.MSSQL)
 def _(element, compiler, **kw):
-    """These database types have all int types as alias for int64 so don't need a cast"""
+    """MSSQL SUM on an int column overflows past int range, so cast to decimal"""
     proc = compiler.process(element.clauses, **kw)
     return f"SUM(CAST({proc} AS decimal))"
 

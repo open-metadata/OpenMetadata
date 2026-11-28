@@ -27,7 +27,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
-import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.adjustDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -1652,7 +1652,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             DATA_PRODUCT,
             asset.getType(),
             Relationship.HAS.ordinal());
-    removeDataProductsLineage(asset.getId(), asset.getType(), dataProducts);
+    adjustDataProductsLineage(
+        asset.getId(),
+        asset.getType(),
+        List.of(),
+        dataProducts.stream().map(EntityReference::getId).toList());
     EntityRepository.invalidateCacheForEntity(
         asset.getType(), asset.getId(), asset.getFullyQualifiedName());
     // Reindexed in one batched search write by the caller once reconciliation completes.

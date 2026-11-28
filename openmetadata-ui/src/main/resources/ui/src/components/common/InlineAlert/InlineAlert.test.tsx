@@ -156,6 +156,20 @@ describe('InlineAlert', () => {
     expect(description).not.toHaveClass('tw:line-clamp-2');
   });
 
+  it('should show a short description in full', () => {
+    render(
+      <InlineAlert
+        {...mockProps}
+        description="You signed in successfully as someone.with.a.long.address@example.com. These settings are safe to save."
+      />
+    );
+
+    expect(screen.getByTestId('inline-alert-description')).not.toHaveClass(
+      'tw:line-clamp-2'
+    );
+    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+  });
+
   it('should apply custom className when provided', () => {
     const customClass = 'custom-alert-class';
     const { container } = render(

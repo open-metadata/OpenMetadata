@@ -6,6 +6,12 @@
 # Exclude everything.
 **
 
+# Re-include the Yarn 4 config, release and plugins the install reads.
+!.yarnrc.yml
+!.yarn/
+!.yarn/releases/**
+!.yarn/plugins/**
+
 # Re-include the component library source (each parent dir must be listed explicitly).
 !openmetadata-ui-core-components/
 !openmetadata-ui-core-components/src/
@@ -16,5 +22,6 @@
 
 # Re-exclude build artifacts that should never enter the image.
 openmetadata-ui-core-components/src/main/resources/ui/node_modules
+openmetadata-ui-core-components/src/main/resources/ui/.yarn
 openmetadata-ui-core-components/src/main/resources/ui/storybook-static
 openmetadata-ui-core-components/src/main/resources/ui/dist

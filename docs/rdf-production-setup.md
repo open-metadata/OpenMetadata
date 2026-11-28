@@ -42,10 +42,10 @@ materialize need separate sizing. See
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
-(today `6.2.0-91a23ac`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+(today `6.3.0-9e53975`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
 environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
-- **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
+- **Fuseki 6.3.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
   running as uid 1000 under `tini`. On Kubernetes set `fsGroup: 1000` so the volume is writable; a
   volume written by a root-running image needs a one-time `chown`, which the entrypoint prints.
 - **Datasets from `FUSEKI_DATASETS`**: `openmetadata`, `openmetadata_a`, and `openmetadata_b`, at
@@ -56,7 +56,7 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
   `FUSEKI_QUERY_TIMEOUT_MS=50000` and `FUSEKI_UPDATE_TIMEOUT_MS=50000` fire before the 60-second
   client deadline: client-side `requestTimeoutMs` releases an OpenMetadata thread but cannot stop
   work already executing in Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0
-  has a known failure on the second WHERE-bearing operation in one timed update request.
+  and 6.3.0 have a known failure on the second WHERE-bearing operation in one timed update request.
   OpenMetadata's generated mutations therefore combine batch sources with `VALUES`/`UNION`, and the
   admin SPARQL API rejects requests containing more than one WHERE-bearing operation with a clear
   validation error. Direct Fuseki clients must follow the same restriction.
@@ -64,11 +64,10 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
 - **Admin-only access.** Only `/$/ping` is anonymous; OpenMetadata connects as `admin`.
 - **Explicit equal heap** from `FUSEKI_HEAP` (default `4g`; the development compose files use
   1500 MB).
-- **Capped direct buffers.** Fuseki holds about 5 MiB of them per HTTP request until the next
-  collection, up to the heap size by default. The pinned image predates the 256 MiB default cap
-  (open-metadata/jena#6), so the Compose files and the Kubernetes example set
-  `JVM_ARGS=-Xms<heap> -Xmx<heap> -XX:MaxDirectMemorySize=256m`. `JVM_ARGS` replaces the heap
-  flags `FUSEKI_HEAP` would set.
+- **Capped direct buffers.** The image adds `-XX:MaxDirectMemorySize=256m` unless `JVM_ARGS`
+  sets that flag. Fuseki 6.3.0 reuses one pooled response buffer (apache/jena GH-4084), so
+  responses stay far below the cap; 6.2.0 allocated about 5 MiB per response and filled it between
+  collections. `JVM_ARGS`, when set, replaces the heap flags `FUSEKI_HEAP` would set.
 - **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
   `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
@@ -228,6 +227,17 @@ older server's blue/green promotion also switches datasets without assigning a n
 Avoid blue/green rebuilds until every server runs 2.1.0, and refresh reasoning after the last older
 server stops.
 
+Planned for 2.2 and not yet built: reasoning runs in a reasoning provider, not in OpenMetadata or
+the Fuseki image (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
+OSS ships no provider, so reasoning readiness will report `DISABLED`. Collate provides one.
+A provider recomputes every derived fact in full, daily by default on the schedule set in
+`RdfInferenceApp`, and on demand. The on-demand triggers are an admin "refresh now", ontology
+activation and a blue/green promotion. There is no incremental maintenance, so answers can be up
+to one schedule interval old. Every answer carries `computedAt`, and `ReasoningFreshness` labels
+it `CURRENT` or `STALE` by comparing the live-write watermark the refresh captured with the
+current one. A refresh after the last older server stops is still the way to make results
+current after a rolling upgrade.
+
 ## Write throughput
 
 TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
@@ -278,17 +288,21 @@ update takes (about 5 s for a 62 MB graph). The copy holds every triple of the g
 heap: a 512 MiB heap failed on 1.78 million triples, and a graph near the 256 MiB activation limit
 needs at least 1,500 MiB. The server refuses to activate a release whose graph exceeds
 256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
-Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
-used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
-read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
+Indexing preflights the dataset before clearing data, and fails when the dataset cannot be used:
+it does not exist, the credentials are rejected, the user is not authorized, the dataset is
+read-only, it does not run the Graph Store extension, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
 Fuseki: readiness writes one triple into a named graph, asks for it without a `GRAPH` clause, and
 removes it. OpenMetadata writes every entity into a named graph, so without union the SPARQL
-playground, the MCP tools, SHACL validation and inference see none of them. The extension and the
-`arq:*Timeout` settings are optional. On Apache Jena Fuseki without them, indexing proceeds with
-the client's own upload budget and deadline and logs each missing guarantee. Without the extension
-a Graph Store upload holds TDB2's writer while it transfers, so other writes wait behind it: a small
-update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki 6.0.0 and 0.23 s with
-the extension. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
+playground, the MCP tools, SHACL validation and inference see none of them. The extension is
+required, and readiness names `OPENMETADATA_EXTENSION_ENABLED` when it is missing. From Fuseki 6.3.0
+stock Fuseki refuses an RDF Thrift row over 100 KB, and OpenMetadata uploads rebuilds and ontology
+releases as Thrift, so without the extension a rebuild would lose every entity with a description
+or query over that size, and an ontology release holding such a literal would fail to activate.
+Stock Fuseki also holds TDB2's writer while a Graph Store upload transfers, so other writes wait
+behind it: a small update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki
+6.0.0 and 0.23 s with the extension. The `arq:*Timeout` settings stay optional: without them
+indexing proceeds and logs each missing guarantee. `arq:updateTimeout` alone does not protect Graph
+Store POST/PUT.
 
 These are cooperative deadlines: checks abort expired parsing and roll back the transaction;
 blocked storage I/O or a TDB2 commit itself cannot be forcibly interrupted safely. Client timeout,
@@ -645,6 +659,14 @@ repeated connection failures or request timeouts; check Fuseki health, request l
 credentials, and network reachability before increasing retries.
 
 ## Inference
+
+This section describes the in-process rule runs, which still run in this release. The plan for
+2.2, not yet built, is that OpenMetadata stops running rules itself and
+`RDF_MATERIALIZED_INFERENCE_ENABLED` becomes an ignored, deprecated setting. A reasoning provider
+will write each generation under `<baseUri>graph/inferred/<generation>/`, and a pointer graph will
+name the current one. Every such graph keeps the inferred prefix, so the asserted-only reads below
+stay unchanged. Each generation will add its size to the TDB2 database until the database is compacted
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 
 Materialized inference is the only inference path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs. SPARQL queries see that output when they request `inferenceLevel=custom`.
 

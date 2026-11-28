@@ -495,7 +495,7 @@ public class TaskRepository extends EntityRepository<Task> {
    * handed back to its creator could only be resolved by an admin
    * (ADR:2026-11-25-an-approval-never-goes-to-its-requester).
    */
-  void setDefaultAssigneesFromEntityOwners(Task task) {
+  public void setDefaultAssigneesFromEntityOwners(Task task) {
     if (!nullOrEmpty(task.getAssignees())
         || Boolean.FALSE.equals(task.getUseEntityOwnerFallback())) {
       return;

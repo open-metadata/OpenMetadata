@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Null Count Metric definition
+Null Missing Count Metric definition
 """
 # pylint: disable=duplicate-code
 
@@ -82,13 +82,16 @@ class NullMissingCount(StaticMetric):
     """
     NULL + Empty COUNT Metric
 
-    Given a column, return the null count.
+    Given a column, return the count of null values, plus, for types that can
+    meaningfully hold '', the count of empty-string values.
 
     We are building a CASE WHEN structure:
     ```
     SUM(
-        CASE is not null THEN 1
-        ELSE 0
+        CASE
+            WHEN col IS NULL THEN 1
+            WHEN col = '' THEN 1
+            ELSE 0
     )
     ```
     """
@@ -100,7 +103,7 @@ class NullMissingCount(StaticMetric):
         """
         Returns the name of the metric.
         """
-        return MetricType.nullCount.value
+        return MetricType.nullMissingCount.value
 
     @property
     def metric_type(self):

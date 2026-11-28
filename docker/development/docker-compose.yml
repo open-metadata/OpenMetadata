@@ -631,7 +631,7 @@ services:
   fuseki:
     # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
     # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
-    image: openmetadata/fuseki:6.2.0-91a23ac
+    image: openmetadata/fuseki:6.3.0-9e53975
     container_name: openmetadata-fuseki
     environment:
       # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
@@ -644,9 +644,7 @@ services:
       - FUSEKI_QUERY_TIMEOUT_MS=50000
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
-      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
-      # image applies that cap itself (open-metadata/jena#6).
-      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-1500m}
     networks:
       - local_app_net
     expose:

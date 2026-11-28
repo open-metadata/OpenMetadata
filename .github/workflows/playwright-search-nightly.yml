@@ -68,9 +68,9 @@ jobs:
         run: |
           corepack enable
           # Retry transient registry failures (5xx on tarball fetches) —
-          # yarn v1 does not retry HTTP errors on its own.
+          # Yarn retries each request, but not a sustained outage.
           for attempt in 1 2 3; do
-            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install --mode=skip-build --immutable && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1

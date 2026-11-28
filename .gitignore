@@ -69,6 +69,10 @@ logs
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 node_modules
+# Yarn 4 per-project state; only the root release and plugins are committed
+**/.yarn/*
+!/.yarn/releases
+!/.yarn/plugins
 build
 dist
 

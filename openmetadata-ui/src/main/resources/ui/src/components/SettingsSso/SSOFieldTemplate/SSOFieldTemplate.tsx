@@ -38,12 +38,12 @@ const SSOFieldLabel = ({
   // The rjsf-rendered control carries this id, so htmlFor is the association;
   // the deprecated rule additionally demands DOM nesting of the control.
   // eslint-disable-next-line jsx-a11y/label-has-for -- associated via htmlFor
-  <label
-    className={classNames('control-label', {
-      'sso-deprecated-field-label': isDeprecated,
-    })}
-    htmlFor={id}>
-    {label}
+  <label className="control-label" htmlFor={id}>
+    {/* Only the field name is faded; the badge keeps the core Badge look. */}
+    <span
+      className={classNames({ 'sso-deprecated-field-label': isDeprecated })}>
+      {label}
+    </span>
     {required && <span className="required">*</span>}
     {isDeprecated && <DeprecatedBadge />}
   </label>

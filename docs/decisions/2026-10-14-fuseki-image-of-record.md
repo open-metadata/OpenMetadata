@@ -1,11 +1,15 @@
 # OpenMetadata runs and tests the published openmetadata/fuseki image, pinned by commit
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-11-23 (the image no longer carries a reasoner) · v3 2026-11-27 (OpenMetadata requires the Graph Store extension)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** the RDF integration-test lane (`-DintegrationTests.lane=rdf`), which starts
   `FusekiTestImage.DEFAULT_IMAGE`; `RdfFusekiAuthorizationIT` and `RdfStorageReadinessIT` pin its
-  access and readiness contract
+  access and readiness contract, and `RdfStorageReadinessIT#fusekiWithoutTheExtensionFailsNamingIt`,
+  `RdfStorageReadinessIT#ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing` and
+  `FusekiWriteCapabilitiesTest` pin that readiness and activation refuse a dataset without the
+  extension; `RdfLiveWriteRecoveryIT#aStoreThatCannotServeTheWriteDeadLettersItAtOnceAndDeliversTheNext`
+  pins that the queue does not retry that refusal
 - **Related:** [Fuseki-native reasoning plan](../plans/2026-10-07-fuseki-native-reasoning.md)
   (phase 1, task 4; open decision 6), [rdf-fuseki-image-release.md](../rdf-fuseki-image-release.md)
 
@@ -49,3 +53,58 @@ run downloaded Fuseki from `archive.apache.org`.
 - Image changes now land in the fork first and reach OpenMetadata by moving the pin after the RDF
   lane passes against the new tag. Revisit only if OpenMetadata needs an image the fork cannot
   publish.
+
+## Amendment: the image no longer carries a reasoner (v2, 2026-11-23)
+
+Reasoning moved out of the `openmetadata/fuseki` image, and from 2.2 a `ReasoningProvider` runs it
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The reasoner
+worker is no longer a reason to run this image, and the v1 consequence that the RDF lane tests the
+image reasoning runs in no longer applies. The image is still the only one OpenMetadata runs,
+tests and documents, for its Graph Store extension and its operational guards: the bounded upload,
+`GuardedUpdate`, the free-space write guard and the storage report. The commit-pinned tag and the
+environment contract above are unchanged.
+
+## Amendment: OpenMetadata requires the Graph Store extension (v3, 2026-11-27)
+
+Until now the extension was optional. Without it, readiness logged the guarantees it could not see
+and indexing went on. Jena 6.3.0 makes that unsafe: stock Fuseki refuses an RDF Thrift row over
+100 KB (apache/jena GH-4377), and OpenMetadata uploads rebuilds and ontology releases as Thrift. On
+a server without the extension, a rebuild loses every entity with a description or query over that
+size and still reports success, and an ontology release holding such a literal fails to activate.
+The extension reads Thrift uploads with its upload bound as the row cap (open-metadata/jena#24).
+
+- `FusekiWriteCapabilities.negotiate` refuses a dataset whose `OPTIONS /<dataset>/data` response
+  carries no `X-OpenMetadata-*` header, so `ensureStorageReady` fails before any data is cleared.
+  The message names the dataset and `OPENMETADATA_EXTENSION_ENABLED=true`. The dataset, credential
+  and read-only checks run first, so their messages are unchanged.
+- A guarantee the extension leaves unmet, such as an unset `arq:queryTimeout`, is still logged and
+  does not fail readiness.
+- Every ontology graph write (`replaceGraph`: activation, deactivation, deletion) requires the same
+  capabilities before it uploads, so a release fails with the same message instead of Fuseki's
+  HTTP 500. The check does not depend on what the graph holds: on a store without the extension,
+  OpenMetadata writes no ontology graph at all, rather than judging each payload against the row
+  cap. Each graph write probes the store itself rather than reusing what readiness saw, because
+  graph writes are rare and a Fuseki restarted without the extension under a running server must
+  have its next one refused. The refusal is an `RdfStorageUnsupportedException`: the live-write queue dead-letters it on
+  the first attempt and marks the projection degraded, instead of retrying it for minutes ahead of
+  every later write. Dead letters are not replayed; an `RdfIndexApp` run after the extension is on
+  restores the ontology graphs.
+- The pinned image loads the extension only when `OPENMETADATA_EXTENSION_ENABLED=true`, which
+  every Compose file and the Kubernetes example set. A deployment that supplies its own
+  environment must set it too.
+- An operator's own Fuseki must put the extension jar on its classpath and start through a main
+  class that loads Fuseki modules, such as `FusekiServerPlainCmd`. `FusekiMainCmd` loads none, so
+  the jar does nothing there. Apache's Fuseki distribution alone is no longer a supported store.
+- Readiness gates only `RdfIndexApp`, and the capability check runs only before uploads. A
+  deployment that has not turned the extension on keeps serving live writes, reads and maintenance
+  until it does, so the free-space record's consequence for a store without the extension
+  (ADR:2026-10-28-the-fuseki-image-refuses-writes-below-a-free-space-reserve-and-reports-its-volume)
+  still applies to it: no urgent compaction and no write guard.
+
+Alternatives considered:
+- **Upload N-Triples to a server without the extension.** N-Triples has no row cap, so stock
+  Fuseki would work. It was rejected because it keeps a second upload path in the indexing code
+  that the RDF lane never runs, and stock Fuseki would still hold TDB2's writer for the whole
+  transfer of each upload.
+- **Document the requirement and keep the warning.** It was rejected because the failure is silent:
+  a rebuild that drops entities reports COMPLETED.

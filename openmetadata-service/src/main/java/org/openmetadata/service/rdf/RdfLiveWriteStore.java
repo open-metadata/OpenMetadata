@@ -20,12 +20,14 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
+import org.openmetadata.service.rdf.storage.RdfStorageUnsupportedException;
 
 /** Shared, ordered delivery and health state, with exhausted writes retained for reconciliation. */
 @Slf4j
@@ -278,24 +280,30 @@ public final class RdfLiveWriteStore {
       final Handle handle, final Entry entry, final RuntimeException failure) {
     final Optional<RdfStorageMaintenanceException> maintenance =
         RdfStorageMaintenanceException.find(failure);
+    final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
+    final boolean retired =
+        maintenance.isEmpty()
+            && (attempts >= MAX_DELIVERY_ATTEMPTS
+                || ExceptionUtils.throwableOfType(failure, RdfStorageUnsupportedException.class)
+                    != null);
     if (maintenance.isPresent()) {
       deferForMaintenance(handle, entry, maintenance.get());
-      return false;
-    }
-    final int attempts = Math.min(entry.attempts(), Integer.MAX_VALUE - 1) + 1;
-    if (attempts >= MAX_DELIVERY_ATTEMPTS) {
+    } else if (retired) {
       deadLetter(handle, entry, attempts, failure);
-      return true;
+    } else {
+      handle.execute(
+          "UPDATE rdf_live_write_queue SET attempts = ?, nextAttemptAt = ?, lastError = ? WHERE id = ?",
+          attempts,
+          clock.millis() + retryDelayMillis(attempts),
+          failureReason(failure),
+          entry.id());
+      LOG.warn(
+          "Live RDF write {} failed (attempt {}); retained for retry",
+          entry.id(),
+          attempts,
+          failure);
     }
-    handle.execute(
-        "UPDATE rdf_live_write_queue SET attempts = ?, nextAttemptAt = ?, lastError = ? WHERE id = ?",
-        attempts,
-        clock.millis() + retryDelayMillis(attempts),
-        failureReason(failure),
-        entry.id());
-    LOG.warn(
-        "Live RDF write {} failed (attempt {}); retained for retry", entry.id(), attempts, failure);
-    return false;
+    return retired;
   }
 
   /** Nothing reached the store, so the write waits for maintenance without using an attempt. */
@@ -323,7 +331,7 @@ public final class RdfLiveWriteStore {
         reason);
     retire(handle, entry.id());
     LOG.error(
-        "Live RDF write {} exhausted {} attempts; dead-lettered for reconciliation",
+        "Live RDF write {} failed after {} attempts; dead-lettered for reconciliation",
         entry.id(),
         attempts,
         failure);

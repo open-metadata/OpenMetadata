@@ -2,6 +2,7 @@ package org.openmetadata.service.alerting.channel.teams;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -18,6 +19,15 @@ class TeamsAdaptiveCardRendererTest {
 
     assertTrue(card.contains("[" + URL + "](" + URL + ")"));
     assertFalse(card.contains("`"));
+  }
+
+  @Test
+  void adaptiveCardDeclaresVersionThatSupportsTableElements() {
+    // Table/TableRow/TableCell were introduced in Adaptive Cards schema 1.5; a card declaring a
+    // lower target version has those elements silently dropped by the Teams renderer.
+    TeamsMessage.AdaptiveCardContent card = renderCard("<p>no table here</p>");
+
+    assertVersionAtLeast("1.5", card.getVersion());
   }
 
   @Test
@@ -60,5 +70,32 @@ class TeamsAdaptiveCardRendererTest {
         .map(TeamsMessage.TextBlock.class::cast)
         .map(TeamsMessage.TextBlock::getText)
         .collect(Collectors.joining("\n"));
+  }
+
+  private static TeamsMessage.AdaptiveCardContent renderCard(String templateHtml) {
+    TeamsMessage message =
+        assertInstanceOf(
+            TeamsMessage.class, TeamsAdaptiveCardRenderer.create().render(templateHtml, null));
+    return message.getAttachments().getFirst().getContent();
+  }
+
+  private static void assertVersionAtLeast(String minimum, String actual) {
+    assertNotNull(actual, "Adaptive Card version must not be null");
+    int[] min = parseVersion(minimum);
+    int[] act = parseVersion(actual);
+    assertTrue(
+        act[0] > min[0] || (act[0] == min[0] && act[1] >= min[1]),
+        "Adaptive Card version "
+            + actual
+            + " must be >= "
+            + minimum
+            + " so Table/TableRow/TableCell (schema 1.5) are not dropped by Teams");
+  }
+
+  private static int[] parseVersion(String version) {
+    String[] parts = version.split("\\.");
+    int major = parts.length > 0 ? Integer.parseInt(parts[0]) : 0;
+    int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
+    return new int[] {major, minor};
   }
 }
