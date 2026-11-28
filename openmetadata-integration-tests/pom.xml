@@ -28,7 +28,7 @@
     <integrationTests.skipParallel>${skipITs}</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT,ContextProcessingConditionalWriteSqlIT,PipelineStatusPaginationSqlIT,DataAssetChartScopeIT,AWSSSMSecretsManagerLocalStackIT,AWSSecretsManagerLocalStackIT,OntologyActiveGraphStorageIT,OntologyHierarchyStorageIT,OntologyConceptStatusStorageIT,OntologyDerivedStatusStorageIT,OntologyPropertyInverseStorageIT,OntologyPublicationStorageIT,OntologyReleaseActivationIT,OntologyReleaseComparisonStorageIT,OntologyReleaseCaptureIT,OntologyReleaseReviewListIT,OntologyServedBindingsStorageIT,OntologyEntityDAOIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,OpsFernetKeyRotationIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
          openmetadata/fuseki image pinned in FusekiTestImage (override with -DrdfContainerImage);
@@ -522,6 +522,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -609,6 +610,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -726,6 +728,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -812,6 +815,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -930,6 +934,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1017,6 +1022,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1135,6 +1141,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1221,6 +1228,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1338,6 +1346,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1424,6 +1433,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1540,6 +1550,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1627,6 +1638,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1760,6 +1772,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1848,6 +1861,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1972,6 +1986,7 @@
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/OpsFernetKeyRotationIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -2059,6 +2074,7 @@
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/OpsFernetKeyRotationIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>

@@ -630,6 +630,7 @@
       ],
       "tests": [
         "*Secret*IT",
+        "*Fernet*IT",
         "*ServiceResourceIT",
         "*IngestionPipeline*IT",
         "*Bot*IT",
@@ -1113,6 +1114,7 @@
         "org/openmetadata/it/tests/migration/**",
         "*SeedData*IT",
         "*Operations*IT",
+        "Ops*IT",
         "*DbTune*IT"
       ]
     },

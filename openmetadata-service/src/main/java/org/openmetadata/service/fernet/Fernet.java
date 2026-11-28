@@ -19,34 +19,19 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_N
 
 import com.google.common.annotations.VisibleForTesting;
 import com.macasaet.fernet.Key;
-import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
-import com.macasaet.fernet.Validator;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.TemporalAmount;
-import java.util.Arrays;
 import java.util.List;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
+@Slf4j
 public class Fernet {
   private static final Fernet instance = new Fernet();
-  private static final String KEY_SEPARATOR = ",";
-  private String fernetKey;
-  private volatile List<Key> cachedKeys;
-  private final SecureRandom secureRandom = new SecureRandom();
+  private volatile KeyRing keyRing = KeyRing.NONE;
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
-  private final Validator<String> validator =
-      new StringValidator() {
-        @Override
-        public TemporalAmount getTimeToLive() {
-          return Duration.ofSeconds(Instant.MAX.getEpochSecond());
-        }
-      };
 
   private Fernet() {
     /* Private constructor for singleton */
@@ -67,34 +52,35 @@ public class Fernet {
   @VisibleForTesting
   public void setFernetKey(String fernetKey) {
     if (fernetKey != null) {
-      // convert base64 to base64url
-      this.fernetKey = fernetKey.replace("/", "_").replace("+", "-").replace("=", "");
-      this.cachedKeys = buildKeys(this.fernetKey);
+      KeyRing parsed = KeyRing.parse(fernetKey);
+      this.keyRing = parsed;
+      LOG.info("Fernet keys: {}", parsed.describe());
     } else {
-      this.fernetKey = null;
-      this.cachedKeys = null;
+      this.keyRing = KeyRing.NONE;
     }
   }
 
-  private static List<Key> buildKeys(String fernetKey) {
-    return Arrays.stream(fernetKey.split(KEY_SEPARATOR)).map(Key::new).toList();
+  KeyRing keyRing() {
+    return keyRing;
   }
 
+  /** The configured keys, primary first, or null when no key is set. */
   public List<Key> getCachedKeys() {
-    return cachedKeys;
+    KeyRing ring = keyRing;
+    return ring.size() == 0 ? null : ring.keys();
   }
 
   public boolean isKeyDefined() {
-    return fernetKey != null;
+    return keyRing.size() > 0;
   }
 
   public String encrypt(@NonNull String secret) {
     if (secret.startsWith(FERNET_PREFIX)) {
       throw new IllegalArgumentException(FIELD_ALREADY_TOKENIZED);
     }
-    if (isKeyDefined()) {
-      Key key = cachedKeys.getFirst();
-      return FERNET_PREFIX + Token.generate(secureRandom, key, secret).serialise();
+    KeyRing ring = keyRing;
+    if (ring.size() > 0) {
+      return ring.seal(secret);
     }
     throw new IllegalArgumentException(FERNET_KEY_NULL);
   }
@@ -104,13 +90,14 @@ public class Fernet {
   }
 
   public String decrypt(String tokenized) {
-    if (!isKeyDefined()) {
+    KeyRing ring = keyRing;
+    if (ring.size() == 0) {
       throw new IllegalArgumentException(FERNET_KEY_NULL);
     }
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];
       Token token = Token.fromString(str);
-      return token.validateAndDecrypt(cachedKeys, validator);
+      return token.validateAndDecrypt(ring.keys(), KeyRing.NEVER_EXPIRES);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }
@@ -120,14 +107,15 @@ public class Fernet {
    * with an older key of a rotation list does not decrypt here.
    */
   public String decryptWithPrimaryKey(String tokenized) {
-    if (!isKeyDefined()) {
+    KeyRing ring = keyRing;
+    if (ring.size() == 0) {
       throw new IllegalArgumentException(FERNET_KEY_NULL);
     }
     if (!isTokenized(tokenized)) {
       throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
     }
     Token token = Token.fromString(tokenized.split(FERNET_PREFIX, 2)[1]);
-    return token.validateAndDecrypt(cachedKeys.getFirst(), validator);
+    return token.validateAndDecrypt(ring.keys().getFirst(), KeyRing.NEVER_EXPIRES);
   }
 
   /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
