@@ -40,6 +40,8 @@ import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -307,8 +309,103 @@ public class GlossaryTermRelationFixesIT {
     GlossaryTestFactory.delete(glossary);
   }
 
-  // ==================== FIX 8: ERROR MESSAGE SANITIZATION ====================
+  // ==================== FIX 7: ENTITY PATCH PRESERVES TYPED RELATION METADATA ====================
 
+  @Test
+  void testEntityPatchKeepsTypedRelatedTermMetadataOnUnrelatedEdit(TestNamespace ns)
+      throws Exception {
+    // Regression guard for the glossary term drawer bug where editing a term
+    // (e.g. fixing a description typo) silently downgraded typed related-term
+    // edges (`synonym`/`broader`/...) to plain `relatedTo` and reset
+    // `Imported`/`AiSuggested` provenance to `Manual`. The drawer now carries the
+    // existing `TermRelation` metadata through the form payload for relations the
+    // user did not touch, so the server's strict matcher keeps the stored edge
+    // instead of delete-and-recreating it. This test pins the server contract
+    // the drawer relies on: a PATCH that re-sends the full TermRelation for an
+    // unchanged relation preserves its relationType, provenance, status, edge
+    // id, createdBy, and createdAt across an unrelated field edit.
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = GlossaryTermTestFactory.createWithName(ns, glossary, "meta_a");
+    GlossaryTerm termB = GlossaryTermTestFactory.createWithName(ns, glossary, "meta_b");
+
+    // 1. Establish a typed relation A -> B with non-default provenance via a
+    //    full-metadata PATCH (the shape the Related Terms tab / CSV import emit).
+    String addPatch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/relatedTerms/-\","
+                + "\"value\":{\"relationType\":\"synonym\","
+                + "\"provenance\":\"Imported\","
+                + "\"term\":{\"id\":\"%s\",\"type\":\"glossaryTerm\"}}}]",
+            termB.getId());
+    HttpResponse<String> addResp = patchGlossaryTerm(termA.getId().toString(), addPatch);
+    assertEquals(200, addResp.statusCode(), "Add typed relation PATCH failed: " + addResp.body());
+
+    GlossaryTerm afterAdd = getGlossaryTerm(termA.getId().toString());
+    assertNotNull(afterAdd.getRelatedTerms());
+    assertEquals(1, afterAdd.getRelatedTerms().size());
+    TermRelation stored = afterAdd.getRelatedTerms().get(0);
+    assertEquals("synonym", stored.getRelationType(), "relationType should be stored as synonym");
+    assertEquals(
+        RelationProvenance.IMPORTED,
+        stored.getProvenance(),
+        "provenance should be stored as Imported");
+    UUID edgeId = stored.getId();
+    Long createdAt = stored.getCreatedAt();
+    String createdBy = stored.getCreatedBy();
+    EntityStatus status = stored.getStatus();
+    assertNotNull(edgeId, "Server should assign an edge id");
+    assertNotNull(createdAt, "Server should assign createdAt");
+    assertNotNull(createdBy, "Server should assign createdBy");
+
+    // 2. Simulate the fixed drawer: edit an unrelated field (description) and
+    //    re-send relatedTerms with the full metadata preserved for the unchanged
+    //    relation (exactly what AddGlossaryTermForm.resolveRelatedTerms emits on
+    //    edit for relations the user did not touch).
+    TermRelation preserved =
+        new TermRelation()
+            .withId(edgeId)
+            .withRelationType("synonym")
+            .withProvenance(RelationProvenance.IMPORTED)
+            .withStatus(status)
+            .withCreatedBy(createdBy)
+            .withCreatedAt(createdAt)
+            .withTerm(stored.getTerm());
+    String relatedTermsJson = OBJECT_MAPPER.writeValueAsString(List.of(preserved));
+    String editPatch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/description\","
+                + "\"value\":\"edited description\"},"
+                + "{\"op\":\"replace\",\"path\":\"/relatedTerms\",\"value\":%s}]",
+            relatedTermsJson);
+    HttpResponse<String> editResp = patchGlossaryTerm(termA.getId().toString(), editPatch);
+    assertEquals(200, editResp.statusCode(), "Edit PATCH failed: " + editResp.body());
+
+    // 3. The typed edge must survive the unrelated edit intact.
+    GlossaryTerm afterEdit = getGlossaryTerm(termA.getId().toString());
+    assertEquals("edited description", afterEdit.getDescription());
+    assertNotNull(afterEdit.getRelatedTerms(), "relatedTerms should still be present");
+    assertEquals(1, afterEdit.getRelatedTerms().size(), "Relation count should not change");
+    TermRelation surviving = afterEdit.getRelatedTerms().get(0);
+    assertEquals(
+        "synonym",
+        surviving.getRelationType(),
+        "relationType must survive an unrelated edit (was downgraded to relatedTo before the fix)");
+    assertEquals(
+        RelationProvenance.IMPORTED,
+        surviving.getProvenance(),
+        "provenance must survive an unrelated edit (was reset to Manual before the fix)");
+    assertEquals(
+        edgeId,
+        surviving.getId(),
+        "edge id must be preserved (was re-created with a new UUID before the fix)");
+    assertEquals(createdAt, surviving.getCreatedAt(), "createdAt must be preserved");
+    assertEquals(createdBy, surviving.getCreatedBy(), "createdBy must be preserved");
+    assertEquals(status, surviving.getStatus(), "status must be preserved");
+
+    GlossaryTestFactory.delete(glossary);
+  }
+
+  // ==================== FIX 8: ERROR MESSAGE SANITIZATION ====================
   @Test
   void testRdfErrorResponsesDoNotLeakInternalDetails() throws Exception {
     String adminToken = SdkClients.getAdminToken();

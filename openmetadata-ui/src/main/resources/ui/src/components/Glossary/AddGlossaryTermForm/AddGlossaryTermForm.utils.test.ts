@@ -45,6 +45,12 @@ const glossaryTerm = {
   style: { color: '#123456', iconURL: 'Book' },
   relatedTerms: [
     {
+      id: 'edge-1',
+      relationType: 'synonym',
+      provenance: 'Imported',
+      status: 'Approved',
+      createdBy: 'importer',
+      createdAt: 1700000000000,
       term: {
         id: 'related-id',
         type: 'glossaryTerm',
@@ -92,7 +98,7 @@ describe('getGlossaryTermFormValues', () => {
 });
 
 describe('buildGlossaryTermSavePayload', () => {
-  it('sends related term FQNs and intake extension values on create', () => {
+  it('sends related term FQNs as TermRelation edges and intake extension values on create', () => {
     const customProperties = [
       {
         name: 'costCenter',
@@ -119,7 +125,14 @@ describe('buildGlossaryTermSavePayload', () => {
       displayName: '',
       description: 'Money in',
       reviewers: [],
-      relatedTerms: ['Business.Profit'],
+      relatedTerms: [
+        {
+          term: {
+            fullyQualifiedName: 'Business.Profit',
+            type: 'glossaryTerm',
+          },
+        },
+      ],
       references: undefined,
       synonyms: ['income'],
       mutuallyExclusive: false,
@@ -128,6 +141,34 @@ describe('buildGlossaryTermSavePayload', () => {
       style: undefined,
       extension: { costCenter: 'CC-1' },
     });
+  });
+
+  it('preserves existing TermRelation metadata for untouched related terms on edit', () => {
+    const payload = buildGlossaryTermSavePayload({
+      values: getGlossaryTermFormValues(glossaryTerm),
+      editMode: true,
+      glossaryTerm,
+      currentUserId: 'me',
+    });
+
+    // The seeded relation is unchanged, so the full edge metadata must survive
+    // so the server's strict matcher keeps the stored typed edge.
+    expect(payload.relatedTerms).toHaveLength(1);
+    expect(payload.relatedTerms?.[0]).toEqual(
+      expect.objectContaining({
+        id: 'edge-1',
+        relationType: 'synonym',
+        provenance: 'Imported',
+        status: 'Approved',
+        createdBy: 'importer',
+        createdAt: 1700000000000,
+        term: expect.objectContaining({
+          id: 'related-id',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Business.Profit',
+        }),
+      })
+    );
   });
 
   it('resolves related term ids and drops extensions on edit', () => {
@@ -147,7 +188,21 @@ describe('buildGlossaryTermSavePayload', () => {
       currentUserId: 'me',
     });
 
-    expect(payload.relatedTerms).toEqual(['related-id', 'cost-id']);
+    expect(payload.relatedTerms?.map((r) => r.term.id)).toEqual([
+      'related-id',
+      'cost-id',
+    ]);
+    // The seeded relation keeps its typed metadata; the newly picked one is a
+    // bare reference the server defaults to `relatedTo`/`Manual`.
+    expect(payload.relatedTerms?.[0]).toEqual(
+      expect.objectContaining({
+        relationType: 'synonym',
+        provenance: 'Imported',
+      })
+    );
+    expect(payload.relatedTerms?.[1]).toEqual({
+      term: { id: 'cost-id', type: 'glossaryTerm' },
+    });
     expect(payload.extension).toBeUndefined();
     expect(payload.owners).toEqual([owner]);
     expect(payload.style).toEqual({ color: '#123456', iconURL: 'Book' });

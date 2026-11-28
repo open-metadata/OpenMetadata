@@ -103,6 +103,9 @@ const TERM = {
   owners: [{ id: 'owner-id', type: 'user', name: 'owner' }],
   relatedTerms: [
     {
+      id: 'edge-1',
+      relationType: 'synonym',
+      provenance: 'Imported',
       term: {
         id: 'related-id',
         type: 'glossaryTerm',
@@ -156,7 +159,7 @@ describe('GlossaryTermDrawer', () => {
     expect(getGlossaryTermByFQN).not.toHaveBeenCalled();
   });
 
-  it('loads the term in edit mode and saves related terms as ids', async () => {
+  it('loads the term in edit mode and preserves related-term edge metadata', async () => {
     renderWithQueryClient(
       <GlossaryTermDrawer
         editMode
@@ -174,12 +177,26 @@ describe('GlossaryTermDrawer', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
 
+    // The relation is unchanged, so its `relationType`/`provenance`/edge `id`
+    // must round-trip through the form payload so the server keeps the stored
+    // typed edge instead of downgrading it to a plain `relatedTo`.
     expect(onSave.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         name: 'Revenue',
         description: 'Money in',
         owners: [TERM.owners?.[0]],
-        relatedTerms: ['related-id'],
+        relatedTerms: [
+          {
+            id: 'edge-1',
+            relationType: 'synonym',
+            provenance: 'Imported',
+            term: {
+              id: 'related-id',
+              type: 'glossaryTerm',
+              fullyQualifiedName: 'Business.Profit',
+            },
+          },
+        ],
       })
     );
   });
