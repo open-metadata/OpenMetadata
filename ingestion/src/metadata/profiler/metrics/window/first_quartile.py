@@ -100,8 +100,9 @@ class FirstQuartile(StaticMetric, PercentilMixin):
                 df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
-                    f"Unable to compute Median for {self.col.name} due to memory constraints."
-                    f"We recommend using a smaller sample size or partitioning."
+                    "Unable to compute First Quartile for %s due to memory constraints."
+                    "We recommend using a smaller sample size or partitioning.",
+                    self.col.name,
                 )
                 return None
             # check if nan
