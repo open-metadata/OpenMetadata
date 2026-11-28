@@ -16,6 +16,7 @@ import traceback
 from collections.abc import Iterable, Iterator
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -66,30 +67,41 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             while total_fetched < max_results:
                 batch_size = min(TRINO_QUERY_BATCH_SIZE, max_results - total_fetched)
                 row_count = 0
-                with engine.connect() as conn:
-                    sql_statement = self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
-                        offset=offset,
-                        limit=batch_size,
-                    )
-                    logger.debug(f"Executing lineage query: {sql_statement}")
-                    rows = conn.execute(text(sql_statement))
-                    for row in rows:
-                        query_dict = row._asdict()
-                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                        row_count += 1
-                        try:
-                            yield TableQuery(
-                                dialect=self.dialect.value,
-                                query=query_dict["query_text"],
-                                databaseName=self.get_database_name(query_dict),
-                                serviceName=self.config.serviceName,
-                                databaseSchema=self.get_schema_name(query_dict),
-                            )
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                # Built outside the guard below: a failure here is a bug in the source's
+                # statement builder, not an unreachable engine, and must not be reported
+                # as a skipped connection.
+                sql_statement = self.get_sql_statement(
+                    start_time=self.start,
+                    end_time=self.end,
+                    offset=offset,
+                    limit=batch_size,
+                )
+                logger.debug(f"Executing lineage query: {sql_statement}")
+                try:
+                    with engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
+                        rows = conn.execute(text(sql_statement))
+                        for row in rows:
+                            query_dict = row._asdict()
+                            query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                            row_count += 1
+                            try:
+                                yield TableQuery(
+                                    dialect=self.dialect.value,
+                                    query=query_dict["query_text"],
+                                    databaseName=self.get_database_name(query_dict),
+                                    serviceName=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+                                    databaseSchema=self.get_schema_name(query_dict),
+                                )
+                            except Exception as exc:
+                                logger.debug(traceback.format_exc())
+                                logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                # Narrowed: SQLAlchemy wraps driver failures, but the underlying driver
+                # can leak raw OSError subclasses on connect (connection reset, timeout) -
+                # the same types NETWORK_ERRORS matches. A KeyError/AttributeError here
+                # is a code bug and must keep propagating.
+                except (SQLAlchemyError, OSError) as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning("Failed to fetch lineage query log from a connection, skipping it: %s", exc)
                 total_fetched += row_count
                 if row_count < batch_size:
                     break
