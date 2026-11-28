@@ -27,6 +27,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -197,6 +199,28 @@ class ElasticSearchAggregationRbacTest {
         fromNoArg, fromNullSubject, "aggregate(request) must match aggregate(request, null)");
     assertFalse(
         fromNoArg.toString().contains("domains.id"), "null subject must not be RBAC-filtered");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
+  void pageAggregationUsesConfiguredSearchFields(String index) throws Exception {
+    ElasticSearchAggregationManager manager =
+        new ElasticSearchAggregationManager(client, evaluator);
+    AggregationRequest request =
+        baseRequest().withIndex(index).withQuery("vacation options").withFieldName("pageType");
+    try (Response response = manager.aggregate(request)) {
+      assertEquals(200, response.getStatus());
+    }
+    JsonNode query = json(sent.getFirst()).path("query");
+    assertTrue(
+        query.findValues("multi_match").stream()
+            .flatMap(match -> match.path("fields").valueStream())
+            .map(field -> field.asText().split("\\^", 2)[0])
+            .anyMatch("description"::equals),
+        () -> "Page aggregation must search the configured description field: " + query);
+    assertTrue(
+        query.findValues("query_string").stream().allMatch(clause -> clause.hasNonNull("fields")),
+        () -> "Page aggregation must avoid unscoped query_string clauses: " + query);
   }
 
   private AggregationRequest baseRequest() {

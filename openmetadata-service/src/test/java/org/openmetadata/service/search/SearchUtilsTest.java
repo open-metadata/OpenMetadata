@@ -580,7 +580,9 @@ class SearchUtilsTest {
         "file_search_index",
         Entity.FILE,
         "context_file_search_index",
-        Entity.CONTEXT_FILE
+        Entity.CONTEXT_FILE,
+        "knowledge_page_search_index",
+        Entity.PAGE
       })
   void isDataAssetIndexRecognizesDataAssetIndices(String index) {
     assertTrue(SearchUtils.isDataAssetIndex(index));
@@ -714,6 +716,8 @@ class SearchUtilsTest {
         "team_search_index | team",
         "context_file_search_index | contextFile",
         "contextFile | contextFile",
+        "knowledge_page_search_index | page",
+        "page | page",
         "dataAsset | dataAsset",
         // unknown values fall through to dataAsset (the catch-all default)
         "totally_unknown_index | dataAsset"

@@ -72,6 +72,7 @@ public final class SearchUtils {
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
   private static final String STERMS_PREFIX = "sterms#";
+  private static final String KNOWLEDGE_PAGE_SEARCH_INDEX = "knowledge_page_search_index";
 
   private SearchUtils() {}
 
@@ -781,6 +782,8 @@ public final class SearchUtils {
           Entity.FILE,
           "context_file_search_index",
           Entity.CONTEXT_FILE,
+          KNOWLEDGE_PAGE_SEARCH_INDEX,
+          Entity.PAGE,
           "metric_search_index",
           Entity.METRIC -> true;
       default -> false;
@@ -892,6 +895,7 @@ public final class SearchUtils {
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
       case "context_file_search_index", Entity.CONTEXT_FILE -> Entity.CONTEXT_FILE;
+      case KNOWLEDGE_PAGE_SEARCH_INDEX, Entity.PAGE -> Entity.PAGE;
       case "column_search_index", Entity.TABLE_COLUMN -> Entity.TABLE_COLUMN;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";

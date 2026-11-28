@@ -29,6 +29,8 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -491,6 +493,47 @@ public class SearchSourceBuilderFactoryTest {
     assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
     assertTrue(esQuery.contains("fqnParts"), esQuery);
     assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
+  void testPageSearchUsesPageConfiguration(String index) {
+    OpenSearchSourceBuilderFactory osFactory =
+        new OpenSearchSourceBuilderFactory(shippedSearchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
+
+    assertEquals(
+        Entity.PAGE, osFactory.findAssetTypeConfig(index, shippedSearchSettings).getAssetType());
+    assertEquals(
+        Entity.PAGE, esFactory.findAssetTypeConfig(index, shippedSearchSettings).getAssetType());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
+  void testPageSearchUsesDataAssetQuery(String index) {
+    OpenSearchSourceBuilderFactory osFactory =
+        new OpenSearchSourceBuilderFactory(shippedSearchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
+    for (String query :
+        List.of(
+            "What are the vacation options?",
+            "What is onboarding about?",
+            "displayName:vacation*")) {
+      String osQuery =
+          serializeOpenSearchRequest(osFactory.getSearchSourceBuilderV2(index, query, 0, 10));
+      String esQuery = esFactory.getSearchSourceBuilderV2(index, query, 0, 10).query().toString();
+      assertEquals(
+          serializeOpenSearchRequest(osFactory.buildDataAssetSearchBuilderV2(index, query, 0, 10)),
+          osQuery);
+      assertEquals(
+          esFactory.buildDataAssetSearchBuilderV2(index, query, 0, 10).query().toString(), esQuery);
+      assertTrue(osQuery.contains("\"multi_match\""), osQuery);
+      assertTrue(esQuery.contains("\"multi_match\""), esQuery);
+      assertTrue(osQuery.contains(query), osQuery);
+      assertTrue(esQuery.contains(query), esQuery);
+    }
   }
 
   @Test
