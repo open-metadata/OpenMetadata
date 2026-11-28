@@ -1,19 +1,26 @@
 package org.openmetadata.it.tests;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -359,6 +366,69 @@ public class BulkDeleteStaleIT {
         "a non-existent scope is a no-op, not an error");
   }
 
+  @Test
+  void test_softDelete_recordsOneChangeEventPerStaleTable(TestNamespace ns) throws Exception {
+    long since = System.currentTimeMillis();
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+    Map<String, String> ids = tableIds(tableFqns);
+
+    BulkApi.deleteStale(
+        "tables",
+        new BulkDeleteStaleRequest()
+            .withScopeFqn(schemaFqn)
+            .withScopeEntityType("databaseSchema")
+            .withSeenFqns(tableFqns.subList(0, 1)));
+
+    Set<String> stale = Set.of(ids.get(tableFqns.get(1)), ids.get(tableFqns.get(2)));
+    Map<String, List<String>> events = awaitDeleteEvents(Set.copyOf(ids.values()), since, stale);
+    for (String id : stale) {
+      assertEquals(List.of("entitySoftDeleted"), events.get(id), "one soft-delete event: " + id);
+    }
+    assertFalse(
+        events.containsKey(ids.get(tableFqns.get(0))), "a seen table records no delete event");
+  }
+
+  @Test
+  void test_hardDelete_recordsAnEntityDeletedEvent(TestNamespace ns) throws Exception {
+    long since = System.currentTimeMillis();
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 2);
+    Map<String, String> ids = tableIds(tableFqns);
+
+    BulkApi.deleteStale(
+        "tables",
+        new BulkDeleteStaleRequest()
+            .withScopeFqn(schemaFqn)
+            .withScopeEntityType("databaseSchema")
+            .withSeenFqns(tableFqns.subList(0, 1))
+            .withHardDelete(true));
+
+    String stale = ids.get(tableFqns.get(1));
+    Map<String, List<String>> events =
+        awaitDeleteEvents(Set.copyOf(ids.values()), since, Set.of(stale));
+    assertEquals(List.of("entityDeleted"), events.get(stale), "one hard-delete event");
+  }
+
+  @Test
+  void test_dryRun_recordsNoChangeEvent(TestNamespace ns) throws Exception {
+    long since = System.currentTimeMillis();
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 2);
+    Map<String, String> ids = tableIds(tableFqns);
+
+    BulkApi.deleteStale(
+        "tables",
+        new BulkDeleteStaleRequest()
+            .withScopeFqn(schemaFqn)
+            .withScopeEntityType("databaseSchema")
+            .withSeenFqns(tableFqns.subList(0, 1))
+            .withDryRun(true));
+
+    assertTrue(
+        deleteEvents(Set.copyOf(ids.values()), since).isEmpty(), "a dry run records no event");
+  }
+
   // ===================================================================
   // HELPERS
   // ===================================================================
@@ -409,5 +479,61 @@ public class BulkDeleteStaleIT {
     Table table = OBJECT_MAPPER.readValue(response.body(), Table.class);
     assertNotNull(table.getId());
     return Boolean.TRUE.equals(table.getDeleted());
+  }
+
+  private Map<String, String> tableIds(List<String> fqns) throws Exception {
+    Map<String, String> ids = new HashMap<>();
+    for (String fqn : fqns) {
+      HttpResponse<String> response = get("/v1/tables/name/" + fqn + "?include=all");
+      assertEquals(200, response.statusCode(), "get table " + fqn + ": " + response.body());
+      ids.put(fqn, OBJECT_MAPPER.readTree(response.body()).path("id").asText());
+    }
+    return ids;
+  }
+
+  // The delete events of these entities since a time, by entity id, following every page: other
+  // tests delete tables at the same time.
+  private Map<String, List<String>> deleteEvents(Set<String> entityIds, long since)
+      throws Exception {
+    Map<String, List<String>> events = new HashMap<>();
+    String window =
+        "/v1/events?entityDeleted=table&limit=1000&timestamp="
+            + since
+            + "&endTs="
+            + System.currentTimeMillis();
+    String after = null;
+    do {
+      String page = after == null ? window : window + "&after=" + URLEncoder.encode(after, UTF_8);
+      HttpResponse<String> response = get(page);
+      assertEquals(200, response.statusCode(), "list change events: " + response.body());
+      JsonNode result = OBJECT_MAPPER.readTree(response.body());
+      for (JsonNode event : result.path("data")) {
+        String id = event.path("entityId").asText();
+        if (entityIds.contains(id)) {
+          events.computeIfAbsent(id, k -> new ArrayList<>()).add(event.path("eventType").asText());
+        }
+      }
+      after = result.path("paging").path("after").textValue();
+    } while (after != null);
+    return events;
+  }
+
+  private Map<String, List<String>> awaitDeleteEvents(
+      Set<String> entityIds, long since, Set<String> expected) {
+    return Awaitility.await("delete change events of " + expected)
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(250))
+        .until(
+            () -> deleteEvents(entityIds, since), events -> events.keySet().containsAll(expected));
+  }
+
+  private HttpResponse<String> get(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }
