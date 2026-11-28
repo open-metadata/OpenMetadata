@@ -189,6 +189,13 @@ public final class OntologyChangeOperationExecutor {
   private OperationOutcome deleteRelationship(
       final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
     final OntologyRelationship relationship = operation.getRelationship();
+    // The change-set operation names a single typed edge to delete, so the type must resolve like
+    // add/update do. validateRelationType rejects null/empty, unregistered, and soft-deleted
+    // names, turning a silent no-op (or, for a null name, an over-broad "delete all types") into an
+    // explicit FAILED operation result. The direct glossary REST route keeps its own null-means-
+    // all contract because it does not go through this executor.
+    final String relationType = relationship.getRelationshipType().getName();
+    termRepository.validateRelationType(relationType);
     final GlossaryTerm term =
         termRepository
             .removeTermRelation(
@@ -196,7 +203,7 @@ public final class OntologyChangeOperationExecutor {
                 user,
                 relationship.getFromTerm().getId(),
                 relationship.getToTerm().getId(),
-                relationship.getRelationshipType().getName())
+                relationType)
             .getEntity();
     return outcome(term);
   }
