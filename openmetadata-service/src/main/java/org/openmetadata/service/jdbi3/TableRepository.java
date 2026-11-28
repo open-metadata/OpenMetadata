@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
@@ -210,6 +211,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setFields(Table table, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(table);
+    useCurrentParentRefs(List.of(table));
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
           fields.contains("usageSummary")
@@ -239,6 +241,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
     // Bulk fetch and set default fields for all tables
     fetchAndSetDefaultFields(entities);
+    useCurrentParentRefs(entities);
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -522,6 +525,15 @@ public class TableRepository extends EntityRepository<Table> {
             table.withServiceType(schema.getServiceType());
           }
         });
+  }
+
+  private void useCurrentParentRefs(final List<Table> tables) {
+    final Map<UUID, EntityReference> currentById = new HashMap<>();
+    for (final Table table : tables) {
+      table.setDatabase(currentReference(DATABASE, table.getDatabase(), currentById));
+      table.setDatabaseSchema(
+          currentReference(DATABASE_SCHEMA, table.getDatabaseSchema(), currentById));
+    }
   }
 
   private boolean hasId(EntityReference ref) {

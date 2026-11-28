@@ -172,6 +172,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setFields(DatabaseSchema schema, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(schema);
+    useCurrentDatabaseRef(List.of(schema));
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
@@ -190,6 +191,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             ? schema.getDatabaseSchemaProfilerConfig()
             : null);
     schema.withUsageSummary(fields.contains("usageSummary") ? schema.getUsageSummary() : null);
+  }
+
+  private void useCurrentDatabaseRef(final List<DatabaseSchema> schemas) {
+    final Map<UUID, EntityReference> currentById = new HashMap<>();
+    for (final DatabaseSchema schema : schemas) {
+      schema.setDatabase(currentReference(Entity.DATABASE, schema.getDatabase(), currentById));
+    }
   }
 
   private void setDefaultFields(DatabaseSchema schema) {
@@ -227,6 +235,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void setFieldsInBulk(Fields fields, List<DatabaseSchema> entities) {
     // Bulk fetch and set default fields for all schemas
     fetchAndSetDefaultFields(entities);
+    useCurrentDatabaseRef(entities);
 
     // Fetch common fields like owners, tags, domain, etc.
     fetchAndSetFields(entities, fields);

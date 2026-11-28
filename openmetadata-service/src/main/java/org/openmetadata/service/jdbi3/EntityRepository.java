@@ -1108,6 +1108,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Returns the current reference of the parent that {@code stored} points to. Stored JSON keeps a
+   * snapshot of parent references taken at write time, so a renamed parent would otherwise keep
+   * its old displayName in its children. A parent that cannot be found keeps the stored reference.
+   * ADR:2026-11-20-stored-parent-references-are-re-resolved-on-read
+   */
+  protected static EntityReference currentReference(
+      final String parentType,
+      final EntityReference stored,
+      final Map<UUID, EntityReference> currentById) {
+    if (stored == null || stored.getId() == null) {
+      return stored;
+    }
+    return currentById.computeIfAbsent(
+        stored.getId(), id -> currentReferenceOrStored(parentType, stored));
+  }
+
+  private static EntityReference currentReferenceOrStored(
+      final String parentType, final EntityReference stored) {
+    try {
+      return getEntityReferenceById(parentType, stored.getId(), ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Parent {} {} not found, keeping the stored reference", parentType, stored.getId());
+      return stored;
+    }
+  }
+
+  /**
    * Batch-resolve EntityReferences by id for the bulk field fetchers.
    *
    * <p>Fails fast on an id that cannot be resolved, preserving the contract of the per-record

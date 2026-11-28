@@ -28,8 +28,12 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.User;
@@ -37,9 +41,11 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -153,6 +159,68 @@ public class DirectWritesSearchIT {
 
     awaitNoDoc(TABLE_INDEX, stale.getId());
     assertFalse(awaitDoc(TABLE_INDEX, seen.getId(), doc -> true).path("deleted").asBoolean());
+  }
+
+  @Test
+  void renamingTheDatabase_reachesItsTables(final TestNamespace ns) {
+    final DatabaseSchema schema = schema(ns);
+    final Table table = table(schema, "renamed", null, List.of());
+    awaitDoc(TABLE_INDEX, table.getId(), doc -> true);
+    final String displayName = renameDatabase(schema, ns.prefix("LAKE_ERP"));
+
+    final Table read = client().tables().get(table.getId().toString());
+    read.setDescription("rebuilds the table's search document from the stored table");
+    client().tables().update(table.getId().toString(), read);
+
+    assertEquals(displayName, read.getDatabase().getDisplayName());
+    final JsonNode doc =
+        awaitDoc(
+            TABLE_INDEX, table.getId(), d -> d.path("description").asText().startsWith("rebuilds"));
+    assertEquals(displayName, doc.path("database").path("displayName").asText(), doc.toString());
+  }
+
+  /** Bulk reads are what a Recreate reindex builds documents from; nothing here rewrites a child. */
+  @Test
+  void renamedParents_reachUntouchedChildrenInBulkReads(final TestNamespace ns) {
+    final DatabaseSchema schema = schema(ns);
+    table(schema, "untouched", null, List.of());
+    final StoredProcedure procedure = storedProcedure(schema);
+    final String databaseName = renameDatabase(schema, ns.prefix("LAKE_ERP"));
+    final DatabaseSchema renamedSchema = client().databaseSchemas().get(schema.getId().toString());
+    renamedSchema.setDisplayName(ns.prefix("STAGING"));
+    client().databaseSchemas().update(schema.getId().toString(), renamedSchema);
+
+    final ListParams params = new ListParams();
+    params.setDatabaseSchema(schema.getFullyQualifiedName());
+    final Table listed = client().tables().list(params).getData().getFirst();
+    final StoredProcedure readProcedure =
+        client().storedProcedures().get(procedure.getId().toString());
+
+    assertAll(
+        () -> assertEquals(databaseName, listed.getDatabase().getDisplayName()),
+        () ->
+            assertEquals(
+                renamedSchema.getDisplayName(), listed.getDatabaseSchema().getDisplayName()),
+        () -> assertEquals(databaseName, readProcedure.getDatabase().getDisplayName()));
+  }
+
+  private static String renameDatabase(final DatabaseSchema schema, final String displayName) {
+    final String databaseId = schema.getDatabase().getId().toString();
+    final Database database = client().databases().get(databaseId);
+    database.setDisplayName(displayName);
+    client().databases().update(databaseId, database);
+    return displayName;
+  }
+
+  private static StoredProcedure storedProcedure(final DatabaseSchema schema) {
+    final CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName("procedure");
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(
+        new StoredProcedureCode()
+            .withCode("CREATE PROCEDURE procedure() AS $$ BEGIN RETURN; END; $$ LANGUAGE plpgsql;")
+            .withLanguage(StoredProcedureLanguage.SQL));
+    return client().storedProcedures().create(request);
   }
 
   private static void deleteStale(DatabaseSchema schema, Table seen, boolean hardDelete)
