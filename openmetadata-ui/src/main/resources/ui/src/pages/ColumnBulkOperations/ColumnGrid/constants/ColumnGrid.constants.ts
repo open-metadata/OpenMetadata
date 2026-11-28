@@ -44,6 +44,7 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     label: i18n.t('label.service'),
     key: EntityFields.SERVICE,
     hideCounts: true,
+    singleSelect: true,
   },
   {
     label: i18n.t('label.service-type'),
@@ -54,6 +55,7 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     label: i18n.t('label.domain-plural'),
     key: EntityFields.DOMAINS,
     hideCounts: true,
+    singleSelect: true,
   },
   {
     label: i18n.t('label.asset-type'),
@@ -85,6 +87,7 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     hideCounts: true,
     hideSearchBar: true,
     key: 'metadataStatus',
+    singleSelect: true,
     dropdownClassName: 'column-bulk-operations-metadata-dropdown',
     options: [
       {

@@ -296,6 +296,119 @@ describe('useQuickFiltersWithComponent', () => {
     });
   });
 
+  describe('Per-filter singleSelect (mode unset)', () => {
+    const mixedDefaultFilters: ExploreQuickFilterField[] = [
+      {
+        key: 'service',
+        label: 'label.service',
+        value: [],
+        singleSelect: true,
+      },
+      {
+        key: 'entityType',
+        label: 'label.entity-type',
+        value: [],
+      },
+      {
+        key: 'tags',
+        label: 'label.tag-plural',
+        value: [],
+        singleSelect: false,
+      },
+    ];
+
+    it('should honour per-filter singleSelect when mode is not set', () => {
+      const { result } = renderHook(() =>
+        useQuickFiltersWithComponent({
+          defaultFilters: mixedDefaultFilters,
+          searchIndex: SearchIndex.ALL,
+          onFilterChange: mockOnFilterChange,
+        })
+      );
+
+      expect(result.current.selectedFilters).toEqual([
+        { ...mixedDefaultFilters[0], singleSelect: true },
+        { ...mixedDefaultFilters[1], singleSelect: false },
+        { ...mixedDefaultFilters[2], singleSelect: false },
+      ]);
+    });
+
+    it('should honour per-filter singleSelect with parsed filters when mode is not set', () => {
+      const parsedFilters: ExploreQuickFilterField[] = [
+        {
+          key: 'service',
+          label: 'label.service',
+          value: [{ key: 'postgres', label: 'postgres' }],
+        },
+        {
+          key: 'entityType',
+          label: 'label.entity-type',
+          value: [{ key: 'table', label: 'Table' }],
+        },
+      ];
+
+      const { result } = renderHook(() =>
+        useQuickFiltersWithComponent({
+          defaultFilters: mixedDefaultFilters,
+          parsedFilters,
+          searchIndex: SearchIndex.ALL,
+          onFilterChange: mockOnFilterChange,
+        })
+      );
+
+      expect(result.current.selectedFilters).toEqual([
+        {
+          key: 'service',
+          label: 'label.service',
+          value: [{ key: 'postgres', label: 'postgres' }],
+          singleSelect: true,
+        },
+        {
+          key: 'entityType',
+          label: 'label.entity-type',
+          value: [{ key: 'table', label: 'Table' }],
+          singleSelect: false,
+        },
+        {
+          key: 'tags',
+          label: 'label.tag-plural',
+          value: [],
+          singleSelect: false,
+        },
+      ]);
+    });
+
+    it('should override per-filter singleSelect with explicit SINGLE mode', () => {
+      const { result } = renderHook(() =>
+        useQuickFiltersWithComponent({
+          defaultFilters: mixedDefaultFilters,
+          searchIndex: SearchIndex.ALL,
+          onFilterChange: mockOnFilterChange,
+          mode: SelectMode.SINGLE,
+        })
+      );
+
+      expect(result.current.selectedFilters.every((f) => f.singleSelect)).toBe(
+        true
+      );
+    });
+
+    it('should override per-filter singleSelect with explicit MULTI mode', () => {
+      const { result } = renderHook(() =>
+        useQuickFiltersWithComponent({
+          defaultFilters: mixedDefaultFilters,
+          searchIndex: SearchIndex.ALL,
+          onFilterChange: mockOnFilterChange,
+          mode: SelectMode.MULTI,
+        })
+      );
+
+      expect(
+        result.current.selectedFilters.every((f) => f.singleSelect === false)
+      ).toBe(true);
+    });
+  });
+
   it('scopes the quick filters to the listing scope', () => {
     const defaultQueryFilter = { query: { bool: { must: [] } } };
     const { result } = renderHook(() =>
