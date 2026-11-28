@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-27T03:07:35Z",
+  "generatedAt": "2026-11-28T03:20:45Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "44445461359",
-      "sourceSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "recordedAt": "2026-11-19T03:12:32Z"
-    },
     {
       "runId": "44502789545",
       "sourceSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
@@ -53,12 +48,16 @@
       "runId": "45929335653",
       "sourceSha": "8c4010a70491e69aa0eea73937001ef062639a73",
       "recordedAt": "2026-11-27T03:07:35Z"
+    },
+    {
+      "runId": "46098833241",
+      "sourceSha": "730a1e0c7ed613732e4d7515285afd8d39eeb650",
+      "recordedAt": "2026-11-28T03:20:45Z"
     }
   ],
   "entries": {
     "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown": {
       "observations": [
-        "44445461359",
         "45592637810",
         "45743567989"
       ],
@@ -88,29 +87,18 @@
       "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "hardFailure": false
     },
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
+    "ImportExport :: Pages/ODCSImportExport.spec.ts :: ODCS Import/Export \u203a Import ODCS with SLA, modify SLA via UI, export and verify SLA changes": {
       "observations": [
-        "44445461359"
+        "46098833241"
       ],
-      "project": "GlobalSettings",
-      "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
-      "title": "Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": false
-    },
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a the glossary reviewer approves, rejects and the requester withdraws held edits": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "GlobalSettings",
-      "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
-      "title": "Change request review lifecycle \u203a the glossary reviewer approves, rejects and the requester withdraws held edits",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": false
+      "project": "ImportExport",
+      "file": "Pages/ODCSImportExport.spec.ts",
+      "title": "ODCS Import/Export \u203a Import ODCS with SLA, modify SLA via UI, export and verify SLA changes",
+      "lastSeenSha": "730a1e0c7ed613732e4d7515285afd8d39eeb650",
+      "hardFailure": true
     },
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case": {
       "observations": [
-        "44445461359",
         "44661891093",
         "44856696294",
         "44976793294",
@@ -311,46 +299,6 @@
       "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "hardFailure": true
     },
-    "chromium :: Features/MetricAssets.spec.ts :: Metric Assets \u203a admin links assets from the header and sees them on the Assets tab": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "chromium",
-      "file": "Features/MetricAssets.spec.ts",
-      "title": "Metric Assets \u203a admin links assets from the header and sees them on the Assets tab",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "chromium :: Features/MetricAssets.spec.ts :: Metric Assets \u203a admin searches the linked assets and previews one": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "chromium",
-      "file": "Features/MetricAssets.spec.ts",
-      "title": "Metric Assets \u203a admin searches the linked assets and previews one",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "chromium :: Features/MetricAssets.spec.ts :: Metric Assets \u203a admin unlinks assets one at a time and in bulk": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "chromium",
-      "file": "Features/MetricAssets.spec.ts",
-      "title": "Metric Assets \u203a admin unlinks assets one at a time and in bulk",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "chromium :: Features/MetricAssets.spec.ts :: Metric Assets \u203a data consumer sees linked assets but cannot change them": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "chromium",
-      "file": "Features/MetricAssets.spec.ts",
-      "title": "Metric Assets \u203a data consumer sees linked assets but cannot change them",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
     "chromium :: Features/ServiceAgentsRefresh.spec.ts :: Service Agents refresh \u203a should refetch the agents list and nothing else": {
       "observations": [
         "45592637810"
@@ -393,6 +341,16 @@
       "lastSeenSha": "8c4010a70491e69aa0eea73937001ef062639a73",
       "hardFailure": false
     },
+    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for apiEndpoint -> searchIndex": {
+      "observations": [
+        "46098833241"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
+      "title": "Column Level Lineage \u203a Column lineage for apiEndpoint -> searchIndex",
+      "lastSeenSha": "730a1e0c7ed613732e4d7515285afd8d39eeb650",
+      "hardFailure": false
+    },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for searchIndex -> searchIndex": {
       "observations": [
         "45592637810"
@@ -402,476 +360,6 @@
       "title": "Column Level Lineage \u203a Column lineage for searchIndex -> searchIndex",
       "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a metric-tab-assets",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-dataProduct-assets",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-domain-assets",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a metric-tab-assets",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-table-schema-definition",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a shell-mode-menu": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a shell-mode-menu",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a shell-profile-menu": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a shell-profile-menu",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a shell-mode-menu": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a shell-mode-menu",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a shell-profile-menu": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a shell-profile-menu",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-explore": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages light \u203a page-explore",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": false
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a apiServices Rest configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a apiServices Rest configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices QlikSense configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a dashboardServices QlikSense configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices QuickSight configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a dashboardServices QuickSight configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Athena configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Athena configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices BigQuery configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices BigQuery configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices BigTable configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices BigTable configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices DynamoDB configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices DynamoDB configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Glue configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Glue configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices GoogleDrive configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a driveServices GoogleDrive configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a driveServices Sftp configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices Atlas configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a metadataServices Atlas configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a mlmodelServices SageMaker configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a mlmodelServices SageMaker configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices OpenLineage configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a pipelineServices OpenLineage configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices GCS configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a storageServices GCS configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices S3 configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a storageServices S3 configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices QlikSense configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a dashboardServices QlikSense configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices QuickSight configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a dashboardServices QuickSight configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Athena configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Athena configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices BigQuery configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices BigQuery configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices BigTable configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices BigTable configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices DynamoDB configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices DynamoDB configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Glue configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Glue configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices GoogleDrive configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a driveServices GoogleDrive configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices OpenLineage configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a pipelineServices OpenLineage configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a storageServices GCS configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a storageServices GCS configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a storageServices S3 configuration form": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a storageServices S3 configuration form",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-advanced-extra-rule",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-nested-group": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-advanced-nested-group",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions light \u203a explore-advanced-extra-rule",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions light \u203a explore-advanced-nested-group",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/glossaryInteractions.spec.ts",
-      "title": "Glossary interactions light \u203a glossary-late-activity-count",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction asset-picker dark": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction asset-picker dark",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction asset-picker light": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction asset-picker light",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction assets dark",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction assets light",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition light": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction definition light",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline": {
-      "observations": [
-        "44445461359"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/staticPages.spec.ts",
-      "title": "teams matches baseline",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
     }
   },
   "stableIds": [
