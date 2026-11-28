@@ -212,6 +212,10 @@ public class IncidentGroupsIT {
         List.of(pagerTableFqns.get(4)),
         convertGroups(last).stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList(),
         "page 3 of 2 is the fifth group, reached without walking the cursors");
+    for (TestCaseIncidentGroup group : last.getData()) {
+      assertEquals(pagerTableFqns.get(4), group.getFullyQualifiedName());
+      assertEquals(1, group.getIncidentCount());
+    }
     assertEquals(5, last.getPaging().getTotal());
     assertNull(last.getPaging().getAfter());
 
@@ -236,6 +240,10 @@ public class IncidentGroupsIT {
                     .addFilter("assignee", pagerUser.getName())
                     .addFilter("page", "3"));
     assertEquals(1, incidents.getData().size(), "the incident list jumps the same way");
+    for (TestCaseResolutionStatus status : incidents.getData()) {
+      assertNotNull(status.getId());
+      assertNotNull(status.getTestCaseResolutionStatusType());
+    }
     assertEquals(5, incidents.getPaging().getTotal());
   }
 
@@ -1631,14 +1639,14 @@ public class IncidentGroupsIT {
     assertEquals(1, second.getData().size());
     assertNull(second.getPaging().getAfter(), "two records, so page two is the last page");
     Set<String> ids = new HashSet<>();
-    ids.add(
-        JsonUtils.convertValue(first.getData().getFirst(), TestCaseResolutionStatus.class)
-            .getId()
-            .toString());
-    ids.add(
-        JsonUtils.convertValue(second.getData().getFirst(), TestCaseResolutionStatus.class)
-            .getId()
-            .toString());
+    for (TestCaseResolutionStatus record : first.getData()) {
+      assertNotNull(record.getId());
+      ids.add(record.getId().toString());
+    }
+    for (TestCaseResolutionStatus record : second.getData()) {
+      assertNotNull(record.getId());
+      ids.add(record.getId().toString());
+    }
     assertEquals(2, ids.size(), "the two pages must return distinct records");
   }
 

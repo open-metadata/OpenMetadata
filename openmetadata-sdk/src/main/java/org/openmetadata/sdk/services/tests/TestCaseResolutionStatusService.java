@@ -1,5 +1,6 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Service for managing test case resolution status (incident management).
@@ -28,6 +30,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class TestCaseResolutionStatusService {
 
   private static final String BASE_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
+  private static final TypeReference<ResultList<TestCaseResolutionStatus>>
+      RESOLUTION_STATUS_LIST_TYPE = new TypeReference<>() {};
+  private static final TypeReference<ResultList<TestCaseIncidentGroup>> INCIDENT_GROUP_LIST_TYPE =
+      new TypeReference<>() {};
   private final HttpClient httpClient;
 
   public TestCaseResolutionStatusService(HttpClient httpClient) {
@@ -55,15 +61,9 @@ public class TestCaseResolutionStatusService {
    */
   public ListResponse<TestCaseResolutionStatus> list(ListParams params)
       throws OpenMetadataException {
-    String path = BASE_PATH;
-    if (params != null) {
-      Map<String, String> queryParams = params.toQueryParams();
-      if (!queryParams.isEmpty()) {
-        path += "?" + buildQueryString(queryParams);
-      }
-    }
     ResultList<TestCaseResolutionStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+        httpClient.executeForType(
+            HttpMethod.GET, BASE_PATH, null, RESOLUTION_STATUS_LIST_TYPE, toRequestOptions(params));
     return new ListResponse<>(result);
   }
 
@@ -109,15 +109,13 @@ public class TestCaseResolutionStatusService {
    */
   public ListResponse<TestCaseResolutionStatus> searchList(ListParams params)
       throws OpenMetadataException {
-    String path = BASE_PATH + "/search/list";
-    if (params != null) {
-      Map<String, String> queryParams = params.toQueryParams();
-      if (!queryParams.isEmpty()) {
-        path += "?" + buildQueryString(queryParams);
-      }
-    }
     ResultList<TestCaseResolutionStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+        httpClient.executeForType(
+            HttpMethod.GET,
+            BASE_PATH + "/search/list",
+            null,
+            RESOLUTION_STATUS_LIST_TYPE,
+            toRequestOptions(params));
     return new ListResponse<>(result);
   }
 
@@ -129,12 +127,13 @@ public class TestCaseResolutionStatusService {
    */
   public ListResponse<TestCaseIncidentGroup> listIncidentGroups(Map<String, String> queryParams)
       throws OpenMetadataException {
-    String path = BASE_PATH + "/incidentGroups";
-    if (queryParams != null && !queryParams.isEmpty()) {
-      path += "?" + buildQueryString(queryParams);
-    }
     ResultList<TestCaseIncidentGroup> result =
-        httpClient.execute(HttpMethod.GET, path, null, getIncidentGroupResultListType());
+        httpClient.executeForType(
+            HttpMethod.GET,
+            BASE_PATH + "/incidentGroups",
+            null,
+            INCIDENT_GROUP_LIST_TYPE,
+            toRequestOptions(queryParams));
     return new ListResponse<>(result);
   }
 
@@ -173,25 +172,23 @@ public class TestCaseResolutionStatusService {
   // HELPER METHODS
   // ===================================================================
 
-  private String buildQueryString(Map<String, String> params) {
-    StringBuilder sb = new StringBuilder();
-    for (Map.Entry<String, String> entry : params.entrySet()) {
-      if (sb.length() > 0) {
-        sb.append("&");
-      }
-      sb.append(entry.getKey()).append("=").append(entry.getValue());
+  private static RequestOptions toRequestOptions(ListParams params) {
+    return params == null ? null : toRequestOptions(params.toQueryParams());
+  }
+
+  private static RequestOptions toRequestOptions(Map<String, String> queryParams) {
+    if (queryParams == null || queryParams.isEmpty()) {
+      return null;
     }
-    return sb.toString();
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseResolutionStatus>> getResultListType() {
-    return (Class<ResultList<TestCaseResolutionStatus>>) (Class<?>) ResultList.class;
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<TestCaseIncidentGroup>> getIncidentGroupResultListType() {
-    return (Class<ResultList<TestCaseIncidentGroup>>) (Class<?>) ResultList.class;
+    RequestOptions.Builder builder = RequestOptions.builder();
+    boolean hasParams = false;
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      if (entry.getKey() != null && entry.getValue() != null) {
+        builder.queryParam(entry.getKey(), entry.getValue());
+        hasParams = true;
+      }
+    }
+    return hasParams ? builder.build() : null;
   }
 
   // ===================================================================
