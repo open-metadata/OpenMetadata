@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import com.nimbusds.common.contenttype.ContentType;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.jwt.proc.BadJWTException;
 import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
@@ -2367,6 +2368,179 @@ class AuthenticationCodeFlowHandlerTest {
       }
       throw e;
     }
+  }
+
+  @Test
+  void validateAcrIfRequired_skipsWhenNotConfiguredOrBlank() {
+    OidcConfiguration emptyConfig = new OidcConfiguration();
+    JWTClaimsSet claimsWithoutAcr = new JWTClaimsSet.Builder().subject("alice").build();
+
+    assertDoesNotThrow(
+        () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(emptyConfig, claimsWithoutAcr));
+
+    OidcConfiguration blankConfig = new OidcConfiguration();
+    blankConfig.addCustomParam(AuthenticationCodeFlowHandler.ACR_VALUES_PARAM, "   ");
+    assertDoesNotThrow(
+        () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(blankConfig, claimsWithoutAcr));
+    assertDoesNotThrow(
+        () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(null, claimsWithoutAcr));
+  }
+
+  @Test
+  void validateAcrIfRequired_acceptsMatchingSingleOrMultiValueAcr() {
+    OidcConfiguration config = new OidcConfiguration();
+    config.addCustomParam(
+        AuthenticationCodeFlowHandler.ACR_VALUES_PARAM,
+        "urn:domain.tld:idp:contract:password:multifactor  urn:domain.tld:idp:contract:webauthn");
+
+    JWTClaimsSet firstMatch =
+        new JWTClaimsSet.Builder()
+            .subject("alice")
+            .claim("acr", "urn:domain.tld:idp:contract:password:multifactor")
+            .build();
+    JWTClaimsSet secondMatch =
+        new JWTClaimsSet.Builder()
+            .subject("alice")
+            .claim("acr", "urn:domain.tld:idp:contract:webauthn")
+            .build();
+
+    assertDoesNotThrow(
+        () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, firstMatch));
+    assertDoesNotThrow(
+        () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, secondMatch));
+  }
+
+  @Test
+  void validateAcrIfRequired_rejectsDowngradedMissingBlankAndNonStringAcr() {
+    OidcConfiguration config = new OidcConfiguration();
+    config.addCustomParam(
+        AuthenticationCodeFlowHandler.ACR_VALUES_PARAM,
+        "urn:domain.tld:idp:contract:password:multifactor");
+
+    JWTClaimsSet downgraded =
+        new JWTClaimsSet.Builder()
+            .subject("alice")
+            .claim("acr", "urn:domain.tld:idp:contract:password")
+            .build();
+    BadJWTException downgradeEx =
+        assertThrows(
+            BadJWTException.class,
+            () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, downgraded));
+    assertEquals(AuthenticationCodeFlowHandler.UNEXPECTED_ACR_CLAIM, downgradeEx.getMessage());
+
+    JWTClaimsSet missing = new JWTClaimsSet.Builder().subject("alice").build();
+    BadJWTException missingEx =
+        assertThrows(
+            BadJWTException.class,
+            () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, missing));
+    assertEquals(AuthenticationCodeFlowHandler.MISSING_ACR_CLAIM, missingEx.getMessage());
+
+    JWTClaimsSet blank = new JWTClaimsSet.Builder().subject("alice").claim("acr", "   ").build();
+    BadJWTException blankEx =
+        assertThrows(
+            BadJWTException.class,
+            () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, blank));
+    assertEquals(AuthenticationCodeFlowHandler.MISSING_ACR_CLAIM, blankEx.getMessage());
+
+    JWTClaimsSet wrongCase =
+        new JWTClaimsSet.Builder()
+            .subject("alice")
+            .claim("acr", "URN:DOMAIN.TLD:IDP:CONTRACT:PASSWORD:MULTIFACTOR")
+            .build();
+    BadJWTException wrongCaseEx =
+        assertThrows(
+            BadJWTException.class,
+            () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, wrongCase));
+    assertEquals(AuthenticationCodeFlowHandler.UNEXPECTED_ACR_CLAIM, wrongCaseEx.getMessage());
+
+    JWTClaimsSet nonString =
+        new JWTClaimsSet.Builder().subject("alice").claim("acr", List.of("mfa")).build();
+    BadJWTException nonStringEx =
+        assertThrows(
+            BadJWTException.class,
+            () -> AuthenticationCodeFlowHandler.validateAcrIfRequired(config, nonString));
+    assertTrue(nonStringEx.getMessage().startsWith("Invalid JWT acr claim:"));
+  }
+
+  @Test
+  void handleCallback_rejectsDowngradedAndMissingAcrBeforeActivatingSession() throws Exception {
+    try (FakeOidcProvider provider = FakeOidcProvider.start()) {
+      OidcClientConfig clientConfig =
+          provider
+              .confidentialClient()
+              .withDisablePkce(true)
+              .withCustomParams(
+                  Map.of(
+                      "customParamKey1",
+                      AuthenticationCodeFlowHandler.ACR_VALUES_PARAM,
+                      "customParamValue1",
+                      "urn:mfa:required"));
+      AuthenticationCodeFlowHandler handler =
+          new AuthenticationCodeFlowHandler(
+              FakeOidcProvider.securityConfigFor(clientConfig).getAuthenticationConfiguration(),
+              new AuthorizerConfiguration(),
+              sessionService);
+      UserSession pendingSession =
+          UserSession.builder()
+              .id("pending-acr-session")
+              .state("state-acr")
+              .nonce("nonce-acr")
+              .redirectUri("http://localhost:8585/auth/callback")
+              .build();
+      when(sessionService.getPendingSession(request, response))
+          .thenReturn(Optional.of(pendingSession));
+      when(request.getParameterMap())
+          .thenReturn(Map.of("state", new String[] {"state-acr"}, "code", new String[] {"code-1"}));
+
+      provider.issueIdTokenWithRefreshToken("nonce-acr", "alice@example.com", "urn:password:only");
+      handler.handleCallback(request, response);
+
+      verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      assertTrue(
+          captureOutputStream
+              .getCapturedOutput()
+              .contains(AuthenticationCodeFlowHandler.UNEXPECTED_ACR_CLAIM));
+      verify(sessionService, never())
+          .activatePendingSession(any(), any(), any(), any(), any(), any());
+
+      CaptureServletOutputStream missingStream = new CaptureServletOutputStream();
+      when(response.getOutputStream()).thenReturn(missingStream);
+      provider.issueIdTokenWithRefreshToken("nonce-acr", "alice@example.com", null);
+      handler.handleCallback(request, response);
+
+      assertTrue(
+          missingStream
+              .getCapturedOutput()
+              .contains(AuthenticationCodeFlowHandler.MISSING_ACR_CLAIM));
+      verify(sessionService, never())
+          .activatePendingSession(any(), any(), any(), any(), any(), any());
+    }
+  }
+
+  @Test
+  void buildOidcClient_preservesCustomAcrValuesForAzureClient() {
+    OidcClientConfig clientConfig =
+        new OidcClientConfig()
+            .withType("azure")
+            .withId("azure-client-id")
+            .withSecret("azure-secret")
+            .withTenant("tenant-id")
+            .withDiscoveryUri(
+                "https://login.microsoftonline.com/tenant-id/v2.0/.well-known/openid-configuration")
+            .withCallbackUrl("https://om.test/callback")
+            .withServerUrl("https://om.test")
+            .withCustomParams(
+                Map.of(
+                    "customParamKey1",
+                    AuthenticationCodeFlowHandler.ACR_VALUES_PARAM,
+                    "customParamValue1",
+                    "urn:mfa:required"));
+
+    OidcClient built = AuthenticationCodeFlowHandler.buildOidcClient(clientConfig);
+
+    assertEquals(
+        Set.of("urn:mfa:required"),
+        AuthenticationCodeFlowHandler.configuredAcrValues(built.getConfiguration()));
   }
 
   private Object readRecordComponent(Object record, String component) throws Exception {

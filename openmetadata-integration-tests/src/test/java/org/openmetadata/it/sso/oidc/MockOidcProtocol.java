@@ -26,6 +26,8 @@ final class MockOidcProtocol {
   static final String REFRESH_TOKEN = "refresh_token";
   static final String ERROR = "error";
   static final String ISSUER = "iss";
+  static final String ACR_VALUES = "acr_values";
+  static final String ACR = "acr";
 
   static final String GRANT_AUTHORIZATION_CODE = "authorization_code";
   static final String GRANT_REFRESH_TOKEN = "refresh_token";

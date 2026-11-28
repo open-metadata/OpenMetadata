@@ -18,6 +18,7 @@ final class MockOidcTokens {
   private static final int RANDOM_TOKEN_BYTES = 32;
   private static final String BEARER = "Bearer";
   private static final String NONCE = "nonce";
+  private static final String ACR = MockOidcProtocol.ACR;
   private static final Duration ID_TOKEN_LIFETIME = Duration.ofMinutes(10);
 
   private final String issuer;
@@ -30,6 +31,7 @@ final class MockOidcTokens {
       MockHttp.boundedMap(MAX_OUTSTANDING);
   private final AtomicReference<String> lastIssuedIdToken = new AtomicReference<>();
   private final AtomicReference<IdTokenDefect> nextDefect = new AtomicReference<>();
+  private final AtomicReference<String> nextAcrOverride = new AtomicReference<>();
 
   MockOidcTokens(String issuer, String clientId, MockOidcKeys keys, OidcProviderProfile profile) {
     this.issuer = issuer;
@@ -56,7 +58,7 @@ final class MockOidcTokens {
   TokenResponse forLogin(AuthorizationGrant grant) {
     String refreshToken = grant.requestsOfflineAccess() ? newRefreshToken(grant.identity()) : null;
     return tokenResponse(
-        idToken(grant.identity(), grant.nonce(), ID_TOKEN_LIFETIME),
+        idToken(grant.identity(), grant.nonce(), ID_TOKEN_LIFETIME, resolveAcr(grant.acrValues())),
         refreshToken,
         ID_TOKEN_LIFETIME);
   }
@@ -65,7 +67,7 @@ final class MockOidcTokens {
       MockOidcIdentity holder, String presentedRefreshToken, RefreshOutcome.Renew renew) {
     Duration lifetime =
         renew.idTokenLifetime() == null ? ID_TOKEN_LIFETIME : renew.idTokenLifetime();
-    String idToken = renew.includesIdToken() ? idToken(holder, null, lifetime) : null;
+    String idToken = renew.includesIdToken() ? idToken(holder, null, lifetime, null) : null;
     String rotated =
         renew.rotatesRefreshToken() ? rotateRefreshToken(presentedRefreshToken, holder) : null;
     return tokenResponse(idToken, rotated, lifetime);
@@ -76,11 +78,11 @@ final class MockOidcTokens {
   }
 
   String idToken(MockOidcIdentity identity, String nonce) {
-    return idToken(identity, nonce, ID_TOKEN_LIFETIME);
+    return idToken(identity, nonce, ID_TOKEN_LIFETIME, null);
   }
 
   String forgedIdToken(MockOidcIdentity identity, TokenForgery forgery) {
-    return keys.forge(claims(identity, null, ID_TOKEN_LIFETIME, null), forgery);
+    return keys.forge(claims(identity, null, ID_TOKEN_LIFETIME, null, null), forgery);
   }
 
   String lastIssuedIdToken() {
@@ -91,9 +93,26 @@ final class MockOidcTokens {
     nextDefect.set(defect);
   }
 
-  private String idToken(MockOidcIdentity identity, String nonce, Duration lifetime) {
+  void issueNextAcrClaim(String acr) {
+    nextAcrOverride.set(acr);
+  }
+
+  private String resolveAcr(String requestedAcrValues) {
+    String override = nextAcrOverride.getAndSet(null);
+    String resolved;
+    if (override != null) {
+      resolved = override;
+    } else if (requestedAcrValues == null || requestedAcrValues.isBlank()) {
+      resolved = null;
+    } else {
+      resolved = requestedAcrValues.trim().split("\\s+")[0];
+    }
+    return resolved;
+  }
+
+  private String idToken(MockOidcIdentity identity, String nonce, Duration lifetime, String acr) {
     IdTokenDefect defect = nextDefect.getAndSet(null);
-    JWTClaimsSet claims = claims(identity, nonce, lifetime, defect);
+    JWTClaimsSet claims = claims(identity, nonce, lifetime, defect, acr);
     String idToken =
         defect == IdTokenDefect.UNPUBLISHED_KEY
             ? keys.signWithUnpublishedKey(claims)
@@ -103,7 +122,11 @@ final class MockOidcTokens {
   }
 
   private JWTClaimsSet claims(
-      MockOidcIdentity identity, String nonce, Duration lifetime, IdTokenDefect defect) {
+      MockOidcIdentity identity,
+      String nonce,
+      Duration lifetime,
+      IdTokenDefect defect,
+      String acr) {
     Instant now = Instant.now();
     JWTClaimsSet.Builder claims =
         new JWTClaimsSet.Builder()
@@ -115,6 +138,9 @@ final class MockOidcTokens {
     profile.shapeClaims(identity).forEach(claims::claim);
     if (nonce != null) {
       claims.claim(NONCE, nonce);
+    }
+    if (acr != null) {
+      claims.claim(ACR, acr);
     }
     return defect == null ? claims.build() : defect.applyTo(claims, now).build();
   }

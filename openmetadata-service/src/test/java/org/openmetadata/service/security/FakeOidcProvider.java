@@ -112,17 +112,21 @@ public final class FakeOidcProvider implements AutoCloseable {
    * token valid for an hour.
    */
   public void issueIdTokenWithRefreshToken(String nonce, String email) {
+    issueIdTokenWithRefreshToken(nonce, email, null);
+  }
+
+  public void issueIdTokenWithRefreshToken(String nonce, String email, String acr) {
     tokenStatus.set(200);
     tokenResponse.set(
         tokenResponseJson(
-            idToken(nonce, email, Duration.ofMinutes(1)),
+            idToken(nonce, email, Duration.ofMinutes(1), acr),
             ",\"refresh_token\":\"" + REFRESH_TOKEN + "\""));
     renewWithIdTokenValidFor(Duration.ofHours(1));
   }
 
   public void renewWithIdTokenValidFor(Duration validity) {
     refreshStatus.set(200);
-    refreshResponse.set(tokenResponseJson(idToken(null, "alice@example.com", validity), ""));
+    refreshResponse.set(tokenResponseJson(idToken(null, "alice@example.com", validity, null), ""));
   }
 
   /** OpenID Connect allows a refresh response without an ID token. */
@@ -142,6 +146,10 @@ public final class FakeOidcProvider implements AutoCloseable {
   }
 
   private String idToken(String nonce, String email, Duration validity) {
+    return idToken(nonce, email, validity, null);
+  }
+
+  private String idToken(String nonce, String email, Duration validity, String acr) {
     JWTClaimsSet.Builder claims =
         new JWTClaimsSet.Builder()
             .issuer(issuer)
@@ -151,6 +159,9 @@ public final class FakeOidcProvider implements AutoCloseable {
             .expirationTime(new Date(System.currentTimeMillis() + validity.toMillis()));
     if (nonce != null) {
       claims.claim("nonce", nonce);
+    }
+    if (acr != null) {
+      claims.claim("acr", acr);
     }
     return new PlainJWT(claims.build()).serialize();
   }

@@ -1,5 +1,6 @@
 package org.openmetadata.it.sso.oidc;
 
+import static org.openmetadata.it.sso.oidc.MockOidcProtocol.ACR_VALUES;
 import static org.openmetadata.it.sso.oidc.MockOidcProtocol.AUTHORIZE_PATH;
 import static org.openmetadata.it.sso.oidc.MockOidcProtocol.CODE;
 import static org.openmetadata.it.sso.oidc.MockOidcProtocol.CODE_CHALLENGE;
@@ -147,6 +148,11 @@ public final class MockOidcProvider implements AutoCloseable {
     tokens.defectNextIdToken(defect);
   }
 
+  /** Overrides the {@code acr} claim emitted on the next login ID token. */
+  public void issueNextAcrClaim(String acr) {
+    tokens.issueNextAcrClaim(acr);
+  }
+
   /** Models a provider registration which permits redemption only from a browser. */
   public void registerRedirectForBrowserOnly() {
     tokenEndpoint.registerRedirectForBrowserOnly();
@@ -284,7 +290,8 @@ public final class MockOidcProvider implements AutoCloseable {
             query.get(REDIRECT_URI),
             query.get(NONCE),
             query.get(CODE_CHALLENGE),
-            query.get(SCOPE)));
+            query.get(SCOPE),
+            query.get(ACR_VALUES)));
   }
 
   private static void copyState(Map<String, String> query, Map<String, String> callback) {

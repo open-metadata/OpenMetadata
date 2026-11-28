@@ -158,6 +158,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
   static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
+  static final String ACR_VALUES_PARAM = "acr_values";
+  static final String ACR_CLAIM = "acr";
+  static final String MISSING_ACR_CLAIM = "Missing JWT acr claim";
+  static final String UNEXPECTED_ACR_CLAIM = "Unexpected JWT acr claim";
 
   /** The browser renews a minute before its token expires; a shorter-lived one would loop. */
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
@@ -720,6 +724,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       validateNonceIfRequired(pendingSession, idTokenClaims);
+      validateAcrIfRequired(client.getConfiguration(), idTokenClaims);
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(idTokenClaims.getClaims());
@@ -1195,6 +1200,39 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       } else {
         throw new TechnicalException("Missing nonce parameter from session.");
       }
+    }
+  }
+
+  static Set<String> configuredAcrValues(OidcConfiguration configuration) {
+    Map<String, String> customParams =
+        configuration == null ? null : configuration.getCustomParams();
+    String rawAcrValues = customParams == null ? null : customParams.get(ACR_VALUES_PARAM);
+    return nullOrEmpty(rawAcrValues) || rawAcrValues.isBlank()
+        ? Set.of()
+        : Arrays.stream(rawAcrValues.trim().split("\\s+"))
+            .filter(value -> !value.isBlank())
+            .collect(Collectors.toUnmodifiableSet());
+  }
+
+  static void validateAcrIfRequired(OidcConfiguration configuration, JWTClaimsSet claimsSet)
+      throws BadJOSEException {
+    Set<String> expectedAcrValues = configuredAcrValues(configuration);
+    if (!expectedAcrValues.isEmpty()) {
+      String tokenAcr = extractAcrClaim(claimsSet);
+      if (nullOrEmpty(tokenAcr) || tokenAcr.isBlank()) {
+        throw new BadJWTException(MISSING_ACR_CLAIM);
+      }
+      if (!expectedAcrValues.contains(tokenAcr)) {
+        throw new BadJWTException(UNEXPECTED_ACR_CLAIM);
+      }
+    }
+  }
+
+  private static String extractAcrClaim(JWTClaimsSet claimsSet) throws BadJWTException {
+    try {
+      return claimsSet.getStringClaim(ACR_CLAIM);
+    } catch (java.text.ParseException e) {
+      throw new BadJWTException("Invalid JWT acr claim: " + e.getMessage());
     }
   }
 

@@ -305,6 +305,61 @@ class TestLoginOidcHandlerTest {
         result.getErrors().getFirst().contains("invalid_client"), result.getErrors().getFirst());
   }
 
+  @Test
+  void completeEnforcesConfiguredAcrValues() {
+    String mfaAcr = "urn:domain.tld:idp:contract:password:multifactor";
+    var candidate =
+        provider
+            .confidentialClient()
+            .withCustomParams(Map.of("customParamKey1", "acr_values", "customParamValue1", mfaAcr));
+
+    TestLoginOidcHandler.Authorization authorization =
+        TestLoginOidcHandler.authorize(candidate, MARKER);
+    assertEquals(
+        mfaAcr, FakeOidcProvider.queryOf(authorization.authorizationUrl()).get("acr_values"));
+
+    provider.issueIdTokenWithRefreshToken(
+        authorization.handshake().nonce(),
+        "alice@example.com",
+        "urn:domain.tld:idp:contract:password");
+    TestLoginResult downgraded =
+        TestLoginOidcHandler.complete(
+            FakeOidcProvider.securityConfigFor(candidate),
+            authorization.handshake(),
+            callback("code", "authorization-code-downgraded"));
+    assertEquals(TestLoginResult.Status.FAILED, downgraded.getStatus());
+    assertEquals(TestLoginStage.TOKEN_VALIDATED, downgraded.getStage());
+    assertTrue(
+        downgraded
+            .getErrors()
+            .getFirst()
+            .contains(AuthenticationCodeFlowHandler.UNEXPECTED_ACR_CLAIM),
+        downgraded.getErrors().getFirst());
+
+    provider.issueIdTokenWithRefreshToken(
+        authorization.handshake().nonce(), "alice@example.com", null);
+    TestLoginResult missing =
+        TestLoginOidcHandler.complete(
+            FakeOidcProvider.securityConfigFor(candidate),
+            authorization.handshake(),
+            callback("code", "authorization-code-missing"));
+    assertEquals(TestLoginResult.Status.FAILED, missing.getStatus());
+    assertEquals(TestLoginStage.TOKEN_VALIDATED, missing.getStage());
+    assertTrue(
+        missing.getErrors().getFirst().contains(AuthenticationCodeFlowHandler.MISSING_ACR_CLAIM),
+        missing.getErrors().getFirst());
+
+    provider.issueIdTokenWithRefreshToken(
+        authorization.handshake().nonce(), "alice@example.com", mfaAcr);
+    TestLoginResult matched =
+        TestLoginOidcHandler.complete(
+            FakeOidcProvider.securityConfigFor(candidate),
+            authorization.handshake(),
+            callback("code", "authorization-code-matched"));
+    assertEquals(TestLoginResult.Status.SUCCESS, matched.getStatus(), String.valueOf(matched));
+    assertEquals(TestLoginStageStatus.PASSED, statusOf(matched, TestLoginStage.TOKEN_VALIDATED));
+  }
+
   private static Map<String, List<String>> callback(String name, String value) {
     return Map.of(name, List.of(value), "state", List.of(MARKER));
   }
