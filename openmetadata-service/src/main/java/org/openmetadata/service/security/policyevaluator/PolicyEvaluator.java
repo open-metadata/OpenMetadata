@@ -61,6 +61,12 @@ public class PolicyEvaluator {
       @NonNull SubjectContext subjectContext,
       @NonNull ResourceContextInterface resourceContext,
       @NonNull OperationContext operationContext) {
+    // Restore the full set of requested operations so a reused OperationContext evaluates this
+    // decision against the complete list, not one drained by a previous decision. Without this,
+    // a first success empties the list and every later decision skips deny evaluation and passes
+    // the final check vacuously - an authorization bypass.
+    operationContext.resetOperations();
+
     // First run through all the DENY policies
     evaluateDenySubjectPolicies(subjectContext, resourceContext, operationContext);
 

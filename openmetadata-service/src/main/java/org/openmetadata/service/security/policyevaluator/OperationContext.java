@@ -17,13 +17,20 @@ import org.openmetadata.service.util.JsonPatchUtils;
 @Slf4j
 public class OperationContext {
   @Getter @NonNull private final String resource;
-  List<MetadataOperation> operations; // All requested operations
+  // Working list of requested operations. Policy evaluation drains granted operations from this
+  // list via iterator.remove() to track what remains ungranted; an empty list means everything was
+  // allowed. Because the drain is destructive, this list MUST NOT be reused across authorization
+  // decisions without calling {@link #resetOperations()} first.
+  List<MetadataOperation> operations;
+  // Immutable snapshot of the originally requested operations, used by {@link #resetOperations()}
+  // to restore the working list so a reused context evaluates each decision against the full set.
+  private List<MetadataOperation> requestedOperations;
   @Getter private JsonPatch patch;
 
   public OperationContext(@NonNull String resource, MetadataOperation... operations) {
     this.resource = resource;
-    this.operations = new ArrayList<>();
-    this.operations.addAll(List.of(operations));
+    this.requestedOperations = List.of(operations);
+    this.operations = new ArrayList<>(this.requestedOperations);
   }
 
   public OperationContext(@NonNull String resource, JsonPatch patch) {
@@ -37,11 +44,28 @@ public class OperationContext {
       return operations;
     }
     if (patch != null) { // Lazy initialize operations for PATCH
-      operations = new ArrayList<>();
-      operations.addAll(JsonPatchUtils.getMetadataOperations(resourceContext, patch));
+      requestedOperations =
+          List.copyOf(JsonPatchUtils.getMetadataOperations(resourceContext, patch));
+      operations = new ArrayList<>(requestedOperations);
       LOG.debug("Lazy initializing operations to {}", Arrays.toString(operations.toArray()));
     }
     return operations;
+  }
+
+  /**
+   * Restores the working operations list to the originally requested operations.
+   *
+   * <p>Policy evaluation drains granted operations from {@link #operations} to track what remains
+   * ungranted, and an empty list makes {@link PolicyEvaluator#hasPermission} skip deny evaluation
+   * and pass its final check vacuously. Reusing one OperationContext across decisions without a
+   * reset therefore lets the first success drain the list and every later decision authorize
+   * without evaluating any deny rule - an authorization bypass. {@link
+   * PolicyEvaluator#hasPermission} calls this before every evaluation so a reused context is safe.
+   */
+  void resetOperations() {
+    if (requestedOperations != null) {
+      operations = new ArrayList<>(requestedOperations);
+    }
   }
 
   public static List<MetadataOperation> getAllOperations(MetadataOperation... exclude) {
