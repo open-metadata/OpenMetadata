@@ -21,6 +21,7 @@ from collate_sqllineage.core.models import Location
 from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import QueryParserType
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
@@ -92,6 +93,47 @@ def test_column_lineage_keeps_wildcard_paths_when_a_statement_reads_its_target()
         ("db.s.src.b", "db.s.target.b"),
         ("db.s.src.b", "db.s.target.calculated_b"),
     }
+
+
+@pytest.mark.parametrize(
+    ("parser_type", "query", "expected"),
+    [
+        (
+            QueryParserType.SqlFluff,
+            'CREATE TABLE s."Report" AS SELECT p.a AS b FROM s."report" p',
+            {("s.report.a", "s.report.b")},
+        ),
+        (
+            QueryParserType.Auto,
+            'CREATE TABLE s."Report" AS SELECT p.a AS b, n.x FROM s."report" p JOIN s.src n ON p.id=n.id',
+            {("s.report.a", "s.report.b"), ("s.src.x", "s.report.x")},
+        ),
+        (
+            QueryParserType.Auto,
+            """
+                CREATE TABLE s."Report" AS SELECT o.a AS prior, p.a AS b, n.x
+                FROM s."Report" o JOIN s."report" p ON p.id=o.id JOIN s.src n ON p.id=n.id
+            """,
+            {("s.report.a", "s.report.b"), ("s.report.a", "s.report.prior"), ("s.src.x", "s.report.x")},
+        ),
+        (
+            QueryParserType.Auto,
+            """
+                CREATE TABLE db.s.target AS SELECT o.a AS old_a, p.a AS new_a, n.x
+                FROM db.s.target o JOIN s.target p ON p.id=o.id JOIN db.s.src n ON p.id=n.id
+            """,
+            {
+                ("s.target.a", "db.s.target.new_a"),
+                ("db.s.target.a", "db.s.target.old_a"),
+                ("db.s.src.x", "db.s.target.x"),
+            },
+        ),
+    ],
+)
+def test_column_lineage_keeps_paths_with_colliding_table_names(parser_type, query, expected):
+    parser = LineageParser(query, dialect=Dialect.SNOWFLAKE, parser_type=parser_type)
+
+    assert {(str(path[0]), str(path[-1])) for path in parser.column_lineage} == expected
 
 
 def test_column_lineage_connects_a_write_to_a_later_statement():

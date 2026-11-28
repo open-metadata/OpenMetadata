@@ -5870,7 +5870,7 @@ class TestCatalogMapping:
 
 
 def test_incremental_dbt_query_lineage_keeps_upstream_columns():
-    from_fqn, model_fqn = "trino_svc.db.s.src", "trino_svc.db.s.target"
+    from_fqn, model_fqn = "trino_svc.DB.S.SRC", "trino_svc.DB.S.TARGET"
     source = TestCatalogMapping._source(from_fqn, model_fqn)
     source.metadata.get_by_name.return_value = None
     source.config = SimpleNamespace(
