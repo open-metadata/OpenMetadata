@@ -210,6 +210,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
           minHeight: 0,
         }}>
         <div
+          className="tw:-m-3 tw:p-3"
           style={{
             flex: 1,
             overflowY: 'auto',
