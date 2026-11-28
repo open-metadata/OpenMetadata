@@ -956,6 +956,153 @@ describe('TreeSelect disabled nodes', () => {
     }
   );
 
+  // A display-only locked radio sibling is the picker's seed for an inherited/
+  // derived label: `disabled` keeps the chip and row locked, while `displayOnly`
+  // opts the selection out of the group lock so a sibling pick overrides it,
+  // mirroring the backend's DERIVED-stripping mutual-exclusivity check.
+  it.each(['staged', 'immediate'] as const)(
+    'lets a sibling pick override a display-only locked radio sibling (%s)',
+    async (commitMode) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const inheritedEmail: TreeSelectNode = {
+        ...PII_EMAIL,
+        disabled: true,
+        displayOnly: true,
+      };
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          defaultExpandedKeys={['PII']}
+          fetchData={vi.fn().mockResolvedValue({
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                children: [{ ...PII_EMAIL, disabled: true }, PII_SSN],
+              },
+            ],
+          })}
+          renderTrigger={() => <span>trigger</span>}
+          value={[inheritedEmail]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByTestId('tree-node-PII.SSN');
+      rowOf(PII_SSN.id).focus();
+      await user.keyboard('{Enter}');
+
+      expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+        'data-selected',
+        'true'
+      );
+      // The inherited display-only sibling stays ticked next to the user's
+      // pick: the backend strips DERIVED labels before enforcing exclusivity,
+      // so the draft must not show a removal Apply would never persist.
+      expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
+        'data-selected',
+        'true'
+      );
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+      }
+      expect(emittedIds(onChange, onChange.mock.calls.length - 1)).toEqual([
+        PII_EMAIL.id,
+        PII_SSN.id,
+      ]);
+    }
+  );
+
+  // Search/pagination state: the inherited term is not in the fetched tree, so
+  // the lock can only be seen through the seeded selection's `parentId` and
+  // `disabled` — both copied verbatim from `value` by the picker.
+  it('lets a sibling pick override a display-only locked radio sibling whose branch is unfetched', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const inheritedEmail: TreeSelectNode = {
+      ...PII_EMAIL,
+      disabled: true,
+      displayOnly: true,
+    };
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        defaultExpandedKeys={['PII']}
+        fetchData={vi.fn().mockResolvedValue({
+          nodes: [
+            {
+              id: 'PII',
+              label: 'PII',
+              value: 'PII',
+              children: [PII_SSN],
+            },
+          ],
+        })}
+        renderTrigger={() => <span>trigger</span>}
+        value={[inheritedEmail]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByTestId('tree-node-PII.SSN');
+    rowOf(PII_SSN.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    // The unfetched inherited sibling stays in the selection alongside the pick.
+    expect(emittedIds(onChange, 0)).toEqual([PII_EMAIL.id, PII_SSN.id]);
+  });
+
+  // A locked selection that is not display-only (e.g. a permission-blocked term
+  // the consumer seeded as `disabled` in `value`) still freezes its radio group.
+  it('keeps a non-display-only locked radio sibling from value blocking a sibling pick', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const lockedEmail: TreeSelectNode = {
+      ...PII_EMAIL,
+      disabled: true,
+    };
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        defaultExpandedKeys={['PII']}
+        fetchData={vi.fn().mockResolvedValue({
+          nodes: [
+            {
+              id: 'PII',
+              label: 'PII',
+              value: 'PII',
+              children: [PII_EMAIL, PII_SSN],
+            },
+          ],
+        })}
+        renderTrigger={() => <span>trigger</span>}
+        value={[lockedEmail]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByTestId('tree-node-PII.SSN');
+    rowOf(PII_SSN.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('ignores Enter on a disabled row, ticked or not', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

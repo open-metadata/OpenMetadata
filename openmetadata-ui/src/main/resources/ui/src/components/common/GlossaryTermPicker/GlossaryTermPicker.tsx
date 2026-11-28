@@ -162,6 +162,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
             data: tag,
             // Locked in `value` too: the chips and Backspace act before the tree loads.
             disabled: isDerivedTag(tag),
+            displayOnly: isDerivedTag(tag),
           })
         ),
     [value]

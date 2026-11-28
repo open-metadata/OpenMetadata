@@ -43,6 +43,14 @@ export interface TreeSelectNode<T = unknown> {
    * Use this on lazy-loaded parents whose children have `isParentMutuallyExclusive`.
    */
   hasExclusiveChildren?: boolean;
+  /**
+   * Marks a `disabled` selection as display-only: the lock still keeps the
+   * row and chip visible (no remove button, Enter/Backspace/Clear skip it),
+   * but a sibling pick in a mutually-exclusive group overrides it rather
+   * than freezing the group. Mirrors the backend's exclusion of DERIVED
+   * (inherited/implied) labels from mutual-exclusivity enforcement.
+   */
+  displayOnly?: boolean;
 }
 
 export interface TreeSelectDataFetcherParams {

@@ -103,6 +103,11 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
             data: tag,
             isLeaf: true,
             // Locked in `value` too: the chips and Backspace act before the tree loads.
+            // A DERIVED classification tag may be implied by an applied glossary
+            // term (not only inherited from a parent), and the backend enforces
+            // mutual exclusivity on those implied tags, so the radio-group lock
+            // must stay — only glossary DERIVED labels (inheritance-only) are
+            // safe to override.
             disabled: isDerivedTag(tag),
           })
         ),

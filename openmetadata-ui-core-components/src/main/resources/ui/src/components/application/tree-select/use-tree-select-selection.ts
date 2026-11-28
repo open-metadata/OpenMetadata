@@ -153,6 +153,9 @@ export const useTreeSelectSelection = <T = unknown>({
         const parentId = parent?.id ?? node.parentId;
         const hasLockedSibling = Array.from(selectedNodes.values()).some(
           (selected) => {
+            if (selected.displayOnly) {
+              return false;
+            }
             const selectedParent =
               selected.parentId ??
               parentOfSelected.current.get(selected.id) ??
@@ -177,15 +180,19 @@ export const useTreeSelectSelection = <T = unknown>({
           return;
         }
         parent?.children?.forEach((sibling) => {
-          if (sibling.id !== node.id) {
+          if (sibling.id !== node.id && !next.get(sibling.id)?.displayOnly) {
             next.delete(sibling.id);
           }
         });
         if (parent) {
           // A search-filtered tree can drop a seeded sibling, so fall back to
           // its own hint and then to whatever parent was discovered earlier.
+          // A `displayOnly` (inherited/derived) sibling stays ticked next to
+          // the user's pick: the backend strips DERIVED labels before
+          // enforcing mutual exclusivity, so the draft must not show a
+          // removal that Apply would never actually persist.
           next.forEach((selected, selectedId) => {
-            if (selectedId === node.id) {
+            if (selectedId === node.id || selected.displayOnly) {
               return;
             }
             const selectedParent =

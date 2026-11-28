@@ -201,6 +201,145 @@ describe('useTreeSelectSelection', () => {
       act(() => result.current.toggleNodeSelection(ssn, pii));
       expect(result.current.selectedData.map((n) => n.id)).toEqual(['pii.ssn']);
     });
+
+    // A derived/inherited label is seeded as `disabled` + `displayOnly`: row and
+    // chip stay locked, but a sibling pick overrides it instead of freezing the
+    // whole group, mirroring the backend's DERIVED-stripping exclusivity check.
+    it('overrides a display-only locked radio sibling when a sibling is picked', () => {
+      const email: TreeSelectNode = {
+        id: 'pii.email',
+        label: 'Email',
+        value: 'pii.email',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+      };
+      const ssn: TreeSelectNode = {
+        id: 'pii.ssn',
+        label: 'SSN',
+        value: 'pii.ssn',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+      };
+      const pii: TreeSelectNode = {
+        id: 'pii',
+        label: 'PII',
+        value: 'pii',
+        hasExclusiveChildren: true,
+        children: [email, ssn],
+      };
+      const { result } = renderHook(() =>
+        useTreeSelectSelection({ multiple: true, treeData: [pii] })
+      );
+
+      const inheritedEmail: TreeSelectNode = {
+        ...email,
+        disabled: true,
+        displayOnly: true,
+      };
+      act(() => result.current.setSelection([inheritedEmail]));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+      ]);
+
+      act(() => result.current.toggleNodeSelection(ssn, pii));
+
+      // The display-only inherited sibling stays ticked next to the user's
+      // pick: the backend strips DERIVED labels before enforcing mutual
+      // exclusivity, so the draft must not drop a row Apply would keep.
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+        'pii.ssn',
+      ]);
+    });
+
+    it('overrides a display-only locked radio sibling even when its branch is unfetched', () => {
+      // Search/pagination state: the inherited term's branch is not in the tree,
+      // so the lock can only be visible through the seeded selection's own
+      // `parentId` and `disabled` — both of which the picker seeds from `value`.
+      const ssn: TreeSelectNode = {
+        id: 'pii.ssn',
+        label: 'SSN',
+        value: 'pii.ssn',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+      };
+      const pii: TreeSelectNode = {
+        id: 'pii',
+        label: 'PII',
+        value: 'pii',
+        hasExclusiveChildren: true,
+        children: [ssn],
+      };
+      const { result } = renderHook(() =>
+        useTreeSelectSelection({ multiple: true, treeData: [pii] })
+      );
+
+      const inheritedEmail: TreeSelectNode = {
+        id: 'pii.email',
+        label: 'Email',
+        value: 'pii.email',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+        disabled: true,
+        displayOnly: true,
+      };
+      act(() => result.current.setSelection([inheritedEmail]));
+
+      act(() => result.current.toggleNodeSelection(ssn, pii));
+
+      // The unfetched display-only inherited sibling stays in the selection.
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+        'pii.ssn',
+      ]);
+    });
+
+    // The relaxation is for display-only selections alone; a locked radio sibling
+    // that is not display-only still freezes its mutually-exclusive group.
+    it('keeps a non-display-only locked radio sibling blocking a sibling pick', () => {
+      const emailLocked: TreeSelectNode = {
+        id: 'pii.email',
+        label: 'Email',
+        value: 'pii.email',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+        disabled: true,
+      };
+      const ssn: TreeSelectNode = {
+        id: 'pii.ssn',
+        label: 'SSN',
+        value: 'pii.ssn',
+        parentId: 'pii',
+        isLeaf: true,
+        isParentMutuallyExclusive: true,
+      };
+      const pii: TreeSelectNode = {
+        id: 'pii',
+        label: 'PII',
+        value: 'pii',
+        hasExclusiveChildren: true,
+        children: [emailLocked, ssn],
+      };
+      const { result } = renderHook(() =>
+        useTreeSelectSelection({ multiple: true, treeData: [pii] })
+      );
+
+      act(() => result.current.setSelection([{ ...emailLocked }]));
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+      ]);
+
+      act(() => result.current.toggleNodeSelection(ssn, pii));
+
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+      ]);
+    });
   });
 
   describe('getNodeSelectionState', () => {

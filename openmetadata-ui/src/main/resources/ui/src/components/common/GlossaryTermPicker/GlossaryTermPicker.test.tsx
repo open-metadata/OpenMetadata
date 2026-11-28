@@ -138,6 +138,7 @@ describe('GlossaryTermPicker', () => {
         parentId: 'Finance',
         data: APPLIED_TERM,
         disabled: false,
+        displayOnly: false,
       },
     ]);
   });
@@ -278,7 +279,9 @@ describe('GlossaryTermPicker', () => {
   });
 
   // The tree reads the lock off `value` for the chips and Backspace, which act before it loads.
-  it('marks derived terms disabled in the value it hands the tree', () => {
+  // `displayOnly` opts the seeded derived label out of the radio-group lock so a sibling pick
+  // overrides it instead of freezing a mutually-exclusive glossary.
+  it('marks derived terms disabled and displayOnly in the value it hands the tree', () => {
     const inherited: TagLabel = {
       tagFQN: 'Finance.ARR',
       source: TagSource.Glossary,
@@ -291,10 +294,11 @@ describe('GlossaryTermPicker', () => {
       lastProps().value.map((node: TreeSelectNode<unknown>) => [
         node.id,
         node.disabled,
+        node.displayOnly,
       ])
     ).toEqual([
-      ['Finance.MRR', false],
-      ['Finance.ARR', true],
+      ['Finance.MRR', false, false],
+      ['Finance.ARR', true, true],
     ]);
   });
 
