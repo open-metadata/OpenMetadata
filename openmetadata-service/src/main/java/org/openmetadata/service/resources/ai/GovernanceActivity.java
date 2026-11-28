@@ -110,10 +110,12 @@ final class GovernanceActivity {
   }
 
   /**
-   * @param reconstructHistory when true, an approved LLM model's original submission time is
-   *     recovered from its version history ({@code listVersions}). The estate/type feed passes
-   *     false to avoid an N+1 version lookup per approved model; a single-entity timeline passes
-   *     true so both submission and approval events are shown.
+   * @param reconstructHistory when true, an LLM model's original submission time is recovered
+   *     from its version history ({@code listVersions}) for both pending and approved models, so
+   *     the submission event reflects the original submitter even when the model was edited after
+   *     being submitted for review. The estate/type feed passes false to avoid an N+1 version
+   *     lookup per model; a single-entity timeline passes true so the submission and approval
+   *     events are attributed correctly.
    */
   static List<AIGovernanceActivityEvent> eventsFor(
       EntityInterface<?> entity, boolean reconstructHistory) {
@@ -290,8 +292,16 @@ final class GovernanceActivity {
     Long approvedAt = null;
     if (llm.getGovernanceStatus() != null && llm.getUpdatedAt() != null) {
       if (llm.getGovernanceStatus() == LLMModel.GovernanceStatus.PENDING_REVIEW) {
-        registeredAt = llm.getUpdatedAt();
-        registeredBy = llm.getUpdatedBy();
+        if (reconstructHistory) {
+          LlmSubmission submission = llmSubmissionFromHistory(llm);
+          registeredAt =
+              submission.registeredAt() != null ? submission.registeredAt() : llm.getUpdatedAt();
+          registeredBy =
+              submission.registeredBy() != null ? submission.registeredBy() : llm.getUpdatedBy();
+        } else {
+          registeredAt = llm.getUpdatedAt();
+          registeredBy = llm.getUpdatedBy();
+        }
       } else if (llm.getGovernanceStatus() == LLMModel.GovernanceStatus.APPROVED) {
         approvedAt = llm.getUpdatedAt();
         approvedBy = llm.getUpdatedBy();

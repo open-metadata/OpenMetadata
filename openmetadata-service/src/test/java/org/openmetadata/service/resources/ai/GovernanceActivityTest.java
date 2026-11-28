@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 class GovernanceActivityTest {
 
   @Test
+  @SuppressWarnings("unchecked")
   void eventsForLlmModelIncludesPendingReviewSubmissionEvent() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
     LLMModel model =
@@ -43,12 +44,19 @@ class GovernanceActivityTest {
                 new AIDetection()
                     .withSource(AIDetectionSource.OutboundApiTraffic)
                     .withDetectedAt(1000L));
+    // No reconstructable history: falls back to the model's own updatedAt/updatedBy.
+    EntityRepository<LLMModel> repository = mock(EntityRepository.class);
+    EntityHistory history = new EntityHistory().withVersions(List.of());
+    when(repository.listVersions(model.getId())).thenReturn(history);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.LLM_MODEL)).thenReturn(repository);
 
-    List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
+      List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
 
-    assertEquals(List.of("ShadowAIDetected", "SubmittedForReview"), eventTypes(events));
-    assertEquals(2000L, event(events, "SubmittedForReview").getAt());
-    assertEquals("alice", event(events, "SubmittedForReview").getWho());
+      assertEquals(List.of("ShadowAIDetected", "SubmittedForReview"), eventTypes(events));
+      assertEquals(2000L, event(events, "SubmittedForReview").getAt());
+      assertEquals("alice", event(events, "SubmittedForReview").getWho());
+    }
   }
 
   @Test
@@ -147,6 +155,54 @@ class GovernanceActivityTest {
     AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
     assertEquals(2500L, submission.getAt());
     assertEquals("bob", submission.getWho());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void editWhilePendingCurrentReturnsOriginalSubmissionNotMostRecentEdit() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel current = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "carol");
+    LLMModel pendingOriginal = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L, "dave");
+    LLMModel rejected = model(LLMModel.GovernanceStatus.REJECTED, 1400L, "reviewer");
+
+    List<AIGovernanceActivityEvent> events = eventsFromHistory(current, pendingOriginal, rejected);
+
+    assertEquals(List.of("SubmittedForReview"), eventTypes(events));
+    AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
+    assertEquals(2000L, submission.getAt(), "should return the original submission timestamp");
+    assertEquals("dave", submission.getWho(), "should return the original submitter");
+  }
+
+  @Test
+  void pendingLlmModelEstateFeedUsesUpdatedAtWithoutHistoryReconstruction() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel model = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "carol");
+
+    // estate/type feed passes reconstructHistory=false: no version lookup, uses the proxy stamps.
+    List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model, false);
+
+    assertEquals(List.of("SubmittedForReview"), eventTypes(events));
+    assertEquals(2500L, event(events, "SubmittedForReview").getAt());
+    assertEquals("carol", event(events, "SubmittedForReview").getWho());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void pendingLlmModelHistoryUnreadableFallsBackToUpdatedAt() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel model = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "carol");
+    EntityRepository<LLMModel> repository = mock(EntityRepository.class);
+    when(repository.listVersions(model.getId()))
+        .thenThrow(new RuntimeException("history unavailable"));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.LLM_MODEL)).thenReturn(repository);
+
+      List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
+
+      assertEquals(List.of("SubmittedForReview"), eventTypes(events));
+      assertEquals(2500L, event(events, "SubmittedForReview").getAt());
+      assertEquals("carol", event(events, "SubmittedForReview").getWho());
+    }
   }
 
   private LLMModel model(LLMModel.GovernanceStatus status, long updatedAt) {
