@@ -105,6 +105,28 @@ describe('useCuratedAssets', () => {
     expect(result.current.totalCount).toBe(24);
   });
 
+  // The search backend defaults `track_total_hits` to false, which caps
+  // `hits.total.value` at 10,000 — so a rule matching 47,000 assets would
+  // otherwise show "10,000 assets match the rule" on the card. Every
+  // total-displaying search call in the UI passes `trackTotalHits: true`.
+  it('requests the exact total so the headline is not capped at 10,000', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: { hits: [hit('a'), hit('b')], total: { value: 47_000 } },
+    } as never);
+
+    const { result } = renderHook(
+      () => useCuratedAssets({ rule: DEFAULT_CURATED_RULE }),
+      {
+        wrapper,
+      }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockSearchQuery.mock.calls[0][0].trackTotalHits).toBe(true);
+    expect(result.current.totalCount).toBe(47_000);
+  });
+
   it('shows the tier leaf rather than its fully qualified tag', async () => {
     mockSearchQuery.mockResolvedValue({
       hits: { hits: [hit('a')], total: { value: 1 } },

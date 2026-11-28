@@ -134,6 +134,9 @@ const fetchCuratedAssets = async ({
       resources
     ) as Record<string, unknown>,
     searchIndex,
+    // The card's headline is `hits.total.value`; the search backend caps that at
+    // 10,000 when this flag is absent, so a rule matching more reads as "10,000".
+    trackTotalHits: true,
   });
 };
 
