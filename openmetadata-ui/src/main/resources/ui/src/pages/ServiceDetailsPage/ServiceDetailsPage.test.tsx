@@ -485,11 +485,18 @@ jest.mock(
 jest.mock('../../components/ServiceInsights/ServiceInsightsTab', () =>
   jest
     .fn()
-    .mockImplementation(({ serviceDetails }: ServiceInsightsTabProps) => (
-      <div data-testid="service-insights-tab">
-        <span data-testid="insights-service-id">{serviceDetails?.id}</span>
-      </div>
-    ))
+    .mockImplementation(
+      ({ serviceDetails, workflowStatesData }: ServiceInsightsTabProps) => (
+        <div data-testid="service-insights-tab">
+          <span data-testid="insights-service-id">{serviceDetails?.id}</span>
+          <span data-testid="insights-workflow-states">
+            {workflowStatesData
+              ? JSON.stringify(workflowStatesData)
+              : 'undefined'}
+          </span>
+        </div>
+      )
+    )
 );
 
 jest.mock('./ServiceMainTabContent', () =>
@@ -1715,6 +1722,269 @@ describe('ServiceDetailsPage', () => {
 
         expect(runAgentsButton).toBeEnabled();
       });
+    });
+  });
+
+  describe('workflowStatesData cross-service state leak', () => {
+    const serviceA = {
+      ...mockServiceDetails,
+      id: 'service-a-id',
+      name: 'service-a',
+      fullyQualifiedName: 'service-a',
+    };
+    const serviceB = {
+      ...mockServiceDetails,
+      id: 'service-b-id',
+      name: 'service-b',
+      fullyQualifiedName: 'service-b',
+    };
+    const runningInstanceA = {
+      id: 'workflow-instance-a',
+      status: WorkflowStatus.Running,
+      startedAt: 1715404800000,
+    };
+    const runningInstanceB = {
+      id: 'workflow-instance-b',
+      status: WorkflowStatus.Running,
+      startedAt: 1715491200000,
+    };
+
+    const page = () => (
+      <MemoryRouter>
+        <ServiceDetailsPage />
+      </MemoryRouter>
+    );
+
+    beforeEach(() => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.INSIGHTS,
+      });
+      (useFqn as jest.Mock).mockImplementation(() => ({ fqn: 'service-a' }));
+      (getServiceByFQN as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve(serviceA));
+      (getWorkflowInstancesForApplication as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve({}));
+      (getWorkflowInstanceStateById as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve({ data: [] }));
+    });
+
+    afterEach(() => {
+      (useFqn as jest.Mock).mockImplementation(() => ({
+        fqn: 'test-service',
+      }));
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.INSIGHTS,
+      });
+      (getServiceByFQN as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve(mockServiceDetails));
+      (getWorkflowInstancesForApplication as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve({}));
+      (getWorkflowInstanceStateById as jest.Mock)
+        .mockReset()
+        .mockImplementation(() => Promise.resolve({}));
+    });
+
+    it('should not keep service A workflow states when navigating to service B with no run', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        (args: { entityLink: string }) =>
+          Promise.resolve(
+            args.entityLink.includes('service-a')
+              ? { data: [runningInstanceA] }
+              : { data: [] }
+          )
+      );
+
+      const view = render(page());
+      await act(async () => undefined);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-agents')).toBeDisabled();
+      });
+
+      expect(screen.getByTestId('run-agents')).toHaveAttribute(
+        'title',
+        'message.auto-pilot-already-running'
+      );
+      expect(screen.getByTestId('insights-workflow-states')).toHaveTextContent(
+        'workflow-instance-a'
+      );
+
+      (useFqn as jest.Mock).mockImplementation(() => ({ fqn: 'service-b' }));
+      (getServiceByFQN as jest.Mock).mockImplementation(
+        (_category: string, fqn: string) =>
+          Promise.resolve(fqn === 'service-b' ? serviceB : serviceA)
+      );
+
+      await act(async () => {
+        view.rerender(page());
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: expect.stringContaining('service-b'),
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('insights-workflow-states')
+        ).toHaveTextContent('undefined');
+      });
+
+      expect(screen.getByTestId('run-agents')).toBeEnabled();
+      expect(screen.getByTestId('run-agents')).not.toHaveAttribute('title');
+    });
+
+    it('should clear workflowStatesData when navigating to a service whose workflow fetch errors', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        (args: { entityLink: string }) =>
+          args.entityLink.includes('service-a')
+            ? Promise.resolve({ data: [runningInstanceA] })
+            : Promise.reject(new Error('Workflow fetch failed'))
+      );
+
+      const view = render(page());
+      await act(async () => undefined);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('run-agents')).toBeDisabled();
+      });
+
+      (useFqn as jest.Mock).mockImplementation(() => ({ fqn: 'service-b' }));
+      (getServiceByFQN as jest.Mock).mockImplementation(
+        (_category: string, fqn: string) =>
+          Promise.resolve(fqn === 'service-b' ? serviceB : serviceA)
+      );
+
+      await act(async () => {
+        view.rerender(page());
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: expect.stringContaining('service-b'),
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('insights-workflow-states')
+        ).toHaveTextContent('undefined');
+      });
+
+      expect(screen.getByTestId('run-agents')).toBeEnabled();
+    });
+
+    it('should ignore a late workflow response from the previous service', async () => {
+      let resolveAWorkflow: (value: {
+        data: (typeof runningInstanceA)[];
+      }) => void = noop;
+      const pendingAWorkflow = new Promise<{
+        data: (typeof runningInstanceA)[];
+      }>((resolve) => {
+        resolveAWorkflow = resolve;
+      });
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        (args: { entityLink: string }) =>
+          args.entityLink.includes('service-a')
+            ? pendingAWorkflow
+            : Promise.resolve({ data: [] })
+      );
+
+      const view = render(page());
+      await act(async () => undefined);
+
+      (useFqn as jest.Mock).mockImplementation(() => ({ fqn: 'service-b' }));
+      (getServiceByFQN as jest.Mock).mockImplementation(
+        (_category: string, fqn: string) =>
+          Promise.resolve(fqn === 'service-b' ? serviceB : serviceA)
+      );
+
+      await act(async () => {
+        view.rerender(page());
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: expect.stringContaining('service-b'),
+          })
+        );
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('run-agents')).toBeEnabled();
+      });
+
+      await act(async () => {
+        resolveAWorkflow({ data: [runningInstanceA] });
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId('insights-workflow-states')).toHaveTextContent(
+        'undefined'
+      );
+      expect(getWorkflowInstanceStateById).not.toHaveBeenCalled();
+      expect(screen.getByTestId('run-agents')).toBeEnabled();
+    });
+
+    it('should overwrite service A states with service B states when service B also has a run', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockImplementation(
+        (args: { entityLink: string }) =>
+          Promise.resolve(
+            args.entityLink.includes('service-a')
+              ? { data: [runningInstanceA] }
+              : { data: [runningInstanceB] }
+          )
+      );
+
+      const view = render(page());
+      await act(async () => undefined);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('insights-workflow-states')
+        ).toHaveTextContent('workflow-instance-a');
+      });
+
+      (useFqn as jest.Mock).mockImplementation(() => ({ fqn: 'service-b' }));
+      (getServiceByFQN as jest.Mock).mockImplementation(
+        (_category: string, fqn: string) =>
+          Promise.resolve(fqn === 'service-b' ? serviceB : serviceA)
+      );
+
+      await act(async () => {
+        view.rerender(page());
+      });
+
+      await waitFor(() => {
+        expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: expect.stringContaining('service-b'),
+          })
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('insights-workflow-states')
+        ).toHaveTextContent('workflow-instance-b');
+      });
+
+      expect(
+        screen.getByTestId('insights-workflow-states')
+      ).not.toHaveTextContent('workflow-instance-a');
+      expect(screen.getByTestId('run-agents')).toBeDisabled();
     });
   });
 
