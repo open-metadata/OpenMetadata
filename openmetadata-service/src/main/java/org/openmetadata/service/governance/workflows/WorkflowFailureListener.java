@@ -5,6 +5,8 @@ import static org.flowable.common.engine.api.delegate.event.FlowableEngineEventT
 import static org.flowable.common.engine.api.delegate.event.FlowableEngineEventType.PROCESS_COMPLETED_WITH_ERROR_END_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.STATUS_VARIABLE_KEY;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +41,6 @@ import org.openmetadata.service.util.EntityUtil;
 public class WorkflowFailureListener implements FlowableEventListener {
 
   public static final String WORKFLOW_FAILURE_LISTENER_STAGE = "workflowFailureListener";
-  private static final String STATUS_VARIABLE_KEY = "status";
 
   private static final Set<String> INTENTIONAL_CANCELLATION_CAUSES =
       Set.of(
@@ -249,7 +250,7 @@ public class WorkflowFailureListener implements FlowableEventListener {
               System.currentTimeMillis());
 
       Map<String, Object> stageData = new HashMap<>();
-      stageData.put(STATUS_VARIABLE_KEY, "FAILED");
+      stageData.put(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), errorMessage);
       stageData.put("failureType", failureType);
       stageData.put("processInstanceId", processInstanceId);
       stageData.put("exception", errorMessage);

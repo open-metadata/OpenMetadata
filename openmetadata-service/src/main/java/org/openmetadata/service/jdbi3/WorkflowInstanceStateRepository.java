@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.STATUS_VARIABLE_KEY;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.ArrayList;
@@ -164,7 +165,42 @@ public class WorkflowInstanceStateRepository
       workflowInstanceState.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
     }
 
+    // Defensive fallback: honor an explicit `status` variable so failure recorders that write
+    // status=FAILED (the historical contract) persist a failure even when they don't use the
+    // canonical failure / global_exception keys above. Keeps the failure contract in one place
+    // and prevents the cross-component mismatch that silently persisted failures as FINISHED.
+    if (workflowInstanceState.getStatus() == WorkflowInstance.WorkflowStatus.FINISHED) {
+      WorkflowInstance.WorkflowStatus explicitStatus = statusVariableOf(variables);
+      if (explicitStatus != null) {
+        workflowInstanceState.setStatus(explicitStatus);
+      }
+    }
+
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstanceState), workflowInstanceStateId);
+  }
+
+  /**
+   * Maps an explicit {@code status} variable to a failure-bearing {@link
+   * WorkflowInstance.WorkflowStatus}, so a failure recorder that writes {@code status=FAILED}
+   * persists a failure without the canonical keys. Only FAILURE and EXCEPTION are honored: an
+   * {@code updateStage} call records a stage's terminal state, so the fallback never escalates a
+   * FINISHED row to RUNNING / SUPERSEDED / CANCELLED. Returns null for unrecognized values so the
+   * default FINISHED stands.
+   */
+  private static WorkflowInstance.WorkflowStatus statusVariableOf(Map<String, Object> variables) {
+    Object value = variables.get(STATUS_VARIABLE_KEY);
+    if (value == null) {
+      return null;
+    }
+    String text = value.toString();
+    if (WorkflowInstance.WorkflowStatus.EXCEPTION.value().equalsIgnoreCase(text)) {
+      return WorkflowInstance.WorkflowStatus.EXCEPTION;
+    }
+    if (WorkflowInstance.WorkflowStatus.FAILURE.value().equalsIgnoreCase(text)
+        || "FAILED".equalsIgnoreCase(text)) {
+      return WorkflowInstance.WorkflowStatus.FAILURE;
+    }
+    return null;
   }
 
   public void updateStageWithTask(UUID taskId, UUID workflowInstanceStateId) {

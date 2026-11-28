@@ -47,6 +47,10 @@ public class Workflow {
   public static final String EXCEPTION_VARIABLE = "exception";
   public static final String FAILURE_VARIABLE = "failure";
   public static final String GLOBAL_NAMESPACE = "global";
+  // Variable key carrying an explicit WorkflowStatus value. Read by
+  // WorkflowInstanceStateRepository.updateStage as a fallback so failure recorders that write
+  // status=FAILED persist a failure even without the canonical failure / global_exception keys.
+  public static final String STATUS_VARIABLE_KEY = "status";
   public static final String SUCCESSFUL_RESULT = "success";
   public static final String FAILURE_RESULT = "failure";
   // Cause string passed to deleteProcessInstance when a newer approval run replaces an older one.

@@ -96,7 +96,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
                     System.currentTimeMillis());
 
             java.util.Map<String, Object> failureData = new java.util.HashMap<>();
-            failureData.put("status", "FAILED");
+            failureData.put(FAILURE_VARIABLE, true);
             failureData.put("error", exc.getMessage());
             failureData.put("errorClass", exc.getClass().getSimpleName());
 
