@@ -25,25 +25,39 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.HandleCallback;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.cache.CachedTagUsageDao;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.cache.InMemoryCacheProvider;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -103,8 +117,10 @@ class EntityLoaderIndirectionTest {
   @AfterEach
   void tearDown() {
     cacheBundle.close();
+    Entity.setJdbi(null);
     Entity.setEntityRelationshipRepository(null);
     Entity.setCollectionDAO(null);
+    Entity.cleanup();
   }
 
   @Test
@@ -208,6 +224,129 @@ class EntityLoaderIndirectionTest {
     verify(relationshipCache).getOwners(Entity.PIPELINE, id);
     verify(relationshipCache).getDomains(Entity.PIPELINE, id);
     verify(relationshipCache).getContainer(Entity.PIPELINE, id, Relationship.CONTAINS.ordinal());
+  }
+
+  @Test
+  void excludedContainerTypeSkipsReferenceAndAncestorsCacheInContainerRepository() {
+    final CollectionDAO daoCollection = Entity.getCollectionDAO();
+    final CollectionDAO.ContainerDAO containerDao = mock(CollectionDAO.ContainerDAO.class);
+    when(daoCollection.containerDAO()).thenReturn(containerDao);
+    when(containerDao.getTableName()).thenReturn("storage_container_entity");
+    when(containerDao.getNameHashColumn()).thenReturn("fqnHash");
+    final EntityReference rootRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTAINER)
+            .withName("root")
+            .withFullyQualifiedName("svc.root");
+    when(containerDao.findReferencesByFqns(List.of("svc.root"), Include.NON_DELETED))
+        .thenReturn(List.of(rootRef));
+
+    final ContainerRepository containerRepository = new ContainerRepository();
+    final CacheConfig config = new CacheConfig();
+    config.setExcludedEntityTypes(Entity.CONTAINER);
+    cacheBundle.when(CacheBundle::getCacheConfig).thenReturn(config);
+    final AncestorsCache ancestorsCache = mock(AncestorsCache.class);
+    cacheBundle.when(CacheBundle::getAncestorsCache).thenReturn(ancestorsCache);
+
+    final List<EntityReference> ancestors = containerRepository.getAncestors("svc.root.leaf");
+
+    assertEquals(List.of(rootRef), ancestors);
+    assertTrue(redis.get(keys.refByName(Entity.CONTAINER, "svc.root")).isEmpty());
+    verifyNoInteractions(ancestorsCache);
+  }
+
+  @Test
+  void restCreateOrUpdateWithColdL1AndRedisSkipsPopulatingRedisWhenPopulateOnUpsertDisabled() {
+    final CollectionDAO daoCollection = Entity.getCollectionDAO();
+    final CollectionDAO.TagUsageDAO tagUsageDao = mock(CollectionDAO.TagUsageDAO.class);
+    when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDao);
+    when(tagUsageDao.getTags(any())).thenReturn(List.of());
+    final CollectionDAO.EntityExtensionDAO extensionDao =
+        mock(CollectionDAO.EntityExtensionDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDao);
+    when(extensionDao.getExtensions(any(), any())).thenReturn(List.of());
+    final CollectionDAO.CustomPropertyReferenceDAO customPropRefDao =
+        mock(CollectionDAO.CustomPropertyReferenceDAO.class);
+    when(daoCollection.customPropertyReferenceDAO()).thenReturn(customPropRefDao);
+    when(customPropRefDao.findEntityLevel(any())).thenReturn(List.of());
+    @SuppressWarnings("unchecked")
+    final EntityRepository<User> mockUserRepo = mock(EntityRepository.class);
+    when(mockUserRepo.findByNameOrNull(any(), any()))
+        .thenReturn(new User().withName("ingestion-bot").withIsBot(true));
+    Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
+    final Jdbi mockJdbi = mock(Jdbi.class);
+    final Handle mockHandle = mock(Handle.class);
+    when(mockHandle.attach(CollectionDAO.class)).thenReturn(daoCollection);
+    when(mockJdbi.inTransaction(any()))
+        .thenAnswer(
+            inv -> {
+              final HandleCallback<?, ?> callback = inv.getArgument(0);
+              return callback.withHandle(mockHandle);
+            });
+    Entity.setJdbi(mockJdbi);
+
+    final UUID id = UUID.randomUUID();
+    final String name = "unchanged_pipeline";
+    final String fqn = name;
+    final String json = pipelineJson(id, name, fqn);
+    when(pipelineDao.findByName(eq("pipeline_entity"), eq("fqnHash"), eq(fqn), any()))
+        .thenReturn(json);
+    when(pipelineDao.findById(eq("pipeline_entity"), eq(id), any())).thenReturn(json);
+    when(pipelineDao.findEntityByName(eq(fqn), any()))
+        .thenReturn(JsonUtils.readValue(json, Pipeline.class));
+
+    final InMemoryCacheProvider coldRedis = new InMemoryCacheProvider();
+    final CacheConfig config = new CacheConfig();
+    config.populateOnUpsert = false;
+    final CachedEntityDao entityDao = new CachedEntityDao(coldRedis, keys, config);
+    final CachedRelationshipDao relDao =
+        new CachedRelationshipDao(daoCollection, coldRedis, keys, config);
+    final CachedTagUsageDao tagDao = new CachedTagUsageDao(daoCollection, coldRedis, keys, config);
+    cacheBundle.when(CacheBundle::getCacheConfig).thenReturn(config);
+    cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(entityDao);
+    cacheBundle.when(CacheBundle::getCachedRelationshipDao).thenReturn(relDao);
+    cacheBundle.when(CacheBundle::getCachedTagUsageDao).thenReturn(tagDao);
+
+    final Authorizer authorizer = mock(Authorizer.class);
+    final Limits limits = mock(Limits.class);
+    final EntityResource<Pipeline, StubPipelineRepository> resource =
+        new EntityResource<>(Entity.PIPELINE, authorizer, limits) {};
+    final SecurityContext securityContext = mock(SecurityContext.class);
+    final Principal principal = () -> "ingestion-bot";
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+
+    // Clear Guava L1 to simulate steady-state ingestion on a cold entity.
+    EntityRepository.CACHE_WITH_NAME.invalidateAll();
+    EntityRepository.CACHE_WITH_ID.invalidateAll();
+
+    final Pipeline incoming =
+        new Pipeline().withId(id).withName(name).withFullyQualifiedName(fqn).withUpdatedBy("admin");
+    try (MockedStatic<GovernanceApprovalRegistry> approvalRegistry =
+        mockStatic(GovernanceApprovalRegistry.class)) {
+      approvalRegistry
+          .when(() -> GovernanceApprovalRegistry.gatingRules(Entity.PIPELINE))
+          .thenReturn(List.of());
+
+      resource.createOrUpdate(null, securityContext, incoming);
+
+      assertTrue(coldRedis.hget(keys.entity(Entity.PIPELINE, id), "base").isEmpty());
+      assertTrue(coldRedis.hget(keys.entity(Entity.PIPELINE, id), "owners").isEmpty());
+      assertTrue(coldRedis.hget(keys.entity(Entity.PIPELINE, id), "domains").isEmpty());
+      assertTrue(coldRedis.get(keys.entityIdByName(Entity.PIPELINE, fqn)).isEmpty());
+      assertTrue(coldRedis.get(keys.tags(Entity.PIPELINE, id) + ":false").isEmpty());
+      assertTrue(coldRedis.get(keys.tags(Entity.PIPELINE, id) + ":true").isEmpty());
+
+      // Positive control: enabling populateOnUpsert populates Redis on the same cold PUT path.
+      config.populateOnUpsert = true;
+      EntityRepository.CACHE_WITH_NAME.invalidateAll();
+      EntityRepository.CACHE_WITH_ID.invalidateAll();
+      resource.createOrUpdate(null, securityContext, incoming);
+
+      assertTrue(coldRedis.hget(keys.entity(Entity.PIPELINE, id), "base").isPresent());
+      assertEquals(
+          Optional.of(id.toString()), coldRedis.get(keys.entityIdByName(Entity.PIPELINE, fqn)));
+    }
   }
 
   @Test
