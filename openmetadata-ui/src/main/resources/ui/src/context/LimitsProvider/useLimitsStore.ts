@@ -28,10 +28,10 @@ export type BannerDetails = {
   hardLimitExceed?: boolean;
   /**
    * The limit resource that raised the banner. A within-limit
-   * `getResourceLimit(resource)` refresh clears only a banner whose `resource`
-   * matches, so a banner set without it is never cleared that way, only by its
-   * close button or a `LimitWrapper` unmount. Optional so external callers of
-   * `setBannerDetails` keep compiling.
+   * `getResourceLimit(resource)` refresh and a `LimitWrapper` unmount both
+   * clear only a banner whose `resource` matches, so a banner set without it
+   * is never cleared those ways, only by its close button. Optional so
+   * external callers of `setBannerDetails` keep compiling.
    */
   resource?: string;
 };
