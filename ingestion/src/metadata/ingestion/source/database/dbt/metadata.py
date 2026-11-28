@@ -1634,6 +1634,24 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def _query_lineage_services(self, model_service: str, data_model_link: DataModelLink) -> list[str]:
+        """
+        The services the SQL's tables are looked up in: the model's own, then each one an upstream was
+        found in. catalogMapping and searchAcrossDatabases can resolve an upstream under another service,
+        and a wildcard upstream keeps the configured service's FQN while its tables can be elsewhere.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        wildcard_upstreams = set(self._wildcard_upstreams(data_model_link))
+        services = [model_service]
+        for upstream in data_model_link.datamodel.upstream or []:
+            services.append(fqn.split(upstream)[0])
+            if upstream in wildcard_upstreams:
+                services.extend(
+                    fqn.split(model_str(table.fullyQualifiedName))[0]
+                    for table in self._wildcard_upstream_tables(upstream) or ()
+                )
+        return list(dict.fromkeys(services))
+
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
@@ -1662,12 +1680,13 @@ class DbtSource(DbtServiceSource):
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_names=source_elements[0],
+                    service_names=self._query_lineage_services(source_elements[0], data_model_link),
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                     lineage_source=LineageSource.DbtLineage,
+                    view_entity=to_entity,
                 )
                 override_lineage = self._overrides_lineage(data_model_link)
                 for lineage in lineages or []:

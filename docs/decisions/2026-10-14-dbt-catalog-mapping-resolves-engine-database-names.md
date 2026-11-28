@@ -1,9 +1,11 @@
 # dbt's catalogMapping maps a manifest database to the database it is ingested under
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-16 (query lineage)
+- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-16 (query lineage); v3 2026-11-26 (query lineage searches the upstreams' services)
 - **Deciders:** Ingestion maintainers
-- **Guard:** `TestCatalogMapping` in `ingestion/tests/unit/test_dbt.py`
+- **Guard:** `TestCatalogMapping` in `ingestion/tests/unit/test_dbt.py`;
+  `test_dbt_query_lineage_links_the_columns_of_a_wildcard_source_in_another_service` in
+  `ingestion/tests/unit/entity_resolution/test_resolver.py`
 - **Related:** issue #34633; PR #35020 (earlier, inference-based approach)
 
 ## Context
@@ -47,3 +49,18 @@ release and is dropped by dbt on any node that declares its own `openmetadata` b
 on schema and table name alone, which attaches dbt metadata to an unrelated table whenever the real
 one is not ingested and a namesake exists in another database. Revisit if an engine is found whose
 catalog spans several OpenMetadata databases; the mapping would then need a schema-level key.
+
+## Amendment
+
+v3 (2026-11-26): swapping the catalog for its database is not enough when that database belongs to
+another service, because the lineage parser looked tables up only in the service of the model being
+processed. Query lineage now searches the model's own service first, then the service of each of its
+upstreams, read from the FQN the upstream was recorded under. A wildcard upstream (BigQuery
+`events_*`) keeps the configured service's FQN, so the services of the tables its expansion found
+are added after it. Those are the services where `catalogMapping` and `searchAcrossDatabases` found
+the parents, so column lineage follows table lineage without searching every service. The list
+applies to every table the SQL reads, so one that is not a dbt upstream and misses in the model's
+service is also looked up in the upstreams' services; the first service with a match wins, and a
+service no upstream was found in is never searched. The model itself is not looked up there: the
+parser's target is bound to the table the model was already resolved to, so a table of the same name
+in an upstream's service never receives its column lineage.

@@ -13,9 +13,11 @@
 
 import gc
 import json
+import re
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from fnmatch import fnmatchcase
 from threading import Barrier
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -733,10 +735,10 @@ def test_wildcard_sql_lineage_does_not_invent_missing_destination_columns(wildca
         ] == [(f"{result.right.from_entity_fqn}.id", "my_service.my_db.my_schema.output.id")]
 
 
-def add_bigquery_service(transport):
-    transport.entities["my_service"] = DatabaseService(
+def add_bigquery_service(transport, name="my_service"):
+    transport.entities[name] = DatabaseService(
         id=uuid4(),
-        name="my_service",
+        name=name,
         serviceType="BigQuery",
         connection={"config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}},
     )
@@ -1217,6 +1219,82 @@ def test_dbt_wildcard_source_follows_the_catalog_mapping(sdk, monkeypatch, servi
     source.source_config.catalogMapping = {"my_db": "prod_db"}
 
     assert dbt_lineage_sources(source, manifest_entities, model) == {daily.id.root}
+
+
+def answer_scoped_search(transport, monkeypatch, *tables):
+    """A table search by FQN pattern, which the fake transport otherwise answers alike for every pattern."""
+    search = transport.get
+
+    def get(path):
+        url = urlsplit(path)
+        params = parse_qs(url.query)
+        if url.path != "/search/fieldQuery" or params.get("index") != ["table_search_index"]:
+            return search(path)
+        pattern = re.sub(r"\\(.)", r"[\1]", params["fieldValue"][0].replace('"', ""))
+        names = [item.fullyQualifiedName.root for item in tables if fnmatchcase(item.fullyQualifiedName.root, pattern)]
+        return {
+            "hits": {
+                "hits": [{"_source": {"fullyQualifiedName": name}} for name in names],
+                "total": {"value": len(names), "relation": "eq"},
+            }
+        }
+
+    monkeypatch.setattr(transport, "get", get)
+
+
+@pytest.mark.parametrize(
+    ("catalog_mapping", "search_across_databases"),
+    [({"my_db": "my_db"}, False), (None, True)],
+    ids=["catalogMapping", "searchAcrossDatabases"],
+)
+def test_dbt_query_lineage_links_the_columns_of_a_wildcard_source_in_another_service(
+    sdk, monkeypatch, catalog_mapping, search_across_databases
+):
+    # The wildcard upstream keeps the configured service's FQN while its tables are found under another one
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    add_bigquery_service(transport, "other_service")
+    daily = bigquery_family_in("other_service", "my_db")
+    summary = table("my_service.my_db.my_schema.summary")
+    for entity in (daily, summary):
+        entity.columns = [
+            Column(name=name, dataType="INT", fullyQualifiedName=f"{entity.fullyQualifiedName.root}.{name}")
+            for name in ("id", "label")
+        ]
+        transport.entities[entity.fullyQualifiedName.root] = entity
+    answer_unscoped_search(transport, monkeypatch, daily)
+    answer_scoped_search(transport, monkeypatch, daily, summary)
+    source, manifest_entities, model = wildcard_source_dbt(metadata)
+    source.source_config.catalogMapping = catalog_mapping
+    source.source_config.searchAcrossDatabases = search_across_databases
+    source.source_config.parsingTimeoutLimit = 10
+    source.config.serviceConnection = SimpleNamespace(
+        root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="BigQuery")))
+    )
+    upstream = source.parse_upstream_nodes_with_names(manifest_entities, model, expand_wildcard_sources=True)
+    link = DataModelLink(
+        table_entity=summary,
+        upstream_table_ids={node.fqn: node.table_id for node in upstream if node.table_id},
+        datamodel=DataModel(
+            modelType="DBT",
+            upstream=[node.fqn for node in upstream],
+            sql="select id, label from `my_db`.`my_schema`.`events_*`",
+        ),
+    )
+    assert {edge.right.lineage_request.edge.fromEntity.id.root for edge in source.create_dbt_lineage(link)} == {
+        daily.id.root
+    }
+
+    requests = [outcome.right.lineage_request for outcome in source.create_dbt_query_lineage(link) if outcome.right]
+
+    assert {
+        (column.fromColumns[0].root, column.toColumn.root)
+        for request in requests
+        for column in request.lineage_details.columnsLineage or []
+    } == {
+        (f"{daily.fullyQualifiedName.root}.{name}", f"{summary.fullyQualifiedName.root}.{name}")
+        for name in ("id", "label")
+    }
 
 
 def test_dbt_wildcard_source_falls_back_to_the_manifest_database(sdk):
