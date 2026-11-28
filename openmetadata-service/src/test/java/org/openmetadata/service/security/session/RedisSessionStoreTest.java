@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.lettuce.core.Range;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
+import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Duration;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -163,5 +165,127 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
 
     assertTrue(redisStore.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
     assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
+  }
+
+  @Test
+  void userIndexZsetHasBoundedTtlThatExtendsWithoutShortening() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    String indexKey = "om-test:session:idx:user:" + userId + ":ACTIVE";
+    long now = System.currentTimeMillis();
+
+    UserSession longer =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .build();
+    redisStore.create(longer);
+
+    Long ttlAfterLonger = commands.ttl(indexKey);
+    assertTrue(ttlAfterLonger > TimeUnit.MINUTES.toSeconds(110));
+    assertTrue(ttlAfterLonger <= TimeUnit.HOURS.toSeconds(2));
+
+    UserSession shorter =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .build();
+    redisStore.create(shorter);
+
+    Long ttlAfterShorter = commands.ttl(indexKey);
+    assertTrue(
+        ttlAfterShorter > TimeUnit.MINUTES.toSeconds(110),
+        "a shorter session must not shrink the user index TTL");
+
+    UserSession extended =
+        shorter.toBuilder()
+            .version(1L)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(4))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(4))
+            .build();
+    assertTrue(redisStore.updateIfVersion(extended, 0L));
+
+    Long ttlAfterExtend = commands.ttl(indexKey);
+    assertTrue(
+        ttlAfterExtend > TimeUnit.MINUTES.toSeconds(230),
+        "updating a session with a longer horizon must extend the user index TTL");
+  }
+
+  @Test
+  void preUpgradePersistentUserIndexIsNotShortenedByNewShortSessionAndTransitionsOnFullScan() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    String indexKey = "om-test:session:idx:user:" + userId + ":ACTIVE";
+    long now = System.currentTimeMillis();
+
+    // Simulate a legacy persistent user index (TTL == -1) holding a live 2-hour pre-upgrade session
+    // plus an already-expired session ID.
+    String longSessionId = UUID.randomUUID().toString();
+    UserSession legacyLongSession =
+        UserSession.builder()
+            .id(longSessionId)
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now - TimeUnit.MINUTES.toMillis(5))
+            .expiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .build();
+    commands.set(
+        "om-test:session:" + longSessionId,
+        JsonUtils.pojoToJson(legacyLongSession),
+        SetArgs.Builder.ex(TimeUnit.HOURS.toSeconds(2)));
+    commands.zadd(indexKey, (double) (now - TimeUnit.MINUTES.toMillis(5)), longSessionId);
+    commands.zadd(indexKey, (double) (now - TimeUnit.HOURS.toMillis(1)), "expired-legacy-id");
+    assertEquals(-1L, commands.ttl(indexKey));
+
+    // Step 1: ZADD of a shorter 10-minute session must NOT shorten the persistent legacy index.
+    UserSession shortSession =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .build();
+    redisStore.create(shortSession);
+
+    assertEquals(
+        -1L,
+        commands.ttl(indexKey),
+        "a pre-upgrade persistent user index must not be shortened to a single short session's TTL");
+
+    // Step 2: Full scan (as run by SessionService.applySessionLimit immediately after create)
+    // cleans stale entries and transitions the persistent index to the max surviving session TTL.
+    List<UserSession> active = redisStore.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10);
+    assertEquals(2, active.size());
+    assertEquals(2L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
+
+    Long ttlAfterScan = commands.ttl(indexKey);
+    assertTrue(
+        ttlAfterScan > TimeUnit.MINUTES.toSeconds(110)
+            && ttlAfterScan <= TimeUnit.HOURS.toSeconds(2),
+        "full scan must transition legacy TTL == -1 index to the max live session horizon, got "
+            + ttlAfterScan);
   }
 }

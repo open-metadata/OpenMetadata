@@ -49,6 +49,7 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.cache.CacheValueCodec;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -70,7 +71,7 @@ import org.quartz.JobExecutionContext;
  *   <li>Stream pages of raw JSON rows via {@link EntityDAO#listAfterWithOffset} — no joins, no
  *       relationship resolution, just the column store.</li>
  *   <li>Populate {@code om:<ns>:e:<type>:<uuid>} (HSET field {@code base}) and
- *       {@code om:<ns>:en:<type>:<fqnHash>} (SET) for each row.</li>
+ *       {@code om:<ns>:enid:<type>:<fqnHash>} (SET UUID pointer) for each row.</li>
  *   <li>Write each batch with Lettuce async pipelining — one await covers the whole batch rather
  *       than one RTT per key.</li>
  *   <li>No distributed lock. Instances warm independently; Redis writes are idempotent, so the
@@ -237,8 +238,18 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       claimKeyPrefix = ks + ":warmup:claim:";
     }
     if (warmBundlesEnabled() && cacheProvider != null && keys != null) {
+      int compressionThreshold = cacheConfig != null ? cacheConfig.compressionThresholdBytes : 0;
+      int maxEntrySize = cacheConfig != null ? cacheConfig.maxEntrySizeBytes : 0;
+      Integer tagTtlSeconds = cacheConfig != null ? cacheConfig.tagTtlSeconds : null;
       bundleBatcher =
-          new BundleWarmupBatcher(collectionDAO, cacheProvider, keys, warmRelationshipsEnabled());
+          new BundleWarmupBatcher(
+              collectionDAO,
+              cacheProvider,
+              keys,
+              warmRelationshipsEnabled(),
+              compressionThreshold,
+              maxEntrySize,
+              tagTtlSeconds);
     }
   }
 
@@ -396,8 +407,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   }
 
   private void warmupEntityType(String entityType, int batchSize, Duration ttl) {
-    if (Entity.USER.equals(entityType)) {
-      LOG.debug("Skipping user entity type — not cached by design");
+    if (Entity.USER.equals(entityType)
+        || (cacheConfig != null && cacheConfig.isEntityTypeExcluded(entityType))) {
+      LOG.debug("Skipping {} entity type — excluded from Redis cache", entityType);
       return;
     }
     if (distributedClaimEnabled() && !forceWarmup() && !claimEntityType(entityType)) {
@@ -495,8 +507,14 @@ public class CacheWarmupApp extends AbstractNativeApplication {
             pageFailed++;
             continue;
           }
-          hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", json));
-          setBatch.put(keys.entityByName(entityType, entity.getFullyQualifiedName()), json);
+          String encoded = CacheValueCodec.encode(json, cacheConfig.compressionThresholdBytes);
+          if (CacheValueCodec.exceedsMaxEntrySize(encoded, cacheConfig.maxEntrySizeBytes)) {
+            continue;
+          }
+          hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", encoded));
+          setBatch.put(
+              keys.entityIdByName(entityType, entity.getFullyQualifiedName()),
+              entity.getId().toString());
           parsedEntities.add(entity);
           pageSuccess++;
         } catch (Exception e) {
@@ -771,6 +789,9 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       configured = new LinkedHashSet<>(Entity.getEntityList());
     }
     configured.remove(Entity.USER);
+    if (cacheConfig != null) {
+      configured.removeAll(cacheConfig.getExcludedEntityTypes());
+    }
     return configured;
   }
 

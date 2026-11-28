@@ -1008,6 +1008,22 @@ cache:
   relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-172800} # 48 hour for relationships
   tagTtlSeconds: ${CACHE_TAG_TTL:-172800}                   # 48 hour for tags
 
+  # Memory & payload controls
+  # Compress entity and read-bundle JSON at/above this UTF-8 byte threshold.
+  # Defaults to 0 (disabled) on 2.1 patch releases for zero-noise rolling upgrades; set to 2048
+  # via CACHE_COMPRESSION_THRESHOLD_BYTES once all pods run a version with om:gz1: decode support.
+  compressionThresholdBytes: ${CACHE_COMPRESSION_THRESHOLD_BYTES:-0}
+  # Skip caching individual entity/bundle entries larger than this post-compression size (bytes). 0 = unlimited.
+  maxEntrySizeBytes: ${CACHE_MAX_ENTRY_SIZE_BYTES:-0}
+  # Do not populate Redis on createOrUpdate lookup misses (prevents ingestion sweeps filling Redis with cold entities).
+  populateOnUpsert: ${CACHE_POPULATE_ON_UPSERT:-false}
+  # Comma-separated entity types to exclude from Redis entity, read-bundle, tag, owner, domain,
+  # CONTAINS-parent, and warmup caches (e.g. "table,testCase").
+  excludedEntityTypes: ${CACHE_EXCLUDED_ENTITY_TYPES:-}
+  # Session store backend: auto (Redis when provider=redis), jdbc (keep sessions in DB), or redis.
+  # Changing this switches to an empty store: update all pods together and expect one forced sign-in.
+  sessionStore: ${CACHE_SESSION_STORE:-auto}
+
   # Redis configuration
   redis:
     # Redis connection URL

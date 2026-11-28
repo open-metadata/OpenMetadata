@@ -670,7 +670,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     String nameLike = buildNameLikeBind(search);
     boolean hasSearch = !"%".equals(nameLike);
 
-    ChildrenPageCache pageCache = hasSearch ? null : CacheBundle.getChildrenPageCache();
+    ChildrenPageCache pageCache =
+        (!hasSearch && isCacheableEntityType(CONTAINER))
+            ? CacheBundle.getChildrenPageCache()
+            : null;
     if (pageCache != null) {
       ResultList<Container> cached;
       try (var ignored = RequestLatencyContext.phase("listChildrenCacheGet")) {
@@ -780,7 +783,8 @@ public class ContainerRepository extends EntityRepository<Container> {
    * need to issue one parent fetch per breadcrumb level.
    */
   public List<EntityReference> getAncestors(String fqn) {
-    AncestorsCache ancestorsCache = CacheBundle.getAncestorsCache();
+    AncestorsCache ancestorsCache =
+        isCacheableEntityType(CONTAINER) ? CacheBundle.getAncestorsCache() : null;
     if (ancestorsCache != null) {
       List<String> cachedFqns = ancestorsCache.getFqns(CONTAINER, fqn);
       if (cachedFqns != null) {
@@ -841,7 +845,7 @@ public class ContainerRepository extends EntityRepository<Container> {
       return Collections.emptyList();
     }
 
-    var entityCache = CacheBundle.getCachedEntityDao();
+    var entityCache = isCacheableEntityType(CONTAINER) ? CacheBundle.getCachedEntityDao() : null;
     Map<String, EntityReference> byFqn = new HashMap<>();
     List<String> misses = new ArrayList<>();
 

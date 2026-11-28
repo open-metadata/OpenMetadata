@@ -3460,31 +3460,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public RestUtil.PutResponse<GlossaryTerm> createOrUpdateForImport(
       UriInfo uriInfo, GlossaryTerm updated, String updatedBy) {
+    try (var populateGuard = skipPopulateOnUpsert()) {
+      GlossaryTerm original = findByNameOrNull(updated.getFullyQualifiedName(), Include.ALL);
 
-    GlossaryTerm original = findByNameOrNull(updated.getFullyQualifiedName(), Include.ALL);
-
-    // Glossary term's parent can change which alters its FQN. If the FQN lookup fails, try
-    // locating the term by (glossary, name) combination.
-    if (original == null) {
-      try {
-        String existingTermString =
-            Entity.getCollectionDAO()
-                .glossaryTermDAO()
-                .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                    updated.getGlossary().getFullyQualifiedName(), updated.getName());
-        if (existingTermString != null && !existingTermString.isEmpty()) {
-          original = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
+      // Glossary term's parent can change which alters its FQN. If the FQN lookup fails, try
+      // locating the term by (glossary, name) combination.
+      if (original == null) {
+        try {
+          String existingTermString =
+              Entity.getCollectionDAO()
+                  .glossaryTermDAO()
+                  .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                      updated.getGlossary().getFullyQualifiedName(), updated.getName());
+          if (existingTermString != null && !existingTermString.isEmpty()) {
+            original = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
+          }
+        } catch (Exception ignored) {
         }
-      } catch (Exception ignored) {
       }
-    }
 
-    if (original == null) {
-      return new RestUtil.PutResponse<>(
-          Response.Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
-    }
+      if (original == null) {
+        return new RestUtil.PutResponse<>(
+            Response.Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+      }
 
-    return updateForImport(uriInfo, original, updated, updatedBy);
+      return updateForImport(uriInfo, original, updated, updatedBy);
+    }
   }
 
   @Override

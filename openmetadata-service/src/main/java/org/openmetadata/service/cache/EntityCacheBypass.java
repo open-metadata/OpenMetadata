@@ -51,6 +51,8 @@ package org.openmetadata.service.cache;
 public final class EntityCacheBypass {
 
   private static final ThreadLocal<Boolean> SKIP = ThreadLocal.withInitial(() -> Boolean.FALSE);
+  private static final ThreadLocal<Boolean> SKIP_POPULATE =
+      ThreadLocal.withInitial(() -> Boolean.FALSE);
 
   private EntityCacheBypass() {
     // utility class
@@ -62,6 +64,14 @@ public final class EntityCacheBypass {
   }
 
   /**
+   * True if the current thread has opted out of populating Redis on cache misses (reads still hit
+   * existing cached entries unless {@link #isSkipped()} is also active).
+   */
+  public static boolean isPopulateSkipped() {
+    return isSkipped() || Boolean.TRUE.equals(SKIP_POPULATE.get());
+  }
+
+  /**
    * Mark the current thread as skipping the cache. Returns an {@link AutoCloseable} that
    * restores the previous skip state — typically used with try-with-resources.
    */
@@ -69,6 +79,17 @@ public final class EntityCacheBypass {
     boolean previous = SKIP.get();
     SKIP.set(Boolean.TRUE);
     return () -> SKIP.set(previous);
+  }
+
+  /**
+   * Mark the current thread as read-only against Redis: existing cached entries are still served,
+   * but cache misses do not write back to Redis. Used on write paths (e.g. ingestion upserts) so
+   * cold entities do not fill Redis memory.
+   */
+  public static Handle skipPopulate() {
+    boolean previous = SKIP_POPULATE.get();
+    SKIP_POPULATE.set(Boolean.TRUE);
+    return () -> SKIP_POPULATE.set(previous);
   }
 
   /** Closeable handle that restores the prior skip state on {@link #close()}. */
@@ -86,5 +107,6 @@ public final class EntityCacheBypass {
    */
   static void resetForTesting() {
     SKIP.remove();
+    SKIP_POPULATE.remove();
   }
 }
