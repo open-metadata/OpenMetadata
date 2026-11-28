@@ -543,7 +543,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const currentServiceFqnRef = useRef(serviceDetails.fullyQualifiedName);
+  currentServiceFqnRef.current = serviceDetails.fullyQualifiedName;
+
   const fetchWorkflowInstanceStates = useCallback(async () => {
+    const serviceFqn = serviceDetails.fullyQualifiedName;
     try {
       setIsWorkflowStatusLoading(true);
       const startTs = getDayAgoStartGMTinMillis(6);
@@ -553,11 +557,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         startTs,
         endTs,
         workflowDefinitionName: SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-        entityLink: getEntityFeedLink(
-          entityType,
-          serviceDetails.fullyQualifiedName
-        ),
+        entityLink: getEntityFeedLink(entityType, serviceFqn),
       });
+
+      if (currentServiceFqnRef.current !== serviceFqn) {
+        return;
+      }
 
       const workflowInstanceId = workflowInstances.data[0]?.id;
 
@@ -570,15 +575,25 @@ const ServiceDetailsPage: FunctionComponent = () => {
             endTs,
           }
         );
+        if (currentServiceFqnRef.current !== serviceFqn) {
+          return;
+        }
         setWorkflowStatesData({
           mainInstanceState: workflowInstances.data[0],
           subInstanceStates: workflowInstanceStates.data,
         });
+      } else {
+        setWorkflowStatesData(undefined);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (currentServiceFqnRef.current === serviceFqn) {
+        setWorkflowStatesData(undefined);
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsWorkflowStatusLoading(false);
+      if (currentServiceFqnRef.current === serviceFqn) {
+        setIsWorkflowStatusLoading(false);
+      }
     }
   }, [serviceDetails.fullyQualifiedName, serviceCategory]);
 
